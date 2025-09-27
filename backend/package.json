@@ -54,7 +54,17 @@
     "clean:all": "npm run clean:logs && npm run clean:data",
     "reset": "npm run stop && npm run clean:all",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+
+    "// SUBMODULE MANAGEMENT": "=== Git submodule synchronization ===",
+    "sync": "./scripts/sync-all.sh",
+    "sync:setup": "./scripts/setup-branch-tracking.sh",
+    "sync:update": "git submodule update --remote --recursive --merge",
+    "sync:status": "git submodule status --recursive",
+    "sync:fetch": "git submodule foreach --recursive 'git fetch origin'",
+    "sync:push": "git push --recurse-submodules=on-demand",
+    "sync:push-all": "git submodule foreach 'git push origin main || :' && git push origin main",
+    "sync:quick": "git submodule update --remote --recursive --merge && git add . && git diff --staged --quiet || git commit -m 'chore: Sync submodules'"
   },
   "keywords": [
     "aln",
