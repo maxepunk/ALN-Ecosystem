@@ -8,7 +8,7 @@ module.exports = {
     {
       // Application configuration
       name: 'aln-orchestrator',
-      script: './src/index.js',
+      script: './src/server.js',
       instances: 1, // Single instance for stateful WebSocket connections
       exec_mode: 'fork', // Fork mode for stateful application
       
@@ -17,13 +17,19 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000,
         HOST: '0.0.0.0',
+        VLC_PASSWORD: 'vlc',
+        VLC_HOST: 'localhost',
+        VLC_PORT: 8080,
       },
-      
+
       env_development: {
         NODE_ENV: 'development',
         PORT: 3000,
-        HOST: 'localhost',
+        HOST: '0.0.0.0',
         DEBUG: 'true',
+        VLC_PASSWORD: 'vlc',
+        VLC_HOST: 'localhost',
+        VLC_PORT: 8080,
       },
       
       env_staging: {
@@ -51,7 +57,7 @@ module.exports = {
       
       // Graceful shutdown
       kill_timeout: 5000, // Time in ms before sending SIGKILL
-      wait_ready: true, // Wait for process.send('ready')
+      wait_ready: false, // Disabled - app doesn't send ready signal
       listen_timeout: 3000, // Time to wait for app to listen
       
       // Monitoring
@@ -64,7 +70,6 @@ module.exports = {
       // cron_restart: '0 3 * * *',
       
       // Error handling
-      error_file: './logs/error.log',
       combine_logs: true,
       
       // Development helpers (disabled in production)
@@ -78,11 +83,11 @@ module.exports = {
       },
     },
 
-    // VLC HTTP Interface Process
+    // VLC HTTP Interface Process (with video output)
     {
       name: 'vlc-http',
       script: '/usr/bin/vlc',
-      args: '--intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 --no-video-title-show --quiet --daemon',
+      args: '--intf qt --extraintf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 --fullscreen --video-on-top',
       interpreter: 'none', // Not a Node.js process
       exec_mode: 'fork',
 

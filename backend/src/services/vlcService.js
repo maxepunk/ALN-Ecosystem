@@ -113,7 +113,7 @@ class VlcService extends EventEmitter {
       await this.client.get('/requests/status.json', {
         params: {
           command: 'in_play',
-          input: encodeURIComponent(vlcPath),
+          input: vlcPath, // VLC HTTP interface handles encoding internally
         },
       });
 

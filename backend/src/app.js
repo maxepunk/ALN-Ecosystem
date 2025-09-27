@@ -173,6 +173,15 @@ async function initializeServices() {
         logger.info('System will continue without video playback functionality');
       });
 
+      // Update state service when VLC connects/disconnects
+      vlcService.on('connected', () => {
+        stateService.updateSystemStatus({ vlcConnected: true });
+      });
+
+      vlcService.on('disconnected', () => {
+        stateService.updateSystemStatus({ vlcConnected: false });
+      });
+
       try {
         await vlcService.init();
       } catch (error) {
