@@ -194,22 +194,28 @@ class OfflineQueueService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async reset() {
-    // Clear offline queue
+    // 1. Clear timers/intervals FIRST (none in this service)
+
+    // 2. Remove all listeners
+    this.removeAllListeners();
+
+    // 3. Reset state
     this.queue = [];
     this.isOffline = false;
     this.processingQueue = false;
-
-    // Remove all event listeners to prevent accumulation
-    this.removeAllListeners();
 
     // Clear persisted queue if in test mode
     if (process.env.NODE_ENV === 'test') {
       await persistenceService.delete('offlineQueue');
     }
 
+    // 4. Log completion
     logger.info('Offline queue service reset');
   }
 }
 
 // Export singleton instance
 module.exports = new OfflineQueueService();
+
+// Export resetForTests method
+module.exports.resetForTests = () => module.exports.reset();

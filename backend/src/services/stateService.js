@@ -18,6 +18,7 @@ class StateService extends EventEmitter {
     this.syncInterval = null;
     this.vlcConnected = false;
     this.videoDisplayReady = false;
+    this.listenersInitialized = false;  // ADD THIS
 
     // Debouncing for state updates
     this.pendingStateUpdate = null;
@@ -65,6 +66,14 @@ class StateService extends EventEmitter {
    * @private
    */
   setupTransactionListeners() {
+    // CRITICAL: Prevent duplicate listener registration
+    if (this.listenersInitialized) {
+      logger.debug('Transaction listeners already initialized, skipping');
+      return;
+    }
+    this.listenersInitialized = true;
+    logger.info('Initializing transaction listeners');
+
     const transactionService = require('./transactionService');
     const sessionService = require('./sessionService');
     const videoQueueService = require('./videoQueueService');
@@ -595,14 +604,24 @@ class StateService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async reset() {
-    this.stopSyncInterval(); // Stop the sync interval first
+    // Clear timers FIRST
+    this.stopSyncInterval();
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+
+    // Remove listeners BEFORE resetting flag
+    this.removeAllListeners();
+    this.listenersInitialized = false;  // ADD THIS
+
+    // Reset state
     this.currentState = null;
     this.previousState = null;
+    this.pendingStateUpdate = null;
+
     await persistenceService.delete('gameState:current');
     this.emit('state:reset');
-
-    // Remove all event listeners to prevent accumulation
-    this.removeAllListeners();
 
     logger.info('Game state reset');
   }

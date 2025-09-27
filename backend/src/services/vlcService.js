@@ -480,12 +480,31 @@ class VlcService extends EventEmitter {
    * Reset service for tests
    */
   reset() {
-    this.cleanup();
+    // 1. Clear timers/intervals FIRST
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    // 2. Remove all listeners
+    this.removeAllListeners();
+
+    // 3. Reset state
     this.connected = false;
-    this.isPlaying = false;
-    this.currentVideo = null;
+    this.reconnectAttempts = 0;
+    this.client = null;
+
+    // 4. Log completion
+    logger.info('VLC service reset');
   }
 }
 
 // Export singleton instance
 module.exports = new VlcService();
+
+// Export resetForTests method
+module.exports.resetForTests = () => module.exports.reset();

@@ -603,7 +603,7 @@ class VideoQueueService extends EventEmitter {
    * @returns {void}
    */
   reset() {
-    // Clear any running timers
+    // 1. Clear timers/intervals FIRST
     if (this.playbackTimer) {
       clearTimeout(this.playbackTimer);
       this.playbackTimer = null;
@@ -613,16 +613,20 @@ class VideoQueueService extends EventEmitter {
       this.progressTimer = null;
     }
 
-    // Clear queue and current item
+    // 2. Remove all listeners
+    this.removeAllListeners();
+
+    // 3. Reset state
     this.queue = [];
     this.currentItem = null;
 
-    // Remove all event listeners to prevent accumulation
-    this.removeAllListeners();
-
+    // 4. Log completion
     logger.info('Video queue service reset');
   }
 }
 
 // Export singleton instance
 module.exports = new VideoQueueService();
+
+// Export resetForTests method
+module.exports.resetForTests = () => module.exports.reset();

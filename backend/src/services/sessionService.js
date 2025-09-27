@@ -12,6 +12,11 @@ const logger = require('../utils/logger');
 class SessionService extends EventEmitter {
   constructor() {
     super();
+    this.initState();  // ADD THIS
+  }
+
+  // ADD new method after constructor
+  initState() {
     this.currentSession = null;
     this.sessionTimeoutTimer = null;
   }
@@ -387,14 +392,14 @@ class SessionService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async reset() {
-    // Clear current session
-    this.currentSession = null;
-
-    // Stop any timers
+    // Stop timers FIRST
     this.stopSessionTimeout();
 
-    // Remove all event listeners to prevent accumulation
+    // Remove listeners BEFORE reinit
     this.removeAllListeners();
+
+    // Reinitialize state
+    this.initState();
 
     // Clear persistence if in test mode
     if (process.env.NODE_ENV === 'test') {
@@ -408,3 +413,6 @@ class SessionService extends EventEmitter {
 
 // Export singleton instance
 module.exports = new SessionService();
+
+// Add test helper at end of file
+module.exports.resetForTests = () => module.exports.reset();

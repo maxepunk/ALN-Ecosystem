@@ -398,14 +398,14 @@ class TransactionService extends EventEmitter {
    * Used primarily for testing to ensure clean state between tests
    */
   reset() {
+    // Remove listeners FIRST
+    this.removeAllListeners();
+
     // Clear all transaction history
     this.recentTransactions = [];
 
-    // Clear team scores
+    // Clear team scores completely
     this.teamScores.clear();
-
-    // Remove all event listeners to prevent accumulation
-    this.removeAllListeners();
 
     // Note: We don't clear tokens as they're loaded from config
     // and should persist across resets
@@ -416,3 +416,6 @@ class TransactionService extends EventEmitter {
 
 // Export singleton instance
 module.exports = new TransactionService();
+
+// Add test helper at end
+module.exports.resetForTests = () => module.exports.reset();
