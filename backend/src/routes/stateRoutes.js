@@ -46,8 +46,16 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // Generate ETag based on state content
+    // Ensure offline status is current
+    const offlineQueueService = require('../services/offlineQueueService');
     const stateJSON = state.toJSON();
+
+    // Update offline status to current value
+    if (stateJSON.systemStatus) {
+      stateJSON.systemStatus.offline = offlineQueueService.isOffline;
+    }
+
+    // Generate ETag based on state content
     const etag = crypto
       .createHash('md5')
       .update(JSON.stringify(stateJSON))
@@ -81,6 +89,9 @@ router.get('/', async (req, res) => {
  */
 router.get('/status', (req, res) => {
   try {
+    // Get offline status from offlineQueueService
+    const { isOffline } = require('../middleware/offlineStatus');
+
     const interfaces = os.networkInterfaces();
     const addresses = Object.values(interfaces)
       .flat()
@@ -100,6 +111,7 @@ router.get('/status', (req, res) => {
       },
       environment: config.server.env,
       uptime: process.uptime(),
+      offline: isOffline(),
       timestamp: new Date().toISOString()
     };
 

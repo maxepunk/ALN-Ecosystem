@@ -1,16 +1,17 @@
 /**
  * Persistence Service
- * Node-persist based storage for all game data
+ * Abstracted storage service for all game data
+ * Uses appropriate storage backend based on environment
  */
 
-const storage = require('node-persist');
-const path = require('path');
+const { createStorage } = require('../storage');
 const config = require('../config');
 const logger = require('../utils/logger');
 
 class PersistenceService {
   constructor() {
     this.initialized = false;
+    this.storage = null;
     this.dataDir = config.storage.dataDir;
   }
 
@@ -24,19 +25,22 @@ class PersistenceService {
     }
 
     try {
-      await storage.init({
-        dir: this.dataDir,
-        stringify: JSON.stringify,
-        parse: JSON.parse,
-        encoding: 'utf8',
-        logging: false,
-        ttl: false,
-        expiredInterval: 2 * 60 * 1000, // 2 minutes
-        forgiveParseErrors: false,
+      // Create appropriate storage backend
+      this.storage = createStorage({
+        dataDir: this.dataDir
+      });
+
+      // Initialize the storage backend
+      await this.storage.init({
+        dataDir: this.dataDir
       });
 
       this.initialized = true;
-      logger.info('Persistence service initialized', { dataDir: this.dataDir });
+      const storageType = process.env.NODE_ENV === 'test' ? 'memory' : 'file';
+      logger.info('Persistence service initialized', {
+        storageType,
+        dataDir: storageType === 'file' ? this.dataDir : 'in-memory'
+      });
     } catch (error) {
       logger.error('Failed to initialize persistence service', error);
       throw error;
@@ -62,7 +66,7 @@ class PersistenceService {
   async save(key, data) {
     await this.ensureInitialized();
     try {
-      await storage.setItem(key, data);
+      await this.storage.save(key, data);
       logger.debug('Data saved', { key });
     } catch (error) {
       logger.error('Failed to save data', { key, error });
@@ -78,9 +82,9 @@ class PersistenceService {
   async load(key) {
     await this.ensureInitialized();
     try {
-      const data = await storage.getItem(key);
+      const data = await this.storage.load(key);
       logger.debug('Data loaded', { key, found: !!data });
-      return data || null;
+      return data;
     } catch (error) {
       logger.error('Failed to load data', { key, error });
       throw error;
@@ -95,7 +99,7 @@ class PersistenceService {
   async delete(key) {
     await this.ensureInitialized();
     try {
-      await storage.removeItem(key);
+      await this.storage.delete(key);
       logger.debug('Data deleted', { key });
     } catch (error) {
       logger.error('Failed to delete data', { key, error });
@@ -110,8 +114,7 @@ class PersistenceService {
    */
   async exists(key) {
     await this.ensureInitialized();
-    const data = await storage.getItem(key);
-    return data !== undefined;
+    return this.storage.exists(key);
   }
 
   /**
@@ -120,7 +123,7 @@ class PersistenceService {
    */
   async keys() {
     await this.ensureInitialized();
-    return storage.keys();
+    return this.storage.keys();
   }
 
   /**
@@ -130,7 +133,7 @@ class PersistenceService {
   async clear() {
     await this.ensureInitialized();
     try {
-      await storage.clear();
+      await this.storage.clear();
       logger.warn('All data cleared from storage');
     } catch (error) {
       logger.error('Failed to clear storage', error);
@@ -144,7 +147,7 @@ class PersistenceService {
    */
   async values() {
     await this.ensureInitialized();
-    return storage.values();
+    return this.storage.values();
   }
 
   /**
@@ -153,8 +156,7 @@ class PersistenceService {
    */
   async size() {
     await this.ensureInitialized();
-    const keys = await storage.keys();
-    return keys.length;
+    return this.storage.size();
   }
 
   /**
@@ -183,12 +185,12 @@ class PersistenceService {
    */
   async getAllSessions() {
     await this.ensureInitialized();
-    const keys = await storage.keys();
+    const keys = await this.storage.keys();
     const sessionKeys = keys.filter(k => k.startsWith('session:'));
     const sessions = [];
 
     for (const key of sessionKeys) {
-      const session = await storage.getItem(key);
+      const session = await this.storage.load(key);
       if (session) {
         sessions.push(session);
       }
@@ -279,12 +281,12 @@ class PersistenceService {
    */
   async getArchivedSessions() {
     await this.ensureInitialized();
-    const keys = await storage.keys();
+    const keys = await this.storage.keys();
     const archiveKeys = keys.filter(k => k.startsWith('archive:session:'));
     const sessions = [];
 
     for (const key of archiveKeys) {
-      const session = await storage.getItem(key);
+      const session = await this.storage.load(key);
       if (session) {
         sessions.push(session);
       }
@@ -300,7 +302,7 @@ class PersistenceService {
    */
   async cleanOldBackups(maxAge = 24) {
     await this.ensureInitialized();
-    const keys = await storage.keys();
+    const keys = await this.storage.keys();
     const backupKeys = keys.filter(k => k.startsWith('backup:'));
     const maxAgeMs = maxAge * 60 * 60 * 1000;
     const now = Date.now();
@@ -313,7 +315,7 @@ class PersistenceService {
       const backupTime = new Date(timestamp.replace(/-/g, ':')).getTime();
 
       if (now - backupTime > maxAgeMs) {
-        await storage.removeItem(key);
+        await this.storage.delete(key);
         deleted++;
       }
     }
@@ -323,6 +325,38 @@ class PersistenceService {
     }
 
     return deleted;
+  }
+
+  /**
+   * Cleanup and shutdown storage
+   * Delegates to storage backend for proper resource cleanup
+   * @returns {Promise<void>}
+   */
+  async cleanup() {
+    try {
+      if (this.storage) {
+        // Delegate cleanup to storage backend
+        // FileStorage handles node-persist intervals
+        // MemoryStorage has no cleanup needed
+        await this.storage.cleanup();
+      }
+
+      this.initialized = false;
+      this.storage = null;
+      logger.info('Persistence service cleaned up');
+    } catch (error) {
+      logger.error('Failed to cleanup persistence service', { error });
+    }
+  }
+
+  /**
+   * Reset service (for testing)
+   * @returns {Promise<void>}
+   */
+  async reset() {
+    await this.cleanup();
+    this.initialized = false;
+    this.storage = null;
   }
 }
 

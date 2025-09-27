@@ -241,9 +241,9 @@ router.post('/offline-mode', async (req, res) => {
     const offlineQueueService = require('../services/offlineQueueService');
 
     if (enabled) {
-      offlineQueueService.enableOfflineMode();
+      offlineQueueService.setOfflineStatus(true);
     } else {
-      offlineQueueService.disableOfflineMode();
+      offlineQueueService.setOfflineStatus(false);
       // Process any queued items
       await offlineQueueService.processQueue();
     }

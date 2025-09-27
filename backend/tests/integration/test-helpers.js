@@ -29,45 +29,76 @@ function createTrackedSocket(url, options = {}) {
 /**
  * Wait for a socket event with timeout
  * @param {Socket} socket - Socket instance
- * @param {string} event - Event name
+ * @param {string|Array<string>} eventOrEvents - Event name or array of event names
  * @param {number} timeout - Timeout in ms
  * @returns {Promise} Resolves with event data or rejects on timeout
  */
-function waitForEvent(socket, event, timeout = 5000) {
+function waitForEvent(socket, eventOrEvents, timeout = 5000) {
+  const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`Timeout waiting for event: ${event}`));
+      reject(new Error(`Timeout waiting for event: ${events.join(' or ')}`));
     }, timeout);
 
-    socket.once(event, (data) => {
-      clearTimeout(timer);
-      resolve(data);
+    const handlers = [];
+
+    // Register handler for each event
+    events.forEach(event => {
+      const handler = (data) => {
+        clearTimeout(timer);
+        // Clean up all handlers
+        handlers.forEach(({ event: e, handler: h }) => {
+          socket.off(e, h);
+        });
+        // Resolve with the data and which event triggered
+        resolve(data);
+      };
+      socket.once(event, handler);
+      handlers.push({ event, handler });
     });
   });
 }
 
 /**
  * Connect and identify a socket with timeout
- * @param {string} url - Socket URL
- * @param {string} stationId - Station ID
+ * @param {Socket|string} socketOrUrl - Socket instance or URL
+ * @param {string} deviceType - Device type ('gm' or 'scanner')
+ * @param {string} deviceId - Device ID
  * @param {number} timeout - Timeout in ms
  * @returns {Promise<Socket>} Connected and identified socket
  */
-async function connectAndIdentify(url, stationId, timeout = 5000) {
-  const socket = createTrackedSocket(url);
+async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5000) {
+  const socket = typeof socketOrUrl === 'string'
+    ? createTrackedSocket(socketOrUrl)
+    : socketOrUrl;
 
   try {
-    // Wait for connection
-    await waitForEvent(socket, 'connect', timeout);
+    // Wait for connection if not already connected
+    if (!socket.connected) {
+      await waitForEvent(socket, 'connect', timeout);
+    }
 
-    // Send identification
-    socket.emit('gm:identify', {
-      stationId,
-      version: '1.0.0',
-    });
+    // Send identification based on device type
+    if (deviceType === 'gm') {
+      socket.emit('gm:identify', {
+        stationId: deviceId,
+        version: '1.0.0',
+      });
+      await waitForEvent(socket, 'gm:identified', timeout);
+    } else if (deviceType === 'scanner') {
+      socket.emit('scanner:identify', {
+        scannerId: deviceId,
+        version: '1.0.0',
+      });
+      await waitForEvent(socket, 'scanner:identified', timeout);
+    } else {
+      throw new Error(`Unknown device type: ${deviceType}`);
+    }
 
-    // Wait for identification confirmation
-    await waitForEvent(socket, 'gm:identified', timeout);
+    // Store device info for debugging
+    socket.deviceType = deviceType;
+    socket.deviceId = deviceId;
 
     return socket;
   } catch (error) {

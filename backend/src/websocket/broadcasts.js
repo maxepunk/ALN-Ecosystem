@@ -6,6 +6,9 @@
 const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 
+// ADD: Module-level tracking
+const activeListeners = [];
+
 /**
  * Helper function to add and track event listeners
  * @param {EventEmitter} service - Service instance
@@ -14,12 +17,19 @@ const listenerRegistry = require('./listenerRegistry');
  */
 function addTrackedListener(service, event, handler) {
   const serviceName = service.constructor.name;
+
+  // Add to service
   service.on(event, handler);
+
+  // Track in both places
+  activeListeners.push({ service, event, handler });
   listenerRegistry.trackListener(service, event, handler);
+
   logger.debug('Added tracked listener', {
     service: serviceName,
     event,
-    totalListeners: service.listenerCount(event)
+    totalListeners: service.listenerCount(event),
+    activeCount: activeListeners.length
   });
 }
 
@@ -29,7 +39,7 @@ function addTrackedListener(service, event, handler) {
  * @param {Object} services - Service instances
  */
 function setupBroadcastListeners(io, services) {
-  const { sessionService, stateService, videoQueueService } = services;
+  const { sessionService, stateService, videoQueueService, offlineQueueService } = services;
 
   // Session events
   addTrackedListener(sessionService, 'session:created', (session) => {
@@ -231,6 +241,32 @@ function setupBroadcastListeners(io, services) {
     logger.info('Broadcasted video:resumed as playing to GM stations');
   });
 
+  // Offline queue events
+  if (offlineQueueService) {
+    addTrackedListener(offlineQueueService, 'sync:full', (state) => {
+      // Broadcast full state sync to all connected clients
+      io.emit('sync:full', {
+        event: 'sync:full',
+        data: state,
+        timestamp: new Date().toISOString()
+      });
+      logger.info('Broadcasted sync:full after offline queue processing');
+    });
+
+    addTrackedListener(offlineQueueService, 'queue:processed', ({ processed, failed }) => {
+      // Notify GM stations about queue processing results
+      io.to('gm-stations').emit('offline:queue:processed', {
+        processed: processed.length,
+        failed: failed.length,
+        timestamp: new Date().toISOString()
+      });
+      logger.info('Broadcasted offline queue processing results', {
+        processed: processed.length,
+        failed: failed.length
+      });
+    });
+  }
+
   // Error events
   const handleServiceError = (service, error) => {
     io.emit('error', {
@@ -245,6 +281,9 @@ function setupBroadcastListeners(io, services) {
   addTrackedListener(sessionService, 'error', (error) => handleServiceError('session', error));
   addTrackedListener(stateService, 'error', (error) => handleServiceError('state', error));
   addTrackedListener(videoQueueService, 'error', (error) => handleServiceError('video', error));
+  if (offlineQueueService) {
+    addTrackedListener(offlineQueueService, 'error', (error) => handleServiceError('offline', error));
+  }
 
   logger.info('Broadcast listeners initialized');
 }
@@ -254,8 +293,29 @@ function setupBroadcastListeners(io, services) {
  * CRITICAL: Call this between tests to prevent listener accumulation
  */
 function cleanupBroadcastListeners() {
-  logger.info('Starting broadcast listener cleanup');
+  logger.info('Starting broadcast listener cleanup', {
+    activeCount: activeListeners.length
+  });
+
+  // Remove ALL tracked listeners
+  activeListeners.forEach(({ service, event, handler }) => {
+    try {
+      service.removeListener(event, handler);
+    } catch (error) {
+      logger.warn('Failed to remove listener', {
+        service: service.constructor.name,
+        event,
+        error: error.message
+      });
+    }
+  });
+
+  // Clear the array
+  activeListeners.length = 0;
+
+  // Also cleanup registry
   listenerRegistry.cleanup();
+
   logger.info('Broadcast listener cleanup completed');
 }
 

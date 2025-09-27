@@ -142,7 +142,6 @@ async function cleanupHTTPTest(context) {
   }
 
   // CRITICAL: Reset offline mode to prevent test contamination
-  global.offlineMode = false;
   offlineQueueService.setOfflineStatus(false);
   offlineQueueService.queue = [];
   offlineQueueService.processingQueue = false;
@@ -152,9 +151,9 @@ async function cleanupHTTPTest(context) {
   await persistenceService.delete('offlineQueue');
   await persistenceService.delete('session:current');
 
-  // Clear any global variables
-  if (global.io) {
-    global.io = null;
+  // CRITICAL: Cleanup persistence service to stop node-persist intervals
+  if (persistenceService.cleanup) {
+    await persistenceService.cleanup();
   }
 
   // Close HTTP server

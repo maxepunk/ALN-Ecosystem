@@ -104,16 +104,48 @@ async function handleGmCommand(socket, data, io) {
 async function handleTransactionSubmit(socket, data, io) {
   try {
     if (!socket.deviceId) {
-      socket.emit('error', { 
+      socket.emit('error', {
         code: 'AUTH_REQUIRED',
-        message: 'Not identified' 
+        message: 'Not identified'
       });
       return;
     }
-    
+
     const { scanRequestSchema, validate } = require('../utils/validators');
     const scanRequest = validate(data, scanRequestSchema);
-    
+
+    // Check if system is offline - use service directly for consistency
+    const offlineQueueService = require('../services/offlineQueueService');
+
+    logger.info('Transaction handler checking offline status', {
+      isOffline: offlineQueueService.isOffline,
+      instanceId: offlineQueueService.instanceId
+    });
+
+    if (offlineQueueService.isOffline) {
+      // Queue GM transaction for later processing
+      const queuedItem = offlineQueueService.enqueueGmTransaction(scanRequest);
+      if (queuedItem) {
+        socket.emit('transaction:result', {
+          status: 'queued',
+          queued: true,
+          transactionId: queuedItem.transactionId,
+          message: 'Transaction queued for processing when system comes online'
+        });
+        logger.info('GM transaction queued while offline', {
+          transactionId: queuedItem.transactionId,
+          deviceId: socket.deviceId
+        });
+        return;
+      } else {
+        socket.emit('error', {
+          code: 'QUEUE_FULL',
+          message: 'Offline queue is full'
+        });
+        return;
+      }
+    }
+
     const session = sessionService.getCurrentSession();
     if (!session) {
       socket.emit('error', {
@@ -122,10 +154,10 @@ async function handleTransactionSubmit(socket, data, io) {
       });
       return;
     }
-    
+
     const transactionService = require('../services/transactionService');
     const result = await transactionService.processScan(scanRequest, session);
-    
+
     // Add the existing transaction to session (don't create duplicate)
     if (result.transaction) {
       await sessionService.addTransaction(result.transaction);

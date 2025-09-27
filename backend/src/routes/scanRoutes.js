@@ -10,6 +10,7 @@ const { scanRequestSchema, validate, ValidationError } = require('../utils/valid
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
+const { isOffline } = require('../middleware/offlineStatus');
 
 /**
  * POST /api/scan
@@ -22,13 +23,23 @@ router.post('/', async (req, res) => {
     const scanRequest = validate(req.body, scanRequestSchema);
 
     // Check if system is offline
-    if (offlineQueueService.isOffline) {
+    if (isOffline()) {
       // Queue for later processing
-      const queued = offlineQueueService.enqueue(scanRequest);
-      if (queued) {
+      const queuedItem = offlineQueueService.enqueue(scanRequest);
+      if (queuedItem) {
         return res.status(202).json({
           status: 'queued',
+          queued: true,
+          offlineMode: true,
+          transactionId: queuedItem.transactionId,
           message: 'Scan queued for processing when system comes online',
+        });
+      } else {
+        // Queue is full
+        return res.status(503).json({
+          status: 'error',
+          offlineMode: true,
+          message: 'Offline queue is full, please try again later',
         });
       }
     }

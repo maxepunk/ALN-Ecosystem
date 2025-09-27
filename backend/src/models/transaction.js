@@ -137,6 +137,7 @@ class Transaction {
    */
   static fromScanRequest(scanRequest, sessionId) {
     return new Transaction({
+      id: scanRequest.id, // Use provided ID if available
       tokenId: scanRequest.tokenId,
       teamId: scanRequest.teamId,
       scannerId: scanRequest.scannerId,

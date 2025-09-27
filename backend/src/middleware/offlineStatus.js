@@ -1,10 +1,33 @@
 /**
  * Offline Status Middleware
  * Adds offline status information to requests and responses
- * 
+ *
  * This is a stub implementation for T023
  * Will be fully implemented when offline mode is developed
  */
+
+// Store reference to the service to ensure we use the same instance
+let offlineQueueServiceInstance = null;
+
+/**
+ * Initialize the middleware with the service instance
+ * @param {Object} service - The offline queue service instance
+ */
+function initializeWithService(service) {
+  offlineQueueServiceInstance = service;
+}
+
+/**
+ * Get the offline queue service instance
+ * @returns {Object} The service instance
+ */
+function getService() {
+  if (!offlineQueueServiceInstance) {
+    // Fallback to requiring it if not initialized (for backwards compatibility)
+    offlineQueueServiceInstance = require('../services/offlineQueueService');
+  }
+  return offlineQueueServiceInstance;
+}
 
 /**
  * Middleware to check and inject offline status
@@ -13,14 +36,8 @@
  * @param {Function} next - Next middleware function
  */
 function offlineStatusMiddleware(req, res, next) {
-  // Check if global.offlineMode was set directly by tests
-  // If so, sync it with the service
-  const offlineQueueService = require('../services/offlineQueueService');
-  if (global.offlineMode !== undefined && global.offlineMode !== offlineQueueService.isOffline) {
-    offlineQueueService.setOfflineStatus(global.offlineMode);
-  }
-
-  // Use the service as source of truth
+  // ALWAYS use the service as single source of truth
+  const offlineQueueService = getService();
   req.isOffline = offlineQueueService.isOffline || false;
 
   // Add offline status to response locals
@@ -34,8 +51,9 @@ function offlineStatusMiddleware(req, res, next) {
  * @returns {boolean} - True if system is offline
  */
 function isOffline() {
-  // Stub implementation
-  return global.offlineMode || false;
+  // Use service as single source of truth
+  const offlineQueueService = getService();
+  return offlineQueueService.isOffline || false;
 }
 
 /**
@@ -43,17 +61,14 @@ function isOffline() {
  * @param {boolean} offline - Whether system is offline
  */
 function setOfflineStatus(offline) {
-  // Set global flag
-  global.offlineMode = offline;
-
-  // CRITICAL: Also update the offline queue service
-  // This connects the test infrastructure to the actual offline functionality
-  const offlineQueueService = require('../services/offlineQueueService');
+  // Update the service
+  const offlineQueueService = getService();
   offlineQueueService.setOfflineStatus(offline);
 }
 
 module.exports = {
   offlineStatusMiddleware,
   isOffline,
-  setOfflineStatus
+  setOfflineStatus,
+  initializeWithService
 };

@@ -75,17 +75,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: config.security.rateLimitWindow,
-  max: config.security.rateLimitMax,
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Rate limiting - Create limiter function to avoid initialization at module load
+function createRateLimiter() {
+  return rateLimit({
+    windowMs: config.security.rateLimitWindow,
+    max: config.security.rateLimitMax,
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+}
 
-// Apply rate limiting to API routes
-app.use('/api/', limiter);
+// Apply rate limiting to API routes (only create when not in test)
+if (process.env.NODE_ENV !== 'test') {
+  app.use('/api/', createRateLimiter());
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -142,20 +146,24 @@ app.use((err, req, res, next) => {
 async function initializeServices() {
   try {
     logger.info('Initializing services...');
-    
+
     // Initialize persistence first
     await persistenceService.init();
-    
+
     // Load tokens from service (handles submodule paths and fallback)
     const tokenService = require('./services/tokenService');
     const tokens = tokenService.loadTokens();
     await persistenceService.saveTokens(tokens);
     await transactionService.init(tokens);
-    
+
     // Initialize other services
     await sessionService.init();
     await stateService.init();
     await offlineQueueService.init();
+
+    // Initialize offline status middleware with the service instance
+    const offlineStatusMiddleware = require('./middleware/offlineStatus');
+    offlineStatusMiddleware.initializeWithService(offlineQueueService);
     
     // Initialize VLC service only if video playback is enabled
     if (config.features.videoPlayback) {

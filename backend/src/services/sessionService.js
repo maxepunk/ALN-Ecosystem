@@ -189,32 +189,36 @@ class SessionService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async endSession() {
-    if (!this.currentSession) {
+    // Capture session reference to avoid race conditions
+    const session = this.currentSession;
+    if (!session) {
       return;
     }
 
     try {
       // Complete the session
-      if (this.currentSession.isActive() || this.currentSession.isPaused()) {
-        this.currentSession.complete();
+      if (session.isActive() || session.isPaused()) {
+        session.complete();
       }
 
       // Save final state
-      await persistenceService.saveSession(this.currentSession.toJSON());
+      await persistenceService.saveSession(session.toJSON());
 
       // Create backup
-      await persistenceService.backupSession(this.currentSession.toJSON());
+      await persistenceService.backupSession(session.toJSON());
 
       // Stop timeout timer
       this.stopSessionTimeout();
 
       // Emit event
-      this.emit('session:ended', this.currentSession);
+      this.emit('session:ended', session);
 
-      logger.info('Session ended', { sessionId: this.currentSession.id });
+      logger.info('Session ended', { sessionId: session.id });
 
-      // Clear current session
-      this.currentSession = null;
+      // Clear current session only if it's still the same session
+      if (this.currentSession === session) {
+        this.currentSession = null;
+      }
     } catch (error) {
       logger.error('Failed to end session', error);
       throw error;

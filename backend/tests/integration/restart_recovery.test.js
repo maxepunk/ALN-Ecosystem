@@ -263,25 +263,7 @@ describe('Restart Recovery Integration', () => {
         gmSocket.on('gm:identified', resolve);
       });
 
-      // Track received transaction events and errors
-      let receivedTransactions = 0;
-      const errors = [];
-
-      gmSocket.on('transaction:new', (data) => {
-        console.log('Received transaction:new event:', data.data?.tokenId);
-        if (data.data && data.data.tokenId && data.data.tokenId.startsWith('MEM_TX_HISTORY_')) {
-          receivedTransactions++;
-        }
-      });
-
-      gmSocket.on('error', (error) => {
-        console.log('Socket error:', error);
-        errors.push(error);
-      });
-
-      gmSocket.on('transaction:result', (result) => {
-        console.log('Transaction result:', result?.status, result?.transactionId);
-      });
+      // No longer track WebSocket events - we'll verify via API instead
 
       // Create transactions via WebSocket
       for (let i = 0; i < 10; i++) {
@@ -296,7 +278,7 @@ describe('Restart Recovery Integration', () => {
         await testDelay(50);
       }
 
-      console.log('Submitted 10 transactions, errors:', errors.length);
+      console.log('Submitted 10 transactions');
 
       // Wait for transactions to be processed
       await testDelay(100);
@@ -306,7 +288,7 @@ describe('Restart Recovery Integration', () => {
 
       // Verify we actually have transactions before restart
       expect(txBefore.length).toBeGreaterThan(0);
-      console.log(`Transactions before restart: ${txBefore.length}, Received events: ${receivedTransactions}`);
+      console.log(`Transactions before restart: ${txBefore.length}`);
 
       // Simulate restart by re-initializing services
       const sessionService = require('../../src/services/sessionService');
@@ -569,20 +551,20 @@ describe('Restart Recovery Integration', () => {
       });
 
       // Submit transaction via WebSocket
-      let transactionId;
-      await new Promise((resolve) => {
-        gmSocket.on('transaction:new', (data) => {
-          if (data.data && data.data.id) {
-            transactionId = data.data.id;
-            resolve();
-          }
-        });
-        gmSocket.emit('transaction:submit', {
-          tokenId: 'MEM_GRACEFUL_001',
-          teamId: 'TEAM_A',
-          scannerId: 'GM_SCANNER_01',
-        });
+      gmSocket.emit('transaction:submit', {
+        tokenId: 'MEM_GRACEFUL_001',
+        teamId: 'TEAM_A',
+        scannerId: 'GM_SCANNER_01',
       });
+
+      // Wait for transaction to be processed
+      await testDelay(100);
+
+      // Get the transaction ID from API
+      const stateBeforeShutdown = await request(testContext.app).get('/api/state');
+      const transaction = (stateBeforeShutdown.body.recentTransactions || [])
+        .find(t => t.tokenId === 'MEM_GRACEFUL_001');
+      const transactionId = transaction ? transaction.id : null;
 
       gmSocket.disconnect();
 

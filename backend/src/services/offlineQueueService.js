@@ -6,14 +6,22 @@
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
+const transactionService = require('./transactionService');
+const sessionService = require('./sessionService');
+const stateService = require('./stateService');
+
+// Track instances for debugging
+let instanceCount = 0;
 
 class OfflineQueueService extends EventEmitter {
   constructor() {
     super();
-    this.queue = [];
+    this.playerScanQueue = [];  // Player scan logs
+    this.gmTransactionQueue = [];  // GM scoring transactions
     this.maxQueueSize = 100;
     this.isOffline = false;
     this.processingQueue = false;
+    this.instanceId = ++instanceCount;
   }
 
   /**
@@ -21,45 +29,96 @@ class OfflineQueueService extends EventEmitter {
    */
   async init() {
     try {
-      // Load any persisted queue
-      const persistedQueue = await persistenceService.load('offlineQueue');
-      if (persistedQueue && Array.isArray(persistedQueue)) {
-        this.queue = persistedQueue;
-        logger.info('Loaded offline queue', { queueSize: this.queue.length });
+      // Load persisted queues
+      const persistedData = await persistenceService.load('offlineQueue');
+      if (persistedData) {
+        // Handle new format with separate queues
+        if (persistedData.playerScans && Array.isArray(persistedData.playerScans)) {
+          this.playerScanQueue = persistedData.playerScans;
+        }
+        if (persistedData.gmTransactions && Array.isArray(persistedData.gmTransactions)) {
+          this.gmTransactionQueue = persistedData.gmTransactions;
+        }
+        logger.info('Loaded offline queues', {
+          playerScans: this.playerScanQueue.length,
+          gmTransactions: this.gmTransactionQueue.length
+        });
+      } else if (Array.isArray(persistedData)) {
+        // Handle legacy format (old single queue)
+        // Migrate old queue items to player scan queue for backward compatibility
+        this.playerScanQueue = persistedData;
+        logger.info('Migrated legacy offline queue to player scan queue', {
+          queueSize: this.playerScanQueue.length
+        });
       }
     } catch (error) {
-      logger.error('Failed to load offline queue', error);
+      logger.error('Failed to load offline queues', error);
     }
   }
 
   /**
    * Add transaction to offline queue
    * @param {Object} transaction - Transaction to queue
-   * @returns {boolean} - True if queued successfully
+   * @returns {Object|null} - Queued item with IDs if successful, null if queue is full
    */
-  enqueue(transaction) {
-    if (this.queue.length >= this.maxQueueSize) {
-      logger.warn('Offline queue full', { maxSize: this.maxQueueSize });
-      return false;
+  enqueue(scanLog) {
+    if (this.playerScanQueue.length >= this.maxQueueSize) {
+      logger.warn('Player scan queue full', { maxSize: this.maxQueueSize });
+      return null;
     }
 
+    const { v4: uuidv4 } = require('uuid');
+    const queuedItem = {
+      ...scanLog,
+      queuedAt: new Date().toISOString(),
+      queueId: `scan_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      transactionId: scanLog.transactionId || uuidv4(), // Keep for compatibility
+    };
+
+    this.playerScanQueue.push(queuedItem);
+    this.persistQueue();
+
+    logger.info('Player scan queued for offline logging', {
+      queueId: queuedItem.queueId,
+      tokenId: scanLog.tokenId,
+      scannerId: scanLog.scannerId,
+    });
+
+    this.emit('scan:queued', queuedItem);
+    return queuedItem;
+  }
+
+  /**
+   * Add GM transaction to offline queue for scoring
+   * @param {Object} transaction - GM transaction to queue
+   * @returns {Object|null} - Queued item with IDs if successful, null if queue is full
+   */
+  enqueueGmTransaction(transaction) {
+    if (this.gmTransactionQueue.length >= this.maxQueueSize) {
+      logger.warn('GM transaction queue full', { maxSize: this.maxQueueSize });
+      return null;
+    }
+
+    const { v4: uuidv4 } = require('uuid');
     const queuedItem = {
       ...transaction,
       queuedAt: new Date().toISOString(),
-      queueId: `queue_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      queueId: `gm_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      transactionId: transaction.transactionId || uuidv4(),
     };
 
-    this.queue.push(queuedItem);
+    this.gmTransactionQueue.push(queuedItem);
     this.persistQueue();
-    
-    logger.info('Transaction queued for offline processing', { 
+
+    logger.info('GM transaction queued for offline processing', {
       queueId: queuedItem.queueId,
+      transactionId: queuedItem.transactionId,
       tokenId: transaction.tokenId,
       teamId: transaction.teamId,
     });
 
     this.emit('transaction:queued', queuedItem);
-    return true;
+    return queuedItem;
   }
 
   /**
@@ -67,7 +126,7 @@ class OfflineQueueService extends EventEmitter {
    * @returns {Promise<Array>} - Processed transactions
    */
   async processQueue() {
-    if (this.processingQueue || this.queue.length === 0) {
+    if (this.processingQueue || (this.playerScanQueue.length === 0 && this.gmTransactionQueue.length === 0)) {
       return [];
     }
 
@@ -75,48 +134,142 @@ class OfflineQueueService extends EventEmitter {
     const processed = [];
     const failed = [];
 
-    logger.info('Processing offline queue', { queueSize: this.queue.length });
+    logger.info('Processing offline queues', {
+      playerScans: this.playerScanQueue.length,
+      gmTransactions: this.gmTransactionQueue.length
+    });
 
     try {
-      const transactionService = require('./transactionService');
-      const sessionService = require('./sessionService');
-      const session = sessionService.getCurrentSession();
+      // Process player scan logs (just log them, no scoring)
+      while (this.playerScanQueue.length > 0) {
+        const scanLog = this.playerScanQueue.shift();
 
-      if (!session) {
-        logger.warn('Cannot process queue: no active session');
-        this.processingQueue = false;
-        return [];
-      }
-
-      // Process each queued item
-      while (this.queue.length > 0) {
-        const queuedItem = this.queue.shift();
-        
         try {
-          const result = await transactionService.processScan(queuedItem, session);
-          processed.push({ ...result, queueId: queuedItem.queueId });
-          
-          logger.info('Processed queued transaction', {
-            queueId: queuedItem.queueId,
-            status: result.status,
+          logger.info('Processing queued player scan log', {
+            queueId: scanLog.queueId,
+            tokenId: scanLog.tokenId,
+            scannerId: scanLog.scannerId,
+            timestamp: scanLog.timestamp
           });
+
+          processed.push({
+            type: 'player_scan',
+            queueId: scanLog.queueId,
+            tokenId: scanLog.tokenId,
+            status: 'logged',
+            message: 'Scan log synced'
+          });
+
+          this.emit('scan:logged', scanLog);
         } catch (error) {
-          logger.error('Failed to process queued transaction', {
-            queueId: queuedItem.queueId,
+          logger.error('Failed to process queued scan log', {
+            queueId: scanLog.queueId,
             error: error.message,
           });
-          failed.push(queuedItem);
+          failed.push(scanLog);
         }
       }
 
-      // Re-queue failed items
+      // Process GM transactions (actual scoring)
+      const session = sessionService.getCurrentSession();
+      if (this.gmTransactionQueue.length > 0 && !session) {
+        logger.warn('Cannot process GM transactions: no active session');
+        // Keep GM transactions in queue for later
+      } else {
+        while (this.gmTransactionQueue.length > 0) {
+          const gmTransaction = this.gmTransactionQueue.shift();
+
+          try {
+            // Preserve the transaction ID
+            const scanWithId = {
+              ...gmTransaction,
+              id: gmTransaction.transactionId
+            };
+
+            const result = await transactionService.processScan(scanWithId, session);
+
+            // Add to session for state updates
+            if (result.transaction && result.status === 'accepted') {
+              logger.info('Adding transaction to session', {
+                transactionId: result.transaction.id,
+                tokenId: result.transaction.tokenId
+              });
+              await sessionService.addTransaction(result.transaction);
+            } else {
+              logger.warn('Not adding transaction to session', {
+                hasTransaction: !!result.transaction,
+                status: result.status
+              });
+            }
+
+            processed.push({
+              type: 'gm_transaction',
+              ...result,
+              queueId: gmTransaction.queueId
+            });
+
+            logger.info('Processed queued GM transaction', {
+              queueId: gmTransaction.queueId,
+              status: result.status,
+              transactionId: result.transactionId
+            });
+          } catch (error) {
+            logger.error('Failed to process queued GM transaction', {
+              queueId: gmTransaction.queueId,
+              error: error.message,
+            });
+            failed.push(gmTransaction);
+          }
+        }
+      }
+
+      // Re-queue failed items to their appropriate queues
       if (failed.length > 0) {
-        this.queue.unshift(...failed);
-        logger.warn('Re-queued failed transactions', { count: failed.length });
+        failed.forEach(item => {
+          if (item.queueId?.startsWith('scan_')) {
+            this.playerScanQueue.unshift(item);
+          } else if (item.queueId?.startsWith('gm_')) {
+            this.gmTransactionQueue.unshift(item);
+          }
+        });
+        logger.warn('Re-queued failed items', { count: failed.length });
       }
 
       await this.persistQueue();
       this.emit('queue:processed', { processed, failed });
+
+      // Wait a bit for state updates to complete (they're debounced)
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // Emit sync:full event to notify all clients that offline queue was processed
+      if (processed.length > 0) {
+        let currentState = stateService.getCurrentState();
+
+        // If no state exists but session does, create state from session
+        if (!currentState && session) {
+          logger.info('Creating state from session for sync:full', {
+            sessionHasTransactions: !!(session.transactions && session.transactions.length > 0),
+            transactionCount: session.transactions ? session.transactions.length : 0
+          });
+          currentState = stateService.createStateFromSession(session);
+          stateService.setCurrentState(currentState);
+          await stateService.saveState();
+          logger.info('Created state from session for sync:full event');
+        }
+
+        if (currentState) {
+          // Emit sync event with current state
+          const stateData = currentState.toJSON();
+          this.emit('sync:full', stateData);
+          logger.info('Emitted sync:full with current state', {
+            hasRecentTransactions: !!(stateData.recentTransactions && stateData.recentTransactions.length > 0),
+            transactionCount: stateData.recentTransactions ? stateData.recentTransactions.length : 0,
+            tokenIds: stateData.recentTransactions ? stateData.recentTransactions.map(t => t.tokenId) : []
+          });
+        } else {
+          logger.warn('Cannot emit sync:full - no state or session available');
+        }
+      }
 
     } catch (error) {
       logger.error('Queue processing error', error);
@@ -139,10 +292,11 @@ class OfflineQueueService extends EventEmitter {
    * Clear the queue
    */
   async clearQueue() {
-    this.queue = [];
+    this.playerScanQueue = [];
+    this.gmTransactionQueue = [];
     await this.persistQueue();
     this.emit('queue:cleared');
-    logger.info('Offline queue cleared');
+    logger.info('Offline queues cleared');
   }
 
   /**
@@ -153,15 +307,34 @@ class OfflineQueueService extends EventEmitter {
     const wasOffline = this.isOffline;
     this.isOffline = offline;
 
-    if (wasOffline && !offline) {
-      // Coming back online - process queue
-      logger.info('System back online, processing queued transactions');
-      this.processQueue();
-    } else if (!wasOffline && offline) {
-      logger.warn('System going offline, transactions will be queued');
-    }
+    // Only process and emit if status actually changed
+    if (wasOffline !== offline) {
+      logger.info('Offline status changed', {
+        wasOffline,
+        isOffline: offline,
+        instanceId: this.instanceId
+      });
 
-    this.emit('status:changed', { offline });
+      if (wasOffline && !offline) {
+        // Coming back online - process queue
+        logger.info('System back online, processing queued transactions', {
+          playerQueueSize: this.playerScanQueue.length,
+          gmQueueSize: this.gmTransactionQueue.length
+        });
+        // Process queue asynchronously - don't await to avoid blocking
+        setImmediate(async () => {
+          try {
+            await this.processQueue();
+          } catch (error) {
+            logger.error('Failed to process offline queue', error);
+          }
+        });
+      } else if (!wasOffline && offline) {
+        logger.warn('System going offline, transactions will be queued');
+      }
+
+      this.emit('status:changed', { offline });
+    }
   }
 
   /**
@@ -170,9 +343,12 @@ class OfflineQueueService extends EventEmitter {
    */
   async persistQueue() {
     try {
-      await persistenceService.save('offlineQueue', this.queue);
+      await persistenceService.save('offlineQueue', {
+        playerScans: this.playerScanQueue,
+        gmTransactions: this.gmTransactionQueue
+      });
     } catch (error) {
-      logger.error('Failed to persist offline queue', error);
+      logger.error('Failed to persist offline queues', error);
     }
   }
 
@@ -183,9 +359,11 @@ class OfflineQueueService extends EventEmitter {
   getStatus() {
     return {
       isOffline: this.isOffline,
-      queueSize: this.queue.length,
+      playerQueueSize: this.playerScanQueue.length,
+      gmQueueSize: this.gmTransactionQueue.length,
       maxQueueSize: this.maxQueueSize,
       processingQueue: this.processingQueue,
+      instanceId: this.instanceId,
     };
   }
 
@@ -200,7 +378,8 @@ class OfflineQueueService extends EventEmitter {
     this.removeAllListeners();
 
     // 3. Reset state
-    this.queue = [];
+    this.playerScanQueue = [];
+    this.gmTransactionQueue = [];
     this.isOffline = false;
     this.processingQueue = false;
 

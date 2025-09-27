@@ -29,6 +29,7 @@ class GameState {
         orchestratorOnline: true,
         vlcConnected: false,
         videoDisplayReady: false,
+        offline: false,
       };
     }
 
@@ -217,6 +218,7 @@ class GameState {
         orchestratorOnline: true,
         vlcConnected: systemStatus.vlcConnected || false,
         videoDisplayReady: systemStatus.videoDisplayReady || false,
+        offline: systemStatus.offline || false,
       },
     });
   }

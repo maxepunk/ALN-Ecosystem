@@ -241,8 +241,8 @@ class VideoQueueService extends EventEmitter {
         logger.error('Error monitoring VLC playback', { error });
         clearInterval(this.progressTimer);
         this.progressTimer = null;
-        // Assume completion after expected duration
-        setTimeout(() => this.completePlayback(queueItem), expectedDuration * 1000);
+        // Assume completion after expected duration - TRACK THIS TIMER
+        this.fallbackTimer = setTimeout(() => this.completePlayback(queueItem), expectedDuration * 1000);
       }
     };
 
@@ -517,10 +517,6 @@ class VideoQueueService extends EventEmitter {
    * @private
    */
   getVideoDuration(tokenId) {
-    // For test videos, return shorter duration to prevent timeouts
-    if (tokenId && tokenId.startsWith('TEST_VIDEO_')) {
-      return 2; // 2 seconds for test videos
-    }
     // This would normally query token data or VLC
     // For now, return a default duration
     return 30; // 30 seconds default
@@ -603,7 +599,7 @@ class VideoQueueService extends EventEmitter {
    * @returns {void}
    */
   reset() {
-    // 1. Clear timers/intervals FIRST
+    // 1. Clear ALL timers/intervals FIRST (including fallback timer)
     if (this.playbackTimer) {
       clearTimeout(this.playbackTimer);
       this.playbackTimer = null;
@@ -611,6 +607,10 @@ class VideoQueueService extends EventEmitter {
     if (this.progressTimer) {
       clearInterval(this.progressTimer);
       this.progressTimer = null;
+    }
+    if (this.fallbackTimer) {
+      clearTimeout(this.fallbackTimer);
+      this.fallbackTimer = null;
     }
 
     // 2. Remove all listeners

@@ -73,8 +73,8 @@ router.delete('/session/:id', auth.requireAdmin, async (req, res) => {
  */
 router.get('/devices', auth.requireAdmin, async (req, res) => {
   try {
-    // Get io instance from server (in production, this would be injected)
-    const io = global.io || null;
+    // Get io instance from app.locals (cleaner than global)
+    const io = req.app.locals.io || null;
     if (!io) {
       return res.json({
         status: 'success',
@@ -127,8 +127,8 @@ router.post('/reset', auth.requireAdmin, async (req, res) => {
     stateService.resetState();
 
     // Disconnect all WebSocket clients
-    // Get io instance from server (in production, this would be injected)
-    const io = global.io || null;
+    // Get io instance from app.locals (cleaner than global)
+    const io = req.app.locals.io || null;
     if (io) {
       io.disconnectSockets(true);
     }

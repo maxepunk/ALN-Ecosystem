@@ -101,7 +101,6 @@ async function cleanupTestServer(testContext, clientSocket) {
   }
 
   // CRITICAL: Reset offline mode to prevent test contamination
-  global.offlineMode = false;
   offlineQueueService.setOfflineStatus(false);
   offlineQueueService.queue = [];
   offlineQueueService.processingQueue = false;
@@ -110,9 +109,9 @@ async function cleanupTestServer(testContext, clientSocket) {
   await persistenceService.delete('gameState:current');
   await persistenceService.delete('offlineQueue');
 
-  // Clear any global variables
-  if (global.io) {
-    global.io = null;
+  // CRITICAL: Cleanup persistence service to stop node-persist intervals
+  if (persistenceService.cleanup) {
+    await persistenceService.cleanup();
   }
 
   // Close client socket if provided

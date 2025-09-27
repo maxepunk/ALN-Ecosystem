@@ -49,6 +49,17 @@ class StateService extends EventEmitter {
         }
       }
 
+      // If no state but session exists, create state from session
+      if (!this.currentState) {
+        const sessionService = require('./sessionService');
+        const session = sessionService.getCurrentSession();
+        if (session) {
+          this.currentState = this.createStateFromSession(session);
+          await this.saveState();
+          logger.info('Game state created from current session');
+        }
+      }
+
       // Set up event listeners for transactions
       this.setupTransactionListeners();
 
@@ -77,6 +88,15 @@ class StateService extends EventEmitter {
     const transactionService = require('./transactionService');
     const sessionService = require('./sessionService');
     const videoQueueService = require('./videoQueueService');
+    const offlineQueueService = require('./offlineQueueService');
+
+    // Listen for offline status changes to update state
+    listenerRegistry.addTrackedListener(offlineQueueService, 'status:changed', async ({ offline }) => {
+      if (this.currentState) {
+        await this.updateState({ systemStatus: { offline } }, { immediate: true });
+        logger.info('Updated state offline status', { offline });
+      }
+    });
 
     // Listen for accepted transactions to update scores
     listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted', async (transaction) => {
@@ -114,6 +134,11 @@ class StateService extends EventEmitter {
 
     // Listen for transaction additions to update recent transactions
     listenerRegistry.addTrackedListener(sessionService, 'transaction:added', async (transaction) => {
+      logger.info('State received transaction:added event', {
+        transactionId: transaction.id,
+        tokenId: transaction.tokenId,
+        hasCurrentState: !!this.currentState
+      });
       if (!this.currentState) return;
 
       try {
@@ -133,6 +158,11 @@ class StateService extends EventEmitter {
 
         // Keep only last 10 transactions
         const trimmed = recentTransactions.slice(-10);
+
+        logger.info('Updating state with recent transactions', {
+          transactionCount: trimmed.length,
+          tokenIds: trimmed.map(t => t.tokenId)
+        });
 
         // Update state (debounced for rapid transaction additions)
         await this.updateState({ recentTransactions: trimmed });
@@ -302,6 +332,7 @@ class StateService extends EventEmitter {
         orchestratorOnline: true,
         vlcConnected: this.vlcConnected,
         videoDisplayReady: this.videoDisplayReady,
+        offline: require('./offlineQueueService').isOffline || false,
       }
     });
 
@@ -315,10 +346,14 @@ class StateService extends EventEmitter {
    * @returns {GameState}
    */
   createStateFromSession(session) {
+    // Get offline status from offlineQueueService
+    const offlineQueueService = require('./offlineQueueService');
+
     const systemStatus = {
       orchestratorOnline: true,
       vlcConnected: this.vlcConnected,
       videoDisplayReady: this.videoDisplayReady,
+      offline: offlineQueueService.isOffline || false,
     };
 
     this.previousState = this.currentState;

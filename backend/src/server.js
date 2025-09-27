@@ -21,6 +21,7 @@ const { handleGmCommand, handleTransactionSubmit, handleStateRequest } = require
 const sessionService = require('./services/sessionService');
 const stateService = require('./services/stateService');
 const videoQueueService = require('./services/videoQueueService');
+const offlineQueueService = require('./services/offlineQueueService');
 
 // Server instances (created when needed)
 let server = null;
@@ -77,6 +78,7 @@ function setupServiceListeners(ioInstance) {
     sessionService,
     stateService,
     videoQueueService,
+    offlineQueueService,
   });
 
   // Connect transaction events to state updates
@@ -163,9 +165,8 @@ function createServer() {
 
   if (!io) {
     io = createSocketServer(server);
-    // Make io globally accessible for admin routes
-    // (In production, use dependency injection instead)
-    global.io = io;
+    // Store io in app.locals for routes to access
+    app.locals.io = io;
 
     // Setup WebSocket handlers
     setupWebSocketHandlers(io);
@@ -230,16 +231,57 @@ async function cleanup() {
   }
 
   if (io) {
-    await new Promise((resolve) => {
-      io.close(() => resolve());
+    // CRITICAL: Disconnect all sockets BEFORE closing server (Socket.io best practice)
+    try {
+      const sockets = await io.fetchSockets();
+      for (const socket of sockets) {
+        socket.disconnect(true);
+      }
+    } catch (e) {
+      logger.warn('Error disconnecting sockets during cleanup', { error: e.message });
+    }
+
+    // Now close the Socket.io server with proper callback
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Socket.io close timeout'));
+      }, 5000);
+
+      io.close((err) => {
+        clearTimeout(timeout);
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    }).catch((err) => {
+      logger.warn('Socket.io close error', { error: err.message });
     });
+
     io = null;
-    global.io = null;
+    // Clear from app.locals
+    if (app && app.locals) {
+      app.locals.io = null;
+    }
   }
 
   if (server) {
-    await new Promise((resolve) => {
-      server.close(() => resolve());
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('HTTP server close timeout'));
+      }, 5000);
+
+      server.close((err) => {
+        clearTimeout(timeout);
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    }).catch((err) => {
+      logger.warn('HTTP server close error', { error: err.message });
     });
     server = null;
   }
