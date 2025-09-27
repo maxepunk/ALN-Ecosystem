@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALN Admin Panel</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Login Screen -->
+        <div id="loginScreen" class="screen active">
+            <div class="login-container">
+                <h1>ALN Admin Panel</h1>
+                <form id="loginForm">
+                    <input type="password" id="adminPassword" placeholder="Admin Password" required>
+                    <button type="submit">Login</button>
+                    <div id="loginError" class="error"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Admin Dashboard -->
+        <div id="adminDashboard" class="screen">
+            <header>
+                <h1>ALN Admin Dashboard</h1>
+                <div class="header-actions">
+                    <span id="connectionStatus" class="status">Disconnected</span>
+                    <button id="logoutBtn">Logout</button>
+                </div>
+            </header>
+
+            <div class="dashboard-grid">
+                <!-- Session Management -->
+                <section class="panel session-management">
+                    <h2>Session Management</h2>
+                    <div class="session-info">
+                        <div class="info-row">
+                            <span>Session ID:</span>
+                            <span id="sessionId">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Session Name:</span>
+                            <span id="sessionName">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Status:</span>
+                            <span id="sessionStatus" class="status-badge">-</span>
+                        </div>
+                    </div>
+                    <div class="session-controls">
+                        <button id="createSessionBtn">New Session</button>
+                        <button id="pauseSessionBtn">Pause</button>
+                        <button id="resumeSessionBtn">Resume</button>
+                        <button id="endSessionBtn">End Session</button>
+                    </div>
+                </section>
+
+                <!-- Video Controls -->
+                <section class="panel video-controls">
+                    <h2>Video Controls</h2>
+                    <div class="video-info">
+                        <div class="info-row">
+                            <span>Current Video:</span>
+                            <span id="currentVideo">None</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Status:</span>
+                            <span id="videoStatus">Idle</span>
+                        </div>
+                        <div class="info-row">
+                            <span>Queue Length:</span>
+                            <span id="queueLength">0</span>
+                        </div>
+                    </div>
+                    <div class="video-control-buttons">
+                        <button id="playVideoBtn">Play</button>
+                        <button id="pauseVideoBtn">Pause</button>
+                        <button id="stopVideoBtn">Stop</button>
+                        <button id="skipVideoBtn">Skip</button>
+                    </div>
+                </section>
+
+                <!-- System Status -->
+                <section class="panel system-status">
+                    <h2>System Status</h2>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <label>Orchestrator:</label>
+                            <span id="orchestratorStatus" class="status-indicator">●</span>
+                        </div>
+                        <div class="status-item">
+                            <label>VLC:</label>
+                            <span id="vlcStatus" class="status-indicator">●</span>
+                        </div>
+                        <div class="status-item">
+                            <label>Video Display:</label>
+                            <span id="displayStatus" class="status-indicator">●</span>
+                        </div>
+                        <div class="status-item">
+                            <label>Offline Mode:</label>
+                            <span id="offlineMode" class="status-indicator">●</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Connected Devices -->
+                <section class="panel connected-devices">
+                    <h2>Connected Devices</h2>
+                    <div class="device-stats">
+                        <div class="stat">
+                            <span class="stat-value" id="gmStationCount">0</span>
+                            <span class="stat-label">GM Stations</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="playerCount">0</span>
+                            <span class="stat-label">Players</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="scannerCount">0</span>
+                            <span class="stat-label">Scanners</span>
+                        </div>
+                    </div>
+                    <div id="deviceList" class="device-list"></div>
+                </section>
+
+                <!-- Team Scores -->
+                <section class="panel team-scores">
+                    <h2>Team Scores</h2>
+                    <div id="teamScoresList" class="scores-list">
+                        <!-- Dynamically populated -->
+                    </div>
+                    <button id="resetScoresBtn">Reset All Scores</button>
+                </section>
+
+                <!-- Recent Transactions -->
+                <section class="panel recent-transactions">
+                    <h2>Recent Transactions</h2>
+                    <div id="transactionsList" class="transactions-list">
+                        <!-- Dynamically populated -->
+                    </div>
+                    <button id="clearTransactionsBtn">Clear History</button>
+                </section>
+
+                <!-- Emergency Controls -->
+                <section class="panel emergency-controls">
+                    <h2>Emergency Controls</h2>
+                    <button id="stopAllVideosBtn" class="emergency-btn">Stop All Videos</button>
+                    <button id="forceOfflineBtn" class="emergency-btn">Force Offline Mode</button>
+                    <button id="resetSystemBtn" class="emergency-btn danger">Reset System</button>
+                </section>
+
+                <!-- Activity Log -->
+                <section class="panel activity-log">
+                    <h2>Activity Log</h2>
+                    <div id="activityLog" class="log-container">
+                        <!-- Dynamically populated -->
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Modal for creating session -->
+        <div id="sessionModal" class="modal">
+            <div class="modal-content">
+                <h2>Create New Session</h2>
+                <form id="createSessionForm">
+                    <input type="text" id="newSessionName" placeholder="Session Name" required>
+                    <div class="team-selection">
+                        <label>
+                            <input type="checkbox" value="TEAM_A" checked> Team A
+                        </label>
+                        <label>
+                            <input type="checkbox" value="TEAM_B" checked> Team B
+                        </label>
+                        <label>
+                            <input type="checkbox" value="TEAM_C"> Team C
+                        </label>
+                        <label>
+                            <input type="checkbox" value="TEAM_D"> Team D
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit">Create</button>
+                        <button type="button" id="cancelSessionBtn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

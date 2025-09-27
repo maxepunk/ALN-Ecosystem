@@ -1,0 +1,104 @@
+/**
+ * Configuration module
+ * Loads environment variables and provides configuration object
+ */
+
+require('dotenv').config();
+
+const config = {
+  // Server Configuration
+  server: {
+    port: parseInt(process.env.PORT) || 3000,
+    host: process.env.HOST || '0.0.0.0',
+    env: process.env.NODE_ENV || 'development',
+    corsOrigins: (process.env.CORS_ORIGINS || '').split(',').filter(Boolean),
+  },
+
+  // JWT Configuration
+  jwt: {
+    secret: process.env.JWT_SECRET || 'dev-secret-key',
+    expiry: process.env.JWT_EXPIRY || '24h',
+  },
+
+  // Admin Configuration
+  admin: {
+    password: process.env.ADMIN_PASSWORD || 'test-admin-password',
+  },
+
+  // VLC Configuration
+  vlc: {
+    host: process.env.VLC_HOST || 'localhost',
+    port: parseInt(process.env.VLC_PORT) || 8080,
+    password: process.env.VLC_PASSWORD || 'aln2024',
+    reconnectInterval: parseInt(process.env.VLC_RECONNECT_INTERVAL) || 5000,
+    maxRetries: parseInt(process.env.VLC_MAX_RETRIES) || 3,
+  },
+
+  // Video Configuration
+  video: {
+    directory: process.env.VIDEO_DIR || './public/videos',
+  },
+
+  // Storage Configuration
+  storage: {
+    dataDir: process.env.DATA_DIR || './data',
+    logsDir: process.env.LOGS_DIR || './logs',
+    backupInterval: parseInt(process.env.BACKUP_INTERVAL) || 100,
+    archiveAfter: parseInt(process.env.ARCHIVE_AFTER) || 24,
+  },
+
+  // Session Configuration
+  session: {
+    maxPlayers: parseInt(process.env.MAX_PLAYERS) || 10,
+    maxGmStations: parseInt(process.env.MAX_GM_STATIONS) || 5,
+    duplicateWindow: parseInt(process.env.DUPLICATE_WINDOW) || 5,
+    sessionTimeout: parseInt(process.env.SESSION_TIMEOUT) || 120,
+    heartbeatInterval: parseInt(process.env.HEARTBEAT_INTERVAL) || 30000,
+  },
+
+  // Security Configuration
+  security: {
+    rateLimitWindow: parseInt(process.env.RATE_LIMIT_WINDOW) || 60000,
+    rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+    adminPassword: process.env.ADMIN_PASSWORD || 'test-admin-password',
+  },
+
+  // Rate Limiting (keeping for compatibility)
+  rateLimit: {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW) || 60000,
+    max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+  },
+
+  // WebSocket Configuration
+  websocket: {
+    pingTimeout: parseInt(process.env.WS_PING_TIMEOUT) || 60000,
+    pingInterval: parseInt(process.env.WS_PING_INTERVAL) || 25000,
+    maxPayload: parseInt(process.env.WS_MAX_PAYLOAD) || 1000000,
+  },
+
+  // Logging Configuration
+  logging: {
+    level: process.env.LOG_LEVEL || 'info',
+    format: process.env.LOG_FORMAT || 'json',
+    maxFiles: parseInt(process.env.LOG_MAX_FILES) || 5,
+    maxSize: process.env.LOG_MAX_SIZE || '10m',
+  },
+
+  // Game Configuration
+  game: {
+    transactionHistoryLimit: parseInt(process.env.TRANSACTION_HISTORY_LIMIT) || 1000,
+    recentTransactionsCount: parseInt(process.env.RECENT_TRANSACTIONS_COUNT) || 10,
+    bonusThreshold: parseInt(process.env.BONUS_THRESHOLD) || 5,
+    bonusMultiplier: parseFloat(process.env.BONUS_MULTIPLIER) || 1.5,
+  },
+
+  // Feature Flags
+  features: {
+    offlineMode: process.env.ENABLE_OFFLINE_MODE === 'true',
+    videoPlayback: process.env.ENABLE_VIDEO_PLAYBACK !== 'false',
+    adminPanel: process.env.ENABLE_ADMIN_PANEL !== 'false',
+    debugging: process.env.ENABLE_DEBUGGING === 'true',
+  },
+};
+
+module.exports = config;

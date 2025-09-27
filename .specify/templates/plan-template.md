@@ -47,7 +47,36 @@
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Component Independence Gate
+- [ ] Each scanner maintains standalone functionality without orchestrator
+- [ ] GitHub Pages deployment preserved for existing scanners
+- [ ] No hard dependencies between scanners
+
+### Single Source of Truth Gate
+- [ ] Token data only modified through ALN-TokenData submodule
+- [ ] Sync mechanisms preserve data consistency
+- [ ] No local token definitions outside shared repository
+
+### Communication Pattern Gate
+- [ ] Player scanners use simple HTTP POST (no WebSocket)
+- [ ] GM stations use WebSocket for real-time sync
+- [ ] Fallback modes handle orchestrator unavailability
+
+### Infrastructure Simplicity Gate
+- [ ] Runs on Raspberry Pi 4 or equivalent
+- [ ] Works offline after initial setup
+- [ ] Minimal external dependencies (no databases required)
+
+### Progressive Enhancement Gate
+- [ ] Core gameplay functions without video/sync features
+- [ ] Features are additive, not required
+- [ ] Graceful degradation on component failure
+
+### Subagent Execution Gate
+- [ ] Research phases handled by lead agent, not delegated
+- [ ] Subagents receive precise execution instructions only
+- [ ] Agent usage reserved for complex multi-step tasks
+- [ ] Parallel execution only for truly independent operations
 
 ## Project Structure
 
@@ -209,4 +238,4 @@ ios/ or android/
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on ALN Ecosystem Constitution v1.1.0 - See `.specify/memory/constitution.md`*

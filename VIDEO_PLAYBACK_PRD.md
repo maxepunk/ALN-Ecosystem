@@ -756,12 +756,12 @@ ALN-Ecosystem/                          [Parent Repository - NEW]
 # 1. Initialize ALN-Ecosystem parent repository
 cd /home/spide/projects/AboutLastNight/ALN-Ecosystem
 git init
-git remote add origin https://github.com/[username]/ALN-Ecosystem.git
+git remote add origin https://github.com/maxepunk/ALN-Ecosystem.git
 
 # 2. Add existing components as submodules
-git submodule add https://github.com/[username]/aln-memory-scanner.git
-git submodule add https://github.com/[username]/ALNScanner.git
-git submodule add https://github.com/[username]/ALN-TokenData.git
+git submodule add https://github.com/maxepunk/aln-memory-scanner.git
+git submodule add https://github.com/maxepunk/ALNScanner.git
+git submodule add https://github.com/maxepunk/ALN-TokenData.git
 
 # 3. Configure nested submodules to auto-update
 git config --file=.gitmodules submodule.aln-memory-scanner.recurse true
@@ -790,7 +790,7 @@ git push -u origin main
 #### Working with Submodules
 ```bash
 # Clone entire ecosystem with submodules
-git clone --recurse-submodules https://github.com/[username]/ALN-Ecosystem.git
+git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git
 
 # Update all submodules to latest
 git submodule update --remote --merge
@@ -829,7 +829,7 @@ git commit -m "Update token database across all components"
 | Player Scanner | GitHub Pages (Actions) | Push to scanner repo |
 | GM Scanner | GitHub Pages (Actions) | Push to scanner repo |
 | Token Data | Auto-pulled by scanners | Submodule update |
-| Orchestrator | Docker/SystemD on server | Push to ecosystem repo |
+| Orchestrator | Plain node.js (Optional Docker in the future) | Push to ecosystem repo |
 | Admin Interface | Served by orchestrator | Part of orchestrator |
 
 ### C.7 Environment Configuration

@@ -1,0 +1,500 @@
+/**
+ * Integration Test for GM Scanner Functionality
+ * Tests GM scanner WebSocket functionality with game mechanics
+ * 
+ * Requirements validated:
+ * - FR-009: Duplicate detection for entire session
+ * - Transaction creation and scoring
+ * - Team score updates
+ * - State synchronization
+ * - WebSocket event handling
+ */
+
+const request = require('supertest');
+const { io: ioClient } = require('socket.io-client');
+const { setupTestServer, cleanupTestServer } = require('../contract/ws-test-utils');
+const { connectAndIdentify, waitForEvent, waitForMultipleEvents, cleanupSockets } = require('./test-helpers');
+
+describe('GM Scanner Integration', () => {
+  let testContext;
+  let adminToken;
+
+  beforeAll(async () => {
+    // Use shared test server setup with proper Socket.IO
+    testContext = await setupTestServer();
+
+    // Get admin token
+    const authResponse = await request(testContext.app)
+      .post('/api/admin/auth')
+      .send({ password: process.env.ADMIN_PASSWORD || 'test-admin-password' });
+    adminToken = authResponse.body.token;
+
+    // Create test session
+    await request(testContext.app)
+      .post('/api/session')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ 
+        name: 'GM Scanner Test Session',
+        teams: ['TEAM_A', 'TEAM_B']
+      });
+  });
+
+  afterAll(async () => {
+    await cleanupTestServer(testContext);
+  });
+
+  describe('WebSocket GM Scanner', () => {
+    let gmSocket;
+
+    beforeEach(async () => {
+      gmSocket = await connectAndIdentify(
+        testContext.socketUrl,
+        'GM_TEST_01'
+      );
+    });
+
+    afterEach(() => {
+      cleanupSockets(gmSocket);
+    });
+
+    it('should detect duplicates within same session', async () => {
+      const tokenId = '534e2b02';  // Use actual token from tokens.json
+      const teamId = 'TEAM_A';
+
+      // Send first scan and wait for result
+      const firstResultPromise = waitForEvent(gmSocket, 'transaction:result', 5000);
+      gmSocket.emit('transaction:submit', {
+        tokenId,
+        teamId,
+        scannerId: 'GM_TEST_01',
+        timestamp: new Date().toISOString(),
+      });
+      const firstResult = await firstResultPromise;
+
+      // First scan should succeed
+      expect(firstResult.status).toBe('accepted');
+      expect(firstResult.transactionId).toBeDefined();
+      expect(firstResult.points).toBeGreaterThan(0);
+
+      // Send duplicate scan and wait for result
+      const secondResultPromise = waitForEvent(gmSocket, 'transaction:result', 5000);
+      gmSocket.emit('transaction:submit', {
+        tokenId,
+        teamId,
+        scannerId: 'GM_TEST_01',
+        timestamp: new Date().toISOString(),
+      });
+      const secondResult = await secondResultPromise;
+
+      // Second scan should be marked as duplicate
+      expect(secondResult.status).toBe('duplicate');
+      expect(secondResult.originalTransactionId).toBeDefined();
+    });
+
+    it('should prevent different teams from scanning same token (first-come-first-served)', (done) => {
+      const tokenId = 'hos001';  // Use actual token from tokens.json
+      let teamAResult = null;
+
+      gmSocket.on('transaction:result', (result) => {
+        if (!teamAResult) {
+          // Team A result - first to scan, should succeed
+          teamAResult = result;
+          expect(result.status).toBe('accepted');
+          expect(result.points).toBeGreaterThan(0);
+          
+          // Send Team B scan of same token
+          gmSocket.emit('transaction:submit', {
+            tokenId,
+            teamId: 'TEAM_B',
+            scannerId: 'GM_TEST_01',
+            timestamp: new Date().toISOString(),
+          });
+        } else {
+          // Team B result - should be rejected as duplicate
+          expect(result.status).toBe('duplicate');
+          expect(result.originalTransactionId).toBe(teamAResult.transactionId);
+          expect(result.claimedBy).toBe('TEAM_A');
+          expect(result.message).toContain('already claimed');
+          done();
+        }
+      });
+
+      // Send Team A scan first (they win the token)
+      gmSocket.emit('transaction:submit', {
+        tokenId,
+        teamId: 'TEAM_A',
+        scannerId: 'GM_TEST_01',
+        timestamp: new Date().toISOString(),
+      });
+    });
+
+    it('should broadcast transaction to all connected clients', (done) => {
+      // Connect observer socket as GM to join session room
+      const observerSocket = ioClient(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
+
+      observerSocket.on('connect', () => {
+        // Identify as GM to join session room
+        observerSocket.emit('gm:identify', {
+          stationId: 'GM_OBSERVER_01',
+          version: '1.0.0',
+        });
+      });
+
+      // Wait for observer to be identified and join session room
+      observerSocket.once('gm:identified', () => {
+        // Now observer is in session room and can receive broadcasts
+        observerSocket.on('transaction:new', (eventData) => {
+          expect(eventData.data).toBeDefined();
+          expect(eventData.data.tokenId).toBe('tac001');
+          observerSocket.disconnect();
+          done();
+        });
+
+        // Submit transaction after observer is ready
+        setTimeout(() => {
+          gmSocket.emit('transaction:submit', {
+            tokenId: 'tac001',  // Use actual token from tokens.json
+            teamId: 'TEAM_A',
+            scannerId: 'GM_TEST_01',
+            timestamp: new Date().toISOString(),
+          });
+        }, 50);
+      });
+    });
+
+    it('should update scores when transaction accepted', (done) => {
+      gmSocket.emit('state:request', {});
+
+      gmSocket.once('state:sync', (initialState) => {
+        const initialScore = initialState.scores?.find(s => s.teamId === 'TEAM_A')?.currentScore || 0;
+
+        gmSocket.emit('transaction:submit', {
+          tokenId: 'Fli001',  // Use actual token from tokens.json
+          teamId: 'TEAM_A',
+          scannerId: 'GM_TEST_01',
+          timestamp: new Date().toISOString(),
+        });
+
+        gmSocket.once('transaction:result', (result) => {
+          expect(result.status).toBe('accepted');
+
+          // Request state again
+          gmSocket.emit('state:request', {});
+
+          gmSocket.once('state:sync', (newState) => {
+            const newScore = newState.scores?.find(s => s.teamId === 'TEAM_A')?.currentScore || 0;
+            expect(newScore).toBeGreaterThan(initialScore);
+            done();
+          });
+        });
+      });
+    });
+
+    it('should handle invalid token gracefully', (done) => {
+      gmSocket.once('transaction:result', (result) => {
+        expect(result.status).toBe('rejected');
+        expect(result.message).toBeDefined();
+        done();
+      });
+
+      gmSocket.emit('transaction:submit', {
+        tokenId: 'INVALID_TOKEN_999',
+        teamId: 'TEAM_A',
+        scannerId: 'GM_TEST_01',
+        timestamp: new Date().toISOString(),
+      });
+    });
+  });
+
+  describe('GM Admin Commands', () => {
+    let gmSocket;
+
+    beforeEach((done) => {
+      gmSocket = ioClient(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
+
+      gmSocket.on('connect', () => {
+        gmSocket.emit('gm:identify', {
+          stationId: 'GM_ADMIN_01',
+          version: '1.0.0',
+        });
+
+        gmSocket.once('gm:identified', () => {
+          done();
+        });
+      });
+    });
+
+    afterEach(() => {
+      cleanupSockets(gmSocket);
+    });
+
+    it('should pause and resume session via GM command', (done) => {
+      // Send pause command
+      gmSocket.emit('gm:command', {
+        command: 'pause_session'
+      });
+
+      gmSocket.once('gm:command:ack', (ack) => {
+        expect(ack.command).toBe('pause_session');
+        expect(ack.success).toBe(true);
+
+        // Send resume command
+        gmSocket.emit('gm:command', {
+          command: 'resume_session'
+        });
+
+        gmSocket.once('gm:command:ack', (resumeAck) => {
+          expect(resumeAck.command).toBe('resume_session');
+          expect(resumeAck.success).toBe(true);
+          done();
+        });
+      });
+    });
+
+    it('should clear scores via GM command', (done) => {
+      gmSocket.emit('gm:command', {
+        command: 'clear_scores'
+      });
+
+      gmSocket.once('gm:command:ack', (ack) => {
+        expect(ack.command).toBe('clear_scores');
+        expect(ack.success).toBe(true);
+        done();
+      });
+    });
+
+    it('should reject invalid GM commands', (done) => {
+      gmSocket.once('error', (error) => {
+        expect(error.code).toBe('INVALID_COMMAND');
+        expect(error.message).toContain('Unknown command');
+        done();
+      });
+
+      gmSocket.emit('gm:command', {
+        command: 'invalid_command'
+      });
+    });
+  });
+
+  describe('Duplicate Detection Timing', () => {
+    let gmSocket;
+
+    beforeEach((done) => {
+      gmSocket = ioClient(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
+
+      gmSocket.on('connect', () => {
+        gmSocket.emit('gm:identify', {
+          stationId: 'GM_TIMING_01',
+          version: '1.0.0',
+        });
+
+        gmSocket.once('gm:identified', () => {
+          done();
+        });
+      });
+    });
+
+    afterEach(() => {
+      cleanupSockets(gmSocket);
+    });
+
+    it('should detect duplicates for entire session (not time window)', (done) => {
+      const tokenId = 'rat001';  // Use actual token from tokens.json
+      const teamId = 'TEAM_A';
+
+      // Setup handler for second result before sending first transaction
+      const handleSecondResult = (secondResult) => {
+        // Should still be duplicate even after delay
+        expect(secondResult.status).toBe('duplicate');
+        expect(secondResult.originalTransactionId).toBeDefined();
+        done();
+      };
+
+      // First scan
+      gmSocket.emit('transaction:submit', {
+        tokenId,
+        teamId,
+        scannerId: 'GM_TIMING_01',
+        timestamp: new Date().toISOString(),
+      });
+
+      gmSocket.once('transaction:result', (firstResult) => {
+        expect(firstResult.status).toBe('accepted');
+
+        // Setup listener for second result
+        gmSocket.once('transaction:result', handleSecondResult);
+
+        // Wait a short delay to simulate time passing
+        setTimeout(() => {
+          // Send duplicate after delay
+          gmSocket.emit('transaction:submit', {
+            tokenId,
+            teamId,
+            scannerId: 'GM_TIMING_01',
+            timestamp: new Date().toISOString(),
+          });
+        }, 100);  // Short delay for testing
+      });
+    });
+
+    it('should handle rapid concurrent submissions', (done) => {
+      // Use TEST_RAPID_ pattern which creates a mock token in test environment
+      const tokenId = 'TEST_RAPID_' + Date.now();  // Unique test token
+      const teamId = 'TEAM_A';
+      const results = [];
+      let resultHandler;
+
+      // Remove any previous listeners to avoid conflicts
+      gmSocket.removeAllListeners('transaction:result');
+
+      resultHandler = (result) => {
+        results.push(result);
+
+        if (results.length === 5) {
+          // Remove the handler once we're done
+          gmSocket.off('transaction:result', resultHandler);
+
+          // Count statuses
+          const accepted = results.filter(r => r.status === 'accepted');
+          const duplicates = results.filter(r => r.status === 'duplicate');
+
+          // Should have exactly one accepted and four duplicates
+          expect(accepted.length).toBe(1);
+          expect(duplicates.length).toBe(4);
+
+          // All duplicates should reference the same original
+          const originalId = accepted[0].transactionId;
+          duplicates.forEach(dup => {
+            expect(dup.originalTransactionId).toBe(originalId);
+          });
+
+          done();
+        }
+      };
+
+      gmSocket.on('transaction:result', resultHandler);
+
+      // Add small delay to ensure socket is ready for rapid submissions
+      setTimeout(() => {
+        // Send 5 concurrent scans of the same token
+        for (let i = 0; i < 5; i++) {
+          gmSocket.emit('transaction:submit', {
+            tokenId,
+            teamId,
+            scannerId: `GM_CONCURRENT_${i}`,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }, 10);
+    });
+  });
+
+  describe('State Management', () => {
+    it('should track transactions in session', (done) => {
+      const gmSocket = ioClient(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
+
+      gmSocket.on('connect', () => {
+        gmSocket.emit('gm:identify', {
+          stationId: 'GM_STATE_01',
+          version: '1.0.0',
+        });
+
+        gmSocket.once('gm:identified', () => {
+          // Submit transaction via WebSocket
+          gmSocket.emit('transaction:submit', {
+            tokenId: 'asm001',  // Use actual token from tokens.json
+            teamId: 'TEAM_A',
+            scannerId: 'GM_STATE_01',
+            timestamp: new Date().toISOString(),
+          });
+
+          gmSocket.once('transaction:result', (result) => {
+            expect(result.status).toBe('accepted');
+            
+            // Simple verification without additional async HTTP call
+            expect(result.transactionId).toBeDefined();
+            
+            gmSocket.disconnect();
+            done();
+          });
+        });
+      });
+    });
+
+    it('should update team scores correctly', (done) => {
+      const gmSocket = ioClient(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
+
+      gmSocket.on('connect', () => {
+        gmSocket.emit('gm:identify', {
+          stationId: 'GM_SCORE_01',
+          version: '1.0.0',
+        });
+
+        gmSocket.once('gm:identified', () => {
+          // Submit high-value transaction via WebSocket
+          gmSocket.emit('transaction:submit', {
+            tokenId: 'kaa001',  // Use actual token from tokens.json
+            teamId: 'TEAM_B',
+            scannerId: 'GM_SCORE_01',
+            timestamp: new Date().toISOString(),
+          });
+
+          gmSocket.once('transaction:result', (result) => {
+            expect(result.status).toBe('accepted');
+            expect(result.points).toBeGreaterThan(0);
+            
+            gmSocket.disconnect();
+            done();
+          });
+        });
+      });
+    });
+
+    it('should track unique tokens in state', (done) => {
+      const gmSocket = ioClient(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false,
+      });
+
+      gmSocket.on('connect', () => {
+        gmSocket.emit('gm:identify', {
+          stationId: 'GM_UNIQUE_01',
+          version: '1.0.0',
+        });
+
+        gmSocket.once('gm:identified', () => {
+          // Submit a token
+          gmSocket.emit('transaction:submit', {
+            tokenId: '534e2b03',  // Use actual token from tokens.json
+            teamId: 'TEAM_A',
+            scannerId: 'GM_UNIQUE_01',
+            timestamp: new Date().toISOString(),
+          });
+
+          gmSocket.once('transaction:result', (result) => {
+            expect(result.status).toBe('accepted');
+            expect(result.transactionId).toBeDefined();
+            
+            gmSocket.disconnect();
+            done();
+          });
+        });
+      });
+    });
+  });
+});

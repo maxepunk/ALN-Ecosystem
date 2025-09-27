@@ -1,0 +1,2 @@
+{"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-24 21:49:20.505"}
+{"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-24 21:49:20.506"}

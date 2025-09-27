@@ -1,0 +1,11 @@
+[submodule "aln-memory-scanner"]
+	path = aln-memory-scanner
+	url = file:///home/spide/projects/AboutLastNight/aln-memory-scanner
+	recurse = true
+[submodule "ALNScanner"]
+	path = ALNScanner
+	url = file:///home/spide/projects/AboutLastNight/ALNScanner
+	recurse = true
+[submodule "ALN-TokenData"]
+	path = ALN-TokenData
+	url = file:///home/spide/projects/AboutLastNight/ALN-TokenData

@@ -1,0 +1,449 @@
+openapi: 3.0.3
+info:
+  title: ALN Orchestrator API
+  description: API for managing video playback and game state synchronization in About Last Night
+  version: 1.0.0
+  contact:
+    name: ALN Development Team
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: http://aln-orchestrator.local:3000
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/scan:
+    post:
+      summary: Submit token scan from player device
+      tags: [Player Scanner]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRequest'
+      responses:
+        '200':
+          description: Scan accepted and processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResponse'
+        '409':
+          description: Video already playing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/state:
+    get:
+      summary: Get current game state
+      tags: [Game State]
+      security: []
+      responses:
+        '200':
+          description: Current game state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+
+  /api/session:
+    get:
+      summary: Get current session details
+      tags: [Session]
+      responses:
+        '200':
+          description: Current session information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+    post:
+      summary: Create new game session
+      tags: [Session, Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        '201':
+          description: Session created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+    put:
+      summary: Update session status
+      tags: [Session, Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSessionRequest'
+      responses:
+        '200':
+          description: Session updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /api/video/control:
+    post:
+      summary: Control video playback
+      tags: [Video, Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VideoControlRequest'
+      responses:
+        '200':
+          description: Video control command executed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoControlResponse'
+
+  /api/admin/auth:
+    post:
+      summary: Authenticate admin user
+      tags: [Admin]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  expiresIn:
+                    type: integer
+
+  /ws:
+    get:
+      summary: WebSocket connection for GM stations
+      tags: [WebSocket]
+      description: |
+        Establishes WebSocket connection for real-time updates.
+        
+        Events emitted by server:
+        - `state:update` - Game state changed
+        - `transaction:new` - New transaction recorded
+        - `video:status` - Video playback status change
+        - `device:connected` - Device connected
+        - `device:disconnected` - Device disconnected
+        
+        Events accepted from client:
+        - `gm:identify` - Identify as GM station
+        - `state:request` - Request full state sync
+        - `transaction:submit` - Submit transaction from GM scanner
+      responses:
+        '101':
+          description: Switching Protocols to WebSocket
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Shared Entities (used by both player and GM contexts)
+    Token:
+      type: object
+      required: [id, name, value, memoryType]
+      properties:
+        id:
+          type: string
+          example: "MEM_001"
+        name:
+          type: string
+          example: "First Dance Memory"
+        value:
+          type: integer
+          minimum: 0
+          example: 10
+        memoryType:
+          type: string
+          enum: [visual, audio, mixed]
+        groupId:
+          type: string
+          nullable: true
+        mediaAssets:
+          type: object
+          properties:
+            image:
+              type: string
+              nullable: true
+            audio:
+              type: string
+              nullable: true
+            video:
+              type: string
+              nullable: true
+
+    # Player Scanner Schemas (HTTP /api/scan endpoint)
+    ScanRequest:
+      type: object
+      required: [tokenId, teamId, scannerId]
+      properties:
+        tokenId:
+          type: string
+          example: "MEM_001"
+        teamId:
+          type: string
+          pattern: '^TEAM_[A-Z]$'
+          example: "TEAM_A"
+        scannerId:
+          type: string
+          example: "SCANNER_01"
+        timestamp:
+          type: string
+          format: date-time
+
+    ScanResponse:
+      type: object
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [accepted, rejected]
+        message:
+          type: string
+          example: "Scan accepted successfully"
+        tokenId:
+          type: string
+        mediaAssets:
+          type: object
+          properties:
+            image:
+              type: string
+              nullable: true
+            audio:
+              type: string
+              nullable: true
+            video:
+              type: string
+              nullable: true
+            processingImage:
+              type: string
+              nullable: true
+        videoPlaying:
+          type: boolean
+        waitTime:
+          type: integer
+          description: Estimated wait time in seconds if video playing
+
+    # Game State Management (shared across all contexts)
+    GameState:
+      type: object
+      required: [sessionId, lastUpdate, scores]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        lastUpdate:
+          type: string
+          format: date-time
+        currentVideo:
+          type: object
+          nullable: true
+          properties:
+            tokenId:
+              type: string
+            startTime:
+              type: string
+              format: date-time
+            expectedEndTime:
+              type: string
+              format: date-time
+            requestedBy:
+              type: string
+        scores:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamScore'
+        recentTransactions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/Transaction'
+        systemStatus:
+          type: object
+          properties:
+            orchestratorOnline:
+              type: boolean
+            vlcConnected:
+              type: boolean
+            videoDisplayReady:
+              type: boolean
+
+    # GM Scanner Context (WebSocket transactions with scoring/duplicates)
+    Transaction:
+      type: object
+      required: [id, tokenId, teamId, scannerId, timestamp, sessionId, status, points]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tokenId:
+          type: string
+        teamId:
+          type: string
+          pattern: '^TEAM_[A-Z]$'
+        scannerId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        sessionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [accepted, rejected, duplicate]
+        rejectionReason:
+          type: string
+          nullable: true
+        points:
+          type: integer
+          minimum: 0
+
+    TeamScore:
+      type: object
+      required: [teamId, currentScore, tokensScanned, bonusPoints, lastUpdate]
+      properties:
+        teamId:
+          type: string
+          pattern: '^TEAM_[A-Z]$'
+        currentScore:
+          type: integer
+          minimum: 0
+        tokensScanned:
+          type: integer
+          minimum: 0
+        bonusPoints:
+          type: integer
+          minimum: 0
+        completedGroups:
+          type: array
+          items:
+            type: string
+        lastUpdate:
+          type: string
+          format: date-time
+
+    # Session Management
+    Session:
+      type: object
+      required: [id, name, startTime, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, paused, completed, archived]
+        metadata:
+          type: object
+          properties:
+            gmStations:
+              type: integer
+            playerDevices:
+              type: integer
+            totalScans:
+              type: integer
+            uniqueTokensScanned:
+              type: array
+              items:
+                type: string
+
+    CreateSessionRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    UpdateSessionRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [active, paused, completed]
+
+    # Admin Control Schemas
+    VideoControlRequest:
+      type: object
+      required: [command]
+      properties:
+        command:
+          type: string
+          enum: [play, pause, stop, skip]
+        tokenId:
+          type: string
+          description: Required for 'play' command
+
+    VideoControlResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        currentStatus:
+          type: string
+          enum: [idle, playing, paused]
+
+    # Common Response Schemas
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true

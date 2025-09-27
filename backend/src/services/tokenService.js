@@ -1,0 +1,116 @@
+const fs = require('fs');
+const path = require('path');
+const config = require('../config');
+
+/**
+ * Parse group bonus multiplier from group field
+ * @param {string} group - Group field like "Marcus Sucks (x2)"
+ * @returns {number} Multiplier value, defaults to 1 if not found
+ */
+const parseGroupMultiplier = (group) => {
+  if (!group) return 1;
+  const match = group.match(/\(x(\d+)\)/i);
+  return match ? parseInt(match[1], 10) : 1;
+};
+
+/**
+ * Extract group name without multiplier
+ * @param {string} group - Group field like "Marcus Sucks (x2)"
+ * @returns {string} Group name without multiplier
+ */
+const extractGroupName = (group) => {
+  if (!group) return null;
+  return group.replace(/\s*\(x\d+\)/i, '').trim() || null;
+};
+
+/**
+ * Calculate token value based on rating and type
+ * @param {number} rating - SF_ValueRating (1-5)
+ * @param {string} type - SF_MemoryType (Personal, Business, Technical)
+ * @returns {number} Calculated point value
+ */
+const calculateTokenValue = (rating, type) => {
+  // Get base value from rating map
+  const baseValue = config.game.valueRatingMap[rating] || config.game.valueRatingMap[1];
+
+  // Get type multiplier
+  const typeKey = (type || 'personal').toLowerCase();
+  const multiplier = config.game.typeMultipliers[typeKey] || 1.0;
+
+  // Return calculated value
+  return Math.floor(baseValue * multiplier);
+};
+
+const loadTokens = () => {
+  // Try to load from future submodule location first
+  const paths = [
+    path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
+    path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
+  ];
+
+  for (const tokenPath of paths) {
+    try {
+      const data = fs.readFileSync(tokenPath, 'utf8');
+      console.log(`Loaded tokens from: ${tokenPath}`);
+      const tokensObject = JSON.parse(data);
+
+      // Transform object format to array format expected by backend
+      const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
+        const groupName = extractGroupName(token.SF_Group);
+        const groupMultiplier = parseGroupMultiplier(token.SF_Group);
+        const calculatedValue = calculateTokenValue(
+          token.SF_ValueRating,
+          token.SF_MemoryType
+        );
+
+        return {
+          id: id,
+          name: token.SF_Group || `Memory ${id}`,
+          value: calculatedValue,
+          memoryType: token.SF_MemoryType?.toLowerCase() || 'visual',
+          groupId: groupName,
+          groupMultiplier: groupMultiplier,
+          mediaAssets: {
+            image: token.image,
+            audio: token.audio,
+            video: token.video,
+            processingImage: token.processingImage
+          },
+          metadata: {
+            rfid: token.SF_RFID,
+            group: token.SF_Group,
+            originalType: token.SF_MemoryType,
+            rating: token.SF_ValueRating
+          }
+        };
+      });
+
+      console.log(`Transformed ${tokensArray.length} tokens from submodule`);
+      return tokensArray;
+    } catch (e) {
+      console.error(`Failed to load from ${tokenPath}:`, e.message);
+      // Continue to next path
+    }
+  }
+
+  // No fallback - if submodules are configured, tokens MUST load
+  throw new Error('CRITICAL: Failed to load tokens from any configured path. Check submodule configuration.');
+};
+
+const getTestTokens = () => [
+  { id: 'MEM_001', name: 'First Memory', value: 10, memoryType: 'visual', mediaAssets: {}, metadata: {} },
+  { id: 'MEM_002', name: 'Second Memory', value: 20, memoryType: 'audio', mediaAssets: {}, metadata: {} },
+  { id: 'MEM_VIDEO_001', name: 'Video Memory', value: 30, memoryType: 'mixed',
+    mediaAssets: { video: '/videos/sample.mp4' }, metadata: { duration: 30 } },
+  { id: 'MEM_VIDEO_002', name: 'Second Video Memory', value: 25, memoryType: 'mixed',
+    mediaAssets: { video: '/videos/sample2.mp4' }, metadata: { duration: 30 } },
+  { id: 'MEM_REGULAR_001', name: 'Regular Memory', value: 15, memoryType: 'visual', mediaAssets: {}, metadata: {} }
+];
+
+module.exports = {
+  loadTokens,
+  getTestTokens,
+  parseGroupMultiplier,
+  extractGroupName,
+  calculateTokenValue
+};
