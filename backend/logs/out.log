@@ -1,0 +1,529 @@
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.023"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.024"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.026"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 11:51:28.027"}
+2025-09-27 11:51:28 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 11:51:28 -07:00: Transformed 9 tokens from submodule
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 11:51:28.031"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.033"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.033"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.067"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.067"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.067"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.069"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.069"}
+2025-09-27 11:51:28 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:51:28.069"}
+2025-09-27 11:51:28 -07:00: 
+2025-09-27 11:51:28 -07:00: ==================================================
+2025-09-27 11:51:28 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 11:51:28 -07:00: ==================================================
+2025-09-27 11:51:28 -07:00: 
+2025-09-27 11:51:28 -07:00: Connect scanners to any of these addresses:
+2025-09-27 11:51:28 -07:00: 
+2025-09-27 11:51:28 -07:00:   → http://10.0.0.135:3000
+2025-09-27 11:51:28 -07:00:   → http://localhost:3000
+2025-09-27 11:51:28 -07:00: 
+2025-09-27 11:51:28 -07:00: For scanner configuration:
+2025-09-27 11:51:28 -07:00:   1. Open scanner config page
+2025-09-27 11:51:28 -07:00:   2. Enter one of the above URLs
+2025-09-27 11:51:28 -07:00:   3. Test connection
+2025-09-27 11:51:28 -07:00: 
+2025-09-27 11:51:28 -07:00: ==================================================
+2025-09-27 11:51:28 -07:00: 
+2025-09-27 11:51:28 -07:00: UDP discovery server listening on port 8888
+2025-09-27 11:52:35 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:52:35.773"}
+2025-09-27 11:52:35 -07:00: Discovery service stopped
+2025-09-27 11:52:35 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:52:35.774"}
+2025-09-27 11:52:35 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:52:35.774"}
+2025-09-27 11:52:35 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:52:35.774"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.498"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.499"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.501"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 11:57:40.501"}
+2025-09-27 11:57:40 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 11:57:40 -07:00: Transformed 9 tokens from submodule
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 11:57:40.506"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.508"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.508"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.540"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.540"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.541"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.543"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.543"}
+2025-09-27 11:57:40 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:57:40.543"}
+2025-09-27 11:57:40 -07:00: 
+2025-09-27 11:57:40 -07:00: ==================================================
+2025-09-27 11:57:40 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 11:57:40 -07:00: ==================================================
+2025-09-27 11:57:40 -07:00: 
+2025-09-27 11:57:40 -07:00: Connect scanners to any of these addresses:
+2025-09-27 11:57:40 -07:00: 
+2025-09-27 11:57:40 -07:00:   → http://10.0.0.135:3000
+2025-09-27 11:57:40 -07:00:   → http://localhost:3000
+2025-09-27 11:57:40 -07:00: 
+2025-09-27 11:57:40 -07:00: For scanner configuration:
+2025-09-27 11:57:40 -07:00:   1. Open scanner config page
+2025-09-27 11:57:40 -07:00:   2. Enter one of the above URLs
+2025-09-27 11:57:40 -07:00:   3. Test connection
+2025-09-27 11:57:40 -07:00: 
+2025-09-27 11:57:40 -07:00: ==================================================
+2025-09-27 11:57:40 -07:00: 
+2025-09-27 11:57:40 -07:00: UDP discovery server listening on port 8888
+2025-09-27 11:57:58 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 11:57:58.281"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.042"}
+2025-09-27 11:59:50 -07:00: Discovery service stopped
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.043"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.043"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.044"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.394"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.395"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.397"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 11:59:50.397"}
+2025-09-27 11:59:50 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 11:59:50 -07:00: Transformed 9 tokens from submodule
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 11:59:50.402"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.404"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.405"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.438"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.438"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.438"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.440"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.440"}
+2025-09-27 11:59:50 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:50.440"}
+2025-09-27 11:59:50 -07:00: 
+2025-09-27 11:59:50 -07:00: ==================================================
+2025-09-27 11:59:50 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 11:59:50 -07:00: ==================================================
+2025-09-27 11:59:50 -07:00: 
+2025-09-27 11:59:50 -07:00: Connect scanners to any of these addresses:
+2025-09-27 11:59:50 -07:00: 
+2025-09-27 11:59:50 -07:00:   → http://10.0.0.135:3000
+2025-09-27 11:59:50 -07:00:   → http://localhost:3000
+2025-09-27 11:59:50 -07:00: 
+2025-09-27 11:59:50 -07:00: For scanner configuration:
+2025-09-27 11:59:50 -07:00:   1. Open scanner config page
+2025-09-27 11:59:50 -07:00:   2. Enter one of the above URLs
+2025-09-27 11:59:50 -07:00:   3. Test connection
+2025-09-27 11:59:50 -07:00: 
+2025-09-27 11:59:50 -07:00: ==================================================
+2025-09-27 11:59:50 -07:00: 
+2025-09-27 11:59:50 -07:00: UDP discovery server listening on port 8888
+2025-09-27 11:59:58 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:58.772"}
+2025-09-27 11:59:58 -07:00: Discovery service stopped
+2025-09-27 11:59:58 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:58.772"}
+2025-09-27 11:59:58 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:58.773"}
+2025-09-27 11:59:58 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:58.773"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.118"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.120"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.121"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 11:59:59.121"}
+2025-09-27 11:59:59 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 11:59:59 -07:00: Transformed 9 tokens from submodule
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 11:59:59.125"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.127"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.128"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.163"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.163"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.164"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.165"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.165"}
+2025-09-27 11:59:59 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 11:59:59.166"}
+2025-09-27 11:59:59 -07:00: 
+2025-09-27 11:59:59 -07:00: ==================================================
+2025-09-27 11:59:59 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 11:59:59 -07:00: ==================================================
+2025-09-27 11:59:59 -07:00: 
+2025-09-27 11:59:59 -07:00: Connect scanners to any of these addresses:
+2025-09-27 11:59:59 -07:00: 
+2025-09-27 11:59:59 -07:00:   → http://10.0.0.135:3000
+2025-09-27 11:59:59 -07:00:   → http://localhost:3000
+2025-09-27 11:59:59 -07:00: 
+2025-09-27 11:59:59 -07:00: For scanner configuration:
+2025-09-27 11:59:59 -07:00:   1. Open scanner config page
+2025-09-27 11:59:59 -07:00:   2. Enter one of the above URLs
+2025-09-27 11:59:59 -07:00:   3. Test connection
+2025-09-27 11:59:59 -07:00: 
+2025-09-27 11:59:59 -07:00: ==================================================
+2025-09-27 11:59:59 -07:00: 
+2025-09-27 11:59:59 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:00:18 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:00:18.154"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"TEST_PLAYER","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:30.725"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"98dc4489-9772-407c-99da-1ffb55f79e15","queueLength":1,"requestedBy":"TEST_PLAYER","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:30.726"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:00:30.727"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:30.727"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"assets/video/test_2sec.mp4"}},"timestamp":"2025-09-27 12:00:30.751"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:30.797"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"98dc4489-9772-407c-99da-1ffb55f79e15","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:00:30.797"}
+2025-09-27 12:00:30 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:30.799"}
+2025-09-27 12:00:31 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"98dc4489-9772-407c-99da-1ffb55f79e15","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:31.822"}
+2025-09-27 12:00:31 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:00:31.822"}
+2025-09-27 12:00:31 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:00:31.823"}
+2025-09-27 12:00:31 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:00:31.823"}
+2025-09-27 12:00:31 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:00:31.824"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.393"}
+2025-09-27 12:02:56 -07:00: Discovery service stopped
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.394"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.394"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.395"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.730"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.731"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.732"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 12:02:56.732"}
+2025-09-27 12:02:56 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 12:02:56 -07:00: Transformed 9 tokens from submodule
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 12:02:56.737"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.740"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.740"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.773"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.773"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.774"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.776"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.776"}
+2025-09-27 12:02:56 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:02:56.776"}
+2025-09-27 12:02:56 -07:00: 
+2025-09-27 12:02:56 -07:00: ==================================================
+2025-09-27 12:02:56 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 12:02:56 -07:00: ==================================================
+2025-09-27 12:02:56 -07:00: 
+2025-09-27 12:02:56 -07:00: Connect scanners to any of these addresses:
+2025-09-27 12:02:56 -07:00: 
+2025-09-27 12:02:56 -07:00:   → http://10.0.0.135:3000
+2025-09-27 12:02:56 -07:00:   → http://localhost:3000
+2025-09-27 12:02:56 -07:00: 
+2025-09-27 12:02:56 -07:00: For scanner configuration:
+2025-09-27 12:02:56 -07:00:   1. Open scanner config page
+2025-09-27 12:02:56 -07:00:   2. Enter one of the above URLs
+2025-09-27 12:02:56 -07:00:   3. Test connection
+2025-09-27 12:02:56 -07:00: 
+2025-09-27 12:02:56 -07:00: ==================================================
+2025-09-27 12:02:56 -07:00: 
+2025-09-27 12:02:56 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:03:16 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:03:16.366"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"TEST","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:03.263"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"4a6e6fb3-c390-4d94-a308-0d8950fcaaec","queueLength":1,"requestedBy":"TEST","service":"aln-orchestrator","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:03.264"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:04:03.264"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:03.265"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"assets/video/jaw001.mp4"}},"timestamp":"2025-09-27 12:04:03.288"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:03.335"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"4a6e6fb3-c390-4d94-a308-0d8950fcaaec","service":"aln-orchestrator","tokenId":"jaw001","vlcConnected":true}},"timestamp":"2025-09-27 12:04:03.335"}
+2025-09-27 12:04:03 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:03.336"}
+2025-09-27 12:04:04 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"4a6e6fb3-c390-4d94-a308-0d8950fcaaec","service":"aln-orchestrator","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:04.367"}
+2025-09-27 12:04:04 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"jaw001"}},"timestamp":"2025-09-27 12:04:04.367"}
+2025-09-27 12:04:04 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:04:04.368"}
+2025-09-27 12:04:04 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:04:04.368"}
+2025-09-27 12:04:04 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:04:04.368"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"TEST","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:45.227"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"b36873c2-d262-4054-8a18-4cc284ba2e2b","queueLength":2,"requestedBy":"TEST","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:45.227"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:07:45.228"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:45.228"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"assets/video/test_2sec.mp4"}},"timestamp":"2025-09-27 12:07:45.251"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:45.287"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"b36873c2-d262-4054-8a18-4cc284ba2e2b","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:07:45.287"}
+2025-09-27 12:07:45 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:45.288"}
+2025-09-27 12:07:46 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"b36873c2-d262-4054-8a18-4cc284ba2e2b","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:46.299"}
+2025-09-27 12:07:46 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:07:46.299"}
+2025-09-27 12:07:46 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:07:46.300"}
+2025-09-27 12:07:46 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:07:46.301"}
+2025-09-27 12:07:46 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:07:46.301"}
+2025-09-27 12:08:27 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:27.950"}
+2025-09-27 12:08:27 -07:00: Discovery service stopped
+2025-09-27 12:08:27 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:27.951"}
+2025-09-27 12:08:27 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:27.951"}
+2025-09-27 12:08:27 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:27.951"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.281"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.282"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.285"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 12:08:28.286"}
+2025-09-27 12:08:28 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 12:08:28 -07:00: Transformed 9 tokens from submodule
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 12:08:28.291"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.293"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.293"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.325"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.326"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.326"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.329"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.329"}
+2025-09-27 12:08:28 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:08:28.329"}
+2025-09-27 12:08:28 -07:00: 
+2025-09-27 12:08:28 -07:00: ==================================================
+2025-09-27 12:08:28 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 12:08:28 -07:00: ==================================================
+2025-09-27 12:08:28 -07:00: 
+2025-09-27 12:08:28 -07:00: Connect scanners to any of these addresses:
+2025-09-27 12:08:28 -07:00: 
+2025-09-27 12:08:28 -07:00:   → http://10.0.0.135:3000
+2025-09-27 12:08:28 -07:00:   → http://localhost:3000
+2025-09-27 12:08:28 -07:00: 
+2025-09-27 12:08:28 -07:00: For scanner configuration:
+2025-09-27 12:08:28 -07:00:   1. Open scanner config page
+2025-09-27 12:08:28 -07:00:   2. Enter one of the above URLs
+2025-09-27 12:08:28 -07:00:   3. Test connection
+2025-09-27 12:08:28 -07:00: 
+2025-09-27 12:08:28 -07:00: ==================================================
+2025-09-27 12:08:28 -07:00: 
+2025-09-27 12:08:28 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"TEST","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:01.446"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"a71ced66-0499-4c39-a61c-03ddea6d84a4","queueLength":1,"requestedBy":"TEST","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:01.447"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"4ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:09:01.449"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:01.449"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"assets/video/test_2sec.mp4"}},"timestamp":"2025-09-27 12:09:01.473"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:01.512"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"a71ced66-0499-4c39-a61c-03ddea6d84a4","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:09:01.512"}
+2025-09-27 12:09:01 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:01.513"}
+2025-09-27 12:09:02 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"a71ced66-0499-4c39-a61c-03ddea6d84a4","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:02.537"}
+2025-09-27 12:09:02 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:02.537"}
+2025-09-27 12:09:02 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:02.539"}
+2025-09-27 12:09:02 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:02.540"}
+2025-09-27 12:09:02 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:02.540"}
+2025-09-27 12:09:17 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:17.962"}
+2025-09-27 12:09:17 -07:00: Discovery service stopped
+2025-09-27 12:09:17 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:17.963"}
+2025-09-27 12:09:17 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:17.963"}
+2025-09-27 12:09:17 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:17.963"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.301"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.303"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.304"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 12:09:18.304"}
+2025-09-27 12:09:18 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 12:09:18 -07:00: Transformed 9 tokens from submodule
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 12:09:18.309"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.311"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.311"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.343"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.344"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.344"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.346"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.346"}
+2025-09-27 12:09:18 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:18.346"}
+2025-09-27 12:09:18 -07:00: 
+2025-09-27 12:09:18 -07:00: ==================================================
+2025-09-27 12:09:18 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 12:09:18 -07:00: ==================================================
+2025-09-27 12:09:18 -07:00: 
+2025-09-27 12:09:18 -07:00: Connect scanners to any of these addresses:
+2025-09-27 12:09:18 -07:00: 
+2025-09-27 12:09:18 -07:00:   → http://10.0.0.135:3000
+2025-09-27 12:09:18 -07:00:   → http://localhost:3000
+2025-09-27 12:09:18 -07:00: 
+2025-09-27 12:09:18 -07:00: For scanner configuration:
+2025-09-27 12:09:18 -07:00:   1. Open scanner config page
+2025-09-27 12:09:18 -07:00:   2. Enter one of the above URLs
+2025-09-27 12:09:18 -07:00:   3. Test connection
+2025-09-27 12:09:18 -07:00: 
+2025-09-27 12:09:18 -07:00: ==================================================
+2025-09-27 12:09:18 -07:00: 
+2025-09-27 12:09:18 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"TEST","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:25.768"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"ae28a40b-6ee2-4b16-90f5-5b5682382036","queueLength":1,"requestedBy":"TEST","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:25.769"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"3ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:09:25.770"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:25.771"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"assets/video/test_30sec.mp4"}},"timestamp":"2025-09-27 12:09:25.795"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:25.842"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"ae28a40b-6ee2-4b16-90f5-5b5682382036","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:09:25.843"}
+2025-09-27 12:09:25 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:25.844"}
+2025-09-27 12:09:26 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"ae28a40b-6ee2-4b16-90f5-5b5682382036","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:26.867"}
+2025-09-27 12:09:26 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:09:26.867"}
+2025-09-27 12:09:26 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:26.868"}
+2025-09-27 12:09:26 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:26.868"}
+2025-09-27 12:09:26 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:09:26.868"}
+2025-09-27 12:13:01 -07:00: {"level":"warn","message":"VLC connection lost","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:13:01.880"}
+2025-09-27 12:13:01 -07:00: {"level":"info","message":"Scheduling VLC reconnection","metadata":{"metadata":{"attempt":1,"delay":5000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:13:01.881"}
+2025-09-27 12:13:06 -07:00: {"level":"info","message":"Scheduling VLC reconnection","metadata":{"metadata":{"attempt":2,"delay":10000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:13:06.883"}
+2025-09-27 12:13:11 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:13:11.902"}
+2025-09-27 12:16:49 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:16:49.772"}
+2025-09-27 12:16:49 -07:00: Discovery service stopped
+2025-09-27 12:16:49 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:16:49.772"}
+2025-09-27 12:16:49 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:16:49.773"}
+2025-09-27 12:16:49 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:16:49.773"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.463"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.464"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.465"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 12:17:02.467"}
+2025-09-27 12:17:02 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 12:17:02 -07:00: Transformed 9 tokens from submodule
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 12:17:02.471"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.474"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.474"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.508"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.508"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.509"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.510"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.510"}
+2025-09-27 12:17:02 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:02.510"}
+2025-09-27 12:17:02 -07:00: 
+2025-09-27 12:17:02 -07:00: ==================================================
+2025-09-27 12:17:02 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 12:17:02 -07:00: ==================================================
+2025-09-27 12:17:02 -07:00: 
+2025-09-27 12:17:02 -07:00: Connect scanners to any of these addresses:
+2025-09-27 12:17:02 -07:00: 
+2025-09-27 12:17:02 -07:00:   → http://10.0.0.135:3000
+2025-09-27 12:17:02 -07:00:   → http://localhost:3000
+2025-09-27 12:17:02 -07:00: 
+2025-09-27 12:17:02 -07:00: For scanner configuration:
+2025-09-27 12:17:02 -07:00:   1. Open scanner config page
+2025-09-27 12:17:02 -07:00:   2. Enter one of the above URLs
+2025-09-27 12:17:02 -07:00:   3. Test connection
+2025-09-27 12:17:02 -07:00: 
+2025-09-27 12:17:02 -07:00: ==================================================
+2025-09-27 12:17:02 -07:00: 
+2025-09-27 12:17:02 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:17:18 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/health","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:17:18.873"}
+2025-09-27 12:17:26 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":400,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:17:26.430"}
+2025-09-27 12:17:31 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":400,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:17:31.975"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"test-scanner","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:37.850"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"b0a5ed66-d8d4-4178-8a3a-e58e3703c35f","queueLength":1,"requestedBy":"test-scanner","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:37.850"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:17:37.851"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:37.852"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"assets/video/test_30sec.mp4"}},"timestamp":"2025-09-27 12:17:37.875"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:37.922"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"b0a5ed66-d8d4-4178-8a3a-e58e3703c35f","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:17:37.922"}
+2025-09-27 12:17:37 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:37.923"}
+2025-09-27 12:17:38 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"b0a5ed66-d8d4-4178-8a3a-e58e3703c35f","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:38.947"}
+2025-09-27 12:17:38 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:17:38.947"}
+2025-09-27 12:17:38 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:38.948"}
+2025-09-27 12:17:38 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:38.948"}
+2025-09-27 12:17:38 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:17:38.949"}
+2025-09-27 12:20:53 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:53.915"}
+2025-09-27 12:20:53 -07:00: Discovery service stopped
+2025-09-27 12:20:53 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:53.915"}
+2025-09-27 12:20:53 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:53.916"}
+2025-09-27 12:20:53 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:53.916"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.253"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.255"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.257"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 12:20:54.258"}
+2025-09-27 12:20:54 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 12:20:54 -07:00: Transformed 9 tokens from submodule
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 12:20:54.262"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.265"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.265"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.298"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.299"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.299"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.301"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.302"}
+2025-09-27 12:20:54 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:20:54.302"}
+2025-09-27 12:20:54 -07:00: 
+2025-09-27 12:20:54 -07:00: ==================================================
+2025-09-27 12:20:54 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 12:20:54 -07:00: ==================================================
+2025-09-27 12:20:54 -07:00: 
+2025-09-27 12:20:54 -07:00: Connect scanners to any of these addresses:
+2025-09-27 12:20:54 -07:00: 
+2025-09-27 12:20:54 -07:00:   → http://10.0.0.135:3000
+2025-09-27 12:20:54 -07:00:   → http://localhost:3000
+2025-09-27 12:20:54 -07:00: 
+2025-09-27 12:20:54 -07:00: For scanner configuration:
+2025-09-27 12:20:54 -07:00:   1. Open scanner config page
+2025-09-27 12:20:54 -07:00:   2. Enter one of the above URLs
+2025-09-27 12:20:54 -07:00:   3. Test connection
+2025-09-27 12:20:54 -07:00: 
+2025-09-27 12:20:54 -07:00: ==================================================
+2025-09-27 12:20:54 -07:00: 
+2025-09-27 12:20:54 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"test-scanner","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:01.674"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"cdaa54b0-e5ab-4570-9265-5d34237c9e28","queueLength":1,"requestedBy":"test-scanner","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:01.675"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"4ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:21:01.677"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:01.678"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"test_30sec.mp4"}},"timestamp":"2025-09-27 12:21:01.702"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:01.748"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"cdaa54b0-e5ab-4570-9265-5d34237c9e28","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:21:01.749"}
+2025-09-27 12:21:01 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:01.750"}
+2025-09-27 12:21:02 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"cdaa54b0-e5ab-4570-9265-5d34237c9e28","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:02.774"}
+2025-09-27 12:21:02 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:02.774"}
+2025-09-27 12:21:02 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:21:02.775"}
+2025-09-27 12:21:02 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:21:02.775"}
+2025-09-27 12:21:02 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:21:02.775"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"test-scanner","service":"aln-orchestrator","teamId":"TEAM_B","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:44.777"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"e3bbadad-01a2-4548-a8e8-97d27b0f3a66","queueLength":2,"requestedBy":"test-scanner","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:44.778"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:21:44.778"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:44.779"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"test_30sec.mp4"}},"timestamp":"2025-09-27 12:21:44.802"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:44.848"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":30,"itemId":"e3bbadad-01a2-4548-a8e8-97d27b0f3a66","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:21:44.849"}
+2025-09-27 12:21:44 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:44.849"}
+2025-09-27 12:21:45 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":1,"itemId":"e3bbadad-01a2-4548-a8e8-97d27b0f3a66","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:45.873"}
+2025-09-27 12:21:45 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:21:45.873"}
+2025-09-27 12:21:45 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:21:45.873"}
+2025-09-27 12:21:45 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:21:45.874"}
+2025-09-27 12:21:45 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:21:45.874"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"SIGINT received, starting graceful shutdown","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.374"}
+2025-09-27 12:22:27 -07:00: Discovery service stopped
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"HTTP server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.375"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"WebSocket server closed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.375"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Graceful shutdown complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.376"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Socket.io server created with configuration","metadata":{"metadata":{"maxPayloadSize":1000000,"pingInterval":25000,"pingTimeout":60000,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.708"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.709"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"File storage initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.711"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator","storageType":"file"}},"timestamp":"2025-09-27 12:22:27.711"}
+2025-09-27 12:22:27 -07:00: Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+2025-09-27 12:22:27 -07:00: Transformed 9 tokens from submodule
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-27 12:22:27.715"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.718"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.718"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"VLC connection established","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.750"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.751"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Broadcast listeners initialized","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.751"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"ALN Orchestrator server running at http://0.0.0.0:3000","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.754"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"WebSocket server ready for connections","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.754"}
+2025-09-27 12:22:27 -07:00: {"level":"info","message":"Environment:","metadata":{"metadata":{"env":"production","maxGmStations":5,"maxPlayers":10,"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:27.754"}
+2025-09-27 12:22:27 -07:00: 
+2025-09-27 12:22:27 -07:00: ==================================================
+2025-09-27 12:22:27 -07:00:    ALN ORCHESTRATOR STARTED
+2025-09-27 12:22:27 -07:00: ==================================================
+2025-09-27 12:22:27 -07:00: 
+2025-09-27 12:22:27 -07:00: Connect scanners to any of these addresses:
+2025-09-27 12:22:27 -07:00: 
+2025-09-27 12:22:27 -07:00:   → http://10.0.0.135:3000
+2025-09-27 12:22:27 -07:00:   → http://localhost:3000
+2025-09-27 12:22:27 -07:00: 
+2025-09-27 12:22:27 -07:00: For scanner configuration:
+2025-09-27 12:22:27 -07:00:   1. Open scanner config page
+2025-09-27 12:22:27 -07:00:   2. Enter one of the above URLs
+2025-09-27 12:22:27 -07:00:   3. Test connection
+2025-09-27 12:22:27 -07:00: 
+2025-09-27 12:22:27 -07:00: ==================================================
+2025-09-27 12:22:27 -07:00: 
+2025-09-27 12:22:27 -07:00: UDP discovery server listening on port 8888
+2025-09-27 12:22:34 -07:00: {"level":"info","message":"Player scan received","metadata":{"metadata":{"scannerId":"test-scanner","service":"aln-orchestrator","teamId":"TEAM_A","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:34.930"}
+2025-09-27 12:22:34 -07:00: {"level":"info","message":"Video added to queue","metadata":{"metadata":{"itemId":"10a0b682-1d9c-4bd0-a96b-d90f443f41c0","queueLength":1,"requestedBy":"test-scanner","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:34.931"}
+2025-09-27 12:22:34 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"POST","responseTime":"3ms","service":"aln-orchestrator","status":200,"url":"/","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 12:22:34.932"}
+2025-09-27 12:22:34 -07:00: {"level":"info","message":"Broadcasted video:loading to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:34.933"}
+2025-09-27 12:22:34 -07:00: {"level":"info","message":"Video playback started","metadata":{"metadata":{"service":"aln-orchestrator","videoPath":"test_30sec.mp4"}},"timestamp":"2025-09-27 12:22:34.957"}
+2025-09-27 12:22:35 -07:00: {"level":"info","message":"Broadcasted video:started to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:35.003"}
+2025-09-27 12:22:35 -07:00: {"level":"info","message":"Video playback started via VLC","metadata":{"metadata":{"duration":0.03,"itemId":"10a0b682-1d9c-4bd0-a96b-d90f443f41c0","service":"aln-orchestrator","tokenId":"534e2b03","vlcConnected":true}},"timestamp":"2025-09-27 12:22:35.003"}
+2025-09-27 12:22:35 -07:00: {"level":"info","message":"Current video set","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:35.005"}
+2025-09-27 12:22:40 -07:00: {"level":"info","message":"Video playback completed","metadata":{"metadata":{"duration":5,"itemId":"10a0b682-1d9c-4bd0-a96b-d90f443f41c0","service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:40.035"}
+2025-09-27 12:22:40 -07:00: {"level":"info","message":"Broadcasted video:completed to GM stations","metadata":{"metadata":{"service":"aln-orchestrator","tokenId":"534e2b03"}},"timestamp":"2025-09-27 12:22:40.035"}
+2025-09-27 12:22:40 -07:00: {"level":"info","message":"Broadcasted video:idle to GM stations","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:40.036"}
+2025-09-27 12:22:40 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:40.036"}
+2025-09-27 12:22:40 -07:00: {"level":"info","message":"Current video cleared","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-27 12:22:40.036"}
+2025-09-27 12:26:50 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"4ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:50.775"}
+2025-09-27 12:26:50 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/js/orchestratorIntegration.js","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:50.809"}
+2025-09-27 12:26:50 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/data/tokens.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:50.933"}
+2025-09-27 12:26:51 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/sw.js","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.119"}
+2025-09-27 12:26:51 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":304,"url":"/player-scanner/","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.136"}
+2025-09-27 12:26:51 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/index.html","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.137"}
+2025-09-27 12:26:51 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/config.html","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.137"}
+2025-09-27 12:26:51 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":404,"url":"/player-scanner/manifest.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.140"}
+2025-09-27 12:26:51 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":404,"url":"/player-scanner/tokens.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.141"}
+2025-09-27 12:26:51 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/player-scanner/assets/images/placeholder.jpg","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.142"}
+2025-09-27 12:26:51 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":404,"url":"/player-scanner/manifest.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:51.449"}
+2025-09-27 12:26:54 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":304,"url":"/player-scanner/config.html","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:54.729"}
+2025-09-27 12:26:54 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":304,"url":"/player-scanner/js/orchestratorIntegration.js","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:54.755"}
+2025-09-27 12:26:54 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":404,"url":"/favicon.ico","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:54.844"}
+2025-09-27 12:26:56 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":304,"url":"/player-scanner/sw.js","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:26:56.388"}
+2025-09-27 12:27:20 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/status","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:27:20.304"}
+2025-09-27 12:27:20 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":404,"url":"/player-scanner/manifest.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 12:27:20.322"}
+2025-09-27 13:06:47 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/gm-scanner/","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:06:47.323"}
+2025-09-27 13:06:47 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/gm-scanner/websocket-tests.js","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:06:47.348"}
+2025-09-27 13:06:47 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/gm-scanner/data/tokens.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:06:47.498"}
+2025-09-27 13:07:02 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":304,"url":"/gm-scanner/","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:07:02.361"}
+2025-09-27 13:07:02 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":304,"url":"/gm-scanner/websocket-tests.js","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:07:02.384"}
+2025-09-27 13:07:02 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":304,"url":"/gm-scanner/data/tokens.json","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:07:02.400"}
+2025-09-27 13:07:33 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/health","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 13:07:33.183"}
+2025-09-27 13:07:33 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/health","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 13:07:33.216"}
+2025-09-27 13:07:46 -07:00: {"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/health","userAgent":"curl/7.81.0"}},"timestamp":"2025-09-27 13:07:46.667"}
+2025-09-27 13:09:43 -07:00: {"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":404,"url":"/","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"}},"timestamp":"2025-09-27 13:09:43.445"}

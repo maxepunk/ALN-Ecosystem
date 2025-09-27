@@ -1,0 +1,1091 @@
+
+> aln-orchestrator@1.0.0 test
+> jest --config jest.config.js tests/contract/session_post.test.js tests/contract/session_get.test.js
+
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"5ms","service":"aln-orchestrator","status":200,"url":"/auth"}},"timestamp":"2025-09-26 17:42:22.522"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.526"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.527"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.528"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.528"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.529"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:22.545"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"fec9e3aa-6896-4cb8-9dcf-333609378495"}},"timestamp":"2025-09-26 17:42:22.550"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.550"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.550"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"32ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:22.563"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.578"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.580"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.580"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.581"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.582"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.583"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.583"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.583"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"37036791-e190-45ca-b442-ebf499df6703"}},"timestamp":"2025-09-26 17:42:22.587"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.587"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.589"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.590"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.590"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.590"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.590"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.590"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.590"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:22.601"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.605"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:22.606"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.606"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"37036791-e190-45ca-b442-ebf499df6703"}},"timestamp":"2025-09-26 17:42:22.607"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"37036791-e190-45ca-b442-ebf499df6703"}},"timestamp":"2025-09-26 17:42:22.607"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.608"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.608"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.608"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.608"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.608"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.608"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.609"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.642"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.642"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"A","service":"aln-orchestrator","sessionId":"dfa113d5-c9ae-480b-bed0-da907b5b5960"}},"timestamp":"2025-09-26 17:42:22.657"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.657"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"24ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:22.669"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.670"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.670"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.670"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.678"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.678"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.678"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.679"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.679"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.679"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.679"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.679"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.679"}
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:22.682"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.683"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.686"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.686"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.686"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.687"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.687"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.696"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"90123953-7a20-4626-acec-e600989bb909"}},"timestamp":"2025-09-26 17:42:22.696"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.696"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.696"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.697"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:22.697"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.697"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"90123953-7a20-4626-acec-e600989bb909"}},"timestamp":"2025-09-26 17:42:22.698"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"90123953-7a20-4626-acec-e600989bb909"}},"timestamp":"2025-09-26 17:42:22.698"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.698"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.698"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.698"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.699"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.699"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.699"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","service":"aln-orchestrator","sessionId":"eaa50f4f-67ef-4055-ae24-5d6174c9c0e3"}},"timestamp":"2025-09-26 17:42:22.719"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.719"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"25ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:22.732"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.733"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.733"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.733"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.736"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.737"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:22.739"}
+{"level":"info","message":"Session restored from storage","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"eaa50f4f-67ef-4055-ae24-5d6174c9c0e3"}},"timestamp":"2025-09-26 17:42:22.740"}
+{"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.741"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.741"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.742"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.742"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.742"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.743"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.743"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.743"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.743"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.744"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.745"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.745"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.745"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.745"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.760"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.760"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":200,"url":"/auth"}},"timestamp":"2025-09-26 17:42:22.771"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Completed Session","service":"aln-orchestrator","sessionId":"13b60785-27f5-4190-a2b2-1f0551e87663"}},"timestamp":"2025-09-26 17:42:22.787"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.787"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Default Test","service":"aln-orchestrator","sessionId":"d4bfd07a-f1f0-451a-9b30-bdf3c757ddf5"}},"timestamp":"2025-09-26 17:42:22.787"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.788"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"3ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:22.788"}
+{"level":"info","message":"Session status changed","metadata":{"metadata":{"newStatus":"completed","oldStatus":"active","service":"aln-orchestrator","sessionId":"13b60785-27f5-4190-a2b2-1f0551e87663"}},"timestamp":"2025-09-26 17:42:22.796"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"22ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:22.797"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.798"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.799"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.799"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"PUT","responseTime":"4ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:22.799"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:22.805"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.806"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:22.806"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.806"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"13b60785-27f5-4190-a2b2-1f0551e87663"}},"timestamp":"2025-09-26 17:42:22.807"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"13b60785-27f5-4190-a2b2-1f0551e87663"}},"timestamp":"2025-09-26 17:42:22.807"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.807"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.808"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.809"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.824"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.824"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Status Code Test","service":"aln-orchestrator","sessionId":"ff596089-d0c0-4c04-a59a-f2a39f433fcc"}},"timestamp":"2025-09-26 17:42:22.839"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.839"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"25ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:22.851"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.852"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.852"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.852"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.855"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.858"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:22.860"}
+{"level":"info","message":"Session restored from storage","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"ff596089-d0c0-4c04-a59a-f2a39f433fcc"}},"timestamp":"2025-09-26 17:42:22.861"}
+{"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.861"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.861"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.865"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.866"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.866"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.866"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.866"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.866"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.866"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.867"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.868"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.868"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.868"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.868"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"e2800a11-0989-44da-886f-7befcbf31532"}},"timestamp":"2025-09-26 17:42:22.876"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.877"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.883"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.884"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:22.884"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.885"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:22.885"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.885"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"e2800a11-0989-44da-886f-7befcbf31532"}},"timestamp":"2025-09-26 17:42:22.886"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"e2800a11-0989-44da-886f-7befcbf31532"}},"timestamp":"2025-09-26 17:42:22.886"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.887"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.888"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.888"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.888"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.888"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.888"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.888"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"0ms","service":"aln-orchestrator","status":401,"url":"/"}},"timestamp":"2025-09-26 17:42:22.892"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.898"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.898"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.898"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.922"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.922"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.922"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.922"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.922"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.923"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.923"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.931"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.932"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:22.933"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.934"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.937"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.937"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.938"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.938"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.938"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.939"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.939"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"7c8dc15d-2233-4379-81f3-1ca7ca51622c"}},"timestamp":"2025-09-26 17:42:22.947"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.947"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"0ms","service":"aln-orchestrator","status":401,"url":"/"}},"timestamp":"2025-09-26 17:42:22.958"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.964"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.964"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.964"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:22.968"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.969"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:22.969"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.969"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"7c8dc15d-2233-4379-81f3-1ca7ca51622c"}},"timestamp":"2025-09-26 17:42:22.970"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"7c8dc15d-2233-4379-81f3-1ca7ca51622c"}},"timestamp":"2025-09-26 17:42:22.970"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.971"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.971"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.971"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.972"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.973"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.973"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.985"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.985"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.986"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.986"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.986"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.986"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.986"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.999"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:22.999"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":400,"url":"/"}},"timestamp":"2025-09-26 17:42:23.003"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.010"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.010"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.010"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.017"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.018"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.020"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.020"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.023"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.023"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.023"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.023"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.023"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.033"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"91060b20-f11b-40ca-9966-521726dfda38"}},"timestamp":"2025-09-26 17:42:23.033"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.033"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.036"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.036"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.036"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.036"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.036"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.036"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.044"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.045"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.045"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.045"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"91060b20-f11b-40ca-9966-521726dfda38"}},"timestamp":"2025-09-26 17:42:23.046"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"91060b20-f11b-40ca-9966-521726dfda38"}},"timestamp":"2025-09-26 17:42:23.046"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.046"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.047"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.048"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.048"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.048"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.048"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.048"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.048"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.050"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.050"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":400,"url":"/"}},"timestamp":"2025-09-26 17:42:23.077"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.083"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.083"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.083"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.088"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.088"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.090"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.090"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.094"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.094"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.094"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.094"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.095"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"99ab4847-2035-4bf2-93a2-6ded4359a521"}},"timestamp":"2025-09-26 17:42:23.104"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.104"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.105"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.106"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.106"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.106"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.106"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.106"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.106"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.121"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.121"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":400,"url":"/"}},"timestamp":"2025-09-26 17:42:23.136"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.141"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.141"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.141"}
+(node:480924) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 uncaughtException listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:480924) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unhandledRejection listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.162"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.162"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.163"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.163"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.163"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.163"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.163"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.174"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.175"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"1ms","service":"aln-orchestrator","status":400,"url":"/"}},"timestamp":"2025-09-26 17:42:23.198"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.203"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.203"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.203"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.223"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.223"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.224"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.224"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.224"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.224"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.224"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.240"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.240"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"0ms","service":"aln-orchestrator","status":400,"url":"/"}},"timestamp":"2025-09-26 17:42:23.243"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.249"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.249"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.249"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.265"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.266"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.267"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.268"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.268"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.269"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.269"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.269"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.270"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.270"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.272"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.272"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.272"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.273"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"99ab4847-2035-4bf2-93a2-6ded4359a521"}},"timestamp":"2025-09-26 17:42:23.273"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"99ab4847-2035-4bf2-93a2-6ded4359a521"}},"timestamp":"2025-09-26 17:42:23.273"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.273"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.274"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.274"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.274"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.274"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.274"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.274"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.275"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.275"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.275"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.276"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.276"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.276"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.276"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.276"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.276"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.277"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.277"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.277"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.277"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.277"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.289"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.289"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"ae826615-417d-48ec-999a-061df4a22529"}},"timestamp":"2025-09-26 17:42:23.305"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.306"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"21ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.312"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.313"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.313"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.313"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.316"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.318"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.319"}
+{"level":"info","message":"Session restored from storage","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"ae826615-417d-48ec-999a-061df4a22529"}},"timestamp":"2025-09-26 17:42:23.320"}
+{"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.321"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.321"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.321"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.322"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.322"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.322"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.322"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.322"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.322"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.324"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.324"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.324"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.324"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.324"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"904e74bd-5a8c-4a11-918d-c13642c91ce2"}},"timestamp":"2025-09-26 17:42:23.334"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.334"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.337"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.337"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.344"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.345"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.345"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.345"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"904e74bd-5a8c-4a11-918d-c13642c91ce2"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"904e74bd-5a8c-4a11-918d-c13642c91ce2"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.346"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.347"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"First Session","service":"aln-orchestrator","sessionId":"fbfd6b78-7435-40b0-af02-cacab79b6b6e"}},"timestamp":"2025-09-26 17:42:23.369"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.369"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"32ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.386"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.392"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.393"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"fbfd6b78-7435-40b0-af02-cacab79b6b6e"}},"timestamp":"2025-09-26 17:42:23.394"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"fbfd6b78-7435-40b0-af02-cacab79b6b6e"}},"timestamp":"2025-09-26 17:42:23.394"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Second Session","service":"aln-orchestrator","sessionId":"7cbfc891-2d93-4f5b-848a-ac00fb0917d6"}},"timestamp":"2025-09-26 17:42:23.394"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"3ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.395"}
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.397"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.397"}
+{"level":"info","message":"Session restored from storage","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"7cbfc891-2d93-4f5b-848a-ac00fb0917d6"}},"timestamp":"2025-09-26 17:42:23.398"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.398"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.398"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.398"}
+{"level":"info","message":"Game state restored from storage","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.399"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.399"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.406"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.406"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.406"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.407"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.407"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.407"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.407"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.408"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.408"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.408"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.408"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.408"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"4086fbe0-a81b-4c82-bd7c-2c14b72dd737"}},"timestamp":"2025-09-26 17:42:23.417"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.417"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.418"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.418"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.428"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.449"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.449"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.449"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.450"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"4086fbe0-a81b-4c82-bd7c-2c14b72dd737"}},"timestamp":"2025-09-26 17:42:23.450"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"4086fbe0-a81b-4c82-bd7c-2c14b72dd737"}},"timestamp":"2025-09-26 17:42:23.450"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.450"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.451"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.451"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.451"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.451"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.451"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Metadata Test","service":"aln-orchestrator","sessionId":"df31cbe2-eec9-425e-9cf0-5c0c4fc0f788"}},"timestamp":"2025-09-26 17:42:23.452"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.453"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"21ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.459"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.460"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.460"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.460"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.467"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.469"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.470"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.470"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.470"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.470"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.470"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.482"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.482"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.490"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.491"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.495"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.495"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Unique Test 0","service":"aln-orchestrator","sessionId":"71ace334-77d9-40f7-b1ae-aab5faa3c337"}},"timestamp":"2025-09-26 17:42:23.497"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.497"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.498"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.499"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.499"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.499"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.499"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"20ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.504"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"6f1f27ea-0391-4b3f-8f69-bc74afc3b89d"}},"timestamp":"2025-09-26 17:42:23.508"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.509"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"71ace334-77d9-40f7-b1ae-aab5faa3c337"}},"timestamp":"2025-09-26 17:42:23.520"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"71ace334-77d9-40f7-b1ae-aab5faa3c337"}},"timestamp":"2025-09-26 17:42:23.520"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Unique Test 1","service":"aln-orchestrator","sessionId":"c3301efd-b3ef-4963-bb07-7b2f0a52b303"}},"timestamp":"2025-09-26 17:42:23.521"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.521"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.530"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.531"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.531"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.531"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"6f1f27ea-0391-4b3f-8f69-bc74afc3b89d"}},"timestamp":"2025-09-26 17:42:23.532"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"6f1f27ea-0391-4b3f-8f69-bc74afc3b89d"}},"timestamp":"2025-09-26 17:42:23.532"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.532"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.533"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.534"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.534"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.534"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.534"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.534"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.534"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"c3301efd-b3ef-4963-bb07-7b2f0a52b303"}},"timestamp":"2025-09-26 17:42:23.540"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"c3301efd-b3ef-4963-bb07-7b2f0a52b303"}},"timestamp":"2025-09-26 17:42:23.541"}
+{"level":"error","message":"Failed to save data","metadata":{"metadata":{"error":{"code":"ENOENT","errno":-2,"path":"/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57","syscall":"open"},"key":"session:0fadefac-4cee-4d26-909f-44e464bea111","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.541"}
+{"level":"error","message":"Failed to create session ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57'","metadata":{"metadata":{"code":"ENOENT","errno":-2,"path":"/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57","service":"aln-orchestrator","stack":"Error: ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57'","syscall":"open"}},"timestamp":"2025-09-26 17:42:23.541"}
+{"level":"error","message":"Create session endpoint error ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57'","metadata":{"metadata":{"code":"ENOENT","errno":-2,"path":"/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57","service":"aln-orchestrator","stack":"Error: ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/72ec3a2838652763a79ebe0834a34a57'","syscall":"open"}},"timestamp":"2025-09-26 17:42:23.541"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"2ms","service":"aln-orchestrator","status":500,"url":"/"}},"timestamp":"2025-09-26 17:42:23.541"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.542"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.543"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.543"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.549"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.549"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.550"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.550"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.550"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.550"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.550"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.563"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.563"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.575"}
+(node:480925) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 uncaughtException listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:480925) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unhandledRejection listeners added to [process]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.577"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Timestamp Test","service":"aln-orchestrator","sessionId":"61499794-9256-4b16-ba3f-9af4763761a3"}},"timestamp":"2025-09-26 17:42:23.577"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.578"}
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.578"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.581"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"19ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.584"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.584"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.585"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.592"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.593"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.593"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.593"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.593"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.593"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.593"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"98be5ea8-0eec-4908-8011-87ff81dc178b"}},"timestamp":"2025-09-26 17:42:23.594"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.594"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.605"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.606"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.606"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.606"}
+{"level":"error","message":"Failed to save data","metadata":{"metadata":{"error":{"code":"ENOENT","errno":-2,"path":"/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/67202ccc7361289f45c539d3b49d92d5","syscall":"open"},"key":"session:98be5ea8-0eec-4908-8011-87ff81dc178b","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.607"}
+{"level":"error","message":"Failed to end session ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/67202ccc7361289f45c539d3b49d92d5'","metadata":{"metadata":{"code":"ENOENT","errno":-2,"path":"/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/67202ccc7361289f45c539d3b49d92d5","service":"aln-orchestrator","stack":"Error: ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/67202ccc7361289f45c539d3b49d92d5'","syscall":"open"}},"timestamp":"2025-09-26 17:42:23.607"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.607"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.607"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.607"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.608"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Bearer Test","service":"aln-orchestrator","sessionId":"da93f9ea-1c7b-418b-a764-6ae6c7662140"}},"timestamp":"2025-09-26 17:42:23.625"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.626"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"19ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.634"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.635"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.635"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.635"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.642"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.642"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.642"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.643"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.643"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.643"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.643"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.646"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.647"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.648"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.648"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.651"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.654"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.654"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.654"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.654"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.654"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.654"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"35a5b504-25e2-4888-ab07-f6fef4efee15"}},"timestamp":"2025-09-26 17:42:23.661"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.661"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"0ms","service":"aln-orchestrator","status":401,"url":"/"}},"timestamp":"2025-09-26 17:42:23.672"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.677"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.677"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.677"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.682"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.683"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.683"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.683"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"35a5b504-25e2-4888-ab07-f6fef4efee15"}},"timestamp":"2025-09-26 17:42:23.684"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"35a5b504-25e2-4888-ab07-f6fef4efee15"}},"timestamp":"2025-09-26 17:42:23.684"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.684"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.685"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.686"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.686"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.686"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.686"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.686"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.686"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.696"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.699"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.699"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.699"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.699"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.699"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.699"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.709"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.710"}
+{"level":"warn","message":"Request failed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"0ms","service":"aln-orchestrator","status":401,"url":"/"}},"timestamp":"2025-09-26 17:42:23.712"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.717"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.717"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.717"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.722"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.723"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.727"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.728"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.730"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.731"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.731"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.731"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.731"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.741"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.741"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.741"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.742"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.742"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.742"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.742"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"74a40299-8f05-433c-a795-7fad0fb17f36"}},"timestamp":"2025-09-26 17:42:23.748"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.748"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.753"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.755"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.755"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.755"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"74a40299-8f05-433c-a795-7fad0fb17f36"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"74a40299-8f05-433c-a795-7fad0fb17f36"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.756"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.757"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.758"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.758"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.758"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.799"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.799"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.801"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.801"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.812"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.812"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.812"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.813"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.813"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Concurrent 2","service":"aln-orchestrator","sessionId":"7414d4a7-9ccb-48ca-8be4-54bee92aebb8"}},"timestamp":"2025-09-26 17:42:23.816"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.816"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"04ed98d1-b096-44b6-8b9e-3ed6648d93cf"}},"timestamp":"2025-09-26 17:42:23.822"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.822"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"1ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.833"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.833"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.833"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.833"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"04ed98d1-b096-44b6-8b9e-3ed6648d93cf"}},"timestamp":"2025-09-26 17:42:23.834"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"04ed98d1-b096-44b6-8b9e-3ed6648d93cf"}},"timestamp":"2025-09-26 17:42:23.834"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.834"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.834"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.834"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.835"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.835"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.835"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.835"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.835"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.835"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.836"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.836"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.836"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.836"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.836"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.836"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Concurrent 2","service":"aln-orchestrator","sessionId":"7414d4a7-9ccb-48ca-8be4-54bee92aebb8"}},"timestamp":"2025-09-26 17:42:23.848"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Concurrent 2","service":"aln-orchestrator","sessionId":"7414d4a7-9ccb-48ca-8be4-54bee92aebb8"}},"timestamp":"2025-09-26 17:42:23.848"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"35ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.849"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"33ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.849"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"47ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.849"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"7414d4a7-9ccb-48ca-8be4-54bee92aebb8"}},"timestamp":"2025-09-26 17:42:23.849"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"7414d4a7-9ccb-48ca-8be4-54bee92aebb8"}},"timestamp":"2025-09-26 17:42:23.849"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Concurrent 1","service":"aln-orchestrator","sessionId":"44bd668a-a97f-47a1-8d31-ff802b2bc03e"}},"timestamp":"2025-09-26 17:42:23.850"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"7414d4a7-9ccb-48ca-8be4-54bee92aebb8"}},"timestamp":"2025-09-26 17:42:23.851"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"44bd668a-a97f-47a1-8d31-ff802b2bc03e"}},"timestamp":"2025-09-26 17:42:23.851"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"38ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.851"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Concurrent 3","service":"aln-orchestrator","sessionId":"2c3679f5-d4fa-423a-b6d8-3473a961c8b7"}},"timestamp":"2025-09-26 17:42:23.851"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"37ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.852"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.854"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.855"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.855"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.855"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.861"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.862"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.862"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.862"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.862"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.862"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.862"}
+{"level":"info","message":"Initializing services...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.873"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.873"}
+  console.log
+    Loaded tokens from: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/tokens.json
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:54:15)
+
+  console.log
+    Transformed 9 tokens from submodule
+
+      at Object.log [as loadTokens] (src/services/tokenService.js:88:15)
+
+{"level":"info","message":"Transaction service initialized","metadata":{"metadata":{"service":"aln-orchestrator","tokenCount":9}},"timestamp":"2025-09-26 17:42:23.875"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.876"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.876"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.877"}
+{"level":"info","message":"All services initialized successfully","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.888"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Location Test","service":"aln-orchestrator","sessionId":"23781933-3418-4f69-add1-e83ff636c06c"}},"timestamp":"2025-09-26 17:42:23.889"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.889"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.889"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.889"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.889"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.889"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Test Session","service":"aln-orchestrator","sessionId":"4c3c5394-f105-41c3-ad4b-e7cfdd4d443e"}},"timestamp":"2025-09-26 17:42:23.892"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.892"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"18ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.897"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.898"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.898"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.898"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"GET","responseTime":"0ms","service":"aln-orchestrator","status":200,"url":"/"}},"timestamp":"2025-09-26 17:42:23.903"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.904"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"TransactionService(2), SessionService(2), VideoQueueService(10)","totalRemoved":14}},"timestamp":"2025-09-26 17:42:23.904"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.904"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Session backed up","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"4c3c5394-f105-41c3-ad4b-e7cfdd4d443e"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Session ended","metadata":{"metadata":{"service":"aln-orchestrator","sessionId":"4c3c5394-f105-41c3-ad4b-e7cfdd4d443e"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.905"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.906"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.907"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.907"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.907"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.907"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.907"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.918"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.918"}
+{"level":"info","message":"Session created","metadata":{"metadata":{"name":"Content Type Test","service":"aln-orchestrator","sessionId":"7e02b80e-ae0d-4633-918a-ead45df32a3a"}},"timestamp":"2025-09-26 17:42:23.933"}
+{"level":"info","message":"Initializing transaction listeners","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.933"}
+{"level":"info","message":"Request completed","metadata":{"metadata":{"ip":"::ffff:127.0.0.1","method":"POST","responseTime":"20ms","service":"aln-orchestrator","status":201,"url":"/"}},"timestamp":"2025-09-26 17:42:23.941"}
+{"level":"info","message":"Starting broadcast listener cleanup","metadata":{"metadata":{"activeCount":0,"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.942"}
+{"level":"info","message":"Listener registry cleanup completed","metadata":{"metadata":{"enabled":true,"service":"aln-orchestrator","services":"","totalRemoved":0}},"timestamp":"2025-09-26 17:42:23.942"}
+{"level":"info","message":"Broadcast listener cleanup completed","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.943"}
+{"level":"info","message":"Persistence service initialized","metadata":{"metadata":{"dataDir":"./data","service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.949"}
+{"level":"info","message":"Session service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.950"}
+{"level":"info","message":"Game state reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.950"}
+{"level":"info","message":"Transaction service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.950"}
+{"level":"info","message":"Video queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.950"}
+{"level":"info","message":"Offline queue service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.950"}
+{"level":"info","message":"VLC service reset","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2025-09-26 17:42:23.950"}
+FAIL tests/contract/session_get.test.js
+  GET /api/session
+    Valid Requests
+      ✓ should return current session details with all required fields (337 ms)
+      ✓ should include optional endTime when session is completed (178 ms)
+      ✓ should include metadata when available (78 ms)
+      ✓ should not require authentication (86 ms)
+    Performance
+      ✓ should respond within 100ms (75 ms)
+      ✓ should handle concurrent requests efficiently (228 ms)
+    Edge Cases
+      ✓ should handle request when no active session exists (70 ms)
+      ✓ should maintain session consistency across multiple requests (104 ms)
+    Response Structure
+      ✓ should have correct data types for all fields (83 ms)
+      ✕ should not include unnecessary fields (73 ms)
+      ✓ should handle different session states correctly (78 ms)
+    Content Negotiation
+      ✓ should return JSON by default (72 ms)
+      ✓ should handle Accept header (77 ms)
+    Caching
+      ✓ should not cache session responses (70 ms)
+
+  ● GET /api/session › Response Structure › should not include unnecessary fields
+
+    ENOENT: no such file or directory, open '/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/data/67202ccc7361289f45c539d3b49d92d5'
+
+
+
+FAIL tests/contract/session_post.test.js
+  POST /api/session
+    Valid Requests
+      ✓ should create new session with valid admin token (114 ms)
+      ✓ should accept minimum length name (1 character) (54 ms)
+      ✓ should accept maximum length name (100 characters) (64 ms)
+      ✓ should set default values for new session (65 ms)
+      ✓ should return proper HTTP status code 201 (58 ms)
+    Invalid Requests
+      ✓ should reject request without authentication (56 ms)
+      ✓ should reject request with invalid token (63 ms)
+      ✓ should reject request with missing name field (51 ms)
+      ✓ should reject empty name (71 ms)
+      ✓ should reject name exceeding maximum length (53 ms)
+      ✓ should reject null name (62 ms)
+      ✓ should reject non-string name (53 ms)
+      ✓ should reject request with extra fields (47 ms)
+    Business Logic
+      ✓ should complete existing session before creating new one (82 ms)
+      ✓ should initialize metadata for new session (64 ms)
+      ✕ should generate unique session IDs (80 ms)
+      ✓ should set startTime to current timestamp (42 ms)
+    Authorization
+      ✓ should accept valid Bearer token format (49 ms)
+      ✓ should reject invalid authorization header format (55 ms)
+      ✓ should reject expired token (48 ms)
+    Concurrent Requests
+      ✓ should handle concurrent session creation requests (117 ms)
+    Response Headers
+      ✓ should include Location header with new session URL (43 ms)
+      ✓ should return proper Content-Type (45 ms)
+
+  ● POST /api/session › Business Logic › should generate unique session IDs
+
+    expected 201 "Created", got 500 "Internal Server Error"
+
+      249 |           .set('Authorization', `Bearer ${adminToken}`)
+      250 |           .send({ name: `Unique Test ${i}` })
+    > 251 |           .expect(201);
+          |            ^
+      252 |         
+      253 |         sessions.push(response.body.id);
+      254 |       }
+
+      at Object.expect (tests/contract/session_post.test.js:251:12)
+      ----
+      at Test._assertStatus (node_modules/supertest/lib/test.js:252:14)
+      at node_modules/supertest/lib/test.js:308:13
+      at Test._assertFunction (node_modules/supertest/lib/test.js:285:13)
+      at Test.assert (node_modules/supertest/lib/test.js:164:23)
+      at Server.localAssert (node_modules/supertest/lib/test.js:120:14)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 2 failed, 2 total
+Tests:       2 failed, 35 passed, 37 total
+Snapshots:   0 total
+Time:        2.534 s, estimated 3 s
+Ran all test suites matching /tests\/contract\/session_post.test.js|tests\/contract\/session_get.test.js/i.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
