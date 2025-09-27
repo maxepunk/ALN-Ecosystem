@@ -2,10 +2,16 @@
 	path = aln-memory-scanner
 	url = file:///home/spide/projects/AboutLastNight/aln-memory-scanner
 	recurse = true
+	branch = main
+	update = merge
 [submodule "ALNScanner"]
 	path = ALNScanner
 	url = file:///home/spide/projects/AboutLastNight/ALNScanner
 	recurse = true
+	branch = main
+	update = merge
 [submodule "ALN-TokenData"]
 	path = ALN-TokenData
 	url = file:///home/spide/projects/AboutLastNight/ALN-TokenData
+	branch = main
+	update = merge
