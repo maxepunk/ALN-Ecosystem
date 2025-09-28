@@ -15,7 +15,23 @@ const logger = require('../utils/logger');
 function createSocketServer(httpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: config.server.corsOrigins,
+      origin: (origin, callback) => {
+        // Allow no-origin requests
+        if (!origin) return callback(null, true);
+
+        // Check configured origins
+        if (config.server.corsOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+
+        // Allow all local network ranges (RFC1918)
+        const localNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+        if (localNetwork.test(origin)) {
+          return callback(null, true);
+        }
+
+        callback(new Error('Not allowed by CORS'));
+      },
       credentials: true,
     },
     pingTimeout: config.websocket.pingTimeout,

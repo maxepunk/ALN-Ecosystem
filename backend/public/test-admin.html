@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><title>Admin Login Test</title></head>
+<body>
+<h1>Debug Admin Login</h1>
+<input type="password" id="pwd" placeholder="Password" value="test-admin-password">
+<button onclick="testLogin()">Test Login</button>
+<pre id="output"></pre>
+<script>
+async function testLogin() {
+  const output = document.getElementById('output');
+  const password = document.getElementById('pwd').value;
+
+  output.textContent = 'Testing login...\n';
+
+  try {
+    const response = await fetch('/api/admin/auth', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({password})
+    });
+
+    output.textContent += `Response status: ${response.status}\n`;
+    output.textContent += `Response ok: ${response.ok}\n`;
+
+    const text = await response.text();
+    output.textContent += `Raw response: ${text}\n`;
+
+    try {
+      const data = JSON.parse(text);
+      output.textContent += `Parsed data: ${JSON.stringify(data, null, 2)}\n`;
+      output.textContent += `Has token: ${!!data.token}\n`;
+      output.textContent += `Token length: ${data.token ? data.token.length : 0}\n`;
+    } catch (e) {
+      output.textContent += `Parse error: ${e.message}\n`;
+    }
+  } catch (error) {
+    output.textContent += `Fetch error: ${error}\n`;
+  }
+}
+</script>
+</body>
+</html>

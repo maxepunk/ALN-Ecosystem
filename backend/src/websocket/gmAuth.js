@@ -12,13 +12,44 @@ const stateService = require('../services/stateService');
 /**
  * Handle GM station identification
  * @param {Socket} socket - Socket.io socket instance
- * @param {Object} data - Identification data per contract (stationId, version)
+ * @param {Object} data - Identification data per contract (stationId, version, token)
  * @param {Server} io - Socket.io server instance
  */
 async function handleGmIdentify(socket, data, io) {
   try {
-    // Validate against contract schema
-    const identifyData = validate(data, gmIdentifySchema);
+    // Extract token from data (not part of schema validation)
+    const { token, ...identifyDataToValidate } = data;
+
+    // Require authentication token
+    if (!token) {
+      socket.emit('error', {
+        code: 'AUTH_REQUIRED',
+        message: 'Authentication token required for GM station'
+      });
+      socket.disconnect(true);
+      return;
+    }
+
+    // Validate token
+    const { verifyToken } = require('../middleware/auth');
+    const decoded = verifyToken(token);
+
+    if (!decoded || decoded.role !== 'admin') {
+      socket.emit('error', {
+        code: 'AUTH_INVALID',
+        message: 'Invalid or expired authentication token'
+      });
+      socket.disconnect(true);
+      return;
+    }
+
+    // Store authenticated status
+    socket.isAuthenticated = true;
+    socket.authRole = decoded.role;
+    socket.authUserId = decoded.id;
+
+    // Validate against contract schema (without token)
+    const identifyData = validate(identifyDataToValidate, gmIdentifySchema);
 
     // Transform contract data to DeviceConnection format
     const deviceData = {

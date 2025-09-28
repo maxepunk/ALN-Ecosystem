@@ -27,7 +27,6 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const adminPanelRoutes = require('./routes/adminPanelRoutes');
 const docsRoutes = require('./routes/docsRoutes');
 const tokenRoutes = require('./routes/tokenRoutes');
 
@@ -42,14 +41,26 @@ app.use(helmet({
 // CORS configuration
 app.use(cors({
   origin: (origin, callback) => {
-    // In test mode, allow any localhost origin (for dynamic port allocation)
-    if (process.env.NODE_ENV === 'test' && (!origin || origin?.includes('localhost') || origin?.includes('127.0.0.1'))) {
-      callback(null, true);
-    } else if (!origin || config.server.corsOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow no-origin requests (mobile apps, curl, file://)
+    if (!origin) return callback(null, true);
+
+    // Check configured origins first
+    if (config.server.corsOrigins.includes(origin)) {
+      return callback(null, true);
     }
+
+    // Test mode - allow any localhost origin (for dynamic port allocation)
+    if (process.env.NODE_ENV === 'test' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return callback(null, true);
+    }
+
+    // Allow all local network ranges (RFC1918)
+    const localNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+    if (localNetwork.test(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -92,7 +103,7 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   const health = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -113,7 +124,6 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/state', stateRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/video', videoRoutes);
-app.use('/api/admin', adminPanelRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/', tokenRoutes); // Token routes have /api/tokens internally
 
@@ -133,7 +143,7 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err, req, res, next) => {
+app.use((err, _req, res, _next) => {
   logger.error('Unhandled error', err);
 
   res.status(err.status || 500).json({

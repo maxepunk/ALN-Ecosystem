@@ -103,7 +103,7 @@ class TransactionService extends EventEmitter {
       // GM scanners don't care about video playback - that's player scanner territory
       // Accept the transaction
       transaction.accept(token.value);
-      
+
       // Update team score
       this.updateTeamScore(transaction.teamId, token);
 
@@ -120,11 +120,8 @@ class TransactionService extends EventEmitter {
         points: transaction.points,
       });
 
-      // If token has video, queue it
-      if (token.hasVideo()) {
-        const videoQueueService = require('./videoQueueService');
-        videoQueueService.addToQueue(token, transaction.scannerId);
-      }
+      // Video queueing is handled by player scanner route (/api/scan)
+      // GM scanners (WebSocket transactions) should NOT trigger video playback
 
       return this.createScanResponse(transaction, token);
     } catch (error) {

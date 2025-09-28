@@ -8,7 +8,7 @@ const Joi = require('joi');
 // Custom validators
 const isoDate = Joi.string().isoDate();
 const uuid = Joi.string().uuid({ version: 'uuidv4' });
-const teamId = Joi.string().pattern(/^TEAM_[A-Z]$/);
+const teamId = Joi.string().min(1).max(100);  // Accept any string for team ID
 
 // Token validation schema
 const tokenSchema = Joi.object({

@@ -386,7 +386,12 @@ class SessionService extends EventEmitter {
    */
   canAcceptGmStation() {
     if (!this.currentSession) {
-      return false;
+      // If no session exists, create one to accept the GM station
+      this.createSession({
+        name: `Session_${Date.now()}`,
+        maxPlayers: config.session.maxPlayers,
+        maxGmStations: config.session.maxGmStations
+      });
     }
     return this.currentSession.canAcceptGmStation(config.session.maxGmStations);
   }

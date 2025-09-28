@@ -21,14 +21,47 @@ class AdminPanel {
 
   setupEventListeners() {
     // Login form
-    document.getElementById('loginForm')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.login();
-    });
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+      loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.login();
+      });
+    }
+
+    // Fallback for button click
+    const loginButton = document.getElementById('loginButton');
+    if (loginButton) {
+      loginButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.login();
+      });
+    }
 
     // Logout button
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
       this.logout();
+    });
+
+    // Network Settings button
+    document.getElementById('networkSettingsBtn')?.addEventListener('click', () => {
+      this.showNetworkSettings();
+    });
+
+    // Network Settings form
+    document.getElementById('networkSettingsForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.saveNetworkSettings();
+    });
+
+    // Cancel Network Settings button
+    document.getElementById('cancelNetworkSettingsBtn')?.addEventListener('click', () => {
+      document.getElementById('networkSettingsModal').classList.remove('active');
+    });
+
+    // Discover Orchestrators button
+    document.getElementById('discoverOrchestratorsBtn')?.addEventListener('click', () => {
+      this.discoverOrchestrators();
     });
 
     // Session controls
@@ -121,6 +154,8 @@ class AdminPanel {
     const password = document.getElementById('adminPassword').value;
     const errorDiv = document.getElementById('loginError');
 
+    console.log('Login attempt with password:', password ? '***' : 'empty');
+
     try {
       const response = await fetch('/api/admin/auth', {
         method: 'POST',
@@ -130,9 +165,12 @@ class AdminPanel {
         body: JSON.stringify({ password }),
       });
 
+      console.log('Response status:', response.status, 'ok:', response.ok);
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (response.ok && data.token) {
+        console.log('Login successful, token received');
         this.token = data.token;
         localStorage.setItem('adminToken', this.token);
         errorDiv.textContent = '';
@@ -140,6 +178,7 @@ class AdminPanel {
         this.connectWebSocket();
         this.loadCurrentState();
       } else {
+        console.log('Login failed:', data.message);
         errorDiv.textContent = data.message || 'Login failed';
       }
     } catch (error) {
@@ -157,6 +196,113 @@ class AdminPanel {
     this.showLogin();
   }
 
+  showNetworkSettings() {
+    const modal = document.getElementById('networkSettingsModal');
+    const urlInput = document.getElementById('orchestratorUrl');
+
+    // Load current setting
+    const savedUrl = localStorage.getItem('admin_orchestrator_url') || '';
+    urlInput.value = savedUrl;
+
+    modal.classList.add('active');
+  }
+
+  saveNetworkSettings() {
+    const urlInput = document.getElementById('orchestratorUrl');
+    const url = urlInput.value.trim();
+
+    // Save the URL (empty string means same-origin)
+    localStorage.setItem('admin_orchestrator_url', url);
+
+    // Hide modal
+    document.getElementById('networkSettingsModal').classList.remove('active');
+
+    // Reconnect with new settings
+    this.connectWebSocket();
+    this.loadCurrentState();
+
+    // Show confirmation
+    this.logActivity('Network settings updated');
+  }
+
+  async discoverOrchestrators() {
+    const btn = document.getElementById('discoverOrchestratorsBtn');
+    const resultsDiv = document.getElementById('discoveredOrchestrators');
+
+    btn.disabled = true;
+    btn.textContent = 'Scanning...';
+    resultsDiv.innerHTML = '<small>Looking for orchestrators on the network...</small>';
+
+    try {
+      // Detect current subnet
+      const currentHost = window.location.hostname;
+      let subnet = '192.168.1'; // Default fallback
+
+      if (currentHost && currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+        const parts = currentHost.split('.');
+        if (parts.length >= 3) {
+          subnet = parts.slice(0, 3).join('.');
+        }
+      }
+
+      const commonPorts = [3000];
+      const promises = [];
+
+      // Scan subnet (limited range for speed)
+      for (let i = 1; i <= 254; i += 10) { // Sample every 10th IP for speed
+        for (const port of commonPorts) {
+          const url = `http://${subnet}.${i}:${port}`;
+          promises.push(
+            fetch(`${url}/api/state/status`, {
+              method: 'GET',
+              mode: 'cors',
+              signal: AbortSignal.timeout(300)
+            })
+            .then(response => response.ok ? url : null)
+            .catch(() => null)
+          );
+        }
+      }
+
+      // Try localhost and current origin
+      promises.push(
+        fetch('http://localhost:3000/api/state/status', { signal: AbortSignal.timeout(1000) })
+          .then(response => response.ok ? 'http://localhost:3000' : null)
+          .catch(() => null)
+      );
+
+      if (window.location.port === '3000') {
+        promises.push(Promise.resolve(window.location.origin));
+      }
+
+      const results = await Promise.all(promises);
+      const foundServers = [...new Set(results.filter(url => url !== null))];
+
+      if (foundServers.length > 0) {
+        resultsDiv.innerHTML = '<small>Found orchestrators:</small>';
+        foundServers.forEach(url => {
+          const btn = document.createElement('button');
+          btn.textContent = url;
+          btn.style.display = 'block';
+          btn.style.marginTop = '5px';
+          btn.style.width = '100%';
+          btn.onclick = () => {
+            document.getElementById('orchestratorUrl').value = url;
+            resultsDiv.innerHTML = '';
+          };
+          resultsDiv.appendChild(btn);
+        });
+      } else {
+        resultsDiv.innerHTML = '<small>No orchestrators found. Enter URL manually.</small>';
+      }
+    } catch (error) {
+      resultsDiv.innerHTML = '<small>Discovery failed. Enter URL manually.</small>';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Discover Orchestrators';
+    }
+  }
+
   showLogin() {
     document.getElementById('loginScreen').classList.add('active');
     document.getElementById('adminDashboard').classList.remove('active');
@@ -172,7 +318,10 @@ class AdminPanel {
       this.socket.disconnect();
     }
 
-    this.socket = io({
+    // Allow configurable orchestrator URL
+    const orchestratorUrl = localStorage.getItem('admin_orchestrator_url') || '';
+
+    this.socket = io(orchestratorUrl, {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -184,15 +333,11 @@ class AdminPanel {
       this.isConnected = true;
       this.updateConnectionStatus('Connected');
 
-      // Identify as admin
-      this.socket.emit('admin:identify', {
-        token: this.token,
-      });
-
-      // Also identify as GM for compatibility
+      // Identify as GM with authentication token
       this.socket.emit('gm:identify', {
         stationId: 'ADMIN_PANEL',
         version: '1.0.0',
+        token: this.token  // Include authentication token
       });
     });
 
@@ -264,6 +409,12 @@ class AdminPanel {
           this.currentSession = data.session || data;
           this.updateSessionInfo(this.currentSession);
         }
+      } else if (sessionResponse.status === 404) {
+        // No active session - this is OK
+        console.log('No active session found');
+        // Initialize empty state
+        this.currentSession = null;
+        this.updateSessionInfo({ id: '-', name: '-', status: 'none' });
       }
 
       // Load current state
