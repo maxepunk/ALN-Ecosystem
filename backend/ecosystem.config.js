@@ -83,11 +83,12 @@ module.exports = {
       },
     },
 
-    // VLC HTTP Interface Process (with video output)
+    // VLC HTTP Interface Process (with video output, clean kiosk mode)
     {
       name: 'vlc-http',
-      script: '/usr/bin/vlc',
-      args: '--intf qt --extraintf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 --fullscreen --video-on-top',
+      script: '/usr/bin/cvlc',
+      // Static args - idle loop now managed by orchestrator
+      args: '--intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd',
       interpreter: 'none', // Not a Node.js process
       exec_mode: 'fork',
 

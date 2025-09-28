@@ -2,6 +2,12 @@
 # Start VLC with GUI and HTTP interface for ALN Orchestrator
 # This configuration matches the PM2 ecosystem.config.js exactly
 
+# Load environment variables if .env exists
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/../.env" ]; then
+    export $(grep -v '^#' "$SCRIPT_DIR/../.env" | xargs)
+fi
+
 # Check if VLC is already running with HTTP interface
 if pgrep -f "vlc.*http.*8080" > /dev/null; then
     echo "⚠️  VLC is already running with HTTP interface"
@@ -15,21 +21,16 @@ if [ -z "$DISPLAY" ]; then
     echo "ℹ️  Setting DISPLAY=:0 for GUI output"
 fi
 
-echo "🎬 Starting VLC with video output and HTTP interface..."
-echo "   Video: Fullscreen on top"
-echo "   Control: http://localhost:8080 (password: vlc)"
+# Prepare VLC command arguments for clean kiosk mode
+VLC_ARGS="--intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd"
 
-# Start VLC with exact same config as PM2 ecosystem.config.js
-vlc \
-    --intf qt \
-    --extraintf http \
-    --http-password vlc \
-    --http-host 0.0.0.0 \
-    --http-port 8080 \
-    --fullscreen \
-    --video-on-top \
-    --no-video-title-show \
-    2>/dev/null &
+echo "🎬 Starting VLC with clean interface..."
+echo "   Video: Fullscreen kiosk mode (no GUI controls)"
+echo "   Control: http://localhost:8080 (password: vlc)"
+echo "   Idle Loop: Managed by orchestrator"
+
+# Start cvlc for clean interface
+cvlc $VLC_ARGS 2>/dev/null &
 
 VLC_PID=$!
 

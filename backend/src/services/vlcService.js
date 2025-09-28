@@ -52,6 +52,60 @@ class VlcService extends EventEmitter {
   }
 
   /**
+   * Initialize idle loop video
+   * @returns {Promise<void>}
+   */
+  async initializeIdleLoop() {
+    // Check if idle loop is enabled
+    if (process.env.FEATURE_IDLE_LOOP === 'false') {
+      logger.info('Idle loop disabled by configuration');
+      return;
+    }
+
+    const path = require('path');
+    const fs = require('fs');
+
+    // Check if idle loop video exists
+    const idleVideoPath = path.join(__dirname, '../../public/videos/idle-loop.mp4');
+    if (!fs.existsSync(idleVideoPath)) {
+      logger.warn('Idle loop video not found', { path: idleVideoPath });
+      return;
+    }
+
+    try {
+      // Wait a bit for VLC to be fully ready
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Play the idle loop video with loop enabled
+      await this.playVideo('idle-loop.mp4');
+      await this.setLoop(true);
+      logger.info('Idle loop video initialized');
+    } catch (error) {
+      logger.warn('Failed to initialize idle loop', { error });
+    }
+  }
+
+  /**
+   * Return to idle loop
+   * @returns {Promise<void>}
+   */
+  async returnToIdleLoop() {
+    if (process.env.FEATURE_IDLE_LOOP === 'false') {
+      return;
+    }
+
+    try {
+      // Play idle loop video
+      await this.playVideo('idle-loop.mp4');
+      // Then enable loop mode for continuous playback
+      await this.setLoop(true);
+      logger.info('Returned to idle loop');
+    } catch (error) {
+      logger.warn('Failed to return to idle loop', { error });
+    }
+  }
+
+  /**
    * Check VLC connection
    * @returns {Promise<boolean>}
    */
@@ -109,11 +163,19 @@ class VlcService extends EventEmitter {
         logger.debug('Converted filename to absolute path', { original: videoPath, converted: vlcPath });
       }
 
-      // Clear playlist and add new video
+      // Use in_play to immediately replace current video
+      // This avoids the stopped state that happens with clear/enqueue/play
       await this.client.get('/requests/status.json', {
         params: {
           command: 'in_play',
           input: vlcPath, // VLC HTTP interface handles encoding internally
+        },
+      });
+
+      // Ensure playback starts (in_play might load but not play)
+      await this.client.get('/requests/status.json', {
+        params: {
+          command: 'pl_play',
         },
       });
 
@@ -394,6 +456,28 @@ class VlcService extends EventEmitter {
     } catch (error) {
       logger.error('Failed to seek - simulated', { position, error });
       // Graceful degradation - don't throw
+    }
+  }
+
+  /**
+   * Set playlist loop mode
+   * @param {boolean} enabled - Enable or disable loop
+   * @returns {Promise<void>}
+   */
+  async setLoop(enabled) {
+    if (!this.connected) {
+      logger.warn('VLC not connected - loop setting simulated');
+      return;
+    }
+
+    try {
+      const command = enabled ? 'pl_loop' : 'pl_repeat';
+      await this.client.get('/requests/status.json', {
+        params: { command },
+      });
+      logger.info(`Playlist loop ${enabled ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      logger.error('Failed to set loop mode', error);
     }
   }
 

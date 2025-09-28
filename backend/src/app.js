@@ -194,6 +194,8 @@ async function initializeServices() {
 
       try {
         await vlcService.init();
+        // Initialize idle loop after VLC is connected
+        await vlcService.initializeIdleLoop();
       } catch (error) {
         logger.warn('VLC service initialization failed - continuing without video playback', error);
         // Don't throw - allow system to run without VLC

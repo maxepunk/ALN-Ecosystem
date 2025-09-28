@@ -1,167 +1,229 @@
-# ALN-Ecosystem Development Guidelines
+# CLAUDE.md
 
-Auto-generated from all feature plans. Last updated: 2025-09-24
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Active Technologies
-- Node.js 20+ or 22+ (backend orchestrator) + Express.js (HTTP API), Socket.io (WebSocket), axios (VLC control), node-persist (session storage)
-- JavaScript ES2020+ (scanner integrations)
-- JSON files (session persistence), localStorage (scanner state)
+## Project Overview
 
-## Key Agent Prompting Principles
+The ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for tabletop gaming. It consists of:
+- **Backend Orchestrator**: Node.js server managing video playback, sessions, and state
+- **Scanner Apps**: Web-based token scanners (Player and GM) with WebSocket/HTTP integration
+- **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
+- **Submodule Architecture**: Shared token data across components via Git submodules
 
-  1. Complete Context - Agents can't see what I see
-  2. Exact Specifications - No ambiguity, no references to external docs
-  3. Self-Contained Instructions - Everything needed in ONE prompt
-  4. Verification Steps - Clear success criteria
-  5. Error Handling - What to do if things go wrong
-
-## Project Structure
-```
-ALN-Ecosystem/                  # Parent repository (this repo)
-├── aln-memory-scanner/         # [SUBMODULE] Player scanner PWA
-│   ├── data/                   # [NESTED SUBMODULE → ALN-TokenData]
-│   ├── js/
-│   │   └── orchestratorIntegration.js  # NEW: Orchestrator client
-│   └── config.html             # NEW: Network setup page
-├── ALNScanner/                 # [SUBMODULE] GM scanner web app
-│   ├── data/                   # [NESTED SUBMODULE → ALN-TokenData]
-│   └── js/
-│       └── orchestratorWebSocket.js    # NEW: WebSocket client
-├── ALN-TokenData/              # [SUBMODULE] Direct access for backend
-├── backend/                    # [DIRECT FOLDER] Orchestrator server
-│   ├── src/
-│   │   ├── app.js             # Express application setup
-│   │   ├── server.js          # Server entry point with WebSocket
-│   │   ├── config/            # Configuration management
-│   │   │   └── config.js      # CRITICAL: Must load from ALN-TokenData
-│   │   ├── models/            # Data models
-│   │   ├── services/          # Business logic services
-│   │   │   ├── discoveryService.js     # NEW: Network flexibility
-│   │   │   ├── sessionService.js
-│   │   │   ├── stateService.js
-│   │   │   ├── transactionService.js
-│   │   │   ├── videoQueueService.js
-│   │   │   ├── vlcService.js
-│   │   │   └── syncService.js
-│   │   ├── routes/            # HTTP API routes
-│   │   ├── websocket/         # WebSocket handlers
-│   │   └── utils/             # Utility functions
-│   ├── public/
-│   │   └── admin/             # Admin interface
-│   ├── storage/               # Persistent data storage
-│   ├── logs/                  # Application logs
-│   ├── videos/                # Video files
-│   └── package.json
-├── hardware/                   # [FUTURE - Not in current scope]
-│   └── esp32/                 # ESP32 scanner implementation
-├── shared/                     # [DIRECT FOLDER] Shared utilities
-├── scripts/                    # Setup and deployment scripts
-└── specs/                      # System specifications
-```
-
-## Commands
-
-### Git Submodule Management
-```bash
-# Initial setup with submodules
-git clone --recurse-submodules https://github.com/[user]/ALN-Ecosystem.git
-
-# Update all submodules to latest
-git submodule update --init --recursive
-git submodule update --remote --merge
-
-# Configure scanner submodules (one-time)
-git config --file=.gitmodules submodule.aln-memory-scanner.recurse true
-git config --file=.gitmodules submodule.ALNScanner.recurse true
-```
-
-### Backend (ALN Orchestrator)
-```bash
-# Development
-cd backend
-npm install              # Install dependencies
-npm run dev              # Start in development mode with hot reload
-npm start                # Start production server
-
-# Testing
-npm test                 # Run all tests
-npm test:contract        # Run contract tests only
-npm test:integration     # Run integration tests only
-npm test:unit           # Run unit tests only
-npm run test:watch      # Run tests in watch mode
-
-# Code Quality
-npm run lint            # Run ESLint
-npm run lint:fix        # Auto-fix linting issues
-npm run format          # Format code with Prettier
-
-# Storage Management
-npm run storage:clear   # Clear all persistent storage
-npm run storage:backup  # Backup session data
-```
-
-### Scanner Testing (Local)
-```bash
-# Player Scanner
-cd aln-memory-scanner
-python3 -m http.server 8000
-# Access at http://localhost:8000
-# Config at http://localhost:8000/config.html
-
-# GM Scanner
-cd ALNScanner
-python3 -m http.server 8001
-# Access at http://localhost:8001
-```
-
-
-### System Requirements
-- Node.js 20+ or 22+ with ES6 modules support
-- VLC Media Player (optional, system degrades gracefully without it)
-- 100MB RAM minimum for Raspberry Pi deployment
-- Port 3000 for HTTP/WebSocket server
-- Git with submodule support
-
-## Code Style
-
-### Node.js 20+ or 22+ (backend orchestrator)
-- ES6 modules with named exports
-- Async/await for all asynchronous operations
-- Singleton pattern for services
-- Event-driven architecture with EventEmitter
-- JSDoc comments for all public methods
-- Error codes: Use specific error codes (AUTH_REQUIRED, PERMISSION_DENIED, etc.)
-- Response format: `{ status: 'success'|'error', data?, error? }`
-
-### JavaScript (scanner integrations)
-- Progressive enhancement pattern - works without orchestrator
-- localStorage for configuration persistence
-- Offline queue with automatic retry
-- Connection status indicators required
-- WebSocket for GM stations, HTTP for player scanners
-
-
-## Integration Requirements
-
-### CRITICAL: Token Loading
-- Backend MUST load tokens from ALN-TokenData submodule
-- NO hardcoded tokens in backend/src/config/config.js
-- Use filesystem loading with fallback paths
-
-### Network Flexibility
-- System MUST work on any network without router configuration
-- Dynamic IP support with DHCP
-- Multiple discovery methods (mDNS, UDP broadcast, manual config)
-- Configuration page required for all scanners
+## Critical Architecture Decisions
 
 ### Submodule Structure
-- Scanner repos remain independent with GitHub Pages deployment
-- ALN-TokenData nested in scanner data/ folders
-- Backend reads directly from ALN-TokenData/tokens.json
-- Recursive submodule updates required
+The project uses Git submodules for code and data sharing:
+```
+ALN-Ecosystem/                     # Parent repository
+├── aln-memory-scanner/            # [SUBMODULE] Player scanner PWA
+│   └── data/                      # [NESTED SUBMODULE → ALN-TokenData]
+├── ALNScanner/                    # [SUBMODULE] GM scanner web app
+│   └── data/                      # [NESTED SUBMODULE → ALN-TokenData]
+├── ALN-TokenData/                 # [SUBMODULE] Token definitions (backend direct access)
+└── backend/                       # [DIRECT FOLDER] Orchestrator server
+```
 
-## Recent Changes
-- 001-aln-video-playback: Complete integration phase - submodule configuration, network flexibility, scanner clients, admin interface
+### Token Data Loading
+- Backend MUST load tokens from `ALN-TokenData/tokens.json` submodule
+- NO hardcoded tokens in backend configuration
+- Token paths differ by media type:
+  - Videos: `"video": "filename.mp4"` → Played from `backend/public/videos/`
+  - Images/Audio: `"image": "assets/images/file.jpg"` → Scanner local files
 
-<!-- MANUAL ADDITIONS START -->
-<!-- MANUAL ADDITIONS END -->
+### Network Flexibility
+- System works on ANY network without router configuration
+- Uses UDP discovery broadcast (port 8888) for auto-detection
+- Supports manual configuration fallback
+- Scanners work independently via GitHub Pages when orchestrator unavailable
+
+## Key Commands
+
+### Development
+```bash
+cd backend
+npm run dev                # Interactive development mode selector
+npm run dev:full          # VLC + orchestrator with hot reload
+npm run dev:no-video      # Orchestrator only (no VLC)
+npm test                  # Run all tests
+npm run lint              # Run ESLint
+```
+
+### Production
+```bash
+cd backend
+npm start                 # Start with PM2 (VLC + orchestrator)
+npm run prod:status       # Check PM2 processes
+npm run prod:logs         # View logs
+npm run prod:restart      # Restart all services
+```
+
+### Testing
+```bash
+npm test                  # All tests
+npm test:contract         # Contract tests only
+npm test:integration      # Integration tests
+npm run test:watch        # Watch mode
+```
+
+### Submodule Management
+```bash
+git submodule update --init --recursive    # Initialize all submodules
+git submodule update --remote --merge      # Update to latest
+npm run sync:quick                          # Quick sync and commit
+```
+
+### Health Checks
+```bash
+npm run health            # Full system health check
+npm run health:api        # Check orchestrator API
+npm run health:vlc        # Check VLC status
+```
+
+## Core Services Architecture
+
+### Service Singleton Pattern
+All services in `backend/src/services/` use singleton pattern with getInstance():
+- **sessionService**: Active session management
+- **stateService**: Global state coordination
+- **videoQueueService**: Video playback queue
+- **vlcService**: VLC control interface
+- **transactionService**: Token scan transactions
+- **discoveryService**: UDP broadcast for auto-discovery
+- **offlineQueueService**: Offline scan queue management
+
+### WebSocket Event Flow
+1. Scanner connects → `gm:identify` with auth token
+2. Orchestrator validates → Sends `state:sync` broadcast
+3. Scanner submits scan → `transaction:submit` event
+4. Orchestrator processes → Updates state, queues video
+5. Broadcasts updates → All connected clients sync
+
+### API Response Format
+```javascript
+{
+  status: 'success' | 'error',
+  data?: any,
+  error?: string,
+  code?: 'AUTH_REQUIRED' | 'PERMISSION_DENIED' | 'VALIDATION_ERROR'
+}
+```
+
+## Testing Approach
+
+### Test Structure
+- `tests/contract/` - API contract validation
+- `tests/integration/` - End-to-end flows
+- `tests/unit/` - Service logic
+
+### Running Specific Tests
+```bash
+jest tests/integration/offline_mode.test.js --runInBand
+jest --testPathPattern=vlc
+```
+
+## Environment Configuration
+
+### Required Variables
+```env
+NODE_ENV=development|production
+PORT=3000
+VLC_PASSWORD=vlc              # Must match VLC --http-password
+FEATURE_VIDEO_PLAYBACK=true
+```
+
+### Critical Settings
+- `VLC_PASSWORD` must be exactly `vlc`, not `vlc-password`
+- `HOST=0.0.0.0` for network access
+- `DISCOVERY_PORT=8888` for UDP broadcast
+
+## Common Development Tasks
+
+### Adding a New Token
+1. Edit `ALN-TokenData/tokens.json`
+2. Video: Add file to `backend/public/videos/`, use filename only
+3. Images: Add to `ALN-TokenData/assets/images/`, use `assets/images/` path
+4. Commit ALN-TokenData changes
+5. Update parent repo submodule reference
+
+### Testing Video Playback
+```bash
+# Start system
+cd backend && npm run dev:full
+
+# Trigger test scan
+curl -X POST http://localhost:3000/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"tokenId": "534e2b03", "teamId": "TEAM_A", "scannerId": "test"}'
+```
+
+### Debugging WebSocket Issues
+1. Check browser console for connection errors
+2. Verify `socket.io` version compatibility (4.6.x)
+3. Check `pm2 logs aln-orchestrator` for server errors
+4. Ensure CORS origins include scanner URL
+
+## Important Patterns
+
+### Error Handling
+- All async operations use try/catch
+- Services return `{ success: boolean, data/error }`
+- WebSocket events emit error responses
+- Graceful degradation when VLC unavailable
+
+### State Management
+- Single source of truth in stateService
+- All updates go through service methods
+- State persisted to disk via node-persist
+- Broadcasts sync all connected clients
+
+### File Path Resolution
+```javascript
+// Token data always from submodule
+path.join(__dirname, '../ALN-TokenData/tokens.json')
+
+// Videos from public folder
+path.join(__dirname, '../public/videos', videoFilename)
+
+// Persistent storage
+path.join(__dirname, '../data')
+```
+
+## Deployment Notes
+
+### PM2 Ecosystem
+The `ecosystem.config.js` manages both processes:
+- `aln-orchestrator`: Node.js server
+- `vlc-http`: VLC with HTTP interface
+
+### Raspberry Pi Specifics
+- Memory limit: 256MB max
+- Use `NODE_OPTIONS=--max-old-space-size=256`
+- Ensure HDMI output configured in `/boot/config.txt`
+- VLC needs GUI access (`--intf qt`)
+
+### Network Access URLs
+- Orchestrator: `http://[IP]:3000`
+- Admin Panel: `http://[IP]:3000/admin/`
+- Player Scanner: `http://[IP]:3000/player-scanner/`
+- GM Scanner: `http://[IP]:3000/gm-scanner/`
+- VLC Control: `http://[IP]:8080` (password: vlc)
+
+## Troubleshooting Quick Reference
+
+| Issue | Solution |
+|-------|----------|
+| VLC not connecting | Check `VLC_PASSWORD=vlc` in .env |
+| Video not playing | Verify file exists in `backend/public/videos/` |
+| Scanner can't connect | Check firewall, use IP not localhost |
+| Token not found | Update ALN-TokenData submodule |
+| Port in use | `lsof -i :3000` and kill process |
+
+## Code Style Guidelines
+
+- ES6 modules with async/await
+- Singleton services with getInstance()
+- JSDoc comments for public methods
+- Error codes for API responses
+- Event-driven architecture with EventEmitter
+- No console.log, use winston logger

@@ -73,6 +73,14 @@ class VideoQueueService extends EventEmitter {
     const nextItem = this.queue.find(item => item.isPending());
     if (!nextItem) {
       this.currentItem = null;
+
+      // Return to idle loop if enabled
+      const vlcService = require('./vlcService');
+      const config = require('../config');
+      if (config.features.videoPlayback) {
+        await vlcService.returnToIdleLoop();
+      }
+
       this.emit('video:idle'); // Emit idle when queue is empty
       return; // Nothing to play
     }
@@ -136,9 +144,44 @@ class VideoQueueService extends EventEmitter {
         // Actually play the video through VLC
         const vlcResponse = await vlcService.playVideo(videoPath);
 
-        // Get duration from VLC status
-        const status = await vlcService.getStatus();
-        const duration = status.length > 0 ? status.length / 1000 : this.getVideoDuration(queueItem.tokenId);
+        // Wait for VLC to switch to the new video and load metadata
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Get duration from VLC status with retry
+        let duration = 0;
+        let retries = 5;
+        while (retries > 0) {
+          const status = await vlcService.getStatus();
+          // VLC returns length in seconds (not milliseconds!)
+          // Only trust duration if it's reasonable (> 1 second)
+          if (status.length > 1) {
+            duration = status.length; // Already in seconds, no division needed!
+            logger.debug('Got video duration from VLC', {
+              tokenId: queueItem.tokenId,
+              duration,
+              filename: status.information?.category?.meta?.filename
+            });
+            break;
+          }
+          retries--;
+          if (retries > 0) {
+            logger.debug('Waiting for VLC to load video metadata', {
+              attempt: 6 - retries,
+              currentLength: status.length
+            });
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+
+        // Fallback to default if still no reasonable duration
+        if (duration <= 1) {
+          duration = this.getVideoDuration(queueItem.tokenId);
+          logger.warn('Could not get valid duration from VLC, using default', {
+            tokenId: queueItem.tokenId,
+            defaultDuration: duration
+          });
+        }
+
         const expectedEndTime = queueItem.calculateExpectedEndTime(duration);
 
         // Emit play event with real VLC data
@@ -156,8 +199,11 @@ class VideoQueueService extends EventEmitter {
           vlcConnected: vlcService.connected,
         });
 
-        // Monitor VLC status for completion
-        this.monitorVlcPlayback(queueItem, duration);
+        // Give VLC a moment to transition before monitoring (especially from idle loop)
+        setTimeout(() => {
+          // Monitor VLC status for completion
+          this.monitorVlcPlayback(queueItem, duration);
+        }, 1500); // 1.5 second delay before monitoring starts
 
       } else {
         // Only in test mode without VLC - use timer simulation
@@ -207,18 +253,38 @@ class VideoQueueService extends EventEmitter {
       this.progressTimer = null;
     }
 
+    // Grace period tracking for video transitions
+    let graceCounter = 0;
+    const maxGracePeriod = 3; // Allow up to 3 checks (3 seconds) of non-playing state
+
     const checkStatus = async () => {
       try {
         const status = await vlcService.getStatus();
 
         // Check if still playing
         if (status.state !== 'playing' && status.state !== 'paused') {
-          // Video stopped or ended
-          clearInterval(this.progressTimer);
-          this.progressTimer = null;
-          this.completePlayback(queueItem);
+          // Video might be transitioning, use grace period
+          graceCounter++;
+
+          if (graceCounter >= maxGracePeriod) {
+            // Video has been stopped for too long, consider it complete
+            clearInterval(this.progressTimer);
+            this.progressTimer = null;
+            this.completePlayback(queueItem);
+            return;
+          }
+
+          // Still in grace period, wait for next check
+          logger.debug('Video in transition state', {
+            state: status.state,
+            graceCounter,
+            maxGracePeriod
+          });
           return;
         }
+
+        // Video is playing/paused, reset grace counter
+        graceCounter = 0;
 
         // Emit progress updates
         if (status.position !== undefined && status.length > 0) {
@@ -518,8 +584,9 @@ class VideoQueueService extends EventEmitter {
    */
   getVideoDuration(tokenId) {
     // This would normally query token data or VLC
-    // For now, return a default duration
-    return 30; // 30 seconds default
+    // For now, return a safe default duration
+    // Using 60 seconds to ensure videos don't get cut off
+    return 60; // 60 seconds default (safer for longer videos)
   }
 
   /**
