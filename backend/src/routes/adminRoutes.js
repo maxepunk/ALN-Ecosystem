@@ -68,8 +68,24 @@ router.post('/reset-scores', requireAdmin, async (req, res) => {
     const sessionService = require('../services/sessionService');
     const session = sessionService.getCurrentSession();
     if (session) {
-      session.scores = [];
-      await sessionService.updateSession({ scores: [] });
+      // Reset each team's score to 0, not remove them
+      const resetScores = session.scores.map(score => ({
+        ...score,
+        currentScore: 0,
+        tokensScanned: 0,
+        bonusPoints: 0,
+        completedGroups: [],
+        lastUpdate: new Date().toISOString(),
+        lastTokenTime: null
+      }));
+
+      session.scores = resetScores;
+      // Clear transaction history too when resetting scores
+      session.transactions = [];
+      await sessionService.updateSession({
+        scores: resetScores,
+        transactions: []
+      });
     }
 
     logger.info('Scores reset by admin', { admin: req.admin?.id });

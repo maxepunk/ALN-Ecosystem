@@ -150,7 +150,7 @@ const scanRequestSchema = Joi.object({
 
 const sessionCreateSchema = Joi.object({
   name: Joi.string().required().min(1).max(100),
-  teams: Joi.array().items(teamId).min(1).max(10).optional(),
+  teams: Joi.array().items(teamId).min(0).max(10).optional(),  // Allow empty array
 });
 
 const sessionUpdateSchema = Joi.object({

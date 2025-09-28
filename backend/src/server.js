@@ -22,6 +22,7 @@ const sessionService = require('./services/sessionService');
 const stateService = require('./services/stateService');
 const videoQueueService = require('./services/videoQueueService');
 const offlineQueueService = require('./services/offlineQueueService');
+const transactionService = require('./services/transactionService');
 
 // Server instances (created when needed)
 let server = null;
@@ -32,10 +33,38 @@ let isInitialized = false;
 
 // Setup WebSocket handlers (called when server is created)
 function setupWebSocketHandlers(ioInstance) {
-  ioInstance.on('connection', (socket) => {
+  ioInstance.on('connection', async (socket) => {
   logger.info('WebSocket connection established', { socketId: socket.id });
-  
-  // Device identification
+
+  // Check for auth in handshake (Phase 1 fix: prevent undefined device)
+  const { token, stationId, deviceType, version } = socket.handshake.auth || {};
+
+  if (token && stationId && deviceType === 'gm') {
+    // Pre-authenticate from handshake to prevent "undefined device"
+    try {
+      const { verifyToken } = require('./middleware/auth');
+      const decoded = verifyToken(token);
+
+      if (decoded && decoded.role === 'admin') {
+        // Store auth info immediately
+        socket.isAuthenticated = true;
+        socket.authRole = decoded.role;
+        socket.authUserId = decoded.id;
+        socket.deviceId = stationId;
+        socket.deviceType = deviceType;
+        socket.version = version;
+
+        logger.info('GM station pre-authenticated from handshake', {
+          deviceId: stationId,
+          socketId: socket.id
+        });
+      }
+    } catch (error) {
+      logger.warn('Handshake auth failed', { error: error.message, socketId: socket.id });
+    }
+  }
+
+  // Device identification (still needed for backward compatibility)
   socket.on('gm:identify', async (data) => {
     await handleGmIdentify(socket, data, io);
   });
@@ -79,21 +108,12 @@ function setupServiceListeners(ioInstance) {
     stateService,
     videoQueueService,
     offlineQueueService,
+    transactionService,
   });
 
-  // Connect transaction events to state updates
-  // This ensures state:update events are triggered when transactions are added
-  sessionService.on('transaction:added', async (transaction) => {
-  const session = sessionService.getCurrentSession();
-  if (session) {
-    // Update game state with new transaction data
-    // This triggers state:updated event which broadcasts state:update
-    await stateService.updateState({
-      scores: JSON.parse(JSON.stringify(session.scores || [])), // Deep copy to ensure delta detection
-      recentTransactions: session.getRecentTransactions(10),
-      });
-    }
-  });
+  // Note: transaction:added is already handled by stateService.js which properly
+  // manages recentTransactions updates. We don't need a duplicate listener here.
+  // Scores are updated via transactionService's score:updated event.
 }
 
 // Setup periodic device health monitoring

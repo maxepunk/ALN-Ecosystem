@@ -2,3 +2,4 @@
 # Log files
 backend/logs/*.log
 docs/ARCHIVEbackend/public/videos/*.mp4
+backend/public/videos/*.mp4

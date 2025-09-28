@@ -151,3 +151,27 @@
 2025-09-27 17:30:10 -07:00: Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 2025-09-27 17:30:10 -07:00: Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 2025-09-27 17:30:10 -07:00: [00007fabf079b880] gl gl: Initialized libplacebo v4.192.1 (API v192)
+2025-09-27 20:12:48 -07:00: [00005c4476944380] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-27 20:12:48 -07:00: [00005c4476944380] main interface error: no suitable interface module
+2025-09-27 20:12:48 -07:00: [00005c44768aa260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-27 20:12:48 -07:00: [00005c4476944380] [http] lua interface: Lua HTTP interface
+2025-09-27 20:12:48 -07:00: QStandardPaths: wrong permissions on runtime directory /run/user/1000/, 0755 instead of 0700
+2025-09-27 20:12:48 -07:00: [00005c4476940940] main playlist: playlist is empty
+2025-09-27 20:50:23 -07:00: [0000566952d8f380] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-27 20:50:23 -07:00: [0000566952d8f380] main interface error: no suitable interface module
+2025-09-27 20:50:23 -07:00: [0000566952cf5260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-27 20:50:23 -07:00: [0000566952d8f380] [http] lua interface: Lua HTTP interface
+2025-09-27 20:50:23 -07:00: QStandardPaths: wrong permissions on runtime directory /run/user/1000/, 0755 instead of 0700
+2025-09-27 20:50:23 -07:00: [0000566952d8b940] main playlist: playlist is empty
+2025-09-27 20:58:37 -07:00: [000056daff7b7380] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-27 20:58:37 -07:00: [000056daff7b7380] main interface error: no suitable interface module
+2025-09-27 20:58:37 -07:00: [000056daff71d260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-27 20:58:37 -07:00: [000056daff7b7380] [http] lua interface: Lua HTTP interface
+2025-09-27 20:58:37 -07:00: QStandardPaths: wrong permissions on runtime directory /run/user/1000/, 0755 instead of 0700
+2025-09-27 20:58:37 -07:00: [000056daff7b3940] main playlist: playlist is empty
+2025-09-27 22:26:00 -07:00: [00007c196422fe60] dbus_screensaver inhibit error: cannot connect to session bus: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-27 22:26:00 -07:00: [00007c195c004f10] gl gl: Initialized libplacebo v4.192.1 (API v192)
+2025-09-27 22:26:00 -07:00: [00007c195cdd08e0] gl gl: Initialized libplacebo v4.192.1 (API v192)
+2025-09-27 22:26:00 -07:00: Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+2025-09-27 22:26:00 -07:00: Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
+2025-09-27 22:26:00 -07:00: [00007c195c60beb0] gl gl: Initialized libplacebo v4.192.1 (API v192)

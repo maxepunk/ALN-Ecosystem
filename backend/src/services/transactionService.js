@@ -29,7 +29,22 @@ class TransactionService extends EventEmitter {
       this.tokens.set(token.id, new Token(token));
     });
 
-    logger.info('Transaction service initialized', { tokenCount: this.tokens.size });
+    // NEW: Rebuild scores from session if exists
+    // This prevents score reset on server restart
+    const sessionService = require('./sessionService');
+    const session = sessionService.getCurrentSession();
+    if (session && session.transactions && session.transactions.length > 0) {
+      this.rebuildScoresFromTransactions(session.transactions);
+      logger.info('Restored team scores from session', {
+        teams: this.teamScores.size,
+        transactions: session.transactions.length
+      });
+    }
+
+    logger.info('Transaction service initialized', {
+      tokenCount: this.tokens.size,
+      teamCount: this.teamScores.size // Now includes restored teams
+    });
   }
 
   /**
@@ -103,6 +118,12 @@ class TransactionService extends EventEmitter {
       // GM scanners don't care about video playback - that's player scanner territory
       // Accept the transaction
       transaction.accept(token.value);
+
+      // Add transaction to session for duplicate detection
+      if (!session.transactions) {
+        session.transactions = [];
+      }
+      session.transactions.push(transaction);
 
       // Update team score
       this.updateTeamScore(transaction.teamId, token);
@@ -182,10 +203,18 @@ class TransactionService extends EventEmitter {
    */
   updateTeamScore(teamId, token) {
     let teamScore = this.teamScores.get(teamId);
-    
+
     if (!teamScore) {
       teamScore = TeamScore.createInitial(teamId);
       this.teamScores.set(teamId, teamScore);
+
+      // Also add to session if it doesn't have this team yet
+      const sessionService = require('./sessionService');
+      const session = sessionService.getCurrentSession();
+      if (session && !session.scores.find(s => s.teamId === teamId)) {
+        session.scores.push(teamScore.toJSON());
+        sessionService.emit('team:created', { teamId });
+      }
     }
 
     teamScore.addPoints(token.value);
@@ -194,22 +223,51 @@ class TransactionService extends EventEmitter {
     // Check for group completion bonus
     if (token.isGrouped()) {
       const wasCompleted = teamScore.hasCompletedGroup(token.groupId);
+
       if (!wasCompleted && this.isGroupComplete(teamId, token.groupId)) {
         teamScore.completeGroup(token.groupId);
-        const bonus = this.calculateGroupBonus(token.groupId);
-        teamScore.addBonus(bonus);
-        
-        logger.info('Group completed', {
-          teamId,
-          groupId: token.groupId,
-          bonus,
-        });
-        
-        this.emit('group:completed', { teamId, groupId: token.groupId, bonus });
+
+        // Calculate total bonus for the entire group
+        const multiplier = this.calculateGroupBonus(token.groupId);
+        if (multiplier > 1) {
+          // Get all tokens in this group
+          const groupTokens = Array.from(this.tokens.values())
+            .filter(t => t.groupId === token.groupId);
+
+          // Calculate total bonus: (multiplier - 1) × sum of all token values
+          let totalGroupBonus = 0;
+          for (const groupToken of groupTokens) {
+            // Bonus formula: (multiplier - 1) × tokenValue
+            totalGroupBonus += groupToken.value * (multiplier - 1);
+          }
+
+          teamScore.addBonus(totalGroupBonus);
+
+          logger.info('Group completed', {
+            teamId,
+            groupId: token.groupId,
+            multiplier,
+            totalBonus: totalGroupBonus,
+          });
+
+          this.emit('group:completed', {
+            teamId,
+            groupId: token.groupId,
+            bonus: totalGroupBonus,
+            multiplier
+          });
+        }
       }
     }
 
     this.emit('score:updated', teamScore);
+
+  // DEBUG: Verify event emission
+  console.log('[DEBUG] transactionService emitted score:updated:', {
+    teamId: teamScore.teamId,
+    score: teamScore.currentScore,
+    bonus: teamScore.bonusPoints || 0
+  });
   }
 
   /**
@@ -220,33 +278,60 @@ class TransactionService extends EventEmitter {
    * @private
    */
   isGroupComplete(teamId, groupId) {
-    // This would check if all tokens in group have been scanned by team
-    // For now, simplified implementation
+    if (!groupId) return false;
+
+    // Get all tokens that belong to this group
     const groupTokens = Array.from(this.tokens.values())
       .filter(t => t.groupId === groupId);
-    
-    // Would need to check session transactions
-    // Simplified: assume complete after threshold
-    const teamScore = this.teamScores.get(teamId);
-    return teamScore && teamScore.tokensScanned >= config.game.bonusThreshold;
+
+    // Groups need at least 2 tokens to be completable
+    if (groupTokens.length <= 1) return false;
+
+    // Get current session to check transactions
+    const sessionService = require('./sessionService');
+    const session = sessionService.getCurrentSession();
+    if (!session || !session.transactions) return false;
+
+    // Get all token IDs this team has successfully scanned (using Set for performance)
+    const teamScannedTokenIds = new Set(
+      session.transactions
+        .filter(tx =>
+          tx.teamId === teamId &&
+          tx.status === 'accepted'
+        )
+        .map(tx => tx.tokenId)
+    );
+
+    // Check if team has scanned ALL tokens in the group
+    const allScanned = groupTokens.every(token =>
+      teamScannedTokenIds.has(token.id)
+    );
+
+    return allScanned;
   }
 
   /**
    * Calculate group completion bonus
    * @param {string} groupId - Group ID
-   * @returns {number} Bonus points
+   * @returns {number} Group multiplier value
    * @private
    */
   calculateGroupBonus(groupId) {
-    const groupTokens = Array.from(this.tokens.values())
-      .filter(t => t.groupId === groupId);
+    if (!groupId) return 0;
 
-    // Get group multiplier from first token in group (they should all have same multiplier)
-    const groupMultiplier = groupTokens[0]?.groupMultiplier || 1;
+    // Find any token in this group to get the multiplier
+    const groupToken = Array.from(this.tokens.values())
+      .find(t => t.groupId === groupId);
 
-    // Calculate total value of group tokens and apply group multiplier
-    const totalValue = groupTokens.reduce((sum, t) => sum + t.value, 0);
-    return Math.floor(totalValue * (groupMultiplier - 1)); // Subtract 1 since base value already counted
+    if (!groupToken) return 0;
+
+    const multiplier = groupToken.getGroupMultiplier();
+
+    // Only groups with multiplier > 1 give bonuses
+    if (multiplier <= 1) return 0;
+
+    // Return the multiplier for use in score calculation
+    return multiplier;
   }
 
   /**
@@ -408,6 +493,84 @@ class TransactionService extends EventEmitter {
     // and should persist across resets
 
     logger.info('Transaction service reset');
+  }
+
+  /**
+   * Rebuild team scores from transaction history
+   * Used on service initialization to restore state after restart
+   * @param {Array} transactions - Historical transactions from session
+   * @private
+   */
+  rebuildScoresFromTransactions(transactions) {
+    this.teamScores.clear();
+
+    // Group accepted transactions by team
+    const teamGroups = {};
+    transactions
+      .filter(tx => tx.status === 'accepted')
+      .forEach(tx => {
+        if (!teamGroups[tx.teamId]) {
+          teamGroups[tx.teamId] = [];
+        }
+        teamGroups[tx.teamId].push(tx);
+      });
+
+    // Rebuild each team's score
+    Object.entries(teamGroups).forEach(([teamId, txs]) => {
+      const teamScore = TeamScore.createInitial(teamId);
+
+      // Add up all points from transactions
+      txs.forEach(tx => {
+        teamScore.addPoints(tx.points || 0);
+        teamScore.incrementTokensScanned();
+        teamScore.lastTokenTime = tx.timestamp;
+      });
+
+      // Check for completed groups
+      // Group tokens by groupId to detect completions
+      const tokenGroups = {};
+      txs.forEach(tx => {
+        const token = this.tokens.get(tx.tokenId);
+        if (token && token.groupId) {
+          if (!tokenGroups[token.groupId]) {
+            tokenGroups[token.groupId] = new Set();
+          }
+          tokenGroups[token.groupId].add(tx.tokenId);
+        }
+      });
+
+      // Check each group for completion
+      Object.entries(tokenGroups).forEach(([groupId, scannedTokens]) => {
+        // Get all tokens in this group
+        const groupTokens = Array.from(this.tokens.values())
+          .filter(t => t.groupId === groupId);
+
+        // If all tokens in group were scanned, mark as complete
+        if (groupTokens.length > 1 &&
+            groupTokens.every(token => scannedTokens.has(token.id))) {
+          teamScore.completedGroups.push(groupId);
+
+          // Calculate and add bonus
+          const multiplier = groupTokens[0].getGroupMultiplier();
+          if (multiplier > 1) {
+            let groupBonus = 0;
+            groupTokens.forEach(token => {
+              groupBonus += token.value * (multiplier - 1);
+            });
+            teamScore.addBonus(groupBonus);
+          }
+        }
+      });
+
+      this.teamScores.set(teamId, teamScore);
+      logger.info('Rebuilt team score from history', {
+        teamId,
+        score: teamScore.currentScore,
+        bonus: teamScore.bonusPoints,
+        transactions: txs.length,
+        completedGroups: teamScore.completedGroups
+      });
+    });
   }
 }
 

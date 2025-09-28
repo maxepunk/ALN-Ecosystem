@@ -334,7 +334,7 @@ git config --global user.email "aln@local"
 
 # Clone ALN-Ecosystem with submodules
 cd ~
-git clone --recurse-submodules https://github.com/[username]/ALN-Ecosystem.git
+git clone --recurse-submodules https://github.com/maxepunk/ALN-Ecosystem.git
 cd ALN-Ecosystem
 ```
 

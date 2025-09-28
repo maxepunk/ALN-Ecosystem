@@ -13,6 +13,8 @@ class Token {
   constructor(data = {}) {
     this.validate(data);
     Object.assign(this, data);
+    // Ensure groupMultiplier defaults to 1 if not provided
+    this.groupMultiplier = data.groupMultiplier || 1;
   }
 
   /**
@@ -64,6 +66,14 @@ class Token {
   }
 
   /**
+   * Get group multiplier
+   * @returns {number}
+   */
+  getGroupMultiplier() {
+    return this.groupMultiplier || 1;
+  }
+
+  /**
    * Convert to JSON representation
    * @returns {Object}
    */
@@ -74,6 +84,7 @@ class Token {
       value: this.value,
       memoryType: this.memoryType,
       groupId: this.groupId || null,
+      groupMultiplier: this.groupMultiplier || 1,
       mediaAssets: {
         image: this.mediaAssets?.image || null,
         audio: this.mediaAssets?.audio || null,

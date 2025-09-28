@@ -13,29 +13,37 @@ const sessionService = require('../services/sessionService');
  */
 async function handleDisconnect(socket, io) {
   try {
+    // Check if this was an identified device
     if (socket.deviceId) {
+      // Identified device - full handling
       const session = sessionService.getCurrentSession();
       if (session) {
         const device = session.connectedDevices.find(d => d.id === socket.deviceId);
         if (device) {
           device.connectionStatus = 'disconnected';
           await sessionService.updateDevice(device);
-          
-          // Broadcast disconnection to other clients (contract-compliant format)
+
+          // Broadcast disconnection to other clients
+          // Fixed: Send flat structure that admin panel expects
           io.emit('device:disconnected', {
-            event: 'device:disconnected',
-            data: {
-              deviceId: socket.deviceId,
-              reason: 'manual'
-            },
+            deviceId: socket.deviceId,
+            reason: 'manual',
             timestamp: new Date().toISOString(),
           });
         }
       }
-      
+
+      // Full logging for identified devices
       logger.logSocketEvent('disconnect', socket.id, {
         deviceId: socket.deviceId,
         deviceType: socket.deviceType,
+      });
+    } else {
+      // Pre-auth disconnect - minimal debug logging only
+      // This happens when socket connects but disconnects before gm:identify
+      logger.debug('Pre-auth socket disconnected', {
+        socketId: socket.id
+        // No deviceId to log - this is expected behavior
       });
     }
   } catch (error) {
@@ -108,13 +116,11 @@ async function monitorDeviceHealth(io, staleThresholdMs = 60000) {
     device.connectionStatus = 'disconnected';
     await sessionService.updateDevice(device);
     
-    // Broadcast disconnection (contract-compliant format)
+    // Broadcast disconnection
+    // Fixed: Send flat structure that admin panel expects
     io.emit('device:disconnected', {
-      event: 'device:disconnected',
-      data: {
-        deviceId: device.id,
-        reason: 'timeout'
-      },
+      deviceId: device.id,
+      reason: 'timeout',
       timestamp: new Date().toISOString(),
     });
     

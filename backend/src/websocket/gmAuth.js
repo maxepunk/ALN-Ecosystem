@@ -17,39 +17,56 @@ const stateService = require('../services/stateService');
  */
 async function handleGmIdentify(socket, data, io) {
   try {
-    // Extract token from data (not part of schema validation)
-    const { token, ...identifyDataToValidate } = data;
+    let identifyData;
 
-    // Require authentication token
-    if (!token) {
-      socket.emit('error', {
-        code: 'AUTH_REQUIRED',
-        message: 'Authentication token required for GM station'
+    // Check if already authenticated from handshake (Phase 1 fix)
+    if (socket.isAuthenticated && socket.deviceId) {
+      logger.info('GM already authenticated from handshake', {
+        deviceId: socket.deviceId,
+        socketId: socket.id
       });
-      socket.disconnect(true);
-      return;
+
+      // Use data from handshake
+      identifyData = {
+        stationId: socket.deviceId,
+        version: socket.version || data.version || '1.0.0'
+      };
+    } else {
+      // Original auth flow for backward compatibility
+      // Extract token from data (not part of schema validation)
+      const { token, ...identifyDataToValidate } = data;
+
+      // Require authentication token
+      if (!token) {
+        socket.emit('error', {
+          code: 'AUTH_REQUIRED',
+          message: 'Authentication token required for GM station'
+        });
+        socket.disconnect(true);
+        return;
+      }
+
+      // Validate token
+      const { verifyToken } = require('../middleware/auth');
+      const decoded = verifyToken(token);
+
+      if (!decoded || decoded.role !== 'admin') {
+        socket.emit('error', {
+          code: 'AUTH_INVALID',
+          message: 'Invalid or expired authentication token'
+        });
+        socket.disconnect(true);
+        return;
+      }
+
+      // Store authenticated status
+      socket.isAuthenticated = true;
+      socket.authRole = decoded.role;
+      socket.authUserId = decoded.id;
+
+      // Validate against contract schema (without token)
+      identifyData = validate(identifyDataToValidate, gmIdentifySchema);
     }
-
-    // Validate token
-    const { verifyToken } = require('../middleware/auth');
-    const decoded = verifyToken(token);
-
-    if (!decoded || decoded.role !== 'admin') {
-      socket.emit('error', {
-        code: 'AUTH_INVALID',
-        message: 'Invalid or expired authentication token'
-      });
-      socket.disconnect(true);
-      return;
-    }
-
-    // Store authenticated status
-    socket.isAuthenticated = true;
-    socket.authRole = decoded.role;
-    socket.authUserId = decoded.id;
-
-    // Validate against contract schema (without token)
-    const identifyData = validate(identifyDataToValidate, gmIdentifySchema);
 
     // Transform contract data to DeviceConnection format
     const deviceData = {
@@ -115,15 +132,13 @@ async function handleGmIdentify(socket, data, io) {
       state: state?.toJSON(),
     });
     
-    // Broadcast device connection to OTHER clients only (contract-compliant format)
+    // Broadcast device connection to OTHER clients only
+    // Fixed: Send flat structure that admin panel expects
     socket.broadcast.emit('device:connected', {
-      event: 'device:connected',
-      data: {
-        deviceId: device.id,
-        type: device.type,
-        name: device.name,
-        ipAddress: socket.handshake.address,
-      },
+      deviceId: device.id,
+      type: device.type,
+      name: device.name,
+      ipAddress: socket.handshake.address,
       timestamp: new Date().toISOString()
     });
     

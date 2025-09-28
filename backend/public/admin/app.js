@@ -641,8 +641,7 @@ class AdminPanel {
 
   async createSession() {
     const name = document.getElementById('newSessionName').value;
-    const checkboxes = document.querySelectorAll('#createSessionForm input[type="checkbox"]:checked');
-    const teams = Array.from(checkboxes).map(cb => cb.value);
+    // No teams - they will be created dynamically as needed
 
     try {
       const response = await fetch('/api/session', {
@@ -651,7 +650,7 @@ class AdminPanel {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.token}`,
         },
-        body: JSON.stringify({ name, teams }),
+        body: JSON.stringify({ name }),  // Only send name, no teams
       });
 
       if (response.ok) {

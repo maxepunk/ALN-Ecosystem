@@ -39,7 +39,7 @@ function addTrackedListener(service, event, handler) {
  * @param {Object} services - Service instances
  */
 function setupBroadcastListeners(io, services) {
-  const { sessionService, stateService, videoQueueService, offlineQueueService } = services;
+  const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService } = services;
 
   // Session events
   addTrackedListener(sessionService, 'session:created', (session) => {
@@ -126,6 +126,61 @@ function setupBroadcastListeners(io, services) {
       hasQueue: !!fullState.queue 
     });
   });
+
+  // Transaction/Score events - broadcast to GM stations only
+  if (transactionService) {
+    addTrackedListener(transactionService, 'score:updated', (teamScore) => {
+      const scoreUpdate = {
+        event: 'score:updated',
+        data: {
+          teamId: teamScore.teamId,
+          currentScore: teamScore.currentScore,
+          baseScore: teamScore.currentScore - (teamScore.bonusPoints || 0),
+          bonusPoints: teamScore.bonusPoints || 0,
+          tokensScanned: teamScore.tokensScanned,
+          completedGroups: teamScore.completedGroups || [],
+          lastUpdate: teamScore.lastUpdate
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      io.to('gm-stations').emit('score:updated', scoreUpdate);
+      logger.info('Broadcasted score:updated to GM stations', {
+        teamId: teamScore.teamId,
+        score: teamScore.currentScore,
+        bonus: teamScore.bonusPoints || 0
+      });
+    });
+
+    addTrackedListener(transactionService, 'group:completed', (data) => {
+      const groupCompletion = {
+        event: 'group:completed',
+        data: {
+          teamId: data.teamId,
+          groupId: data.groupId,
+          bonus: data.bonus,
+          multiplier: data.multiplier
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      io.to('gm-stations').emit('group:completed', groupCompletion);
+      logger.info('Broadcasted group:completed to GM stations', data);
+    });
+
+    addTrackedListener(transactionService, 'team:created', (data) => {
+      const teamCreation = {
+        event: 'team:created',
+        data: {
+          teamId: data.teamId
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      io.to('gm-stations').emit('team:created', teamCreation);
+      logger.info('Broadcasted team:created to GM stations', { teamId: data.teamId });
+    });
+  }
 
   // Video events (contract-compliant)
   addTrackedListener(videoQueueService, 'video:loading', (data) => {

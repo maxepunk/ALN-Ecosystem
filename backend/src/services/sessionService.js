@@ -127,6 +127,14 @@ class SessionService extends EventEmitter {
         this.updateSessionStatus(updates.status);
       }
 
+      if (updates.scores !== undefined) {
+        this.currentSession.scores = updates.scores;
+      }
+
+      if (updates.transactions !== undefined) {
+        this.currentSession.transactions = updates.transactions;
+      }
+
       // Save to persistence
       await persistenceService.saveSession(this.currentSession.toJSON());
 
@@ -278,11 +286,14 @@ class SessionService extends EventEmitter {
 
   /**
    * Initialize team scores
-   * @param {Array<string>} teams - Team IDs
+   * @param {Array<string>} teams - Team IDs (can be empty)
    * @returns {Array} Team scores
    * @private
    */
-  initializeTeamScores(teams = ['TEAM_A', 'TEAM_B']) {
+  initializeTeamScores(teams = []) {
+    if (!teams || teams.length === 0) {
+      return [];  // Return empty array if no teams provided
+    }
     const TeamScore = require('../models/teamScore');
     return teams.map(teamId => TeamScore.createInitial(teamId).toJSON());
   }

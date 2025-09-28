@@ -355,7 +355,10 @@ If issues arise:
 - Consider adding a grace period with warnings before enforcing
 - Document password configuration in deployment guide
 
-Phase 1 Report: Fix Route Conflicts & Consolidate
+
+# Implementation Reports
+
+## Phase 1 Report: Fix Route Conflicts & Consolidate
 
   Actions Taken:
 
@@ -389,3 +392,110 @@ Phase 1 Report: Fix Route Conflicts & Consolidate
     - What: Restarted server and tested routes
     - Details: Both /api/admin/sessions and /api/admin/devices return AUTH_REQUIRED as expected
     - Why: Confirms routes are accessible and auth is working
+
+## Phase 2 Report: Secure WebSocket Authentication
+
+  Actions Taken:
+
+  1. Modified GM Identify Handler (gmAuth.js)
+    - What: Added mandatory token validation to handleGmIdentify function
+    - Details:
+        - Extracts token from incoming data before schema validation
+      - Validates token using verifyToken from auth middleware
+      - Checks that decoded token has role 'admin'
+      - Stores authentication status on socket (isAuthenticated, authRole, authUserId)
+      - Disconnects socket immediately if no token or invalid token
+    - Why: This was a CRITICAL security vulnerability - anyone could claim to be a GM without any
+  authentication
+    - How it influences next steps: Now both admin panel and GM scanner must provide valid tokens to connect
+  2. Preserved Schema Validation
+    - What: Token is extracted before schema validation, schema remains unchanged
+    - Details: Using destructuring { token, ...identifyDataToValidate }
+    - Why: Keeps token validation separate from business logic validation
+    - How it influences next steps: Schema doesn't need modification, keeping contract clean
+  3. Added Security Properties to Socket
+    - What: Socket now stores authentication state
+    - Details: socket.isAuthenticated, socket.authRole, socket.authUserId
+    - Why: Allows other handlers to check if socket is authenticated
+    - How it influences next steps: Can be used for authorization in other WebSocket events
+
+## Phase 3 Report: Update Admin Panel
+
+  Actions Taken:
+
+  1. Unified WebSocket Authentication (app.js:331-342)
+    - What: Removed dual identity pattern, now uses only gm:identify with token
+    - Details:
+        - Deleted admin:identify emission (which had no handler)
+      - Modified gm:identify to include authentication token
+      - Admin panel now identifies as stationId: 'ADMIN_PANEL' with version and token
+    - Why: Eliminated confusion of two authentication paths; admin is just a GM with full UI
+    - How it influences next steps: Admin panel now uses same auth flow as GM scanner will
+  2. Fixed Dashboard Display Issue (app.js:412-417)
+    - What: Added proper 404 handling in loadCurrentState()
+    - Details:
+        - Checks for 404 status when fetching /api/session
+      - Sets default empty values for session display
+      - Prevents error from blocking dashboard rendering
+    - Why: Dashboard wasn't showing because unhandled 404 error interrupted the flow
+    - How it influences next steps: Dashboard will display even when no session exists
+
+  Impact on System:
+
+  - ✅ Admin panel now uses unified authentication path
+  - ✅ No more missing WebSocket handler errors
+  - ✅ Dashboard displays properly even without active session
+  - ✅ Clean single authentication flow
+
+  Authentication Flow After Changes:
+
+  1. Admin enters password → receives JWT token
+  2. Token stored in localStorage
+  3. WebSocket connects and sends gm:identify WITH token
+  4. Server validates token in handleGmIdentify
+  5. Admin granted access as authenticated GM station
+
+## Phase 4 Report: Update GM Scanner with Authentication
+
+  Actions Taken:
+
+  1. Added Authentication to OrchestratorClient (index.html:3292-3351)
+    - What: Added token storage and authentication method to GM scanner
+    - Details:
+        - Stores token in localStorage as gmToken
+      - Added authenticateWithOrchestrator() method that prompts for password
+      - Uses same /api/admin/auth endpoint as admin panel
+      - Returns false if authentication fails, allowing offline operation
+    - Why: GM scanner needs authentication to connect to orchestrator
+    - How it influences next steps: Scanner can now authenticate but still work offline
+  2. Modified Connect Method (index.html:3356-3372)
+    - What: Made connect() async and added authentication check
+    - Details:
+        - Checks if token exists before attempting connection
+      - Only prompts for authentication if connecting to actual server (not offline)
+      - Aborts connection if authentication fails
+      - Emits 'offline' status if authentication cancelled
+    - Why: Ensures authentication happens before WebSocket connection
+    - How it influences next steps: Preserves offline functionality
+  3. Updated Identification with Token (index.html:3508-3534)
+    - What: Modified startIdentification() to include token
+    - Details:
+        - Adds token to gm:identify event data
+      - Validates token exists before sending
+      - Disconnects if no token available
+    - Why: Server now requires token for GM identification
+    - How it influences next steps: Completes unified authentication
+
+  Critical Design Decision: Preserving Offline Functionality
+
+  - Scanner operates without authentication when offline
+  - Only requires authentication when connecting to orchestrator
+  - Falls back to offline mode if authentication fails
+  - NFC scanning continues to work regardless of connection status
+
+  Impact on System:
+
+  - ✅ GM scanner now requires authentication for orchestrator connection
+  - ✅ Offline functionality fully preserved
+  - ✅ Same authentication flow as admin panel
+  - ✅ Token persisted in localStorage for convenience
