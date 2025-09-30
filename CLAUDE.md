@@ -4,12 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for tabletop gaming. It consists of:
-- **Backend Orchestrator**: Node.js server managing video playback, sessions, and state
+The ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for about last night, a 2 hour immersive game about unlocking and trading in memory tokens containing game characters' lost memories. It is a live event that is run one iteration at a time, either using github pages deployments of player and gm scanners in standalone mode, or using the backend orchestrator to enable syncing across devices and additional features like VLC video playback. It consists of:
+- **Memory Tokens** - RFID tags with IDs corresponding to the keys from tokens.json. Players scan then to get associated media content, and turn them into GMs to be scanned for game logic calculations/scoring. (SUBMODULE: ALN-TokenData) 
+- **Backend Orchestrator**: Node.js server managing video playback, sessions, and state. Used when available; when not, scanners operate independently via deployment on Github Pages. 
 - **Scanner Apps**: Web-based token scanners (Player and GM) with WebSocket/HTTP integration
+  --**Player Scanner**: Uses HTTP endpoints, simple scan logging, display of local assets if token contains audio or image content, and triggering of video files for tokens containing video content (IF orchestrator is present) on separate screen controlled by the orchestrator. intended for players to discover and use as a tool to see the narrative contents of in-game memory tokens. Can operate WITH orchestrator OR WITHOUT in standaalone mode (no video playback). (SUBMODULE: aln-memory-scanner, aka ALNPlayerScan)
+  --**GM Scanner**: Uses Websocket after HTTP handshake. Responsible for game logic. Can function in networked mode (in communcation with orchestrator) or standalone. Detective Mode scans and logs tokens (future feature: create player-facing log of narrative events that have been 'made public' by being scanned by the Detective Mode scanner) that were 'turned into' (scanned by) the GM playing the Detective. Black Market Mode scans tokens and handles scoring calculations using scanner/team number for score assignment, by parsing token scoring information from tokens.jason and doing the relevant calculations to keep team scores up to date for each play session.  (SUBMODULE: ALNScanner)
 - **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
-- **Submodule Architecture**: Shared token data across components via Git submodules
+- **Submodule Architecture**: Shared token data acr
 
+thi
 ## Critical Architecture Decisions
 
 ### Submodule Structure

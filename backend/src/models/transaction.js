@@ -141,6 +141,7 @@ class Transaction {
       tokenId: scanRequest.tokenId,
       teamId: scanRequest.teamId,
       scannerId: scanRequest.scannerId,
+      stationMode: scanRequest.stationMode || 'blackmarket', // Track game mode
       timestamp: scanRequest.timestamp || new Date().toISOString(),
       sessionId: sessionId,
       status: 'accepted',

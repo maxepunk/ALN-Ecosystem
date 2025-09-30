@@ -59,7 +59,10 @@ function setupBroadcastListeners(io, services) {
   });
 
   addTrackedListener(sessionService, 'transaction:added', (transaction) => {
-    // Contract-compliant transaction event
+    // Enrich transaction with token data for frontend display
+    const token = transactionService.getToken(transaction.tokenId);
+
+    // Contract-compliant transaction event with token enrichment
     const eventData = {
       event: 'transaction:new',
       data: {
@@ -67,9 +70,16 @@ function setupBroadcastListeners(io, services) {
         tokenId: transaction.tokenId,
         teamId: transaction.teamId,
         scannerId: transaction.scannerId,
+        stationMode: transaction.stationMode,  // Add stationMode for frontend
         status: transaction.status,
         points: transaction.points,
-        timestamp: transaction.timestamp
+        timestamp: transaction.timestamp,
+        // Include token details for frontend display
+        // Use originalType first to preserve capitalization for frontend SCORING_CONFIG
+        memoryType: token?.metadata?.originalType || token?.memoryType || 'UNKNOWN',
+        valueRating: token?.metadata?.rating || 0,
+        group: token?.metadata?.group || 'No Group',
+        tokenValue: token?.value || 0
       },
       timestamp: new Date().toISOString(),
     };

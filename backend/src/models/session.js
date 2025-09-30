@@ -155,24 +155,8 @@ class Session {
       this.metadata.uniqueTokensScanned.push(transaction.tokenId);
     }
 
-    // Update team score
-    const TeamScore = require('./teamScore');
-    let teamScore = this.scores.find(s => s.teamId === transaction.teamId);
-
-    if (!teamScore) {
-      // Create new team score if doesn't exist
-      const newTeamScore = TeamScore.createInitial(transaction.teamId);
-      this.scores.push(newTeamScore.toJSON());
-      teamScore = this.scores.find(s => s.teamId === transaction.teamId);
-    }
-
-    // Update the score
-    if (teamScore && transaction.points) {
-      teamScore.currentScore = (teamScore.currentScore || 0) + transaction.points;
-      teamScore.tokensScanned = (teamScore.tokensScanned || 0) + 1;
-      teamScore.lastTokenTime = transaction.timestamp;
-      teamScore.lastUpdate = new Date().toISOString();
-    }
+    // Scores are managed by transactionService, NOT by Session model
+    // Session only stores transactions for persistence
   }
 
   /**
@@ -225,9 +209,7 @@ class Session {
    * @returns {Array} Active video queue items
    */
   getActiveVideoQueue() {
-    return this.videoQueue.filter(item => 
-      item.status === 'pending' || item.status === 'playing'
-    );
+    return this.videoQueue.filter(item => item.status === 'pending' || item.status === 'playing');
   }
 
   /**
@@ -236,9 +218,7 @@ class Session {
    * @returns {Array} Connected devices of specified type
    */
   getConnectedDevicesByType(type) {
-    return this.connectedDevices.filter(d => 
-      d.type === type && d.connectionStatus === 'connected'
-    );
+    return this.connectedDevices.filter(d => d.type === type && d.connectionStatus === 'connected');
   }
 
   /**
@@ -272,7 +252,7 @@ class Session {
       startTime: this.startTime,
       endTime: this.endTime || null,
       status: this.status,
-      metadata: this.metadata
+      metadata: this.metadata,
     };
   }
 
@@ -291,20 +271,10 @@ class Session {
    */
   getDuration() {
     const start = new Date(this.startTime).getTime();
-    const end = this.endTime 
-      ? new Date(this.endTime).getTime() 
+    const end = this.endTime
+      ? new Date(this.endTime).getTime()
       : Date.now();
     return Math.floor((end - start) / 1000);
-  }
-
-  /**
-   * Check if session can accept more players
-   * @param {number} maxPlayers - Maximum allowed players
-   * @returns {boolean}
-   */
-  canAcceptPlayer(maxPlayers) {
-    const connectedPlayers = this.getConnectedDevicesByType('player').length;
-    return connectedPlayers < maxPlayers;
   }
 
   /**

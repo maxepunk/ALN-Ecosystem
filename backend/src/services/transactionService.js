@@ -123,10 +123,20 @@ class TransactionService extends EventEmitter {
       if (!session.transactions) {
         session.transactions = [];
       }
-      session.transactions.push(transaction);
+      // REMOVED: session.transactions.push(transaction);
+      // Transaction will be added by sessionService.addTransaction() to avoid duplication
 
-      // Update team score
-      this.updateTeamScore(transaction.teamId, token);
+      // Update team score (only for blackmarket mode)
+      if (transaction.stationMode !== 'detective') {
+        this.updateTeamScore(transaction.teamId, token);
+      } else {
+        logger.info('Detective mode transaction - skipping scoring', {
+          transactionId: transaction.id,
+          tokenId: transaction.tokenId,
+          teamId: transaction.teamId,
+          mode: transaction.stationMode
+        });
+      }
 
       // Add to recent transactions
       this.addRecentTransaction(transaction);
@@ -261,13 +271,6 @@ class TransactionService extends EventEmitter {
     }
 
     this.emit('score:updated', teamScore);
-
-  // DEBUG: Verify event emission
-  console.log('[DEBUG] transactionService emitted score:updated:', {
-    teamId: teamScore.teamId,
-    score: teamScore.currentScore,
-    bonus: teamScore.bonusPoints || 0
-  });
   }
 
   /**
@@ -290,11 +293,12 @@ class TransactionService extends EventEmitter {
     // Get current session to check transactions
     const sessionService = require('./sessionService');
     const session = sessionService.getCurrentSession();
-    if (!session || !session.transactions) return false;
+    if (!session) return false;
 
     // Get all token IDs this team has successfully scanned (using Set for performance)
+    const transactions = session.transactions || [];
     const teamScannedTokenIds = new Set(
-      session.transactions
+      transactions
         .filter(tx =>
           tx.teamId === teamId &&
           tx.status === 'accepted'

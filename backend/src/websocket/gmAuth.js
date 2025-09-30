@@ -4,7 +4,6 @@
  */
 
 const logger = require('../utils/logger');
-const { gmIdentifySchema, validate } = require('../utils/validators');
 const DeviceConnection = require('../models/deviceConnection');
 const sessionService = require('../services/sessionService');
 const stateService = require('../services/stateService');
@@ -17,56 +16,26 @@ const stateService = require('../services/stateService');
  */
 async function handleGmIdentify(socket, data, io) {
   try {
-    let identifyData;
-
-    // Check if already authenticated from handshake (Phase 1 fix)
-    if (socket.isAuthenticated && socket.deviceId) {
-      logger.info('GM already authenticated from handshake', {
-        deviceId: socket.deviceId,
-        socketId: socket.id
+    // Validate that socket is pre-authenticated from handshake
+    if (!socket.isAuthenticated || !socket.deviceId) {
+      socket.emit('error', {
+        code: 'AUTH_REQUIRED',
+        message: 'Authentication required - connection not pre-authenticated',
       });
-
-      // Use data from handshake
-      identifyData = {
-        stationId: socket.deviceId,
-        version: socket.version || data.version || '1.0.0'
-      };
-    } else {
-      // Original auth flow for backward compatibility
-      // Extract token from data (not part of schema validation)
-      const { token, ...identifyDataToValidate } = data;
-
-      // Require authentication token
-      if (!token) {
-        socket.emit('error', {
-          code: 'AUTH_REQUIRED',
-          message: 'Authentication token required for GM station'
-        });
-        socket.disconnect(true);
-        return;
-      }
-
-      // Validate token
-      const { verifyToken } = require('../middleware/auth');
-      const decoded = verifyToken(token);
-
-      if (!decoded || decoded.role !== 'admin') {
-        socket.emit('error', {
-          code: 'AUTH_INVALID',
-          message: 'Invalid or expired authentication token'
-        });
-        socket.disconnect(true);
-        return;
-      }
-
-      // Store authenticated status
-      socket.isAuthenticated = true;
-      socket.authRole = decoded.role;
-      socket.authUserId = decoded.id;
-
-      // Validate against contract schema (without token)
-      identifyData = validate(identifyDataToValidate, gmIdentifySchema);
+      socket.disconnect(true);
+      return;
     }
+
+    logger.info('GM already authenticated from handshake', {
+      deviceId: socket.deviceId,
+      socketId: socket.id,
+    });
+
+    // Use data from handshake
+    const identifyData = {
+      stationId: socket.deviceId,
+      version: socket.version || data.version || '1.0.0',
+    };
 
     // Transform contract data to DeviceConnection format
     const deviceData = {
@@ -85,53 +54,46 @@ async function handleGmIdentify(socket, data, io) {
     socket.deviceId = device.id;
     socket.deviceType = device.type;
     socket.version = identifyData.version;
-    
-    // Join appropriate room
-    if (device.type === 'gm') {
-      // Check if can accept GM station
-      if (!sessionService.canAcceptGmStation()) {
-        socket.emit('error', {
-          message: 'Maximum GM stations reached',
-        });
-        socket.disconnect(true);
-        return;
-      }
-      socket.join('gm-stations');
-    } else {
-      // Check if can accept player
-      if (!sessionService.canAcceptPlayer()) {
-        socket.emit('error', {
-          message: 'Maximum players reached',
-        });
-        socket.disconnect(true);
-        return;
-      }
-      socket.join('players');
+
+    // Check if can accept GM station
+    if (!sessionService.canAcceptGmStation()) {
+      socket.emit('error', {
+        message: 'Maximum GM stations reached',
+      });
+      socket.disconnect(true);
+      return;
     }
-    
-    // Update session with device
+    socket.join('gm-stations');
+    // Note: Removed else block - deviceType is always 'gm' (see line 44)
+
+    // Update session with device ONLY if session exists
     const session = sessionService.getCurrentSession();
     if (session) {
       await sessionService.updateDevice(device.toJSON());
       // Join session room
       socket.join(`session:${session.id}`);
+    } else {
+      // No session yet - GM is connecting to create one via Admin panel
+      logger.info('GM connected without active session - awaiting session creation', {
+        deviceId: socket.deviceId,
+      });
     }
-    
+
     // Get current state
     const state = stateService.getCurrentState();
-    
+
     // Send current state
     if (state) {
       socket.emit('state:sync', state.toJSON());
     }
-    
+
     // Confirm identification with contract-compliant response
     socket.emit('gm:identified', {
       success: true,
       sessionId: session?.id,
       state: state?.toJSON(),
     });
-    
+
     // Broadcast device connection to OTHER clients only
     // Fixed: Send flat structure that admin panel expects
     socket.broadcast.emit('device:connected', {
@@ -139,9 +101,9 @@ async function handleGmIdentify(socket, data, io) {
       type: device.type,
       name: device.name,
       ipAddress: socket.handshake.address,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     logger.logSocketEvent('gm:identify', socket.id, {
       deviceId: device.id,
       deviceType: device.type,
@@ -172,7 +134,7 @@ async function handleHeartbeat(socket, data) {
     if (!socket.deviceId || socket.deviceId !== heartbeatData.stationId) {
       socket.emit('error', {
         code: 'AUTH_REQUIRED',
-        message: 'Station not identified or ID mismatch'
+        message: 'Station not identified or ID mismatch',
       });
       return;
     }

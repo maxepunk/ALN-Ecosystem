@@ -12,7 +12,7 @@ const logger = require('../utils/logger');
 class SessionService extends EventEmitter {
   constructor() {
     super();
-    this.initState();  // ADD THIS
+    this.initState(); // ADD THIS
   }
 
   // ADD new method after constructor
@@ -53,6 +53,13 @@ class SessionService extends EventEmitter {
         await this.endSession();
       }
 
+      // CRITICAL: Reset service state to prevent carryover
+      const transactionService = require('./transactionService');
+      const stateService = require('./stateService');
+      transactionService.resetScores();
+      stateService.reset();
+      logger.info('Reset service state for new session');
+
       // Create new session
       this.currentSession = new Session({
         name: sessionData.name,
@@ -69,9 +76,9 @@ class SessionService extends EventEmitter {
       // Emit event
       this.emit('session:created', this.currentSession);
 
-      logger.info('Session created', { 
+      logger.info('Session created', {
         sessionId: this.currentSession.id,
-        name: this.currentSession.name 
+        name: this.currentSession.name,
       });
 
       return this.currentSession;
@@ -292,7 +299,7 @@ class SessionService extends EventEmitter {
    */
   initializeTeamScores(teams = []) {
     if (!teams || teams.length === 0) {
-      return [];  // Return empty array if no teams provided
+      return []; // Return empty array if no teams provided
     }
     const TeamScore = require('../models/teamScore');
     return teams.map(teamId => TeamScore.createInitial(teamId).toJSON());
@@ -304,7 +311,7 @@ class SessionService extends EventEmitter {
    */
   startSessionTimeout() {
     this.stopSessionTimeout();
-    
+
     const timeoutMs = config.session.sessionTimeout * 60 * 1000;
     this.sessionTimeoutTimer = setTimeout(async () => {
       logger.warn('Session timeout reached', { sessionId: this.currentSession?.id });
@@ -381,29 +388,17 @@ class SessionService extends EventEmitter {
   }
 
   /**
-   * Check if can accept more players
-   * @returns {boolean}
-   */
-  canAcceptPlayer() {
-    if (!this.currentSession) {
-      return false;
-    }
-    return this.currentSession.canAcceptPlayer(config.session.maxPlayers);
-  }
-
-  /**
    * Check if can accept more GM stations
    * @returns {boolean}
    */
   canAcceptGmStation() {
+    // If no session exists, allow GM to connect
+    // They'll create one properly via the Admin tab
     if (!this.currentSession) {
-      // If no session exists, create one to accept the GM station
-      this.createSession({
-        name: `Session_${Date.now()}`,
-        maxPlayers: config.session.maxPlayers,
-        maxGmStations: config.session.maxGmStations
-      });
+      return true; // Changed from auto-creating session
     }
+
+    // If session exists, check capacity
     return this.currentSession.canAcceptGmStation(config.session.maxGmStations);
   }
 

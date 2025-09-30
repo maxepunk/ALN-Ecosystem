@@ -113,7 +113,22 @@ class GameState {
    * @param {Array} scores - Updated scores array
    */
   updateScores(scores) {
-    this.scores = scores;
+    // Create a map of existing scores by teamId for efficient lookup
+    const existingScoresMap = new Map();
+    if (this.scores && Array.isArray(this.scores)) {
+      this.scores.forEach(score => {
+        existingScoresMap.set(score.teamId, score);
+      });
+    }
+
+    // Update or add scores from the input array
+    scores.forEach(newScore => {
+      existingScoresMap.set(newScore.teamId, newScore);
+    });
+
+    // Convert map back to array, maintaining all teams
+    this.scores = Array.from(existingScoresMap.values());
+
     this.touch();
   }
 

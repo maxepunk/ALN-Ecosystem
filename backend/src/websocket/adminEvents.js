@@ -132,6 +132,7 @@ async function handleTransactionSubmit(socket, data, io) {
           transactionId: queuedItem.transactionId,
           message: 'Transaction queued for processing when system comes online'
         });
+
         logger.info('GM transaction queued while offline', {
           transactionId: queuedItem.transactionId,
           deviceId: socket.deviceId
@@ -169,14 +170,16 @@ async function handleTransactionSubmit(socket, data, io) {
     // Transaction broadcasting is handled by the sessionService event listeners
     // in broadcasts.js which will emit the properly formatted event to all clients
     // The service will trigger 'transaction:added' event that broadcasts.js listens to
-    
-    logger.info('Transaction submitted via WebSocket', { 
+
+    logger.info('Transaction submitted via WebSocket', {
       transactionId: result.transactionId,
       status: result.status,
       deviceId: socket.deviceId,
     });
   } catch (error) {
     logger.error('Transaction submit error', { error, socketId: socket.id });
+
+    // Send error response
     socket.emit('error', {
       code: 'INVALID_DATA',
       message: 'Failed to process transaction',

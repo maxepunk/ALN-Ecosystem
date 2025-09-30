@@ -58,17 +58,20 @@ function setupWebSocketHandlers(ioInstance) {
           deviceId: stationId,
           socketId: socket.id
         });
+
+        // Automatically trigger identification for pre-authenticated connections
+        // This replaces the need for the scanner to send gm:identify
+        await handleGmIdentify(socket, {
+          stationId,
+          version,
+          token // Pass token for the handler
+        }, ioInstance);
       }
     } catch (error) {
       logger.warn('Handshake auth failed', { error: error.message, socketId: socket.id });
     }
   }
 
-  // Device identification (still needed for backward compatibility)
-  socket.on('gm:identify', async (data) => {
-    await handleGmIdentify(socket, data, io);
-  });
-  
   // Heartbeat handling
   socket.on('heartbeat', async (data) => {
     await handleHeartbeat(socket, data);
@@ -86,17 +89,17 @@ function setupWebSocketHandlers(ioInstance) {
   
   // GM-specific events
   socket.on('gm:command', async (data) => {
-    await handleGmCommand(socket, data, io);
+    await handleGmCommand(socket, data, ioInstance);
   });
-  
+
   // Transaction submission via WebSocket
   socket.on('transaction:submit', async (data) => {
-    await handleTransactionSubmit(socket, data, io);
+    await handleTransactionSubmit(socket, data, ioInstance);
   });
-  
+
   // Disconnection handling
   socket.on('disconnect', async () => {
-    await handleDisconnect(socket, io);
+    await handleDisconnect(socket, ioInstance);
     });
   });
 }
