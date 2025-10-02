@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scanner Changes Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .test { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .pass { background: #d4edda; }
+        .fail { background: #f8d7da; }
+        button { padding: 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Testing Scanner Architectural Changes</h1>
+
+    <div id="results"></div>
+
+    <button onclick="testLocalStorage()">Test localStorage Keys</button>
+    <button onclick="testConnectionManager()">Test ConnectionManager</button>
+    <button onclick="clearStorage()">Clear localStorage</button>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function log(message, isPass = true) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (isPass ? 'pass' : 'fail');
+            div.textContent = (isPass ? '✅ ' : '❌ ') + message;
+            results.appendChild(div);
+        }
+
+        function testLocalStorage() {
+            results.innerHTML = '<h2>Testing localStorage Keys:</h2>';
+
+            // Set test data using old keys
+            localStorage.setItem('orchestrator_url', 'http://old-url:3000');
+            localStorage.setItem('stationMode', 'detective');
+
+            // Check if migration would work
+            const oldUrl = localStorage.getItem('orchestrator_url');
+            if (oldUrl) {
+                log('Found old orchestrator_url key: ' + oldUrl);
+            }
+
+            // Check for new camelCase keys
+            const keys = Object.keys(localStorage);
+            const hasCamelCase = keys.some(k => k === 'orchestratorUrl');
+            const hasSnakeCase = keys.some(k => k === 'orchestrator_url');
+
+            if (hasSnakeCase && !hasCamelCase) {
+                log('Migration needed: snake_case key exists without camelCase', false);
+            } else if (hasCamelCase && !hasSnakeCase) {
+                log('Already migrated: only camelCase keys exist');
+            } else if (hasCamelCase && hasSnakeCase) {
+                log('Both keys exist - partial migration state', false);
+            }
+
+            // List all storage keys
+            log('Current localStorage keys: ' + keys.join(', '));
+        }
+
+        function testConnectionManager() {
+            results.innerHTML = '<h2>Testing ConnectionManager Pattern:</h2>';
+
+            // Simulate ConnectionManager storage keys
+            const STORAGE_KEYS = {
+                URL: 'orchestratorUrl',
+                TOKEN: 'gmToken',
+                STATION_ID: 'stationId',
+                STATION_NAME: 'stationName',
+                STATION_MODE: 'stationMode',
+                PREFER_OFFLINE: 'preferOfflineMode',
+                LAST_STATION_NUM: 'lastStationNum',
+                OFFLINE_QUEUE: 'orchestratorOfflineQueue'
+            };
+
+            // Test migration logic
+            const oldUrl = localStorage.getItem('orchestrator_url');
+            if (oldUrl && !localStorage.getItem(STORAGE_KEYS.URL)) {
+                localStorage.setItem(STORAGE_KEYS.URL, oldUrl);
+                localStorage.removeItem('orchestrator_url');
+                log('Migrated orchestrator_url to orchestratorUrl');
+            } else if (localStorage.getItem(STORAGE_KEYS.URL)) {
+                log('No migration needed - camelCase key exists');
+            }
+
+            // Verify all keys are camelCase
+            let allCamelCase = true;
+            for (const [key, storageKey] of Object.entries(STORAGE_KEYS)) {
+                if (storageKey.includes('_')) {
+                    log(`Key ${key} uses snake_case: ${storageKey}`, false);
+                    allCamelCase = false;
+                }
+            }
+
+            if (allCamelCase) {
+                log('All storage keys use camelCase');
+            }
+
+            // Test setting values through pattern
+            localStorage.setItem(STORAGE_KEYS.STATION_MODE, 'blackmarket');
+            const mode = localStorage.getItem(STORAGE_KEYS.STATION_MODE);
+            log(`Station mode: ${mode}`);
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            results.innerHTML = '<div class="test pass">✅ localStorage cleared</div>';
+        }
+
+        // Auto-run basic test
+        window.onload = () => {
+            log('Scanner changes test page loaded');
+            log(`Current localStorage size: ${Object.keys(localStorage).length} keys`);
+        };
+    </script>
+</body>
+</html>

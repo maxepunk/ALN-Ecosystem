@@ -1,0 +1,58 @@
+# 1. First, check which submodule has changes
+  cd ALNScanner
+  git status
+  # If there are changes here, commit them first:
+  git add .
+  git commit -m "your message for ALNScanner changes"
+  cd ..
+
+  # 2. Back in main repo, check status
+  git status
+
+  # 3. Add the ALNScanner submodule pointer update
+  git add ALNScanner
+
+  # 4. Add all the modified files in backend
+  git add backend/src/
+
+  # 5. Add the modified CLAUDE.md
+  git add CLAUDE.md
+
+  # 6. Add all the new files (test files, docs, etc)
+  git add backend/TEST_PLAN.md
+  git add backend/admin-panel-backup-20250928-210550.tar.gz
+  git add backend/data/  # for new data files
+  git add backend/*.js   # for test scripts
+  git add docs/          # for archived docs
+  git add ALN_ARCHITECTURE_FIXES_PLAN.md
+  git add Screenshot_gm-scanner_immediate_teamselect.png
+
+  # 7. Remove deleted files from index (they should already be staged for deletion)
+  # git status will show them as deleted - they're already staged
+
+  # 8. Commit everything
+  git commit -m "your commit message"
+
+  # 9. Optional: Push to remote
+  git push origin 001-backend-aln-architecture
+
+  Alternative: Simpler approach if you want to add everything at once:
+
+  # 1. Commit ALNScanner submodule changes first
+  cd ALNScanner
+  git add .
+  git commit -m "Remove ACK system and add architectural improvements"
+  cd ..
+
+  # 2. Add everything in main repo
+  git add -A  # This adds all changes including deletions
+
+  # 3. Commit
+  git commit -m "your commit message"
+
+  Note: The -A flag in git add -A will:
+  - Add all new files
+  - Add all modified files
+  - Remove all deleted files
+
+  This stages everything shown in git status at once.

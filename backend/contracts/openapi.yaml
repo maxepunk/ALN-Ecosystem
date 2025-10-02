@@ -1,0 +1,1282 @@
+openapi: 3.1.0
+
+info:
+  title: ALN Orchestrator API
+  version: 1.0.0
+  description: |
+    About Last Night (ALN) Orchestrator backend API for memory token scanning system.
+
+    **Architecture**: Contract-First approach with minimal complexity for live-event tool.
+
+    **Components**:
+    - Player Scanner: HTTP-only, fire-and-forget (ESP32 compatible)
+    - GM Scanner: WebSocket-driven real-time game logic
+    - Admin Panel: Monitoring and intervention via WebSocket
+
+    **Key Constraints**:
+    - ONE session at a time (2-hour live event)
+    - Standalone mode support (scanners work without orchestrator)
+    - Minimal architectural complexity (not enterprise SaaS)
+
+    **Documentation References**:
+    - Alignment Decisions: docs/api-alignment/04-alignment-decisions.md
+    - Functional Requirements: docs/api-alignment/08-functional-requirements.md
+    - Test Architecture: docs/api-alignment/06-test-architecture.md
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: http://{orchestrator-ip}:3000
+    description: Network deployment
+    variables:
+      orchestrator-ip:
+        default: "10.0.0.100"
+        description: Orchestrator IP address on local network
+
+tags:
+  - name: Authentication
+    description: Admin authentication and JWT token management
+  - name: Player Scanner
+    description: Token scanning operations (HTTP-only, fire-and-forget)
+  - name: Static Resources
+    description: Token data, health checks, system status
+  - name: Session Management
+    description: Session lifecycle (query only - commands via WebSocket)
+  - name: Admin Operations
+    description: System administration (logs, monitoring)
+
+paths:
+  /api/admin/auth:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate as admin
+      description: |
+        Validate admin password and issue JWT token for WebSocket authentication.
+
+        **Functional Requirement**: Section 1.1 (Auth & Authorization)
+        **Decisions Applied**:
+        - #3 (RESTful HTTP - direct response, HTTP codes)
+        - #12 (Contracts location)
+
+        **Flow**:
+        1. Admin Panel sends password
+        2. Backend validates password
+        3. Returns JWT token (24-hour expiry)
+        4. Token used for WebSocket handshake (gm:identify event)
+
+        **Security**:
+        - Password validation via environment variable
+        - JWT tokens for stateless auth
+        - Tokens tracked for active sessions
+      operationId: authenticateAdmin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - password
+              properties:
+                password:
+                  type: string
+                  description: Admin password
+                  example: "admin-secret-123"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - token
+                  - expiresIn
+                properties:
+                  token:
+                    type: string
+                    description: JWT Bearer token
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3MzAzNTAwMDAsImV4cCI6MTczMDQzNjQwMH0.signature"
+                  expiresIn:
+                    type: integer
+                    description: Token expiration time in seconds
+                    example: 86400
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "AUTH_REQUIRED"
+                message: "Authentication failed"
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "VALIDATION_ERROR"
+                message: "Password is required"
+
+  /api/tokens:
+    get:
+      tags:
+        - Static Resources
+      summary: Get token database
+      description: |
+        Fetch complete token database (tokens.json from ALN-TokenData submodule).
+
+        **Functional Requirement**: Section 1.9 (Static Resource Serving)
+        **Decisions Applied**: #3 (RESTful HTTP)
+
+        **Usage**:
+        - Player Scanner: Fetches on app load for standalone mode
+        - GM Scanner: Fetches for token metadata (memoryType, valueRating, group)
+        - Standalone Mode: Scanners bundle tokens.json for offline operation
+
+        **Token Metadata Includes**:
+        - SF_RFID (token ID)
+        - SF_ValueRating (1-3, scoring weight)
+        - SF_MemoryType ("Technical", "Business", "Personal")
+        - SF_Group (group completion bonuses)
+        - Media paths (image, audio, video)
+      operationId: getTokens
+      responses:
+        '200':
+          description: Token database
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - tokens
+                  - count
+                  - lastUpdate
+                properties:
+                  tokens:
+                    type: object
+                    description: Map of token ID to token data
+                    additionalProperties:
+                      $ref: '#/components/schemas/Token'
+                  count:
+                    type: integer
+                    description: Total number of tokens
+                    example: 42
+                  lastUpdate:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                    example: "2025-09-30T12:00:00.000Z"
+              example:
+                tokens:
+                  "534e2b02":
+                    image: "assets/images/534e2b02.jpg"
+                    audio: "assets/audio/534e2b02.mp3"
+                    video: null
+                    processingImage: null
+                    SF_RFID: "534e2b02"
+                    SF_ValueRating: 3
+                    SF_MemoryType: "Technical"
+                    SF_Group: ""
+                  "534e2b03":
+                    image: null
+                    audio: null
+                    video: "test_30sec.mp4"
+                    processingImage: "534e2b03.jpg"
+                    SF_RFID: "534e2b03"
+                    SF_ValueRating: 3
+                    SF_MemoryType: "Technical"
+                    SF_Group: ""
+                  "tac001":
+                    image: "assets/images/tac001.jpg"
+                    audio: "assets/audio/tac001.wav"
+                    video: null
+                    processingImage: null
+                    SF_RFID: "tac001"
+                    SF_ValueRating: 1
+                    SF_MemoryType: "Personal"
+                    SF_Group: ""
+                count: 3
+                lastUpdate: "2025-09-30T12:00:00.000Z"
+
+  /health:
+    get:
+      tags:
+        - Static Resources
+      summary: Health check
+      description: |
+        Basic health check endpoint for connection validation.
+
+        **Functional Requirement**: Section 1.9 (Static Resource Serving)
+        **Decisions Applied**: #3 (RESTful HTTP)
+
+        **Usage**:
+        - Player Scanner: Check if orchestrator available
+        - GM Scanner: Connection health monitoring
+        - Network discovery: Validate orchestrator IP
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is online
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - version
+                  - uptime
+                  - timestamp
+                properties:
+                  status:
+                    type: string
+                    enum: [online]
+                    description: Service status
+                    example: "online"
+                  version:
+                    type: string
+                    description: Orchestrator version
+                    example: "1.0.0"
+                  uptime:
+                    type: number
+                    description: Process uptime in seconds
+                    example: 3600.5
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Current server timestamp
+                    example: "2025-09-30T12:00:00.000Z"
+
+  /api/scan:
+    post:
+      tags:
+        - Player Scanner
+      summary: Player Scanner token scan (fire-and-forget)
+      description: |
+        Single token scan from Player Scanner. Logs scan and triggers video playback if token has video.
+
+        **Functional Requirement**: Section 2.1 (Player Token Scanning)
+        **Decisions Applied**:
+        - #3 (RESTful HTTP - direct response, HTTP codes)
+        - #4 (deviceId field naming)
+        - #9 (Fire-and-forget pattern)
+
+        **CRITICAL - Fire-and-Forget Pattern**:
+        Player Scanner **IGNORES response body** by design (ESP32 compatibility).
+        Response provided for:
+        - Debugging/logging
+        - Future non-ESP32 clients
+        - API consistency
+
+        **Video Trigger Decision**:
+        Player Scanner determines video playback **CLIENT-SIDE** from local tokens.json.
+        Backend queues video if token has video property, but scanner doesn't parse response.
+
+        **Game Mechanics**:
+        - NO SCORING - This is NOT a game transaction
+        - NO TEAM COMMITMENT - Teams chosen at GM Scanner
+        - teamId field OPTIONAL (players haven't committed yet)
+        - Used for: Scan logging, video triggering only
+
+        **Flow**:
+        1. Player scans token with shared Player Scanner device (4-5 players per scanner)
+        2. Scanner sends scan to orchestrator (if connected)
+        3. Backend logs scan, queues video if token.video exists
+        4. Scanner displays local media (image/audio) from bundled assets
+        5. Scanner ignores response (client-side decisions)
+
+        **Breaking Changes**:
+        - Field: scannerId → deviceId (Decision #4)
+      operationId: playerScan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tokenId
+                - deviceId
+              properties:
+                tokenId:
+                  type: string
+                  description: Token ID (RFID identifier)
+                  pattern: '^[A-Za-z_0-9]+$'
+                  minLength: 1
+                  maxLength: 100
+                  example: "534e2b03"
+                teamId:
+                  type: string
+                  description: |
+                    Team ID (OPTIONAL - players haven't committed to team yet).
+                    Used for logging only, NOT game logic.
+                    Team commitment happens at GM Scanner.
+                  pattern: '^[0-9]{3}$'
+                  example: "001"
+                deviceId:
+                  type: string
+                  description: Player Scanner device identifier
+                  minLength: 1
+                  maxLength: 100
+                  example: "PLAYER_SCANNER_01"
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: Scan timestamp (ISO8601)
+                  example: "2025-09-30T14:30:00.000Z"
+      responses:
+        '200':
+          description: Scan accepted, video queued (if applicable)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - message
+                  - tokenId
+                  - videoQueued
+                properties:
+                  status:
+                    type: string
+                    enum: [accepted]
+                    description: Scan status
+                  message:
+                    type: string
+                    description: User-friendly message
+                    example: "Video queued for playback"
+                  tokenId:
+                    type: string
+                    description: Token ID that was scanned
+                    example: "534e2b03"
+                  mediaAssets:
+                    type: object
+                    description: Token media assets (for future clients)
+                    properties:
+                      video:
+                        type: string
+                        nullable: true
+                        example: "test_30sec.mp4"
+                      image:
+                        type: string
+                        nullable: true
+                        example: "assets/images/534e2b03.jpg"
+                      audio:
+                        type: string
+                        nullable: true
+                        example: null
+                  videoQueued:
+                    type: boolean
+                    description: Whether video was queued
+                    example: true
+              example:
+                status: "accepted"
+                message: "Video queued for playback"
+                tokenId: "534e2b03"
+                mediaAssets:
+                  video: "test_30sec.mp4"
+                  image: null
+                  audio: null
+                videoQueued: true
+        '202':
+          description: Scan queued (offline mode)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - message
+                  - tokenId
+                  - offlineMode
+                  - queuePosition
+                properties:
+                  status:
+                    type: string
+                    enum: [queued]
+                  message:
+                    type: string
+                    example: "Scan queued for processing when system comes online"
+                  tokenId:
+                    type: string
+                    example: "534e2b03"
+                  offlineMode:
+                    type: boolean
+                    example: true
+                  queuePosition:
+                    type: integer
+                    description: Position in offline queue
+                    example: 3
+        '409':
+          description: Video already playing (conflict)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - message
+                  - tokenId
+                  - waitTime
+                properties:
+                  status:
+                    type: string
+                    enum: [rejected]
+                  message:
+                    type: string
+                    example: "Video already playing, please wait"
+                  tokenId:
+                    type: string
+                    example: "534e2b03"
+                  mediaAssets:
+                    type: object
+                  waitTime:
+                    type: integer
+                    description: Estimated wait time in seconds
+                    example: 30
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Offline queue full
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - message
+                  - offlineMode
+                properties:
+                  status:
+                    type: string
+                    enum: [error]
+                  message:
+                    type: string
+                    example: "Offline queue is full, please try again later"
+                  offlineMode:
+                    type: boolean
+                    example: true
+
+  /api/scan/batch:
+    post:
+      tags:
+        - Player Scanner
+      summary: Player Scanner offline queue batch upload
+      description: |
+        Process multiple scan requests from Player Scanner offline queue.
+
+        **Functional Requirement**:
+        - Section 1.8 (Offline Queue Management)
+        - Section 2.3 (Connection Management)
+
+        **Decisions Applied**:
+        - #3 (RESTful HTTP)
+        - #4 (deviceId field naming)
+
+        **Usage**:
+        When Player Scanner reconnects after offline period, uploads queued scans in batch.
+        Orchestrator processes each scan (logging, video queueing).
+
+        **Game Mechanics**:
+        - NO SCORING - This is NOT a game transaction
+        - Scans logged for audit trail
+        - Videos queued if tokens have video property
+
+        **Breaking Changes**:
+        - Field: scannerId → deviceId (Decision #4)
+      operationId: playerScanBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - transactions
+              properties:
+                transactions:
+                  type: array
+                  description: Array of queued scan requests
+                  items:
+                    type: object
+                    required:
+                      - tokenId
+                      - deviceId
+                    properties:
+                      tokenId:
+                        type: string
+                        description: Token ID
+                        example: "534e2b02"
+                      teamId:
+                        type: string
+                        description: Team ID (optional, for logging)
+                        pattern: '^[0-9]{3}$'
+                        example: "001"
+                      deviceId:
+                        type: string
+                        description: Player Scanner device ID
+                        example: "PLAYER_SCANNER_01"
+                      timestamp:
+                        type: string
+                        format: date-time
+                        description: Original scan timestamp
+                        example: "2025-09-30T14:25:00.000Z"
+            example:
+              transactions:
+                - tokenId: "534e2b02"
+                  teamId: "001"
+                  deviceId: "PLAYER_SCANNER_01"
+                  timestamp: "2025-09-30T14:25:00.000Z"
+                - tokenId: "tac001"
+                  deviceId: "PLAYER_SCANNER_01"
+                  timestamp: "2025-09-30T14:26:30.000Z"
+                - tokenId: "534e2b03"
+                  teamId: "002"
+                  deviceId: "PLAYER_SCANNER_01"
+                  timestamp: "2025-09-30T14:27:15.000Z"
+      responses:
+        '200':
+          description: Batch processed
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - results
+                properties:
+                  results:
+                    type: array
+                    description: Per-scan results
+                    items:
+                      type: object
+                      required:
+                        - tokenId
+                        - status
+                        - videoQueued
+                      properties:
+                        tokenId:
+                          type: string
+                          example: "534e2b02"
+                        status:
+                          type: string
+                          enum: [processed, failed]
+                          example: "processed"
+                        videoQueued:
+                          type: boolean
+                          description: Whether video was queued
+                          example: false
+                        message:
+                          type: string
+                          description: Optional message (e.g., "Video already playing")
+                          example: null
+                        error:
+                          type: string
+                          description: Error message if status=failed
+                          example: null
+              example:
+                results:
+                  - tokenId: "534e2b02"
+                    status: "processed"
+                    videoQueued: false
+                  - tokenId: "tac001"
+                    status: "processed"
+                    videoQueued: false
+                  - tokenId: "534e2b03"
+                    status: "processed"
+                    videoQueued: true
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/session:
+    get:
+      tags:
+        - Session Management
+      summary: Get current active session
+      description: |
+        Get current active session information (one-time fetch).
+
+        **Functional Requirement**: Section 1.2 (Session Management) - ONE session at a time
+        **Decisions Applied**:
+        - #3 (RESTful HTTP - direct response, HTTP codes)
+        - #4 (id field within resource, not sessionId)
+        - #7 (full session resource structure)
+
+        **CRITICAL - ONE Session at a Time**:
+        This system supports ONLY ONE active session (2-hour live event model).
+        Multi-session endpoints (GET /api/session/:id, GET /api/admin/sessions) ELIMINATED.
+
+        **Usage**:
+        - GM Scanner: One-time fetch on connection (before WebSocket established)
+        - Debug/Recovery: Check current session state via HTTP
+        - Primary State: Comes via WebSocket sync:full event (not HTTP polling)
+
+        **Session Commands**:
+        Session lifecycle commands (create/pause/resume/end) handled via WebSocket gm:command event, NOT HTTP POST endpoints.
+
+        **Breaking Changes**:
+        - Field: sessionId → id (Decision #4 - use 'id' within resource)
+        - Added: teams array (target state, not currently implemented)
+        - Structure: Full resource matches session:update WebSocket event (Decision #7)
+      operationId: getCurrentSession
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+              example:
+                id: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+                name: "About Last Night - Oct 15 2025"
+                startTime: "2025-10-15T19:00:00.000Z"
+                endTime: null
+                status: "active"
+                teams: ["001", "002", "003"]
+                metadata:
+                  gmStations: 2
+                  playerDevices: 3
+                  totalScans: 47
+                  uniqueTokensScanned: ["534e2b02", "534e2b03", "tac001", "fli001", "hos001"]
+        '404':
+          description: No active session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "SESSION_NOT_FOUND"
+                message: "No active session"
+
+  /api/state:
+    get:
+      tags:
+        - Static Resources
+      summary: Get current game state (debug/recovery)
+      description: |
+        Get complete current game state for debugging or recovery (one-time fetch).
+
+        **Functional Requirement**: Section 1.7 (State Synchronization) - debugging utility
+        **Decisions Applied**:
+        - #3 (RESTful HTTP)
+        - #5 (video:status structure - used in videoStatus field)
+
+        **CRITICAL - NOT for Polling**:
+        This endpoint is for DEBUGGING and RECOVERY only.
+        Real-time state synchronization provided by WebSocket sync:full event.
+
+        Investigation finding: No polling pattern detected (correct usage).
+
+        **ETag Caching**:
+        Supports HTTP ETag for efficient caching (304 Not Modified response).
+        Client sends If-None-Match header with previous ETag.
+
+        **State Structure**:
+        Complete snapshot including:
+        - Current session (if exists)
+        - All team scores
+        - Recent transactions (last 100)
+        - Video playback status (matches video:status WebSocket event per Decision #5)
+        - Connected devices
+        - System health (orchestrator + VLC)
+
+        **Usage**:
+        - Debug: Manual state inspection during development
+        - Recovery: Fetch state after disconnect/reconnect
+        - Admin Panel: Initial state load before WebSocket connection
+      operationId: getCurrentState
+      parameters:
+        - in: header
+          name: If-None-Match
+          schema:
+            type: string
+          description: ETag from previous response for caching
+          example: '"d41d8cd98f00b204e9800998ecf8427e"'
+      responses:
+        '200':
+          description: Current game state
+          headers:
+            ETag:
+              schema:
+                type: string
+              description: Entity tag for caching
+              example: '"d41d8cd98f00b204e9800998ecf8427e"'
+            Cache-Control:
+              schema:
+                type: string
+              description: Cache control header
+              example: "no-cache, must-revalidate"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameState'
+              example:
+                session:
+                  id: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+                  name: "About Last Night - Oct 15 2025"
+                  startTime: "2025-10-15T19:00:00.000Z"
+                  endTime: null
+                  status: "active"
+                  teams: ["001", "002", "003"]
+                  metadata:
+                    gmStations: 2
+                    playerDevices: 3
+                    totalScans: 47
+                scores:
+                  - teamId: "001"
+                    currentScore: 11500
+                    baseScore: 11000
+                    bonusPoints: 500
+                    tokensScanned: 8
+                    completedGroups: ["jaw_group"]
+                    lastUpdate: "2025-10-15T20:15:30.000Z"
+                  - teamId: "002"
+                    currentScore: 9200
+                    baseScore: 9200
+                    bonusPoints: 0
+                    tokensScanned: 6
+                    completedGroups: []
+                    lastUpdate: "2025-10-15T20:14:15.000Z"
+                recentTransactions:
+                  - id: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+                    tokenId: "534e2b03"
+                    teamId: "001"
+                    deviceId: "GM_Station_1"
+                    mode: "blackmarket"
+                    points: 3000
+                    timestamp: "2025-10-15T20:15:30.000Z"
+                    memoryType: "Technical"
+                    valueRating: 3
+                    group: "jaw_group"
+                  - id: "419d5341-25e9-4ef4-a0a5-9c3a3ec19b2a"
+                    tokenId: "tac001"
+                    teamId: "002"
+                    deviceId: "GM_Station_2"
+                    mode: "detective"
+                    points: 100
+                    timestamp: "2025-10-15T20:14:15.000Z"
+                    memoryType: "Personal"
+                    valueRating: 1
+                    group: ""
+                videoStatus:
+                  status: "playing"
+                  queueLength: 2
+                  tokenId: "534e2b03"
+                  duration: 30
+                  progress: 45
+                  expectedEndTime: "2025-10-15T20:16:00.000Z"
+                  error: null
+                devices:
+                  - deviceId: "GM_Station_1"
+                    type: "gm"
+                    name: "GM Station v1.0.0"
+                    connectionTime: "2025-10-15T19:00:30.000Z"
+                    ipAddress: "10.0.0.81"
+                  - deviceId: "PLAYER_SCANNER_01"
+                    type: "player"
+                    name: "Player Scanner 1"
+                    connectionTime: "2025-10-15T19:02:00.000Z"
+                    ipAddress: "10.0.0.82"
+                systemStatus:
+                  orchestrator: "online"
+                  vlc: "connected"
+        '304':
+          description: Not Modified (ETag match)
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/admin/logs:
+    get:
+      tags:
+        - Admin Operations
+      summary: Get system logs
+      description: |
+        Fetch recent system logs for troubleshooting during live event.
+
+        **Functional Requirement**: Section 1.10.2 (System Administration - Logging)
+        **Decisions Applied**: #3 (RESTful HTTP)
+
+        **Usage**:
+        - Admin Panel: Troubleshooting during live event
+        - One-time fetch (NOT streaming)
+        - Default: Error logs only
+
+        **CRITICAL - Not Streaming**:
+        Logs are fetched via HTTP GET for simplicity, NOT real-time streaming via WebSocket.
+        This is intentional for admin convenience during troubleshooting.
+
+        **Query Parameters**:
+        - lines: Number of log lines (default 100, max 500)
+        - level: Log level filter (default 'error')
+
+        **Security**:
+        Requires JWT authentication (Bearer token from POST /api/admin/auth)
+      operationId: getSystemLogs
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: lines
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Number of log lines to return
+          example: 100
+        - in: query
+          name: level
+          schema:
+            type: string
+            enum: [error, warn, info]
+            default: error
+          description: Log level filter
+          example: "error"
+      responses:
+        '200':
+          description: System logs
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - logs
+                  - count
+                  - timestamp
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      type: string
+                    description: Array of log lines
+                    example:
+                      - "2025-10-15T20:15:30.123Z [ERROR] VLC connection lost"
+                      - "2025-10-15T20:14:22.456Z [ERROR] Transaction validation failed: invalid token"
+                      - "2025-10-15T20:12:15.789Z [ERROR] WebSocket client disconnected unexpectedly"
+                  count:
+                    type: integer
+                    description: Number of log lines returned
+                    example: 3
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Request timestamp
+                    example: "2025-10-15T20:16:00.000Z"
+              example:
+                logs:
+                  - "2025-10-15T20:15:30.123Z [ERROR] VLC connection lost"
+                  - "2025-10-15T20:14:22.456Z [ERROR] Transaction validation failed: invalid token"
+                  - "2025-10-15T20:12:15.789Z [ERROR] WebSocket client disconnected unexpectedly"
+                count: 3
+                timestamp: "2025-10-15T20:16:00.000Z"
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "AUTH_REQUIRED"
+                message: "Authentication token required"
+        '403':
+          description: Permission denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "PERMISSION_DENIED"
+                message: "Admin access required"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+          enum:
+            - AUTH_REQUIRED
+            - PERMISSION_DENIED
+            - VALIDATION_ERROR
+            - SESSION_NOT_FOUND
+            - TOKEN_NOT_FOUND
+            - DUPLICATE_TRANSACTION
+            - INVALID_REQUEST
+        message:
+          type: string
+          description: User-friendly error message
+        details:
+          type: array
+          description: Optional error details
+          items:
+            type: object
+
+    Token:
+      type: object
+      required:
+        - SF_RFID
+        - SF_ValueRating
+        - SF_MemoryType
+        - SF_Group
+      properties:
+        image:
+          type: string
+          nullable: true
+          description: Relative path to image asset
+          example: "assets/images/534e2b02.jpg"
+        audio:
+          type: string
+          nullable: true
+          description: Relative path to audio asset
+          example: "assets/audio/534e2b02.mp3"
+        video:
+          type: string
+          nullable: true
+          description: Video filename (from backend/public/videos/)
+          example: "test_30sec.mp4"
+        processingImage:
+          type: string
+          nullable: true
+          description: Processing screen image
+          example: "534e2b03.jpg"
+        SF_RFID:
+          type: string
+          description: Token ID (RFID identifier)
+          example: "534e2b02"
+        SF_ValueRating:
+          type: integer
+          minimum: 1
+          maximum: 3
+          description: Scoring weight (1=low, 2=medium, 3=high value)
+          example: 3
+        SF_MemoryType:
+          type: string
+          enum: [Technical, Business, Personal]
+          description: Memory category
+          example: "Technical"
+        SF_Group:
+          type: string
+          description: Group ID for completion bonuses (empty string if no group)
+          example: ""
+
+    Session:
+      type: object
+      required:
+        - id
+        - name
+        - startTime
+        - status
+        - teams
+        - metadata
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Session ID (UUID v4, per Decision 4 - use 'id' within resource)
+          example: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+        name:
+          type: string
+          description: Event name
+          minLength: 1
+          maxLength: 100
+          example: "About Last Night - Oct 15 2025"
+        startTime:
+          type: string
+          format: date-time
+          description: Session start time (ISO8601)
+          example: "2025-10-15T19:00:00.000Z"
+        endTime:
+          type: string
+          format: date-time
+          nullable: true
+          description: Session end time (null if active)
+          example: null
+        status:
+          type: string
+          enum: [active, paused, ended]
+          description: Session status
+          example: "active"
+        teams:
+          type: array
+          items:
+            type: string
+            pattern: '^[0-9]{3}$'
+            description: Team ID (3-digit zero-padded string)
+          description: Array of team IDs participating in session
+          example: ["001", "002", "003"]
+        metadata:
+          type: object
+          description: Session metadata (statistics, device counts)
+          properties:
+            gmStations:
+              type: integer
+              description: Number of GM stations connected
+              example: 2
+            playerDevices:
+              type: integer
+              description: Number of player scanners connected
+              example: 3
+            totalScans:
+              type: integer
+              description: Total scans across all teams
+              example: 47
+            uniqueTokensScanned:
+              type: array
+              items:
+                type: string
+              description: List of unique token IDs scanned
+              example: ["534e2b02", "534e2b03", "tac001", "fli001", "hos001"]
+
+    GameState:
+      type: object
+      required:
+        - session
+        - scores
+        - recentTransactions
+        - videoStatus
+        - devices
+        - systemStatus
+      properties:
+        session:
+          allOf:
+            - $ref: '#/components/schemas/Session'
+            - nullable: true
+          description: Current active session (null if no session)
+        scores:
+          type: array
+          description: Team scores array
+          items:
+            type: object
+            required:
+              - teamId
+              - currentScore
+              - baseScore
+              - bonusPoints
+              - tokensScanned
+              - completedGroups
+              - lastUpdate
+            properties:
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID
+                example: "001"
+              currentScore:
+                type: integer
+                description: Total score (base + bonus)
+                example: 11500
+              baseScore:
+                type: integer
+                description: Base score from token values
+                example: 11000
+              bonusPoints:
+                type: integer
+                description: Bonus points from group completions
+                example: 500
+              tokensScanned:
+                type: integer
+                description: Number of tokens scanned by team
+                example: 8
+              completedGroups:
+                type: array
+                items:
+                  type: string
+                description: Array of completed group IDs
+                example: ["jaw_group"]
+              lastUpdate:
+                type: string
+                format: date-time
+                description: Last score update timestamp
+                example: "2025-10-15T20:15:30.000Z"
+        recentTransactions:
+          type: array
+          description: Recent transactions (last 100)
+          items:
+            type: object
+            required:
+              - id
+              - tokenId
+              - teamId
+              - deviceId
+              - mode
+              - points
+              - timestamp
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Transaction ID
+                example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+              tokenId:
+                type: string
+                description: Token ID (per Decision 4)
+                example: "534e2b03"
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID
+                example: "001"
+              deviceId:
+                type: string
+                description: GM Scanner device ID (per Decision 4)
+                example: "GM_Station_1"
+              mode:
+                type: string
+                enum: [detective, blackmarket]
+                description: Scan mode
+                example: "blackmarket"
+              points:
+                type: integer
+                description: Points awarded (0 if duplicate/error)
+                example: 3000
+              timestamp:
+                type: string
+                format: date-time
+                description: Transaction timestamp
+                example: "2025-10-15T20:15:30.000Z"
+              memoryType:
+                type: string
+                enum: [Technical, Business, Personal]
+                description: Token memory type (from tokens.json)
+                example: "Technical"
+              valueRating:
+                type: integer
+                minimum: 1
+                maximum: 3
+                description: Token value rating (from tokens.json)
+                example: 3
+              group:
+                type: string
+                description: Token group (from tokens.json, empty string if no group)
+                example: "jaw_group"
+        videoStatus:
+          type: object
+          required:
+            - status
+            - queueLength
+          description: Current video playback status (per Decision 5)
+          properties:
+            status:
+              type: string
+              enum: [idle, loading, playing, paused, completed, error]
+              description: Video playback status
+              example: "playing"
+            queueLength:
+              type: integer
+              description: Number of videos in queue (per Decision 5 - ADDED FIELD)
+              minimum: 0
+              example: 2
+            tokenId:
+              type: string
+              nullable: true
+              description: Currently playing token ID (null if idle)
+              example: "534e2b03"
+            duration:
+              type: number
+              nullable: true
+              description: Video duration in seconds (null if no video)
+              example: 30
+            progress:
+              type: number
+              nullable: true
+              description: Playback progress percentage (0-100)
+              minimum: 0
+              maximum: 100
+              example: 45
+            expectedEndTime:
+              type: string
+              format: date-time
+              nullable: true
+              description: Expected completion time (null if no video)
+              example: "2025-10-15T20:16:00.000Z"
+            error:
+              type: string
+              nullable: true
+              description: Error message if status=error
+              example: null
+        devices:
+          type: array
+          description: Connected devices
+          items:
+            type: object
+            required:
+              - deviceId
+              - type
+              - name
+              - connectionTime
+            properties:
+              deviceId:
+                type: string
+                description: Device identifier (per Decision 4)
+                example: "GM_Station_1"
+              type:
+                type: string
+                enum: [gm, player]
+                description: Device type
+                example: "gm"
+              name:
+                type: string
+                description: Friendly device name
+                example: "GM Station v1.0.0"
+              connectionTime:
+                type: string
+                format: date-time
+                description: Connection timestamp
+                example: "2025-10-15T19:00:30.000Z"
+              ipAddress:
+                type: string
+                description: Device IP address
+                example: "10.0.0.81"
+        systemStatus:
+          type: object
+          required:
+            - orchestrator
+            - vlc
+          description: System health status
+          properties:
+            orchestrator:
+              type: string
+              enum: [online, offline]
+              description: Orchestrator status
+              example: "online"
+            vlc:
+              type: string
+              enum: [connected, disconnected, error]
+              description: VLC connection status
+              example: "connected"
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "VALIDATION_ERROR"
+            message: "Validation failed: tokenId, deviceId"
+            details:
+              - field: "tokenId"
+                message: "tokenId is required"
+              - field: "deviceId"
+                message: "deviceId is required"
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from POST /api/admin/auth

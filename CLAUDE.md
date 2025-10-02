@@ -231,3 +231,37 @@ The `ecosystem.config.js` manages both processes:
 - Error codes for API responses
 - Event-driven architecture with EventEmitter
 - No console.log, use winston logger
+
+## API Alignment Project Memory
+
+**Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI)
+
+**Memory Location**: `docs/api-alignment/00-INDEX.md` - **READ COMPLETELY after context compaction**
+
+### Context Recovery After Compaction
+
+1. **Read 00-INDEX.md THOROUGHLY** - especially these sections:
+   - "Complete API Alignment Process" - understand all 7 phases
+   - "Current Status Summary" - locate where we are NOW
+   - "Progress Tracking" - see what's complete
+   - "Recent Updates" - understand recent work
+
+2. **Understand the Methodology** (documented in INDEX):
+   - Exhaustive analysis (not sampling)
+   - Every claim backed by source code references (file:line)
+   - Documents are 1,000-3,000 lines (comprehensive, not summaries)
+   - NO RUSHING - thoroughness over speed
+   - Collaborative decision-making at key points
+
+3. **Review Current Phase Documents**:
+   - Check "Current Phase" in INDEX for status
+   - Read that phase's documents sequentially
+   - Understanding builds on previous phases
+
+4. **Key Characteristics of This Work**:
+   - Rigorous 7-step methodology per phase
+   - Collaborative decisions (Phase 4, Phase 4.5 Step 3, etc.)
+   - Test-first validation approach
+   - Documents designed to survive compaction
+
+**When to Consult**: Before any backend API changes, scanner modifications, test updates, or contract work

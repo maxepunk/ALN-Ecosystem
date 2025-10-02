@@ -1,0 +1,1391 @@
+asyncapi: 2.6.0
+
+info:
+  title: ALN Orchestrator WebSocket API
+  version: 1.0.0
+  description: |
+    About Last Night (ALN) Orchestrator WebSocket API for real-time game state synchronization.
+
+    **Architecture**: Contract-First approach with wrapped event envelope pattern.
+
+    **Components**:
+    - GM Scanner: Real-time game logic via WebSocket
+    - Admin Panel: Monitoring and intervention via WebSocket commands
+
+    **Key Patterns**:
+    - All events use wrapped envelope: `{event, data, timestamp}`
+    - Authentication via JWT (from HTTP POST /api/admin/auth)
+    - ONE session at a time (2-hour live event)
+    - Real-time state sync via sync:full event
+
+    **Documentation References**:
+    - Alignment Decisions: docs/api-alignment/04-alignment-decisions.md
+    - Functional Requirements: docs/api-alignment/08-functional-requirements.md
+    - Essential API List: docs/api-alignment/09-essential-api-list.md
+
+servers:
+  production:
+    url: ws://localhost:3000
+    protocol: ws
+    description: Local development WebSocket server
+  network:
+    url: ws://{orchestrator-ip}:3000
+    protocol: ws
+    description: Network deployment WebSocket server
+    variables:
+      orchestrator-ip:
+        default: "10.0.0.100"
+        description: Orchestrator IP address on local network
+
+channels:
+  /:
+    description: Main WebSocket channel for all events
+    subscribe:
+      summary: Receive events from orchestrator
+      description: |
+        Server-to-client events (outgoing from orchestrator perspective).
+        All events use wrapped envelope pattern per Decision #2.
+      message:
+        oneOf:
+          - $ref: '#/components/messages/GmIdentified'
+          - $ref: '#/components/messages/DeviceConnected'
+          - $ref: '#/components/messages/DeviceDisconnected'
+          - $ref: '#/components/messages/SyncFull'
+          - $ref: '#/components/messages/TransactionResult'
+          - $ref: '#/components/messages/TransactionNew'
+          - $ref: '#/components/messages/ScoreUpdated'
+          - $ref: '#/components/messages/VideoStatus'
+          - $ref: '#/components/messages/SessionUpdate'
+          - $ref: '#/components/messages/GmCommandAck'
+          - $ref: '#/components/messages/OfflineQueueProcessed'
+          - $ref: '#/components/messages/GroupCompleted'
+          - $ref: '#/components/messages/Error'
+    publish:
+      summary: Send events to orchestrator
+      description: |
+        Client-to-server events (incoming from orchestrator perspective).
+        All events use wrapped envelope pattern per Decision #2.
+      message:
+        oneOf:
+          - $ref: '#/components/messages/GmIdentify'
+          - $ref: '#/components/messages/TransactionSubmit'
+          - $ref: '#/components/messages/GmCommand'
+
+components:
+  messages:
+    # ============================================================================
+    # AUTHENTICATION & CONNECTION (4 events)
+    # ============================================================================
+
+    GmIdentify:
+      name: gm:identify
+      title: GM Scanner Authentication
+      summary: Client authenticates WebSocket connection
+      description: |
+        GM Scanner or Admin Panel authenticates WebSocket connection using JWT token.
+
+        **Functional Requirement**: Section 1.1 (Auth & Authorization)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (deviceId field)
+
+        **Flow**:
+        1. Client obtains JWT via HTTP POST /api/admin/auth
+        2. Client connects WebSocket
+        3. Client sends gm:identify with token
+        4. Server validates token → responds with gm:identified
+        5. Server sends sync:full with complete state
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: gm:identify
+            description: Event name
+          data:
+            type: object
+            required:
+              - token
+              - deviceId
+              - type
+              - name
+            properties:
+              token:
+                type: string
+                description: JWT token from POST /api/admin/auth
+                example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              deviceId:
+                type: string
+                description: Device identifier (per Decision 4)
+                example: "GM_Station_1"
+              type:
+                type: string
+                enum: [gm, admin]
+                description: Device type
+                example: "gm"
+              name:
+                type: string
+                description: Friendly device name
+                example: "GM Station v1.0.0"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp (ISO8601)
+            example: "2025-10-15T19:00:30.000Z"
+
+    GmIdentified:
+      name: gm:identified
+      title: Authentication Confirmation
+      summary: Server confirms authentication
+      description: |
+        Server confirms GM Scanner authentication after successful validation.
+
+        **Functional Requirement**: Section 1.1 (Auth & Authorization)
+        **Decisions Applied**: #2 (wrapped envelope), #11 (add validation)
+
+        **Breaking Changes**:
+        - Now wrapped (was unwrapped)
+        - Added validation (client should check success field)
+
+        **Note**: Server automatically sends sync:full after this event.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: gm:identified
+            description: Event name
+          data:
+            type: object
+            required:
+              - success
+              - deviceId
+            properties:
+              success:
+                type: boolean
+                description: Authentication success
+                example: true
+              deviceId:
+                type: string
+                description: Device identifier
+                example: "GM_Station_1"
+              sessionId:
+                type: string
+                format: uuid
+                nullable: true
+                description: Current session ID (null if no session)
+                example: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:30.100Z"
+
+    DeviceConnected:
+      name: device:connected
+      title: Device Connection Broadcast
+      summary: Broadcast when device connects
+      description: |
+        Broadcast to all connected clients when new device connects.
+
+        **Functional Requirement**: Section 1.6 (Device Tracking)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (deviceId), #8 (send object not array)
+
+        **CRITICAL - Decision #8**:
+        Send single device object, NOT array.
+        Current scanner admin handler has bug expecting array (must fix scanner).
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: device:connected
+            description: Event name
+          data:
+            type: object
+            required:
+              - deviceId
+              - type
+              - name
+              - ipAddress
+              - connectionTime
+            properties:
+              deviceId:
+                type: string
+                description: Device identifier (per Decision 4)
+                example: "GM_Station_2"
+              type:
+                type: string
+                enum: [gm, player]
+                description: Device type
+                example: "gm"
+              name:
+                type: string
+                description: Friendly device name
+                example: "GM Station v1.0.0"
+              ipAddress:
+                type: string
+                description: Device IP address
+                example: "10.0.0.82"
+              connectionTime:
+                type: string
+                format: date-time
+                description: Connection timestamp
+                example: "2025-10-15T19:05:00.000Z"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:05:00.000Z"
+
+    DeviceDisconnected:
+      name: device:disconnected
+      title: Device Disconnection Broadcast
+      summary: Broadcast when device disconnects
+      description: |
+        Broadcast to all connected clients when device disconnects.
+
+        **Functional Requirement**: Section 1.6 (Device Tracking)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (deviceId)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: device:disconnected
+            description: Event name
+          data:
+            type: object
+            required:
+              - deviceId
+              - reason
+              - disconnectionTime
+            properties:
+              deviceId:
+                type: string
+                description: Device identifier
+                example: "GM_Station_2"
+              reason:
+                type: string
+                enum: [manual, timeout, error]
+                description: Disconnection reason
+                example: "timeout"
+              disconnectionTime:
+                type: string
+                format: date-time
+                description: Disconnection timestamp
+                example: "2025-10-15T21:00:00.000Z"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T21:00:00.000Z"
+
+    # ============================================================================
+    # STATE SYNCHRONIZATION (1 event)
+    # ============================================================================
+
+    SyncFull:
+      name: sync:full
+      title: Complete State Synchronization
+      summary: Send complete system state
+      description: |
+        Send complete system state to client. Richest payload event.
+
+        **Functional Requirement**: Section 1.7 (State Synchronization)
+        **Decisions Applied**: #2 (wrapped envelope), #5 (videoStatus structure), #7 (full session)
+
+        **When Sent**:
+        - On WebSocket connection (after gm:identified)
+        - After offline queue processing
+        - On explicit request (eliminated sync:request event)
+
+        **Replaces**:
+        - state:sync event (eliminated per investigation - redundant)
+        - state:update event (eliminated per Decision 6 - contract violation)
+
+        **Note**: This is the PRIMARY state sync mechanism. HTTP GET /api/state is debug/recovery only.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: sync:full
+            description: Event name
+          data:
+            type: object
+            required:
+              - session
+              - scores
+              - recentTransactions
+              - videoStatus
+              - devices
+              - systemStatus
+            properties:
+              session:
+                description: Current session (matches Session schema from OpenAPI)
+                oneOf:
+                  - type: object
+                    required:
+                      - id
+                      - name
+                      - startTime
+                      - status
+                      - teams
+                      - metadata
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+                      name:
+                        type: string
+                        example: "About Last Night - Oct 15 2025"
+                      startTime:
+                        type: string
+                        format: date-time
+                        example: "2025-10-15T19:00:00.000Z"
+                      endTime:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        example: null
+                      status:
+                        type: string
+                        enum: [active, paused, ended]
+                        example: "active"
+                      teams:
+                        type: array
+                        items:
+                          type: string
+                          pattern: '^[0-9]{3}$'
+                        example: ["001", "002", "003"]
+                      metadata:
+                        type: object
+                        example:
+                          gmStations: 2
+                          playerDevices: 3
+                          totalScans: 47
+                  - type: "null"
+              scores:
+                type: array
+                description: Team scores (matches GameState.scores from OpenAPI)
+                items:
+                  type: object
+                  required:
+                    - teamId
+                    - currentScore
+                    - baseScore
+                    - bonusPoints
+                    - tokensScanned
+                    - completedGroups
+                    - lastUpdate
+                  properties:
+                    teamId:
+                      type: string
+                      pattern: '^[0-9]{3}$'
+                      example: "001"
+                    currentScore:
+                      type: integer
+                      example: 11500
+                    baseScore:
+                      type: integer
+                      example: 11000
+                    bonusPoints:
+                      type: integer
+                      example: 500
+                    tokensScanned:
+                      type: integer
+                      example: 8
+                    completedGroups:
+                      type: array
+                      items:
+                        type: string
+                      example: ["jaw_group"]
+                    lastUpdate:
+                      type: string
+                      format: date-time
+                      example: "2025-10-15T20:15:30.000Z"
+              recentTransactions:
+                type: array
+                description: Recent transactions (last 100)
+                items:
+                  type: object
+                  required:
+                    - id
+                    - tokenId
+                    - teamId
+                    - deviceId
+                    - mode
+                    - points
+                    - timestamp
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                      example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+                    tokenId:
+                      type: string
+                      example: "534e2b03"
+                    teamId:
+                      type: string
+                      pattern: '^[0-9]{3}$'
+                      example: "001"
+                    deviceId:
+                      type: string
+                      example: "GM_Station_1"
+                    mode:
+                      type: string
+                      enum: [detective, blackmarket]
+                      example: "blackmarket"
+                    points:
+                      type: integer
+                      example: 3000
+                    timestamp:
+                      type: string
+                      format: date-time
+                      example: "2025-10-15T20:15:30.000Z"
+                    memoryType:
+                      type: string
+                      enum: [Technical, Business, Personal]
+                      example: "Technical"
+                    valueRating:
+                      type: integer
+                      minimum: 1
+                      maximum: 3
+                      example: 3
+                    group:
+                      type: string
+                      example: "jaw_group"
+              videoStatus:
+                type: object
+                description: Current video status (per Decision 5)
+                required:
+                  - status
+                  - queueLength
+                properties:
+                  status:
+                    type: string
+                    enum: [idle, loading, playing, paused, completed, error]
+                    example: "playing"
+                  queueLength:
+                    type: integer
+                    description: Queue length (per Decision 5 - ADDED FIELD)
+                    minimum: 0
+                    example: 2
+                  tokenId:
+                    type: string
+                    nullable: true
+                    example: "534e2b03"
+                  duration:
+                    type: number
+                    nullable: true
+                    example: 30
+                  progress:
+                    type: number
+                    nullable: true
+                    minimum: 0
+                    maximum: 100
+                    example: 45
+                  expectedEndTime:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    example: "2025-10-15T20:16:00.000Z"
+                  error:
+                    type: string
+                    nullable: true
+                    example: null
+              devices:
+                type: array
+                description: Connected devices
+                items:
+                  type: object
+                  required:
+                    - deviceId
+                    - type
+                    - name
+                    - connectionTime
+                  properties:
+                    deviceId:
+                      type: string
+                      example: "GM_Station_1"
+                    type:
+                      type: string
+                      enum: [gm, player]
+                      example: "gm"
+                    name:
+                      type: string
+                      example: "GM Station v1.0.0"
+                    connectionTime:
+                      type: string
+                      format: date-time
+                      example: "2025-10-15T19:00:30.000Z"
+                    ipAddress:
+                      type: string
+                      example: "10.0.0.81"
+              systemStatus:
+                type: object
+                description: System health status
+                required:
+                  - orchestrator
+                  - vlc
+                properties:
+                  orchestrator:
+                    type: string
+                    enum: [online, offline]
+                    example: "online"
+                  vlc:
+                    type: string
+                    enum: [connected, disconnected, error]
+                    example: "connected"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:30.200Z"
+
+    # ============================================================================
+    # TRANSACTIONS & SCORING (4 events)
+    # ============================================================================
+
+    TransactionSubmit:
+      name: transaction:submit
+      title: Submit Token Scan Transaction
+      summary: GM Scanner submits token scan for scoring
+      description: |
+        GM Scanner submits token scan transaction for scoring calculation.
+
+        **Functional Requirement**: Section 1.3 (Transaction Processing)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (tokenId, deviceId fields)
+
+        **Flow**:
+        1. Client sends transaction:submit
+        2. Server validates and processes
+        3. Server sends transaction:result to submitter
+        4. Server broadcasts transaction:new to all GMs in session
+        5. Server broadcasts score:updated to all GMs in session
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: transaction:submit
+            description: Event name
+          data:
+            type: object
+            required:
+              - tokenId
+              - teamId
+              - deviceId
+              - mode
+            properties:
+              tokenId:
+                type: string
+                description: Token ID (per Decision 4)
+                example: "534e2b03"
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID (3-digit zero-padded)
+                example: "001"
+              deviceId:
+                type: string
+                description: GM Scanner device ID (per Decision 4)
+                example: "GM_Station_1"
+              mode:
+                type: string
+                enum: [detective, blackmarket]
+                description: Scan mode (game logic)
+                example: "blackmarket"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:30.000Z"
+
+    TransactionResult:
+      name: transaction:result
+      title: Transaction Processing Result
+      summary: Server sends transaction result to submitter
+      description: |
+        Server sends transaction processing result to submitting device only.
+
+        **Functional Requirement**: Section 1.3 (Transaction Processing)
+        **Decisions Applied**: #2 (wrapped envelope), #10 (error display)
+
+        **CRITICAL - Decision #10**:
+        Client MUST check status field and display errors to user.
+        Current scanner has bug (logs result but doesn't check status).
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: transaction:result
+            description: Event name
+          data:
+            type: object
+            required:
+              - status
+              - transactionId
+              - tokenId
+              - teamId
+              - points
+              - message
+            properties:
+              status:
+                type: string
+                enum: [accepted, duplicate, error]
+                description: Transaction status
+                example: "accepted"
+              transactionId:
+                type: string
+                format: uuid
+                description: Generated transaction ID
+                example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+              tokenId:
+                type: string
+                description: Token ID
+                example: "534e2b03"
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID
+                example: "001"
+              points:
+                type: integer
+                description: Points awarded (0 if duplicate/error)
+                example: 3000
+              message:
+                type: string
+                description: User-friendly message
+                example: "Transaction accepted - 3000 points awarded"
+              error:
+                type: string
+                nullable: true
+                description: Error code if status=error
+                example: null
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:30.100Z"
+
+    TransactionNew:
+      name: transaction:new
+      title: New Transaction Broadcast
+      summary: Broadcast new transaction to all GMs in session
+      description: |
+        Broadcast new transaction to all GM Scanners in session for real-time updates.
+
+        **Functional Requirement**: Section 1.3 (Transaction Processing - real-time broadcasting)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (tokenId, deviceId fields)
+
+        **Note**: Backend enriches transaction with token metadata (memoryType, valueRating, group) from tokens.json.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: transaction:new
+            description: Event name
+          data:
+            type: object
+            required:
+              - transaction
+            properties:
+              transaction:
+                type: object
+                required:
+                  - id
+                  - tokenId
+                  - teamId
+                  - deviceId
+                  - mode
+                  - points
+                  - timestamp
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                    description: Transaction ID
+                    example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+                  tokenId:
+                    type: string
+                    description: Token ID (per Decision 4)
+                    example: "534e2b03"
+                  teamId:
+                    type: string
+                    pattern: '^[0-9]{3}$'
+                    description: Team ID
+                    example: "001"
+                  deviceId:
+                    type: string
+                    description: GM Scanner that created transaction (per Decision 4)
+                    example: "GM_Station_1"
+                  mode:
+                    type: string
+                    enum: [detective, blackmarket]
+                    description: Scan mode
+                    example: "blackmarket"
+                  points:
+                    type: integer
+                    description: Points awarded
+                    example: 3000
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Transaction timestamp
+                    example: "2025-10-15T20:15:30.000Z"
+                  memoryType:
+                    type: string
+                    enum: [Technical, Business, Personal]
+                    description: Token memory type (from tokens.json)
+                    example: "Technical"
+                  valueRating:
+                    type: integer
+                    minimum: 1
+                    maximum: 3
+                    description: Token value rating (from tokens.json)
+                    example: 3
+                  group:
+                    type: string
+                    description: Token group (from tokens.json)
+                    example: "jaw_group"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:30.100Z"
+
+    ScoreUpdated:
+      name: score:updated
+      title: Team Score Update Broadcast
+      summary: Broadcast team score update to all GMs
+      description: |
+        Broadcast team score update to all GM Scanners for real-time leaderboard.
+
+        **Functional Requirement**: Section 1.4 (Score Management)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **CRITICAL**: All 7 fields REQUIRED with NO fallbacks (scanner expects complete data).
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: score:updated
+            description: Event name
+          data:
+            type: object
+            required:
+              - teamId
+              - currentScore
+              - baseScore
+              - bonusPoints
+              - tokensScanned
+              - completedGroups
+              - lastUpdate
+            properties:
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID
+                example: "001"
+              currentScore:
+                type: integer
+                description: Total score (base + bonus)
+                example: 11500
+              baseScore:
+                type: integer
+                description: Base score from token values
+                example: 11000
+              bonusPoints:
+                type: integer
+                description: Bonus points from group completions
+                example: 500
+              tokensScanned:
+                type: integer
+                description: Number of tokens scanned
+                example: 8
+              completedGroups:
+                type: array
+                items:
+                  type: string
+                description: Array of completed group IDs
+                example: ["jaw_group"]
+              lastUpdate:
+                type: string
+                format: date-time
+                description: Last update timestamp
+                example: "2025-10-15T20:15:30.000Z"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:30.100Z"
+
+    # ============================================================================
+    # VIDEO ORCHESTRATION (1 event)
+    # ============================================================================
+
+    VideoStatus:
+      name: video:status
+      title: Video Playback Status Broadcast
+      summary: Broadcast video playback status updates
+      description: |
+        Broadcast video playback status to all GM Scanners.
+
+        **Functional Requirement**: Section 1.5.3 (Video Orchestration - State Broadcasting)
+        **Decisions Applied**: #2 (wrapped envelope), #5 (FIXED STRUCTURE)
+
+        **CRITICAL - Decision #5 Breaking Changes**:
+        - Field rename: current → status
+        - Added field: queueLength (REQUIRED)
+        - Wrapped envelope (was unwrapped)
+
+        **When Sent**:
+        - Video starts playing
+        - Video pauses/resumes
+        - Video completes
+        - Video error occurs
+        - Queue changes
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: video:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - status
+              - queueLength
+            properties:
+              status:
+                type: string
+                enum: [idle, loading, playing, paused, completed, error]
+                description: Video playback status (per Decision 5 - renamed from 'current')
+                example: "playing"
+              queueLength:
+                type: integer
+                description: Number of videos in queue (per Decision 5 - ADDED FIELD)
+                minimum: 0
+                example: 2
+              tokenId:
+                type: string
+                nullable: true
+                description: Currently playing token ID (null if idle)
+                example: "534e2b03"
+              duration:
+                type: number
+                nullable: true
+                description: Video duration in seconds
+                example: 30
+              progress:
+                type: number
+                nullable: true
+                description: Playback progress percentage (0-100)
+                minimum: 0
+                maximum: 100
+                example: 45
+              expectedEndTime:
+                type: string
+                format: date-time
+                nullable: true
+                description: Expected completion time
+                example: "2025-10-15T20:16:00.000Z"
+              error:
+                type: string
+                nullable: true
+                description: Error message if status=error
+                example: null
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:45.000Z"
+
+    # ============================================================================
+    # SESSION MANAGEMENT (1 event)
+    # ============================================================================
+
+    SessionUpdate:
+      name: session:update
+      title: Session State Change Broadcast
+      summary: Broadcast session state changes to all GMs
+      description: |
+        Broadcast session state changes (created/paused/resumed/ended) to all GMs.
+
+        **Functional Requirement**: Section 1.2 (Session Management)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (id field), #7 (full resource)
+
+        **CRITICAL - Decision #7**:
+        Send FULL session resource (matches GET /api/session structure), not minimal delta.
+
+        **Replaces**:
+        - session:new (use status='active' with new session)
+        - session:paused (use status='paused')
+        - session:resumed (use status='active')
+        - session:ended (use status='ended')
+
+        **Breaking Changes**:
+        - Field: sessionId → id (per Decision 4)
+        - Structure: Full resource (per Decision 7)
+        - Added: teams array
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: session:update
+            description: Event name
+          data:
+            type: object
+            required:
+              - id
+              - name
+              - startTime
+              - status
+              - teams
+              - metadata
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: Session ID (per Decision 4 - use 'id' within resource)
+                example: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+              name:
+                type: string
+                description: Event name
+                example: "About Last Night - Oct 15 2025"
+              startTime:
+                type: string
+                format: date-time
+                description: Session start time
+                example: "2025-10-15T19:00:00.000Z"
+              endTime:
+                type: string
+                format: date-time
+                nullable: true
+                description: Session end time (null if active)
+                example: null
+              status:
+                type: string
+                enum: [active, paused, ended]
+                description: Session status
+                example: "active"
+              teams:
+                type: array
+                items:
+                  type: string
+                  pattern: '^[0-9]{3}$'
+                description: Array of team IDs
+                example: ["001", "002", "003"]
+              metadata:
+                type: object
+                description: Session metadata
+                example:
+                  gmStations: 2
+                  playerDevices: 3
+                  totalScans: 47
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:00.100Z"
+
+    # ============================================================================
+    # ADMIN COMMANDS (2 events)
+    # ============================================================================
+
+    GmCommand:
+      name: gm:command
+      title: Admin Control Commands
+      summary: Admin Panel sends control commands
+      description: |
+        Unified command interface for ALL admin operations.
+
+        **Functional Requirement**: Section 4.2 (Admin Panel Intervention Functions)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **CRITICAL**: This SINGLE event replaces 11 HTTP admin endpoints (architectural confusion fixed).
+
+        **Command Actions**:
+        - Session: create, pause, resume, end
+        - Video: play, pause, stop, skip, queue:add, queue:reorder, queue:clear
+        - Score: adjust
+        - Transaction: delete, create
+        - System: reset
+
+        **Breaking Changes**: Admin commands moved from HTTP POST to WebSocket (proper transport).
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: gm:command
+            description: Event name
+          data:
+            type: object
+            required:
+              - action
+              - payload
+            properties:
+              action:
+                type: string
+                description: Command action type
+                enum:
+                  - session:create
+                  - session:pause
+                  - session:resume
+                  - session:end
+                  - video:play
+                  - video:pause
+                  - video:stop
+                  - video:skip
+                  - video:queue:add
+                  - video:queue:reorder
+                  - video:queue:clear
+                  - score:adjust
+                  - transaction:delete
+                  - transaction:create
+                  - system:reset
+                example: "video:skip"
+              payload:
+                type: object
+                description: Action-specific parameters
+                example: {}
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:20:00.000Z"
+      examples:
+        - name: Session Create
+          payload:
+            event: gm:command
+            data:
+              action: session:create
+              payload:
+                name: "About Last Night - Oct 15 2025"
+                teams: ["001", "002", "003"]
+            timestamp: "2025-10-15T19:00:00.000Z"
+        - name: Video Skip
+          payload:
+            event: gm:command
+            data:
+              action: video:skip
+              payload: {}
+            timestamp: "2025-10-15T20:20:00.000Z"
+        - name: Score Adjust
+          payload:
+            event: gm:command
+            data:
+              action: score:adjust
+              payload:
+                teamId: "001"
+                delta: -500
+                reason: "Penalty for rule violation"
+            timestamp: "2025-10-15T20:25:00.000Z"
+
+    GmCommandAck:
+      name: gm:command:ack
+      title: Command Acknowledgment
+      summary: Server acknowledges command execution
+      description: |
+        Server sends command acknowledgment to command sender only.
+
+        **Functional Requirement**: Section 4.2 (Admin Panel command feedback)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **Flow**:
+        1. Admin sends gm:command
+        2. Server executes command
+        3. Server sends gm:command:ack to sender (success/failure)
+        4. Server broadcasts side effects (e.g., video:status, score:updated)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: gm:command:ack
+            description: Event name
+          data:
+            type: object
+            required:
+              - action
+              - success
+              - message
+            properties:
+              action:
+                type: string
+                description: Original command action
+                example: "video:skip"
+              success:
+                type: boolean
+                description: Command execution success
+                example: true
+              message:
+                type: string
+                description: Result message
+                example: "Video skipped successfully"
+              error:
+                type: string
+                nullable: true
+                description: Error code if failed
+                example: null
+              result:
+                type: object
+                nullable: true
+                description: Action-specific result data
+                example: null
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:20:00.100Z"
+
+    # ============================================================================
+    # OFFLINE QUEUE (1 event)
+    # ============================================================================
+
+    OfflineQueueProcessed:
+      name: offline:queue:processed
+      title: Offline Queue Processing Complete
+      summary: Notify clients when offline queue processed
+      description: |
+        Broadcast when offline queue has been processed (after reconnection).
+
+        **Functional Requirement**: Section 1.8 (Offline Queue Management)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **Flow**:
+        1. Player Scanner reconnects after offline period
+        2. Uploads queued scans via HTTP POST /api/scan/batch
+        3. Server processes batch
+        4. Server broadcasts offline:queue:processed
+        5. Server broadcasts sync:full with updated state
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: offline:queue:processed
+            description: Event name
+          data:
+            type: object
+            required:
+              - queueSize
+              - results
+            properties:
+              queueSize:
+                type: integer
+                description: Number of items processed
+                example: 5
+              results:
+                type: array
+                description: Per-item results
+                items:
+                  type: object
+                  required:
+                    - transactionId
+                    - status
+                  properties:
+                    transactionId:
+                      type: string
+                      format: uuid
+                      description: Generated transaction ID
+                      example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+                    status:
+                      type: string
+                      enum: [processed, failed]
+                      description: Processing status
+                      example: "processed"
+                    error:
+                      type: string
+                      nullable: true
+                      description: Error message if failed
+                      example: null
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:10:00.000Z"
+
+    # ============================================================================
+    # GROUP COMPLETION (1 event)
+    # ============================================================================
+
+    GroupCompleted:
+      name: group:completed
+      title: Group Completion Bonus Broadcast
+      summary: Broadcast when team completes token group
+      description: |
+        Broadcast when team completes token group (bonus points awarded).
+
+        **Functional Requirement**: Section 1.3.6 (Transaction Processing - Group Completion)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **Note**: Important game event (group completions are major scoring moments).
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: group:completed
+            description: Event name
+          data:
+            type: object
+            required:
+              - teamId
+              - group
+              - bonusPoints
+              - completedAt
+            properties:
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID
+                example: "001"
+              group:
+                type: string
+                description: Group name/ID
+                example: "jaw_group"
+              bonusPoints:
+                type: integer
+                description: Bonus points awarded
+                example: 500
+              completedAt:
+                type: string
+                format: date-time
+                description: Completion timestamp
+                example: "2025-10-15T20:15:30.000Z"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:30.100Z"
+
+    # ============================================================================
+    # ERRORS (1 event)
+    # ============================================================================
+
+    Error:
+      name: error
+      title: Error Notification
+      summary: Send error notifications to clients
+      description: |
+        Send error notifications to clients for user-facing display.
+
+        **Functional Requirement**: Section 5 (Error Handling), Decision 10
+        **Decisions Applied**: #2 (wrapped envelope), #10 (error display)
+
+        **CRITICAL - Decision #10**:
+        User-facing errors (no more console-only errors).
+        Clients MUST display error messages to users.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: error
+            description: Event name
+          data:
+            type: object
+            required:
+              - code
+              - message
+            properties:
+              code:
+                type: string
+                description: Error code
+                enum:
+                  - AUTH_REQUIRED
+                  - PERMISSION_DENIED
+                  - VALIDATION_ERROR
+                  - SESSION_NOT_FOUND
+                  - TOKEN_NOT_FOUND
+                  - DUPLICATE_TRANSACTION
+                  - INVALID_REQUEST
+                  - VLC_ERROR
+                  - INTERNAL_ERROR
+                example: "TOKEN_NOT_FOUND"
+              message:
+                type: string
+                description: User-friendly error message
+                example: "Token not found in database"
+              details:
+                type: object
+                nullable: true
+                description: Optional error details
+                example: null
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:30.100Z"

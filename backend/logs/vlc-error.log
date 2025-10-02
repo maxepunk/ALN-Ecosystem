@@ -175,3 +175,49 @@
 2025-09-27 22:26:00 -07:00: Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 2025-09-27 22:26:00 -07:00: Failed to open VDPAU backend libvdpau_nvidia.so: cannot open shared object file: No such file or directory
 2025-09-27 22:26:00 -07:00: [00007c195c60beb0] gl gl: Initialized libplacebo v4.192.1 (API v192)
+2025-09-28 03:56:55 -07:00: [00005cdfa0070300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-28 03:56:55 -07:00: [00005cdfa0070300] main interface error: no suitable interface module
+2025-09-28 03:56:55 -07:00: [00005cdf9ffd6260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-28 03:56:55 -07:00: [00005cdfa0075110] main playlist: playlist is empty
+2025-09-28 03:56:55 -07:00: [00005cdfa00b7990] [http] lua interface: Lua HTTP interface
+2025-09-28 04:07:42 -07:00: [000061229dcbc300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-28 04:07:42 -07:00: [000061229dcbc300] main interface error: no suitable interface module
+2025-09-28 04:07:42 -07:00: [000061229dc22260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-28 04:07:42 -07:00: [000061229dd038e0] [http] lua interface: Lua HTTP interface
+2025-09-28 04:07:42 -07:00: [000061229dcc1110] main playlist: playlist is empty
+2025-09-28 12:31:10 -07:00: [00005b9d32a22300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-28 12:31:10 -07:00: [00005b9d32a22300] main interface error: no suitable interface module
+2025-09-28 12:31:10 -07:00: [00005b9d32988260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-28 12:31:10 -07:00: [00005b9d32a27110] main playlist: playlist is empty
+2025-09-28 12:31:10 -07:00: [00005b9d32a69c90] [http] lua interface: Lua HTTP interface
+2025-09-28 22:35:09 -07:00: [00005e039ec49300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-28 22:35:09 -07:00: [00005e039ec49300] main interface error: no suitable interface module
+2025-09-28 22:35:09 -07:00: [00005e039ebaf260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-28 22:35:09 -07:00: [00005e039ec4e110] main playlist: playlist is empty
+2025-09-28 22:35:09 -07:00: [00005e039ec90c60] [http] lua interface: Lua HTTP interface
+2025-09-28 22:37:14 -07:00: [00005ed7d791a300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-28 22:37:14 -07:00: [00005ed7d791a300] main interface error: no suitable interface module
+2025-09-28 22:37:14 -07:00: [00005ed7d7880260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-28 22:37:14 -07:00: [00005ed7d791f110] main playlist: playlist is empty
+2025-09-28 22:37:14 -07:00: [00005ed7d7961c50] [http] lua interface: Lua HTTP interface
+2025-09-29 00:40:35 -07:00: [000058decc27c300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-29 00:40:35 -07:00: [000058decc27c300] main interface error: no suitable interface module
+2025-09-29 00:40:35 -07:00: [000058decc1e2260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-29 00:40:35 -07:00: [000058decc281110] main playlist: playlist is empty
+2025-09-29 00:40:35 -07:00: [000058decc2c3980] [http] lua interface: Lua HTTP interface
+2025-09-29 09:01:01 -07:00: [00005bf23b58f300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-29 09:01:01 -07:00: [00005bf23b58f300] main interface error: no suitable interface module
+2025-09-29 09:01:01 -07:00: [00005bf23b4f5260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-29 09:01:01 -07:00: [00005bf23b594110] main playlist: playlist is empty
+2025-09-29 09:01:01 -07:00: [00005bf23b5d68f0] [http] lua interface: Lua HTTP interface
+2025-09-29 10:02:24 -07:00: [00005dae4040b300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-29 10:02:24 -07:00: [00005dae4040b300] main interface error: no suitable interface module
+2025-09-29 10:02:24 -07:00: [00005dae40371260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-29 10:02:24 -07:00: [00005dae40410110] main playlist: playlist is empty
+2025-09-29 10:02:24 -07:00: [00005dae40452990] [http] lua interface: Lua HTTP interface
+2025-09-29 12:09:17 -07:00: [00005b28d6df0300] dbus interface error: Failed to connect to the D-Bus session daemon: Failed to connect to socket /run/user/1000/bus: No such file or directory
+2025-09-29 12:09:17 -07:00: [00005b28d6df0300] main interface error: no suitable interface module
+2025-09-29 12:09:17 -07:00: [00005b28d6d56260] main libvlc error: interface "dbus,none" initialization failed
+2025-09-29 12:09:18 -07:00: [00005b28d6df5110] main playlist: playlist is empty
+2025-09-29 12:09:18 -07:00: [00005b28d6e378e0] [http] lua interface: Lua HTTP interface
+2025-09-29 13:42:42 -07:00: [00005b28d6df5110] main playlist: playlist is empty
