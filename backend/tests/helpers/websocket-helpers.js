@@ -82,13 +82,13 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
     // Send identification based on device type
     if (deviceType === 'gm') {
       socket.emit('gm:identify', {
-        stationId: deviceId,
+        deviceId: deviceId,
         version: '1.0.0',
       });
       await waitForEvent(socket, 'gm:identified', timeout);
     } else if (deviceType === 'scanner') {
       socket.emit('scanner:identify', {
-        scannerId: deviceId,
+        deviceId: deviceId,
         version: '1.0.0',
       });
       await waitForEvent(socket, 'scanner:identified', timeout);
