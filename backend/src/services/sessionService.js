@@ -53,13 +53,6 @@ class SessionService extends EventEmitter {
         await this.endSession();
       }
 
-      // CRITICAL: Reset service state to prevent carryover
-      const transactionService = require('./transactionService');
-      const stateService = require('./stateService');
-      transactionService.resetScores();
-      stateService.reset();
-      logger.info('Reset service state for new session');
-
       // Create new session
       this.currentSession = new Session({
         name: sessionData.name,
@@ -73,8 +66,18 @@ class SessionService extends EventEmitter {
       // Start session timeout timer
       this.startSessionTimeout();
 
-      // Emit event
-      this.emit('session:created', this.currentSession);
+      // Emit session:update event per asyncapi.yaml (wrapped envelope)
+      // Other services (transactionService, stateService) will listen and react
+      const session = this.currentSession.toJSON();
+      this.emit('session:update', {
+        event: 'session:update',
+        data: {
+          ...session,
+          status: 'active',
+          teams: session.scores ? session.scores.map(s => s.teamId) : []
+        },
+        timestamp: new Date().toISOString()
+      });
 
       logger.info('Session created', {
         sessionId: this.currentSession.id,
@@ -225,8 +228,18 @@ class SessionService extends EventEmitter {
       // Stop timeout timer
       this.stopSessionTimeout();
 
-      // Emit event
-      this.emit('session:ended', session);
+      // Emit session:update event per asyncapi.yaml (wrapped envelope)
+      const sessionData = session.toJSON();
+      this.emit('session:update', {
+        event: 'session:update',
+        data: {
+          ...sessionData,
+          status: 'ended',
+          endTime: session.endTime || new Date().toISOString(),
+          teams: sessionData.scores ? sessionData.scores.map(s => s.teamId) : []
+        },
+        timestamp: new Date().toISOString()
+      });
 
       logger.info('Session ended', { sessionId: session.id });
 

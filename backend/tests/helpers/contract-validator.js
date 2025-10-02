@@ -44,10 +44,17 @@ function getHTTPSchema(path, method, status = '200') {
  * Extract schema from AsyncAPI spec
  */
 function getWebSocketSchema(eventName) {
-  const channel = asyncapi.channels[eventName];
-  if (!channel) throw new Error(`Event ${eventName} not found in AsyncAPI spec`);
+  // AsyncAPI 2.6: All messages are in components/messages, find by 'name' field
+  const messages = asyncapi.components.messages;
 
-  return channel.publish.message.payload;
+  // Find message with matching name
+  const message = Object.values(messages).find(msg => msg.name === eventName);
+
+  if (!message) {
+    throw new Error(`Event ${eventName} not found in AsyncAPI spec`);
+  }
+
+  return message.payload;
 }
 
 /**
