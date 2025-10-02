@@ -9,6 +9,7 @@ const Token = require('../models/token');
 const TeamScore = require('../models/teamScore');
 const config = require('../config');
 const logger = require('../utils/logger');
+const sessionService = require('./sessionService');
 
 class TransactionService extends EventEmitter {
   constructor() {
@@ -16,6 +17,11 @@ class TransactionService extends EventEmitter {
     this.recentTransactions = [];
     this.tokens = new Map();  // Expose for testing
     this.teamScores = new Map();
+    this.sessionListenerRegistered = false;
+
+    // Register session event listener immediately
+    this.registerSessionListener();
+    this.sessionListenerRegistered = true;
   }
 
   /**
@@ -29,22 +35,38 @@ class TransactionService extends EventEmitter {
       this.tokens.set(token.id, new Token(token));
     });
 
-    // NEW: Rebuild scores from session if exists
-    // This prevents score reset on server restart
-    const sessionService = require('./sessionService');
-    const session = sessionService.getCurrentSession();
-    if (session && session.transactions && session.transactions.length > 0) {
-      this.rebuildScoresFromTransactions(session.transactions);
-      logger.info('Restored team scores from session', {
-        teams: this.teamScores.size,
-        transactions: session.transactions.length
-      });
-    }
-
     logger.info('Transaction service initialized', {
       tokenCount: this.tokens.size,
-      teamCount: this.teamScores.size // Now includes restored teams
+      teamCount: this.teamScores.size
     });
+  }
+
+  /**
+   * Register listener for session events
+   * Per asyncapi.yaml - listen to session:update for score management
+   */
+  registerSessionListener() {
+    sessionService.on('session:update', (eventData) => {
+      const { data } = eventData;
+
+      if (data.status === 'ended') {
+        // Session ended - reset all scores
+        this.resetScores();
+        logger.info('Scores reset due to session end');
+      } else if (data.status === 'active' && data.teams) {
+        // New session created - initialize team scores
+        data.teams.forEach(teamId => {
+          if (!this.teamScores.has(teamId)) {
+            this.teamScores.set(teamId, TeamScore.createInitial(teamId));
+          }
+        });
+        logger.info('Team scores initialized for new session', {
+          teams: data.teams
+        });
+      }
+    });
+
+    logger.info('Session event listener registered');
   }
 
   /**
@@ -492,6 +514,9 @@ class TransactionService extends EventEmitter {
 
     // Clear team scores completely
     this.teamScores.clear();
+
+    // Reset listener flag so it can be re-registered
+    this.sessionListenerRegistered = false;
 
     // Note: We don't clear tokens as they're loaded from config
     // and should persist across resets
