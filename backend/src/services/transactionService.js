@@ -10,6 +10,7 @@ const TeamScore = require('../models/teamScore');
 const config = require('../config');
 const logger = require('../utils/logger');
 const sessionService = require('./sessionService');
+const videoQueueService = require('./videoQueueService');
 
 class TransactionService extends EventEmitter {
   constructor() {
@@ -241,7 +242,6 @@ class TransactionService extends EventEmitter {
       this.teamScores.set(teamId, teamScore);
 
       // Also add to session if it doesn't have this team yet
-      const sessionService = require('./sessionService');
       const session = sessionService.getCurrentSession();
       if (session && !session.scores.find(s => s.teamId === teamId)) {
         session.scores.push(teamScore.toJSON());
@@ -313,7 +313,6 @@ class TransactionService extends EventEmitter {
     if (groupTokens.length <= 1) return false;
 
     // Get current session to check transactions
-    const sessionService = require('./sessionService');
     const session = sessionService.getCurrentSession();
     if (!session) return false;
 
@@ -384,8 +383,7 @@ class TransactionService extends EventEmitter {
    * @private
    */
   createScanResponse(transaction, token, extras = {}) {
-    const videoService = require('./videoQueueService');
-    const isVideoPlaying = videoService.isPlaying();
+    const isVideoPlaying = videoQueueService.isPlaying();
 
     const response = {
       status: transaction.status,
