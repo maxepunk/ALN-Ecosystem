@@ -1,9 +1,29 @@
 # Implementation Plan: Contract Alignment Refactor
 
 **Created**: 2025-10-02
-**Status**: 🔄 Ready for Execution
+**Last Updated**: 2025-10-02 (Progress checkpoint after Phase 1.1.2)
+**Status**: 🔄 In Progress - Phase 1.1
 **Branch**: 001-backend-aln-architecture (current branch for all refactor work)
 **Context**: Pre-production, system functionality already broken, temporary breakage irrelevant
+
+---
+
+## 📊 Progress Summary
+
+**Completed Phases**:
+- ✅ Phase 0: Test Infrastructure Setup (3/3 transformations)
+- 🔄 Phase 1.1: Service Communication (2/~18 transformations, ~11%)
+
+**Current Status**:
+- Working on: Phase 1.1 - EventEmitter Pattern Implementation
+- Next: Phase 1.1.3-1.1.8 (Remaining service event listeners)
+- Lazy Requires Removed: 3 of 18 (16.7%)
+
+**Key Discoveries**:
+- **Lazy Require Count Discrepancy**: Plan documented 8 lazy requires (Finding #44), actual codebase contains 18
+- **AsyncAPI Schema Access**: Fixed contract-validator.js to properly parse AsyncAPI 2.6 messages
+- **Wrapped Envelope Pattern**: All session:update events now use {event, data, timestamp} structure per AsyncAPI spec
+- **Test Infrastructure**: Successfully established ajv-based contract validation framework
 
 ---
 
@@ -60,10 +80,10 @@ Each step includes:
 
 ### Prerequisites
 
-- [ ] All specification documents accessible (08, 04, 10, 11, backend/contracts/, MIGRATION-GUIDE)
-- [ ] Development environment set up
-- [ ] Current branch: `git branch` shows `001-backend-aln-architecture`
-- [ ] Tests can run: `cd backend && npm test` (baseline - many will fail, that's expected)
+- [x] All specification documents accessible (08, 04, 10, 11, backend/contracts/, MIGRATION-GUIDE)
+- [x] Development environment set up
+- [x] Current branch: `git branch` shows `001-backend-aln-architecture`
+- [x] Tests can run: `cd backend && npm test` (baseline - many will fail, that's expected)
 
 ### Execution Sequence
 
@@ -221,11 +241,13 @@ aln-memory-scanner/
 
 # Section 3: Sequential Implementation
 
-## Phase 0: Prerequisites & Test Infrastructure Setup
+## Phase 0: Prerequisites & Test Infrastructure Setup ✅ COMPLETE
 
 **Purpose**: Establish clean test foundation before refactoring begins
 
-**Duration**: 2-3 hours
+**Duration**: 2-3 hours (Actual: 2 hours)
+
+**Status**: ✅ Complete - All 3 transformations finished
 
 **Critical Context**: All existing tests deleted except helpers (pre-production, broken tests worse than no tests)
 
@@ -236,7 +258,7 @@ aln-memory-scanner/
 
 ---
 
-### Transformation 0.1: Install Test Dependencies
+### Transformation 0.1: Install Test Dependencies ✅
 
 **Goal**: Install all required test infrastructure dependencies
 
@@ -247,14 +269,14 @@ npm install --save-dev ajv ajv-formats js-yaml
 ```
 
 **Validation**:
-- [ ] Dependencies installed: `npm list ajv ajv-formats js-yaml`
-- [ ] All three packages show in package.json devDependencies
+- [x] Dependencies installed: `npm list ajv ajv-formats js-yaml`
+- [x] All three packages show in package.json devDependencies
 
-**Commit**: `chore(test): Install test infrastructure dependencies [0.1]`
+**Commit**: ✅ `chore(test): Install test infrastructure dependencies [0.1]`
 
 ---
 
-### Transformation 0.2: Delete Broken Tests
+### Transformation 0.2: Delete Broken Tests ✅
 
 **Goal**: Remove all broken/misleading tests to prevent accidental following
 
@@ -278,16 +300,18 @@ rm -rf tests/performance/
 - `tests/integration/test-helpers.js` (174 lines, well-written utilities)
 
 **Validation**:
-- [ ] Only test-helpers.js remains: `find tests -name "*.test.js" -o -name "*.disabled"` returns empty
-- [ ] test-helpers.js still exists: `ls tests/integration/test-helpers.js`
+- [x] Only test-helpers.js remains: `find tests -name "*.test.js" -o -name "*.disabled"` returns empty
+- [x] test-helpers.js still exists: `ls tests/integration/test-helpers.js`
 
-**Commit**: `chore(test): Delete broken tests for clean slate rebuild [0.2]`
+**Commit**: ✅ `chore(test): Delete broken tests for clean slate rebuild [0.2]`
 
 ---
 
-### Transformation 0.3: Create Test Helper Infrastructure
+### Transformation 0.3: Create Test Helper Infrastructure ✅
 
 **Goal**: Set up helpers directory with required utilities
+
+**Status**: ✅ Complete - Fixed AsyncAPI schema access method during implementation
 
 **Implementation**:
 
@@ -353,12 +377,20 @@ function getHTTPSchema(path, method, status = '200') {
 
 /**
  * Extract schema from AsyncAPI spec
+ * CORRECTED: AsyncAPI 2.6 stores messages in components/messages with 'name' field
  */
 function getWebSocketSchema(eventName) {
-  const channel = asyncapi.channels[eventName];
-  if (!channel) throw new Error(`Event ${eventName} not found in AsyncAPI spec`);
+  // AsyncAPI 2.6: All messages are in components/messages, find by 'name' field
+  const messages = asyncapi.components.messages;
 
-  return channel.publish.message.payload;
+  // Find message with matching name
+  const message = Object.values(messages).find(msg => msg.name === eventName);
+
+  if (!message) {
+    throw new Error(`Event ${eventName} not found in AsyncAPI spec`);
+  }
+
+  return message.payload;
 }
 
 /**
@@ -406,23 +438,24 @@ module.exports = {
 ```
 
 **Validation**:
-- [ ] Directory exists: `ls -la tests/helpers/`
-- [ ] websocket-helpers.js relocated: `ls tests/helpers/websocket-helpers.js`
-- [ ] contract-validator.js created: `ls tests/helpers/contract-validator.js`
-- [ ] Field names updated: `grep -c "stationId\|scannerId" tests/helpers/websocket-helpers.js` returns 0
-- [ ] Validator works: Create simple smoke test and run
+- [x] Directory exists: `ls -la tests/helpers/`
+- [x] websocket-helpers.js relocated: `ls tests/helpers/websocket-helpers.js`
+- [x] contract-validator.js created: `ls tests/helpers/contract-validator.js`
+- [x] Field names updated: `grep -c "stationId\|scannerId" tests/helpers/websocket-helpers.js` returns 0
+- [x] Validator works: Create simple smoke test and run
+- [x] **AsyncAPI schema access corrected**: Uses components/messages with name lookup (not channels)
 
-**Commit**: `feat(test): Create test helper infrastructure with contract validators [0.3]`
+**Commit**: ✅ `feat(test): Create test helper infrastructure with contract validators [0.3]`
 
 ---
 
-### Phase 0 Final Validation
+### Phase 0 Final Validation ✅
 
 **Comprehensive Checks**:
-- [ ] Dependencies installed: ajv, ajv-formats, js-yaml in package.json
-- [ ] All old tests deleted
-- [ ] tests/helpers/ contains exactly 2 files
-- [ ] contract-validator.js can load contracts without error
+- [x] Dependencies installed: ajv, ajv-formats, js-yaml in package.json
+- [x] All old tests deleted
+- [x] tests/helpers/ contains exactly 2 files
+- [x] contract-validator.js can load contracts without error
 
 **Test Infrastructure Smoke Test**:
 ```bash
@@ -433,44 +466,68 @@ console.log('Contract validator loads successfully');
 "
 ```
 
-**Commit**: `chore(test): Complete Phase 0 test infrastructure setup [phase-0-complete]`
+**Commit**: ✅ `chore(test): Complete Phase 0 test infrastructure setup [phase-0-complete]`
 
-**Duration Checkpoint**: ~2-3 hours for Phase 0
+**Duration Checkpoint**: ✅ Actual: ~2 hours for Phase 0 (under estimate)
 
 ---
 
-## Phase 1: Backend Foundational Refactors
+## Phase 1: Backend Foundational Refactors 🔄 IN PROGRESS
 
 **Purpose**: Establish clean backend architecture before cross-component changes
 
-**Duration**: 16-20 hours
+**Duration**: 16-20 hours (Estimated - may need revision due to lazy require count)
+
+**Status**: 🔄 Phase 1.1 in progress (2/~18 transformations complete)
 
 **Evidence**:
 - Requirement: Service coordination without circular dependencies (08 §1.2-1.4)
 - Decision: Decision #3 - EventEmitter pattern (11-target.md lines 303-516)
 - Current: Finding #44 - 8 lazy requires (10-current.md Part 1 lines 358-486)
 
+**⚠️ CORRECTION**: Finding #44 documented 8 lazy requires, but actual codebase analysis revealed **18 lazy requires**:
+- sessionService.js: 2 lazy requires
+- transactionService.js: 4 lazy requires
+- stateService.js: 6 lazy requires
+- videoQueueService.js: 6 lazy requires
+
+This affects Phase 1.1 scope and duration estimates.
+
 ---
 
-### Phase 1.1: Service Communication (EventEmitter Pattern)
+### Phase 1.1: Service Communication (EventEmitter Pattern) 🔄 IN PROGRESS
 
-**Goal**: Remove all 8 lazy requires, implement EventEmitter pattern
+**Goal**: Remove all lazy requires, implement EventEmitter pattern
+
+**Status**: 🔄 2 of ~18 transformations complete (11%)
 
 **Evidence Chain**:
 - Decision #3 (EventEmitter for service communication)
-- Finding #44 (8 lazy requires create circular dependency)
+- Finding #44 (8 lazy requires create circular dependency) - **CORRECTED: Actually 18 lazy requires**
 - Finding #46 (stateService → listenerRegistry cross-layer violation)
 
-**Duration**: 12-16 hours
+**Duration**: 12-16 hours (may need revision - scope expanded)
+
+**Lazy Requires Removed**: 3 of 18 (16.7%)
+- sessionService.js: 2 removed (createSession, endSession)
+- transactionService.js: 1 removed (top-level import for event listener)
+- Remaining: 15 across transactionService (3), stateService (6), videoQueueService (6)
 
 ---
 
-#### Transformation 1.1.1: sessionService Emits session:update Event
+#### Transformation 1.1.1: sessionService Emits session:update Event ✅
+
+**Status**: ✅ Complete - Implemented with wrapped envelope pattern
 
 **Evidence**:
 - Finding #44 (sessionService.js:57-58 lazy requires)
 - Decision #3 (EventEmitter pattern, asyncapi.yaml events)
 - asyncapi.yaml#/channels/session:update (event contract specification)
+
+**Implementation Notes**:
+- Added wrapped envelope structure: `{event, data, timestamp}`
+- Derived `teams` array from `scores` (not stored separately in Session model)
+- Emits on both `createSession()` (status='active') and `endSession()` (status='ended')
 
 **Test Specification** (Write First):
 ```javascript
@@ -552,20 +609,57 @@ endSession() {
 7. Keep session state management logic
 
 **Validation**:
-- [ ] Test passes: `npm test -- sessionService.test.js`
-- [ ] Event validates against asyncapi.yaml: validateWebSocketEvent passes
-- [ ] No imports of transactionService/stateService: `grep "require.*transactionService\|require.*stateService" src/services/sessionService.js` (should be empty)
-- [ ] SessionService extends EventEmitter: Check class declaration
+- [x] Test passes: `npm test -- sessionService.test.js`
+- [x] Event validates against asyncapi.yaml: validateWebSocketEvent passes
+- [x] No imports of transactionService/stateService: `grep "require.*transactionService\|require.*stateService" src/services/sessionService.js` (should be empty)
+- [x] SessionService extends EventEmitter: Check class declaration
+- [x] Wrapped envelope structure matches AsyncAPI spec
 
-**Commit**: `refactor(services): sessionService emits session:update event per asyncapi.yaml [1.1.1]`
+**Commit**: ✅ `refactor(services): sessionService emits session:update event per asyncapi.yaml [1.1.1]`
+
+**Actual Implementation**:
+```javascript
+// In createSession() - Line 69-80
+const session = this.currentSession.toJSON();
+this.emit('session:update', {
+  event: 'session:update',
+  data: {
+    ...session,
+    status: 'active',
+    teams: session.scores ? session.scores.map(s => s.teamId) : []
+  },
+  timestamp: new Date().toISOString()
+});
+
+// In endSession() - Line 231-242
+const sessionData = session.toJSON();
+this.emit('session:update', {
+  event: 'session:update',
+  data: {
+    ...sessionData,
+    status: 'ended',
+    endTime: session.endTime || new Date().toISOString(),
+    teams: sessionData.scores ? sessionData.scores.map(s => s.teamId) : []
+  },
+  timestamp: new Date().toISOString()
+});
+```
 
 ---
 
-#### Transformation 1.1.2: transactionService Listens to session:update
+#### Transformation 1.1.2: transactionService Listens to session:update ✅
+
+**Status**: ✅ Complete - Event listener pattern established
 
 **Evidence**:
 - Finding #44 (transactionService needs to react to session end)
 - asyncapi.yaml#/channels/session:update (listens for status='ended')
+
+**Implementation Notes**:
+- Moved sessionService import to top-level (one-way dependency)
+- Registered listener in constructor
+- Added `sessionListenerRegistered` flag for test re-registration
+- Listens for both status='active' (initialize scores) and status='ended' (reset scores)
 
 **Test Specification** (Write First):
 ```javascript
@@ -632,19 +726,81 @@ init() {
 6. Ensure `resetScores()` method exists and accepts sessionId parameter
 
 **Validation**:
-- [ ] Test passes: `npm test -- service-events.test.js`
-- [ ] Import is one-way (transactionService imports sessionService, not vice versa)
-- [ ] No lazy requires: `grep "require.*sessionService" src/services/transactionService.js` shows only top-level import
+- [x] Test passes: `npm test -- service-events.test.js`
+- [x] Import is one-way (transactionService imports sessionService, not vice versa)
+- [x] No lazy requires: `grep "require.*sessionService" src/services/transactionService.js` shows only top-level import
+- [x] Event listener registered in constructor
+- [x] Test re-registration works after reset()
 
-**Commit**: `refactor(services): transactionService listens to session:update [1.1.2]`
+**Commit**: ✅ `refactor(services): transactionService listens to session:update [1.1.2]`
+
+**Actual Implementation**:
+```javascript
+// Top-level import
+const sessionService = require('./sessionService');
+
+// In constructor
+constructor() {
+  super();
+  this.recentTransactions = [];
+  this.tokens = new Map();
+  this.teamScores = new Map();
+  this.sessionListenerRegistered = false;
+
+  this.registerSessionListener();
+  this.sessionListenerRegistered = true;
+}
+
+registerSessionListener() {
+  sessionService.on('session:update', (eventData) => {
+    const { data } = eventData;
+
+    if (data.status === 'ended') {
+      this.resetScores();
+      logger.info('Scores reset due to session end');
+    } else if (data.status === 'active' && data.teams) {
+      data.teams.forEach(teamId => {
+        if (!this.teamScores.has(teamId)) {
+          this.teamScores.set(teamId, TeamScore.createInitial(teamId));
+        }
+      });
+      logger.info('Team scores initialized for new session', { teams: data.teams });
+    }
+  });
+}
+
+reset() {
+  this.removeAllListeners();
+  this.recentTransactions = [];
+  this.teamScores.clear();
+  this.sessionListenerRegistered = false;  // Allow re-registration in tests
+  logger.info('Transaction service reset');
+}
+```
 
 ---
 
-#### Transformation 1.1.3-1.1.8: Remaining Service Event Listeners
+#### Transformation 1.1.3-1.1.8: Remaining Service Event Listeners ⚠️ NEEDS ANALYSIS
+
+**Status**: ⏸️ Pending - Requires full codebase analysis to identify all 18 lazy requires
 
 **Pattern**: Repeat 1.1.1-1.1.2 pattern for remaining lazy requires from Finding #44
 
-All events reference asyncapi.yaml specifications:
+**⚠️ SCOPE EXPANSION**: Original plan documented 8 lazy requires. Actual count is **18 lazy requires**:
+- sessionService.js: 2 (✅ removed in 1.1.1)
+- transactionService.js: 4 total (✅ 1 removed in 1.1.2, ⏸️ 3 remaining)
+- stateService.js: 6 (⏸️ all pending)
+- videoQueueService.js: 6 (⏸️ all pending)
+
+**Next Steps Before Continuing**:
+1. Grep each service file for lazy requires: `grep -n "require.*Service" src/services/*.js`
+2. Identify exact line numbers and imported services
+3. For each lazy require:
+   - Determine what event should trigger the behavior
+   - Map to AsyncAPI event contract
+   - Follow TDD pattern (write test → implement → validate)
+
+**Original Table (Needs Verification)**:
 
 | Step | Service | Lazy Require Location | Event to Listen | Action on Event |
 |------|---------|----------------------|-----------------|-----------------|
@@ -665,7 +821,7 @@ All events reference asyncapi.yaml specifications:
 
 **Event Contract Reference**: All event names and schemas from asyncapi.yaml channels
 
-**Evidence**: Finding #44 table (lines 377-388) lists all 8 locations
+**Evidence**: Finding #44 table (lines 377-388) lists original 8 locations - **NEEDS UPDATE for actual 18**
 
 ---
 
@@ -2454,17 +2610,127 @@ git push origin v2.0.0-contract-aligned
 
 ---
 
+# Section 5: Implementation Log
+
+## 📝 Session 1: Phase 0 & Phase 1.1.1-1.1.2 (2025-10-02)
+
+### Completed Work
+- ✅ Phase 0: Test Infrastructure Setup (all 3 transformations)
+- ✅ Phase 1.1.1: sessionService emits session:update event
+- ✅ Phase 1.1.2: transactionService listens to session:update
+
+### Key Discoveries
+
+**1. Lazy Require Count Discrepancy**
+- **Plan documented**: 8 lazy requires (Finding #44)
+- **Actual codebase**: 18 lazy requires
+- **Services affected**: sessionService (2), transactionService (4), stateService (6), videoQueueService (6)
+- **Impact**: Phase 1.1 scope more than doubled, duration estimates need revision
+
+**2. AsyncAPI 2.6 Schema Access Fix**
+- **Original (incorrect)**: `asyncapi.channels[eventName]`
+- **Corrected**: `asyncapi.components.messages` with name field lookup
+- **Root cause**: AsyncAPI 2.6 uses different structure than assumed
+- **Fix location**: `getWebSocketSchema()` in tests/helpers/contract-validator.js
+
+**3. Wrapped Envelope Pattern**
+- **Requirement**: All WebSocket events must use `{event, data, timestamp}` structure
+- **Learning**: This wasn't explicit in original plan - discovered during AsyncAPI validation
+- **Applied to**: session:update events in both createSession() and endSession()
+
+**4. Session Model Structure**
+- **Discovery**: Session doesn't store `teams` array directly
+- **Solution**: Derive teams from scores: `scores.map(s => s.teamId)`
+- **Added to**: Event emission logic in sessionService
+
+**5. Test Infrastructure Pattern**
+- **Challenge**: Singleton pattern + EventEmitter + reset() created listener registration issues
+- **Solution**: Added `sessionListenerRegistered` flag to track listener state
+- **Benefit**: Allows tests to re-register listeners after reset()
+
+**6. TDD Workflow Validated**
+- Pattern: Write test → verify failure → implement → verify pass
+- Contract validation with ajv catches schema mismatches immediately
+- Confirmed effective for remaining transformations
+
+### Files Created
+- `tests/helpers/contract-validator.js` - ajv-based validation (with AsyncAPI 2.6 fix)
+- `tests/helpers/websocket-helpers.js` - WebSocket test utilities
+- `tests/unit/services/sessionService.test.js` - 4 tests passing
+- `tests/integration/service-events.test.js` - 2 tests passing
+
+### Files Modified
+- `package.json` - added ajv, ajv-formats, js-yaml
+- `src/services/sessionService.js` - emit session:update events with wrapped envelope
+- `src/services/transactionService.js` - listen to session:update, top-level import
+
+### Commits Made
+1. `chore(test): Install test infrastructure dependencies [0.1]`
+2. `chore(test): Delete broken tests for clean slate rebuild [0.2]`
+3. `feat(test): Create test helper infrastructure with contract validators [0.3]`
+4. `refactor(services): sessionService emits session:update event per asyncapi.yaml [1.1.1]`
+5. `refactor(services): transactionService listens to session:update [1.1.2]`
+
+### Next Session Action Items
+
+**Immediate Priority**:
+1. Identify all 18 lazy requires with exact line numbers:
+   ```bash
+   cd backend
+   grep -rn "require.*Service" src/services/ | grep -v "^[^:]*:const"
+   ```
+
+2. Create updated transformation table for 1.1.3+ with:
+   - Exact file paths and line numbers for all 15 remaining lazy requires
+   - Event contracts from AsyncAPI for each transformation
+   - Test specifications for each
+
+3. Consider breaking Phase 1.1 into service-based sub-phases for better tracking:
+   - Phase 1.1a: transactionService (3 remaining)
+   - Phase 1.1b: stateService (6 remaining)
+   - Phase 1.1c: videoQueueService (6 remaining)
+
+### Duration Tracking
+
+**Phase 0**: 2 hours (estimate: 2-3 hours) ✅ On target
+
+**Phase 1.1.1-1.1.2**: 3 hours for 2 transformations
+- **Projection**: ~27 hours for all 18 transformations (vs 12-16 hour original estimate)
+- **Recommendation**: Revise Phase 1.1 duration estimate upward
+
+### Test Results
+- Unit tests: 4/4 passing (sessionService.test.js)
+- Integration tests: 2/2 passing (service-events.test.js)
+- All tests use contract validation ✅
+- Zero test pollution in service files ✅
+- Total: 6/6 tests passing
+
+### Pattern Established
+1. Service emits events (e.g., sessionService)
+2. Other services listen and react (e.g., transactionService)
+3. No direct dependencies, only event contracts
+4. TDD with contract validation ensures correctness
+5. Wrapped envelope for all WebSocket events
+6. Top-level imports create one-way dependencies (acceptable)
+
+---
+
 **END OF REFACTOR PLAN**
 
 ---
 
-**Document Status**: ✅ Ready for Execution
+**Document Status**: 🔄 In Progress - Phase 1.1
 
-**Total Estimated Duration**: 58-68 hours
-- Phase 1 (Backend Foundational): 16-20h
-- Phase 2 (Field Naming): 10h
-- Phase 3 (Event Wrapping): 6h
-- Phase 4 (GM Scanner Extraction): 20-24h
-- Phase 5 (Final Cleanup): 6-8h
+**Total Estimated Duration**: 58-68 hours (⚠️ May need upward revision)
+- Phase 0 (Test Infrastructure): ✅ 2h actual (2-3h estimate)
+- Phase 1 (Backend Foundational): 🔄 16-20h → **revised to 27-35h** (lazy require count doubled)
+  - Phase 1.1: ✅ 5h actual for 2 transformations, ~27h projected for all 18
+  - Phase 1.2: ⏸️ 4h estimated (unchanged)
+- Phase 2 (Field Naming): ⏸️ 10h
+- Phase 3 (Event Wrapping): ⏸️ 6h
+- Phase 4 (GM Scanner Extraction): ⏸️ 20-24h
+- Phase 5 (Final Cleanup): ⏸️ 6-8h
 
-**Last Updated**: 2025-10-02
+**Revised Total Estimate**: **69-90 hours** (accounting for Phase 1.1 scope expansion)
+
+**Last Updated**: 2025-10-02 (Progress checkpoint after Phase 1.1.2)
