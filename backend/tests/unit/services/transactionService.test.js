@@ -115,4 +115,74 @@ describe('TransactionService - Event Emission', () => {
       expect(teamInSessionScores).toBeUndefined();
     });
   });
+
+  describe('service imports (Phase 1.1.6)', () => {
+    it('should use top-level sessionService import in isGroupComplete()', async () => {
+      // Setup session with tokens
+      await sessionService.createSession({
+        name: 'Test Session',
+        teams: ['001']
+      });
+
+      const Token = require('../../../src/models/token');
+      const token1 = new Token({
+        id: 'token1',
+        name: 'Token 1',
+        value: 10,
+        memoryType: 'visual',
+        group: 'test-group',
+        groupMultiplier: 2,
+        mediaAssets: {},
+        metadata: {},
+      });
+
+      transactionService.tokens.set('token1', token1);
+
+      // isGroupComplete() uses sessionService.getCurrentSession()
+      // This should work with top-level import (not lazy require)
+      const result = transactionService.isGroupComplete('001', 'test-group');
+
+      // Should return false (group not complete - needs multiple tokens)
+      expect(result).toBe(false);
+    });
+
+    it('should use top-level videoQueueService import in createScanResponse()', async () => {
+      // Setup session
+      await sessionService.createSession({
+        name: 'Test Session',
+        teams: ['001']
+      });
+
+      const Token = require('../../../src/models/token');
+
+      const testToken = new Token({
+        id: 'test_video',
+        name: 'Test Video Token',
+        value: 10,
+        memoryType: 'visual',
+        mediaAssets: {},
+        metadata: {},
+      });
+
+      transactionService.tokens.set('test_video', testToken);
+
+      // Use processScan which creates a proper Transaction and calls createScanResponse
+      const session = sessionService.getCurrentSession();
+      const scanRequest = {
+        tokenId: 'test_video',
+        teamId: '001',
+        scannerId: 'GM_01',  // Still using scannerId (Phase 2 will change to deviceId)
+        timestamp: new Date().toISOString()
+      };
+
+      // processScan internally calls createScanResponse which uses videoQueueService.isPlaying()
+      // This should work with top-level import (not lazy require)
+      const response = await transactionService.processScan(scanRequest, session);
+
+      // Verify response structure includes video status from videoQueueService
+      expect(response).toBeDefined();
+      expect(response.status).toBeDefined();
+      expect(response.videoPlaying).toBeDefined(); // This field comes from videoQueueService.isPlaying()
+    });
+  });
 });

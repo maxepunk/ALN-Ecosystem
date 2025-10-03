@@ -10,6 +10,7 @@ const TeamScore = require('../models/teamScore');
 const config = require('../config');
 const logger = require('../utils/logger');
 const sessionService = require('./sessionService');
+const videoQueueService = require('./videoQueueService');  // Phase 1.1.6: moved from lazy require
 
 class TransactionService extends EventEmitter {
   constructor() {
@@ -310,8 +311,7 @@ class TransactionService extends EventEmitter {
     // Groups need at least 2 tokens to be completable
     if (groupTokens.length <= 1) return false;
 
-    // Get current session to check transactions
-    const sessionService = require('./sessionService');
+    // Get current session to check transactions (Phase 1.1.6: uses top-level import)
     const session = sessionService.getCurrentSession();
     if (!session) return false;
 
@@ -382,8 +382,8 @@ class TransactionService extends EventEmitter {
    * @private
    */
   createScanResponse(transaction, token, extras = {}) {
-    const videoService = require('./videoQueueService');
-    const isVideoPlaying = videoService.isPlaying();
+    // Phase 1.1.6: uses top-level import
+    const isVideoPlaying = videoQueueService.isPlaying();
 
     const response = {
       status: transaction.status,
@@ -410,7 +410,7 @@ class TransactionService extends EventEmitter {
     // Add video status
     if (isVideoPlaying) {
       response.videoPlaying = true;
-      response.waitTime = videoService.getRemainingTime();
+      response.waitTime = videoQueueService.getRemainingTime();
     } else {
       response.videoPlaying = false;
     }
