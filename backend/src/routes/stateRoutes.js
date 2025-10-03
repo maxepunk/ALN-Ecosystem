@@ -1,126 +1,125 @@
 /**
- * State Routes
- * Handles game state endpoints
+ * State Routes - Debug/Recovery State Query
+ * Per Decision #1: Keep only GET /api/state (state synchronization → WebSocket sync:full)
  */
 
 const express = require('express');
 const router = express.Router();
-const os = require('os');
 const crypto = require('crypto');
 const logger = require('../utils/logger');
 const stateService = require('../services/stateService');
-const config = require('../config');
+const sessionService = require('../services/sessionService');
+const videoQueueService = require('../services/videoQueueService');
 
 /**
  * GET /api/state
- * Get current game state
+ * Get complete game state for debugging/recovery (one-time fetch)
+ * Contract: openapi.yaml /api/state response schema (GameState)
+ *
+ * CRITICAL: NOT for polling - use WebSocket sync:full for real-time state
  */
-// Reject non-GET methods
-router.all('/', (req, res, next) => {
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    return res.status(405).set('Allow', 'GET, HEAD').json({
-      error: 'METHOD_NOT_ALLOWED',
-      message: 'Method not allowed'
-    });
-  }
-  next();
-});
-
 router.get('/', async (req, res) => {
   try {
+    // Get current session (if exists)
+    const currentSession = sessionService.getCurrentSession();
+
+    // Build session object per Session schema (or null)
+    let session = null;
+    if (currentSession) {
+      const sessionData = currentSession.toJSON();
+      const teams = sessionData.scores
+        ? sessionData.scores.map(score => score.teamId)
+        : [];
+
+      session = {
+        id: sessionData.id,
+        name: sessionData.name,
+        startTime: sessionData.startTime,
+        endTime: sessionData.endTime || null,
+        status: sessionData.status,
+        teams: teams,
+        metadata: sessionData.metadata || {
+          gmStations: 0,
+          playerDevices: 0,
+          totalScans: 0,
+          uniqueTokensScanned: []
+        }
+      };
+    }
+
+    // Get scores (from state or session)
     let state = stateService.getCurrentState();
+    let scores = [];
 
-    // If no state but session exists, create state from session
-    if (!state) {
-      const sessionService = require('../services/sessionService');
-      const currentSession = sessionService.getCurrentSession();
-
-      if (currentSession) {
-        // Create state from current session
-        state = stateService.createStateFromSession(currentSession);
-        stateService.setCurrentState(state);
-        await stateService.saveState();
-      } else {
-        // No session and no state - return empty/default state
-        state = stateService.createDefaultState();
-      }
+    if (state) {
+      const stateData = state.toJSON();
+      scores = stateData.scores || [];
+    } else if (currentSession) {
+      const sessionData = currentSession.toJSON();
+      scores = sessionData.scores || [];
     }
 
-    // Ensure offline status is current
-    const offlineQueueService = require('../services/offlineQueueService');
-    const stateJSON = state.toJSON();
+    // Get recent transactions (last 100)
+    const recentTransactions = state
+      ? (state.toJSON().recentTransactions || []).slice(-100)
+      : [];
 
-    // Update offline status to current value
-    if (stateJSON.systemStatus) {
-      stateJSON.systemStatus.offline = offlineQueueService.isOffline;
-    }
+    // Get video status (matches video:status WebSocket event per Decision #5)
+    const currentVideo = videoQueueService.getCurrentVideo();
+    const videoStatus = {
+      status: videoQueueService.isPlaying() ? 'playing' : 'idle',
+      queueLength: videoQueueService.getQueueItems().length || 0,
+      tokenId: currentVideo ? currentVideo.tokenId : null,
+      duration: currentVideo ? videoQueueService.getVideoDuration(currentVideo.tokenId) : null,
+      progress: null,  // TODO: Calculate from VLC playback position
+      expectedEndTime: null,  // TODO: Calculate from start time + duration
+      error: null  // TODO: Track VLC errors
+    };
 
-    // Generate ETag based on state content
+    // Get connected devices
+    const devices = []; // TODO: Implement device tracking from WebSocket connections
+
+    // Get system status
+    const vlcService = require('../services/vlcService');
+    const systemStatus = {
+      orchestrator: 'online',  // If we're responding, we're online
+      vlc: vlcService.isConnected() ? 'connected' : 'disconnected'
+    };
+
+    // Build GameState response per OpenAPI contract
+    const gameState = {
+      session,
+      scores,
+      recentTransactions,
+      videoStatus,
+      devices,
+      systemStatus
+    };
+
+    // Generate ETag for caching
     const etag = crypto
       .createHash('md5')
-      .update(JSON.stringify(stateJSON))
+      .update(JSON.stringify(gameState))
       .digest('hex');
 
-    // Set cache headers
+    // Set cache headers per contract
     res.set({
       'Cache-Control': 'no-cache, must-revalidate',
       'ETag': `"${etag}"`
     });
 
-    // Check if client has matching ETag
+    // Check If-None-Match for 304 response
     if (req.headers['if-none-match'] === `"${etag}"`) {
       return res.status(304).send();
     }
 
-    // Return GameState directly, not wrapped
-    res.json(stateJSON);
+    // Return GameState directly (not wrapped)
+    res.json(gameState);
   } catch (error) {
     logger.error('Get state endpoint error', error);
     res.status(500).json({
       error: 'INTERNAL_ERROR',
       message: 'Internal server error',
-    });
-  }
-});
-
-/**
- * GET /api/status
- * Get orchestrator status and network information
- */
-router.get('/status', (req, res) => {
-  try {
-    // Get offline status from offlineQueueService
-    const { isOffline } = require('../middleware/offlineStatus');
-
-    const interfaces = os.networkInterfaces();
-    const addresses = Object.values(interfaces)
-      .flat()
-      .filter(i => !i.internal && i.family === 'IPv4')
-      .map(i => i.address);
-
-    const status = {
-      status: 'online',
-      version: '1.0.0',
-      networkInterfaces: addresses,
-      port: config.server.port,
-      features: config.features || {
-        videoPlayback: true,
-        webSocketSync: true,
-        offlineQueue: true,
-        networkDiscovery: true
-      },
-      environment: config.server.env,
-      uptime: process.uptime(),
-      offline: isOffline(),
-      timestamp: new Date().toISOString()
-    };
-
-    res.json(status);
-  } catch (error) {
-    logger.error('Get status endpoint error', error);
-    res.status(500).json({
-      error: 'INTERNAL_ERROR',
-      message: 'Failed to retrieve status information'
     });
   }
 });

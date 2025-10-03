@@ -1051,9 +1051,9 @@ components:
         - systemStatus
       properties:
         session:
-          allOf:
+          oneOf:
             - $ref: '#/components/schemas/Session'
-            - nullable: true
+            - type: 'null'
           description: Current active session (null if no session)
         scores:
           type: array
