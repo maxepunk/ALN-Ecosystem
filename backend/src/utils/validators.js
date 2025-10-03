@@ -34,7 +34,7 @@ const transactionSchema = Joi.object({
   id: uuid.required(),
   tokenId: Joi.string().required().min(1).max(100),
   teamId: teamId.required(),
-  scannerId: Joi.string().required().min(1).max(100),
+  deviceId: Joi.string().required().min(1).max(100),
   stationMode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
   timestamp: isoDate.required(),
   sessionId: uuid.required(),
@@ -145,7 +145,7 @@ const scanRequestSchema = Joi.object({
   tokenId: Joi.string().required().min(1).max(100)
     .pattern(/^[A-Za-z_0-9]+$/),  // Allow alphanumeric token IDs (matches tokenSchema)
   teamId: teamId.required(),
-  scannerId: Joi.string().required().min(1).max(100),
+  deviceId: Joi.string().required().min(1).max(100),
   stationMode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
   timestamp: isoDate.optional(),
 });

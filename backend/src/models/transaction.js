@@ -110,7 +110,7 @@ class Transaction {
       id: this.id,
       tokenId: this.tokenId,
       teamId: this.teamId,
-      scannerId: this.scannerId,
+      deviceId: this.deviceId,
       timestamp: this.timestamp,
       sessionId: this.sessionId,
       status: this.status,
@@ -140,7 +140,7 @@ class Transaction {
       id: scanRequest.id, // Use provided ID if available
       tokenId: scanRequest.tokenId,
       teamId: scanRequest.teamId,
-      scannerId: scanRequest.scannerId,
+      deviceId: scanRequest.deviceId,
       stationMode: scanRequest.stationMode || 'blackmarket', // Track game mode
       timestamp: scanRequest.timestamp || new Date().toISOString(),
       sessionId: sessionId,
