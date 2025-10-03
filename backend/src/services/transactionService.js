@@ -240,17 +240,15 @@ class TransactionService extends EventEmitter {
       teamScore = TeamScore.createInitial(teamId);
       this.teamScores.set(teamId, teamScore);
 
-      // Also add to session if it doesn't have this team yet
-      const sessionService = require('./sessionService');
-      const session = sessionService.getCurrentSession();
-      if (session && !session.scores.find(s => s.teamId === teamId)) {
-        session.scores.push(teamScore.toJSON());
-        sessionService.emit('team:created', { teamId });
-      }
+      // Emit score:updated for new team (sessionService will listen and update its own scores)
+      this.emitScoreUpdate(teamScore);
     }
 
     teamScore.addPoints(token.value);
     teamScore.incrementTokensScanned();
+
+    // Emit score:updated after points added
+    this.emitScoreUpdate(teamScore);
 
     // Check for group completion bonus
     if (token.isGrouped()) {
@@ -441,6 +439,28 @@ class TransactionService extends EventEmitter {
       return transaction.rejectionReason || 'Scan rejected.';
     }
     return 'Scan processed.';
+  }
+
+  /**
+   * Emit score:updated event per asyncapi.yaml
+   * @param {TeamScore} teamScore - Team score to broadcast
+   * @private
+   */
+  emitScoreUpdate(teamScore) {
+    // Emit score:updated event with wrapped envelope per AsyncAPI spec
+    this.emit('score:updated', {
+      event: 'score:updated',
+      data: {
+        teamId: teamScore.teamId,
+        currentScore: teamScore.currentScore,
+        baseScore: teamScore.baseScore,
+        bonusPoints: teamScore.bonusPoints,
+        tokensScanned: teamScore.tokensScanned,
+        completedGroups: teamScore.completedGroups,
+        lastUpdate: teamScore.lastUpdate || new Date().toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**

@@ -16,6 +16,10 @@ class TeamScore {
       data.currentScore = 0;
     }
 
+    if (data.baseScore === undefined) {
+      data.baseScore = 0;
+    }
+
     if (data.tokensScanned === undefined) {
       data.tokensScanned = 0;
     }
@@ -47,21 +51,22 @@ class TeamScore {
   }
 
   /**
-   * Add points to the team score
+   * Add points to the team score (base points from tokens)
    * @param {number} points - Points to add
    */
   addPoints(points) {
-    this.currentScore += points;
+    this.baseScore += points;
+    this.currentScore = this.baseScore + this.bonusPoints;
     this.lastUpdate = new Date().toISOString();
   }
 
   /**
-   * Add bonus points
+   * Add bonus points (from group completions)
    * @param {number} bonus - Bonus points to add
    */
   addBonus(bonus) {
     this.bonusPoints += bonus;
-    this.currentScore += bonus;
+    this.currentScore = this.baseScore + this.bonusPoints;
     this.lastUpdate = new Date().toISOString();
   }
 
@@ -187,6 +192,7 @@ class TeamScore {
     return new TeamScore({
       teamId: teamId,
       currentScore: 0,
+      baseScore: 0,
       tokensScanned: 0,
       bonusPoints: 0,
       completedGroups: [],
