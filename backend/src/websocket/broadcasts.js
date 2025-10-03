@@ -327,45 +327,7 @@ function cleanupBroadcastListeners() {
   logger.info('Broadcast listener cleanup completed');
 }
 
-/**
- * Broadcast to specific room
- * @param {Server} io - Socket.io server instance
- * @param {string} room - Room name
- * @param {string} event - Event name
- * @param {Object} data - Event data
- */
-function broadcastToRoom(io, room, event, data) {
-  io.to(room).emit(event, {
-    ...data,
-    timestamp: new Date().toISOString(),
-  });
-  logger.debug(`Broadcasted ${event} to room ${room}`);
-}
-
-/**
- * Broadcast to GM stations only
- * @param {Server} io - Socket.io server instance
- * @param {string} event - Event name
- * @param {Object} data - Event data
- */
-function broadcastToGmStations(io, event, data) {
-  broadcastToRoom(io, 'gm-stations', event, data);
-}
-
-/**
- * Broadcast to players only
- * @param {Server} io - Socket.io server instance
- * @param {string} event - Event name
- * @param {Object} data - Event data
- */
-function broadcastToPlayers(io, event, data) {
-  broadcastToRoom(io, 'players', event, data);
-}
-
 module.exports = {
   setupBroadcastListeners,
   cleanupBroadcastListeners,
-  broadcastToRoom,
-  broadcastToGmStations,
-  broadcastToPlayers,
 };

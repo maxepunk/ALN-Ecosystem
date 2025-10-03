@@ -5,6 +5,7 @@
 
 const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
+const { emitWrapped } = require('./eventWrapper');
 
 /**
  * Handle device disconnection
@@ -24,11 +25,9 @@ async function handleDisconnect(socket, io) {
           await sessionService.updateDevice(device);
 
           // Broadcast disconnection to other clients
-          // Fixed: Send flat structure that admin panel expects
-          io.emit('device:disconnected', {
+          emitWrapped(io, 'device:disconnected', {
             deviceId: socket.deviceId,
             reason: 'manual',
-            timestamp: new Date().toISOString(),
           });
         }
       }
@@ -58,31 +57,30 @@ async function handleDisconnect(socket, io) {
 function handleSyncRequest(socket) {
   try {
     if (!socket.deviceId) {
-      socket.emit('error', { 
+      emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
-        message: 'Not identified' 
+        message: 'Not identified'
       });
       return;
     }
-    
+
     const stateService = require('../services/stateService');
     const state = stateService.getCurrentState();
     const session = sessionService.getCurrentSession();
-    
+
     if (state || session) {
-      socket.emit('sync:full', {
+      emitWrapped(socket, 'sync:full', {
         session: session?.toJSON(),
         state: state?.toJSON(),
         devices: session?.connectedDevices || [],
         transactions: session?.transactions?.slice(-100) || [],
-        timestamp: new Date().toISOString(),
       });
-      
+
       logger.info('Sent full sync to device', { deviceId: socket.deviceId });
     }
   } catch (error) {
     logger.error('Sync request error', { error, socketId: socket.id });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'SERVER_ERROR',
       message: 'Failed to sync state',
       details: error.message,
@@ -117,11 +115,9 @@ async function monitorDeviceHealth(io, staleThresholdMs = 60000) {
     await sessionService.updateDevice(device);
     
     // Broadcast disconnection
-    // Fixed: Send flat structure that admin panel expects
-    io.emit('device:disconnected', {
+    emitWrapped(io, 'device:disconnected', {
       deviceId: device.id,
       reason: 'timeout',
-      timestamp: new Date().toISOString(),
     });
     
     logger.warn('Device marked as disconnected due to timeout', { 

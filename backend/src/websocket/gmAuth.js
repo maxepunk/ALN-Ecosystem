@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const DeviceConnection = require('../models/deviceConnection');
 const sessionService = require('../services/sessionService');
 const stateService = require('../services/stateService');
+const { emitWrapped } = require('./eventWrapper');
 
 /**
  * Handle GM station identification
@@ -18,7 +19,7 @@ async function handleGmIdentify(socket, data, io) {
   try {
     // Validate that socket is pre-authenticated from handshake
     if (!socket.isAuthenticated || !socket.deviceId) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
         message: 'Authentication required - connection not pre-authenticated',
       });
@@ -57,7 +58,7 @@ async function handleGmIdentify(socket, data, io) {
 
     // Check if can accept GM station
     if (!sessionService.canAcceptGmStation()) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         message: 'Maximum GM stations reached',
       });
       socket.disconnect(true);
@@ -84,11 +85,11 @@ async function handleGmIdentify(socket, data, io) {
 
     // Send current state
     if (state) {
-      socket.emit('state:sync', state.toJSON());
+      emitWrapped(socket, 'state:sync', state.toJSON());
     }
 
     // Confirm identification with contract-compliant response
-    socket.emit('gm:identified', {
+    emitWrapped(socket, 'gm:identified', {
       success: true,
       sessionId: session?.id,
       state: state?.toJSON(),
@@ -96,12 +97,12 @@ async function handleGmIdentify(socket, data, io) {
 
     // Broadcast device connection to OTHER clients only
     // Fixed: Send flat structure that admin panel expects
-    socket.broadcast.emit('device:connected', {
+    emitWrapped(socket.broadcast, 'device:connected', {
       deviceId: device.id,
       type: device.type,
       name: device.name,
       ipAddress: socket.handshake.address,
-      timestamp: new Date().toISOString(),
+
     });
 
     logger.logSocketEvent('gm:identify', socket.id, {
@@ -111,7 +112,7 @@ async function handleGmIdentify(socket, data, io) {
   } catch (error) {
     logger.error('Device identification failed', { error, socketId: socket.id });
     // Pass through the actual validation error message which includes field names
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'INVALID_DATA',
       message: error.message || 'Invalid identification data',
       details: error.details || error.message,
@@ -132,7 +133,7 @@ async function handleHeartbeat(socket, data) {
 
     // Verify the stationId matches the socket's deviceId
     if (!socket.deviceId || socket.deviceId !== heartbeatData.stationId) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
         message: 'Station not identified or ID mismatch',
       });
@@ -149,8 +150,8 @@ async function handleHeartbeat(socket, data) {
       }
     }
 
-    socket.emit('heartbeat:ack', {
-      timestamp: new Date().toISOString(),
+    emitWrapped(socket, 'heartbeat:ack', {
+
     });
   } catch (error) {
     logger.error('Heartbeat error', { error, socketId: socket.id });

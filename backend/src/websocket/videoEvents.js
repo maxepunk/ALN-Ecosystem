@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const videoQueueService = require('../services/videoQueueService');
 const vlcService = require('../services/vlcService');
 const sessionService = require('../services/sessionService');
+const { emitWrapped } = require('./eventWrapper');
 
 /**
  * Handle video play command
@@ -17,7 +18,7 @@ const sessionService = require('../services/sessionService');
 async function handleVideoPlay(socket, data, io) {
   try {
     if (!socket.isGm) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'PERMISSION_DENIED',
         message: 'Only GM stations can play videos'
       });
@@ -34,7 +35,7 @@ async function handleVideoPlay(socket, data, io) {
     });
 
     // Broadcast to all clients
-    io.emit('video:queued', {
+    emitWrapped(io, 'video:queued', {
       tokenId,
       position: queueItem.position,
       requestedBy: gmStation,
@@ -44,7 +45,7 @@ async function handleVideoPlay(socket, data, io) {
     logger.info('Video queued', { tokenId, gmStation, socketId: socket.id });
   } catch (error) {
     logger.error('Failed to queue video', { error, data });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -59,7 +60,7 @@ async function handleVideoPlay(socket, data, io) {
 async function handleVideoPause(socket, io) {
   try {
     if (!socket.isGm) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'PERMISSION_DENIED',
         message: 'Only GM stations can pause videos'
       });
@@ -68,7 +69,7 @@ async function handleVideoPause(socket, io) {
 
     await vlcService.pause();
     
-    io.emit('video:status', {
+    emitWrapped(io, 'video:status', {
       status: 'paused',
       timestamp: new Date().toISOString()
     });
@@ -76,7 +77,7 @@ async function handleVideoPause(socket, io) {
     logger.info('Video paused', { socketId: socket.id });
   } catch (error) {
     logger.error('Failed to pause video', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -91,7 +92,7 @@ async function handleVideoPause(socket, io) {
 async function handleVideoResume(socket, io) {
   try {
     if (!socket.isGm) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'PERMISSION_DENIED',
         message: 'Only GM stations can resume videos'
       });
@@ -100,7 +101,7 @@ async function handleVideoResume(socket, io) {
 
     await vlcService.resume();
     
-    io.emit('video:status', {
+    emitWrapped(io, 'video:status', {
       status: 'playing',
       timestamp: new Date().toISOString()
     });
@@ -108,7 +109,7 @@ async function handleVideoResume(socket, io) {
     logger.info('Video resumed', { socketId: socket.id });
   } catch (error) {
     logger.error('Failed to resume video', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -123,7 +124,7 @@ async function handleVideoResume(socket, io) {
 async function handleVideoSkip(socket, io) {
   try {
     if (!socket.isGm) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'PERMISSION_DENIED',
         message: 'Only GM stations can skip videos'
       });
@@ -137,13 +138,13 @@ async function handleVideoSkip(socket, io) {
     const next = await videoQueueService.processQueue();
     
     if (next) {
-      io.emit('video:status', {
+      emitWrapped(io, 'video:status', {
         status: 'playing',
         tokenId: next.tokenId,
         timestamp: new Date().toISOString()
       });
     } else {
-      io.emit('video:status', {
+      emitWrapped(io, 'video:status', {
         status: 'idle',
         timestamp: new Date().toISOString()
       });
@@ -152,7 +153,7 @@ async function handleVideoSkip(socket, io) {
     logger.info('Video skipped', { socketId: socket.id });
   } catch (error) {
     logger.error('Failed to skip video', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -167,7 +168,7 @@ async function handleVideoSkip(socket, io) {
 async function handleVideoStop(socket, io) {
   try {
     if (!socket.isGm) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'PERMISSION_DENIED',
         message: 'Only GM stations can stop videos'
       });
@@ -177,7 +178,7 @@ async function handleVideoStop(socket, io) {
     await vlcService.stop();
     await videoQueueService.clearQueue();
     
-    io.emit('video:status', {
+    emitWrapped(io, 'video:status', {
       status: 'stopped',
       timestamp: new Date().toISOString()
     });
@@ -185,7 +186,7 @@ async function handleVideoStop(socket, io) {
     logger.info('Video stopped and queue cleared', { socketId: socket.id });
   } catch (error) {
     logger.error('Failed to stop video', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -202,7 +203,7 @@ async function handleVideoStatusRequest(socket) {
     const queue = await videoQueueService.getQueue();
     const currentItem = queue.find(item => item.status === 'playing');
     
-    socket.emit('video:status', {
+    emitWrapped(socket, 'video:status', {
       vlc: vlcStatus,
       current: currentItem || null,
       queueLength: queue.length,
@@ -212,7 +213,7 @@ async function handleVideoStatusRequest(socket) {
     logger.debug('Video status sent', { socketId: socket.id });
   } catch (error) {
     logger.error('Failed to get video status', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -227,7 +228,7 @@ async function handleGetQueue(socket) {
   try {
     const queue = await videoQueueService.getQueue();
     
-    socket.emit('video:queue', {
+    emitWrapped(socket, 'video:queue', {
       items: queue.map(item => ({
         tokenId: item.tokenId,
         status: item.status,
@@ -241,7 +242,7 @@ async function handleGetQueue(socket) {
     logger.debug('Video queue sent', { socketId: socket.id, queueLength: queue.length });
   } catch (error) {
     logger.error('Failed to get video queue', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });
@@ -256,7 +257,7 @@ async function handleGetQueue(socket) {
 async function handleClearQueue(socket, io) {
   try {
     if (!socket.isGm) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'PERMISSION_DENIED',
         message: 'Only GM stations can clear the queue'
       });
@@ -265,7 +266,7 @@ async function handleClearQueue(socket, io) {
 
     await videoQueueService.clearQueue();
     
-    io.emit('video:queue:cleared', {
+    emitWrapped(io, 'video:queue:cleared', {
       clearedBy: socket.deviceId,
       timestamp: new Date().toISOString()
     });
@@ -273,7 +274,7 @@ async function handleClearQueue(socket, io) {
     logger.info('Video queue cleared', { socketId: socket.id });
   } catch (error) {
     logger.error('Failed to clear queue', { error });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'VIDEO_ERROR',
       message: error.message
     });

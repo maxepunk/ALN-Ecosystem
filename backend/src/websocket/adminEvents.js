@@ -6,6 +6,7 @@
 const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
 const videoQueueService = require('../services/videoQueueService');
+const { emitWrapped } = require('./eventWrapper');
 
 /**
  * Handle GM command from authenticated GM station
@@ -16,9 +17,9 @@ const videoQueueService = require('../services/videoQueueService');
 async function handleGmCommand(socket, data, io) {
   try {
     if (!socket.deviceId || socket.deviceType !== 'gm') {
-      socket.emit('error', { 
+      emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
-        message: 'Not authorized' 
+        message: 'Not authorized'
       });
       return;
     }
@@ -27,36 +28,32 @@ async function handleGmCommand(socket, data, io) {
     switch (data.command) {
       case 'pause_session':
         await sessionService.updateSession({ status: 'paused' });
-        io.emit('session:paused', {
+        emitWrapped(io, 'session:paused', {
           gmStation: socket.deviceId,
-          timestamp: new Date().toISOString(),
         });
         logger.info('Session paused by GM', { gmStation: socket.deviceId });
         break;
         
       case 'resume_session':
         await sessionService.updateSession({ status: 'active' });
-        io.emit('session:resumed', {
+        emitWrapped(io, 'session:resumed', {
           gmStation: socket.deviceId,
-          timestamp: new Date().toISOString(),
         });
         logger.info('Session resumed by GM', { gmStation: socket.deviceId });
         break;
         
       case 'end_session':
         await sessionService.endSession();
-        io.emit('session:ended', {
+        emitWrapped(io, 'session:ended', {
           gmStation: socket.deviceId,
-          timestamp: new Date().toISOString(),
         });
         logger.info('Session ended by GM', { gmStation: socket.deviceId });
         break;
         
       case 'skip_video':
         videoQueueService.skipCurrent();
-        io.emit('video:skipped', {
+        emitWrapped(io, 'video:skipped', {
           gmStation: socket.deviceId,
-          timestamp: new Date().toISOString(),
         });
         logger.info('Video skipped by GM', { gmStation: socket.deviceId });
         break;
@@ -65,29 +62,27 @@ async function handleGmCommand(socket, data, io) {
         // Reset scores through transaction service
         const transactionService = require('../services/transactionService');
         transactionService.resetScores();
-        io.emit('scores:reset', {
+        emitWrapped(io, 'scores:reset', {
           gmStation: socket.deviceId,
-          timestamp: new Date().toISOString(),
         });
         logger.info('Scores reset by GM', { gmStation: socket.deviceId });
         break;
         
       default:
-        socket.emit('error', { 
+        emitWrapped(socket, 'error', {
           code: 'INVALID_COMMAND',
-          message: `Unknown command: ${data.command}` 
+          message: `Unknown command: ${data.command}`
         });
         return;
     }
-    
-    socket.emit('gm:command:ack', {
+
+    emitWrapped(socket, 'gm:command:ack', {
       command: data.command,
       success: true,
-      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     logger.error('GM command error', { error, command: data.command, socketId: socket.id });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'SERVER_ERROR',
       message: 'Command failed',
       details: error.message,
@@ -104,7 +99,7 @@ async function handleGmCommand(socket, data, io) {
 async function handleTransactionSubmit(socket, data, io) {
   try {
     if (!socket.deviceId) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
         message: 'Not identified'
       });
@@ -126,7 +121,7 @@ async function handleTransactionSubmit(socket, data, io) {
       // Queue GM transaction for later processing
       const queuedItem = offlineQueueService.enqueueGmTransaction(scanRequest);
       if (queuedItem) {
-        socket.emit('transaction:result', {
+        emitWrapped(socket, 'transaction:result', {
           status: 'queued',
           queued: true,
           transactionId: queuedItem.transactionId,
@@ -139,7 +134,7 @@ async function handleTransactionSubmit(socket, data, io) {
         });
         return;
       } else {
-        socket.emit('error', {
+        emitWrapped(socket, 'error', {
           code: 'QUEUE_FULL',
           message: 'Offline queue is full'
         });
@@ -149,7 +144,7 @@ async function handleTransactionSubmit(socket, data, io) {
 
     const session = sessionService.getCurrentSession();
     if (!session) {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'SESSION_NOT_FOUND',
         message: 'No active session',
       });
@@ -165,7 +160,7 @@ async function handleTransactionSubmit(socket, data, io) {
     }
 
     // Send result back to submitter
-    socket.emit('transaction:result', result);
+    emitWrapped(socket, 'transaction:result', result);
 
     // Transaction broadcasting is handled by the sessionService event listeners
     // in broadcasts.js which will emit the properly formatted event to all clients
@@ -180,7 +175,7 @@ async function handleTransactionSubmit(socket, data, io) {
     logger.error('Transaction submit error', { error, socketId: socket.id });
 
     // Send error response
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'INVALID_DATA',
       message: 'Failed to process transaction',
       details: error.message,
@@ -195,28 +190,28 @@ async function handleTransactionSubmit(socket, data, io) {
 function handleStateRequest(socket) {
   try {
     if (!socket.deviceId) {
-      socket.emit('error', { 
+      emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
-        message: 'Not identified' 
+        message: 'Not identified'
       });
       return;
     }
-    
+
     const stateService = require('../services/stateService');
     const state = stateService.getCurrentState();
-    
+
     if (state) {
-      socket.emit('state:sync', state.toJSON());
+      emitWrapped(socket, 'state:sync', state.toJSON());
       logger.debug('State sent to client', { deviceId: socket.deviceId });
     } else {
-      socket.emit('error', {
+      emitWrapped(socket, 'error', {
         code: 'SESSION_NOT_FOUND',
         message: 'No active game state',
       });
     }
   } catch (error) {
     logger.error('State request error', { error, socketId: socket.id });
-    socket.emit('error', {
+    emitWrapped(socket, 'error', {
       code: 'SERVER_ERROR',
       message: 'Failed to retrieve state',
       details: error.message,
