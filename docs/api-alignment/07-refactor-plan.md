@@ -792,32 +792,40 @@ reset() {
 - stateService.js: 6 (⏸️ all pending)
 - videoQueueService.js: 6 (⏸️ all pending)
 
-**Next Steps Before Continuing**:
-1. Grep each service file for lazy requires: `grep -n "require.*Service" src/services/*.js`
-2. Identify exact line numbers and imported services
-3. For each lazy require:
-   - Determine what event should trigger the behavior
-   - Map to AsyncAPI event contract
-   - Follow TDD pattern (write test → implement → validate)
+**CRITICAL: Analysis Required Before Any Code Changes**
 
-**Original Table (Needs Verification)**:
+Before touching any lazy require, you MUST understand:
 
-| Step | Service | Lazy Require Location | Event to Listen | Action on Event |
-|------|---------|----------------------|-----------------|-----------------|
-| 1.1.3 | stateService.js:54 | sessionService | session:update (status='ended') | Reset state |
-| 1.1.4 | stateService.js:88-89 | transactionService + sessionService | transaction:new | Update state |
-| 1.1.5 | transactionService.js:222 | sessionService | session:update (status='active') | Initialize team scores |
-| 1.1.6 | transactionService.js:294 | sessionService | session:update | Validate team exists |
-| 1.1.7 | stateService | Remove listenerRegistry import | Use EventEmitter directly | Clean architecture |
-| 1.1.8 | broadcasts.js | Listen to all service events | Translate to WebSocket | Wrap + forward to GMs |
+**1. Service Functional Responsibilities** (from 08-functional-requirements.md):
+- **sessionService**: Session lifecycle owner, emits session:update
+- **transactionService**: Token scan processor, emits transaction:new and score:updated
+- **stateService**: Global state AGGREGATOR, should ONLY listen (never call other services)
+- **videoQueueService**: Video playback coordinator, emits video:status
+- **vlcService**: Leaf dependency (hardware control, no circular deps)
 
-**For each**:
-1. Write test (event emission/listening) validating against asyncapi.yaml schema
-2. Run test (should fail)
-3. Implement (remove lazy require, add event listener)
-4. Run test (should pass)
-5. Validate event matches asyncapi.yaml using ajv
-6. Commit
+**2. What Each Lazy Require Does**:
+- Is it **modifying state** in another service? → MUST convert to event emission
+- Is it **querying data** (one-way read)? → Might be OK, or cache via event listeners
+- Does it create **circular dependency**? → MUST break with events
+
+**3. AsyncAPI Contract Constraints** (backend/contracts/asyncapi.yaml):
+- **16 immutable events** - we refactor TO match these, not create new events
+- Domain events = WebSocket events (same names, used for both internal + external)
+- Events available: session:update, transaction:new, score:updated, video:status, etc.
+
+**4. The Event-Driven Pattern**:
+- Services emit events when their state changes
+- Other services listen and maintain their own cache/state
+- broadcasts.js listens to domain events and forwards as WebSocket
+- NO direct service-to-service state modification
+
+**Analysis Process for Remaining 15 Lazy Requires**:
+1. Read the code context around each lazy require
+2. Determine: Command (modifies state) vs Query (reads state)
+3. Map to existing AsyncAPI event OR accept as one-way dependency
+4. Write test first (TDD)
+5. Implement event emission or listener
+6. Validate against AsyncAPI contract
 
 **Event Contract Reference**: All event names and schemas from asyncapi.yaml channels
 
@@ -2673,22 +2681,27 @@ git push origin v2.0.0-contract-aligned
 
 ### Next Session Action Items
 
-**Immediate Priority**:
-1. Identify all 18 lazy requires with exact line numbers:
-   ```bash
-   cd backend
-   grep -rn "require.*Service" src/services/ | grep -v "^[^:]*:const"
-   ```
+**Immediate Priority - Deep Analysis Required**:
 
-2. Create updated transformation table for 1.1.3+ with:
-   - Exact file paths and line numbers for all 15 remaining lazy requires
-   - Event contracts from AsyncAPI for each transformation
-   - Test specifications for each
+1. **Understand Service Responsibilities**:
+   - Read 08-functional-requirements.md sections 1.1-1.10
+   - Understand what each service SHOULD do
+   - Identify which services are aggregators vs sources of truth
 
-3. Consider breaking Phase 1.1 into service-based sub-phases for better tracking:
-   - Phase 1.1a: transactionService (3 remaining)
-   - Phase 1.1b: stateService (6 remaining)
-   - Phase 1.1c: videoQueueService (6 remaining)
+2. **Analyze Each Lazy Require Functionally**:
+   - For each of 15 remaining lazy requires:
+     - Read code context (5-10 lines before/after)
+     - Determine: Is it modifying state? Reading state? Querying?
+     - Check if it creates circular dependency
+     - Map to AsyncAPI event OR justify as acceptable one-way dependency
+
+3. **Only After Analysis, Plan Transformations**:
+   - Group by service based on functional understanding
+   - For state-modifying code: Plan event emission
+   - For aggregator code (stateService): Plan event listeners
+   - For one-way reads: Decide if event caching needed or OK as-is
+
+**Key Mistake to Avoid**: Do NOT mechanically move imports without understanding functional relationships and AsyncAPI contracts
 
 ### Duration Tracking
 
