@@ -10,7 +10,6 @@ const { validateHTTPResponse } = require('../../helpers/contract-validator');
 describe('POST /api/scan', () => {
   it.skip('should match OpenAPI contract for successful scan', async () => {
     // TODO Phase 2: Fix contract mismatches before enabling
-    // - Field: scannerId → deviceId
     // - Field: videoPlaying → videoQueued
     // - Make teamId optional per contract
     const response = await request(app.app)
@@ -18,7 +17,7 @@ describe('POST /api/scan', () => {
       .send({
         tokenId: '534e2b03',
         teamId: '001',
-        scannerId: 'PLAYER_SCANNER_01',
+        deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
       })
       .expect(200);
@@ -32,7 +31,7 @@ describe('POST /api/scan', () => {
       .send({
         tokenId: '534e2b03',
         teamId: '001',  // TODO Phase 2: Make optional per contract
-        scannerId: 'PLAYER_SCANNER_01',  // TODO Phase 2: Change to deviceId
+        deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
       })
       .expect(200);
@@ -47,7 +46,7 @@ describe('POST /api/scan', () => {
       .post('/api/scan')
       .send({
         tokenId: '534e2b03',
-        scannerId: 'PLAYER_SCANNER_01',  // TODO Phase 2: Change to deviceId
+        deviceId: 'PLAYER_SCANNER_01',
         teamId: '001',
         timestamp: new Date().toISOString()
       })
@@ -61,7 +60,7 @@ describe('POST /api/scan', () => {
       .post('/api/scan')
       .send({
         // Missing required tokenId
-        scannerId: 'PLAYER_SCANNER_01'  // TODO Phase 2: Change to deviceId
+        deviceId: 'PLAYER_SCANNER_01'
       })
       .expect(400);
 
@@ -90,12 +89,12 @@ describe('POST /api/scan/batch', () => {
         transactions: [
           {
             tokenId: '534e2b03',
-            scannerId: 'PLAYER_SCANNER_01',  // TODO Phase 2: Change to deviceId
+            deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           },
           {
             tokenId: 'tac001',
-            scannerId: 'PLAYER_SCANNER_01',  // TODO Phase 2: Change to deviceId
+            deviceId: 'PLAYER_SCANNER_01',
             teamId: '001',
             timestamp: new Date().toISOString()
           }
@@ -113,7 +112,7 @@ describe('POST /api/scan/batch', () => {
         transactions: [
           {
             tokenId: '534e2b03',
-            scannerId: 'PLAYER_SCANNER_01',  // TODO Phase 2: Change to deviceId
+            deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           }
         ]

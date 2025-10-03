@@ -97,34 +97,13 @@ All services in `backend/src/services/` use singleton pattern with getInstance()
 - **offlineQueueService**: Offline scan queue management
 
 ### WebSocket Event Flow
-1. Scanner connects → `gm:identify` with auth token
-2. Orchestrator validates → Sends `state:sync` broadcast
-3. Scanner submits scan → `transaction:submit` event
-4. Orchestrator processes → Updates state, queues video
-5. Broadcasts updates → All connected clients sync
+Follows the contracts in `backend/contracts/`
 
 ### API Response Format
-```javascript
-{
-  status: 'success' | 'error',
-  data?: any,
-  error?: string,
-  code?: 'AUTH_REQUIRED' | 'PERMISSION_DENIED' | 'VALIDATION_ERROR'
-}
-```
-
-## Testing Approach
+Follows the contracts in `backend/contracts/`
 
 ### Test Structure
-- `tests/contract/` - API contract validation
-- `tests/integration/` - End-to-end flows
-- `tests/unit/` - Service logic
-
-### Running Specific Tests
-```bash
-jest tests/integration/offline_mode.test.js --runInBand
-jest --testPathPattern=vlc
-```
+Follow the architecture design from `docs/api-alignment/06-test-architecture.md`
 
 ## Environment Configuration
 
@@ -161,25 +140,6 @@ curl -X POST http://localhost:3000/api/scan \
   -d '{"tokenId": "534e2b03", "teamId": "TEAM_A", "scannerId": "test"}'
 ```
 
-### Debugging WebSocket Issues
-1. Check browser console for connection errors
-2. Verify `socket.io` version compatibility (4.6.x)
-3. Check `pm2 logs aln-orchestrator` for server errors
-4. Ensure CORS origins include scanner URL
-
-## Important Patterns
-
-### Error Handling
-- All async operations use try/catch
-- Services return `{ success: boolean, data/error }`
-- WebSocket events emit error responses
-- Graceful degradation when VLC unavailable
-
-### State Management
-- Single source of truth in stateService
-- All updates go through service methods
-- State persisted to disk via node-persist
-- Broadcasts sync all connected clients
 
 ### File Path Resolution
 ```javascript
@@ -236,32 +196,7 @@ The `ecosystem.config.js` manages both processes:
 
 **Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI)
 
-**Memory Location**: `docs/api-alignment/00-INDEX.md` - **READ COMPLETELY after context compaction**
+**Memory Location**: `docs/api-alignment/00-INDEX.md` - Will help you find relative context for 07-refactor-plan
 
-### Context Recovery After Compaction
-
-1. **Read 00-INDEX.md THOROUGHLY** - especially these sections:
-   - "Complete API Alignment Process" - understand all 7 phases
-   - "Current Status Summary" - locate where we are NOW
-   - "Progress Tracking" - see what's complete
-   - "Recent Updates" - understand recent work
-
-2. **Understand the Methodology** (documented in INDEX):
-   - Exhaustive analysis (not sampling)
-   - Every claim backed by source code references (file:line)
-   - Documents are 1,000-3,000 lines (comprehensive, not summaries)
-   - NO RUSHING - thoroughness over speed
-   - Collaborative decision-making at key points
-
-3. **Review Current Phase Documents**:
-   - Check "Current Phase" in INDEX for status
-   - Read that phase's documents sequentially
-   - Understanding builds on previous phases
-
-4. **Key Characteristics of This Work**:
-   - Rigorous 7-step methodology per phase
-   - Collaborative decisions (Phase 4, Phase 4.5 Step 3, etc.)
-   - Test-first validation approach
-   - Documents designed to survive compaction
-
-**When to Consult**: Before any backend API changes, scanner modifications, test updates, or contract work
+**KEY DOCUMENT**: MUST READ: @`docs/api-alignment/07-refactor-plan.md` - Current phase of the project. CORE implementation of the refactor. 
+**FUNCTIONAL REQUIREMENTS** The output of the refactor MUST meet the functional requirements outlined in @`docs/api-alignment/08-functional-requirements.md`.

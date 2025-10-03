@@ -171,7 +171,7 @@ describe('TransactionService - Event Emission', () => {
       const scanRequest = {
         tokenId: 'test_video',
         teamId: '001',
-        scannerId: 'GM_01',  // Still using scannerId (Phase 2 will change to deviceId)
+        deviceId: 'GM_01',
         timestamp: new Date().toISOString()
       };
 

@@ -154,7 +154,7 @@ class StateService extends EventEmitter {
           id: transaction.id,
           tokenId: transaction.tokenId,
           teamId: transaction.teamId,
-          scannerId: transaction.scannerId,  // Required field per data model
+          deviceId: transaction.deviceId,  // Required field per data model
           timestamp: transaction.timestamp,
           sessionId: transaction.sessionId,   // Required field per data model
           status: transaction.status,

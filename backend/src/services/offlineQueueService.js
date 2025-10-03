@@ -8,7 +8,8 @@ const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 const transactionService = require('./transactionService');
 const sessionService = require('./sessionService');
-const stateService = require('./stateService');
+// NOTE: stateService removed - no longer called directly (aggregator pattern)
+// stateService will listen to 'offline:queue:processed' event instead
 
 // Track instances for debugging
 let instanceCount = 0;
@@ -81,7 +82,7 @@ class OfflineQueueService extends EventEmitter {
     logger.info('Player scan queued for offline logging', {
       queueId: queuedItem.queueId,
       tokenId: scanLog.tokenId,
-      scannerId: scanLog.scannerId,
+      deviceId: scanLog.deviceId,
     });
 
     this.emit('scan:queued', queuedItem);
@@ -148,7 +149,7 @@ class OfflineQueueService extends EventEmitter {
           logger.info('Processing queued player scan log', {
             queueId: scanLog.queueId,
             tokenId: scanLog.tokenId,
-            scannerId: scanLog.scannerId,
+            deviceId: scanLog.deviceId,
             timestamp: scanLog.timestamp
           });
 
@@ -156,6 +157,7 @@ class OfflineQueueService extends EventEmitter {
             type: 'player_scan',
             queueId: scanLog.queueId,
             tokenId: scanLog.tokenId,
+            transactionId: scanLog.transactionId,
             status: 'logged',
             message: 'Scan log synced'
           });
@@ -236,40 +238,25 @@ class OfflineQueueService extends EventEmitter {
       }
 
       await this.persistQueue();
-      this.emit('queue:processed', { processed, failed });
 
-      // Wait a bit for state updates to complete (they're debounced)
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Emit offline:queue:processed event per AsyncAPI contract (wrapped envelope)
+      // stateService will listen to this and emit sync:full with updated state
+      this.emit('offline:queue:processed', {
+        event: 'offline:queue:processed',
+        data: {
+          queueSize: processed.length,
+          results: processed.map(item => ({
+            transactionId: item.transactionId || item.id,
+            status: item.status === 'failed' ? 'failed' : 'processed'
+          }))
+        },
+        timestamp: new Date().toISOString()
+      });
 
-      // Emit sync:full event to notify all clients that offline queue was processed
-      if (processed.length > 0) {
-        let currentState = stateService.getCurrentState();
-
-        // If no state exists but session does, create state from session
-        if (!currentState && session) {
-          logger.info('Creating state from session for sync:full', {
-            sessionHasTransactions: !!(session.transactions && session.transactions.length > 0),
-            transactionCount: session.transactions ? session.transactions.length : 0
-          });
-          currentState = stateService.createStateFromSession(session);
-          stateService.setCurrentState(currentState);
-          await stateService.saveState();
-          logger.info('Created state from session for sync:full event');
-        }
-
-        if (currentState) {
-          // Emit sync event with current state
-          const stateData = currentState.toJSON();
-          this.emit('sync:full', stateData);
-          logger.info('Emitted sync:full with current state', {
-            hasRecentTransactions: !!(stateData.recentTransactions && stateData.recentTransactions.length > 0),
-            transactionCount: stateData.recentTransactions ? stateData.recentTransactions.length : 0,
-            tokenIds: stateData.recentTransactions ? stateData.recentTransactions.map(t => t.tokenId) : []
-          });
-        } else {
-          logger.warn('Cannot emit sync:full - no state or session available');
-        }
-      }
+      logger.info('Emitted offline:queue:processed event', {
+        queueSize: processed.length,
+        failed: failed.length
+      });
 
     } catch (error) {
       logger.error('Queue processing error', error);

@@ -69,7 +69,7 @@ function setupBroadcastListeners(io, services) {
         id: transaction.id,
         tokenId: transaction.tokenId,
         teamId: transaction.teamId,
-        scannerId: transaction.scannerId,
+        deviceId: transaction.deviceId,
         stationMode: transaction.stationMode,  // Add stationMode for frontend
         status: transaction.status,
         points: transaction.points,

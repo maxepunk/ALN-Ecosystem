@@ -64,7 +64,7 @@ router.post('/', async (req, res) => {
     logger.info('Player scan received', {
       tokenId: scanRequest.tokenId,
       teamId: scanRequest.teamId,
-      scannerId: scanRequest.scannerId,
+      deviceId: scanRequest.deviceId,
       timestamp: scanRequest.timestamp || new Date().toISOString()
     });
 
@@ -106,7 +106,7 @@ router.post('/', async (req, res) => {
       }
 
       // Add video to queue
-      videoQueueService.addToQueue(token, scanRequest.scannerId);
+      videoQueueService.addToQueue(token, scanRequest.deviceId);
 
       return res.status(200).json({
         status: 'accepted',
@@ -178,7 +178,7 @@ router.post('/batch', async (req, res) => {
       logger.info('Batch scan received', {
         tokenId: scanRequest.tokenId,
         teamId: scanRequest.teamId,
-        scannerId: scanRequest.scannerId,
+        deviceId: scanRequest.deviceId,
         timestamp: scanRequest.timestamp || new Date().toISOString()
       });
 
@@ -204,7 +204,7 @@ router.post('/batch', async (req, res) => {
       // Process video if applicable
       if (token && token.hasVideo()) {
         if (!videoQueueService.isPlaying()) {
-          videoQueueService.addToQueue(token, scanRequest.scannerId);
+          videoQueueService.addToQueue(token, scanRequest.deviceId);
           results.push({
             ...scanRequest,
             status: 'processed',
