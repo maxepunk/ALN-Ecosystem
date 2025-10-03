@@ -20,15 +20,11 @@ const videoQueueService = require('./services/videoQueueService');
 const vlcService = require('./services/vlcService');
 const offlineQueueService = require('./services/offlineQueueService');
 
-// Import routes
+// Import routes (5 files after Phase 1.2 consolidation)
 const scanRoutes = require('./routes/scanRoutes');
 const stateRoutes = require('./routes/stateRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
-const transactionRoutes = require('./routes/transactionRoutes');
-const videoRoutes = require('./routes/videoRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const docsRoutes = require('./routes/docsRoutes');
-const tokenRoutes = require('./routes/tokenRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 
 // Create Express app
@@ -103,19 +99,13 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/', createRateLimiter());
 }
 
-// API Routes
-app.use('/api/scan', scanRoutes);
-app.use('/api/session', sessionRoutes);
-app.use('/api/state', stateRoutes);
-app.use('/api/transaction', transactionRoutes);
-app.use('/api/video', videoRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api', resourceRoutes);  // Mounts /api/tokens
-app.use('/', resourceRoutes);     // Mounts /health at root
-app.use('/', tokenRoutes); // Token routes have /api/tokens internally
-
-// Documentation routes (no /api prefix)
-app.use('/', docsRoutes);
+// API Routes (8 HTTP endpoints after Phase 1.2 consolidation)
+app.use('/api/scan', scanRoutes);           // POST /api/scan, POST /api/scan/batch
+app.use('/api/session', sessionRoutes);     // GET /api/session
+app.use('/api/state', stateRoutes);         // GET /api/state
+app.use('/api/admin', adminRoutes);         // POST /api/admin/auth, GET /api/admin/logs
+app.use('/api', resourceRoutes);            // GET /api/tokens
+app.use('/', resourceRoutes);               // GET /health
 
 // Static files (if needed)
 app.use(express.static('public'));
