@@ -24,6 +24,20 @@ const asyncapi = yaml.load(
   fs.readFileSync(path.join(__dirname, '../../contracts/asyncapi.yaml'), 'utf8')
 );
 
+// Register OpenAPI component schemas with ajv (so $ref resolution works)
+if (openapi.components && openapi.components.schemas) {
+  Object.entries(openapi.components.schemas).forEach(([name, schema]) => {
+    ajv.addSchema(schema, `#/components/schemas/${name}`);
+  });
+}
+
+// Register AsyncAPI component schemas with ajv (so $ref resolution works)
+if (asyncapi.components && asyncapi.components.schemas) {
+  Object.entries(asyncapi.components.schemas).forEach(([name, schema]) => {
+    ajv.addSchema(schema, `#/components/schemas/${name}`);
+  });
+}
+
 /**
  * Extract schema from OpenAPI spec
  */

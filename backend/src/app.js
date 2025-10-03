@@ -29,6 +29,7 @@ const videoRoutes = require('./routes/videoRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const docsRoutes = require('./routes/docsRoutes');
 const tokenRoutes = require('./routes/tokenRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
 
 // Create Express app
 const app = express();
@@ -102,22 +103,6 @@ if (process.env.NODE_ENV !== 'test') {
   app.use('/api/', createRateLimiter());
 }
 
-// Health check endpoint
-app.get('/health', (_req, res) => {
-  const health = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    services: {
-      orchestrator: true,
-      vlc: vlcService.isConnected(),
-      videoDisplay: stateService.getCurrentState()?.systemStatus?.videoDisplayReady || false,
-    },
-  };
-  
-  res.json(health);
-});
-
 // API Routes
 app.use('/api/scan', scanRoutes);
 app.use('/api/session', sessionRoutes);
@@ -125,6 +110,8 @@ app.use('/api/state', stateRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/video', videoRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', resourceRoutes);  // Mounts /api/tokens
+app.use('/', resourceRoutes);     // Mounts /health at root
 app.use('/', tokenRoutes); // Token routes have /api/tokens internally
 
 // Documentation routes (no /api prefix)

@@ -41,8 +41,12 @@ const calculateTokenValue = (rating, type) => {
   return Math.floor(baseValue * multiplier);
 };
 
-const loadTokens = () => {
-  // Try to load from future submodule location first
+/**
+ * PRIVATE: Load tokens.json from submodule (raw object format)
+ * Single source of truth for file loading
+ * @returns {Object} Raw tokens object (tokenId -> token data)
+ */
+const _loadTokensFile = () => {
   const paths = [
     path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
     path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
@@ -52,49 +56,62 @@ const loadTokens = () => {
     try {
       const data = fs.readFileSync(tokenPath, 'utf8');
       console.log(`Loaded tokens from: ${tokenPath}`);
-      const tokensObject = JSON.parse(data);
-
-      // Transform object format to array format expected by backend
-      const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
-        const groupName = extractGroupName(token.SF_Group);
-        const groupMultiplier = parseGroupMultiplier(token.SF_Group);
-        const calculatedValue = calculateTokenValue(
-          token.SF_ValueRating,
-          token.SF_MemoryType
-        );
-
-        return {
-          id: id,
-          name: token.SF_Group || `Memory ${id}`,
-          value: calculatedValue,
-          memoryType: token.SF_MemoryType?.toLowerCase() || 'visual',
-          groupId: groupName,
-          groupMultiplier: groupMultiplier,
-          mediaAssets: {
-            image: token.image,
-            audio: token.audio,
-            video: token.video,
-            processingImage: token.processingImage
-          },
-          metadata: {
-            rfid: token.SF_RFID,
-            group: token.SF_Group,
-            originalType: token.SF_MemoryType,
-            rating: token.SF_ValueRating
-          }
-        };
-      });
-
-      console.log(`Transformed ${tokensArray.length} tokens from submodule`);
-      return tokensArray;
+      return JSON.parse(data);
     } catch (e) {
       console.error(`Failed to load from ${tokenPath}:`, e.message);
       // Continue to next path
     }
   }
 
-  // No fallback - if submodules are configured, tokens MUST load
   throw new Error('CRITICAL: Failed to load tokens from any configured path. Check submodule configuration.');
+};
+
+/**
+ * Load raw tokens for API serving (scanners cache original format)
+ * @returns {Object} Raw tokens object (tokenId -> token data)
+ */
+const loadRawTokens = () => _loadTokensFile();
+
+/**
+ * Load and transform tokens for backend use (game logic needs calculated values)
+ * @returns {Array} Transformed tokens array with calculated scores
+ */
+const loadTokens = () => {
+  const tokensObject = _loadTokensFile();
+
+  // Transform object format to array format expected by backend
+  const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
+    const groupName = extractGroupName(token.SF_Group);
+    const groupMultiplier = parseGroupMultiplier(token.SF_Group);
+    const calculatedValue = calculateTokenValue(
+      token.SF_ValueRating,
+      token.SF_MemoryType
+    );
+
+    return {
+      id: id,
+      name: token.SF_Group || `Memory ${id}`,
+      value: calculatedValue,
+      memoryType: token.SF_MemoryType?.toLowerCase() || 'visual',
+      groupId: groupName,
+      groupMultiplier: groupMultiplier,
+      mediaAssets: {
+        image: token.image,
+        audio: token.audio,
+        video: token.video,
+        processingImage: token.processingImage
+      },
+      metadata: {
+        rfid: token.SF_RFID,
+        group: token.SF_Group,
+        originalType: token.SF_MemoryType,
+        rating: token.SF_ValueRating
+      }
+    };
+  });
+
+  console.log(`Transformed ${tokensArray.length} tokens from submodule`);
+  return tokensArray;
 };
 
 const getTestTokens = () => [
@@ -109,6 +126,7 @@ const getTestTokens = () => [
 
 module.exports = {
   loadTokens,
+  loadRawTokens,
   getTestTokens,
   parseGroupMultiplier,
   extractGroupName,

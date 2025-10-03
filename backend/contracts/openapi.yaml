@@ -139,7 +139,7 @@ paths:
 
         **Token Metadata Includes**:
         - SF_RFID (token ID)
-        - SF_ValueRating (1-3, scoring weight)
+        - SF_ValueRating (1-5, scoring weight)
         - SF_MemoryType ("Technical", "Business", "Personal")
         - SF_Group (group completion bonuses)
         - Media paths (image, audio, video)
@@ -959,8 +959,8 @@ components:
         SF_ValueRating:
           type: integer
           minimum: 1
-          maximum: 3
-          description: Scoring weight (1=low, 2=medium, 3=high value)
+          maximum: 5
+          description: Scoring weight (1=lowest, 5=highest value)
           example: 3
         SF_MemoryType:
           type: string
