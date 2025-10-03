@@ -5,6 +5,7 @@
 
 const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
+const { emitWrapped, emitToRoom } = require('./eventWrapper');
 
 // ADD: Module-level tracking
 const activeListeners = [];
@@ -43,7 +44,7 @@ function setupBroadcastListeners(io, services) {
 
   // Session events
   addTrackedListener(sessionService, 'session:created', (session) => {
-    io.emit('session:new', {
+    emitWrapped(io, 'session:new', {
       sessionId: session.id,
       name: session.name,
     });
@@ -51,7 +52,7 @@ function setupBroadcastListeners(io, services) {
   });
 
   addTrackedListener(sessionService, 'session:updated', (session) => {
-    io.emit('session:update', {
+    emitWrapped(io, 'session:update', {
       sessionId: session.id,
       status: session.status,
     });
@@ -62,39 +63,35 @@ function setupBroadcastListeners(io, services) {
     // Enrich transaction with token data for frontend display
     const token = transactionService.getToken(transaction.tokenId);
 
-    // Contract-compliant transaction event with token enrichment
-    const eventData = {
-      event: 'transaction:new',
-      data: {
-        id: transaction.id,
-        tokenId: transaction.tokenId,
-        teamId: transaction.teamId,
-        deviceId: transaction.deviceId,
-        stationMode: transaction.stationMode,  // Add stationMode for frontend
-        status: transaction.status,
-        points: transaction.points,
-        timestamp: transaction.timestamp,
-        // Include token details for frontend display
-        // Use originalType first to preserve capitalization for frontend SCORING_CONFIG
-        memoryType: token?.metadata?.originalType || token?.memoryType || 'UNKNOWN',
-        valueRating: token?.metadata?.rating || 0,
-        group: token?.metadata?.group || 'No Group',
-        tokenValue: token?.value || 0
-      },
-      timestamp: new Date().toISOString(),
+    // Prepare payload
+    const payload = {
+      id: transaction.id,
+      tokenId: transaction.tokenId,
+      teamId: transaction.teamId,
+      deviceId: transaction.deviceId,
+      stationMode: transaction.stationMode,  // Add stationMode for frontend
+      status: transaction.status,
+      points: transaction.points,
+      timestamp: transaction.timestamp,
+      // Include token details for frontend display
+      // Use originalType first to preserve capitalization for frontend SCORING_CONFIG
+      memoryType: token?.metadata?.originalType || token?.memoryType || 'UNKNOWN',
+      valueRating: token?.metadata?.rating || 0,
+      group: token?.metadata?.group || 'No Group',
+      tokenValue: token?.value || 0
     };
 
     // Per contract: broadcast to session room only
     const session = sessionService.getCurrentSession();
     if (session) {
-      io.to(`session:${session.id}`).emit('transaction:new', eventData);
+      emitToRoom(io, `session:${session.id}`, 'transaction:new', payload);
       logger.info('Broadcasted transaction:new to session', {
         transactionId: transaction.id,
         sessionId: session.id
       });
     } else {
       // Fallback: if no session, broadcast to all (shouldn't happen)
-      io.emit('transaction:new', eventData);
+      emitWrapped(io, 'transaction:new', payload);
       logger.warn('Broadcasted transaction:new globally - no session found');
     }
   });
@@ -110,11 +107,7 @@ function setupBroadcastListeners(io, services) {
     const gmRoom = io.sockets.adapter.rooms.get('gm-stations');
     const gmCount = gmRoom ? gmRoom.size : 0;
 
-    io.to('gm-stations').emit('state:update', {
-      event: 'state:update',
-      data: delta,
-      timestamp: new Date().toISOString()
-    });
+    emitToRoom(io, 'gm-stations', 'state:update', delta);
 
     logger.debug('Broadcasted state:update to GM stations', {
       deltaKeys: Object.keys(delta),
@@ -123,38 +116,34 @@ function setupBroadcastListeners(io, services) {
   });
 
   addTrackedListener(stateService, 'state:sync', (state) => {
-    io.emit('state:sync', state);
+    emitWrapped(io, 'state:sync', state);
     logger.info('Broadcasted state:sync');
   });
 
   // Full sync event (contract compliant)
   addTrackedListener(stateService, 'sync:full', (fullState) => {
-    io.emit('sync:full', fullState);
-    logger.info('Broadcasted sync:full', { 
+    emitWrapped(io, 'sync:full', fullState);
+    logger.info('Broadcasted sync:full', {
       hasSession: !!fullState.session,
       hasState: !!fullState.state,
-      hasQueue: !!fullState.queue 
+      hasQueue: !!fullState.queue
     });
   });
 
   // Transaction/Score events - broadcast to GM stations only
   if (transactionService) {
     addTrackedListener(transactionService, 'score:updated', (teamScore) => {
-      const scoreUpdate = {
-        event: 'score:updated',
-        data: {
-          teamId: teamScore.teamId,
-          currentScore: teamScore.currentScore,
-          baseScore: teamScore.currentScore - (teamScore.bonusPoints || 0),
-          bonusPoints: teamScore.bonusPoints || 0,
-          tokensScanned: teamScore.tokensScanned,
-          completedGroups: teamScore.completedGroups || [],
-          lastUpdate: teamScore.lastUpdate
-        },
-        timestamp: new Date().toISOString()
+      const payload = {
+        teamId: teamScore.teamId,
+        currentScore: teamScore.currentScore,
+        baseScore: teamScore.currentScore - (teamScore.bonusPoints || 0),
+        bonusPoints: teamScore.bonusPoints || 0,
+        tokensScanned: teamScore.tokensScanned,
+        completedGroups: teamScore.completedGroups || [],
+        lastUpdate: teamScore.lastUpdate
       };
 
-      io.to('gm-stations').emit('score:updated', scoreUpdate);
+      emitToRoom(io, 'gm-stations', 'score:updated', payload);
       logger.info('Broadcasted score:updated to GM stations', {
         teamId: teamScore.teamId,
         score: teamScore.currentScore,
@@ -163,146 +152,104 @@ function setupBroadcastListeners(io, services) {
     });
 
     addTrackedListener(transactionService, 'group:completed', (data) => {
-      const groupCompletion = {
-        event: 'group:completed',
-        data: {
-          teamId: data.teamId,
-          groupId: data.groupId,
-          bonus: data.bonus,
-          multiplier: data.multiplier
-        },
-        timestamp: new Date().toISOString()
+      const payload = {
+        teamId: data.teamId,
+        groupId: data.groupId,
+        bonus: data.bonus,
+        multiplier: data.multiplier
       };
 
-      io.to('gm-stations').emit('group:completed', groupCompletion);
+      emitToRoom(io, 'gm-stations', 'group:completed', payload);
       logger.info('Broadcasted group:completed to GM stations', data);
     });
 
     addTrackedListener(transactionService, 'team:created', (data) => {
-      const teamCreation = {
-        event: 'team:created',
-        data: {
-          teamId: data.teamId
-        },
-        timestamp: new Date().toISOString()
+      const payload = {
+        teamId: data.teamId
       };
 
-      io.to('gm-stations').emit('team:created', teamCreation);
+      emitToRoom(io, 'gm-stations', 'team:created', payload);
       logger.info('Broadcasted team:created to GM stations', { teamId: data.teamId });
     });
   }
 
   // Video events (contract-compliant)
   addTrackedListener(videoQueueService, 'video:loading', (data) => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'loading',
-        tokenId: data.tokenId
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'loading',
+      tokenId: data.tokenId
     };
 
-    // Video status only goes to GM stations
-    io.to('gm-stations').emit('video:status', videoStatus);
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.info('Broadcasted video:loading to GM stations', { tokenId: data.tokenId });
   });
 
   addTrackedListener(videoQueueService, 'video:started', (data) => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'playing',
-        tokenId: data.queueItem.tokenId,
-        duration: data.duration,
-        expectedEndTime: data.expectedEndTime,
-        progress: 0
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'playing',
+      tokenId: data.queueItem.tokenId,
+      duration: data.duration,
+      expectedEndTime: data.expectedEndTime,
+      progress: 0
     };
 
-    // Video status only goes to GM stations
-    io.to('gm-stations').emit('video:status', videoStatus);
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.info('Broadcasted video:started to GM stations', { tokenId: data.queueItem.tokenId });
   });
 
   addTrackedListener(videoQueueService, 'video:completed', (queueItem) => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'completed',
-        tokenId: queueItem.tokenId,
-        progress: 100
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'completed',
+      tokenId: queueItem.tokenId,
+      progress: 100
     };
 
-    // Video status only goes to GM stations
-    io.to('gm-stations').emit('video:status', videoStatus);
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.info('Broadcasted video:completed to GM stations', { tokenId: queueItem.tokenId });
   });
 
   addTrackedListener(videoQueueService, 'video:failed', (queueItem) => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'error',
-        tokenId: queueItem.tokenId,
-        error: queueItem.error
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'error',
+      tokenId: queueItem.tokenId,
+      error: queueItem.error
     };
 
-    // Video status only goes to GM stations
-    io.to('gm-stations').emit('video:status', videoStatus);
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.error('Broadcasted video:failed to GM stations', { tokenId: queueItem.tokenId, error: queueItem.error });
   });
 
   addTrackedListener(videoQueueService, 'video:paused', (queueItem) => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'paused',
-        tokenId: queueItem?.tokenId || null,
-        progress: queueItem?.progress || 0
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'paused',
+      tokenId: queueItem?.tokenId || null,
+      progress: queueItem?.progress || 0
     };
 
-    // Video status only goes to GM stations
-    io.to('gm-stations').emit('video:status', videoStatus);
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.info('Broadcasted video:paused to GM stations', { tokenId: queueItem?.tokenId });
   });
 
   addTrackedListener(videoQueueService, 'video:idle', () => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'idle',
-        tokenId: null,
-        progress: 0
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'idle',
+      tokenId: null,
+      progress: 0
     };
 
-    // Video status only goes to GM stations
-    io.to('gm-stations').emit('video:status', videoStatus);
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.info('Broadcasted video:idle to GM stations');
   });
 
   // Handle video resumed event
   addTrackedListener(videoQueueService, 'video:resumed', (queueItem) => {
-    const videoStatus = {
-      event: 'video:status',
-      data: {
-        status: 'playing', // Resume returns to playing state
-        tokenId: queueItem?.tokenId || null,
-        progress: queueItem?.progress || 0
-      },
-      timestamp: new Date().toISOString(),
+    const payload = {
+      status: 'playing', // Resume returns to playing state
+      tokenId: queueItem?.tokenId || null,
+      progress: queueItem?.progress || 0
     };
-    
-    io.to('gm-stations').emit('video:status', videoStatus);
+
+    emitToRoom(io, 'gm-stations', 'video:status', payload);
     logger.info('Broadcasted video:resumed as playing to GM stations');
   });
 
@@ -310,21 +257,18 @@ function setupBroadcastListeners(io, services) {
   if (offlineQueueService) {
     addTrackedListener(offlineQueueService, 'sync:full', (state) => {
       // Broadcast full state sync to all connected clients
-      io.emit('sync:full', {
-        event: 'sync:full',
-        data: state,
-        timestamp: new Date().toISOString()
-      });
+      emitWrapped(io, 'sync:full', state);
       logger.info('Broadcasted sync:full after offline queue processing');
     });
 
     addTrackedListener(offlineQueueService, 'queue:processed', ({ processed, failed }) => {
       // Notify GM stations about queue processing results
-      io.to('gm-stations').emit('offline:queue:processed', {
+      const payload = {
         processed: processed.length,
-        failed: failed.length,
-        timestamp: new Date().toISOString()
-      });
+        failed: failed.length
+      };
+
+      emitToRoom(io, 'gm-stations', 'offline:queue:processed', payload);
       logger.info('Broadcasted offline queue processing results', {
         processed: processed.length,
         failed: failed.length
@@ -334,11 +278,10 @@ function setupBroadcastListeners(io, services) {
 
   // Error events
   const handleServiceError = (service, error) => {
-    io.emit('error', {
+    emitWrapped(io, 'error', {
       service,
       message: error.message,
       code: error.code || 'INTERNAL_ERROR',
-      timestamp: new Date().toISOString()
     });
     logger.error(`Service error broadcasted`, { service, error: error.message });
   };
