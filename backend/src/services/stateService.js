@@ -10,6 +10,12 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const listenerRegistry = require('../websocket/listenerRegistry');
 
+// TOP-LEVEL IMPORTS (removed lazy requires - Phase 1.1.4)
+const sessionService = require('./sessionService');
+const transactionService = require('./transactionService');
+const videoQueueService = require('./videoQueueService');
+const offlineQueueService = require('./offlineQueueService');
+
 class StateService extends EventEmitter {
   constructor() {
     super();
@@ -18,7 +24,10 @@ class StateService extends EventEmitter {
     this.syncInterval = null;
     this.vlcConnected = false;
     this.videoDisplayReady = false;
-    this.listenersInitialized = false;  // ADD THIS
+    this.listenersInitialized = false;
+
+    // Cache offline status from events (Phase 1.1.4 - aggregator pattern)
+    this.cachedOfflineStatus = false;
 
     // Debouncing for state updates
     this.pendingStateUpdate = null;
@@ -51,7 +60,6 @@ class StateService extends EventEmitter {
 
       // If no state but session exists, create state from session
       if (!this.currentState) {
-        const sessionService = require('./sessionService');
         const session = sessionService.getCurrentSession();
         if (session) {
           this.currentState = this.createStateFromSession(session);
@@ -85,13 +93,11 @@ class StateService extends EventEmitter {
     this.listenersInitialized = true;
     logger.info('Initializing transaction listeners');
 
-    const transactionService = require('./transactionService');
-    const sessionService = require('./sessionService');
-    const videoQueueService = require('./videoQueueService');
-    const offlineQueueService = require('./offlineQueueService');
-
-    // Listen for offline status changes to update state
+    // Listen for offline status changes to update state AND cache
     listenerRegistry.addTrackedListener(offlineQueueService, 'status:changed', async ({ offline }) => {
+      // Cache offline status (Phase 1.1.4 - aggregator pattern)
+      this.cachedOfflineStatus = offline;
+
       if (this.currentState) {
         await this.updateState({ systemStatus: { offline } }, { immediate: true });
         logger.info('Updated state offline status', { offline });
@@ -332,7 +338,7 @@ class StateService extends EventEmitter {
         orchestratorOnline: true,
         vlcConnected: this.vlcConnected,
         videoDisplayReady: this.videoDisplayReady,
-        offline: require('./offlineQueueService').isOffline || false,
+        offline: this.cachedOfflineStatus,  // Use cached value (Phase 1.1.4)
       }
     });
 
@@ -346,14 +352,12 @@ class StateService extends EventEmitter {
    * @returns {GameState}
    */
   createStateFromSession(session) {
-    // Get offline status from offlineQueueService
-    const offlineQueueService = require('./offlineQueueService');
-
+    // Use cached offline status (Phase 1.1.4 - aggregator pattern)
     const systemStatus = {
       orchestratorOnline: true,
       vlcConnected: this.vlcConnected,
       videoDisplayReady: this.videoDisplayReady,
-      offline: offlineQueueService.isOffline || false,
+      offline: this.cachedOfflineStatus,
     };
 
     this.previousState = this.currentState;
