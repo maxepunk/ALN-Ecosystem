@@ -76,7 +76,6 @@ class VideoQueueService extends EventEmitter {
 
       // Return to idle loop if enabled
       const vlcService = require('./vlcService');
-      const config = require('../config');
       if (config.features.videoPlayback) {
         await vlcService.returnToIdleLoop();
       }
@@ -133,7 +132,6 @@ class VideoQueueService extends EventEmitter {
 
     // Get VLC service
     const vlcService = require('./vlcService');
-    const config = require('../config');
 
     // Get video path from queue item
     const videoPath = queueItem.videoPath;
@@ -368,7 +366,6 @@ class VideoQueueService extends EventEmitter {
     });
 
     const vlcService = require('./vlcService');
-    const config = require('../config');
 
     if (config.features.videoPlayback) {
       try {
@@ -393,7 +390,6 @@ class VideoQueueService extends EventEmitter {
     }
 
     const vlcService = require('./vlcService');
-    const config = require('../config');
 
     if (config.features.videoPlayback) {
       try {
@@ -423,7 +419,6 @@ class VideoQueueService extends EventEmitter {
     }
 
     const vlcService = require('./vlcService');
-    const config = require('../config');
 
     if (config.features.videoPlayback) {
       try {
