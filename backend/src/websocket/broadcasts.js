@@ -106,6 +106,7 @@ function setupBroadcastListeners(io, services) {
   });
 
   // State events (contract-compliant)
+
   addTrackedListener(stateService, 'state:updated', (delta) => {
     logger.debug('Received state:updated event for broadcast', {
       deltaKeys: Object.keys(delta),
@@ -271,36 +272,66 @@ function setupBroadcastListeners(io, services) {
 
   // Offline queue events
   if (offlineQueueService) {
-    addTrackedListener(offlineQueueService, 'sync:full', (state) => {
-      // Broadcast full state sync to all connected clients
-      emitWrapped(io, 'sync:full', state);
-      logger.info('Broadcasted sync:full after offline queue processing');
-    });
+    addTrackedListener(offlineQueueService, 'offline:queue:processed', (eventData) => {
+      // Extract wrapped event data (service emits wrapped envelope per AsyncAPI)
+      const { queueSize, results } = eventData.data || eventData;
 
-    addTrackedListener(offlineQueueService, 'queue:processed', ({ processed, failed }) => {
       // Notify GM stations about queue processing results
       const payload = {
-        queueSize: processed.length + failed.length,
-        results: [
-          ...processed.map(item => ({
-            transactionId: item.id,
-            status: 'processed',
-            error: null
-          })),
-          ...failed.map(item => ({
-            transactionId: item.id,
-            status: 'failed',
-            error: item.error || 'Processing failed'
-          }))
-        ]
+        queueSize,
+        results
       };
 
       emitToRoom(io, 'gm-stations', 'offline:queue:processed', payload);
       logger.info('Broadcasted offline queue processing results', {
         queueSize: payload.queueSize,
-        processedCount: processed.length,
-        failedCount: failed.length
+        resultCount: payload.results?.length || 0
       });
+
+      // Per AsyncAPI flow step 5: Broadcast sync:full after offline:queue:processed
+      // Build sync:full directly from services (same pattern as handleSyncRequest)
+      const session = sessionService.getCurrentSession();
+
+      const videoStatus = {
+        status: videoQueueService.currentStatus || 'idle',
+        queueLength: (videoQueueService.queue || []).length,
+        tokenId: videoQueueService.currentVideo?.tokenId || null,
+        duration: videoQueueService.currentVideo?.duration || null,
+        progress: videoQueueService.currentVideo?.progress || null,
+        expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
+        error: videoQueueService.currentVideo?.error || null
+      };
+
+      const scores = [];
+      for (const [, teamScore] of transactionService.teamScores) {
+        scores.push(teamScore.toJSON());
+      }
+
+      const recentTransactions = [];
+      if (session && session.transactions) {
+        const limit = 10;
+        const start = Math.max(0, session.transactions.length - limit);
+        for (let i = start; i < session.transactions.length; i++) {
+          recentTransactions.push(session.transactions[i]);
+        }
+      }
+
+      const syncFullPayload = {
+        session: session ? session.toJSON() : null,
+        scores,
+        recentTransactions,
+        videoStatus,
+        devices: [], // Device tracking handled elsewhere
+        systemStatus: {
+          orchestratorOnline: true,
+          vlcConnected: false, // Would need vlcService import
+          videoDisplayReady: false,
+          offline: offlineQueueService.isOffline || false
+        }
+      };
+
+      emitWrapped(io, 'sync:full', syncFullPayload);
+      logger.info('Broadcasted sync:full after offline queue processing');
     });
   }
 

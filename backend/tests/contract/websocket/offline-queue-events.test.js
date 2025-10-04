@@ -49,14 +49,19 @@ describe('Offline Queue Events - Contract Validation', () => {
       // Setup: Listen for offline:queue:processed BEFORE triggering
       const eventPromise = waitForEvent(socket, 'offline:queue:processed');
 
-      // Trigger: Directly emit queue:processed event (Pattern B - no business logic)
+      // Trigger: Directly emit offline:queue:processed event (Pattern B - no business logic)
       // This simulates offlineQueueService completing queue processing
-      offlineQueueService.emit('queue:processed', {
-        processed: [
-          { id: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e', tokenId: '534e2b03', teamId: '001' },
-          { id: '8c9c2e96-c345-5cf0-cef6-5d9633b2f26f', tokenId: 'tac001', teamId: '002' }
-        ],
-        failed: []
+      // Note: Service emits wrapped envelope per AsyncAPI contract
+      offlineQueueService.emit('offline:queue:processed', {
+        event: 'offline:queue:processed',
+        data: {
+          queueSize: 2,
+          results: [
+            { transactionId: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e', status: 'processed', tokenId: '534e2b03' },
+            { transactionId: '8c9c2e96-c345-5cf0-cef6-5d9633b2f26f', status: 'processed', tokenId: 'tac001' }
+          ]
+        },
+        timestamp: new Date().toISOString()
       });
 
       // Wait: For offline:queue:processed broadcast
@@ -85,15 +90,18 @@ describe('Offline Queue Events - Contract Validation', () => {
     it('should match AsyncAPI schema when some transactions fail', async () => {
       const eventPromise = waitForEvent(socket, 'offline:queue:processed');
 
-      // Trigger: Emit with some failures
-      offlineQueueService.emit('queue:processed', {
-        processed: [
-          { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', tokenId: '534e2b03', teamId: '001' }
-        ],
-        failed: [
-          { id: 'b2c3d4e5-f678-9012-3456-7890abcdef01', tokenId: 'invalid', error: 'Token not found' },
-          { id: 'c3d4e5f6-7890-1234-5678-90abcdef0123', tokenId: 'bad-token', error: 'Validation failed' }
-        ]
+      // Trigger: Emit with some failures (wrapped envelope)
+      offlineQueueService.emit('offline:queue:processed', {
+        event: 'offline:queue:processed',
+        data: {
+          queueSize: 3,
+          results: [
+            { transactionId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', status: 'processed', tokenId: '534e2b03' },
+            { transactionId: 'b2c3d4e5-f678-9012-3456-7890abcdef01', status: 'failed', error: 'Token not found' },
+            { transactionId: 'c3d4e5f6-7890-1234-5678-90abcdef0123', status: 'failed', error: 'Validation failed' }
+          ]
+        },
+        timestamp: new Date().toISOString()
       });
 
       const event = await eventPromise;
@@ -122,10 +130,14 @@ describe('Offline Queue Events - Contract Validation', () => {
     it('should match AsyncAPI schema when queue is empty', async () => {
       const eventPromise = waitForEvent(socket, 'offline:queue:processed');
 
-      // Trigger: Emit with empty results
-      offlineQueueService.emit('queue:processed', {
-        processed: [],
-        failed: []
+      // Trigger: Emit with empty results (wrapped envelope)
+      offlineQueueService.emit('offline:queue:processed', {
+        event: 'offline:queue:processed',
+        data: {
+          queueSize: 0,
+          results: []
+        },
+        timestamp: new Date().toISOString()
       });
 
       const event = await eventPromise;

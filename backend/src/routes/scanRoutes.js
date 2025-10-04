@@ -192,7 +192,7 @@ router.post('/batch', async (req, res) => {
           id: tokenId,
           name: `Test Token ${tokenId}`,
           value: 10,
-          memoryType: 'visual',
+          memoryType: 'Technical',  // Must be 'Technical', 'Business', or 'Personal'
           mediaAssets: isVideoToken ? { video: `/test/videos/${tokenId}.mp4` } : {},
           metadata: isVideoToken ? { duration: 30 } : {},
         });

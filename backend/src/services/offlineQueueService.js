@@ -158,7 +158,7 @@ class OfflineQueueService extends EventEmitter {
             queueId: scanLog.queueId,
             tokenId: scanLog.tokenId,
             transactionId: scanLog.transactionId,
-            status: 'logged',
+            status: 'processed',  // AsyncAPI contract: "processed" | "failed"
             message: 'Scan log synced'
           });
 
@@ -204,10 +204,18 @@ class OfflineQueueService extends EventEmitter {
               });
             }
 
+            // Normalize to contract: status must be 'processed' or 'failed'
             processed.push({
               type: 'gm_transaction',
-              ...result,
-              queueId: gmTransaction.queueId
+              transactionId: result.transactionId || gmTransaction.transactionId,
+              status: 'processed',  // AsyncAPI contract: "processed" | "failed"
+              error: null,
+              queueId: gmTransaction.queueId,
+              // Include original transaction result for internal tracking
+              transactionStatus: result.status,  // 'accepted', 'duplicate', etc.
+              tokenId: result.tokenId || gmTransaction.tokenId,
+              teamId: gmTransaction.teamId,
+              points: result.points || 0
             });
 
             logger.info('Processed queued GM transaction', {
@@ -245,10 +253,7 @@ class OfflineQueueService extends EventEmitter {
         event: 'offline:queue:processed',
         data: {
           queueSize: processed.length,
-          results: processed.map(item => ({
-            transactionId: item.transactionId || item.id,
-            status: item.status === 'failed' ? 'failed' : 'processed'
-          }))
+          results: processed  // Pass through normalized results with all fields
         },
         timestamp: new Date().toISOString()
       });

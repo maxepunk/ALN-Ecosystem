@@ -114,7 +114,7 @@ class StateService extends EventEmitter {
       try {
         // Get updated scores from transactionService
         const scores = [];
-        for (const [teamId, teamScore] of transactionService.teamScores) {
+        for (const [, teamScore] of transactionService.teamScores) {
           scores.push(teamScore.toJSON());
         }
 
@@ -204,7 +204,7 @@ class StateService extends EventEmitter {
       }
     });
 
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:completed', async (queueItem) => {
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:completed', async () => {
       if (!this.currentState) return;
 
       try {
@@ -215,7 +215,7 @@ class StateService extends EventEmitter {
       }
     });
 
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:failed', async (queueItem) => {
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:failed', async () => {
       if (!this.currentState) return;
 
       try {
