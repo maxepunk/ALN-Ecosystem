@@ -82,7 +82,7 @@ router.post('/', async (req, res) => {
         id: tokenId,
         name: `Test Token ${tokenId}`,
         value: 10, // Not used for player scanner
-        memoryType: 'visual',
+        memoryType: 'Technical',  // Must be 'Technical', 'Business', or 'Personal'
         mediaAssets: isVideoToken ? { video: `/test/videos/${tokenId}.mp4` } : {},
         metadata: isVideoToken ? { duration: 30 } : {},
       });
