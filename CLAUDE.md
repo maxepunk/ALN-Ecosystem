@@ -11,9 +11,24 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
   --**Player Scanner**: Uses HTTP endpoints, simple scan logging, display of local assets if token contains audio or image content, and triggering of video files for tokens containing video content (IF orchestrator is present) on separate screen controlled by the orchestrator. intended for players to discover and use as a tool to see the narrative contents of in-game memory tokens. Can operate WITH orchestrator OR WITHOUT in standaalone mode (no video playback). (SUBMODULE: aln-memory-scanner, aka ALNPlayerScan)
   --**GM Scanner**: Uses Websocket after HTTP handshake. Responsible for game logic. Can function in networked mode (in communcation with orchestrator) or standalone. Detective Mode scans and logs tokens (future feature: create player-facing log of narrative events that have been 'made public' by being scanned by the Detective Mode scanner) that were 'turned into' (scanned by) the GM playing the Detective. Black Market Mode scans tokens and handles scoring calculations using scanner/team number for score assignment, by parsing token scoring information from tokens.jason and doing the relevant calculations to keep team scores up to date for each play session.  (SUBMODULE: ALNScanner)
 - **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
-- **Submodule Architecture**: Shared token data acr
+- **Submodule Architecture**: Shared token data across modules.
 
-thi
+## CURRENT: API Alignment Refactor - Phase 5.3 Complete
+
+**Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI).
+
+**Status**: Phase 5.4 - IN PROGRESS 
+- ✅ Phase 5.3 COMPLETE (271/271 tests passing)
+- ✅ All contract tests complete (96 tests - all APIs validated)
+- ✅ Comprehensive unit tests (183 tests - all business logic protected)
+- ✅ Zero failures across entire test suite
+
+**PHASE 5.4 IMPLEMENTATION PLAN**: @/home/spide/projects/AboutLastNight/ALN-Ecosystem/docs/api-alignment/07-refactor-plan-phase5.4.md
+
+**API CONTRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
+
+**EVENT CONRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/asyncapi.yaml
+
 ## Critical Architecture Decisions
 
 ### Submodule Structure
@@ -64,10 +79,11 @@ npm run prod:restart      # Restart all services
 
 ### Testing
 ```bash
-npm test                  # All tests
-npm test:contract         # Contract tests only
-npm test:integration      # Integration tests
-npm run test:watch        # Watch mode
+npm test                              # All tests (271 tests)
+npm run test:contract                 # Contract tests only (96 tests)
+npm run test:integration              # Integration tests
+npm run test:watch                    # Watch mode
+npm run test:coverage                 # Coverage report
 ```
 
 ### Submodule Management
@@ -137,7 +153,7 @@ cd backend && npm run dev:full
 # Trigger test scan
 curl -X POST http://localhost:3000/api/scan \
   -H "Content-Type: application/json" \
-  -d '{"tokenId": "534e2b03", "teamId": "TEAM_A", "scannerId": "test"}'
+  -d '{"tokenId": "534e2b03", "teamId": "001", "deviceId": "test"}'
 ```
 
 
@@ -192,11 +208,3 @@ The `ecosystem.config.js` manages both processes:
 - Event-driven architecture with EventEmitter
 - No console.log, use winston logger
 
-## API Alignment Project Memory
-
-**Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI)
-
-**Memory Location**: `docs/api-alignment/00-INDEX.md` - Will help you find relative context for 07-refactor-plan
-
-**KEY DOCUMENT**: MUST READ: @`docs/api-alignment/07-refactor-plan.md` - Current phase of the project. CORE implementation of the refactor. 
-**FUNCTIONAL REQUIREMENTS** The output of the refactor MUST meet the functional requirements outlined in @`docs/api-alignment/08-functional-requirements.md`.

@@ -20,23 +20,17 @@ describe('SessionService - Event Emission', () => {
     sessionService.removeAllListeners();
   });
 
-  describe('session:update event', () => {
-    it('should emit session:update with status=active when session created', (done) => {
-      sessionService.once('session:update', (eventData) => {
+  describe('Domain events (unwrapped)', () => {
+    it('should emit session:created domain event when session created', (done) => {
+      sessionService.once('session:created', (eventData) => {
         try {
-          // Validate against asyncapi.yaml schema (wrapped envelope)
-          validateWebSocketEvent(eventData, 'session:update');
-
-          // Verify wrapper structure
-          expect(eventData.event).toBe('session:update');
-          expect(eventData.data).toBeDefined();
-          expect(eventData.timestamp).toBeDefined();
-
-          // Verify session data inside wrapper
-          expect(eventData.data.status).toBe('active');
-          expect(eventData.data.id).toBeDefined();
-          expect(eventData.data.name).toBe('Test Session');
-          expect(eventData.data.startTime).toBeDefined();
+          // Verify unwrapped domain event structure
+          expect(eventData).toBeDefined();
+          expect(eventData.id).toBeDefined();
+          expect(eventData.name).toBe('Test Session');
+          expect(eventData.status).toBe('active');
+          expect(eventData.startTime).toBeDefined();
+          expect(eventData.teams).toEqual(['001', '002']);
 
           done();
         } catch (error) {
@@ -47,24 +41,19 @@ describe('SessionService - Event Emission', () => {
       sessionService.createSession({ name: 'Test Session', teams: ['001', '002'] });
     });
 
-    it('should emit session:update with status=ended when session ended', async () => {
+    it('should emit session:updated domain event when session ended', async () => {
       // Create session first
       await sessionService.createSession({ name: 'Test Session', teams: ['001'] });
 
       // Listen for end event
       const endEventPromise = new Promise((resolve, reject) => {
-        sessionService.once('session:update', (eventData) => {
+        sessionService.once('session:updated', (eventData) => {
           try {
-            // Validate against asyncapi.yaml schema (wrapped envelope)
-            validateWebSocketEvent(eventData, 'session:update');
-
-            // Verify wrapper structure
-            expect(eventData.event).toBe('session:update');
-            expect(eventData.data).toBeDefined();
-
-            // Verify session data - status is 'ended'
-            expect(eventData.data.status).toBe('ended');
-            expect(eventData.data.endTime).toBeDefined();
+            // Verify unwrapped domain event structure
+            expect(eventData).toBeDefined();
+            expect(eventData.id).toBeDefined();
+            expect(eventData.status).toBe('ended');
+            expect(eventData.endTime).toBeDefined();
 
             resolve(eventData);
           } catch (error) {
@@ -80,27 +69,22 @@ describe('SessionService - Event Emission', () => {
       await endEventPromise;
     });
 
-    it('should include full session resource in event data', async () => {
+    it('should include full session resource in domain event data', async () => {
       const eventPromise = new Promise((resolve) => {
-        sessionService.once('session:update', resolve);
+        sessionService.once('session:created', resolve);
       });
 
       await sessionService.createSession({ name: 'Full Resource Test', teams: ['001'] });
 
       const eventData = await eventPromise;
 
-      // Verify wrapped envelope
-      expect(eventData).toHaveProperty('event', 'session:update');
-      expect(eventData).toHaveProperty('data');
-      expect(eventData).toHaveProperty('timestamp');
-
-      // Verify full session resource in data per Decision #7
-      expect(eventData.data).toHaveProperty('id');
-      expect(eventData.data).toHaveProperty('name');
-      expect(eventData.data).toHaveProperty('status');
-      expect(eventData.data).toHaveProperty('startTime');
-      expect(eventData.data).toHaveProperty('scores');
-      expect(eventData.data).toHaveProperty('metadata');
+      // Verify unwrapped domain event with full session resource per Decision #7
+      expect(eventData).toHaveProperty('id');
+      expect(eventData).toHaveProperty('name', 'Full Resource Test');
+      expect(eventData).toHaveProperty('status', 'active');
+      expect(eventData).toHaveProperty('startTime');
+      expect(eventData).toHaveProperty('teams');
+      expect(eventData).toHaveProperty('metadata');
     });
   });
 
@@ -111,6 +95,346 @@ describe('SessionService - Event Emission', () => {
       expect(async () => {
         await sessionService.createSession({ name: 'No Lazy Requires', teams: ['001'] });
       }).not.toThrow();
+    });
+  });
+});
+
+describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
+  beforeEach(async () => {
+    await sessionService.reset();
+  });
+
+  afterEach(async () => {
+    if (sessionService.currentSession) {
+      await sessionService.endSession();
+    }
+    sessionService.removeAllListeners();
+  });
+
+  describe('Session Creation', () => {
+    it('should create a new session with teams', async () => {
+      const session = await sessionService.createSession({
+        name: 'Test Session',
+        teams: ['001', '002', '003']
+      });
+
+      expect(session).toBeDefined();
+      expect(session.id).toBeDefined();
+      expect(session.name).toBe('Test Session');
+      expect(session.status).toBe('active');
+      expect(session.startTime).toBeDefined();
+      expect(session.scores).toBeDefined();
+      expect(session.scores.length).toBe(3);
+    });
+
+    it('should create session with empty teams array', async () => {
+      const session = await sessionService.createSession({
+        name: 'Empty Teams',
+        teams: []
+      });
+
+      expect(session).toBeDefined();
+      expect(session.scores).toEqual([]);
+    });
+
+    it('should end existing session when creating new one', async () => {
+      // Create first session
+      const session1 = await sessionService.createSession({
+        name: 'First Session',
+        teams: ['001']
+      });
+      expect(session1.status).toBe('active');
+
+      // Create second session (should end first)
+      const session2 = await sessionService.createSession({
+        name: 'Second Session',
+        teams: ['002']
+      });
+
+      expect(session2.status).toBe('active');
+      expect(session2.id).not.toBe(session1.id);
+      // First session should no longer be current
+      expect(sessionService.getCurrentSession().id).toBe(session2.id);
+    });
+
+    it('should initialize team scores from teams array', async () => {
+      const session = await sessionService.createSession({
+        name: 'Score Init Test',
+        teams: ['001', '002']
+      });
+
+      expect(session.scores).toBeDefined();
+      expect(session.scores.length).toBe(2);
+      expect(session.scores[0].teamId).toBe('001');
+      expect(session.scores[0].currentScore).toBe(0);
+      expect(session.scores[1].teamId).toBe('002');
+      expect(session.scores[1].currentScore).toBe(0);
+    });
+  });
+
+  describe('Session Lifecycle', () => {
+    it('should get current session', async () => {
+      const session = await sessionService.createSession({
+        name: 'Current Session Test',
+        teams: ['001']
+      });
+
+      const currentSession = sessionService.getCurrentSession();
+      expect(currentSession).toBeDefined();
+      expect(currentSession.id).toBe(session.id);
+    });
+
+    it('should return null when no current session', () => {
+      const currentSession = sessionService.getCurrentSession();
+      expect(currentSession).toBeNull();
+    });
+
+    it('should update session status', async () => {
+      await sessionService.createSession({
+        name: 'Status Test',
+        teams: ['001']
+      });
+
+      sessionService.updateSessionStatus('paused');
+      expect(sessionService.getCurrentSession().status).toBe('paused');
+
+      sessionService.updateSessionStatus('active');
+      expect(sessionService.getCurrentSession().status).toBe('active');
+    });
+
+    it('should end session and clear currentSession', async () => {
+      await sessionService.createSession({
+        name: 'End Test',
+        teams: ['001']
+      });
+
+      await sessionService.endSession();
+
+      // After ending, currentSession is set to null
+      const currentSession = sessionService.getCurrentSession();
+      expect(currentSession).toBeNull();
+    });
+
+    it('should handle endSession when no current session', async () => {
+      // Should not throw error
+      await expect(sessionService.endSession()).resolves.not.toThrow();
+    });
+
+    it('should reset service state', async () => {
+      await sessionService.createSession({
+        name: 'Reset Test',
+        teams: ['001']
+      });
+
+      await sessionService.reset();
+
+      expect(sessionService.getCurrentSession()).toBeNull();
+      expect(sessionService.sessionTimeoutTimer).toBeNull();
+    });
+  });
+
+  describe('Session Updates', () => {
+    it('should update session name', async () => {
+      await sessionService.createSession({
+        name: 'Original Name',
+        teams: ['001']
+      });
+
+      await sessionService.updateSession({ name: 'Updated Name' });
+
+      expect(sessionService.getCurrentSession().name).toBe('Updated Name');
+    });
+
+    it('should handle update when no current session', async () => {
+      await expect(
+        sessionService.updateSession({ name: 'No Session' })
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('Transaction Management', () => {
+    it('should add transaction to session', async () => {
+      await sessionService.createSession({
+        name: 'Transaction Test',
+        teams: ['001']
+      });
+
+      const transaction = {
+        id: 'tx-001',
+        tokenId: 'token-123',
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      };
+
+      await sessionService.addTransaction(transaction);
+
+      const session = sessionService.getCurrentSession();
+      expect(session.transactions).toContain(transaction);
+    });
+
+    it('should handle addTransaction when no current session', async () => {
+      const transaction = {
+        id: 'tx-001',
+        tokenId: 'token-123'
+      };
+
+      await expect(sessionService.addTransaction(transaction)).rejects.toThrow();
+    });
+  });
+
+  describe('Device Management', () => {
+    it('should add device to session', async () => {
+      await sessionService.createSession({
+        name: 'Device Test',
+        teams: ['001']
+      });
+
+      const device = {
+        id: 'GM-001',
+        type: 'gm',
+        connectedAt: new Date().toISOString()
+      };
+
+      await sessionService.updateDevice(device);
+
+      const session = sessionService.getCurrentSession();
+      expect(session.connectedDevices).toContainEqual(device);
+    });
+
+    it('should update existing device', async () => {
+      await sessionService.createSession({
+        name: 'Device Update Test',
+        teams: ['001']
+      });
+
+      const device1 = {
+        id: 'GM-001',
+        type: 'gm',
+        status: 'connected'
+      };
+
+      await sessionService.updateDevice(device1);
+
+      const device2 = {
+        id: 'GM-001',
+        type: 'gm',
+        status: 'disconnected'
+      };
+
+      await sessionService.updateDevice(device2);
+
+      const session = sessionService.getCurrentSession();
+      const updatedDevice = session.connectedDevices.find(d => d.id === 'GM-001');
+      expect(updatedDevice.status).toBe('disconnected');
+    });
+
+    it('should remove device from session', async () => {
+      await sessionService.createSession({
+        name: 'Device Remove Test',
+        teams: ['001']
+      });
+
+      const device = {
+        id: 'GM-001',
+        type: 'gm'
+      };
+
+      await sessionService.updateDevice(device);
+      await sessionService.removeDevice('GM-001');
+
+      const session = sessionService.getCurrentSession();
+      expect(session.connectedDevices.find(d => d.id === 'GM-001')).toBeUndefined();
+    });
+
+    it('should handle updateDevice when no current session', async () => {
+      const device = { id: 'GM-001', type: 'gm' };
+
+      // updateDevice throws when no session
+      await expect(sessionService.updateDevice(device)).rejects.toThrow();
+    });
+
+    it('should handle removeDevice when no current session', async () => {
+      // removeDevice does NOT throw when no session (just returns)
+      await expect(sessionService.removeDevice('GM-001')).resolves.not.toThrow();
+    });
+  });
+
+  describe('Team Scores Initialization', () => {
+    it('should initialize empty array for no teams', () => {
+      const scores = sessionService.initializeTeamScores([]);
+      expect(scores).toEqual([]);
+    });
+
+    it('should initialize scores for multiple teams', () => {
+      const scores = sessionService.initializeTeamScores(['001', '002', '003']);
+
+      expect(scores.length).toBe(3);
+      expect(scores[0]).toEqual({
+        teamId: '001',
+        currentScore: 0,
+        baseScore: 0,
+        bonusPoints: 0,
+        tokensScanned: 0,
+        completedGroups: [],
+        lastUpdate: expect.any(String),
+        lastTokenTime: null
+      });
+    });
+
+    it('should handle undefined teams parameter', () => {
+      const scores = sessionService.initializeTeamScores();
+      expect(scores).toEqual([]);
+    });
+  });
+
+  describe('Session Timeout', () => {
+    it('should start session timeout timer', async () => {
+      await sessionService.createSession({
+        name: 'Timeout Test',
+        teams: ['001']
+      });
+
+      expect(sessionService.sessionTimeoutTimer).not.toBeNull();
+    });
+
+    it('should stop session timeout timer', async () => {
+      await sessionService.createSession({
+        name: 'Stop Timeout Test',
+        teams: ['001']
+      });
+
+      sessionService.stopSessionTimeout();
+      expect(sessionService.sessionTimeoutTimer).toBeNull();
+    });
+
+    it('should handle stopSessionTimeout when timer is null', () => {
+      // Should not throw
+      expect(() => sessionService.stopSessionTimeout()).not.toThrow();
+    });
+  });
+
+  describe('Session Validation', () => {
+    it('should validate GM station capacity', async () => {
+      await sessionService.createSession({
+        name: 'Capacity Test',
+        teams: ['001']
+      });
+
+      // Add devices up to capacity
+      for (let i = 1; i <= 10; i++) {
+        await sessionService.updateDevice({
+          id: `GM-${String(i).padStart(3, '0')}`,
+          type: 'gm'
+        });
+      }
+
+      // Should still accept (default capacity is likely higher)
+      expect(sessionService.canAcceptGmStation()).toBe(true);
+    });
+
+    it('should return true when no current session (allows GM to connect)', () => {
+      // When no session exists, GM is allowed to connect (will create session via Admin)
+      expect(sessionService.canAcceptGmStation()).toBe(true);
     });
   });
 });

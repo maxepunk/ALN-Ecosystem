@@ -31,7 +31,7 @@ describe('Service Event Communication', () => {
     stateService.removeAllListeners();
   });
 
-  describe('transactionService listens to session:update', () => {
+  describe('transactionService listens to session domain events', () => {
     it('should reset scores when session ends', async () => {
       // Setup: Create session
       await sessionService.createSession({
@@ -53,7 +53,7 @@ describe('Service Event Communication', () => {
       expect(scoresBefore.find(s => s.teamId === '001').currentScore).toBe(100);
       expect(scoresBefore.find(s => s.teamId === '002').currentScore).toBe(50);
 
-      // Trigger: End session (should emit session:update with status='ended')
+      // Trigger: End session (emits session:updated with status='ended')
       await sessionService.endSession();
 
       // Give event time to propagate

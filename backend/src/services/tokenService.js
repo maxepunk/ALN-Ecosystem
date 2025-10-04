@@ -92,7 +92,7 @@ const loadTokens = () => {
       id: id,
       name: token.SF_Group || `Memory ${id}`,
       value: calculatedValue,
-      memoryType: token.SF_MemoryType?.toLowerCase() || 'visual',
+      memoryType: token.SF_MemoryType || 'Personal',  // AsyncAPI contract requires capitalized (Decision #4)
       groupId: groupName,
       groupMultiplier: groupMultiplier,
       mediaAssets: {

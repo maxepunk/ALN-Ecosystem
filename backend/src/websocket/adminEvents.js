@@ -24,64 +24,78 @@ async function handleGmCommand(socket, data, io) {
       return;
     }
     
+    // Unwrap envelope (data.data contains actual command data per AsyncAPI contract)
+    const commandData = data.data || data;
+    const action = commandData.action;
+    const payload = commandData.payload || {};
+
     // Process GM commands
-    switch (data.command) {
-      case 'pause_session':
+    let resultMessage = '';
+    switch (action) {
+      case 'session:pause':
         await sessionService.updateSession({ status: 'paused' });
         emitWrapped(io, 'session:paused', {
           gmStation: socket.deviceId,
         });
+        resultMessage = 'Session paused successfully';
         logger.info('Session paused by GM', { gmStation: socket.deviceId });
         break;
-        
-      case 'resume_session':
+
+      case 'session:resume':
         await sessionService.updateSession({ status: 'active' });
         emitWrapped(io, 'session:resumed', {
           gmStation: socket.deviceId,
         });
+        resultMessage = 'Session resumed successfully';
         logger.info('Session resumed by GM', { gmStation: socket.deviceId });
         break;
-        
-      case 'end_session':
+
+      case 'session:end':
         await sessionService.endSession();
         emitWrapped(io, 'session:ended', {
           gmStation: socket.deviceId,
         });
+        resultMessage = 'Session ended successfully';
         logger.info('Session ended by GM', { gmStation: socket.deviceId });
         break;
-        
-      case 'skip_video':
+
+      case 'video:skip':
         videoQueueService.skipCurrent();
         emitWrapped(io, 'video:skipped', {
           gmStation: socket.deviceId,
         });
+        resultMessage = 'Video skipped successfully';
         logger.info('Video skipped by GM', { gmStation: socket.deviceId });
         break;
-        
-      case 'clear_scores':
+
+      case 'score:adjust':
         // Reset scores through transaction service
         const transactionService = require('../services/transactionService');
         transactionService.resetScores();
         emitWrapped(io, 'scores:reset', {
           gmStation: socket.deviceId,
         });
+        resultMessage = 'Scores reset successfully';
         logger.info('Scores reset by GM', { gmStation: socket.deviceId });
         break;
-        
+
       default:
         emitWrapped(socket, 'error', {
           code: 'INVALID_COMMAND',
-          message: `Unknown command: ${data.command}`
+          message: `Unknown action: ${action}`
         });
         return;
     }
 
+    // Send AsyncAPI-compliant ack (requires action, success, message)
     emitWrapped(socket, 'gm:command:ack', {
-      command: data.command,
+      action: action,
       success: true,
+      message: resultMessage
     });
   } catch (error) {
-    logger.error('GM command error', { error, command: data.command, socketId: socket.id });
+    const commandData = data.data || data;
+    logger.error('GM command error', { error, action: commandData.action, socketId: socket.id });
     emitWrapped(socket, 'error', {
       code: 'SERVER_ERROR',
       message: 'Command failed',
@@ -106,8 +120,11 @@ async function handleTransactionSubmit(socket, data, io) {
       return;
     }
 
+    // Unwrap envelope (data.data contains actual transaction data per AsyncAPI contract)
+    const transactionData = data.data || data;
+
     const { scanRequestSchema, validate } = require('../utils/validators');
-    const scanRequest = validate(data, scanRequestSchema);
+    const scanRequest = validate(transactionData, scanRequestSchema);
 
     // Check if system is offline - use service directly for consistency
     const offlineQueueService = require('../services/offlineQueueService');
@@ -159,8 +176,19 @@ async function handleTransactionSubmit(socket, data, io) {
       await sessionService.addTransaction(result.transaction);
     }
 
-    // Send result back to submitter
-    emitWrapped(socket, 'transaction:result', result);
+    // Transform result to match AsyncAPI contract for transaction:result
+    const contractResult = {
+      status: result.status,
+      transactionId: result.transactionId || result.transaction?.id,
+      tokenId: result.transaction?.tokenId || scanRequest.tokenId,
+      teamId: result.transaction?.teamId || scanRequest.teamId,
+      points: result.points || 0,
+      message: result.message,
+      error: result.error || null
+    };
+
+    // Send contract-compliant result back to submitter
+    emitWrapped(socket, 'transaction:result', contractResult);
 
     // Transaction broadcasting is handled by the sessionService event listeners
     // in broadcasts.js which will emit the properly formatted event to all clients

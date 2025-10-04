@@ -232,6 +232,7 @@ class Session {
       startTime: this.startTime,
       endTime: this.endTime || null,
       status: this.status,
+      teams: this.scores.map(score => score.teamId),
       transactions: this.transactions,
       connectedDevices: this.connectedDevices,
       videoQueue: this.videoQueue,

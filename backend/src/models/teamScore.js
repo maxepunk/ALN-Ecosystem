@@ -166,6 +166,7 @@ class TeamScore {
     return {
       teamId: this.teamId,
       currentScore: this.currentScore,
+      baseScore: this.baseScore,
       tokensScanned: this.tokensScanned,
       bonusPoints: this.bonusPoints,
       completedGroups: [...this.completedGroups],

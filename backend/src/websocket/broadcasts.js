@@ -42,43 +42,52 @@ function addTrackedListener(service, event, handler) {
 function setupBroadcastListeners(io, services) {
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService } = services;
 
-  // Session events
+  // Session events - session:update replaces session:new/paused/resumed/ended
+  // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
   addTrackedListener(sessionService, 'session:created', (session) => {
-    emitWrapped(io, 'session:new', {
-      sessionId: session.id,
+    emitWrapped(io, 'session:update', {
+      id: session.id,              // Decision #4: 'id' field within resource
       name: session.name,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      status: session.status,      // 'active' for new session
+      teams: session.teams || [],
+      metadata: session.metadata || {}
     });
-    logger.info('Broadcasted session:new', { sessionId: session.id });
+    logger.info('Broadcasted session:update (created)', { sessionId: session.id, status: session.status });
   });
 
   addTrackedListener(sessionService, 'session:updated', (session) => {
     emitWrapped(io, 'session:update', {
-      sessionId: session.id,
-      status: session.status,
+      id: session.id,              // Decision #4: 'id' field within resource
+      name: session.name,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      status: session.status,      // 'paused', 'active', or 'ended'
+      teams: session.teams || [],
+      metadata: session.metadata || {}
     });
-    logger.info('Broadcasted session:update', { sessionId: session.id });
+    logger.info('Broadcasted session:update', { sessionId: session.id, status: session.status });
   });
 
   addTrackedListener(sessionService, 'transaction:added', (transaction) => {
     // Enrich transaction with token data for frontend display
     const token = transactionService.getToken(transaction.tokenId);
 
-    // Prepare payload
+    // Prepare payload per AsyncAPI contract (nested transaction object)
     const payload = {
-      id: transaction.id,
-      tokenId: transaction.tokenId,
-      teamId: transaction.teamId,
-      deviceId: transaction.deviceId,
-      stationMode: transaction.stationMode,  // Add stationMode for frontend
-      status: transaction.status,
-      points: transaction.points,
-      timestamp: transaction.timestamp,
-      // Include token details for frontend display
-      // Use originalType first to preserve capitalization for frontend SCORING_CONFIG
-      memoryType: token?.metadata?.originalType || token?.memoryType || 'UNKNOWN',
-      valueRating: token?.metadata?.rating || 0,
-      group: token?.metadata?.group || 'No Group',
-      tokenValue: token?.value || 0
+      transaction: {
+        id: transaction.id,
+        tokenId: transaction.tokenId,
+        teamId: transaction.teamId,
+        deviceId: transaction.deviceId,
+        mode: transaction.mode,  // AsyncAPI contract field (Decision #4)
+        points: transaction.points,
+        timestamp: transaction.timestamp,
+        // Include token details for frontend display (optional per contract)
+        memoryType: token?.memoryType || 'UNKNOWN',
+        valueRating: token?.metadata?.rating || 0
+      }
     };
 
     // Per contract: broadcast to session room only
@@ -136,7 +145,7 @@ function setupBroadcastListeners(io, services) {
       const payload = {
         teamId: teamScore.teamId,
         currentScore: teamScore.currentScore,
-        baseScore: teamScore.currentScore - (teamScore.bonusPoints || 0),
+        baseScore: teamScore.baseScore,  // Use actual baseScore field from TeamScore
         bonusPoints: teamScore.bonusPoints || 0,
         tokensScanned: teamScore.tokensScanned,
         completedGroups: teamScore.completedGroups || [],
@@ -154,9 +163,9 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(transactionService, 'group:completed', (data) => {
       const payload = {
         teamId: data.teamId,
-        groupId: data.groupId,
-        bonus: data.bonus,
-        multiplier: data.multiplier
+        group: data.groupId,           // AsyncAPI: 'group' not 'groupId'
+        bonusPoints: data.bonus,        // AsyncAPI: 'bonusPoints' not 'bonus'
+        completedAt: new Date().toISOString()  // AsyncAPI: required timestamp
       };
 
       emitToRoom(io, 'gm-stations', 'group:completed', payload);
@@ -177,7 +186,8 @@ function setupBroadcastListeners(io, services) {
   addTrackedListener(videoQueueService, 'video:loading', (data) => {
     const payload = {
       status: 'loading',
-      tokenId: data.tokenId
+      tokenId: data.tokenId,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -190,7 +200,8 @@ function setupBroadcastListeners(io, services) {
       tokenId: data.queueItem.tokenId,
       duration: data.duration,
       expectedEndTime: data.expectedEndTime,
-      progress: 0
+      progress: 0,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -201,7 +212,8 @@ function setupBroadcastListeners(io, services) {
     const payload = {
       status: 'completed',
       tokenId: queueItem.tokenId,
-      progress: 100
+      progress: 100,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -212,7 +224,8 @@ function setupBroadcastListeners(io, services) {
     const payload = {
       status: 'error',
       tokenId: queueItem.tokenId,
-      error: queueItem.error
+      error: queueItem.error,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -223,7 +236,8 @@ function setupBroadcastListeners(io, services) {
     const payload = {
       status: 'paused',
       tokenId: queueItem?.tokenId || null,
-      progress: queueItem?.progress || 0
+      progress: queueItem?.progress || 0,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -234,7 +248,8 @@ function setupBroadcastListeners(io, services) {
     const payload = {
       status: 'idle',
       tokenId: null,
-      progress: 0
+      progress: 0,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -246,7 +261,8 @@ function setupBroadcastListeners(io, services) {
     const payload = {
       status: 'playing', // Resume returns to playing state
       tokenId: queueItem?.tokenId || null,
-      progress: queueItem?.progress || 0
+      progress: queueItem?.progress || 0,
+      queueLength: (videoQueueService.queue || []).length
     };
 
     emitToRoom(io, 'gm-stations', 'video:status', payload);
@@ -264,14 +280,26 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(offlineQueueService, 'queue:processed', ({ processed, failed }) => {
       // Notify GM stations about queue processing results
       const payload = {
-        processed: processed.length,
-        failed: failed.length
+        queueSize: processed.length + failed.length,
+        results: [
+          ...processed.map(item => ({
+            transactionId: item.id,
+            status: 'processed',
+            error: null
+          })),
+          ...failed.map(item => ({
+            transactionId: item.id,
+            status: 'failed',
+            error: item.error || 'Processing failed'
+          }))
+        ]
       };
 
       emitToRoom(io, 'gm-stations', 'offline:queue:processed', payload);
       logger.info('Broadcasted offline queue processing results', {
-        processed: processed.length,
-        failed: failed.length
+        queueSize: payload.queueSize,
+        processedCount: processed.length,
+        failedCount: failed.length
       });
     });
   }

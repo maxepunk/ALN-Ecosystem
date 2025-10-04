@@ -44,26 +44,30 @@ class TransactionService extends EventEmitter {
 
   /**
    * Register listener for session events
-   * Per asyncapi.yaml - listen to session:update for score management
+   * Listens to unwrapped domain events from sessionService
    */
   registerSessionListener() {
-    sessionService.on('session:update', (eventData) => {
-      const { data } = eventData;
-
-      if (data.status === 'ended') {
-        // Session ended - reset all scores
-        this.resetScores();
-        logger.info('Scores reset due to session end');
-      } else if (data.status === 'active' && data.teams) {
+    // Listen for new session (initialize team scores)
+    sessionService.on('session:created', (sessionData) => {
+      if (sessionData.teams) {
         // New session created - initialize team scores
-        data.teams.forEach(teamId => {
+        sessionData.teams.forEach(teamId => {
           if (!this.teamScores.has(teamId)) {
             this.teamScores.set(teamId, TeamScore.createInitial(teamId));
           }
         });
         logger.info('Team scores initialized for new session', {
-          teams: data.teams
+          teams: sessionData.teams
         });
+      }
+    });
+
+    // Listen for session updates (handle session end)
+    sessionService.on('session:updated', (sessionData) => {
+      if (sessionData.status === 'ended') {
+        // Session ended - reset all scores
+        this.resetScores();
+        logger.info('Scores reset due to session end');
       }
     });
 
@@ -150,14 +154,14 @@ class TransactionService extends EventEmitter {
       // Transaction will be added by sessionService.addTransaction() to avoid duplication
 
       // Update team score (only for blackmarket mode)
-      if (transaction.stationMode !== 'detective') {
+      if (transaction.mode !== 'detective') {
         this.updateTeamScore(transaction.teamId, token);
       } else {
         logger.info('Detective mode transaction - skipping scoring', {
           transactionId: transaction.id,
           tokenId: transaction.tokenId,
           teamId: transaction.teamId,
-          mode: transaction.stationMode
+          mode: transaction.mode
         });
       }
 
@@ -442,25 +446,14 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Emit score:updated event per asyncapi.yaml
+   * Emit score:updated event (Decision #3: emit unwrapped domain event)
    * @param {TeamScore} teamScore - Team score to broadcast
    * @private
    */
   emitScoreUpdate(teamScore) {
-    // Emit score:updated event with wrapped envelope per AsyncAPI spec
-    this.emit('score:updated', {
-      event: 'score:updated',
-      data: {
-        teamId: teamScore.teamId,
-        currentScore: teamScore.currentScore,
-        baseScore: teamScore.baseScore,
-        bonusPoints: teamScore.bonusPoints,
-        tokensScanned: teamScore.tokensScanned,
-        completedGroups: teamScore.completedGroups,
-        lastUpdate: teamScore.lastUpdate || new Date().toISOString(),
-      },
-      timestamp: new Date().toISOString(),
-    });
+    // Emit UNWRAPPED teamScore object per Decision #3
+    // broadcasts.js will wrap it with eventWrapper for WebSocket
+    this.emit('score:updated', teamScore);
   }
 
   /**
@@ -524,9 +517,10 @@ class TransactionService extends EventEmitter {
   /**
    * Reset entire transaction service state
    * Used primarily for testing to ensure clean state between tests
+   * NOTE: Contract tests should NOT call reset() - follow auth-events.test.js pattern
    */
   reset() {
-    // Remove listeners FIRST
+    // Remove listeners to prevent accumulation
     this.removeAllListeners();
 
     // Clear all transaction history
@@ -553,10 +547,10 @@ class TransactionService extends EventEmitter {
   rebuildScoresFromTransactions(transactions) {
     this.teamScores.clear();
 
-    // Group accepted transactions by team
+    // Group accepted transactions by team (skip detective mode)
     const teamGroups = {};
     transactions
-      .filter(tx => tx.status === 'accepted')
+      .filter(tx => tx.status === 'accepted' && tx.mode !== 'detective')
       .forEach(tx => {
         if (!teamGroups[tx.teamId]) {
           teamGroups[tx.teamId] = [];

@@ -78,12 +78,13 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       });
 
       // Assert: io.emit called with wrapped structure
+      // Per AsyncAPI contract: session:update event (replaces session:new)
       expect(mockIo.emit).toHaveBeenCalledWith(
-        'session:new',
+        'session:update',
         expect.objectContaining({
-          event: 'session:new',
+          event: 'session:update',
           data: expect.objectContaining({
-            sessionId: 'session-123',
+            id: 'session-123',  // Per Decision #4: use 'id' within resource
             name: 'Test Session'
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
@@ -112,7 +113,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect.objectContaining({
           event: 'session:update',
           data: expect.objectContaining({
-            sessionId: 'session-123',
+            id: 'session-123',  // Per Decision #4: use 'id' within resource
             status: 'ended'
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
@@ -146,16 +147,18 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       // Assert: io.to called with session room
       expect(mockIo.to).toHaveBeenCalledWith('session:session-123');
 
-      // Assert: emit called with wrapped structure
+      // Assert: emit called with wrapped structure (per AsyncAPI: data.transaction nested)
       expect(mockIo.emit).toHaveBeenCalledWith(
         'transaction:new',
         expect.objectContaining({
           event: 'transaction:new',
           data: expect.objectContaining({
-            id: 'tx-123',
-            tokenId: '534e2b03',
-            teamId: '001',
-            deviceId: 'GM_01'
+            transaction: expect.objectContaining({
+              id: 'tx-123',
+              tokenId: '534e2b03',
+              teamId: '001',
+              deviceId: 'GM_01'
+            })
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
@@ -290,6 +293,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockTransactionService.emit('score:updated', {
         teamId: '001',
         currentScore: 100,
+        baseScore: 80,  // currentScore - bonusPoints
         bonusPoints: 20,
         tokensScanned: 5,
         completedGroups: ['GROUP_A'],
@@ -335,9 +339,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
           event: 'group:completed',
           data: expect.objectContaining({
             teamId: '001',
-            groupId: 'GROUP_A',
-            bonus: 50,
-            multiplier: 1.5
+            group: 'GROUP_A',           // AsyncAPI contract field name
+            bonusPoints: 50,             // AsyncAPI contract field name
+            completedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)  // AsyncAPI required field
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })

@@ -66,17 +66,16 @@ class SessionService extends EventEmitter {
       // Start session timeout timer
       this.startSessionTimeout();
 
-      // Emit session:update event per asyncapi.yaml (wrapped envelope)
-      // Other services (transactionService, stateService) will listen and react
-      const session = this.currentSession.toJSON();
-      this.emit('session:update', {
-        event: 'session:update',
-        data: {
-          ...session,
-          status: 'active',
-          teams: session.scores ? session.scores.map(s => s.teamId) : []
-        },
-        timestamp: new Date().toISOString()
+      // Emit domain event for internal coordination
+      // broadcasts.js will wrap this for WebSocket broadcast
+      this.emit('session:created', {
+        id: this.currentSession.id,
+        name: this.currentSession.name,
+        startTime: this.currentSession.startTime,
+        endTime: this.currentSession.endTime,
+        status: 'active',
+        teams: this.currentSession.scores ? this.currentSession.scores.map(s => s.teamId) : [],
+        metadata: this.currentSession.metadata || {}
       });
 
       logger.info('Session created', {
@@ -228,17 +227,16 @@ class SessionService extends EventEmitter {
       // Stop timeout timer
       this.stopSessionTimeout();
 
-      // Emit session:update event per asyncapi.yaml (wrapped envelope)
-      const sessionData = session.toJSON();
-      this.emit('session:update', {
-        event: 'session:update',
-        data: {
-          ...sessionData,
-          status: 'ended',
-          endTime: session.endTime || new Date().toISOString(),
-          teams: sessionData.scores ? sessionData.scores.map(s => s.teamId) : []
-        },
-        timestamp: new Date().toISOString()
+      // Emit domain event for internal coordination
+      // broadcasts.js will wrap this for WebSocket broadcast
+      this.emit('session:updated', {
+        id: session.id,
+        name: session.name,
+        startTime: session.startTime,
+        endTime: session.endTime || new Date().toISOString(),
+        status: 'ended',
+        teams: session.scores ? session.scores.map(s => s.teamId) : [],
+        metadata: session.metadata || {}
       });
 
       logger.info('Session ended', { sessionId: session.id });
@@ -423,8 +421,8 @@ class SessionService extends EventEmitter {
     // Stop timers FIRST
     this.stopSessionTimeout();
 
-    // Remove listeners BEFORE reinit
-    this.removeAllListeners();
+    // NOTE: Do NOT remove listeners - broadcast listeners are infrastructure
+    // and should persist across resets. cleanupTestServer() handles cleanup.
 
     // Reinitialize state
     this.initState();

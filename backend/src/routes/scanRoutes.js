@@ -53,10 +53,10 @@ router.post('/', async (req, res) => {
     // In test mode, create a session if none exists (for video queue)
     let session = sessionService.getCurrentSession();
     if (!session && process.env.NODE_ENV === 'test') {
-      // Auto-create a test session
+      // Auto-create a test session (using 3-digit team IDs per Phase 2)
       session = await sessionService.createSession({
         name: 'Test Session',
-        teams: ['TEAM_A', 'TEAM_B'],
+        teams: ['001', '002'],
       });
     }
 
@@ -100,7 +100,7 @@ router.post('/', async (req, res) => {
           message: 'Video already playing, please wait',
           tokenId: scanRequest.tokenId,
           mediaAssets: token.mediaAssets || {},
-          videoPlaying: true,
+          videoQueued: false,
           waitTime: waitTime || 30
         });
       }
@@ -113,7 +113,7 @@ router.post('/', async (req, res) => {
         message: 'Video queued for playback',
         tokenId: scanRequest.tokenId,
         mediaAssets: token.mediaAssets || {},
-        videoPlaying: true
+        videoQueued: true
       });
     } else {
       // No video - just acknowledge scan
@@ -122,7 +122,7 @@ router.post('/', async (req, res) => {
         message: 'Scan logged',
         tokenId: scanRequest.tokenId,
         mediaAssets: token ? (token.mediaAssets || {}) : {},
-        videoPlaying: false
+        videoQueued: false
       });
     }
   } catch (error) {

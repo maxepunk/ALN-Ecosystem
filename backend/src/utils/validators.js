@@ -8,7 +8,7 @@ const Joi = require('joi');
 // Custom validators
 const isoDate = Joi.string().isoDate();
 const uuid = Joi.string().uuid({ version: 'uuidv4' });
-const teamId = Joi.string().min(1).max(100);  // Accept any string for team ID
+const teamId = Joi.string().pattern(/^[0-9]{3}$/);  // 3-digit zero-padded team ID per AsyncAPI contract
 
 // Token validation schema
 const tokenSchema = Joi.object({
@@ -16,16 +16,21 @@ const tokenSchema = Joi.object({
     .pattern(/^[A-Za-z_0-9]+$/),  // Allow alphanumeric token IDs
   name: Joi.string().required().min(1).max(200),
   value: Joi.number().integer().min(0).required(),
-  memoryType: Joi.string().valid('visual', 'audio', 'mixed', 'personal', 'business', 'technical').required(),
+  memoryType: Joi.string().valid('Technical', 'Business', 'Personal').required(),  // AsyncAPI contract values (Decision #4)
   groupId: Joi.string().optional().allow(null),
   mediaAssets: Joi.object({
     image: Joi.string().optional().allow(null),
     audio: Joi.string().optional().allow(null),
     video: Joi.string().optional().allow(null),
+    processingImage: Joi.string().optional().allow(null),
   }).required(),
   metadata: Joi.object({
     duration: Joi.number().positive().optional(),
     priority: Joi.number().integer().min(0).max(10).optional(),
+    rfid: Joi.string().optional().allow(null),
+    group: Joi.string().optional().allow(null, ''),  // Allow empty string for tokens without groups
+    originalType: Joi.string().optional().allow(null),
+    rating: Joi.number().integer().min(1).max(5).optional(),
   }).required(),
 });
 
@@ -38,7 +43,7 @@ const transactionSchema = Joi.object({
   stationMode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
   timestamp: isoDate.required(),
   sessionId: uuid.required(),
-  status: Joi.string().valid('accepted', 'rejected', 'duplicate').required(),
+  status: Joi.string().valid('accepted', 'error', 'duplicate').required(),  // AsyncAPI contract values (Decision #4)
   rejectionReason: Joi.string().optional().allow(null),
   points: Joi.number().integer().min(0).required(),
 });
@@ -144,9 +149,9 @@ const adminConfigSchema = Joi.object({
 const scanRequestSchema = Joi.object({
   tokenId: Joi.string().required().min(1).max(100)
     .pattern(/^[A-Za-z_0-9]+$/),  // Allow alphanumeric token IDs (matches tokenSchema)
-  teamId: teamId.required(),
+  teamId: teamId.optional(),  // OPTIONAL per OpenAPI contract - players haven't committed to teams yet
   deviceId: Joi.string().required().min(1).max(100),
-  stationMode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
+  mode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),  // AsyncAPI contract field (Decision #4)
   timestamp: isoDate.optional(),
 });
 
@@ -189,12 +194,17 @@ const validate = (data, schema) => {
   const { error, value } = schema.validate(data, {
     abortEarly: false,
     stripUnknown: true,
+    errors: {
+      wrap: {
+        label: false  // Prevent template formatting issues
+      }
+    }
   });
 
   if (error) {
     const details = error.details.map(detail => ({
       field: detail.path.join('.'),
-      message: detail.message,
+      message: String(detail.message),  // Explicitly convert to string
     }));
     
     // Create a message that includes field names or the error details

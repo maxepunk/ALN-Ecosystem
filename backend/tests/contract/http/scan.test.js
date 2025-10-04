@@ -8,10 +8,8 @@ const app = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
 
 describe('POST /api/scan', () => {
-  it.skip('should match OpenAPI contract for successful scan', async () => {
-    // TODO Phase 2: Fix contract mismatches before enabling
-    // - Field: videoPlaying → videoQueued
-    // - Make teamId optional per contract
+  it('should match OpenAPI contract for successful scan', async () => {
+    // Contract aligned: videoPlaying → videoQueued, teamId optional
     const response = await request(app.app)
       .post('/api/scan')
       .send({

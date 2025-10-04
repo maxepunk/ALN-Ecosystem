@@ -5,6 +5,9 @@
 
 const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
+const transactionService = require('../services/transactionService');
+const videoQueueService = require('../services/videoQueueService');
+const vlcService = require('../services/vlcService');
 const { emitWrapped } = require('./eventWrapper');
 
 /**
@@ -27,6 +30,8 @@ async function handleDisconnect(socket, io) {
           // Broadcast disconnection to other clients
           emitWrapped(io, 'device:disconnected', {
             deviceId: socket.deviceId,
+            type: socket.deviceType,
+            disconnectionTime: new Date().toISOString(),
             reason: 'manual',
           });
         }
@@ -64,20 +69,43 @@ function handleSyncRequest(socket) {
       return;
     }
 
-    const stateService = require('../services/stateService');
-    const state = stateService.getCurrentState();
     const session = sessionService.getCurrentSession();
 
-    if (state || session) {
-      emitWrapped(socket, 'sync:full', {
-        session: session?.toJSON(),
-        state: state?.toJSON(),
-        devices: session?.connectedDevices || [],
-        transactions: session?.transactions?.slice(-100) || [],
-      });
+    // Get video queue status
+    const videoStatus = {
+      status: videoQueueService.currentStatus || 'idle',
+      queueLength: (videoQueueService.queue || []).length,
+      tokenId: videoQueueService.currentVideo?.tokenId || null,
+      duration: videoQueueService.currentVideo?.duration || null,
+      progress: videoQueueService.currentVideo?.progress || null,
+      expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
+      error: videoQueueService.currentVideo?.error || null
+    };
 
-      logger.info('Sent full sync to device', { deviceId: socket.deviceId });
-    }
+    // Get VLC connection status
+    const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
+
+    // Send full state sync per AsyncAPI contract (sync:full event)
+    // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
+    emitWrapped(socket, 'sync:full', {
+      session: session ? session.toJSON() : null,
+      scores: transactionService.getTeamScores(),
+      recentTransactions: session?.transactions?.slice(-100) || [],
+      videoStatus: videoStatus,
+      devices: (session?.connectedDevices || []).map(device => ({
+        deviceId: device.id,
+        type: device.type,
+        name: device.name,
+        connectionTime: device.connectionTime,
+        ipAddress: device.ipAddress
+      })),
+      systemStatus: {
+        orchestrator: 'online',
+        vlc: vlcConnected ? 'connected' : 'disconnected'
+      }
+    });
+
+    logger.info('Sent full sync to device', { deviceId: socket.deviceId });
   } catch (error) {
     logger.error('Sync request error', { error, socketId: socket.id });
     emitWrapped(socket, 'error', {

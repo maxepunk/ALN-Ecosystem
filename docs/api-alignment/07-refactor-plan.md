@@ -1,29 +1,33 @@
 # Implementation Plan: Contract Alignment Refactor
 
 **Created**: 2025-10-02
-**Last Updated**: 2025-10-02 (Progress checkpoint after Phase 1.1.2)
-**Status**: 🔄 In Progress - Phase 1.1
+**Last Updated**: 2025-10-03 (Status update: Phases 0-4 complete, Phase 5 in progress)
+**Status**: 🔄 In Progress - Phase 5 (Test Suite Completion)
 **Branch**: 001-backend-aln-architecture (current branch for all refactor work)
 **Context**: Pre-production, system functionality already broken, temporary breakage irrelevant
 
 ---
 
-## 📊 Progress Summary
+## 📊 Progress Summary (ACCURATE AS OF 2025-10-03)
 
 **Completed Phases**:
-- ✅ Phase 0: Test Infrastructure Setup (3/3 transformations)
-- 🔄 Phase 1.1: Service Communication (2/~18 transformations, ~11%)
+- ✅ Phase 0: Test Infrastructure Setup (100%)
+- ✅ Phase 1.1: EventEmitter Pattern (100% - all lazy requires eliminated)
+- ✅ Phase 1.2: Route Consolidation (100% - 8→5 files)
+- ✅ Phase 2: Field Naming Standardization (100% - deviceId everywhere)
+- ✅ Phase 3: Event Wrapping (100% - all wrapped with envelope)
+- ✅ Phase 4: GM Scanner Modularization (100% - 14 modules extracted, 6428→2064 lines)
+- 🔄 Phase 5: Test Suite Completion (~10% - infrastructure exists, expansion needed)
 
 **Current Status**:
-- Working on: Phase 1.1 - EventEmitter Pattern Implementation
-- Next: Phase 1.1.3-1.1.8 (Remaining service event listeners)
-- Lazy Requires Removed: 3 of 18 (16.7%)
+- Working on: Phase 5 - Test Suite Completion & Contract Validation
+- Test Coverage: HTTP 87.5% (7/8), WebSocket 0% (0/16), Unit Tests: partial
+- Failing Tests: 1 (WebSocket infrastructure issue)
+- Skipped Tests: 1 (field naming mismatch)
+- Next: Fix broken tests, then expand coverage to 24 contract tests + 100+ unit tests
 
-**Key Discoveries**:
-- **Lazy Require Count Discrepancy**: Plan documented 8 lazy requires (Finding #44), actual codebase contains 18
-- **AsyncAPI Schema Access**: Fixed contract-validator.js to properly parse AsyncAPI 2.6 messages
-- **Wrapped Envelope Pattern**: All session:update events now use {event, data, timestamp} structure per AsyncAPI spec
-- **Test Infrastructure**: Successfully established ajv-based contract validation framework
+**CRITICAL NOTE**:
+This document's embedded progress indicators were NOT updated during Phases 1-4 execution. Git history shows actual completion. See git log for accurate transformation tracking. This document now serves as execution plan for Phase 5 only.
 
 ---
 
@@ -2335,319 +2339,85 @@ socket.on('transaction:rejected', (eventData) => {
 
 ---
 
-## Phase 5: Final Cleanup & Validation
-
-**Purpose**: Complete remaining independent refactors, verify entire system
-
-**Duration**: 6-8 hours
-
----
-
-### Phase 5.1: Player Scanner Remaining Fixes
-
-**Goal**: Complete Player Scanner changes (already did field naming in Phase 2.3)
-
-**Duration**: 2 hours
-
----
-
-#### Transformation 5.1.1: Fix Health Check Endpoint
-
-**Evidence**: Finding #62 (wrong endpoint `/api/state/status`)
-
-Current (line 144):
-```javascript
-const response = await fetch(`${this.baseUrl}/api/state/status`, {
-```
-
-Target:
-```javascript
-const response = await fetch(`${this.baseUrl}/health`, {
-```
-
-**Commit**: `fix(scanner): Correct health check endpoint to /health [5.1.1]`
-
----
-
-#### Transformation 5.1.2: Add Error Display
-
-**Evidence**: Finding #65 (console-only errors)
-
-**Implementation**: Add error toast component similar to GM Scanner 4.3.1
-
-**Commit**: `feat(scanner): Add error display to Player Scanner [5.1.2]`
-
----
-
-### Phase 5.2: Backend Final Cleanup
-
-**Goal**: Remove dead code, update remaining tests
-
-**Duration**: 2-3 hours
-
----
-
-#### Transformation 5.2.1: Remove Eliminated Event Handlers
-
-**Evidence**: Finding #25-27 (eliminated events still emitted)
-
-**Files to Clean**:
-- Remove `state:update` event from broadcasts.js
-- Remove eliminated admin event handlers from adminEvents.js
-- Remove granular session events (paused/resumed/ended)
-
-**Commit**: `refactor(backend): Remove eliminated event handlers [5.2.1]`
-
----
-
-#### Transformation 5.2.2: Remove Test Pollution
-
-**Evidence**: Finding #11, #16 (test code in production files)
-
-**Action**: Move test helpers from service files to `tests/helpers/`
-
-**Commit**: `refactor(backend): Remove test code pollution from services [5.2.2]`
-
----
-
-### Phase 5.3: Write Fresh Test Suite (TDD)
-
-**Goal**: Write comprehensive test suite from scratch using TDD principles
-
-**Context**: All broken tests deleted in Phase 0. Fresh start with contract-first approach.
-
-**Duration**: 3-4 hours
-
-**Test Architecture**: Per 06-test-architecture.md
-- Contract tests: 24 tests (8 HTTP + 16 WebSocket endpoints)
-- Integration tests: 5-10 critical flows
-- Unit tests: As needed for complex business logic
-
----
-
-#### Transformation 5.3.1: Write Contract Tests (ajv validation)
-
-**Evidence**: 06-test-architecture.md Decision 1 (contract-first testing)
-
-**Prerequisites** (completed in Phase 0):
-- ajv, ajv-formats, js-yaml installed
-- tests/helpers/contract-validator.js exists
-- tests/helpers/websocket-helpers.js exists
-
-**Implementation**:
-
-**Step 1 - Write HTTP Contract Tests**:
-```javascript
-// File: tests/contract/http/essential-endpoints.test.js
-
-const request = require('supertest');
-const { validateHTTPResponse } = require('../../helpers/contract-validator');
-const app = require('../../../src/app');
-
-describe('Essential HTTP Endpoints - Contract Validation', () => {
-  describe('POST /api/scan', () => {
-    it('should accept valid scan request and return conforming response', async () => {
-      const response = await request(app)
-        .post('/api/scan')
-        .send({
-          tokenId: '534e2b03',
-          teamId: '001',
-          deviceId: 'PLAYER_01',
-          timestamp: new Date().toISOString()
-        });
-
-      expect(response.status).toBe(200);
-      validateHTTPResponse(response, '/api/scan', 'POST', 200);
-    });
-  });
-
-  // Repeat for all 8 HTTP endpoints
-});
-```
-
-**Step 2 - Write WebSocket Contract Tests**:
-```javascript
-// File: tests/contract/websocket/gm-events.test.js
-
-const { validateWebSocketEvent } = require('../../helpers/contract-validator');
-const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
-
-describe('GM WebSocket Events - Contract Validation', () => {
-  describe('transaction:new event', () => {
-    it('should emit valid wrapped event matching AsyncAPI schema', async () => {
-      const socket = await connectAndIdentify('GM_01', 'test-token');
-
-      const eventData = await waitForEvent(socket, 'transaction:new');
-
-      // Validate against AsyncAPI schema
-      validateWebSocketEvent(eventData, 'transaction:new');
-
-      expect(eventData).toHaveProperty('event', 'transaction:new');
-      expect(eventData).toHaveProperty('data');
-      expect(eventData).toHaveProperty('timestamp');
-    });
-  });
-
-  // Repeat for all 16 WebSocket events
-});
-```
-
-**Critical**: Tests validate implementation compliance with formal contracts (openapi.yaml, asyncapi.yaml)
-
-**How ajv validation works**:
-```javascript
-// validateHTTPResponse internally:
-// 1. Loads openapi.yaml
-// 2. Extracts schema for specified endpoint/method/status
-// 3. Compiles schema with ajv
-// 4. Validates actual response against schema
-// 5. Throws detailed error if validation fails
-
-validateHTTPResponse(response, '/api/scan', 'POST', 200);
-// This single line ensures response exactly matches OpenAPI specification
-```
-
-**Contract-First Testing Flow**:
-1. Contract defines API structure (openapi.yaml or asyncapi.yaml)
-2. Test loads contract schema using helper
-3. ajv validates actual implementation matches contract
-4. Any deviation from contract = test fails with exact schema error
-5. Implementation must change to match contract (not vice versa)
-
-**This ensures contracts are executable specifications, not just documentation.**
-
-**Validation**:
-- [ ] 24 contract test files created: `find tests/contract -name "*.test.js" | wc -l`
-- [ ] All tests written using TDD (write test first, verify fail, implement, verify pass)
-- [ ] All pass: `npm run test:contract`
-- [ ] 100% contract coverage: All 24 API endpoints have tests
-
-**Commit**: `test: Write complete contract test suite with ajv validation [5.3.1]`
-
----
-
-#### Transformation 5.3.2: Write Integration Tests
-
-**Evidence**: 06-test-architecture.md Decision 3 (critical flow testing)
-
-**Write Tests For Critical Flows**:
-
-1. **Transaction Flow** (`tests/integration/transaction-flow.test.js`):
-   - Player scan → Backend processes → GM receives via WebSocket → Score updates
-
-2. **Session Lifecycle** (`tests/integration/session-lifecycle.test.js`):
-   - Create session → GMs connect → Pause → Resume → End → State persists
-
-3. **Offline Queue Recovery** (`tests/integration/offline-mode.test.js`):
-   - GM disconnects → Scans queued → Reconnects → Queue processes → State syncs
-
-4. **Video Playback** (`tests/integration/video-playback.test.js`):
-   - Token with video scanned → VLC receives command → Video plays → Idle loop resumes
-
-5. **Admin Intervention** (`tests/integration/admin-intervention.test.js`):
-   - Admin modifies score → State updates → All GMs receive update → Changes persist
-
-**Pattern for Each Test**:
-```javascript
-describe('Transaction Flow Integration', () => {
-  beforeEach(async () => {
-    // Setup: Clean state, connect clients
-  });
-
-  it('should complete full transaction flow', async () => {
-    // 1. Player submits scan via HTTP
-    // 2. Backend processes transaction
-    // 3. GM receives via WebSocket
-    // 4. Score updates
-    // 5. Verify end-to-end state
-  });
-
-  afterEach(async () => {
-    // Cleanup: Disconnect clients, reset state
-  });
-});
-```
-
-**Validation**:
-- [ ] 5-10 integration tests exist: `ls tests/integration/*.test.js`
-- [ ] All critical flows covered
-- [ ] All pass: `npm run test:integration`
-- [ ] Tests use WebSocket helpers for realistic scenarios
-
-**Commit**: `test: Write integration test suite for critical flows [5.3.2]`
+## Phase 5: Test Suite Completion & System Validation
+
+**Purpose**: Expand test coverage to validate all 24 essential APIs + protect client-side logic
+
+**Duration**: 56-74 hours (REVISED from initial 6-8 hour estimate)
+**Status**: ~10% complete (infrastructure exists, significant expansion needed)
+
+**📋 COMPREHENSIVE PLAN**: See `07-refactor-plan-phase5.md` for complete detailed execution plan
+
+**Phase 5.1**: Fix Broken & Skipped Tests (2 hours)
+- Fix WebSocket test infrastructure (session-events.test.js timeout)
+- Fix `videoPlaying` → `videoQueued` in scanRoutes.js
+- Result: 0 failing, 0 skipped, 8/8 HTTP + 1/16 WebSocket passing
+
+**Phase 5.2**: Complete WebSocket Contract Tests (16-20 hours)
+- 5.2.1: Core events (gm:identify, transaction flow, score:updated) - 8h
+- 5.2.2: Rich payloads (sync:full, gm:command with 15 actions) - 4h
+- 5.2.3: Remaining events (device, video, offline, error) - 4-6h
+- Result: 16/16 WebSocket events tested (100% coverage)
+
+**Phase 5.3**: Unit Tests for Client-Side Logic (30-40 hours) **CAN RUN PARALLEL WITH 5.2**
+- CRITICAL: Protects standalone mode functionality (client authoritative, no orchestrator)
+- 5.3.1: Service tests (transactionService, scoringService, sessionService, stateService, videoQueueService, broadcastService, authService) - 20-25h
+- 5.3.2: Middleware tests (authMiddleware, validation) - 6-8h
+- 5.3.3: WebSocket logic tests (gmAuth, deviceTracking) - 4-6h
+- Result: 100+ unit tests, client-side game logic protected
+
+**Phase 5.4**: Integration Tests (6-8 hours)
+- Consolidate existing integration tests into proper pyramid
+- Create true multi-component flow tests:
+  - transaction-broadcast-flow
+  - session-lifecycle-flow
+  - offline-recovery-flow (CRITICAL for Mode 2)
+  - device-tracking-flow
+  - score-update-flow
+  - video-playback-flow
+- Remove/archive large disabled integration files
+- Result: 5-10 integration tests (proper pyramid shape)
+
+**Phase 5.5**: Cleanup & Documentation (2-4 hours)
+- Remove disabled test files
+- Update package.json test scripts (test:unit, test:contract, test:integration)
+- Document test coverage and pyramid shape
+- Verify: 100+ unit, 25-35 contract, 5-10 integration
 
 ---
 
 ### Phase 5 Final Validation
 
-**Comprehensive System Verification**:
+**System-Wide Test Verification**:
 
-**Backend**:
-- [ ] All unit tests pass: `npm test`
-- [ ] All contract tests pass: `npm run test:contract`
-- [ ] All integration tests pass: `npm run test:integration`
-- [ ] No circular dependencies: `npx madge --circular src/`
-- [ ] No dead code: Manual review
-- [ ] Proper test pyramid: 100+ unit, 25-35 contract, 5-10 integration
-
-**GM Scanner**:
-- [ ] 15 modular files exist
-- [ ] All features work (comprehensive manual test)
-- [ ] Error display works
-- [ ] No console-only errors
-
-**Player Scanner**:
-- [ ] All fixes complete (field naming, health endpoint, error display)
-- [ ] Fire-and-forget pattern intact
-- [ ] Offline queue works
-
-**System-Wide**:
-- [ ] All 3 repos using deviceId (not scannerId)
-- [ ] All WebSocket events wrapped
-- [ ] End-to-end flows work
-- [ ] Documentation updated (00-INDEX.md marks Phase 6.6 complete)
-
-**Commit**: `refactor: Complete Phase 5 final cleanup and validation [phase-5-complete]`
-
-**Duration Checkpoint**: ~6-8 hours for Phase 5
-
----
-
-## Final Push to Main
-
-**Prerequisites**:
-- [ ] All Phase 0-5 complete
-- [ ] All validations passed
-- [ ] All commits made on branch `001-backend-aln-architecture`
-
-**Push Process**:
 ```bash
-# Verify current branch
-git branch  # Should show 001-backend-aln-architecture
+# All tests pass
+npm test
+# Expected: 0 failing, 0 skipped, 130+ passing
 
-# Verify all changes committed
-git status  # Should be clean
-
-# Review commit history
-git log --oneline | head -20
-
-# Push to main
-git checkout main
-git merge 001-backend-aln-architecture --no-ff
-git push origin main
-
-# Tag release
-git tag -a v2.0.0-contract-aligned -m "Complete contract alignment refactor"
-git push origin v2.0.0-contract-aligned
+# Test pyramid shape
+npm run test:unit       # Fast (< 1 second), 100+ tests
+npm run test:contract   # Medium (< 10 seconds), 25-35 tests
+npm run test:integration  # Slower (< 30 seconds), 5-10 tests
 ```
 
-**Post-Push**:
-- [ ] Update 00-INDEX.md "What's Complete" section
-- [ ] Mark Phase 6.6 complete, Phase 7 next
-- [ ] Celebrate! 🎉
+**Success Criteria**:
+
+✅ All 24 essential APIs have contract tests (8 HTTP + 16 WebSocket)
+✅ Test pyramid is correct shape (100+ unit, 25-35 contract, 5-10 integration)
+✅ All tests passing (no skipped, no failing)
+✅ Functional requirements validated:
+  - Networked mode (contracts + integration)
+  - Offline-temporary mode (integration: queue→reconnect→sync)
+  - Standalone mode (unit: client-side game logic protected)
+✅ Client-side logic protected (unit tests prevent accidental removal)
+✅ Fast feedback loop (unit tests < 1 second, contract < 10 seconds)
+
+**Commit**: `test: Complete Phase 5 test suite expansion [phase-5-complete]`
+
+**Duration Checkpoint**: ~56-74 hours for Phase 5 (40 hours minimum if 5.2 and 5.3 run parallel)
 
 ---
-
 # Section 4: Reference
 
 ## 4.1 Finding Quick Reference

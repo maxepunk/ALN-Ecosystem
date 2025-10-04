@@ -1155,7 +1155,7 @@ components:
               valueRating:
                 type: integer
                 minimum: 1
-                maximum: 3
+                maximum: 5
                 description: Token value rating (from tokens.json)
                 example: 3
               group:

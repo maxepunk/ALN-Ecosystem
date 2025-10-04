@@ -55,11 +55,11 @@ class Transaction {
   }
 
   /**
-   * Check if transaction was rejected
+   * Check if transaction was rejected (AsyncAPI: status="error")
    * @returns {boolean}
    */
   isRejected() {
-    return this.status === 'rejected';
+    return this.status === 'error';  // AsyncAPI contract field value
   }
 
   /**
@@ -81,11 +81,11 @@ class Transaction {
   }
 
   /**
-   * Reject the transaction
-   * @param {string} reason - Reason for rejection
+   * Reject the transaction (AsyncAPI: status="error")
+   * @param {string} reason - Reason for error
    */
   reject(reason) {
-    this.status = 'rejected';
+    this.status = 'error';  // AsyncAPI contract field value (Decision #4)
     this.points = 0;
     this.rejectionReason = reason;
   }
@@ -141,7 +141,7 @@ class Transaction {
       tokenId: scanRequest.tokenId,
       teamId: scanRequest.teamId,
       deviceId: scanRequest.deviceId,
-      stationMode: scanRequest.stationMode || 'blackmarket', // Track game mode
+      mode: scanRequest.mode || 'blackmarket', // AsyncAPI contract field (Decision #4)
       timestamp: scanRequest.timestamp || new Date().toISOString(),
       sessionId: sessionId,
       status: 'accepted',

@@ -1,10 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
 
-// Track active resources for cleanup
-const activeServers = new Set();
-const activeSockets = new Set();
-
 // DISABLED: Global setup/teardown causes race conditions when tests run in parallel
 // Each test file should manage its own setup and cleanup using test utilities:
 // - Contract tests: use setupTestServer() / cleanupTestServer() from ws-test-utils.js
@@ -17,3 +13,6 @@ const activeSockets = new Set();
 // 3. Deleting data directory → race conditions when tests share data
 
 // Tests now manage their own lifecycle to avoid these issues
+
+// NOTE: HTTP agent cleanup moved to jest.globalTeardown.js
+// Global teardown runs ONCE after ALL tests complete (not per-file like afterAll)
