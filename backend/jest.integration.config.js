@@ -1,11 +1,32 @@
+/**
+ * Jest Configuration - Integration Tests
+ * Runs integration tests sequentially to prevent state contamination
+ *
+ * Usage: npm run test:integration
+ */
+
+const baseConfig = require('./jest.config.base');
+
 module.exports = {
-  ...require('./jest.config.js'),
-  testMatch: ['**/integration/*.test.js'],
-  testTimeout: 30000, // 30 seconds for integration tests
-  maxWorkers: 1, // Run integration tests sequentially
-  bail: false, // Continue even if a test fails
-  forceExit: true, // Force exit after tests complete
-  detectOpenHandles: false, // Don't detect open handles in normal runs
-  // Integration tests often need more time
-  slowTestThreshold: 10000, // Warn about tests slower than 10s
+  ...baseConfig,
+
+  // Test discovery - ONLY integration tests
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/integration/**/*.test.js'],
+
+  // Timing - integration tests need more time for multi-service coordination
+  testTimeout: 30000, // 30 seconds
+  slowTestThreshold: 10000, // Warn if test takes > 10 seconds
+
+  // Execution - sequential to prevent state contamination between tests
+  maxWorkers: 1, // Run tests one at a time
+
+  // Error handling
+  bail: false, // Continue running tests even if one fails
+
+  // Debug options
+  detectOpenHandles: false, // Don't detect open handles in normal runs (too noisy)
+
+  // Output
+  verbose: true,
 };

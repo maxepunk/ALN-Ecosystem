@@ -1,30 +1,22 @@
+/**
+ * Jest Configuration - Unit & Contract Tests
+ * Runs unit and contract tests in parallel for fast feedback
+ *
+ * Usage: npm test OR npm run test:contract OR npm run test:unit
+ */
+
+const baseConfig = require('./jest.config.base');
+
 module.exports = {
-  testEnvironment: 'node',
+  ...baseConfig,
+
+  // Test discovery
   roots: ['<rootDir>/tests'],
   testMatch: ['**/*.test.js', '**/*.spec.js'],
-  collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/**/*.test.js',
-    '!src/**/*.spec.js',
-  ],
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov', 'html'],
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  globalTeardown: '<rootDir>/jest.globalTeardown.js',
-  testTimeout: 10000,
+
+  // Timing
+  testTimeout: 10000, // 10 seconds (contract tests need time for HTTP/WebSocket)
+
+  // Output
   verbose: true,
-  forceExit: true,
-  clearMocks: true,
-  resetMocks: true,
-  restoreMocks: true,
-  resetModules: true,  // Reset module registry between tests
-  testPathIgnorePatterns: ['/node_modules/'],
-  coverageThreshold: {
-    global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80,
-    },
-  },
 };

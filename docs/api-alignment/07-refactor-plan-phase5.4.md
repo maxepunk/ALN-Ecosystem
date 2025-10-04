@@ -88,57 +88,6 @@ All services extend `EventEmitter` and follow singleton pattern:
 **broadcasts.js** listens to ALL service events and wraps them for WebSocket broadcast using `emitWrapped()`.
 
 ---
-
-## CRITICAL: Infrastructure Fixes Completed Before Implementation
-
-**Date Fixed**: 2025-10-04
-**Status**: ✅ All critical test infrastructure bugs fixed, ready to proceed
-
-During pre-implementation investigation, **three critical bugs** were discovered in test infrastructure that would have caused memory leaks and unreliable tests. These have been fixed:
-
-### Fix 1: Broadcast Listener Memory Leak (CRITICAL)
-**Problem**: `test-server.js` never called `cleanupBroadcastListeners()`, causing hundreds of leaked listeners across 271 tests.
-
-**Fix Applied**:
-```javascript
-// tests/helpers/test-server.js - cleanupTestServer()
-cleanupBroadcastListeners(); // ← Added this critical cleanup
-```
-
-**Impact**: Eliminated primary memory leak causing force exit warnings.
-
-### Fix 2: Incomplete Service Cleanup
-**Problem**: Only 3 of 5 services were cleaned up (missing videoQueueService, offlineQueueService).
-
-**Fix Applied**:
-```javascript
-// tests/helpers/test-server.js - cleanupTestServer()
-videoQueueService.reset(); // Clears playback timers
-offlineQueueService.reset(); // Clears queue state
-videoQueueService.removeAllListeners();
-offlineQueueService.removeAllListeners();
-```
-
-**Impact**: Eliminated timer leaks from video queue.
-
-### Fix 3: HTTP Agent Keep-Alive Cleanup
-**Problem**: Supertest HTTP agents with keep-alive connections remained open after tests.
-
-**Fix Applied**:
-- Created `jest.globalTeardown.js` to destroy HTTP agents after all tests
-- Added `globalTeardown` to `jest.config.js`
-
-**Impact**: Proper HTTP agent cleanup (remaining force exit warnings are from supertest internals - acceptable).
-
-### Result
-- ✅ All tests pass: 271/271
-- ✅ Real memory leaks eliminated
-- ✅ Infrastructure ready for integration test implementation
-
-**See**: `backend/docs/PHASE-5.4-SESSION-DISCOVERIES.md` for complete analysis.
-
----
-
 ### Test Infrastructure Available
 
 From `/backend/tests/helpers/`:
@@ -2597,8 +2546,258 @@ expect(teamScore.currentScore).toBe(expectedScore);
 ```
 
 ---
+## Infrastructure Fixes Completed Before Implementation
 
-## Appendix B: Contract References
+**Date Fixed**: 2025-10-04
+**Status**: ✅ All critical test infrastructure bugs fixed, ready to proceed
+
+During pre-implementation investigation, **three critical bugs** were discovered in test infrastructure that would have caused memory leaks and unreliable tests. These have been fixed:
+
+### Fix 1: Broadcast Listener Memory Leak (CRITICAL)
+**Problem**: `test-server.js` never called `cleanupBroadcastListeners()`, causing hundreds of leaked listeners across 271 tests.
+
+**Fix Applied**:
+```javascript
+// tests/helpers/test-server.js - cleanupTestServer()
+cleanupBroadcastListeners(); // ← Added this critical cleanup
+```
+
+**Impact**: Eliminated primary memory leak causing force exit warnings.
+
+### Fix 2: Incomplete Service Cleanup
+**Problem**: Only 3 of 5 services were cleaned up (missing videoQueueService, offlineQueueService).
+
+**Fix Applied**:
+```javascript
+// tests/helpers/test-server.js - cleanupTestServer()
+videoQueueService.reset(); // Clears playback timers
+offlineQueueService.reset(); // Clears queue state
+videoQueueService.removeAllListeners();
+offlineQueueService.removeAllListeners();
+```
+
+**Impact**: Eliminated timer leaks from video queue.
+
+### Fix 3: HTTP Agent Keep-Alive Cleanup
+**Problem**: Supertest HTTP agents with keep-alive connections remained open after tests.
+
+**Fix Applied**:
+- Created `jest.globalTeardown.js` to destroy HTTP agents after all tests
+- Added `globalTeardown` to `jest.config.js`
+
+**Impact**: Proper HTTP agent cleanup (remaining force exit warnings are from supertest internals - acceptable).
+
+### Result
+- ✅ All tests pass: 271/271
+- ✅ Real memory leaks eliminated
+- ✅ Infrastructure ready for integration test implementation
+
+**See**: `backend/docs/PHASE-5.4-SESSION-DISCOVERIES.md` for complete analysis.
+
+---
+
+## Session Log: Test Isolation Regression & Jest Configuration Improvements
+
+**Date**: 2025-10-04
+**Status**: ✅ COMPLETED - First integration test implemented, regression fixed, test infrastructure improved
+**Test Count**: 277/277 passing (no regressions)
+
+### Work Completed This Session
+
+#### 1. First Integration Test Implementation ✅
+**File**: `backend/tests/integration/transaction-flow.test.js`
+**Coverage**: Complete GM scanner transaction flow with blackmarket/detective mode support
+
+**Test Scenarios**:
+- Blackmarket mode transactions (scoring enabled)
+- Detective mode transactions (logging only, no scoring)
+- Dual GM mode interactions (2 concurrent scanners)
+- Duplicate detection (cross-team and same-team)
+
+**Key Achievement**: Validates end-to-end flow: `transaction:submit` → service processing → broadcasts → multi-client reception
+
+---
+
+#### 2. Critical Regression Discovered & Fixed ✅
+
+**Problem**: Contract tests `scan.test.js` failing with 409 Conflict (expected 200 OK)
+
+**Root Cause**: Test isolation violation
+- Integration test `transaction-flow.test.js` created video queue state
+- Contract test `scan.test.js` had **NO isolation hooks** (no beforeEach/afterEach)
+- Both tests shared singleton service instances
+- `videoQueueService.isPlaying()` returned `true` from integration test state
+- Scan endpoint line 94: `if (videoQueueService.isPlaying())` returned 409
+
+**Fix Applied**:
+```javascript
+// tests/contract/http/scan.test.js
+beforeEach(async () => {
+  await sessionService.reset();
+  await transactionService.reset();
+  videoQueueService.reset();  // ← CRITICAL: Clear video playback state
+
+  await sessionService.createSession({
+    name: 'Contract Test Session',
+    teams: ['001', '002']
+  });
+});
+
+afterEach(async () => {
+  await sessionService.reset();
+  videoQueueService.reset();
+});
+```
+
+**Impact**: All 277 tests passing, no cross-contamination
+
+---
+
+#### 3. Jest Configuration Refactor (DRY Principle) ✅
+
+**Problem**: Duplicate configuration across `jest.config.js` and `jest.integration.config.js`
+
+**Solution**: Created layered configuration architecture
+
+**Files Created/Modified**:
+
+**`jest.config.base.js`** (NEW):
+- Shared configuration for all test types
+- Coverage settings, mock management, teardown
+- Single source of truth for common settings
+
+**`jest.config.js`** (REFACTORED):
+```javascript
+const baseConfig = require('./jest.config.base');
+module.exports = {
+  ...baseConfig,
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/*.test.js', '**/*.spec.js'],
+  testTimeout: 10000,
+  verbose: true,
+};
+```
+
+**`jest.integration.config.js`** (REFACTORED):
+```javascript
+const baseConfig = require('./jest.config.base');
+module.exports = {
+  ...baseConfig,
+  testMatch: ['**/integration/**/*.test.js'],
+  testTimeout: 30000,
+  maxWorkers: 1,  // Sequential execution
+  // ...integration-specific settings
+};
+```
+
+**`jest.setup.js`** (CLEANED):
+- Removed deprecated comments
+- Added clear documentation of isolation strategy
+- Explained why file is intentionally minimal
+
+---
+
+#### 4. Test Execution Order Fix (CRITICAL) ✅
+
+**Problem**: `npm test` ran all tests together (unit + contract + integration in parallel), causing cross-contamination
+
+**Solution**: Updated `package.json` test scripts
+
+```json
+{
+  "test": "npm run test:contract && npm run test:integration",  // ← NEW: Sequential
+  "test:all": "jest --config jest.config.js",  // Fast but risky
+  "test:unit": "jest --testPathPattern=tests/unit",
+  "test:contract": "jest --testPathPattern=tests/contract",
+  "test:integration": "jest --config jest.integration.config.js --runInBand",
+  "test:ci": "npm run test:contract && npm run test:integration"  // CI/CD safe
+}
+```
+
+**Why This Matters**:
+1. Contract tests run **first** in clean state (parallel, fast)
+2. Integration tests run **after** sequentially (stateful, slower)
+3. Integration tests may leave service state modified
+4. Sequential execution prevents state leaks
+
+**Old Behavior**: Everything parallel → random failures from state leaks
+**New Behavior**: Contract → Integration → Reliable, isolated tests
+
+---
+
+#### 5. Contract Test Audit ✅
+
+**Findings**:
+
+| Test File | Isolation Hooks | Status |
+|-----------|----------------|--------|
+| **WebSocket Contract (9 files)** | ✅ All have beforeAll/afterAll + beforeEach | GOOD |
+| `scan.test.js` | ✅ **FIXED** (added hooks) | GOOD |
+| `session.test.js` | ✅ Has beforeAll/afterAll | GOOD |
+| `state.test.js` | ✅ Has beforeAll/afterAll | GOOD |
+| `admin.test.js` | ⚠️ Only beforeAll | OK (stateless) |
+| `resource.test.js` | ❌ None | OK (stateless GET only) |
+
+**Conclusion**: Only `scan.test.js` needed fixing. Other tests without hooks are stateless and safe.
+
+---
+
+### Impact Summary
+
+**Before This Session**:
+- ❌ 2 contract tests failing (scan.test.js)
+- ❌ Test execution order unsafe (parallel everything)
+- ❌ Duplicate configuration in 2 files
+- ❌ Risk of state leaks in future tests
+
+**After This Session**:
+- ✅ All 277 tests passing
+- ✅ Safe test execution order (contract → integration)
+- ✅ DRY configuration with base + overrides
+- ✅ Clear isolation strategy documented
+- ✅ First integration test complete (transaction flow)
+- ✅ Infrastructure ready for Phase 5.4 continuation
+
+---
+
+### Files Modified
+
+**Test Files**:
+- `backend/tests/integration/transaction-flow.test.js` (NEW - 409 lines)
+- `backend/tests/contract/http/scan.test.js` (FIXED - added isolation hooks)
+
+**Configuration**:
+- `backend/jest.config.base.js` (NEW - shared config)
+- `backend/jest.config.js` (REFACTORED - uses base)
+- `backend/jest.integration.config.js` (REFACTORED - uses base)
+- `backend/jest.setup.js` (CLEANED - better docs)
+- `backend/package.json` (UPDATED - test scripts)
+
+**Implementation Fixes** (from integration test discoveries):
+- `backend/src/routes/scanRoutes.js` (Phase 2 team IDs, videoQueued field)
+
+---
+
+### Next Steps
+
+**Immediate** (Continue Phase 5.4):
+1. ✅ Complete Test 1: Transaction Flow (DONE)
+2. ⏳ Implement Test 2: Video Orchestration with Mock VLC
+3. ⏳ Implement Test 3: Offline Queue Synchronization
+4. ⏳ Implement Tests 4-10 per Phase 5.4 plan
+
+**Documentation** (After Phase 5.4 Complete):
+- Create comprehensive `docs/TEST-ARCHITECTURE.md`
+- Document all test patterns and helpers
+- Add troubleshooting guide
+
+**Quality Gates**:
+- All integration tests passing
+- No test isolation issues
+- Full coverage of critical flows
+
+---
+
 
 All integration tests should validate against these contracts:
 

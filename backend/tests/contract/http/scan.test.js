@@ -6,8 +6,28 @@
 const request = require('supertest');
 const app = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
+const sessionService = require('../../../src/services/sessionService');
+const videoQueueService = require('../../../src/services/videoQueueService');
+const transactionService = require('../../../src/services/transactionService');
 
 describe('POST /api/scan', () => {
+  // Test isolation: Ensure clean state before each test
+  beforeEach(async () => {
+    await sessionService.reset();
+    await transactionService.reset();
+    videoQueueService.reset();
+
+    // Create test session (required for scan endpoint)
+    await sessionService.createSession({
+      name: 'Contract Test Session',
+      teams: ['001', '002']
+    });
+  });
+
+  afterEach(async () => {
+    await sessionService.reset();
+    videoQueueService.reset();
+  });
   it('should match OpenAPI contract for successful scan', async () => {
     // Contract aligned: videoPlaying → videoQueued, teamId optional
     const response = await request(app.app)
@@ -80,6 +100,24 @@ describe('POST /api/scan', () => {
 });
 
 describe('POST /api/scan/batch', () => {
+  // Test isolation: Ensure clean state before each test
+  beforeEach(async () => {
+    await sessionService.reset();
+    await transactionService.reset();
+    videoQueueService.reset();
+
+    // Create test session
+    await sessionService.createSession({
+      name: 'Batch Contract Test Session',
+      teams: ['001', '002']
+    });
+  });
+
+  afterEach(async () => {
+    await sessionService.reset();
+    videoQueueService.reset();
+  });
+
   it('should match OpenAPI contract for successful batch', async () => {
     const response = await request(app.app)
       .post('/api/scan/batch')

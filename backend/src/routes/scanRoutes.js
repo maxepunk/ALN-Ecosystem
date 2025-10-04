@@ -7,8 +7,10 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
 const { scanRequestSchema, validate, ValidationError } = require('../utils/validators');
+const Token = require('../models/token');
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
+const videoQueueService = require('../services/videoQueueService');
 const offlineQueueService = require('../services/offlineQueueService');
 const { isOffline } = require('../middleware/offlineStatus');
 
@@ -75,7 +77,6 @@ router.post('/', async (req, res) => {
     if (!token && process.env.NODE_ENV === 'test' && (scanRequest.tokenId.startsWith('TEST_') || scanRequest.tokenId.startsWith('MEM_'))) {
       const tokenId = scanRequest.tokenId;
       const isVideoToken = tokenId.startsWith('TEST_VIDEO_') || tokenId.startsWith('MEM_VIDEO_');
-      const Token = require('../models/token');
 
       token = new Token({
         id: tokenId,
@@ -88,8 +89,6 @@ router.post('/', async (req, res) => {
     }
 
     // Check if token has video
-    const videoQueueService = require('../services/videoQueueService');
-
     if (token && token.hasVideo()) {
       // Check if video is already playing
       if (videoQueueService.isPlaying()) {
@@ -169,7 +168,6 @@ router.post('/batch', async (req, res) => {
     await initializeServices();
   }
 
-  const videoQueueService = require('../services/videoQueueService');
   const results = [];
 
   for (const scanRequest of transactions) {
@@ -189,7 +187,6 @@ router.post('/batch', async (req, res) => {
       if (!token && process.env.NODE_ENV === 'test' && scanRequest.tokenId && (scanRequest.tokenId.startsWith('TEST_') || scanRequest.tokenId.startsWith('MEM_'))) {
         const tokenId = scanRequest.tokenId;
         const isVideoToken = tokenId.startsWith('TEST_VIDEO_') || tokenId.startsWith('MEM_VIDEO_');
-        const Token = require('../models/token');
 
         token = new Token({
           id: tokenId,

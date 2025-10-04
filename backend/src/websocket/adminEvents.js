@@ -5,6 +5,9 @@
 
 const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
+const transactionService = require('../services/transactionService');
+const offlineQueueService = require('../services/offlineQueueService');
+const stateService = require('../services/stateService');
 const videoQueueService = require('../services/videoQueueService');
 const { emitWrapped } = require('./eventWrapper');
 
@@ -70,7 +73,6 @@ async function handleGmCommand(socket, data, io) {
 
       case 'score:adjust':
         // Reset scores through transaction service
-        const transactionService = require('../services/transactionService');
         transactionService.resetScores();
         emitWrapped(io, 'scores:reset', {
           gmStation: socket.deviceId,
@@ -127,8 +129,6 @@ async function handleTransactionSubmit(socket, data, io) {
     const scanRequest = validate(transactionData, scanRequestSchema);
 
     // Check if system is offline - use service directly for consistency
-    const offlineQueueService = require('../services/offlineQueueService');
-
     logger.info('Transaction handler checking offline status', {
       isOffline: offlineQueueService.isOffline,
       instanceId: offlineQueueService.instanceId
@@ -168,7 +168,6 @@ async function handleTransactionSubmit(socket, data, io) {
       return;
     }
 
-    const transactionService = require('../services/transactionService');
     const result = await transactionService.processScan(scanRequest, session);
 
     // Add the existing transaction to session (don't create duplicate)
@@ -225,7 +224,6 @@ function handleStateRequest(socket) {
       return;
     }
 
-    const stateService = require('../services/stateService');
     const state = stateService.getCurrentState();
 
     if (state) {

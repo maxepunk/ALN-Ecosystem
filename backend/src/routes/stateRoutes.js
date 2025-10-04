@@ -10,6 +10,7 @@ const logger = require('../utils/logger');
 const stateService = require('../services/stateService');
 const sessionService = require('../services/sessionService');
 const videoQueueService = require('../services/videoQueueService');
+const vlcService = require('../services/vlcService');
 
 /**
  * GET /api/state
@@ -80,7 +81,6 @@ router.get('/', async (req, res) => {
     const devices = []; // TODO: Implement device tracking from WebSocket connections
 
     // Get system status
-    const vlcService = require('../services/vlcService');
     const systemStatus = {
       orchestrator: 'online',  // If we're responding, we're online
       vlc: vlcService.isConnected() ? 'connected' : 'disconnected'

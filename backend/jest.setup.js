@@ -1,18 +1,37 @@
-const fs = require('fs').promises;
-const path = require('path');
+/**
+ * Jest Setup - Runs before each test file
+ *
+ * INTENTIONALLY MINIMAL: No global setup/teardown to avoid race conditions
+ * in parallel test execution.
+ *
+ * ## Test Isolation Strategy
+ *
+ * Each test type manages its own lifecycle:
+ *
+ * 1. **Unit Tests**: Use mocks, no shared state
+ *
+ * 2. **Contract Tests**: Use test-server.js helpers
+ *    - beforeAll(): setupTestServer()
+ *    - afterAll(): cleanupTestServer()
+ *    - beforeEach(): Reset stateful services (sessionService, videoQueueService, etc.)
+ *
+ * 3. **Integration Tests**: Use integration-test-server.js helpers
+ *    - beforeAll(): setupIntegrationTestServer()
+ *    - afterAll(): cleanupIntegrationTestServer()
+ *    - beforeEach(): Reset services but preserve server connection
+ *
+ * ## Why No Global Setup?
+ *
+ * Previous attempts at global setup/teardown caused:
+ * - Race conditions when tests run in parallel
+ * - Module cache conflicts with singleton services
+ * - Data directory deletion while tests are using it
+ *
+ * ## Global Teardown
+ *
+ * HTTP agent cleanup is handled in jest.globalTeardown.js which runs
+ * ONCE after ALL test files complete (safe for process-wide cleanup).
+ */
 
-// DISABLED: Global setup/teardown causes race conditions when tests run in parallel
-// Each test file should manage its own setup and cleanup using test utilities:
-// - Contract tests: use setupTestServer() / cleanupTestServer() from ws-test-utils.js
-// - Integration tests: use custom setup functions as needed
-// - Unit tests: use jest.resetModules() in their own beforeEach
-
-// The previous global cleanup was:
-// 1. Clearing module cache after every test → breaks singleton services
-// 2. Resetting ALL services after every test → causes conflicts between parallel tests
-// 3. Deleting data directory → race conditions when tests share data
-
-// Tests now manage their own lifecycle to avoid these issues
-
-// NOTE: HTTP agent cleanup moved to jest.globalTeardown.js
-// Global teardown runs ONCE after ALL tests complete (not per-file like afterAll)
+// This file is intentionally left empty
+// See comments above for test isolation strategy
