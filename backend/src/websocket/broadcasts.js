@@ -82,6 +82,7 @@ function setupBroadcastListeners(io, services) {
         teamId: transaction.teamId,
         deviceId: transaction.deviceId,
         mode: transaction.mode,  // AsyncAPI contract field (Decision #4)
+        status: transaction.status,  // CRITICAL: accepted/duplicate/error status
         points: transaction.points,
         timestamp: transaction.timestamp,
         // Include token details for frontend display (optional per contract)

@@ -14,9 +14,35 @@ info:
 
     **Key Patterns**:
     - All events use wrapped envelope: `{event, data, timestamp}`
-    - Authentication via JWT (from HTTP POST /api/admin/auth)
+    - Authentication via Socket.io handshake (JWT from HTTP POST /api/admin/auth)
     - ONE session at a time (2-hour live event)
     - Real-time state sync via sync:full event
+
+    **Authentication Flow**:
+    This API uses Socket.io handshake authentication (NOT application-level auth events).
+
+    1. Client obtains JWT token via HTTP POST /api/admin/auth (see OpenAPI spec)
+    2. Client connects WebSocket with credentials in `handshake.auth` object:
+       ```javascript
+       {
+         token: "JWT_TOKEN",           // Required: JWT from POST /api/admin/auth
+         deviceId: "DEVICE_ID",        // Required: Unique device identifier
+         deviceType: "gm" | "admin",   // Required: Device type for permissions
+         version: "1.0.0"              // Optional: Client version string
+       }
+       ```
+    3. Server validates JWT in Socket.io middleware during connection handshake
+    4. **Success**: Connection established → server registers device → broadcasts device:connected → auto-sends sync:full
+    5. **Failure**: Connection rejected → client receives connect_error (transport-level, not application event)
+
+    **Connection Rejection Reasons**:
+    - Missing or malformed JWT token
+    - Invalid JWT signature or expired token (> 24 hours)
+    - Token revoked (logout/admin action)
+    - Invalid deviceId or deviceType
+    - Server at capacity (max GM stations reached)
+
+    Note: Authentication errors occur at transport level (connect_error), not as application-level error events.
 
     **Documentation References**:
     - Alignment Decisions: docs/api-alignment/04-alignment-decisions.md
@@ -45,9 +71,10 @@ channels:
       description: |
         Server-to-client events (outgoing from orchestrator perspective).
         All events use wrapped envelope pattern per Decision #2.
+
+        After successful handshake authentication, client automatically receives sync:full event.
       message:
         oneOf:
-          - $ref: '#/components/messages/GmIdentified'
           - $ref: '#/components/messages/DeviceConnected'
           - $ref: '#/components/messages/DeviceDisconnected'
           - $ref: '#/components/messages/SyncFull'
@@ -65,141 +92,45 @@ channels:
       description: |
         Client-to-server events (incoming from orchestrator perspective).
         All events use wrapped envelope pattern per Decision #2.
+
+        Note: Authentication happens at connection time via Socket.io handshake, not via application-level events.
       message:
         oneOf:
-          - $ref: '#/components/messages/GmIdentify'
           - $ref: '#/components/messages/TransactionSubmit'
           - $ref: '#/components/messages/GmCommand'
 
 components:
   messages:
     # ============================================================================
-    # AUTHENTICATION & CONNECTION (4 events)
+    # DEVICE TRACKING (2 events)
+    # Note: Authentication happens via Socket.io handshake middleware (not events)
     # ============================================================================
-
-    GmIdentify:
-      name: gm:identify
-      title: GM Scanner Authentication
-      summary: Client authenticates WebSocket connection
-      description: |
-        GM Scanner or Admin Panel authenticates WebSocket connection using JWT token.
-
-        **Functional Requirement**: Section 1.1 (Auth & Authorization)
-        **Decisions Applied**: #2 (wrapped envelope), #4 (deviceId field)
-
-        **Flow**:
-        1. Client obtains JWT via HTTP POST /api/admin/auth
-        2. Client connects WebSocket
-        3. Client sends gm:identify with token
-        4. Server validates token → responds with gm:identified
-        5. Server sends sync:full with complete state
-      payload:
-        type: object
-        required:
-          - event
-          - data
-          - timestamp
-        properties:
-          event:
-            type: string
-            const: gm:identify
-            description: Event name
-          data:
-            type: object
-            required:
-              - token
-              - deviceId
-              - type
-              - name
-            properties:
-              token:
-                type: string
-                description: JWT token from POST /api/admin/auth
-                example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              deviceId:
-                type: string
-                description: Device identifier (per Decision 4)
-                example: "GM_Station_1"
-              type:
-                type: string
-                enum: [gm, admin]
-                description: Device type
-                example: "gm"
-              name:
-                type: string
-                description: Friendly device name
-                example: "GM Station v1.0.0"
-          timestamp:
-            type: string
-            format: date-time
-            description: Event timestamp (ISO8601)
-            example: "2025-10-15T19:00:30.000Z"
-
-    GmIdentified:
-      name: gm:identified
-      title: Authentication Confirmation
-      summary: Server confirms authentication
-      description: |
-        Server confirms GM Scanner authentication after successful validation.
-
-        **Functional Requirement**: Section 1.1 (Auth & Authorization)
-        **Decisions Applied**: #2 (wrapped envelope), #11 (add validation)
-
-        **Breaking Changes**:
-        - Now wrapped (was unwrapped)
-        - Added validation (client should check success field)
-
-        **Note**: Server automatically sends sync:full after this event.
-      payload:
-        type: object
-        required:
-          - event
-          - data
-          - timestamp
-        properties:
-          event:
-            type: string
-            const: gm:identified
-            description: Event name
-          data:
-            type: object
-            required:
-              - success
-              - deviceId
-            properties:
-              success:
-                type: boolean
-                description: Authentication success
-                example: true
-              deviceId:
-                type: string
-                description: Device identifier
-                example: "GM_Station_1"
-              sessionId:
-                type: string
-                format: uuid
-                nullable: true
-                description: Current session ID (null if no session)
-                example: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
-          timestamp:
-            type: string
-            format: date-time
-            description: Event timestamp
-            example: "2025-10-15T19:00:30.100Z"
 
     DeviceConnected:
       name: device:connected
       title: Device Connection Broadcast
       summary: Broadcast when device connects
       description: |
-        Broadcast to all connected clients when new device connects.
+        Broadcast to all connected clients when new device successfully authenticates and connects.
+
+        **Trigger**: After successful Socket.io handshake authentication:
+        1. Server middleware validates JWT in handshake.auth
+        2. Connection accepted
+        3. Device info extracted from handshake.auth
+        4. DeviceConnection model created
+        5. Device registered in current session (if exists)
+        6. THIS EVENT broadcast to all OTHER connected clients
+        7. sync:full sent to the newly connected device
+
+        **Important**: This event is NOT sent to the connecting device itself,
+        only broadcast to existing connected clients for awareness.
 
         **Functional Requirement**: Section 1.6 (Device Tracking)
         **Decisions Applied**: #2 (wrapped envelope), #4 (deviceId), #8 (send object not array)
 
         **CRITICAL - Decision #8**:
         Send single device object, NOT array.
-        Current scanner admin handler has bug expecting array (must fix scanner).
+        This event represents a SINGLE device connecting, not a list.
       payload:
         type: object
         required:
@@ -310,9 +241,15 @@ components:
         **Decisions Applied**: #2 (wrapped envelope), #5 (videoStatus structure), #7 (full session)
 
         **When Sent**:
-        - On WebSocket connection (after gm:identified)
-        - After offline queue processing
-        - On explicit request (eliminated sync:request event)
+        - Automatically on successful WebSocket connection (immediately after handshake authentication)
+        - After offline queue processing completes
+        - After admin commands that affect multiple state components
+        - After session state changes requiring full resync
+
+        **Initial Connection Behavior**:
+        When a GM Scanner or Admin Panel successfully authenticates and connects,
+        server automatically sends sync:full as the FIRST event. No request needed.
+        This replaces the old gm:identified → sync:full pattern.
 
         **Replaces**:
         - state:sync event (eliminated per investigation - redundant)

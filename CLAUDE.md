@@ -17,13 +17,7 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 
 **Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI).
 
-**Status**: Phase 5.4 - IN PROGRESS 
-- ✅ Phase 5.3 COMPLETE (271/271 tests passing)
-- ✅ All contract tests complete (96 tests - all APIs validated)
-- ✅ Comprehensive unit tests (183 tests - all business logic protected)
-- ✅ Zero failures across entire test suite
-
-**PHASE 5.4 IMPLEMENTATION PLAN**: @/home/spide/projects/AboutLastNight/ALN-Ecosystem/docs/api-alignment/07-refactor-plan-phase5.4.md
+**Status**: Current phase: @/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/docs/TEST-MODE-ELIMINATION-PLAN.md
 
 **API CONTRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
 
@@ -113,13 +107,10 @@ All services in `backend/src/services/` use singleton pattern with getInstance()
 - **offlineQueueService**: Offline scan queue management
 
 ### WebSocket Event Flow
-Follows the contracts in `backend/contracts/`
+/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/asyncapi.yaml
 
 ### API Response Format
-Follows the contracts in `backend/contracts/`
-
-### Test Structure
-Follow the architecture design from `docs/api-alignment/06-test-architecture.md`
+/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
 
 ## Environment Configuration
 

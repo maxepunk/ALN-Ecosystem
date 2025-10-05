@@ -15,7 +15,7 @@ const { emitWrapped } = require('./eventWrapper');
 /**
  * Handle GM station identification
  * @param {Socket} socket - Socket.io socket instance
- * @param {Object} data - Identification data per contract (stationId, version, token)
+ * @param {Object} data - Identification data per AsyncAPI contract (deviceId, version, token)
  * @param {Server} io - Socket.io server instance
  */
 async function handleGmIdentify(socket, data, io) {
@@ -32,18 +32,18 @@ async function handleGmIdentify(socket, data, io) {
 
     // Use data from handshake
     const identifyData = {
-      stationId: socket.deviceId,
+      deviceId: socket.deviceId,
       version: socket.version || '1.0.0',
     };
 
     logger.info('GM already authenticated from handshake', {
-      deviceId: identifyData.stationId,
+      deviceId: identifyData.deviceId,
       socketId: socket.id,
     });
 
     // Transform contract data to DeviceConnection format
     const deviceData = {
-      deviceId: identifyData.stationId,
+      deviceId: identifyData.deviceId,
       deviceType: 'gm', // GM stations always have type 'gm'
       name: `GM Station v${identifyData.version}`,
     };

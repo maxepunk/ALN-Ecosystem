@@ -998,27 +998,41 @@ describe('UDP Discovery Feature', () => {
 2. **Player Scanner hangs**: Constructor starts `setInterval()` that prevents process exit
    - Would cause memory leaks in long-running Node.js contexts (server-side rendering, CLIs)
 
-#### Phase 3.2: Create Player Scanner Helper
-- [ ] **Add createPlayerScanner() to websocket-helpers.js**:
+#### Phase 3.2: Create Player Scanner Helper ✅ COMPLETE
+- [x] **Add createPlayerScanner() to websocket-helpers.js**:
   ```javascript
-  async function createPlayerScanner(url, deviceId) {
+  function createPlayerScanner(url, deviceId) {
     const OrchestratorIntegration = require('../../../aln-memory-scanner/js/orchestratorIntegration');
     const client = new OrchestratorIntegration();
     client.baseUrl = url;
-    client.deviceId = deviceId;
+    if (deviceId) {
+      client.deviceId = deviceId;
+    }
     return client;
   }
   ```
-- [ ] **Export in module.exports**
-- [ ] **Verification**: Function exists and creates instance
+- [x] **Export in module.exports**
+- [x] **Verification**: Function exists and creates instance (tested in Phase 3.3)
 
-#### Phase 3.3: Test Scanner Helpers Work
-- [ ] **Create tests/integration/_scanner-helpers.test.js** - Verify helpers connect/communicate
-- [ ] **Test createAuthenticatedScanner()** - Can connect and send/receive events
-- [ ] **Test createPlayerScanner()** - Can make HTTP requests
-- [ ] **Run**: `npm test -- tests/integration/_scanner-helpers.test.js`
-- [ ] **Fix connection/auth issues**
-- [ ] **Verification**: Helper test passes
+#### Phase 3.3: Test Scanner Helpers Work ✅ COMPLETE
+- [x] **Create tests/integration/_scanner-helpers.test.js** - Verify helpers connect/communicate
+- [x] **Test createAuthenticatedScanner()** - Can connect and send/receive events
+- [x] **Test createPlayerScanner()** - Can make HTTP requests
+- [x] **Run**: `npm test -- tests/integration/_scanner-helpers.test.js`
+- [x] **Fix connection/auth issues**
+- [x] **Verification**: Helper test passes (7/7 tests)
+
+**PRODUCTION BUG DISCOVERED & FIXED:**
+- **Bug**: AsyncAPI contract specifies `deviceId` in handshake.auth, production server expected `stationId`
+- **Impact**: GM Scanners would connect but fail all transaction submissions with "Not identified" error
+- **Root Cause**: Contract violation - server.js line 41 extracted `stationId` instead of `deviceId`
+- **Files Fixed**:
+  - backend/src/server.js (lines 41, 43, 54, 66)
+  - backend/src/websocket/gmAuth.js (lines 18, 35, 40, 46)
+  - backend/tests/helpers/integration-test-server.js (lines 53, 55, 60, 72)
+  - backend/tests/helpers/websocket-helpers.js (line 78)
+  - backend/tests/contract/websocket/session-events.test.js (line 91)
+- **Verification**: All contract tests pass (56/56), scanner helper tests pass (7/7)
 
 #### Phase 3.4: Transform ONE GM Test (Pattern Validation)
 - [ ] **Pick simplest test**: transaction-flow.test.js (already uses real tokens)

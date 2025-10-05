@@ -70,11 +70,12 @@ function waitForEvent(socket, eventOrEvents, timeout = 5000) {
  */
 async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5000) {
   // If URL provided, create socket with handshake auth (production flow)
+  // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
   const socket = typeof socketOrUrl === 'string'
     ? createTrackedSocket(socketOrUrl, {
         auth: {
           token: 'test-jwt-token',
-          stationId: deviceId,
+          deviceId: deviceId,
           deviceType: deviceType,
           version: '1.0.0'
         }
@@ -163,7 +164,7 @@ function testDelay(ms) {
  * @param {string} password - Admin password
  * @returns {Promise<OrchestratorClient>} Connected scanner
  */
-async function createAuthenticatedScanner(url, deviceId, password = 'admin') {
+async function createAuthenticatedScanner(url, deviceId, password = 'test-admin-password') {
   // Import real scanner module (requires browser mocks to be loaded first)
   const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
 
@@ -188,8 +189,54 @@ async function createAuthenticatedScanner(url, deviceId, password = 'admin') {
   const { token } = await authResponse.json();
   client.token = token;
 
-  // Connect WebSocket
-  await client.connect();
+  // Start connection (creates socket, returns immediately)
+  client.connect();
+
+  // Check if already connected (unlikely but possible on very fast localhost)
+  if (client.socket.connected) {
+    return client;
+  }
+
+  // Wait for Socket.io 'connect' event (per AsyncAPI contract)
+  // Contract: "Connection established → server registers device → broadcasts device:connected → auto-sends sync:full"
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('WebSocket connection timeout'));
+    }, 5000);
+
+    // Wait for transport-level connect event (handshake auth success)
+    client.socket.once('connect', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+
+    // Handle connection errors (handshake auth failure)
+    client.socket.once('connect_error', (error) => {
+      clearTimeout(timeout);
+      reject(new Error(`WebSocket connection failed: ${error.message}`));
+    });
+  });
+
+  return client;
+}
+
+/**
+ * Create Player Scanner client using REAL player scanner code
+ * NOTE: Requires browser-mocks.js to be loaded first
+ * @param {string} url - Server URL
+ * @param {string} deviceId - Scanner device ID (optional, auto-generated if not provided)
+ * @returns {OrchestratorIntegration} Player Scanner instance
+ */
+function createPlayerScanner(url, deviceId) {
+  // Import real Player Scanner module (requires browser mocks to be loaded first)
+  const OrchestratorIntegration = require('../../../aln-memory-scanner/js/orchestratorIntegration');
+
+  const client = new OrchestratorIntegration();
+  client.baseUrl = url;
+
+  if (deviceId) {
+    client.deviceId = deviceId;
+  }
 
   return client;
 }
@@ -201,5 +248,6 @@ module.exports = {
   waitForMultipleEvents,
   cleanupSockets,
   testDelay,
-  createAuthenticatedScanner, // NEW - uses real scanner code
+  createAuthenticatedScanner, // GM Scanner - uses real scanner code
+  createPlayerScanner,        // Player Scanner - uses real scanner code
 };

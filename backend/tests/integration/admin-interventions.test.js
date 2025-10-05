@@ -1,0 +1,506 @@
+/**
+ * Admin Intervention Integration Tests
+ *
+ * Tests admin commands → service execution → state updates → broadcasts
+ *
+ * CRITICAL: These tests validate admin control panel functionality.
+ * Expected to REVEAL implementation bugs in command processing and broadcast propagation.
+ *
+ * Implemented Admin Commands (from adminEvents.js):
+ * - session:create, session:pause, session:resume, session:end
+ * - video:skip
+ * - score:adjust
+ *
+ * Missing Commands (from AsyncAPI contract but not implemented):
+ * - video:play, video:pause, video:stop
+ * - video:queue:add, video:queue:reorder, video:queue:clear
+ * - transaction:delete, transaction:create
+ * - system:reset
+ *
+ * Contract: backend/contracts/asyncapi.yaml (gm:command, gm:command:ack)
+ * Functional Requirements: Section 4.2 (Admin Panel Intervention)
+ */
+
+const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const { validateWebSocketEvent } = require('../helpers/contract-validator');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const sessionService = require('../../src/services/sessionService');
+const transactionService = require('../../src/services/transactionService');
+const videoQueueService = require('../../src/services/videoQueueService');
+
+describe('Admin Intervention Integration', () => {
+  let testContext, gmAdmin, gmObserver;
+
+  beforeAll(async () => {
+    testContext = await setupIntegrationTestServer();
+  });
+
+  afterAll(async () => {
+    await cleanupIntegrationTestServer(testContext);
+  });
+
+  beforeEach(async () => {
+    // Reset services
+    await sessionService.reset();
+    await transactionService.reset();
+
+    // CRITICAL: Cleanup old broadcast listeners
+    cleanupBroadcastListeners();
+
+    // Re-initialize tokens
+    const tokenService = require('../../src/services/tokenService');
+    const tokens = tokenService.loadTokens();
+    await transactionService.init(tokens);
+
+    // Re-setup broadcast listeners
+    const stateService = require('../../src/services/stateService');
+    const offlineQueueService = require('../../src/services/offlineQueueService');
+
+    setupBroadcastListeners(testContext.io, {
+      sessionService,
+      transactionService,
+      stateService,
+      videoQueueService,
+      offlineQueueService
+    });
+
+    // Create test session
+    await sessionService.createSession({
+      name: 'Admin Intervention Test',
+      teams: ['001', '002']
+    });
+
+    // Connect admin GM and observer GM
+    gmAdmin = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ADMIN');
+    gmObserver = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_OBSERVER');
+  });
+
+  afterEach(async () => {
+    if (gmAdmin?.connected) gmAdmin.disconnect();
+    if (gmObserver?.connected) gmObserver.disconnect();
+    await sessionService.reset();
+  });
+
+  describe('Score Adjustment', () => {
+    it('should adjust team score via admin command and broadcast to all GMs', async () => {
+      // Setup: Create initial score by processing a transaction
+      await transactionService.processScan({
+        tokenId: 'rat001',
+        teamId: '001',
+        deviceId: 'SETUP',
+        mode: 'blackmarket'
+      }, sessionService.getCurrentSession());
+
+      // Verify initial score
+      let teamScores = transactionService.getTeamScores();
+      let teamScore = teamScores.find(s => s.teamId === '001');
+      expect(teamScore.currentScore).toBe(15000); // rat001 = 15000
+
+      // CRITICAL: Set up listeners BEFORE command to avoid race condition
+      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      // CRITICAL: Wait for score:updated event with ADJUSTED score (not setup transaction score)
+      const scorePromise = new Promise((resolve) => {
+        gmObserver.on('score:updated', (event) => {
+          if (event.data.currentScore === 14500) { // Expected after adjustment
+            resolve(event);
+          }
+        });
+      });
+
+      // Trigger: Admin adjusts score (penalty)
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'score:adjust',
+          payload: {
+            teamId: '001',
+            delta: -500,
+            reason: 'Rule violation penalty'
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Wait for command ack and score broadcast
+      const [ack, scoreEvent] = await Promise.all([ackPromise, scorePromise]);
+
+      // Validate: Command acknowledged to sender
+      expect(ack.event).toBe('gm:command:ack');
+      expect(ack.data.action).toBe('score:adjust');
+      expect(ack.data.success).toBe(true);
+      expect(ack.data.message).toContain('adjusted');
+
+      // Validate: Contract compliance for ack
+      validateWebSocketEvent(ack, 'gm:command:ack');
+
+      // Validate: Score updated broadcast reached observer
+      expect(scoreEvent.data.teamId).toBe('001');
+      expect(scoreEvent.data.currentScore).toBe(14500); // 15000 - 500
+
+      // Validate: Service state matches broadcast
+      teamScores = transactionService.getTeamScores();
+      teamScore = teamScores.find(s => s.teamId === '001');
+      expect(teamScore.currentScore).toBe(14500);
+    });
+
+    it('should handle positive score adjustments (bonus points)', async () => {
+      // Create initial score
+      await transactionService.processScan({
+        tokenId: 'asm001',
+        teamId: '002',
+        deviceId: 'SETUP',
+        mode: 'blackmarket'
+      }, sessionService.getCurrentSession());
+
+      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      // Wait for score event with ADJUSTED value
+      const scorePromise = new Promise((resolve) => {
+        gmObserver.on('score:updated', (event) => {
+          if (event.data.currentScore === 3000) { // 1000 + 2000
+            resolve(event);
+          }
+        });
+      });
+
+      // Admin adds bonus points
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'score:adjust',
+          payload: {
+            teamId: '002',
+            delta: 2000,
+            reason: 'Exceptional gameplay bonus'
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const [ack, scoreEvent] = await Promise.all([ackPromise, scorePromise]);
+
+      expect(ack.data.success).toBe(true);
+      expect(scoreEvent.data.currentScore).toBe(3000); // 1000 + 2000
+
+      const teamScores = transactionService.getTeamScores();
+      const teamScore = teamScores.find(s => s.teamId === '002');
+      expect(teamScore.currentScore).toBe(3000);
+    });
+
+    it('should reject score adjustment for non-existent team', async () => {
+      const errorPromise = waitForEvent(gmAdmin, 'error');
+
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'score:adjust',
+          payload: {
+            teamId: '999', // Non-existent team
+            delta: 100,
+            reason: 'Test'
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const errorEvent = await errorPromise;
+
+      expect(errorEvent.event).toBe('error');
+      expect(errorEvent.data.code).toBe('SERVER_ERROR');
+      expect(errorEvent.data.details).toContain('Team 999 not found');
+    });
+  });
+
+  describe('Session Lifecycle Control', () => {
+    it('should pause session and reject new transactions', async () => {
+      const sessionUpdatePromise = waitForEvent(gmObserver, 'session:update');
+      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      // Pause session
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'session:pause',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const [ack, sessionUpdate] = await Promise.all([ackPromise, sessionUpdatePromise]);
+
+      // Validate: Command acknowledged
+      expect(ack.data.success).toBe(true);
+      expect(ack.data.action).toBe('session:pause');
+
+      // Validate: Session update broadcast
+      expect(sessionUpdate.data.status).toBe('paused');
+      validateWebSocketEvent(sessionUpdate, 'session:update');
+
+      // Verify: Transaction rejected when session paused
+      const resultPromise = waitForEvent(gmObserver, 'transaction:result');
+
+      gmObserver.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'GM_OBSERVER',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await resultPromise;
+
+      expect(result.data.status).toBe('error');
+      expect(result.data.message).toContain('paused');
+      expect(result.data.error).toBe('SESSION_PAUSED');
+    });
+
+    it('should resume session and allow transactions', async () => {
+      // First pause
+      await sessionService.updateSession({ status: 'paused' });
+
+      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      // Wait for session:update with active status
+      const sessionUpdatePromise = new Promise((resolve) => {
+        gmObserver.on('session:update', (event) => {
+          if (event.data.status === 'active') {
+            resolve(event);
+          }
+        });
+      });
+
+      // Resume session
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'session:resume',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const [ack, sessionUpdate] = await Promise.all([ackPromise, sessionUpdatePromise]);
+
+      expect(ack.data.success).toBe(true);
+      expect(sessionUpdate.data.status).toBe('active');
+
+      // Verify: Transaction accepted after resume
+      const resultPromise = waitForEvent(gmObserver, 'transaction:result');
+
+      gmObserver.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'GM_OBSERVER',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await resultPromise;
+
+      expect(result.data.status).toBe('accepted');
+      expect(result.data.points).toBe(15000);
+    });
+
+    it('should end session and cleanup services', async () => {
+      // Create some transactions first
+      await transactionService.processScan({
+        tokenId: 'rat001',
+        teamId: '001',
+        deviceId: 'SETUP',
+        mode: 'blackmarket'
+      }, sessionService.getCurrentSession());
+
+      let teamScores = transactionService.getTeamScores();
+      const scoreBefore = teamScores.find(s => s.teamId === '001');
+      expect(scoreBefore.currentScore).toBe(15000);
+
+      const sessionUpdatePromise = waitForEvent(gmObserver, 'session:update');
+      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      // End session
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'session:end',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const [ack, sessionUpdate] = await Promise.all([ackPromise, sessionUpdatePromise]);
+
+      expect(ack.data.success).toBe(true);
+      expect(sessionUpdate.data.status).toBe('ended');
+      expect(sessionUpdate.data.endTime).toBeDefined();
+
+      // Verify: Scores cleared after session end
+      await new Promise(resolve => setTimeout(resolve, 100));
+      teamScores = transactionService.getTeamScores();
+      // Scores should be cleared (array is empty, not reset to 0)
+      expect(teamScores.length).toBe(0);
+    });
+  });
+
+  describe('Video Control', () => {
+    it('should skip current video', async () => {
+      // TODO: This test requires video to be playing
+      // For now, test that command is acknowledged even with no video
+      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'video:skip',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const ack = await ackPromise;
+
+      expect(ack.data.success).toBe(true);
+      expect(ack.data.action).toBe('video:skip');
+    });
+  });
+
+  describe('Authorization & Error Handling', () => {
+    it('should reject commands from unauthenticated clients', async () => {
+      // Create unauthenticated socket (don't identify)
+      const io = require('socket.io-client');
+      const unauthSocket = io(testContext.socketUrl, {
+        transports: ['websocket'],
+        reconnection: false
+      });
+
+      await waitForEvent(unauthSocket, 'connect');
+
+      const errorPromise = waitForEvent(unauthSocket, 'error');
+
+      // Try to send command without auth
+      unauthSocket.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'score:adjust',
+          payload: {
+            teamId: '001',
+            delta: 100
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const errorEvent = await errorPromise;
+
+      expect(errorEvent.data.code).toBe('AUTH_REQUIRED');
+
+      unauthSocket.disconnect();
+    });
+
+    it('should handle invalid command action', async () => {
+      const errorPromise = waitForEvent(gmAdmin, 'error');
+
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'invalid:action',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const errorEvent = await errorPromise;
+
+      expect(errorEvent.data.code).toBe('INVALID_COMMAND');
+      expect(errorEvent.data.message).toContain('Unknown action');
+    });
+
+    it('should handle missing required parameters', async () => {
+      const errorPromise = waitForEvent(gmAdmin, 'error');
+
+      // score:adjust requires teamId and delta
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'score:adjust',
+          payload: {
+            // Missing teamId and delta
+            reason: 'Test'
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const errorEvent = await errorPromise;
+
+      expect(errorEvent.data.code).toBe('SERVER_ERROR');
+      expect(errorEvent.data.details).toContain('required');
+    });
+  });
+
+  describe('Multi-Client Broadcast Verification', () => {
+    it('should send ack to sender only, broadcasts to all GMs', async () => {
+      // Create initial score
+      await transactionService.processScan({
+        tokenId: 'rat001',
+        teamId: '001',
+        deviceId: 'SETUP',
+        mode: 'blackmarket'
+      }, sessionService.getCurrentSession());
+
+      // Track events on BOTH clients
+      const adminAckPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+
+      // Wait for score event with ADJUSTED value
+      const observerScorePromise = new Promise((resolve) => {
+        gmObserver.on('score:updated', (event) => {
+          if (event.data.currentScore === 14000) { // 15000 - 1000
+            resolve(event);
+          }
+        });
+      });
+
+      // Admin issues command
+      gmAdmin.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'score:adjust',
+          payload: {
+            teamId: '001',
+            delta: -1000
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Wait for both events
+      const [adminAck, observerScore] = await Promise.all([
+        adminAckPromise,
+        observerScorePromise
+      ]);
+
+      // Validate: Admin received ack
+      expect(adminAck.event).toBe('gm:command:ack');
+      expect(adminAck.data.success).toBe(true);
+
+      // Validate: Observer received score update (side effect)
+      expect(observerScore.event).toBe('score:updated');
+      expect(observerScore.data.currentScore).toBe(14000); // 15000 - 1000
+
+      // Observer should NOT receive ack (ack is to sender only)
+      // We can't easily test "did not receive" without waiting, so we validate timing
+      const ackTimestamp = new Date(adminAck.timestamp).getTime();
+      const scoreTimestamp = new Date(observerScore.timestamp).getTime();
+
+      // Both should be very close in time (same server action)
+      expect(Math.abs(ackTimestamp - scoreTimestamp)).toBeLessThan(100);
+    });
+  });
+});

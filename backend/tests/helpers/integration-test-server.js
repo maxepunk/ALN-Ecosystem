@@ -49,14 +49,15 @@ async function setupIntegrationTestServer() {
     logger.debug('Integration test WebSocket connection', { socketId: socket.id });
 
     // PRE-AUTHENTICATE from handshake (match production server.js lines 39-73)
-    const { token, stationId, deviceType, version } = socket.handshake.auth || {};
+    // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
+    const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
 
-    if (token && stationId && deviceType === 'gm') {
+    if (token && deviceId && deviceType === 'gm') {
       // Pre-authenticate as admin (simulates successful HTTP JWT validation)
       socket.isAuthenticated = true;
       socket.authRole = 'admin';
       socket.authUserId = 'test-admin';
-      socket.deviceId = stationId;
+      socket.deviceId = deviceId;
       socket.deviceType = deviceType;
       socket.version = version || '1.0.0';
 
@@ -68,7 +69,7 @@ async function setupIntegrationTestServer() {
       // AUTO-CALL handleGmIdentify like production does (server.js line 64)
       // This registers device and triggers device:connected + sync:full
       await handleGmIdentify(socket, {
-        stationId: socket.deviceId,
+        deviceId: socket.deviceId,  // Per AsyncAPI contract
         version: socket.version,
         token: token
       }, io);
@@ -81,6 +82,13 @@ async function setupIntegrationTestServer() {
 
     // Transaction submit
     socket.on('transaction:submit', async (data) => {
+      logger.info('===== TRANSACTION SUBMIT DEBUG =====', {
+        socketId: socket.id,
+        deviceId: socket.deviceId,
+        isAuthenticated: socket.isAuthenticated,
+        deviceType: socket.deviceType,
+        hasDeviceId: !!socket.deviceId
+      });
       await handleTransactionSubmit(socket, data, io);
     });
 

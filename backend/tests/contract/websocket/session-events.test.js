@@ -84,10 +84,11 @@ describe('Session Events - Contract Validation', () => {
 
       // Setup: Create socket with handshake auth (production flow)
       // sync:full is sent automatically after successful handshake auth
+      // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
       socket = createTrackedSocket(testContext.socketUrl, {
         auth: {
           token: 'test-jwt-token',
-          stationId: 'TEST_GM_SYNC',
+          deviceId: 'TEST_GM_SYNC',
           deviceType: 'gm',
           version: '1.0.0'
         }

@@ -37,9 +37,10 @@ function setupWebSocketHandlers(ioInstance) {
   logger.info('WebSocket connection established', { socketId: socket.id });
 
   // Check for auth in handshake (Phase 1 fix: prevent undefined device)
-  const { token, stationId, deviceType, version } = socket.handshake.auth || {};
+  // Extract auth from handshake per AsyncAPI contract (uses deviceId, not stationId)
+  const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
 
-  if (token && stationId && deviceType === 'gm') {
+  if (token && deviceId && deviceType === 'gm') {
     // Pre-authenticate from handshake to prevent "undefined device"
     try {
       const { verifyToken } = require('./middleware/auth');
@@ -50,21 +51,21 @@ function setupWebSocketHandlers(ioInstance) {
         socket.isAuthenticated = true;
         socket.authRole = decoded.role;
         socket.authUserId = decoded.id;
-        socket.deviceId = stationId;
+        socket.deviceId = deviceId;
         socket.deviceType = deviceType;
         socket.version = version;
 
         logger.info('GM station pre-authenticated from handshake', {
-          deviceId: stationId,
+          deviceId: deviceId,
           socketId: socket.id
         });
 
         // Automatically trigger identification for pre-authenticated connections
         // This replaces the need for the scanner to send gm:identify
         await handleGmIdentify(socket, {
-          stationId,
+          deviceId: deviceId,  // Per AsyncAPI contract
           version,
-          token // Pass token for the handler
+          token
         }, ioInstance);
       }
     } catch (error) {

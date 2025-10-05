@@ -63,12 +63,39 @@ paths:
         1. Admin Panel sends password
         2. Backend validates password
         3. Returns JWT token (24-hour expiry)
-        4. Token used for WebSocket handshake (gm:identify event)
+        4. Token used for WebSocket connection authentication
+
+        **WebSocket Authentication**:
+        Client includes JWT token in Socket.io `handshake.auth` object when connecting.
+        Server validates token via middleware during connection handshake (before connection accepted).
+
+        Authentication succeeds:
+          - Connection established
+          - Device registered in session
+          - `device:connected` broadcast to other clients
+          - `sync:full` event auto-sent to newly connected client
+
+        Authentication fails:
+          - Connection rejected immediately
+          - Client receives Socket.io `connect_error` event
+          - Error code: AUTH_REQUIRED, INVALID_TOKEN, or TOKEN_EXPIRED
+
+        **Handshake.auth Structure**:
+        ```javascript
+        {
+          token: "JWT_TOKEN",           // Required: JWT from this endpoint
+          deviceId: "DEVICE_ID",        // Required: Unique device identifier
+          deviceType: "gm" | "admin",   // Required: Device type
+          version: "1.0.0"              // Optional: Client version
+        }
+        ```
 
         **Security**:
         - Password validation via environment variable
-        - JWT tokens for stateless auth
-        - Tokens tracked for active sessions
+        - JWT tokens for stateless WebSocket authentication
+        - Token validation during Socket.io handshake (connection-time)
+        - Tokens tracked for active sessions (revocable via logout)
+        - Failed authentication blocks connection establishment
       operationId: authenticateAdmin
       requestBody:
         required: true

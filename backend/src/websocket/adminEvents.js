@@ -218,6 +218,14 @@ async function handleTransactionSubmit(socket, data, io) {
       error: result.error || null
     };
 
+    // Add duplicate-specific fields if present (from createScanResponse)
+    if (result.originalTransactionId) {
+      contractResult.originalTransactionId = result.originalTransactionId;
+    }
+    if (result.claimedBy) {
+      contractResult.claimedBy = result.claimedBy;
+    }
+
     // Send contract-compliant result back to submitter
     emitWrapped(socket, 'transaction:result', contractResult);
 
@@ -235,9 +243,11 @@ async function handleTransactionSubmit(socket, data, io) {
 
     // Send error response
     emitWrapped(socket, 'error', {
-      code: 'INVALID_DATA',
+      code: 'VALIDATION_ERROR',  // AsyncAPI contract enum value
       message: 'Failed to process transaction',
-      details: error.message,
+      details: (error.details && !Array.isArray(error.details))
+        ? error.details
+        : { error: error.message, validationErrors: error.details },  // Must be object per contract
     });
   }
 }
