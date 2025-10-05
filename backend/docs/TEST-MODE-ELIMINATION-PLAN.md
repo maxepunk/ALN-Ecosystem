@@ -977,8 +977,8 @@ describe('UDP Discovery Feature', () => {
 
 ---
 
-#### Phase 3.1: Complete Browser Mocks (Prerequisite)
-- [ ] **Update browser-mocks.js** - Add missing globals for GM scanner:
+#### Phase 3.1: Complete Browser Mocks (Prerequisite) ✅ COMPLETE
+- [x] **Update browser-mocks.js** - Add missing globals for GM scanner:
   ```javascript
   global.App = { viewController: null, updateAdminPanel: () => {} };
   global.Debug = { log: () => {}, warn: () => {}, error: () => {} };
@@ -986,10 +986,17 @@ describe('UDP Discovery Feature', () => {
   global.window.queueManager = null;
   global.console = console;
   ```
-- [ ] **Test GM Scanner loads**: `node -e "require('./tests/helpers/browser-mocks'); const C = require('./ALNScanner/js/network/orchestratorClient'); console.log('Loaded:', typeof C);"`
-- [ ] **Test Player Scanner loads**: `node -e "require('./tests/helpers/browser-mocks'); const I = require('./aln-memory-scanner/js/orchestratorIntegration'); console.log('Loaded:', typeof I);"`
-- [ ] **Fix any loading errors** discovered
-- [ ] **Verification**: Both scanner modules load without errors
+- [x] **Test GM Scanner loads** - DISCOVERED BUG #1: Missing `ConnectionManager` global (line 503)
+- [x] **Fix Bug #1** - Added `global.ConnectionManager = class ConnectionManager {};`
+- [x] **Test Player Scanner loads** - DISCOVERED BUG #2: `setInterval()` in constructor keeps Node.js alive
+- [x] **Fix Bug #2** - Mocked `setInterval/clearInterval` to register but not execute
+- [x] **Verification**: Both scanner modules load without errors
+
+**Production Bugs Found**:
+1. **GM Scanner crash**: References undefined `ConnectionManager` global (orchestratorClient.js:503)
+   - Would fail in any non-browser environment (Node.js, Deno, etc.)
+2. **Player Scanner hangs**: Constructor starts `setInterval()` that prevents process exit
+   - Would cause memory leaks in long-running Node.js contexts (server-side rendering, CLIs)
 
 #### Phase 3.2: Create Player Scanner Helper
 - [ ] **Add createPlayerScanner() to websocket-helpers.js**:
