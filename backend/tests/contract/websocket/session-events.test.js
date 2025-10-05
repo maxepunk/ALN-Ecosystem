@@ -4,7 +4,7 @@
  */
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
-const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
+const { connectAndIdentify, waitForEvent, createTrackedSocket } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const sessionService = require('../../../src/services/sessionService');
 
@@ -82,25 +82,19 @@ describe('Session Events - Contract Validation', () => {
         socket.disconnect();
       }
 
-      // Setup: Listen for sync:full BEFORE connecting
-      // Note: sync:full is sent automatically after gm:identified
-      const io = require('socket.io-client');
-      socket = io(testContext.socketUrl, {
-        transports: ['websocket'],
-        reconnection: false
+      // Setup: Create socket with handshake auth (production flow)
+      // sync:full is sent automatically after successful handshake auth
+      socket = createTrackedSocket(testContext.socketUrl, {
+        auth: {
+          token: 'test-jwt-token',
+          stationId: 'TEST_GM_SYNC',
+          deviceType: 'gm',
+          version: '1.0.0'
+        }
       });
 
-      const eventPromise = waitForEvent(socket, 'sync:full');
-
-      // Trigger: Identify to trigger sync:full (sent after gm:identified)
-      socket.emit('gm:identify', {
-        deviceId: 'TEST_GM_SYNC',
-        name: 'Test GM',
-        version: '1.0.0'
-      });
-
-      // Wait: For sync:full broadcast
-      const event = await eventPromise;
+      // Wait: For sync:full (auto-sent after handshake auth per contract)
+      const event = await waitForEvent(socket, 'sync:full');
 
       // Validate: Wrapped envelope structure
       expect(event).toHaveProperty('event', 'sync:full');

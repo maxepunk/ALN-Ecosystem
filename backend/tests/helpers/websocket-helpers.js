@@ -8,7 +8,7 @@ const io = require('socket.io-client');
 /**
  * Create a socket with automatic cleanup tracking
  * @param {string} url - Socket URL
- * @param {Object} options - Socket options
+ * @param {Object} options - Socket options (can include auth for handshake)
  * @returns {Socket} Socket instance
  */
 function createTrackedSocket(url, options = {}) {
@@ -69,31 +69,22 @@ function waitForEvent(socket, eventOrEvents, timeout = 5000) {
  * @returns {Promise<Socket>} Connected and identified socket
  */
 async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5000) {
+  // If URL provided, create socket with handshake auth (production flow)
   const socket = typeof socketOrUrl === 'string'
-    ? createTrackedSocket(socketOrUrl)
+    ? createTrackedSocket(socketOrUrl, {
+        auth: {
+          token: 'test-jwt-token',
+          stationId: deviceId,
+          deviceType: deviceType,
+          version: '1.0.0'
+        }
+      })
     : socketOrUrl;
 
   try {
-    // Wait for connection if not already connected
+    // Wait for connection (handshake auth + device registration happens automatically)
     if (!socket.connected) {
       await waitForEvent(socket, 'connect', timeout);
-    }
-
-    // Send identification based on device type
-    if (deviceType === 'gm') {
-      socket.emit('gm:identify', {
-        deviceId: deviceId,
-        version: '1.0.0',
-      });
-      await waitForEvent(socket, 'gm:identified', timeout);
-    } else if (deviceType === 'scanner') {
-      socket.emit('scanner:identify', {
-        deviceId: deviceId,
-        version: '1.0.0',
-      });
-      await waitForEvent(socket, 'scanner:identified', timeout);
-    } else {
-      throw new Error(`Unknown device type: ${deviceType}`);
     }
 
     // Store device info for debugging

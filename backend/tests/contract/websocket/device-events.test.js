@@ -47,6 +47,37 @@ describe('Device Events - Contract Validation', () => {
     await sessionService.reset();
   });
 
+  describe('device:connected event', () => {
+    it('should match AsyncAPI schema when GM connects', async () => {
+      // Setup: Connect first GM socket (will receive broadcast)
+      socket1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_OBSERVER');
+
+      // Setup: Listen for device:connected BEFORE triggering
+      const eventPromise = waitForEvent(socket1, 'device:connected');
+
+      // Trigger: Connect second GM socket (will broadcast device:connected to socket1)
+      socket2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_2');
+
+      // Wait: For device:connected broadcast
+      const event = await eventPromise;
+
+      // Validate: Wrapped envelope structure
+      expect(event).toHaveProperty('event', 'device:connected');
+      expect(event).toHaveProperty('data');
+      expect(event).toHaveProperty('timestamp');
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // Validate: Payload content (per AsyncAPI DeviceConnected schema)
+      expect(event.data).toHaveProperty('deviceId', 'TEST_GM_2');
+      expect(event.data).toHaveProperty('type', 'gm');
+      expect(event.data).toHaveProperty('connectionTime');
+      expect(event.data.connectionTime).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // Validate: Against AsyncAPI contract schema (ajv)
+      validateWebSocketEvent(event, 'device:connected');
+    });
+  });
+
   describe('device:disconnected event', () => {
     it('should match AsyncAPI schema when GM disconnects manually', async () => {
       // Setup: Connect first GM socket (will receive broadcast)

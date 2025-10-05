@@ -26,8 +26,14 @@ async function setupIntegrationTestServer() {
   // Initialize ALL services with real token data
   await initializeServices();
 
-  // VERIFY services initialized correctly
+  // Load all services (needed for verification + broadcast listeners)
+  const sessionService = require('../../src/services/sessionService');
   const transactionService = require('../../src/services/transactionService');
+  const stateService = require('../../src/services/stateService');
+  const videoQueueService = require('../../src/services/videoQueueService');
+  const offlineQueueService = require('../../src/services/offlineQueueService');
+
+  // VERIFY services initialized correctly
   if (transactionService.tokens.size === 0) {
     throw new Error('Service initialization failed: tokens not loaded');
   }
@@ -38,14 +44,35 @@ async function setupIntegrationTestServer() {
   // Create Socket.IO server
   const io = createSocketServer(server);
 
-  // Setup WebSocket handlers (FULL production handlers)
+  // Setup WebSocket handlers (match production src/server.js lines 36-103)
   io.on('connection', async (socket) => {
     logger.debug('Integration test WebSocket connection', { socketId: socket.id });
 
-    // GM identification
-    socket.on('gm:identify', async (data) => {
-      await handleGmIdentify(socket, data, io);
-    });
+    // PRE-AUTHENTICATE from handshake (match production server.js lines 39-73)
+    const { token, stationId, deviceType, version } = socket.handshake.auth || {};
+
+    if (token && stationId && deviceType === 'gm') {
+      // Pre-authenticate as admin (simulates successful HTTP JWT validation)
+      socket.isAuthenticated = true;
+      socket.authRole = 'admin';
+      socket.authUserId = 'test-admin';
+      socket.deviceId = stationId;
+      socket.deviceType = deviceType;
+      socket.version = version || '1.0.0';
+
+      logger.debug('GM pre-authenticated from handshake', {
+        deviceId: socket.deviceId,
+        socketId: socket.id
+      });
+
+      // AUTO-CALL handleGmIdentify like production does (server.js line 64)
+      // This registers device and triggers device:connected + sync:full
+      await handleGmIdentify(socket, {
+        stationId: socket.deviceId,
+        version: socket.version,
+        token: token
+      }, io);
+    }
 
     // Sync request
     socket.on('sync:request', async () => {
@@ -69,12 +96,6 @@ async function setupIntegrationTestServer() {
   });
 
   // Setup broadcast listeners (service events → WebSocket broadcasts)
-  const sessionService = require('../../src/services/sessionService');
-  const transactionService = require('../../src/services/transactionService');
-  const stateService = require('../../src/services/stateService');
-  const videoQueueService = require('../../src/services/videoQueueService');
-  const offlineQueueService = require('../../src/services/offlineQueueService');
-
   setupBroadcastListeners(io, {
     sessionService,
     stateService,
