@@ -960,23 +960,124 @@ describe('UDP Discovery Feature', () => {
 5. **Test what production does** - Deleted 8/9 WebSocket imports task, only needed to fix tests using antipatterns
 
 
-### Phase 3: Integration Tests
-- [ ] Review previous steps' work and relevant code for this phase and prepare for implementation.
-- [ ] Edit all 11 integration test files - Apply transformation pattern (use real scanner code, real tokens):
-  - [ ] `tests/integration/admin-interventions.test.js`
-  - [ ] `tests/integration/duplicate-detection.test.js`
-  - [ ] `tests/integration/error-propagation.test.js`
-  - [ ] `tests/integration/group-completion.test.js`
-  - [ ] `tests/integration/multi-client-broadcasts.test.js`
-  - [ ] `tests/integration/offline-queue-sync.test.js`
-  - [ ] `tests/integration/service-events.test.js`
-  - [ ] `tests/integration/session-lifecycle.test.js`
-  - [ ] `tests/integration/state-synchronization.test.js`
-  - [ ] `tests/integration/transaction-flow.test.js`
-  - [ ] `tests/integration/video-orchestration.test.js`
-- [ ] Replace TEST_* tokens with real tokens (534e2b03, hos001, etc.)
-- [ ] Verify successful and COMPLETE phase implementation.
-- [ ] Git Commit & Update Implementation Checklist
+### Phase 3: Integration Tests - Use Real Scanner Modules
+
+**Core Problem**: Integration tests use raw `socket.io-client` and `fetch`, NOT the actual deployed scanner code from submodules. This means:
+- GM Scanner (`ALNScanner/js/network/orchestratorClient.js`) is **never tested**
+- Player Scanner (`aln-memory-scanner/js/orchestratorIntegration.js`) is **never tested**
+- Tests passing gives false confidence about deployed code quality
+
+**Investigation Findings**:
+- ✅ Prerequisites: browser-mocks.js exists, scanner modules have exports, dependencies installed
+- ✅ Most integration tests already use real tokens (534e2b03, tac001)
+- ❌ Gap 1: browser-mocks.js missing globals (App, Debug, window.sessionModeManager/queueManager)
+- ❌ Gap 2: No Player Scanner helper or integration tests
+- ❌ Gap 3: Integration tests use raw socket.io-client, not real OrchestratorClient
+- ❌ Gap 4: Few tests still use TEST_* tokens (error-propagation, video-orchestration)
+
+---
+
+#### Phase 3.1: Complete Browser Mocks (Prerequisite)
+- [ ] **Update browser-mocks.js** - Add missing globals for GM scanner:
+  ```javascript
+  global.App = { viewController: null, updateAdminPanel: () => {} };
+  global.Debug = { log: () => {}, warn: () => {}, error: () => {} };
+  global.window.sessionModeManager = null;
+  global.window.queueManager = null;
+  global.console = console;
+  ```
+- [ ] **Test GM Scanner loads**: `node -e "require('./tests/helpers/browser-mocks'); const C = require('./ALNScanner/js/network/orchestratorClient'); console.log('Loaded:', typeof C);"`
+- [ ] **Test Player Scanner loads**: `node -e "require('./tests/helpers/browser-mocks'); const I = require('./aln-memory-scanner/js/orchestratorIntegration'); console.log('Loaded:', typeof I);"`
+- [ ] **Fix any loading errors** discovered
+- [ ] **Verification**: Both scanner modules load without errors
+
+#### Phase 3.2: Create Player Scanner Helper
+- [ ] **Add createPlayerScanner() to websocket-helpers.js**:
+  ```javascript
+  async function createPlayerScanner(url, deviceId) {
+    const OrchestratorIntegration = require('../../../aln-memory-scanner/js/orchestratorIntegration');
+    const client = new OrchestratorIntegration();
+    client.baseUrl = url;
+    client.deviceId = deviceId;
+    return client;
+  }
+  ```
+- [ ] **Export in module.exports**
+- [ ] **Verification**: Function exists and creates instance
+
+#### Phase 3.3: Test Scanner Helpers Work
+- [ ] **Create tests/integration/_scanner-helpers.test.js** - Verify helpers connect/communicate
+- [ ] **Test createAuthenticatedScanner()** - Can connect and send/receive events
+- [ ] **Test createPlayerScanner()** - Can make HTTP requests
+- [ ] **Run**: `npm test -- tests/integration/_scanner-helpers.test.js`
+- [ ] **Fix connection/auth issues**
+- [ ] **Verification**: Helper test passes
+
+#### Phase 3.4: Transform ONE GM Test (Pattern Validation)
+- [ ] **Pick simplest test**: transaction-flow.test.js (already uses real tokens)
+- [ ] **Transform**:
+  ```javascript
+  // Add at top:
+  require('../helpers/browser-mocks');
+  const { createAuthenticatedScanner } = require('../helpers/websocket-helpers');
+
+  // Replace connectAndIdentify:
+  scanner = await createAuthenticatedScanner(testContext.url, 'GM_TEST_01', 'admin');
+
+  // Use scanner.socket for events:
+  scanner.socket.emit('transaction:submit', { ... });
+  ```
+- [ ] **Run**: `npm test -- tests/integration/transaction-flow.test.js`
+- [ ] **Fix issues, document pattern**
+- [ ] **Verification**: Transformed test passes
+
+#### Phase 3.5: Transform Remaining 10 GM Tests
+- [ ] **Transform admin-interventions.test.js** - Apply pattern, verify
+- [ ] **Transform duplicate-detection.test.js** - Apply pattern, verify
+- [ ] **Transform error-propagation.test.js** - Apply pattern, replace TEST_VIDEO_ERROR → '534e2b03', verify
+- [ ] **Transform group-completion.test.js** - Apply pattern, verify
+- [ ] **Transform multi-client-broadcasts.test.js** - Apply pattern, verify
+- [ ] **Transform offline-queue-sync.test.js** - Apply pattern, verify
+- [ ] **Transform service-events.test.js** - Apply pattern, verify
+- [ ] **Transform session-lifecycle.test.js** - Apply pattern, verify
+- [ ] **Transform state-synchronization.test.js** - Apply pattern, verify
+- [ ] **Transform video-orchestration.test.js** - Apply pattern, replace TEST_* tokens, verify
+- [ ] **Verification**: All 11 GM integration tests pass
+
+#### Phase 3.6: Create Player Scanner Integration Tests
+- [ ] **Create tests/integration/player-scanner-http.test.js** - Test real Player Scanner HTTP workflow
+- [ ] **Test POST /api/scan when online**
+- [ ] **Test offline queue** - Scans queued when disconnected
+- [ ] **Test POST /api/scan/batch** - Offline queue sync
+- [ ] **Run**: `npm test -- tests/integration/player-scanner-http.test.js`
+- [ ] **Fix issues**
+- [ ] **Verification**: Player Scanner integration test passes
+
+#### Phase 3.7: Final Verification
+- [ ] **Run all integration tests**: `npm run test:integration`
+- [ ] **Verify**: 12/12 pass (11 GM + 1 Player)
+- [ ] **Verify**: No test-mode conditionals
+- [ ] **Verify**: All use real scanner modules
+- [ ] **Verify**: All use real tokens from ALN-TokenData
+- [ ] **Check for leaks**: `npm test -- --detectOpenHandles`
+- [ ] **Verification**: 12/12 integration tests pass
+
+#### Phase 3.8: Documentation & Commit
+- [ ] **Update this plan** - Mark Phase 3 complete, document actual changes vs plan, add lessons learned
+- [ ] **Git commit**: Phase 3 implementation with detailed commit message
+- [ ] **Verification**: Plan document updated, changes committed
+
+---
+
+**Anti-Pattern Avoidance for Phase 3**:
+- ❌ Don't batch transform without testing ONE first
+- ❌ Don't assume scanner modules work - test loading first
+- ❌ Don't skip Player Scanner (both scanners must be tested)
+- ❌ Don't mechanically follow plan - understand WHY each step matters
+- ✅ Read actual code before assuming behavior
+- ✅ Test incrementally (one file at a time)
+- ✅ Verify after each change
+- ✅ Fix gaps as discovered
 
 ### Phase 4: UDP Discovery
 - [ ] Review previous steps' work and relevant code for this phase and prepare for implementation. 
