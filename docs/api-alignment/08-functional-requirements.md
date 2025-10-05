@@ -339,6 +339,14 @@ The ALN system operates in **two fundamentally different deployment modes**. Thi
 - May need pause for technical issues
 - Recovery from mid-game failures (session history)
 
+**Session State Behavior:**
+- **Active**: Normal operation, transactions accepted
+- **Paused**: Transaction processing blocked (returns error), video playback paused
+  - Purpose: Technical issues, breaks, or intervention scenarios
+  - GMs notified via session:update broadcast
+  - Transactions rejected with error: "Session is paused"
+- **Ended**: Session complete, no further transactions accepted
+
 **Transport:**
 - Session commands: WebSocket (admin commands via persistent connection)
 - Session state broadcasts: WebSocket (real-time updates to all clients)

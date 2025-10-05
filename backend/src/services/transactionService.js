@@ -486,6 +486,34 @@ class TransactionService extends EventEmitter {
   }
 
   /**
+   * Adjust team score by delta (for admin interventions)
+   * @param {string} teamId - Team ID to adjust
+   * @param {number} delta - Amount to adjust (can be positive or negative)
+   * @param {string} reason - Reason for adjustment
+   * @returns {TeamScore} Updated team score
+   */
+  adjustTeamScore(teamId, delta, reason = '') {
+    const teamScore = this.teamScores.get(teamId);
+    if (!teamScore) {
+      throw new Error(`Team ${teamId} not found`);
+    }
+
+    teamScore.adjustScore(delta);
+
+    logger.info('Team score adjusted', {
+      teamId,
+      delta,
+      newScore: teamScore.currentScore,
+      reason
+    });
+
+    // Emit unwrapped domain event (broadcasts.js will wrap it)
+    this.emitScoreUpdate(teamScore);
+
+    return teamScore;
+  }
+
+  /**
    * Load tokens
    * @param {Array} tokens - Tokens to load
    */

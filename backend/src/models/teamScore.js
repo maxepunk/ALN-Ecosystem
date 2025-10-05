@@ -71,6 +71,17 @@ class TeamScore {
   }
 
   /**
+   * Adjust score by delta (for admin interventions)
+   * @param {number} delta - Amount to adjust score by (can be positive or negative)
+   */
+  adjustScore(delta) {
+    this.currentScore += delta;
+    // Also adjust base score to keep the relationship consistent
+    this.baseScore += delta;
+    this.lastUpdate = new Date().toISOString();
+  }
+
+  /**
    * Increment tokens scanned count
    */
   incrementTokensScanned() {

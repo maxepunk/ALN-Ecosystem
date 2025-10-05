@@ -35,29 +35,37 @@ async function handleGmCommand(socket, data, io) {
     // Process GM commands
     let resultMessage = '';
     switch (action) {
-      case 'session:pause':
-        await sessionService.updateSession({ status: 'paused' });
-        emitWrapped(io, 'session:paused', {
-          gmStation: socket.deviceId,
+      case 'session:create':
+        // Create new session (service will emit session:created → broadcasts.js wraps as session:update)
+        await sessionService.createSession({
+          name: payload.name || 'New Session',
+          teams: payload.teams || []
         });
+        resultMessage = `Session "${payload.name || 'New Session'}" created successfully`;
+        logger.info('Session created by GM', {
+          gmStation: socket.deviceId,
+          name: payload.name,
+          teams: payload.teams
+        });
+        break;
+
+      case 'session:pause':
+        // Service will emit session:updated → broadcasts.js wraps as session:update
+        await sessionService.updateSession({ status: 'paused' });
         resultMessage = 'Session paused successfully';
         logger.info('Session paused by GM', { gmStation: socket.deviceId });
         break;
 
       case 'session:resume':
+        // Service will emit session:updated → broadcasts.js wraps as session:update
         await sessionService.updateSession({ status: 'active' });
-        emitWrapped(io, 'session:resumed', {
-          gmStation: socket.deviceId,
-        });
         resultMessage = 'Session resumed successfully';
         logger.info('Session resumed by GM', { gmStation: socket.deviceId });
         break;
 
       case 'session:end':
+        // Service will emit session:updated → broadcasts.js wraps as session:update
         await sessionService.endSession();
-        emitWrapped(io, 'session:ended', {
-          gmStation: socket.deviceId,
-        });
         resultMessage = 'Session ended successfully';
         logger.info('Session ended by GM', { gmStation: socket.deviceId });
         break;
@@ -72,13 +80,19 @@ async function handleGmCommand(socket, data, io) {
         break;
 
       case 'score:adjust':
-        // Reset scores through transaction service
-        transactionService.resetScores();
-        emitWrapped(io, 'scores:reset', {
+        // Adjust team score by delta (service will emit score:updated → broadcasts.js wraps it)
+        const { teamId, delta, reason } = payload;
+        if (!teamId || delta === undefined) {
+          throw new Error('teamId and delta are required for score:adjust');
+        }
+        transactionService.adjustTeamScore(teamId, delta, reason || 'Admin adjustment');
+        resultMessage = `Team ${teamId} score adjusted by ${delta}`;
+        logger.info('Team score adjusted by GM', {
           gmStation: socket.deviceId,
+          teamId,
+          delta,
+          reason
         });
-        resultMessage = 'Scores reset successfully';
-        logger.info('Scores reset by GM', { gmStation: socket.deviceId });
         break;
 
       default:
@@ -164,6 +178,24 @@ async function handleTransactionSubmit(socket, data, io) {
       emitWrapped(socket, 'error', {
         code: 'SESSION_NOT_FOUND',
         message: 'No active session',
+      });
+      return;
+    }
+
+    // Check if session is paused (FR 1.2: transactions rejected when paused)
+    if (session.status === 'paused') {
+      emitWrapped(socket, 'transaction:result', {
+        status: 'error',
+        transactionId: null,
+        tokenId: scanRequest.tokenId,
+        teamId: scanRequest.teamId,
+        points: 0,
+        message: 'Session is paused',
+        error: 'SESSION_PAUSED'
+      });
+      logger.info('Transaction blocked (session paused)', {
+        deviceId: socket.deviceId,
+        tokenId: scanRequest.tokenId
       });
       return;
     }
