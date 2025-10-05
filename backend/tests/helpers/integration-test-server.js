@@ -26,6 +26,12 @@ async function setupIntegrationTestServer() {
   // Initialize ALL services with real token data
   await initializeServices();
 
+  // VERIFY services initialized correctly
+  const transactionService = require('../../src/services/transactionService');
+  if (transactionService.tokens.size === 0) {
+    throw new Error('Service initialization failed: tokens not loaded');
+  }
+
   // Create HTTP server
   const server = http.createServer(app.app);
 

@@ -5,7 +5,7 @@
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { createTrackedSocket, waitForEvent } = require('../../helpers/websocket-helpers');
-const { setupTestServer, cleanupTestServer } = require('../../helpers/test-server');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Authentication Events - Contract Validation', () => {
@@ -14,12 +14,12 @@ describe('Authentication Events - Contract Validation', () => {
 
   beforeAll(async () => {
     // Setup HTTP server + WebSocket
-    testContext = await setupTestServer();
+    testContext = await setupIntegrationTestServer();
   });
 
   afterAll(async () => {
     // Cleanup server
-    await cleanupTestServer(testContext);
+    await cleanupIntegrationTestServer(testContext);
   });
 
   beforeEach(async () => {

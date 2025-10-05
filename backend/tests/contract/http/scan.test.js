@@ -5,17 +5,29 @@
 
 const request = require('supertest');
 const app = require('../../../src/app');
+const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
+const tokenService = require('../../../src/services/tokenService');
 const sessionService = require('../../../src/services/sessionService');
 const videoQueueService = require('../../../src/services/videoQueueService');
 const transactionService = require('../../../src/services/transactionService');
 
 describe('POST /api/scan', () => {
+  // Initialize services ONCE for all tests
+  beforeAll(async () => {
+    await initializeServices();
+  });
+
   // Test isolation: Ensure clean state before each test
   beforeEach(async () => {
+    // Full reset of all services
     await sessionService.reset();
     await transactionService.reset();
     videoQueueService.reset();
+
+    // CRITICAL: Re-load tokens after reset
+    const tokens = tokenService.loadTokens();
+    await transactionService.init(tokens);
 
     // Create test session (required for scan endpoint)
     await sessionService.createSession({

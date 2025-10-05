@@ -164,6 +164,45 @@ function testDelay(ms) {
   return new Promise(resolve => setTimeout(resolve, reducedMs));
 }
 
+/**
+ * Create authenticated scanner client using REAL scanner code
+ * NOTE: Requires browser-mocks.js to be loaded first
+ * @param {string} url - Server URL
+ * @param {string} deviceId - Scanner device ID
+ * @param {string} password - Admin password
+ * @returns {Promise<OrchestratorClient>} Connected scanner
+ */
+async function createAuthenticatedScanner(url, deviceId, password = 'admin') {
+  // Import real scanner module (requires browser mocks to be loaded first)
+  const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
+
+  const client = new OrchestratorClient({
+    url,
+    deviceId,
+    version: '1.0.0'
+  });
+
+  // Authenticate via HTTP
+  const fetch = require('node-fetch');
+  const authResponse = await fetch(`${url}/api/admin/auth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+
+  if (!authResponse.ok) {
+    throw new Error(`Auth failed: ${authResponse.status}`);
+  }
+
+  const { token } = await authResponse.json();
+  client.token = token;
+
+  // Connect WebSocket
+  await client.connect();
+
+  return client;
+}
+
 module.exports = {
   createTrackedSocket,
   waitForEvent,
@@ -171,4 +210,5 @@ module.exports = {
   waitForMultipleEvents,
   cleanupSockets,
   testDelay,
+  createAuthenticatedScanner, // NEW - uses real scanner code
 };

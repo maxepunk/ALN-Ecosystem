@@ -5,20 +5,38 @@
 
 const request = require('supertest');
 const app = require('../../../src/app');
+const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
+const tokenService = require('../../../src/services/tokenService');
 const sessionService = require('../../../src/services/sessionService');
+const transactionService = require('../../../src/services/transactionService');
+const videoQueueService = require('../../../src/services/videoQueueService');
 
 describe('GET /api/session', () => {
   let createdSession;
 
   beforeAll(async () => {
+    // Initialize services ONCE for all tests
+    await initializeServices();
+  });
+
+  beforeEach(async () => {
+    // Full reset of all services
+    await sessionService.reset();
+    await transactionService.reset();
+    videoQueueService.reset();
+
+    // CRITICAL: Re-load tokens after reset
+    const tokens = tokenService.loadTokens();
+    await transactionService.init(tokens);
+
     // Create a test session for GET tests
     createdSession = await sessionService.createSession({
       name: 'Test Session for Contract Validation'
     });
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     // Clean up test session
     if (createdSession) {
       await sessionService.endSession();

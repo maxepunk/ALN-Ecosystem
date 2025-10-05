@@ -7,7 +7,7 @@
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
-const { setupTestServer, cleanupTestServer } = require('../../helpers/test-server');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
 const TeamScore = require('../../../src/models/teamScore');
@@ -17,11 +17,11 @@ describe('Score Events - Contract Validation', () => {
   let socket;
 
   beforeAll(async () => {
-    testContext = await setupTestServer();
+    testContext = await setupIntegrationTestServer();
   });
 
   afterAll(async () => {
-    await cleanupTestServer(testContext);
+    await cleanupIntegrationTestServer(testContext);
   });
 
   beforeEach(async () => {

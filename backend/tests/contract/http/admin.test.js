@@ -5,9 +5,30 @@
 
 const request = require('supertest');
 const app = require('../../../src/app');
+const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
+const tokenService = require('../../../src/services/tokenService');
+const sessionService = require('../../../src/services/sessionService');
+const transactionService = require('../../../src/services/transactionService');
+const videoQueueService = require('../../../src/services/videoQueueService');
 
 describe('POST /api/admin/auth', () => {
+  // Initialize services ONCE for all tests
+  beforeAll(async () => {
+    await initializeServices();
+  });
+
+  beforeEach(async () => {
+    // Full reset of all services
+    await sessionService.reset();
+    await transactionService.reset();
+    videoQueueService.reset();
+
+    // CRITICAL: Re-load tokens after reset
+    const tokens = tokenService.loadTokens();
+    await transactionService.init(tokens);
+  });
+
   it('should match OpenAPI contract for successful auth', async () => {
     const response = await request(app.app)
       .post('/api/admin/auth')
