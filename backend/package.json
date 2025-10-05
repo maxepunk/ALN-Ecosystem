@@ -36,7 +36,7 @@
     "health:vlc": "curl -s -u :vlc http://localhost:8080/requests/status.json | jq '.version' && echo 'VLC is running' || echo 'VLC not responding'",
     "health:quick": "curl -s -o /dev/null -w 'Orchestrator: %{http_code}\\n' http://localhost:3000/health",
     "// TESTING": "=== Test execution commands ===",
-    "test": "npm run test:contract && npm run test:integration",
+    "test": "npm run test:unit && npm run test:contract && npm run test:integration",
     "test:all": "jest --config jest.config.js",
     "test:unit": "jest --testPathPattern=tests/unit",
     "test:contract": "jest --testPathPattern=tests/contract",
