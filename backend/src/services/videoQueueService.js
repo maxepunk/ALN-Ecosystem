@@ -41,18 +41,12 @@ class VideoQueueService extends EventEmitter {
 
     // Process queue if not playing
     if (!this.currentItem) {
-      // In test environment, process immediately for predictable behavior
-      if (process.env.NODE_ENV === 'test') {
-        logger.debug('Processing queue immediately (test mode)', { tokenId: token.id });
+      // Use setImmediate to ensure event handlers are set up
+      logger.debug('Scheduling queue processing for', { tokenId: token.id });
+      setImmediate(() => {
+        logger.debug('Processing queue for', { tokenId: token.id });
         this.processQueue();
-      } else {
-        // In production, use setImmediate to ensure event handlers are set up
-        logger.debug('Scheduling queue processing for', { tokenId: token.id });
-        setImmediate(() => {
-          logger.debug('Processing queue for', { tokenId: token.id });
-          this.processQueue();
-        });
-      }
+      });
     } else {
       logger.debug('Queue not processed - video already playing', { currentItem: this.currentItem?.tokenId });
     }
@@ -111,11 +105,7 @@ class VideoQueueService extends EventEmitter {
       this.emit('video:failed', queueItem);
 
       // Process next in queue
-      if (process.env.NODE_ENV === 'test') {
-        this.processQueue();
-      } else {
-        setImmediate(() => this.processQueue());
-      }
+      setImmediate(() => this.processQueue());
       return;
     }
 

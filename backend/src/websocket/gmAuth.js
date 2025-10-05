@@ -20,11 +20,8 @@ const { emitWrapped } = require('./eventWrapper');
  */
 async function handleGmIdentify(socket, data, io) {
   try {
-    // In test mode, allow non-pre-authenticated connections for easier testing
-    const isTestMode = process.env.NODE_ENV === 'test';
-
-    // Validate that socket is pre-authenticated from handshake (unless test mode)
-    if (!isTestMode && (!socket.isAuthenticated || !socket.deviceId)) {
+    // Validate that socket is pre-authenticated from handshake
+    if (!socket.isAuthenticated || !socket.deviceId) {
       emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
         message: 'Authentication required - connection not pre-authenticated',
@@ -33,13 +30,13 @@ async function handleGmIdentify(socket, data, io) {
       return;
     }
 
-    // Use data from handshake or from gm:identify payload (test mode)
+    // Use data from handshake
     const identifyData = {
-      stationId: socket.deviceId || data.deviceId || data.stationId,
-      version: socket.version || data.version || '1.0.0',
+      stationId: socket.deviceId,
+      version: socket.version || '1.0.0',
     };
 
-    logger.info(isTestMode ? 'GM identified (test mode)' : 'GM already authenticated from handshake', {
+    logger.info('GM already authenticated from handshake', {
       deviceId: identifyData.stationId,
       socketId: socket.id,
     });

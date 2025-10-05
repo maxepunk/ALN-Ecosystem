@@ -90,36 +90,7 @@ class TransactionService extends EventEmitter {
       const transaction = Transaction.fromScanRequest(scanRequest, session.id);
 
       // Validate token exists
-      let token = this.tokens.get(transaction.tokenId);
-
-      // In test environment, create mock tokens for test IDs
-      if (!token && process.env.NODE_ENV === 'test') {
-        const tokenId = transaction.tokenId;
-        if (tokenId.startsWith('TEST_') ||
-            tokenId.startsWith('ORDER_') ||
-            tokenId.startsWith('TIME_') ||
-            tokenId.startsWith('RATE_') ||
-            tokenId.startsWith('MEM_') ||
-            tokenId === 'AFTER_LIMIT') {
-          // Create a mock token for testing
-          const Token = require('../models/token');
-
-          // Check if this is a video test token
-          const isVideoToken = tokenId.startsWith('TEST_VIDEO_') || tokenId === 'TEST_VIDEO_TX' || tokenId.startsWith('MEM_VIDEO_');
-
-          token = new Token({
-            id: tokenId,
-            name: `Test Token ${tokenId}`,
-            value: 10,
-            memoryType: 'visual',
-            mediaAssets: isVideoToken ? { video: `/test/videos/${tokenId}.mp4` } : {},
-            metadata: isVideoToken ? { duration: 30 } : {},
-          });
-        } else if (tokenId === 'invalid_token') {
-          // Explicitly invalid token for testing
-          token = null;
-        }
-      }
+      const token = this.tokens.get(transaction.tokenId);
 
       if (!token) {
         transaction.reject('Invalid token ID');
@@ -143,8 +114,9 @@ class TransactionService extends EventEmitter {
       }
 
       // GM scanners don't care about video playback - that's player scanner territory
-      // Accept the transaction
-      transaction.accept(token.value);
+      // Accept the transaction with appropriate points (detective mode = 0 points)
+      const points = (transaction.mode === 'detective') ? 0 : token.value;
+      transaction.accept(points);
 
       // Add transaction to session for duplicate detection
       if (!session.transactions) {
@@ -259,7 +231,9 @@ class TransactionService extends EventEmitter {
     if (token.isGrouped()) {
       const wasCompleted = teamScore.hasCompletedGroup(token.groupId);
 
-      if (!wasCompleted && this.isGroupComplete(teamId, token.groupId)) {
+      // CRITICAL: Pass current token ID to isGroupComplete so it includes the transaction
+      // being processed (which hasn't been added to session.transactions yet)
+      if (!wasCompleted && this.isGroupComplete(teamId, token.groupId, token.id)) {
         teamScore.completeGroup(token.groupId);
 
         // Calculate total bonus for the entire group
@@ -302,10 +276,11 @@ class TransactionService extends EventEmitter {
    * Check if group is complete for team
    * @param {string} teamId - Team ID
    * @param {string} groupId - Group ID
+   * @param {string} currentTokenId - Optional token ID being processed (not yet in session)
    * @returns {boolean}
    * @private
    */
-  isGroupComplete(teamId, groupId) {
+  isGroupComplete(teamId, groupId, currentTokenId = null) {
     if (!groupId) return false;
 
     // Get all tokens that belong to this group
@@ -329,6 +304,11 @@ class TransactionService extends EventEmitter {
         )
         .map(tx => tx.tokenId)
     );
+
+    // CRITICAL: Include current token being processed (not yet in session.transactions)
+    if (currentTokenId) {
+      teamScannedTokenIds.add(currentTokenId);
+    }
 
     // Check if team has scanned ALL tokens in the group
     const allScanned = groupTokens.every(token =>

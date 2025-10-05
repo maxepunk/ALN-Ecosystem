@@ -7,7 +7,6 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
 const { scanRequestSchema, validate, ValidationError } = require('../utils/validators');
-const Token = require('../models/token');
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
@@ -46,19 +45,22 @@ router.post('/', async (req, res) => {
       }
     }
 
-    // Initialize services if needed (for tests)
-    if (process.env.NODE_ENV === 'test' && transactionService.tokens.size === 0) {
-      const { initializeServices } = require('../app');
-      await initializeServices();
+    // Check services are initialized
+    if (transactionService.tokens.size === 0) {
+      logger.error('Services not initialized - tokens not loaded');
+      return res.status(503).json({
+        error: 'SERVICE_UNAVAILABLE',
+        message: 'Server is still initializing, please retry'
+      });
     }
 
-    // In test mode, create a session if none exists (for video queue)
-    let session = sessionService.getCurrentSession();
-    if (!session && process.env.NODE_ENV === 'test') {
-      // Auto-create a test session (using 3-digit team IDs per Phase 2)
-      session = await sessionService.createSession({
-        name: 'Test Session',
-        teams: ['001', '002'],
+    // Check for active session
+    const session = sessionService.getCurrentSession();
+    if (!session) {
+      logger.warn('Scan rejected: no active session');
+      return res.status(409).json({
+        error: 'SESSION_NOT_FOUND',
+        message: 'No active session - admin must create session first'
       });
     }
 
@@ -71,20 +73,14 @@ router.post('/', async (req, res) => {
     });
 
     // Get token directly - no duplicate detection for player scanner
-    let token = transactionService.tokens.get(scanRequest.tokenId);
+    const token = transactionService.tokens.get(scanRequest.tokenId);
 
-    // In test environment, create mock tokens for test IDs
-    if (!token && process.env.NODE_ENV === 'test' && (scanRequest.tokenId.startsWith('TEST_') || scanRequest.tokenId.startsWith('MEM_'))) {
-      const tokenId = scanRequest.tokenId;
-      const isVideoToken = tokenId.startsWith('TEST_VIDEO_') || tokenId.startsWith('MEM_VIDEO_');
-
-      token = new Token({
-        id: tokenId,
-        name: `Test Token ${tokenId}`,
-        value: 10, // Not used for player scanner
-        memoryType: 'Technical',  // Must be 'Technical', 'Business', or 'Personal'
-        mediaAssets: isVideoToken ? { video: `/test/videos/${tokenId}.mp4` } : {},
-        metadata: isVideoToken ? { duration: 30 } : {},
+    // Check if token exists
+    if (!token) {
+      logger.warn('Scan rejected: token not found', { tokenId: scanRequest.tokenId });
+      return res.status(404).json({
+        error: 'TOKEN_NOT_FOUND',
+        message: `Token ${scanRequest.tokenId} not recognized`
       });
     }
 
@@ -162,10 +158,13 @@ router.post('/batch', async (req, res) => {
     });
   }
 
-  // Initialize services if needed (for tests)
-  if (process.env.NODE_ENV === 'test' && transactionService.tokens.size === 0) {
-    const { initializeServices } = require('../app');
-    await initializeServices();
+  // Check services are initialized
+  if (transactionService.tokens.size === 0) {
+    logger.error('Services not initialized - tokens not loaded');
+    return res.status(503).json({
+      error: 'SERVICE_UNAVAILABLE',
+      message: 'Server is still initializing, please retry'
+    });
   }
 
   const results = [];
@@ -180,22 +179,17 @@ router.post('/batch', async (req, res) => {
         timestamp: scanRequest.timestamp || new Date().toISOString()
       });
 
-      // Check if token exists and has video
-      let token = scanRequest.tokenId ? transactionService.tokens.get(scanRequest.tokenId) : null;
+      // Check if token exists
+      const token = scanRequest.tokenId ? transactionService.tokens.get(scanRequest.tokenId) : null;
 
-      // In test environment, create mock tokens
-      if (!token && process.env.NODE_ENV === 'test' && scanRequest.tokenId && (scanRequest.tokenId.startsWith('TEST_') || scanRequest.tokenId.startsWith('MEM_'))) {
-        const tokenId = scanRequest.tokenId;
-        const isVideoToken = tokenId.startsWith('TEST_VIDEO_') || tokenId.startsWith('MEM_VIDEO_');
-
-        token = new Token({
-          id: tokenId,
-          name: `Test Token ${tokenId}`,
-          value: 10,
-          memoryType: 'Technical',  // Must be 'Technical', 'Business', or 'Personal'
-          mediaAssets: isVideoToken ? { video: `/test/videos/${tokenId}.mp4` } : {},
-          metadata: isVideoToken ? { duration: 30 } : {},
+      if (!token) {
+        logger.warn('Batch scan: token not found', { tokenId: scanRequest.tokenId });
+        results.push({
+          ...scanRequest,
+          status: 'failed',
+          error: 'Token not recognized'
         });
+        continue;
       }
 
       // Process video if applicable

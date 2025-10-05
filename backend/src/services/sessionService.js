@@ -427,11 +427,9 @@ class SessionService extends EventEmitter {
     // Reinitialize state
     this.initState();
 
-    // Clear persistence if in test mode
-    if (process.env.NODE_ENV === 'test') {
-      await persistenceService.delete('session:current');
-      await persistenceService.delete('gameState:current');
-    }
+    // Clear persistence
+    await persistenceService.delete('session:current');
+    await persistenceService.delete('gameState:current');
 
     logger.info('Session service reset');
   }

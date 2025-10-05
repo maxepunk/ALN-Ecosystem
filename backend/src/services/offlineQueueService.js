@@ -375,10 +375,8 @@ class OfflineQueueService extends EventEmitter {
     this.isOffline = false;
     this.processingQueue = false;
 
-    // Clear persisted queue if in test mode
-    if (process.env.NODE_ENV === 'test') {
-      await persistenceService.delete('offlineQueue');
-    }
+    // Clear persisted queue
+    await persistenceService.delete('offlineQueue');
 
     // 4. Log completion
     logger.info('Offline queue service reset');
