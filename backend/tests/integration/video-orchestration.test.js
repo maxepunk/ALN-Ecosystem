@@ -397,16 +397,16 @@ describe('Video Orchestration Integration', () => {
 
   describe('Contract Compliance - video:status Event', () => {
     it('should include all required fields in video:status events', async () => {
+      // CRITICAL: Set up listener BEFORE queuing video to avoid race condition
+      const events = [];
+      gmSocket.on('video:status', (event) => {
+        events.push(event);
+      });
+
       // Queue video
       await axios.post(`${testContext.url}/api/scan`, {
         tokenId: '534e2b03',
         deviceId: 'PLAYER_SCANNER_01'
-      });
-
-      // Collect all video:status events
-      const events = [];
-      gmSocket.on('video:status', (event) => {
-        events.push(event);
       });
 
       // Wait for multiple events
