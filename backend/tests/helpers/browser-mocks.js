@@ -102,12 +102,25 @@ global.TokenManager = TokenManager;
 // In browser, loaded via separate <script> tag
 // TokenManager.buildGroupInventory() requires parseGroupInfo and normalizeGroupName
 global.DataManager = {
-  markTokenAsScanned: () => {},
+  scannedTokens: new Set(),  // Track scanned tokens for duplicate detection
+
+  markTokenAsScanned(tokenId) {
+    this.scannedTokens.add(tokenId);
+  },
+
+  isTokenScanned(tokenId) {
+    return this.scannedTokens.has(tokenId);
+  },
+
+  // Clear scanned tokens (for test cleanup)
+  clearScannedTokens() {
+    this.scannedTokens.clear();
+  },
+
   addTransaction: () => {},
   clearSession: () => {},
   calculateTokenValue: () => 0,
   backendScores: new Map(),
-  isTokenScanned: () => false,  // For duplicate detection check in processNFCRead
 
   // Required by TokenManager.buildGroupInventory()
   parseGroupInfo(groupName) {
