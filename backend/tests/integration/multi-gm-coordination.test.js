@@ -181,4 +181,161 @@ describe('Multi-GM Coordination', () => {
       gm2.disconnect();
     });
   });
+
+  describe('Group Completion Coordination', () => {
+    it('should prevent group completion if other team claimed a token', async () => {
+      // Team 001 scans first token (rat001)
+      const gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_TEAM_001');
+
+      const result1Promise = waitForEvent(gm1, 'transaction:result');
+      gm1.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'GM_TEAM_001',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+      await result1Promise;
+
+      // Team 002 scans second token (asm001) - "steals" it
+      const gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_TEAM_002');
+
+      const result2Promise = waitForEvent(gm2, 'transaction:result');
+      gm2.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'asm001',
+          teamId: '002', // Different team
+          deviceId: 'GM_TEAM_002',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+      await result2Promise;
+
+      // Verify: Team 001 did NOT complete group (asm001 claimed by team 002)
+      const scores = transactionService.getTeamScores();
+      const team001Score = scores.find(s => s.teamId === '001');
+      const team002Score = scores.find(s => s.teamId === '002');
+
+      expect(team001Score.completedGroups).toEqual([]); // NOT complete
+      expect(team001Score.bonusPoints).toBe(0); // NO bonus
+      expect(team002Score.completedGroups).toEqual([]); // Also not complete
+      expect(team002Score.bonusPoints).toBe(0);
+
+      // Both teams have only their individual token values
+      expect(team001Score.currentScore).toBe(15000); // rat001 only
+      expect(team002Score.currentScore).toBe(1000); // asm001 only
+
+      // Cleanup
+      gm1.disconnect();
+      gm2.disconnect();
+    });
+
+    it('should broadcast group:completed to all connected GMs', async () => {
+      // Connect 3 independent GMs
+      const gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_GROUP_1');
+      const gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_GROUP_2');
+      const gm3 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_GROUP_3');
+
+      // CRITICAL: Set up ALL listeners BEFORE any transactions
+      const groupCompletedPromises = [
+        waitForEvent(gm1, 'group:completed'),
+        waitForEvent(gm2, 'group:completed'),
+        waitForEvent(gm3, 'group:completed')
+      ];
+
+      // First transaction
+      const result1Promise = waitForEvent(gm1, 'transaction:result');
+      gm1.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'GM_GROUP_1',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+      await result1Promise;
+
+      // Second transaction (completes group)
+      const result2Promise = waitForEvent(gm1, 'transaction:result');
+      gm1.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'asm001',
+          teamId: '001',
+          deviceId: 'GM_GROUP_1',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+      await result2Promise;
+
+      // Now wait for group:completed broadcasts
+      const [event1, event2, event3] = await Promise.all(groupCompletedPromises);
+
+      // Validate: All 3 GMs received identical group:completed event
+      expect(event1.data).toEqual(event2.data);
+      expect(event2.data).toEqual(event3.data);
+
+      expect(event1.data.group).toBe('Marcus Sucks');
+      expect(event1.data.bonusPoints).toBe(16000);
+
+      // Cleanup
+      gm1.disconnect();
+      gm2.disconnect();
+      gm3.disconnect();
+    });
+
+    it('should NOT complete group with detective mode scans (no scoring)', async () => {
+      // Connect GM that will submit transactions
+      const gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_TEAM_001');
+
+      // First transaction: BLACKMARKET mode (scoring)
+      const result1Promise = waitForEvent(gm1, 'transaction:result');
+      gm1.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'GM_TEAM_001',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+      await result1Promise;
+
+      // Second transaction: DETECTIVE mode (logging only, no scoring)
+      const result2Promise = waitForEvent(gm1, 'transaction:result');
+      gm1.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'asm001',
+          teamId: '001',
+          deviceId: 'GM_TEAM_001',
+          mode: 'detective' // Detective mode
+        },
+        timestamp: new Date().toISOString()
+      });
+      await result2Promise;
+
+      // Wait a bit to ensure no group:completed event
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Verify: Group NOT completed (detective mode doesn't count toward groups)
+      const scores = transactionService.getTeamScores();
+      const team001Score = scores.find(s => s.teamId === '001');
+      expect(team001Score.completedGroups).toEqual([]); // NOT complete
+      expect(team001Score.bonusPoints).toBe(0); // NO bonus
+      expect(team001Score.currentScore).toBe(15000); // Only rat001 (blackmarket scan)
+
+      // Cleanup
+      gm1.disconnect();
+    });
+  });
 });
