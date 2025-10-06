@@ -64,8 +64,61 @@ global.document = {
 
 // Mock App global (GM Scanner uses App.viewController, App.updateAdminPanel)
 global.App = {
-  viewController: null,
+  viewController: {
+    init: () => {},  // App.init() calls this.viewController.init()
+    initAdminModules: () => {}  // OrchestratorClient calls this on connection
+  },
   updateAdminPanel: () => {}
+};
+
+// Mock InitializationSteps (Phase 1A, 1B, 1C refactoring)
+global.InitializationSteps = {
+  loadTokenDatabase: async (tokenManager, uiManager) => {
+    const dbLoaded = await tokenManager.loadDatabase();
+    if (!dbLoaded) {
+      const errorMsg = 'CRITICAL: Token database failed to load. Cannot initialize scanner.';
+      global.Debug.error(errorMsg);
+      uiManager.showError(errorMsg);
+      throw new Error('Token database initialization failed');
+    }
+    global.Debug.log('Token database loaded successfully');
+    return true;
+  },
+  applyURLModeOverride: (locationSearch, settings) => {
+    const urlParams = new URLSearchParams(locationSearch);
+    const modeParam = urlParams.get('mode');
+    if (modeParam === 'blackmarket' || modeParam === 'black-market') {
+      settings.stationMode = 'blackmarket';
+      settings.save();
+      global.Debug.log('Station mode set to blackmarket via URL parameter');
+      return true;
+    }
+    return false;
+  },
+  determineInitialScreen: (sessionModeManager) => {
+    const savedMode = sessionModeManager.restoreMode();
+    if (!savedMode) {
+      return { screen: 'gameModeScreen', action: null };
+    }
+    if (!sessionModeManager.isConnectionReady()) {
+      return {
+        screen: 'gameModeScreen',
+        action: 'clearModeAndShowWizard'
+      };
+    }
+    return { screen: 'teamEntry', action: null };
+  },
+  applyInitialScreenDecision: (decision, sessionModeManager, uiManager, showWizardFn) => {
+    if (decision.action === 'clearModeAndShowWizard') {
+      global.Debug.warn('Networked mode restored but connection lost - showing wizard');
+      sessionModeManager.clearMode();
+      uiManager.showScreen(decision.screen);
+      showWizardFn();
+    } else {
+      global.Debug.log(`Showing initial screen: ${decision.screen}`);
+      uiManager.showScreen(decision.screen);
+    }
+  }
 };
 
 // Mock Debug global (GM Scanner uses Debug.log)
@@ -118,6 +171,8 @@ global.DataManager = {
   },
 
   addTransaction: () => {},
+  loadTransactions: () => {},  // App.init() loads transaction history
+  loadScannedTokens: () => {},  // App.init() loads scanned tokens
   clearSession: () => {},
   calculateTokenValue: () => 0,
   backendScores: new Map(),
