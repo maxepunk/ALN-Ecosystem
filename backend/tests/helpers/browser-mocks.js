@@ -28,7 +28,9 @@ global.window = {
   },
   connectionManager: null,  // Scanner checks this
   sessionModeManager: null, // GM Scanner checks this (line 138)
-  queueManager: null        // GM Scanner checks this (line 143)
+  queueManager: null,       // GM Scanner checks this (line 143)
+  dispatchEvent: () => {},  // Player Scanner dispatches custom events (orchestratorIntegration.js:204)
+  CustomEvent: class CustomEvent {}  // Player Scanner creates custom events
 };
 
 // Mock document (minimal - only what scanner uses)
@@ -148,6 +150,9 @@ global.UIManager = {
 
 // Ensure console exists (Player Scanner uses console)
 global.console = console;
+
+// CustomEvent (Player Scanner uses 'new CustomEvent()')
+global.CustomEvent = window.CustomEvent;
 
 // Socket.io-client (scanner expects it globally)
 global.io = require('socket.io-client');
