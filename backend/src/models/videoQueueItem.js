@@ -206,6 +206,7 @@ class VideoQueueItem {
       requestTime: new Date().toISOString(),
       status: 'pending',
       videoPath: token.mediaAssets.video,
+      duration: token.getVideoDuration(), // Store token's duration
     });
   }
 }

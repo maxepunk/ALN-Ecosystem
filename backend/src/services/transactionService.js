@@ -547,6 +547,92 @@ class TransactionService extends EventEmitter {
   }
 
   /**
+   * Delete a transaction and recalculate scores (FR 4.2.4 line 949)
+   * @param {string} transactionId - Transaction ID to delete
+   * @param {Object} session - Current session
+   * @returns {Object} Deleted transaction and updated team score
+   */
+  deleteTransaction(transactionId, session) {
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    // Find transaction
+    const txIndex = session.transactions.findIndex(tx => tx.id === transactionId);
+    if (txIndex === -1) {
+      throw new Error(`Transaction not found: ${transactionId}`);
+    }
+
+    const deletedTx = session.transactions[txIndex];
+    const affectedTeamId = deletedTx.teamId;
+
+    // Remove from session
+    session.transactions.splice(txIndex, 1);
+
+    // Rebuild scores from remaining transactions
+    this.rebuildScoresFromTransactions(session.transactions);
+
+    // Get updated team score
+    const updatedScore = this.teamScores.get(affectedTeamId) || TeamScore.createInitial(affectedTeamId);
+
+    // Emit score update
+    this.emitScoreUpdate(updatedScore);
+
+    logger.info('Transaction deleted', {
+      transactionId,
+      teamId: affectedTeamId,
+      newScore: updatedScore.currentScore,
+    });
+
+    return {
+      deletedTransaction: deletedTx,
+      updatedScore: updatedScore.toJSON(),
+    };
+  }
+
+  /**
+   * Create manual transaction (FR 4.2.4 line 954)
+   * @param {Object} data - Transaction data {tokenId, teamId, mode, deviceId}
+   * @param {Object} session - Current session
+   * @returns {Object} Created transaction and scan response
+   */
+  async createManualTransaction(data, session) {
+    const { tokenId, teamId, mode, deviceId } = data;
+
+    if (!tokenId || !teamId || !mode) {
+      throw new Error('tokenId, teamId, and mode are required');
+    }
+
+    if (!session) {
+      throw new Error('No active session');
+    }
+
+    // Get token
+    const token = this.tokens.get(tokenId);
+    if (!token) {
+      throw new Error(`Token not found: ${tokenId}`);
+    }
+
+    // Process as normal scan
+    const result = await this.processScan({
+      tokenId,
+      teamId,
+      deviceId: deviceId || 'ADMIN_MANUAL',
+      mode,
+    }, session);
+
+    logger.info('Manual transaction created', {
+      transactionId: result.transactionId,
+      tokenId,
+      teamId,
+      mode,
+      points: result.points,
+    });
+
+    return result;
+  }
+
+  /**
    * Rebuild team scores from transaction history
    * Used on service initialization to restore state after restart
    * @param {Array} transactions - Historical transactions from session

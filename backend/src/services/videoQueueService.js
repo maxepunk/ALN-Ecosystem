@@ -507,11 +507,88 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
+   * Add video to queue by filename (admin manual add - FR 4.2.2 line 907)
+   * @param {string} videoFile - Video filename (e.g., 'rat001.mp4')
+   * @param {string} requestedBy - Device ID requesting video
+   * @returns {VideoQueueItem}
+   */
+  addVideoByFilename(videoFile, requestedBy) {
+    const tokenId = videoFile.replace(/\.\w+$/, ''); // Remove extension
+
+    // Look up token to get duration metadata
+    const transactionService = require('./transactionService');
+    const token = transactionService.tokens.get(tokenId);
+
+    if (!token) {
+      throw new Error(`Token not found for video: ${tokenId}`);
+    }
+
+    if (!token.mediaAssets?.video) {
+      throw new Error(`Token ${tokenId} does not have a video asset`);
+    }
+
+    // Create queue item with duration from token
+    const queueItem = new VideoQueueItem({
+      tokenId: tokenId,
+      videoPath: token.mediaAssets.video,
+      requestedBy: requestedBy || 'ADMIN',
+      duration: token.getVideoDuration(),
+    });
+
+    this.queue.push(queueItem);
+
+    logger.info('Video added to queue by admin', {
+      itemId: queueItem.id,
+      videoFile,
+      tokenId,
+      duration: queueItem.duration,
+      requestedBy,
+      queueLength: this.queue.length,
+    });
+
+    this.emit('queue:added', queueItem);
+
+    // Process queue if not playing
+    if (!this.currentItem) {
+      setImmediate(() => this.processQueue());
+    }
+
+    return queueItem;
+  }
+
+  /**
+   * Reorder queue - move video from one position to another (FR 4.2.2 line 908)
+   * @param {number} fromIndex - Source position (0-based)
+   * @param {number} toIndex - Destination position (0-based)
+   */
+  reorderQueue(fromIndex, toIndex) {
+    if (fromIndex < 0 || fromIndex >= this.queue.length) {
+      throw new Error(`Invalid fromIndex: ${fromIndex} (queue length: ${this.queue.length})`);
+    }
+    if (toIndex < 0 || toIndex >= this.queue.length) {
+      throw new Error(`Invalid toIndex: ${toIndex} (queue length: ${this.queue.length})`);
+    }
+
+    // Remove item from source position
+    const [item] = this.queue.splice(fromIndex, 1);
+
+    // Insert at destination position
+    this.queue.splice(toIndex, 0, item);
+
+    logger.info('Video queue reordered', {
+      fromIndex,
+      toIndex,
+      tokenId: item.tokenId,
+      queueLength: this.queue.length,
+    });
+
+    this.emit('queue:reordered', { fromIndex, toIndex, item });
+  }
+
+  /**
    * Clear entire queue
    */
   clearQueue() {
-    const wasPlaying = this.currentItem?.isPlaying();
-    
     // Stop current playback
     if (this.playbackTimer) {
       clearTimeout(this.playbackTimer);
@@ -562,16 +639,25 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
-   * Get video duration (mock implementation)
+   * Get video duration for a token
    * @param {string} tokenId - Token ID
    * @returns {number} Duration in seconds
+   * @throws {Error} If token not found or has no duration metadata
    * @private
    */
   getVideoDuration(tokenId) {
-    // This would normally query token data or VLC
-    // For now, return a safe default duration
-    // Using 60 seconds to ensure videos don't get cut off
-    return 60; // 60 seconds default (safer for longer videos)
+    // Find queue item with this tokenId
+    const item = this.queue.find(q => q.tokenId === tokenId) || this.currentItem;
+
+    if (!item) {
+      throw new Error(`Video not found in queue: ${tokenId}`);
+    }
+
+    if (!item.duration) {
+      throw new Error(`Video ${tokenId} has no duration metadata`);
+    }
+
+    return item.duration;
   }
 
   /**

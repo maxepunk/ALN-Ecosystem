@@ -3,25 +3,19 @@
  *
  * Tests admin commands → service execution → state updates → broadcasts
  *
- * CRITICAL: These tests validate admin control panel functionality.
- * Expected to REVEAL implementation bugs in command processing and broadcast propagation.
- *
- * Implemented Admin Commands (from adminEvents.js):
- * - session:create, session:pause, session:resume, session:end
- * - video:skip
- * - score:adjust
- *
- * Missing Commands (from AsyncAPI contract but not implemented):
- * - video:play, video:pause, video:stop
- * - video:queue:add, video:queue:reorder, video:queue:clear
- * - transaction:delete, transaction:create
- * - system:reset
+ * CRITICAL: These tests validate admin control panel functionality using REAL GM Scanner.
+ * Tests serve dual purpose:
+ * 1. Validate implemented commands work correctly
+ * 2. REVEAL missing commands through test failures (contract compliance validation)
  *
  * Contract: backend/contracts/asyncapi.yaml (gm:command, gm:command:ack)
  * Functional Requirements: Section 4.2 (Admin Panel Intervention)
  */
 
-const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+// CRITICAL: Load browser mocks FIRST before any scanner code
+require('../helpers/browser-mocks');
+
+const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
@@ -72,13 +66,13 @@ describe('Admin Intervention Integration', () => {
     });
 
     // Connect admin GM and observer GM
-    gmAdmin = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ADMIN');
-    gmObserver = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_OBSERVER');
+    gmAdmin = await createAuthenticatedScanner(testContext.url, 'GM_ADMIN', 'blackmarket');
+    gmObserver = await createAuthenticatedScanner(testContext.url, 'GM_OBSERVER', 'blackmarket');
   });
 
   afterEach(async () => {
-    if (gmAdmin?.connected) gmAdmin.disconnect();
-    if (gmObserver?.connected) gmObserver.disconnect();
+    if (gmAdmin?.socket?.connected) gmAdmin.socket.disconnect();
+    if (gmObserver?.socket?.connected) gmObserver.socket.disconnect();
     await sessionService.reset();
   });
 
@@ -98,11 +92,11 @@ describe('Admin Intervention Integration', () => {
       expect(teamScore.currentScore).toBe(15000); // rat001 = 15000
 
       // CRITICAL: Set up listeners BEFORE command to avoid race condition
-      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // CRITICAL: Wait for score:updated event with ADJUSTED score (not setup transaction score)
       const scorePromise = new Promise((resolve) => {
-        gmObserver.on('score:updated', (event) => {
+        gmObserver.socket.on('score:updated', (event) => {
           if (event.data.currentScore === 14500) { // Expected after adjustment
             resolve(event);
           }
@@ -110,7 +104,7 @@ describe('Admin Intervention Integration', () => {
       });
 
       // Trigger: Admin adjusts score (penalty)
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',
@@ -154,11 +148,11 @@ describe('Admin Intervention Integration', () => {
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 
-      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // Wait for score event with ADJUSTED value
       const scorePromise = new Promise((resolve) => {
-        gmObserver.on('score:updated', (event) => {
+        gmObserver.socket.on('score:updated', (event) => {
           if (event.data.currentScore === 3000) { // 1000 + 2000
             resolve(event);
           }
@@ -166,7 +160,7 @@ describe('Admin Intervention Integration', () => {
       });
 
       // Admin adds bonus points
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',
@@ -190,9 +184,9 @@ describe('Admin Intervention Integration', () => {
     });
 
     it('should reject score adjustment for non-existent team', async () => {
-      const errorPromise = waitForEvent(gmAdmin, 'error');
+      const errorPromise = waitForEvent(gmAdmin.socket, 'error');
 
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',
@@ -214,12 +208,49 @@ describe('Admin Intervention Integration', () => {
   });
 
   describe('Session Lifecycle Control', () => {
+    it('should create session via admin command', async () => {
+      // End current session first
+      await sessionService.endSession();
+
+      // Set up listeners AFTER ending session to avoid race with beforeEach session
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
+
+      // Wait for session:update with specific name to avoid catching wrong event
+      const sessionUpdatePromise = new Promise((resolve) => {
+        gmObserver.socket.on('session:update', (event) => {
+          if (event.data.name === 'Admin Created Session') {
+            resolve(event);
+          }
+        });
+      });
+
+      gmAdmin.socket.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'session:create',
+          payload: {
+            name: 'Admin Created Session',
+            teams: ['001', '002', '003']
+          }
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const [ack, sessionUpdate] = await Promise.all([ackPromise, sessionUpdatePromise]);
+
+      expect(ack.data.success).toBe(true);
+      expect(ack.data.action).toBe('session:create');
+      expect(sessionUpdate.data.name).toBe('Admin Created Session');
+      expect(sessionUpdate.data.teams).toEqual(['001', '002', '003']);
+      expect(sessionUpdate.data.status).toBe('active');
+    });
+
     it('should pause session and reject new transactions', async () => {
-      const sessionUpdatePromise = waitForEvent(gmObserver, 'session:update');
-      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const sessionUpdatePromise = waitForEvent(gmObserver.socket, 'session:update');
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // Pause session
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:pause',
@@ -239,9 +270,9 @@ describe('Admin Intervention Integration', () => {
       validateWebSocketEvent(sessionUpdate, 'session:update');
 
       // Verify: Transaction rejected when session paused
-      const resultPromise = waitForEvent(gmObserver, 'transaction:result');
+      const resultPromise = waitForEvent(gmObserver.socket, 'transaction:result');
 
-      gmObserver.emit('transaction:submit', {
+      gmObserver.socket.emit('transaction:submit', {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
@@ -263,11 +294,11 @@ describe('Admin Intervention Integration', () => {
       // First pause
       await sessionService.updateSession({ status: 'paused' });
 
-      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // Wait for session:update with active status
       const sessionUpdatePromise = new Promise((resolve) => {
-        gmObserver.on('session:update', (event) => {
+        gmObserver.socket.on('session:update', (event) => {
           if (event.data.status === 'active') {
             resolve(event);
           }
@@ -275,7 +306,7 @@ describe('Admin Intervention Integration', () => {
       });
 
       // Resume session
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:resume',
@@ -290,9 +321,9 @@ describe('Admin Intervention Integration', () => {
       expect(sessionUpdate.data.status).toBe('active');
 
       // Verify: Transaction accepted after resume
-      const resultPromise = waitForEvent(gmObserver, 'transaction:result');
+      const resultPromise = waitForEvent(gmObserver.socket, 'transaction:result');
 
-      gmObserver.emit('transaction:submit', {
+      gmObserver.socket.emit('transaction:submit', {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
@@ -322,11 +353,11 @@ describe('Admin Intervention Integration', () => {
       const scoreBefore = teamScores.find(s => s.teamId === '001');
       expect(scoreBefore.currentScore).toBe(15000);
 
-      const sessionUpdatePromise = waitForEvent(gmObserver, 'session:update');
-      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const sessionUpdatePromise = waitForEvent(gmObserver.socket, 'session:update');
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // End session
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:end',
@@ -353,9 +384,9 @@ describe('Admin Intervention Integration', () => {
     it('should skip current video', async () => {
       // TODO: This test requires video to be playing
       // For now, test that command is acknowledged even with no video
-      const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'video:skip',
@@ -368,6 +399,290 @@ describe('Admin Intervention Integration', () => {
 
       expect(ack.data.success).toBe(true);
       expect(ack.data.action).toBe('video:skip');
+    });
+  });
+
+  describe('Contract-Specified Commands (Not Yet Implemented)', () => {
+    describe('Video Playback Control - FR 4.2.2', () => {
+      it('should play video via admin command', async () => {
+        // Per AsyncAPI contract line 1012 and FR 4.2.2 line 898
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'video:play',
+            payload: {}
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('video:play');
+      });
+
+      it('should pause video via admin command', async () => {
+        // Per AsyncAPI contract line 1013 and FR 4.2.2 line 899
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'video:pause',
+            payload: {}
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('video:pause');
+      });
+
+      it('should stop video via admin command', async () => {
+        // Per AsyncAPI contract line 1014 and FR 4.2.2 line 900
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'video:stop',
+            payload: {}
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('video:stop');
+      });
+    });
+
+    describe('Video Queue Management - FR 4.2.2', () => {
+      it('should add video to queue via admin command', async () => {
+        // Per AsyncAPI contract line 1016 and FR 4.2.2 lines 906-920
+        // FR: "Add: Specify video filename (same as tokenId)"
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'video:queue:add',
+            payload: {
+              videoFile: '534e2b03.mp4'
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('video:queue:add');
+      });
+
+      it('should reorder video queue via admin command', async () => {
+        // Per AsyncAPI contract line 1017 and FR 4.2.2 lines 906-920
+        // FR: "Reorder: Move video from position X to position Y"
+
+        // First, add videos to the queue to have something to reorder
+        const videoQueueService = require('../../src/services/videoQueueService');
+        const transactionService = require('../../src/services/transactionService');
+        const token = transactionService.tokens.get('534e2b03');
+        videoQueueService.addToQueue(token, 'GM_ADMIN');
+        videoQueueService.addToQueue(token, 'GM_ADMIN');
+        videoQueueService.addToQueue(token, 'GM_ADMIN');
+
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'video:queue:reorder',
+            payload: {
+              fromIndex: 0,
+              toIndex: 2
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('video:queue:reorder');
+      });
+
+      it('should clear video queue via admin command', async () => {
+        // Per AsyncAPI contract line 1018 and FR 4.2.2 lines 906-920
+        // FR: "Clear queue (remove all)"
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'video:queue:clear',
+            payload: {}
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('video:queue:clear');
+      });
+    });
+
+    describe('Transaction Intervention - FR 4.2.4', () => {
+      it('should delete transaction via admin command', async () => {
+        // Per AsyncAPI contract line 1019 and FR 4.2.4 lines 944-974
+        // FR: "Delete transaction (undo erroneous scan)"
+        // FR: "Recalculate affected team score, broadcast update"
+
+        // Setup: Create a transaction first
+        await transactionService.processScan({
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'SETUP',
+          mode: 'blackmarket'
+        }, sessionService.getCurrentSession());
+
+        const session = sessionService.getCurrentSession();
+        const transactionId = session.transactions[0].id;
+
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'transaction:delete',
+            payload: {
+              transactionId: transactionId
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('transaction:delete');
+      });
+
+      it('should create manual transaction via admin command', async () => {
+        // Per AsyncAPI contract line 1020 and FR 4.2.4 lines 944-974
+        // FR: "Create manual transaction (when physical scan failed)"
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'transaction:create',
+            payload: {
+              tokenId: 'asm001',
+              teamId: '002',
+              deviceId: 'ADMIN_MANUAL',
+              mode: 'blackmarket'
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('transaction:create');
+      });
+    });
+
+    describe('System Control - FR 4.2.5', () => {
+      it('should reset entire system via admin command', async () => {
+        // Per AsyncAPI contract line 1021 and FR 4.2.5 lines 980-985
+        // FR: "System Reset - Reset all scores, transactions, session, video queue"
+        // FR: "Full nuclear option"
+
+        // Setup: Create some data first
+        await transactionService.processScan({
+          tokenId: 'rat001',
+          teamId: '001',
+          deviceId: 'SETUP',
+          mode: 'blackmarket'
+        }, sessionService.getCurrentSession());
+
+        // Verify data exists before reset
+        const teamScoresBefore = transactionService.getTeamScores();
+        expect(teamScoresBefore.length).toBeGreaterThan(0);
+
+        const responsePromise = Promise.race([
+          waitForEvent(gmAdmin.socket, 'gm:command:ack'),
+          waitForEvent(gmAdmin.socket, 'error')
+        ]);
+
+        gmAdmin.socket.emit('gm:command', {
+          event: 'gm:command',
+          data: {
+            action: 'system:reset',
+            payload: {}
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const result = await responsePromise;
+
+        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        expect(result.event).toBe('gm:command:ack');
+        expect(result.data.success).toBe(true);
+        expect(result.data.action).toBe('system:reset');
+
+        // After reset, all data should be cleared
+        const teamScoresAfter = transactionService.getTeamScores();
+        expect(teamScoresAfter.length).toBe(0);
+      });
     });
   });
 
@@ -405,9 +720,9 @@ describe('Admin Intervention Integration', () => {
     });
 
     it('should handle invalid command action', async () => {
-      const errorPromise = waitForEvent(gmAdmin, 'error');
+      const errorPromise = waitForEvent(gmAdmin.socket, 'error');
 
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'invalid:action',
@@ -423,10 +738,10 @@ describe('Admin Intervention Integration', () => {
     });
 
     it('should handle missing required parameters', async () => {
-      const errorPromise = waitForEvent(gmAdmin, 'error');
+      const errorPromise = waitForEvent(gmAdmin.socket, 'error');
 
       // score:adjust requires teamId and delta
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',
@@ -456,11 +771,11 @@ describe('Admin Intervention Integration', () => {
       }, sessionService.getCurrentSession());
 
       // Track events on BOTH clients
-      const adminAckPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+      const adminAckPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // Wait for score event with ADJUSTED value
       const observerScorePromise = new Promise((resolve) => {
-        gmObserver.on('score:updated', (event) => {
+        gmObserver.socket.on('score:updated', (event) => {
           if (event.data.currentScore === 14000) { // 15000 - 1000
             resolve(event);
           }
@@ -468,7 +783,7 @@ describe('Admin Intervention Integration', () => {
       });
 
       // Admin issues command
-      gmAdmin.emit('gm:command', {
+      gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',

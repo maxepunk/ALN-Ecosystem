@@ -1879,7 +1879,29 @@ const Settings = { deviceId: '001', stationMode: 'detective' }  // Singleton
 - **Key Learning**: Test infrastructure bugs can masquerade as production bugs - always verify test setup first
 
 #### Phase 3.6: Transform Remaining Single-GM Integration Tests
-- [ ] **Transform admin-interventions.test.js** - Apply single-GM pattern
+
+**Phase 3.6a: admin-interventions.test.js** ✅ COMPLETE
+- [x] **Added 9 failing tests** for unimplemented admin commands (contract-specified, FR-required)
+- [x] **Implemented 9 missing commands**:
+  - `video:play`, `video:pause`, `video:stop` (FR 4.2.2) - Added vlcService calls
+  - `video:queue:add`, `video:queue:reorder`, `video:queue:clear` (FR 4.2.2) - Added videoQueueService methods
+  - `transaction:delete`, `transaction:create` (FR 4.2.4) - Added transactionService methods
+  - `system:reset` (FR 4.2.5) - Added full system reset
+- [x] **Fixed implementation bugs revealed by tests**:
+  - Missing imports: `config`, `vlcService` in adminEvents.js
+  - Undefined variable: `currentSession` → use `sessionService.getCurrentSession()` per case
+  - Test data issue: Used token with video asset (534e2b03) not rat001
+  - Method name: `addToQueue()` not `addVideo()` in videoQueueService
+- [x] **Verification**: All 21 tests pass (12 existing + 9 new)
+
+**Implementation Gaps Found**:
+1. Video playback commands existed in AsyncAPI contract but had no implementation
+2. Video queue management methods partially missing (add/reorder existed conceptually but not as admin commands)
+3. Transaction intervention commands defined in FR 4.2.4 but unimplemented
+4. System reset command defined in FR 4.2.5 but unimplemented
+5. Admin command handler missing required service imports
+
+**Remaining Phase 3.6 Tasks**:
 - [ ] **Transform error-propagation.test.js** - Apply pattern, replace TEST_* tokens
 - [ ] **Transform group-completion.test.js** - Apply pattern (single GM scanning group)
 - [ ] **Transform offline-queue-sync.test.js** - Apply pattern (single GM offline/online)

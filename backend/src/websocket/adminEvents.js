@@ -4,11 +4,13 @@
  */
 
 const logger = require('../utils/logger');
+const config = require('../config');
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
 const stateService = require('../services/stateService');
 const videoQueueService = require('../services/videoQueueService');
+const vlcService = require('../services/vlcService');
 const { emitWrapped } = require('./eventWrapper');
 
 /**
@@ -70,6 +72,33 @@ async function handleGmCommand(socket, data, io) {
         logger.info('Session ended by GM', { gmStation: socket.deviceId });
         break;
 
+      case 'video:play':
+        // Resume/play current video (FR 4.2.2 line 898)
+        if (config.features.videoPlayback) {
+          await vlcService.resume();
+        }
+        resultMessage = 'Video playback resumed';
+        logger.info('Video playback resumed by GM', { gmStation: socket.deviceId });
+        break;
+
+      case 'video:pause':
+        // Pause current video (FR 4.2.2 line 899)
+        if (config.features.videoPlayback) {
+          await vlcService.pause();
+        }
+        resultMessage = 'Video playback paused';
+        logger.info('Video playback paused by GM', { gmStation: socket.deviceId });
+        break;
+
+      case 'video:stop':
+        // Stop current video (FR 4.2.2 line 900)
+        if (config.features.videoPlayback) {
+          await vlcService.stop();
+        }
+        resultMessage = 'Video playback stopped';
+        logger.info('Video playback stopped by GM', { gmStation: socket.deviceId });
+        break;
+
       case 'video:skip':
         videoQueueService.skipCurrent();
         emitWrapped(io, 'video:skipped', {
@@ -77,6 +106,35 @@ async function handleGmCommand(socket, data, io) {
         });
         resultMessage = 'Video skipped successfully';
         logger.info('Video skipped by GM', { gmStation: socket.deviceId });
+        break;
+
+      case 'video:queue:add':
+        // Add video to queue by filename (FR 4.2.2 line 907)
+        const { videoFile } = payload;
+        if (!videoFile) {
+          throw new Error('videoFile is required for video:queue:add');
+        }
+        videoQueueService.addVideoByFilename(videoFile, socket.deviceId);
+        resultMessage = `Video ${videoFile} added to queue`;
+        logger.info('Video added to queue by GM', { gmStation: socket.deviceId, videoFile });
+        break;
+
+      case 'video:queue:reorder':
+        // Reorder queue (FR 4.2.2 line 908)
+        const { fromIndex, toIndex } = payload;
+        if (fromIndex === undefined || toIndex === undefined) {
+          throw new Error('fromIndex and toIndex are required for video:queue:reorder');
+        }
+        videoQueueService.reorderQueue(fromIndex, toIndex);
+        resultMessage = `Queue reordered: moved position ${fromIndex} to ${toIndex}`;
+        logger.info('Queue reordered by GM', { gmStation: socket.deviceId, fromIndex, toIndex });
+        break;
+
+      case 'video:queue:clear':
+        // Clear entire queue (FR 4.2.2 line 909)
+        videoQueueService.clearQueue();
+        resultMessage = 'Video queue cleared';
+        logger.info('Video queue cleared by GM', { gmStation: socket.deviceId });
         break;
 
       case 'score:adjust':
@@ -93,6 +151,65 @@ async function handleGmCommand(socket, data, io) {
           delta,
           reason
         });
+        break;
+
+      case 'transaction:delete': {
+        // Delete transaction and recalculate scores (FR 4.2.4 line 949)
+        const { transactionId } = payload;
+        if (!transactionId) {
+          throw new Error('transactionId is required for transaction:delete');
+        }
+        const deleteSession = sessionService.getCurrentSession();
+        if (!deleteSession) {
+          throw new Error('No active session');
+        }
+        const deleteResult = transactionService.deleteTransaction(transactionId, deleteSession);
+        resultMessage = `Transaction ${transactionId} deleted, team ${deleteResult.deletedTransaction.teamId} score recalculated`;
+        logger.info('Transaction deleted by GM', {
+          gmStation: socket.deviceId,
+          transactionId,
+          affectedTeam: deleteResult.deletedTransaction.teamId,
+          newScore: deleteResult.updatedScore.currentScore,
+        });
+        break;
+      }
+
+      case 'transaction:create': {
+        // Create manual transaction (FR 4.2.4 line 954)
+        const txData = payload;
+        if (!txData.tokenId || !txData.teamId || !txData.mode) {
+          throw new Error('tokenId, teamId, and mode are required for transaction:create');
+        }
+        const createSession = sessionService.getCurrentSession();
+        if (!createSession) {
+          throw new Error('No active session');
+        }
+        // Add admin's deviceId
+        txData.deviceId = socket.deviceId;
+        const createResult = await transactionService.createManualTransaction(txData, createSession);
+        resultMessage = `Manual transaction created for team ${txData.teamId}: ${createResult.points} points`;
+        logger.info('Manual transaction created by GM', {
+          gmStation: socket.deviceId,
+          transactionId: createResult.transactionId,
+          tokenId: txData.tokenId,
+          teamId: txData.teamId,
+          points: createResult.points,
+        });
+        break;
+      }
+
+      case 'system:reset':
+        // System reset - FR 4.2.5 lines 980-985 (full "nuclear option")
+        // End current session
+        await sessionService.endSession();
+
+        // Reset all services
+        await sessionService.reset();
+        transactionService.reset();
+        videoQueueService.clearQueue();
+
+        resultMessage = 'System reset complete - all data cleared';
+        logger.info('System reset by GM', { gmStation: socket.deviceId });
         break;
 
       default:
@@ -124,9 +241,9 @@ async function handleGmCommand(socket, data, io) {
  * Handle transaction submission from GM scanner
  * @param {Socket} socket - Socket.io socket instance
  * @param {Object} data - Transaction data
- * @param {Server} io - Socket.io server instance
+ * @param {Server} _io - Socket.io server instance (unused, broadcasts handled by services)
  */
-async function handleTransactionSubmit(socket, data, io) {
+async function handleTransactionSubmit(socket, data, _io) {
   try {
     if (!socket.deviceId) {
       emitWrapped(socket, 'error', {
