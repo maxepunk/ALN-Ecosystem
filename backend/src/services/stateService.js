@@ -95,17 +95,27 @@ class StateService extends EventEmitter {
 
     // Listen for new session creation to create game state
     listenerRegistry.addTrackedListener(sessionService, 'session:created', async (sessionData) => {
-      logger.info('Session created, creating game state', { sessionId: sessionData.id });
+      try {
+        logger.info('Session created, creating game state', { sessionId: sessionData.id });
 
-      // Get full session object
-      const session = sessionService.getCurrentSession();
-      if (session) {
-        this.currentState = this.createStateFromSession(session);
-        await this.saveState();
-        logger.info('Game state created from new session', { sessionId: session.id });
+        // Get full session object
+        const session = sessionService.getCurrentSession();
+        if (session) {
+          this.currentState = this.createStateFromSession(session);
+          await this.saveState();
+          logger.info('Game state created from new session', { sessionId: session.id });
 
-        // Emit state update
-        this.emit('state:updated', this.currentState.toJSON());
+          // Emit state update
+          this.emit('state:updated', this.currentState.toJSON());
+        } else {
+          logger.error('session:created event fired but getCurrentSession() returned null');
+        }
+      } catch (error) {
+        logger.error('Failed to create game state from session:created event', {
+          error: error.message,
+          stack: error.stack,
+          sessionId: sessionData.id
+        });
       }
     });
 

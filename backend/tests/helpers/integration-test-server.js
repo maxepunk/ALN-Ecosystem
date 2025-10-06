@@ -39,7 +39,7 @@ async function setupIntegrationTestServer() {
   }
 
   // Create HTTP server
-  const server = http.createServer(app.app);
+  const server = http.createServer(app);
 
   // Create Socket.IO server
   const io = createSocketServer(server);

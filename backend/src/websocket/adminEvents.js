@@ -391,7 +391,27 @@ function handleStateRequest(socket) {
       return;
     }
 
-    const state = stateService.getCurrentState();
+    let state = stateService.getCurrentState();
+
+    // DEFENSIVE FIX: If no GameState but session exists, create GameState on-the-fly
+    // This handles the case where session:created event listener failed or wasn't registered
+    if (!state) {
+      const session = sessionService.getCurrentSession();
+      if (session) {
+        logger.warn('GameState missing but session exists - creating state on-the-fly', {
+          sessionId: session.id,
+          deviceId: socket.deviceId
+        });
+
+        // Create GameState from current session (synchronously - createStateFromSession returns immediately)
+        state = stateService.createStateFromSession(session);
+
+        // Save asynchronously (don't wait - state is already usable)
+        stateService.saveState().catch(err => {
+          logger.error('Failed to save auto-created GameState', { error: err.message });
+        });
+      }
+    }
 
     if (state) {
       emitWrapped(socket, 'state:sync', state.toJSON());

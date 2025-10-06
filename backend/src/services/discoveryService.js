@@ -53,9 +53,10 @@ class DiscoveryService {
   /**
    * Start UDP discovery broadcast server
    * @param {number} httpPort - HTTP server port to advertise
-   * @returns {Promise} Resolves when server is listening
+   * @param {number} udpPort - UDP port to listen on (0 for random, default 8888)
+   * @returns {Promise<number>} Resolves with actual UDP port when server is listening
    */
-  startUDPBroadcast(httpPort) {
+  startUDPBroadcast(httpPort, udpPort = null) {
     return new Promise((resolve, reject) => {
       this.port = httpPort;
       this.udpServer = dgram.createSocket('udp4');
@@ -91,29 +92,33 @@ class DiscoveryService {
       this.udpServer.on('listening', () => {
         const address = this.udpServer.address();
         console.log(`UDP discovery server listening on port ${address.port}`);
-        resolve();
+        this.udpPort = address.port;  // Store actual port
+        resolve(address.port);
       });
 
-      // Bind to port 8888 (or fallback if occupied)
-      const udpPort = process.env.DISCOVERY_UDP_PORT || 8888;
-      this.udpServer.bind(udpPort, '0.0.0.0');
+      // Use provided port, or env var, or default 8888
+      const port = udpPort !== null ? udpPort : (process.env.DISCOVERY_UDP_PORT || 8888);
+      this.udpServer.bind(port, '0.0.0.0');
     });
   }
 
   /**
    * Start all discovery services
    * @param {number} httpPort - HTTP server port
+   * @param {number} udpPort - UDP port to listen on (0 for random, default 8888)
    */
-  async start(httpPort) {
+  async start(httpPort, udpPort = null) {
     // Display network info immediately
     this.displayNetworkInfo(httpPort);
 
     // Start UDP discovery server
     try {
-      await this.startUDPBroadcast(httpPort);
+      const actualUdpPort = await this.startUDPBroadcast(httpPort, udpPort);
+      return actualUdpPort;
     } catch (err) {
       console.warn('UDP discovery server failed to start:', err.message);
       console.warn('Manual configuration will be required for scanners');
+      return null;
     }
   }
 

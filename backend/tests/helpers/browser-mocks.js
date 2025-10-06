@@ -77,7 +77,11 @@ global.Debug = {
 
 // Mock ConnectionManager (referenced but not imported in orchestratorClient.js:503)
 // In browser, loaded via separate <script> tag
-global.ConnectionManager = class ConnectionManager {};
+global.ConnectionManager = class ConnectionManager {
+  migrateLocalStorage() {
+    // No-op for tests
+  }
+};
 
 // Mock Settings global (App module uses Settings.deviceId, Settings.stationMode)
 // In browser, loaded via separate <script> tag
@@ -155,7 +159,13 @@ global.console = console;
 global.CustomEvent = window.CustomEvent;
 
 // Socket.io-client (scanner expects it globally)
-global.io = require('socket.io-client');
+// NOTE: Tests that need to MOCK socket.io-client should set global.io to their mock
+// Integration tests that need REAL socket.io-client should load it after browser-mocks
+// Unit tests that mock should set: global.io = jest.fn().mockReturnValue(mockSocket);
+if (typeof global.io === 'undefined') {
+  // Only set if not already defined (integration tests will define it, unit tests mock it)
+  global.io = require('socket.io-client');
+}
 
 // Fetch API (for scanner HTTP requests)
 if (typeof fetch === 'undefined') {
@@ -180,5 +190,22 @@ global.clearInterval = (id) => {
 
 // Expose for tests that want to manually trigger intervals
 global._mockIntervals = intervals;
+
+// Mock StandaloneDataManager (used by SessionModeManager in standalone mode)
+global.StandaloneDataManager = class StandaloneDataManager {
+  constructor() {
+    // No-op for unit tests
+  }
+};
+
+// Mock global functions used by SessionModeManager
+global.showConnectionWizard = () => {
+  // No-op for unit tests
+};
+
+// Mock alert() for error handling tests
+global.alert = () => {
+  // No-op for unit tests
+};
 
 module.exports = {};  // Exports nothing - mocks are global side effects

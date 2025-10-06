@@ -278,29 +278,14 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
  * @returns {OrchestratorIntegration} Player Scanner instance
  */
 function createPlayerScanner(url, deviceId) {
-  // CRITICAL: Clear localStorage to prevent stale URLs from previous tests
-  // Player Scanner constructor reads 'orchestrator_url' from localStorage
-  if (global.localStorage) {
-    global.localStorage.clear();
-  }
-
   // Import real Player Scanner module (requires browser mocks to be loaded first)
   const OrchestratorIntegration = require('../../../aln-memory-scanner/js/orchestratorIntegration');
 
   const client = new OrchestratorIntegration();
-
-  // Override baseUrl with test server URL (constructor may have set wrong URL)
   client.baseUrl = url;
 
   if (deviceId) {
     client.deviceId = deviceId;
-  }
-
-  // CRITICAL: Stop connection monitor (constructor starts it before baseUrl is set correctly)
-  // Tests will manually control connection state via client.connected property
-  if (client.connectionCheckInterval) {
-    clearInterval(client.connectionCheckInterval);
-    client.connectionCheckInterval = null;
   }
 
   return client;
