@@ -102,28 +102,28 @@ class TransactionService extends EventEmitter {
       if (this.isDuplicate(transaction, session)) {
         const original = this.findOriginalTransaction(transaction, session);
         transaction.markAsDuplicate(original?.id || 'unknown');
-        logger.info('Duplicate scan detected', { 
+        logger.info('Duplicate scan detected', {
           tokenId: transaction.tokenId,
           teamId: transaction.teamId,
           originalTeam: original?.teamId,
         });
         // Pass the original claiming team info in extras
-        return this.createScanResponse(transaction, token, { 
-          claimedBy: original?.teamId 
+        return this.createScanResponse(transaction, token, {
+          claimedBy: original?.teamId
         });
       }
+
+      // ATOMIC: Claim token immediately (prevents race condition)
+      // Add transaction to session BEFORE accepting to ensure duplicate check sees it
+      if (!session.transactions) {
+        session.transactions = [];
+      }
+      session.transactions.push(transaction);
 
       // GM scanners don't care about video playback - that's player scanner territory
       // Accept the transaction with appropriate points (detective mode = 0 points)
       const points = (transaction.mode === 'detective') ? 0 : token.value;
-      transaction.accept(points);
-
-      // Add transaction to session for duplicate detection
-      if (!session.transactions) {
-        session.transactions = [];
-      }
-      // REMOVED: session.transactions.push(transaction);
-      // Transaction will be added by sessionService.addTransaction() to avoid duplication
+      transaction.accept(points)
 
       // Update team score (only for blackmarket mode)
       if (transaction.mode !== 'detective') {

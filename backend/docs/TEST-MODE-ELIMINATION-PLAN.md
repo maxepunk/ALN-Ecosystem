@@ -1868,16 +1868,15 @@ const Settings = { deviceId: '001', stationMode: 'detective' }  // Singleton
   - ✅ Same-team duplicate detection
 - [x] **Created multi-gm-coordination.test.js** (multi-GM server coordination)
   - ✅ Concurrent transactions from different teams (PASSES)
-  - ⚠️ Different-team duplicate detection (FAILS - **reveals production bug**)
+  - ✅ Different-team duplicate detection (PASSES after fix)
 - [x] **Pattern documented** - transaction-flow.test.js serves as reference
 
-**New Production Bug Discovered**:
-- Different-team duplicate detection failing
-- Team 001 scans token → +5000 ✓
-- Team 002 scans SAME token → Should reject, but Team 001 gets ANOTHER +5000 ❌
-- Score: Expected 5000, Received 10000
-- Root cause: Duplicate detection logic not properly handling cross-team duplicates
-- File: Likely in transactionService.js duplicate detection
+**Bug Discovered & Fixed**:
+- **Symptom**: Team 001 score was 10000 instead of 5000 after duplicate detection test
+- **Root Cause**: Missing `transactionService.reset()` in beforeEach caused listener accumulation
+- **Fix Applied**: Added full reset pattern (reset services → re-init tokens → re-setup broadcast listeners)
+- **Result**: Both tests now pass ✅
+- **Key Learning**: Test infrastructure bugs can masquerade as production bugs - always verify test setup first
 
 #### Phase 3.6: Transform Remaining Single-GM Integration Tests
 - [ ] **Transform admin-interventions.test.js** - Apply single-GM pattern

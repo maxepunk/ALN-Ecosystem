@@ -15,6 +15,7 @@
 
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const { setupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -30,7 +31,27 @@ describe('Multi-GM Coordination', () => {
   });
 
   beforeEach(async () => {
+    // Reset services for clean test state (removes ALL listeners)
     await sessionService.reset();
+    await transactionService.reset();
+
+    // CRITICAL: Re-initialize tokens after reset
+    const tokenService = require('../../src/services/tokenService');
+    const tokens = tokenService.loadTokens();
+    await transactionService.init(tokens);
+
+    // CRITICAL: Re-setup broadcast listeners after reset (reset() calls removeAllListeners())
+    const stateService = require('../../src/services/stateService');
+    const videoQueueService = require('../../src/services/videoQueueService');
+    const offlineQueueService = require('../../src/services/offlineQueueService');
+
+    setupBroadcastListeners(testContext.io, {
+      sessionService,
+      transactionService,
+      stateService,
+      videoQueueService,
+      offlineQueueService
+    });
 
     // Create session with multiple teams
     await sessionService.createSession({

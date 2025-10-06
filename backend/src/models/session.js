@@ -145,8 +145,16 @@ class Session {
   /**
    * Add a transaction to the session
    * @param {Object} transaction - Transaction to add
+   * NOTE: Idempotent - won't add duplicate if already present
    */
   addTransaction(transaction) {
+    // Idempotency check: Don't add if already in array
+    // (transactionService adds to session.transactions atomically during processScan)
+    const exists = this.transactions.some(tx => tx.id === transaction.id);
+    if (exists) {
+      return; // Already added, skip
+    }
+
     this.transactions.push(transaction);
     this.metadata.totalScans++;
 
