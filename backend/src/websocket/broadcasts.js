@@ -313,7 +313,21 @@ function setupBroadcastListeners(io, services) {
         const limit = 10;
         const start = Math.max(0, session.transactions.length - limit);
         for (let i = start; i < session.transactions.length; i++) {
-          recentTransactions.push(session.transactions[i]);
+          const transaction = session.transactions[i];
+          // Enrich with token data (same as transaction:new broadcast)
+          const token = transactionService.getToken(transaction.tokenId);
+          recentTransactions.push({
+            id: transaction.id,
+            tokenId: transaction.tokenId,
+            teamId: transaction.teamId,
+            deviceId: transaction.deviceId,
+            mode: transaction.mode,
+            status: transaction.status,
+            points: transaction.points,
+            timestamp: transaction.timestamp,
+            memoryType: token?.memoryType || 'UNKNOWN',
+            valueRating: token?.metadata?.rating || 0
+          });
         }
       }
 

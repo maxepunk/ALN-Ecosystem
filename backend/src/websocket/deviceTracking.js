@@ -85,12 +85,29 @@ function handleSyncRequest(socket) {
     // Get VLC connection status
     const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
 
+    // Enrich recent transactions with token data (for admin panel display)
+    const recentTransactions = (session?.transactions?.slice(-100) || []).map(transaction => {
+      const token = transactionService.getToken(transaction.tokenId);
+      return {
+        id: transaction.id,
+        tokenId: transaction.tokenId,
+        teamId: transaction.teamId,
+        deviceId: transaction.deviceId,
+        mode: transaction.mode,
+        status: transaction.status,
+        points: transaction.points,
+        timestamp: transaction.timestamp,
+        memoryType: token?.memoryType || 'UNKNOWN',
+        valueRating: token?.metadata?.rating || 0
+      };
+    });
+
     // Send full state sync per AsyncAPI contract (sync:full event)
     // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
     emitWrapped(socket, 'sync:full', {
       session: session ? session.toJSON() : null,
       scores: transactionService.getTeamScores(),
-      recentTransactions: session?.transactions?.slice(-100) || [],
+      recentTransactions,
       videoStatus: videoStatus,
       devices: (session?.connectedDevices || []).map(device => ({
         deviceId: device.id,
