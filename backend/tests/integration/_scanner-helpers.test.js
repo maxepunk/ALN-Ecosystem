@@ -153,6 +153,13 @@ describe('Scanner Helper Verification', () => {
   describe('Player Scanner (OrchestratorIntegration)', () => {
     let playerScanner;
 
+    afterEach(async () => {
+      if (playerScanner) {
+        await playerScanner.destroy();  // Stop connection monitor + wait for pending check
+        playerScanner = null;
+      }
+    });
+
     it('should create Player Scanner instance', () => {
       playerScanner = createPlayerScanner(testContext.url, 'PLAYER_HELPER_TEST');
 
