@@ -132,21 +132,41 @@ describe('Scanner Helper Verification', () => {
 
       // 5. CRITICAL: Verify App.recordTransaction can be called without crashing
       // This proves all dependencies are initialized correctly
-      // We're NOT testing if the transaction is correct (that's Phase 3.4)
-      // We're testing: "Did the helper set up everything so scanner doesn't crash?"
-      const token = {
-        id: '534e2b03',
-        SF_MemoryType: 'Technical',
-        SF_ValueRating: 3,
-        SF_Group: ''
-      };
+      // Verify recordTransaction correctly adds to DataManager and queues for submission
+      const TestTokens = require('../fixtures/test-tokens');
+      const token = TestTokens.STANDALONE_TOKENS[0]; // 534e2b02
 
       scanner.App.currentTeamId = '001';
+      scanner.Settings.stationMode = 'blackmarket';
 
-      // This should not throw "queueManager not initialized" or similar errors
-      expect(() => {
-        scanner.App.recordTransaction(token, '534e2b03', false);
-      }).not.toThrow();
+      // Spy on queueManager and DataManager to verify behavior
+      const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
+      const dataManagerSpy = jest.spyOn(scanner.DataManager, 'addTransaction');
+
+      // Execute
+      scanner.App.recordTransaction(token, token.id, false);
+
+      // VERIFY: Transaction added to DataManager with correct structure
+      expect(dataManagerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          rfid: token.id,
+          teamId: '001',
+          stationMode: 'blackmarket',
+          valueRating: token.SF_ValueRating,
+          memoryType: token.SF_MemoryType,
+          group: token.SF_Group,
+          isUnknown: false
+        })
+      );
+
+      // VERIFY: Transaction queued for submission to orchestrator
+      expect(queueSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tokenId: token.id,
+          teamId: '001',
+          mode: 'blackmarket'
+        })
+      );
     });
   });
 

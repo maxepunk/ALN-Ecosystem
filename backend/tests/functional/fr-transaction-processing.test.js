@@ -173,36 +173,35 @@ describe('FR Section 3: Transaction Processing', () => {
 
   describe('FR 3.4: Group Completion Bonuses', () => {
     it('should award bonus when team completes a group', async () => {
+      // Use test fixtures for deterministic behavior
+      const TestTokens = require('../fixtures/test-tokens');
+      const groupTokens = TestTokens.MARCUS_SUCKS.tokens;
+
+      // Validate fixture data exists before running test
+      if (groupTokens.length < 2) {
+        throw new Error(
+          'Test fixture invalid: MARCUS_SUCKS group must have at least 2 tokens. ' +
+          'Check tests/fixtures/test-tokens.js'
+        );
+      }
+
       scanner.Settings.stationMode = 'blackmarket';
       scanner.App.currentTeamId = '001';
 
-      // Find tokens from same group
-      const rawTokensPath = path.join(__dirname, '../../../ALN-TokenData/tokens.json');
-      const rawTokens = JSON.parse(fs.readFileSync(rawTokensPath, 'utf8'));
+      // Scan first token (rat001)
+      scanner.App.processNFCRead({ id: groupTokens[0].id });
+      await waitForEvent(scanner.socket, 'transaction:result');
 
-      // Find a group with multiple tokens
-      const groupTokens = Object.entries(rawTokens)
-        .filter(([_, token]) => token.SF_Group && token.SF_Group.includes('x'))
-        .slice(0, 2); // Get first 2 tokens from a group
+      // Scan second token (asm001) - should complete group
+      const groupPromise = waitForEvent(scanner.socket, 'group:completed');
+      scanner.App.processNFCRead({ id: groupTokens[1].id });
 
-      if (groupTokens.length >= 2) {
-        // Scan first token
-        scanner.App.processNFCRead({ id: groupTokens[0][0] });
-        await waitForEvent(scanner.socket, 'transaction:result');
+      const groupEvent = await groupPromise;
 
-        // Scan second token - should complete group
-        const groupPromise = waitForEvent(scanner.socket, 'group:completed');
-        scanner.App.processNFCRead({ id: groupTokens[1][0] });
-
-        const groupEvent = await groupPromise;
-
-        // FR 3.4: Group completion bonus calculated
-        expect(groupEvent.data.group).toBeDefined(); // Note: 'group' not 'groupName'
-        expect(groupEvent.data.bonusPoints).toBeGreaterThan(0);
-      } else {
-        // Skip if no suitable group found
-        console.log('Skipping group completion test - no suitable group found');
-      }
+      // FR 3.4: Group completion bonus calculated
+      expect(groupEvent.data.group).toBeDefined(); // Note: 'group' not 'groupName'
+      expect(groupEvent.data.bonusPoints).toBeGreaterThan(0);
+      expect(groupEvent.data.teamId).toBe('001');
     });
   });
 
