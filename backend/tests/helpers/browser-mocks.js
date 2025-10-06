@@ -71,8 +71,53 @@ global.App = {
   updateAdminPanel: () => {}
 };
 
-// Mock InitializationSteps (Phase 1A, 1B, 1C refactoring)
+// Mock InitializationSteps (Complete refactoring - Phases 1A-1J)
 global.InitializationSteps = {
+  // Phase 1D: UI initialization
+  initializeUIManager: (uiManager) => {
+    uiManager.init();
+  },
+  // Phase 1E: Session mode manager creation
+  createSessionModeManager: (SessionModeManagerClass, windowObj) => {
+    windowObj.sessionModeManager = new SessionModeManagerClass();
+    global.Debug.log('SessionModeManager initialized');
+  },
+  // Phase 1F: View controller initialization
+  initializeViewController: (viewController) => {
+    viewController.init();
+  },
+  // Phase 1G: Settings loading
+  loadSettings: (settings) => {
+    settings.load();
+  },
+  // Phase 1H: Data manager loading
+  loadDataManager: (dataManager, uiManager) => {
+    dataManager.loadTransactions();
+    dataManager.loadScannedTokens();
+    uiManager.updateHistoryBadge();
+  },
+  // Phase 1I: NFC support detection
+  detectNFCSupport: async (nfcHandler) => {
+    const supported = await nfcHandler.init();
+    global.Debug.log(`NFC support: ${supported}`);
+    return supported;
+  },
+  // Phase 1J: Service worker registration
+  registerServiceWorker: async (navigatorObj, uiManager) => {
+    if (!('serviceWorker' in navigatorObj)) {
+      return false;
+    }
+    try {
+      await navigatorObj.serviceWorker.register('./sw.js');
+      global.Debug.log('Service Worker registered successfully');
+      return true;
+    } catch (error) {
+      global.Debug.log('Service Worker registration failed');
+      uiManager.showError('Service Worker registration failed. Offline features may not work.');
+      return false;
+    }
+  },
+  // Phase 1A: Token database loading
   loadTokenDatabase: async (tokenManager, uiManager) => {
     const dbLoaded = await tokenManager.loadDatabase();
     if (!dbLoaded) {
@@ -84,6 +129,7 @@ global.InitializationSteps = {
     global.Debug.log('Token database loaded successfully');
     return true;
   },
+  // Phase 1B: URL mode override
   applyURLModeOverride: (locationSearch, settings) => {
     const urlParams = new URLSearchParams(locationSearch);
     const modeParam = urlParams.get('mode');
@@ -95,6 +141,7 @@ global.InitializationSteps = {
     }
     return false;
   },
+  // Phase 1C: Connection restoration decision logic
   determineInitialScreen: (sessionModeManager) => {
     const savedMode = sessionModeManager.restoreMode();
     if (!savedMode) {
@@ -108,6 +155,7 @@ global.InitializationSteps = {
     }
     return { screen: 'teamEntry', action: null };
   },
+  // Phase 1C: Connection restoration side effects
   applyInitialScreenDecision: (decision, sessionModeManager, uiManager, showWizardFn) => {
     if (decision.action === 'clearModeAndShowWizard') {
       global.Debug.warn('Networked mode restored but connection lost - showing wizard');

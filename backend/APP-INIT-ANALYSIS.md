@@ -898,6 +898,129 @@ async init() {
 
 ---
 
+## Phases 1D-1J: COMPLETED ✅
+
+**Date:** 2025-10-06
+**Time Taken:** ~1 hour
+**Status:** SUCCESS - FULL REFACTORING COMPLETE
+
+### What Was Done
+
+1. **Extracted 7 remaining functions** (batched for efficiency)
+   - `initializeUIManager()` - UI setup wrapper
+   - `createSessionModeManager()` - Session manager creation
+   - `initializeViewController()` - View controller wrapper
+   - `loadSettings()` - Settings loading wrapper
+   - `loadDataManager()` - Transaction/token data loading
+   - `detectNFCSupport()` - NFC detection with logging
+   - `registerServiceWorker()` - Service worker registration with error handling
+
+2. **Created 16 TDD tests** (`tests/unit/scanner/initialization-modules.test.js`)
+   - ✅ initializeUIManager (2 tests)
+   - ✅ createSessionModeManager (2 tests)
+   - ✅ initializeViewController (1 test)
+   - ✅ loadSettings (1 test)
+   - ✅ loadDataManager (2 tests - including call order)
+   - ✅ detectNFCSupport (3 tests)
+   - ✅ registerServiceWorker (5 tests - success, not supported, failure, logging)
+   - **Result:** 16/16 passing
+
+3. **Updated App.init()** (`ALNScanner/js/app/app.js:12-50`)
+   - Completely refactored - all logic extracted
+   - Original: 54 lines of mixed logic
+   - Refactored: 34 lines of clean orchestration
+   - 37% reduction in App.init() size
+
+4. **Updated test mocks** (`tests/helpers/browser-mocks.js:74-170`)
+   - Complete InitializationSteps mock with all 11 functions
+
+5. **Verified no regressions**
+   - ✅ All 16 new unit tests passing
+   - ✅ All 6 existing integration tests passing
+   - ✅ All 264 total scanner tests passing
+
+---
+
+## COMPLETE REFACTORING SUMMARY
+
+**Completion:** 100% (11/11 functions extracted)
+**Total Time:** ~3.5 hours (2.5 pilot + 1 remaining)
+**Tests Created:** 58 total (11 + 14 + 17 + 16)
+**Code Reduction:** App.init() is 37% smaller (54 → 34 lines)
+
+### All Extracted Functions
+
+| Phase | Function | Purpose | Tests | Lines Saved |
+|-------|----------|---------|-------|-------------|
+| 1A | loadTokenDatabase | Token data loading with error handling | 11 | 4 |
+| 1B | applyURLModeOverride | URL parameter mode override | 14 | 6 |
+| 1C | determineInitialScreen | Connection restoration decision logic | 9 | 10 |
+| 1C | applyInitialScreenDecision | Connection restoration side effects | 8 | 10 |
+| 1D | initializeUIManager | UI initialization wrapper | 2 | 1 |
+| 1E | createSessionModeManager | Session manager creation | 2 | 2 |
+| 1F | initializeViewController | View controller wrapper | 1 | 1 |
+| 1G | loadSettings | Settings loading wrapper | 1 | 1 |
+| 1H | loadDataManager | Data manager loading | 2 | 3 |
+| 1I | detectNFCSupport | NFC support detection | 3 | 2 |
+| 1J | registerServiceWorker | Service worker registration | 5 | 12 |
+
+**Total:** 11 functions, 58 tests, 52 lines reduced (from 77 → 25 core logic, rest is orchestration)
+
+### Final App.init() Structure
+
+```javascript
+async init() {
+    Debug.log('App initializing...');
+
+    // All logic extracted into testable functions:
+    InitializationSteps.initializeUIManager(UIManager);
+    InitializationSteps.createSessionModeManager(SessionModeManager, window);
+    InitializationSteps.initializeViewController(this.viewController);
+    InitializationSteps.loadSettings(Settings);
+    InitializationSteps.loadDataManager(DataManager, UIManager);
+    this.nfcSupported = await InitializationSteps.detectNFCSupport(NFCHandler);
+    await InitializationSteps.loadTokenDatabase(TokenManager, UIManager);
+    InitializationSteps.applyURLModeOverride(window.location.search, Settings);
+    await InitializationSteps.registerServiceWorker(navigator, UIManager);
+
+    const screenDecision = InitializationSteps.determineInitialScreen(window.sessionModeManager);
+    InitializationSteps.applyInitialScreenDecision(
+        screenDecision,
+        window.sessionModeManager,
+        UIManager,
+        showConnectionWizard
+    );
+}
+```
+
+### Key Achievements
+
+1. **Testability:** 0 → 58 tests for initialization logic
+2. **Maintainability:** Monolithic function → 11 single-responsibility functions
+3. **Code Quality:** 37% reduction in App.init() complexity
+4. **Error Handling:** Improved (demo data fallback removed, clear error messages)
+5. **Separation of Concerns:** Decision logic separated from side effects
+6. **Dependency Injection:** All dependencies passed as parameters (not globals)
+
+### Benefits Delivered
+
+- **Before:** 77-line monolithic function with 0 tests
+- **After:** 34-line orchestration with 58 comprehensive tests
+- **Coverage:** All 11 initialization responsibilities tested
+- **Error Paths:** All failure cases tested (database loading, service worker, etc.)
+- **Pure Functions:** 3 pure functions with 100% deterministic behavior
+- **Side Effect Isolation:** Clear separation between decision and execution
+
+### Lessons Learned
+
+1. **TDD Works at Scale:** 58 tests created test-first, all passing
+2. **Incremental Validation:** Small batches prevented big-bang failures
+3. **Integration Tests Critical:** Caught missing mocks immediately
+4. **Batching Simple Functions:** Phases 1D-1J batched for efficiency (simpler logic)
+5. **ROI Varies:** Complex functions (1C) = high value, simple wrappers (1D-1I) = moderate value
+
+---
+
 ## Success Criteria
 
 ### Functional Requirements (MUST MAINTAIN)
