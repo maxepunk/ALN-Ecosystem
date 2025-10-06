@@ -2010,10 +2010,11 @@ const vlcService = require('./vlcService');
 
 After systematic review of all 13 integration test files (90 tests total):
 
-**ALREADY TRANSFORMED ✅ (3 files, 35 tests):**
+**ALREADY TRANSFORMED ✅ (4 files, 42 tests):**
 - ✅ `_scanner-helpers.test.js` - Tests helper functions via real scanner (8 tests)
 - ✅ `admin-interventions.test.js` - Admin commands via real GM scanner (21 tests)
 - ✅ `transaction-flow.test.js` - Single GM transaction flow via real scanner (6 tests)
+- ✅ `session-lifecycle.test.js` - GM experiencing session lifecycle it controls (7 tests)
 
 **CORRECTLY using socket.emit ✅ (6 files, 33 tests):**
 These test **SERVER COORDINATION LOGIC** - manual socket.emit is the correct pattern:
@@ -2024,15 +2025,13 @@ These test **SERVER COORDINATION LOGIC** - manual socket.emit is the correct pat
 - ✅ `service-events.test.js` - Internal service events (4 tests)
 - ✅ `offline-queue-sync.test.js` - Server offline queue processing (4 tests)
 
-**NEED TRANSFORMATION ❌ (4 files, 25 tests):**
-These test **SINGLE GM/PLAYER INTEGRATION** - should use real scanner API:
-- [x] **group-completion.test.js** - PARTIALLY complete (3/6 tests) ⚠️
-  - ✅ 3 tests transformed (single GM, single team using real scanner)
-  - ❌ 3 tests need to MOVE to multi-gm-coordination.test.js (multi-team scenarios)
-  - **Issue**: Cannot mix single-GM (real scanner) and multi-GM (socket.emit) tests in same file
-- [ ] **state-synchronization.test.js** - Late-joining GM connection → Use real scanner (3 tests)
-- [ ] **session-lifecycle.test.js** - GM scanner session workflow (create→pause→resume→end) → Use real scanner (7 tests)
+**NEED TRANSFORMATION ❌ (1 file, 9 tests):**
+These test **SINGLE PLAYER INTEGRATION** - should use real scanner API:
 - [ ] **video-orchestration.test.js** - Player scan → video queue → Use createPlayerScanner (9 tests)
+
+**TRANSFORMATION COMPLETE ✅ (2 files, 9 tests):**
+- [x] **group-completion.test.js** - Phase 3.6d - 3 single-GM tests using real scanner ✅
+- [x] **state-synchronization.test.js** - Phase 3.6e - 3 late-joining GM tests using real scanner ✅
 
 **CRITICAL REMINDER:**
 When transforming tests to use real scanner API, **tests may FAIL** - this is EXPECTED and GOOD.
@@ -2048,37 +2047,117 @@ Failures reveal:
 4. ❌ DO NOT fix test to match broken implementation
 5. ✅ Contract is source of truth
 
-**Phase 3.6d: Transform group-completion.test.js** ⚠️ ARCHITECTURAL ISSUE DISCOVERED
+**Phase 3.6d: Transform group-completion.test.js** ✅ COMPLETE
 
-**Status**: Partially complete (3/6 tests transformed)
+**Status**: Complete (Commit: 4e9cbc9a)
 
-**What We Did**:
-- Transformed 3 single-GM tests to use `createAuthenticatedScanner()` + `scanner.App.processNFCRead()`
-- All 3 tests PASS ✅
+**What Was Done**:
+1. Moved 3 multi-GM tests from group-completion.test.js → multi-gm-coordination.test.js
+2. Cleaned up group-completion.test.js (removed gmSocket infrastructure)
+3. Fixed test timing issues (await on submitting client, not observer)
+4. Verified all tests pass after reorganization
 
 **Architectural Discovery**:
-Cannot mix single-GM integration tests (real scanner) with multi-GM coordination tests (manual socket.emit) in the same file.
+Scanner singleton pattern is production architecture (NOT a bug):
+- Each browser tab = isolated JS context = independent scanner instance
+- Node.js module caching = shared singleton (cannot simulate multiple independent scanners)
+- **Solution**: Test at appropriate layers (single-GM via real scanner, multi-GM via server coordination)
 
-**Tests Successfully Transformed (3 tests):**
+**Tests in group-completion.test.js (3 tests - all using real scanner):**
 1. ✅ "should detect group completion and award bonus" - Single GM scans both tokens
 2. ✅ "should not award bonus for incomplete group" - Single GM scans only one token
 3. ✅ "should complete group regardless of scan order" - Single GM scans in reverse order
 
-**Tests That Need to Move (3 tests):**
-These test **multi-GM coordination**, not single-GM integration:
-1. "should prevent group completion if other team claimed a token" - TWO teams compete
-2. "should broadcast group:completed to all connected GMs" - Multi-GM broadcast
-3. "should NOT complete group with detective mode scans" - Mode coordination across submissions
+**Tests moved to multi-gm-coordination.test.js (3 tests - all using manual socket.emit):**
+1. ✅ "should prevent group completion if other team claimed a token" - Multi-team coordination
+2. ✅ "should broadcast group:completed to all connected GMs" - Multi-GM broadcast
+3. ✅ "should NOT complete group with detective mode scans" - Mode coordination across submissions
 
-**Decision**:
-- Keep 3 single-GM tests in group-completion.test.js (using real scanner)
-- Move 3 multi-GM tests to multi-gm-coordination.test.js (using manual socket.emit)
-- Violates separation of concerns to mix both patterns in one file
+**Test Results**:
+- ✅ group-completion.test.js: 3/3 passing (100% real scanner)
+- ✅ multi-gm-coordination.test.js: 5/5 passing (2 existing + 3 new)
+- ✅ All integration tests: 90/90 passing
 
-**TODO**:
-- [ ] Move 3 multi-GM group completion tests to multi-gm-coordination.test.js
-- [ ] Update multi-gm-coordination.test.js with group completion scenarios
-- [ ] Verify all 6 tests still pass after reorganization
+**Key Learning**:
+Layer-appropriate testing is correct architecture:
+- **Single-GM integration**: Use real scanner (`createAuthenticatedScanner()` + `scanner.App.processNFCRead()`)
+- **Multi-GM coordination**: Use manual socket.emit to test server coordination logic
+- **E2E multi-GM**: Manual QA with multiple real browser tabs (outside Node.js test suite)
+
+---
+
+**Phase 3.6e: Transform state-synchronization.test.js** ✅ COMPLETE
+
+**Status**: Complete (Commit: ccd03a66)
+
+**What Was Done**:
+1. Transformed all 3 tests to use `createAuthenticatedScanner()` for late-joining GM
+2. Kept service calls for prior state setup (Test 1)
+3. Verified all tests pass with real scanner
+
+**Pattern Applied**:
+- **Late-joining GM**: `createAuthenticatedScanner()` (real scanner integration)
+- **Prior state**: `transactionService.processScan()` (service calls, avoids singleton collision)
+- **Trigger**: `scanner.socket.emit('sync:request')` (tests sync:request handler)
+- **Validation**: sync:full envelope + field structure
+
+**Tests Transformed (3 tests - all using real scanner):**
+1. ✅ "should send complete sync:full on new GM connection" - Late-joiner receives prior state
+2. ✅ "should include video status in sync:full" - Structure validation
+3. ✅ "should include systemStatus in sync:full" - Structure validation
+
+**Why This Pattern**:
+- Cannot use multiple real scanners (singleton architecture prevents multiple GM instances)
+- Prior state via service calls avoids singleton collision (fast, clear intent)
+- Tests real scanner receives correct sync:full from server (production integration)
+- Single-GM integration pattern (like transaction-flow.test.js)
+
+**What This Reveals**:
+- Real scanner properly receives sync:full on late connection (connection flow)
+- Real scanner socket correctly handles sync:full event structure (event handling)
+- Server sends complete sync to REAL late-joining scanner (integration validation)
+
+**Test Results**:
+- ✅ state-synchronization.test.js: 3/3 passing (100% real scanner)
+- ✅ All integration tests: 90/90 passing
+
+---
+
+**Phase 3.6f: Transform session-lifecycle.test.js** ✅ COMPLETE
+
+**Status**: Complete (Commit: 7d899518)
+
+**What Was Done**:
+1. Transformed all 7 tests to use `createAuthenticatedScanner()` for real GM Scanner
+2. Used `scanner.socket.emit('gm:command')` for admin commands (Admin Panel integrated per FR 4.2)
+3. Used `scanner.App.processNFCRead()` for token scans
+4. Added raw tokens loading for scanner (expects ALN-TokenData format)
+5. Verified all tests pass with real scanner
+
+**Pattern Applied**:
+- **Admin commands**: `scanner.socket.emit('gm:command', {action, payload})` (Admin Panel shares GM connection)
+- **Token scans**: `scanner.App.processNFCRead({id: tokenId})` (real scanner API entry point)
+- **State validation**: Listen for broadcasts on `scanner.socket` (session:update, score:updated)
+- **Transaction blocking**: Test that paused session blocks scans (FR 1.2 requirement)
+
+**Tests Transformed (7 tests - all using real scanner):**
+1. ✅ "should create session via gm:command and broadcast session:update"
+2. ✅ "should pause session and broadcast session:update (NOT session:paused)"
+3. ✅ "should block transactions when session is paused"
+4. ✅ "should resume session and allow transactions"
+5. ✅ "should end session and broadcast session:update (NOT session:ended)"
+6. ✅ "should adjust team score by delta (NOT reset)"
+7. ✅ "should handle positive delta (bonus points)"
+
+**What This Validates**:
+- GM can control session via Admin Panel (gm:command events per AsyncAPI)
+- GM experiences state changes it initiated (receives broadcasts)
+- GM transaction behavior changes based on session state (blocked when paused per FR 1.2)
+- Admin Panel is integrated into GM Scanner (not separate WebSocket per FR 4.2)
+
+**Test Results**:
+- ✅ session-lifecycle.test.js: 7/7 passing (100% real scanner)
+- ✅ All integration tests: 90/90 passing
 
 ---
 
