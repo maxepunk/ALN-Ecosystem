@@ -109,7 +109,11 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     playerScanner = createPlayerScanner(testContext.url, 'PLAYER_SCANNER_01');
 
     // Wait for initial connection check to complete (scanner checks /health on startup)
-    await new Promise(resolve => setTimeout(resolve, 100));
+    if (playerScanner.pendingConnectionCheck) {
+      await playerScanner.pendingConnectionCheck.catch(() => {
+        // Ignore connection errors during setup
+      });
+    }
 
     // Connect GM scanner to observe video:status broadcasts
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_VIDEO_TEST');
@@ -118,10 +122,10 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
   afterEach(async () => {
     if (gmSocket?.connected) gmSocket.disconnect();
 
-    // Clean up Player Scanner
+    // Clean up Player Scanner (await to ensure pending connection check completes)
     if (playerScanner) {
       playerScanner.clearQueue();  // Clear offline queue
-      playerScanner.destroy();      // Stop connection monitor
+      await playerScanner.destroy();  // Stop connection monitor + wait for pending check
     }
 
     // Clean up state without destroying broadcast listeners
