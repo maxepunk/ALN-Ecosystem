@@ -2185,7 +2185,7 @@ Layer-appropriate testing is correct architecture:
 - **File**: `aln-memory-scanner/js/orchestratorIntegration.js:43`
 - **Rationale**: Per Joi validation, `.optional()` means field can be OMITTED, but if present must validate
 
-**Bug #3: Test Isolation Failure**
+**Bug #3: Test Isolation Failure (Offline Queue)**
 - **Symptom**: Tests failed with HTTP 409 errors or timeout waiting for events
 - **Root Cause**: Player Scanner persists offline queue to localStorage (browser-mocks.js), queue not cleared between tests
 - **Effect**: Previous test's scans replayed in subsequent tests, causing video already playing errors
@@ -2193,10 +2193,37 @@ Layer-appropriate testing is correct architecture:
   ```javascript
   if (playerScanner) {
     playerScanner.clearQueue();  // Clear offline queue
-    playerScanner.destroy();      // Stop connection monitor
+    await playerScanner.destroy();  // Stop connection monitor + wait for pending check
   }
   ```
-- **File**: `backend/tests/integration/video-orchestration.test.js:122-125`
+- **File**: `backend/tests/integration/video-orchestration.test.js:126-128`
+
+**Bug #4: Async Leak in Connection Monitoring**
+- **Symptom**: "Cannot log after tests are done" error when running full test suite
+- **Root Cause**: Player Scanner constructor starts async `checkConnection()` without tracking the Promise
+- **Effect**: Connection check fetch can complete after Jest tears down test environment
+- **Fix**: Track pending connection check and await it during cleanup:
+  ```javascript
+  // In constructor
+  this.pendingConnectionCheck = null;
+
+  // In startConnectionMonitor()
+  this.pendingConnectionCheck = this.checkConnection();
+
+  // In destroy()
+  async destroy() {
+    this.stopConnectionMonitor();
+    if (this.pendingConnectionCheck) {
+      await this.pendingConnectionCheck.catch(() => {});
+      this.pendingConnectionCheck = null;
+    }
+  }
+  ```
+- **Files**:
+  - `aln-memory-scanner/js/orchestratorIntegration.js:14,178,229-239`
+  - `backend/tests/integration/video-orchestration.test.js:112-116` (await in beforeEach)
+  - `backend/tests/integration/video-orchestration.test.js:128` (await destroy())
+- **Commits**: aln-memory-scanner@45305c3, backend@b5c6ae7c
 
 **Browser Mocks Enhancement**:
 - Added `window.dispatchEvent` and `CustomEvent` support
