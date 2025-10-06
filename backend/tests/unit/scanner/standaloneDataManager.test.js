@@ -167,6 +167,9 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
             expect(manager.sessionData.teams['001']).toEqual({
                 teamId: '001',
                 score: 100,
+                baseScore: 100,
+                bonusPoints: 0,
+                completedGroups: [],
                 tokensScanned: 1,
                 lastScanTime: transaction.timestamp
             });
@@ -490,6 +493,298 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
 
             expect(stats.totalTransactions).toBe(0);
             expect(stats.totalTeams).toBe(0);
+        });
+    });
+
+    describe('Group Completion Logic', () => {
+        beforeEach(() => {
+            // Mock TokenManager with "Marcus Sucks" group tokens
+            global.window.TokenManager = {
+                getAllTokens: jest.fn(() => [
+                    {
+                        SF_RFID: 'rat001',
+                        SF_Group: 'Marcus Sucks(x2)',
+                        SF_MemoryType: 'Business',
+                        SF_ValueRating: 4
+                    },
+                    {
+                        SF_RFID: 'asm001',
+                        SF_Group: 'Marcus Sucks (x2)',
+                        SF_MemoryType: 'Personal',
+                        SF_ValueRating: 3
+                    },
+                    {
+                        SF_RFID: 'other001',
+                        SF_Group: 'Other Group (x3)',
+                        SF_MemoryType: 'Technical',
+                        SF_ValueRating: 2
+                    }
+                ])
+            };
+        });
+
+        it('should detect group completion and award bonus', () => {
+            // Scan first token in group
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: No bonus yet (only 1 of 2 tokens)
+            let team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(15000);
+            expect(team.baseScore).toBe(15000);
+            expect(team.bonusPoints).toBe(0);
+            expect(team.completedGroups).toEqual([]);
+
+            // Scan second token in group (completes group)
+            manager.addTransaction({
+                id: 'tx-002',
+                tokenId: 'asm001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 1000,
+                tokenGroup: 'Marcus Sucks (x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: Group completed, bonus awarded
+            team = manager.sessionData.teams['001'];
+            expect(team.baseScore).toBe(16000); // 15000 + 1000
+            expect(team.bonusPoints).toBe(16000); // (2-1) × 16000
+            expect(team.score).toBe(32000); // 16000 + 16000
+            expect(team.completedGroups).toContain('Marcus Sucks');
+        });
+
+        it('should complete group regardless of scan order', () => {
+            // Scan second token first
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'asm001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 1000,
+                tokenGroup: 'Marcus Sucks (x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Scan first token second (completes group)
+            manager.addTransaction({
+                id: 'tx-002',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: Same result regardless of order
+            const team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(32000);
+            expect(team.bonusPoints).toBe(16000);
+            expect(team.completedGroups).toContain('Marcus Sucks');
+        });
+
+        it('should not award bonus for incomplete group', () => {
+            // Scan only ONE token from group
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: No bonus (group incomplete)
+            const team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(15000);
+            expect(team.bonusPoints).toBe(0);
+            expect(team.completedGroups).toEqual([]);
+        });
+
+        it('should NOT complete group with detective mode scans', () => {
+            // Scan first token in blackmarket mode
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Scan second token in DETECTIVE mode
+            manager.addTransaction({
+                id: 'tx-002',
+                tokenId: 'asm001',
+                teamId: '001',
+                stationMode: 'detective',
+                points: 0,
+                tokenGroup: 'Marcus Sucks (x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: Group NOT completed (detective scan doesn't count)
+            const team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(15000); // Only rat001
+            expect(team.bonusPoints).toBe(0);
+            expect(team.completedGroups).toEqual([]);
+        });
+
+        it('should not award bonus twice for same group', () => {
+            // Complete group
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            manager.addTransaction({
+                id: 'tx-002',
+                tokenId: 'asm001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 1000,
+                tokenGroup: 'Marcus Sucks (x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            const scoreAfterFirst = manager.sessionData.teams['001'].score;
+            expect(scoreAfterFirst).toBe(32000);
+
+            // Try to "complete" again (e.g., re-scan same token)
+            manager.addTransaction({
+                id: 'tx-003',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: Bonus NOT awarded again
+            const team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(47000); // 32000 + 15000 (no additional bonus)
+            expect(team.bonusPoints).toBe(16000); // Still just the original bonus
+        });
+
+        it('should handle multiple teams independently', () => {
+            // Team 001 scans first token
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Team 002 scans second token
+            manager.addTransaction({
+                id: 'tx-002',
+                tokenId: 'asm001',
+                teamId: '002',
+                stationMode: 'blackmarket',
+                points: 1000,
+                tokenGroup: 'Marcus Sucks (x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: Neither team completed group (different teams)
+            const team001 = manager.sessionData.teams['001'];
+            const team002 = manager.sessionData.teams['002'];
+
+            expect(team001.score).toBe(15000);
+            expect(team001.bonusPoints).toBe(0);
+            expect(team001.completedGroups).toEqual([]);
+
+            expect(team002.score).toBe(1000);
+            expect(team002.bonusPoints).toBe(0);
+            expect(team002.completedGroups).toEqual([]);
+        });
+
+        it('should ignore tokens without group multiplier', () => {
+            // Add token without multiplier in group name
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'nogrouptoken',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 500,
+                tokenGroup: 'No Multiplier Group', // No (xN) suffix
+                timestamp: new Date().toISOString()
+            });
+
+            const team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(500);
+            expect(team.bonusPoints).toBe(0);
+            expect(team.completedGroups).toEqual([]);
+        });
+
+        it('should gracefully handle missing TokenManager', () => {
+            // Create console.warn if it doesn't exist, then mock it
+            if (!console.warn) {
+                console.warn = jest.fn();
+            }
+            const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+            // Remove TokenManager mock
+            delete global.window.TokenManager;
+
+            // This should not crash
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            // Verify: Points added but no group completion check
+            const team = manager.sessionData.teams['001'];
+            expect(team.score).toBe(15000);
+            expect(team.bonusPoints).toBe(0);
+
+            // Verify console.warn was called
+            expect(warnSpy).toHaveBeenCalledWith('TokenManager not available for group completion check');
+
+            warnSpy.mockRestore();
+        });
+
+        it('should initialize team with group completion fields', () => {
+            manager.addTransaction({
+                id: 'tx-001',
+                tokenId: 'rat001',
+                teamId: '001',
+                stationMode: 'blackmarket',
+                points: 15000,
+                tokenGroup: 'Marcus Sucks(x2)',
+                timestamp: new Date().toISOString()
+            });
+
+            const team = manager.sessionData.teams['001'];
+            expect(team).toHaveProperty('score');
+            expect(team).toHaveProperty('baseScore');
+            expect(team).toHaveProperty('bonusPoints');
+            expect(team).toHaveProperty('completedGroups');
+            expect(Array.isArray(team.completedGroups)).toBe(true);
         });
     });
 });

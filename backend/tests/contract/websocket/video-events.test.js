@@ -42,6 +42,20 @@ describe('Video Events - Contract Validation', () => {
       socket.disconnect();
     }
     await sessionService.reset();
+
+    // Clean up timers without destroying broadcast listeners
+    if (videoQueueService.playbackTimer) {
+      clearTimeout(videoQueueService.playbackTimer);
+      videoQueueService.playbackTimer = null;
+    }
+    if (videoQueueService.progressTimer) {
+      clearInterval(videoQueueService.progressTimer);
+      videoQueueService.progressTimer = null;
+    }
+    if (videoQueueService.fallbackTimer) {
+      clearTimeout(videoQueueService.fallbackTimer);
+      videoQueueService.fallbackTimer = null;
+    }
   });
 
   describe('video:status event - all status types', () => {

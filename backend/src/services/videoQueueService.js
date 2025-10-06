@@ -7,6 +7,7 @@ const EventEmitter = require('events');
 const VideoQueueItem = require('../models/videoQueueItem');
 const config = require('../config');
 const logger = require('../utils/logger');
+const vlcService = require('./vlcService'); // Load at top to avoid lazy require in timer callbacks
 
 class VideoQueueService extends EventEmitter {
   constructor() {
@@ -14,6 +15,7 @@ class VideoQueueService extends EventEmitter {
     this.queue = [];
     this.currentItem = null;
     this.playbackTimer = null;
+    this.monitoringDelayTimer = null; // Track VLC monitoring delay timer
   }
 
   /**
@@ -69,7 +71,6 @@ class VideoQueueService extends EventEmitter {
       this.currentItem = null;
 
       // Return to idle loop if enabled
-      const vlcService = require('./vlcService');
       if (config.features.videoPlayback) {
         await vlcService.returnToIdleLoop();
       }
@@ -97,18 +98,6 @@ class VideoQueueService extends EventEmitter {
    * @private
    */
   async playVideo(queueItem) {
-    // Check for test error videos
-    if (queueItem.tokenId === 'TEST_VIDEO_INVALID' ||
-        queueItem.tokenId === 'TEST_VIDEO_ERROR_TOKEN') {
-      // Simulate video load failure
-      queueItem.failPlayback('Invalid video file');
-      this.emit('video:failed', queueItem);
-
-      // Process next in queue
-      setImmediate(() => this.processQueue());
-      return;
-    }
-
     // Emit loading status first
     logger.debug('Emitting video:loading for', { tokenId: queueItem.tokenId });
     this.emit('video:loading', {
@@ -119,9 +108,6 @@ class VideoQueueService extends EventEmitter {
     // Mark as playing
     queueItem.startPlayback();
     this.currentItem = queueItem;
-
-    // Get VLC service
-    const vlcService = require('./vlcService');
 
     // Get video path from queue item
     const videoPath = queueItem.videoPath;
@@ -188,7 +174,8 @@ class VideoQueueService extends EventEmitter {
         });
 
         // Give VLC a moment to transition before monitoring (especially from idle loop)
-        setTimeout(() => {
+        this.monitoringDelayTimer = setTimeout(() => {
+          this.monitoringDelayTimer = null;
           // Monitor VLC status for completion
           this.monitorVlcPlayback(queueItem, duration);
         }, 1500); // 1.5 second delay before monitoring starts
@@ -232,7 +219,6 @@ class VideoQueueService extends EventEmitter {
    * @private
    */
   async monitorVlcPlayback(queueItem, expectedDuration) {
-    const vlcService = require('./vlcService');
     const checkInterval = 1000; // Check every second
 
     // Clear any existing progress timer
@@ -355,7 +341,6 @@ class VideoQueueService extends EventEmitter {
       tokenId: this.currentItem.tokenId,
     });
 
-    const vlcService = require('./vlcService');
 
     if (config.features.videoPlayback) {
       try {
@@ -379,7 +364,6 @@ class VideoQueueService extends EventEmitter {
       return false;
     }
 
-    const vlcService = require('./vlcService');
 
     if (config.features.videoPlayback) {
       try {
@@ -408,7 +392,6 @@ class VideoQueueService extends EventEmitter {
       return false;
     }
 
-    const vlcService = require('./vlcService');
 
     if (config.features.videoPlayback) {
       try {
@@ -653,7 +636,8 @@ class VideoQueueService extends EventEmitter {
       throw new Error(`Video not found in queue: ${tokenId}`);
     }
 
-    if (!item.duration) {
+    // Check for undefined/null specifically (0 is valid for videos without metadata)
+    if (item.duration === undefined || item.duration === null) {
       throw new Error(`Video ${tokenId} has no duration metadata`);
     }
 
@@ -737,7 +721,7 @@ class VideoQueueService extends EventEmitter {
    * @returns {void}
    */
   reset() {
-    // 1. Clear ALL timers/intervals FIRST (including fallback timer)
+    // 1. Clear ALL timers/intervals FIRST (including fallback timer AND monitoring delay)
     if (this.playbackTimer) {
       clearTimeout(this.playbackTimer);
       this.playbackTimer = null;
@@ -749,6 +733,10 @@ class VideoQueueService extends EventEmitter {
     if (this.fallbackTimer) {
       clearTimeout(this.fallbackTimer);
       this.fallbackTimer = null;
+    }
+    if (this.monitoringDelayTimer) {
+      clearTimeout(this.monitoringDelayTimer);
+      this.monitoringDelayTimer = null;
     }
 
     // 2. Remove all listeners

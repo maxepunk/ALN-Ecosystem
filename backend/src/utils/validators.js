@@ -146,12 +146,25 @@ const adminConfigSchema = Joi.object({
 });
 
 // API Request validation schemas
-const scanRequestSchema = Joi.object({
+
+// Player Scanner HTTP scan (POST /api/scan) - OpenAPI contract
+// NO mode field - Player Scanner doesn't do game transactions
+const playerScanRequestSchema = Joi.object({
   tokenId: Joi.string().required().min(1).max(100)
-    .pattern(/^[A-Za-z_0-9]+$/),  // Allow alphanumeric token IDs (matches tokenSchema)
-  teamId: teamId.optional(),  // OPTIONAL per OpenAPI contract - players haven't committed to teams yet
+    .pattern(/^[A-Za-z_0-9]+$/),
+  teamId: teamId.optional(),  // OPTIONAL - players haven't committed to teams yet
   deviceId: Joi.string().required().min(1).max(100),
-  mode: Joi.string().valid('detective', 'blackmarket').required(),  // AsyncAPI contract field (Decision #4) - STRICT: required, no default
+  timestamp: isoDate.optional(),
+});
+
+// GM Scanner WebSocket transaction (transaction:submit) - AsyncAPI contract
+// REQUIRES mode field - GM Scanner does game transactions
+const gmTransactionSchema = Joi.object({
+  tokenId: Joi.string().required().min(1).max(100)
+    .pattern(/^[A-Za-z_0-9]+$/),
+  teamId: teamId.required(),  // REQUIRED for GM transactions
+  deviceId: Joi.string().required().min(1).max(100),
+  mode: Joi.string().valid('detective', 'blackmarket').required(),  // REQUIRED - no default
   timestamp: isoDate.optional(),
 });
 
@@ -247,7 +260,8 @@ module.exports = {
   adminConfigSchema,
 
   // API request schemas
-  scanRequestSchema,
+  playerScanRequestSchema,
+  gmTransactionSchema,
   sessionCreateSchema,
   sessionUpdateSchema,
   videoControlSchema,

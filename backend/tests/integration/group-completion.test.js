@@ -53,6 +53,9 @@ describe('Group Completion Integration', () => {
     const videoQueueService = require('../../src/services/videoQueueService');
     const offlineQueueService = require('../../src/services/offlineQueueService');
 
+    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
+    videoQueueService.reset();
+
     setupBroadcastListeners(testContext.io, {
       sessionService,
       transactionService,

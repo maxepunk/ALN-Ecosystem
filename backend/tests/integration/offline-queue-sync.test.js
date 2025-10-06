@@ -5,7 +5,7 @@
 
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
-const { setupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const sessionService = require('../../src/services/sessionService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 const transactionService = require('../../src/services/transactionService');
@@ -24,7 +24,10 @@ describe('Offline Queue Synchronization Integration', () => {
   });
 
   beforeEach(async () => {
-    // Reset services (but NOT offlineQueueService - would destroy broadcast listeners!)
+    // CRITICAL: Cleanup old broadcast listeners FIRST (sessionService.reset() doesn't remove them)
+    cleanupBroadcastListeners();
+
+    // Reset services
     await sessionService.reset();
 
     // Clear offline queue state without removing listeners
@@ -33,7 +36,7 @@ describe('Offline Queue Synchronization Integration', () => {
     offlineQueueService.isOffline = false;
     offlineQueueService.processingQueue = false;
 
-    // Re-setup broadcast listeners after session reset
+    // Re-setup broadcast listeners after cleanup
     setupBroadcastListeners(testContext.io, {
       sessionService,
       transactionService,

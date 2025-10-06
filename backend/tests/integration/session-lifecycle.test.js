@@ -20,7 +20,7 @@
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -36,6 +36,9 @@ describe('Session Lifecycle Integration', () => {
   });
 
   beforeEach(async () => {
+    // CRITICAL: Cleanup old broadcast listeners FIRST (sessionService.reset() doesn't remove them)
+    cleanupBroadcastListeners();
+
     // Reset services for clean test state
     await sessionService.reset();
     await transactionService.reset();
@@ -45,7 +48,7 @@ describe('Session Lifecycle Integration', () => {
     const tokens = tokenService.loadTokens();
     await transactionService.init(tokens);
 
-    // CRITICAL: Re-setup broadcast listeners after reset
+    // Re-setup broadcast listeners after cleanup
     const stateService = require('../../src/services/stateService');
     const videoQueueService = require('../../src/services/videoQueueService');
     const offlineQueueService = require('../../src/services/offlineQueueService');

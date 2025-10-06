@@ -17,7 +17,7 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } =
   require('../helpers/integration-test-server');
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const MockVlcServer = require('../helpers/mock-vlc-server');
 
 const sessionService = require('../../src/services/sessionService');
@@ -73,19 +73,14 @@ describe('Video Orchestration Integration', () => {
   });
 
   beforeEach(async () => {
-    // Reset services (but NOT videoQueueService - would destroy broadcast listeners!)
+    // CRITICAL: Cleanup old broadcast listeners FIRST (sessionService.reset() doesn't remove them)
+    cleanupBroadcastListeners();
+
+    // Reset services
     await sessionService.reset();
-    // Clear video queue state without removing listeners
-    if (videoQueueService.currentItem) {
-      videoQueueService.currentItem = null;
-    }
-    if (videoQueueService.queue) {
-      videoQueueService.queue.length = 0;
-    }
     mockVlc.reset();
 
-    // Re-setup broadcast listeners after any service resets
-    // CRITICAL: Service.reset() removes ALL listeners, including broadcasts
+    // Re-setup broadcast listeners
     setupBroadcastListeners(testContext.io, {
       sessionService,
       transactionService,
@@ -306,9 +301,23 @@ describe('Video Orchestration Integration', () => {
     });
 
     it('should handle invalid video tokens gracefully', async () => {
-      // Trigger: Scan with test error token
+      // Create a token with non-existent video file (real error scenario)
+      const Token = require('../../src/models/token');
+      const badVideoToken = new Token({
+        id: 'bad_video_token',
+        name: 'Bad Video Token',
+        value: 10,
+        memoryType: 'Technical',
+        mediaAssets: { video: 'this_file_does_not_exist.mp4' }, // File doesn't exist
+        metadata: { duration: 30 }
+      });
+
+      // Inject into transactionService for this test only
+      transactionService.tokens.set('bad_video_token', badVideoToken);
+
+      // Trigger: Scan with token that has invalid video
       const response = await axios.post(`${testContext.url}/api/scan`, {
-        tokenId: 'TEST_VIDEO_ERROR_TOKEN',  // videoQueueService recognizes this
+        tokenId: 'bad_video_token',
         deviceId: 'PLAYER_SCANNER_01'
       });
 
@@ -319,7 +328,7 @@ describe('Video Orchestration Integration', () => {
       // Wait for events
       await waitForEvent(gmSocket, 'video:status'); // loading
 
-      // Video should fail during playback
+      // Video should fail during playback (real error path, not test code)
       const failEvent = await waitForEvent(gmSocket, 'video:status');
 
       // Validate: Error handling
@@ -330,6 +339,9 @@ describe('Video Orchestration Integration', () => {
         expect(failEvent.data.error).toBeDefined();
         validateWebSocketEvent(failEvent, 'video:status');
       }
+
+      // Cleanup: Remove test token
+      transactionService.tokens.delete('bad_video_token');
     });
   });
 

@@ -1913,22 +1913,131 @@ const Settings = { deviceId: '001', stationMode: 'detective' }  // Singleton
 - Similar to multi-gm-coordination.test.js - testing server behavior with various inputs
 - Pattern: Keep manual socket.emit for error injection
 
-**Remaining Phase 3.6 Tasks**:
-- [ ] **Transform group-completion.test.js** - Apply pattern (single GM scanning group)
-- [ ] **Transform offline-queue-sync.test.js** - Apply pattern (single GM offline/online)
-- [ ] **Transform service-events.test.js** - Keep as-is (no scanner needed)
-- [ ] **Transform session-lifecycle.test.js** - Separate single-GM (admin commands) from multi-GM scenarios
-- [ ] **Transform state-synchronization.test.js** - Apply pattern
-- [ ] **Transform video-orchestration.test.js** - Apply pattern, replace TEST_* tokens
-- [ ] **Verification**: All single-GM integration tests pass
+**Phase 3.6c: Critical Test Infrastructure Issue - Async Timer Leaks** ✅ COMPLETE
 
-#### Phase 3.7: Create Multi-GM Coordination Tests
-- [ ] **Create tests/integration/multi-gm-coordination.test.js**
-- [ ] **Move concurrent transaction tests** from transaction-flow.test.js
-- [ ] **Move different-team duplicate test** from transaction-flow.test.js
-- [ ] **Use manual socket.emit pattern** (like contract tests)
-- [ ] **Test server coordination logic** (not scanner integration)
-- [ ] **Verification**: Multi-GM coordination tests pass
+**Discovery**: While working on group-completion.test.js transformation, encountered non-deterministic test failures:
+- Run 1 (full suite): 1 failed, 89 passed
+- Run 2 (isolated file): 0 failed, 6 passed (group-completion PASSES alone)
+- Run 3 (full suite): 2 failed, 88 passed (different tests failing)
+
+**Pattern Analysis**:
+- Tests passing alone but failing in suite → test isolation failure
+- Error: `ReferenceError: You are trying to 'import' a file after the Jest environment has been torn down`
+- Stack trace: `videoQueueService.js:223` → lazy `require('./vlcService')` in timer callback
+- Listener accumulation: `totalRemoved` varied (21, 29) across runs
+
+**Root Cause Identified**:
+
+VideoQueueService had **untracked async timer** that outlived test teardown:
+
+```javascript
+// Line 179 - Anonymous setTimeout, NO reference stored
+setTimeout(() => {
+  this.monitorVlcPlayback(queueItem, duration);
+}, 1500);
+
+// Line 223 - Lazy require in timer callback
+async monitorVlcPlayback(queueItem, expectedDuration) {
+  const vlcService = require('./vlcService');  // ❌ Fires after Jest teardown
+```
+
+**Failure Sequence**:
+1. Test scans `534e2b03` (has video asset) → triggers playback
+2. Playback sets 1.5s monitoring delay timer (untracked)
+3. Test completes → `videoQueueService.reset()` clears tracked timers only
+4. Jest tears down environment
+5. **1.5s later**: Timer fires → `require()` → ReferenceError
+
+**Why Non-Deterministic**:
+- Depends on which test scans video token ~1.5s before suite completion
+- Test execution order + timing determines failure location
+- Explains why group-completion passed alone but failed in suite
+
+**Fixes Applied**:
+
+1. **Track monitoring delay timer** (src/services/videoQueueService.js):
+```javascript
+// Constructor
+this.monitoringDelayTimer = null;
+
+// Line 180 - Store reference
+this.monitoringDelayTimer = setTimeout(() => {
+  this.monitoringDelayTimer = null;
+  this.monitorVlcPlayback(queueItem, duration);
+}, 1500);
+
+// reset() - Clear timer
+if (this.monitoringDelayTimer) {
+  clearTimeout(this.monitoringDelayTimer);
+  this.monitoringDelayTimer = null;
+}
+```
+
+2. **Eager load vlcService** (defensive fix):
+```javascript
+// Top of file - avoid lazy require in timer callbacks
+const vlcService = require('./vlcService');
+
+// Removed 6 lazy requires throughout file (lines 73, 113, 222, 345, 369, 398)
+```
+
+3. **Add videoQueueService.reset() to integration tests**:
+- Updated: transaction-flow.test.js, group-completion.test.js, multi-gm-coordination.test.js, admin-interventions.test.js
+- Pattern: Call `videoQueueService.reset()` in beforeEach after requiring service, before setupBroadcastListeners
+
+4. **Audited all services with timers**:
+- ✅ vlcService: Properly tracks `healthCheckInterval`, `reconnectTimer`
+- ✅ stateService: Properly tracks `debounceTimer`, `syncInterval`
+- ✅ sessionService: Properly tracks `sessionTimeoutTimer`
+- ✅ offlineQueueService: Uses `setImmediate` (no persistent timers)
+- ✅ videoQueueService: NOW properly tracks all timers (playbackTimer, progressTimer, fallbackTimer, monitoringDelayTimer)
+
+**Verification**:
+- [x] All 365 tests passing (219 unit + 56 contract + 90 integration)
+- [x] No more "require after teardown" errors
+- [x] Tests pass consistently in suite and isolation
+- [x] Timer cleanup verified via listener count logs
+
+**Key Learnings**:
+1. **Async resources outlive tests** - ALL timers/intervals must be tracked and cleared
+2. **Non-deterministic = timing issue** - Test passes alone but fails in suite indicates leaked async
+3. **Lazy requires in async callbacks are dangerous** - Can fire after module system teardown
+4. **Follow actual execution path** - Video token → queue → playback → monitoring → timer
+5. **Test isolation requires explicit cleanup** - Services must reset ALL state including timers
+6. **Think holistically about system flow** - Don't work mechanically, understand WHY each component exists
+
+**Remaining Phase 3.6 Tasks - ACCURATE ASSESSMENT**:
+
+After systematic review of all 13 integration test files (90 tests total):
+
+**ALREADY TRANSFORMED ✅ (3 files, 35 tests):**
+- ✅ `_scanner-helpers.test.js` - Tests helper functions via real scanner (8 tests)
+- ✅ `admin-interventions.test.js` - Admin commands via real GM scanner (21 tests)
+- ✅ `transaction-flow.test.js` - Single GM transaction flow via real scanner (6 tests)
+
+**CORRECTLY using socket.emit ✅ (7 files, 40 tests):**
+These test **SERVER COORDINATION LOGIC** - manual socket.emit is the correct pattern:
+- ✅ `duplicate-detection.test.js` - Server duplicate tracking across teams (6 tests)
+- ✅ `error-propagation.test.js` - Server error handling/error injection (10 tests)
+- ✅ `multi-client-broadcasts.test.js` - Server broadcast infrastructure (7 tests)
+- ✅ `multi-gm-coordination.test.js` - Server concurrent GM resolution (2 tests)
+- ✅ `service-events.test.js` - Internal service events (4 tests)
+- ✅ `session-lifecycle.test.js` - Server session state management (7 tests)
+- ✅ `offline-queue-sync.test.js` - Server offline queue processing (4 tests)
+
+**NEED TRANSFORMATION ❌ (3 files, 18 tests):**
+These test **SINGLE GM/PLAYER INTEGRATION** - should use real scanner API:
+- [ ] **group-completion.test.js** - Single GM scans group tokens → Use real scanner (6 tests)
+- [ ] **state-synchronization.test.js** - Late-joining GM connection → Use real scanner (3 tests)
+- [ ] **video-orchestration.test.js** - Player scan → video queue → Use createPlayerScanner (9 tests)
+
+#### Phase 3.7: Create Multi-GM Coordination Tests ✅ COMPLETE
+- [x] **Create tests/integration/multi-gm-coordination.test.js** (Created in Phase 3.5)
+- [x] **Move concurrent transaction tests** from transaction-flow.test.js
+- [x] **Move different-team duplicate test** from transaction-flow.test.js
+- [x] **Use manual socket.emit pattern** (like contract tests)
+- [x] **Test server coordination logic** (not scanner integration)
+- [x] **Verification**: Multi-GM coordination tests pass (2/2 passing)
 
 #### Phase 3.8: Create Player Scanner Integration Tests
 - [ ] **Create tests/integration/player-scanner-http.test.js** - Test real Player Scanner HTTP workflow

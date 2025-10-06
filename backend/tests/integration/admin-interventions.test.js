@@ -51,6 +51,9 @@ describe('Admin Intervention Integration', () => {
     const stateService = require('../../src/services/stateService');
     const offlineQueueService = require('../../src/services/offlineQueueService');
 
+    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
+    videoQueueService.reset();
+
     setupBroadcastListeners(testContext.io, {
       sessionService,
       transactionService,

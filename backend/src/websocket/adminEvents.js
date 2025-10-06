@@ -264,8 +264,8 @@ async function handleTransactionSubmit(socket, data, _io) {
     }
     const transactionData = data.data;
 
-    const { scanRequestSchema, validate } = require('../utils/validators');
-    const scanRequest = validate(transactionData, scanRequestSchema);
+    const { gmTransactionSchema, validate } = require('../utils/validators');
+    const scanRequest = validate(transactionData, gmTransactionSchema);
 
     // Check if system is offline - use service directly for consistency
     logger.info('Transaction handler checking offline status', {

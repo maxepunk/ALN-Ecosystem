@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
-const { scanRequestSchema, validate, ValidationError } = require('../utils/validators');
+const { playerScanRequestSchema, validate, ValidationError } = require('../utils/validators');
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
@@ -21,7 +21,7 @@ const { isOffline } = require('../middleware/offlineStatus');
 router.post('/', async (req, res) => {
   try {
     // Validate request
-    const scanRequest = validate(req.body, scanRequestSchema);
+    const scanRequest = validate(req.body, playerScanRequestSchema);
 
     // Check if system is offline
     if (isOffline()) {

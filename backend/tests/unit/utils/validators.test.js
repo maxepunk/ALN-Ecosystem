@@ -1,4 +1,4 @@
-const { validate, transactionSchema, scanRequestSchema } = require('../../../src/utils/validators');
+const { validate, transactionSchema, gmTransactionSchema } = require('../../../src/utils/validators');
 const { v4: uuidv4 } = require('uuid');
 
 describe('validators.js - deviceId field validation', () => {
@@ -37,31 +37,32 @@ describe('validators.js - deviceId field validation', () => {
     });
   });
 
-  describe('scanRequestSchema', () => {
+  describe('gmTransactionSchema', () => {
     it('should accept deviceId field', () => {
       const scanRequest = {
         tokenId: '534e2b03',
         teamId: '001',
-        deviceId: 'PLAYER_SCANNER_01',  // deviceId (not scannerId)
+        deviceId: 'GM_SCANNER_01',  // deviceId (not scannerId)
         mode: 'blackmarket',  // Required field per AsyncAPI contract
         timestamp: new Date().toISOString()
       };
 
-      const result = validate(scanRequest, scanRequestSchema);
+      const result = validate(scanRequest, gmTransactionSchema);
 
       expect(result).toHaveProperty('deviceId');
-      expect(result.deviceId).toBe('PLAYER_SCANNER_01');
+      expect(result.deviceId).toBe('GM_SCANNER_01');
     });
 
     it('should reject scan request without deviceId', () => {
       const scanRequest = {
         tokenId: '534e2b03',
         teamId: '001',
+        mode: 'blackmarket',
         // Missing deviceId
         timestamp: new Date().toISOString()
       };
 
-      expect(() => validate(scanRequest, scanRequestSchema)).toThrow();
+      expect(() => validate(scanRequest, gmTransactionSchema)).toThrow();
     });
 
     it('should accept valid deviceId formats', () => {
@@ -81,7 +82,7 @@ describe('validators.js - deviceId field validation', () => {
           timestamp: new Date().toISOString()
         };
 
-        const result = validate(scanRequest, scanRequestSchema);
+        const result = validate(scanRequest, gmTransactionSchema);
         expect(result.deviceId).toBe(deviceId);
       });
     });

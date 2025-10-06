@@ -15,7 +15,7 @@
 
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
-const { setupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -31,7 +31,10 @@ describe('Multi-GM Coordination', () => {
   });
 
   beforeEach(async () => {
-    // Reset services for clean test state (removes ALL listeners)
+    // CRITICAL: Cleanup old broadcast listeners FIRST (sessionService.reset() doesn't remove them)
+    cleanupBroadcastListeners();
+
+    // Reset services for clean test state
     await sessionService.reset();
     await transactionService.reset();
 
@@ -40,10 +43,13 @@ describe('Multi-GM Coordination', () => {
     const tokens = tokenService.loadTokens();
     await transactionService.init(tokens);
 
-    // CRITICAL: Re-setup broadcast listeners after reset (reset() calls removeAllListeners())
+    // Re-setup broadcast listeners after cleanup
     const stateService = require('../../src/services/stateService');
     const videoQueueService = require('../../src/services/videoQueueService');
     const offlineQueueService = require('../../src/services/offlineQueueService');
+
+    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
+    videoQueueService.reset();
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
