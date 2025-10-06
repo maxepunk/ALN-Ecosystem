@@ -17,7 +17,7 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 
 **Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI).
 
-**Status**: Current phase: Building a test suite for ALNScanner: /home/spide/projects/AboutLastNight/ALN-Ecosystem/ALNScanner/gm-scanner-test-plan.md (CRITICAL: RUN EACH TEST AFTER CREATION AND FIX IMPLEMENTATION BUGS REVEALED)
+**Status**: Current phase: Building a test suite for ALNScanner: /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/TEST-IMPROVEMENT-PLAN.md
 
 **API CONTRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
 
