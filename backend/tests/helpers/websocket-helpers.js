@@ -157,24 +157,31 @@ function testDelay(ms) {
 }
 
 /**
- * Create authenticated scanner client using REAL scanner code
+ * Create authenticated GM Scanner using REAL scanner code with FULL initialization
  * NOTE: Requires browser-mocks.js to be loaded first
+ *
+ * Initializes ALL required components:
+ * - OrchestratorClient (WebSocket connection)
+ * - SessionModeManager (networked mode coordination)
+ * - NetworkedQueueManager (transaction queueing)
+ * - Settings (deviceId, stationMode)
+ * - All global window objects scanner expects
+ *
  * @param {string} url - Server URL
  * @param {string} deviceId - Scanner device ID
+ * @param {string} mode - Station mode ('detective' | 'blackmarket')
  * @param {string} password - Admin password
- * @returns {Promise<OrchestratorClient>} Connected scanner
+ * @returns {Promise<Object>} Fully initialized scanner with App API exposed
  */
-async function createAuthenticatedScanner(url, deviceId, password = 'test-admin-password') {
-  // Import real scanner module (requires browser mocks to be loaded first)
+async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = 'test-admin-password') {
+  // 1. Import ALL required scanner modules
   const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
+  const NetworkedQueueManager = require('../../../ALNScanner/js/network/networkedQueueManager');
+  const SessionModeManager = require('../../../ALNScanner/js/app/sessionModeManager');
+  const Settings = require('../../../ALNScanner/js/ui/settings');
+  const App = require('../../../ALNScanner/js/app/app');
 
-  const client = new OrchestratorClient({
-    url,
-    deviceId,
-    version: '1.0.0'
-  });
-
-  // Authenticate via HTTP
+  // 2. Authenticate via HTTP
   const fetch = require('node-fetch');
   const authResponse = await fetch(`${url}/api/admin/auth`, {
     method: 'POST',
@@ -187,37 +194,80 @@ async function createAuthenticatedScanner(url, deviceId, password = 'test-admin-
   }
 
   const { token } = await authResponse.json();
+
+  // 3. Create and configure OrchestratorClient
+  const client = new OrchestratorClient({
+    url,
+    deviceId,
+    version: '1.0.0'
+  });
   client.token = token;
 
-  // Start connection (creates socket, returns immediately)
+  // 4. Connect WebSocket and wait for connection
   client.connect();
 
-  // Check if already connected (unlikely but possible on very fast localhost)
-  if (client.socket.connected) {
-    return client;
-  }
-
-  // Wait for Socket.io 'connect' event (per AsyncAPI contract)
-  // Contract: "Connection established → server registers device → broadcasts device:connected → auto-sends sync:full"
   await new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error('WebSocket connection timeout'));
     }, 5000);
 
-    // Wait for transport-level connect event (handshake auth success)
     client.socket.once('connect', () => {
       clearTimeout(timeout);
       resolve();
     });
 
-    // Handle connection errors (handshake auth failure)
     client.socket.once('connect_error', (error) => {
       clearTimeout(timeout);
       reject(new Error(`WebSocket connection failed: ${error.message}`));
     });
   });
 
-  return client;
+  // 5. Load RAW tokens directly from ALN-TokenData (same as production scanner does)
+  // Scanner expects raw format (SF_Group, SF_MemoryType, SF_ValueRating)
+  // Server uses transformed format (group, memoryType, valueRating)
+  // Production: Scanner fetches raw tokens.json, Server transforms separately
+  const fs = require('fs');
+  const path = require('path');
+  const rawTokensPath = path.join(__dirname, '../../../ALN-TokenData/tokens.json');
+  const rawTokens = JSON.parse(fs.readFileSync(rawTokensPath, 'utf8'));
+
+  global.TokenManager.database = rawTokens;  // Raw format, matches production
+
+  // Build group inventory for bonus calculations (scanner does this on load)
+  global.TokenManager.groupInventory = global.TokenManager.buildGroupInventory();
+
+  // 6. Initialize SessionModeManager (CRITICAL - scanner checks this)
+  global.window.sessionModeManager = new SessionModeManager();
+  global.window.sessionModeManager.mode = 'networked';
+  global.window.sessionModeManager.locked = true;
+
+  // 7. Configure Settings (CRITICAL - used in recordTransaction)
+  Settings.deviceId = deviceId;
+  Settings.stationMode = mode;
+
+  // Make Settings globally available (App module expects it)
+  global.Settings = Settings;
+
+  // 8. Create NetworkedQueueManager (CRITICAL - recordTransaction calls this)
+  global.window.queueManager = new NetworkedQueueManager(client);
+
+  // 9. Set ConnectionManager reference (scanner checks this at line 503)
+  global.window.connectionManager = {
+    client: client,
+    isConnected: true,
+    deviceId: deviceId,
+    stationMode: mode
+  };
+
+  // 10. Return fully wired scanner with App API exposed
+  return {
+    client,                       // OrchestratorClient instance
+    socket: client.socket,        // Direct socket access (for event listeners)
+    App,                          // REAL scanner App module (call App.recordTransaction)
+    Settings,                     // Settings reference (for assertions)
+    sessionModeManager: global.window.sessionModeManager,
+    queueManager: global.window.queueManager
+  };
 }
 
 /**

@@ -288,42 +288,160 @@ if (process.env.NODE_ENV === 'test') {
 
 ## Part 2: Scanner Module Integration
 
-### Scanner Modules Available
-
-Located in `ALNScanner/js/` (GM Scanner):
-- `network/orchestratorClient.js` - WebSocket client (598 lines)
-- `core/dataManager.js` - Game logic (scoring, duplicates)
-
-**Export verification** (orchestratorClient.js, end of file):
-```javascript
-// Export for Node.js testing (if needed)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = OrchestratorClient;
-}
-```
-
-**Scanner is already Node.js compatible when browser APIs are mocked.**
+**Critical Understanding**: We have TWO completely different scanner architectures with different APIs, initialization requirements, and test patterns.
 
 ---
 
-### Browser API Dependencies in Scanner
+### Player Scanner (aln-memory-scanner)
 
-**localStorage usage** (orchestratorClient.js):
-- Line 10: `localStorage.getItem('orchestrator_url')`
-- Line 48: `localStorage.getItem('gmToken')`
+**Module**: `aln-memory-scanner/js/orchestratorIntegration.js`
+**Architecture**: Simple HTTP client class
+**Purpose**: Fire-and-forget token scans from player devices (ESP32 compatible per FR 2.1)
 
-**localStorage usage** (dataManager.js):
-- Lines 62, 78, 94, 105, 745, 746
+**Key Characteristics**:
+- HTTP-only (no WebSocket complexity)
+- Client-side media display (images/audio from local assets)
+- Offline queue with automatic batch sync
+- Connection monitoring with auto-retry
+- Works standalone when orchestrator unavailable
 
-**window usage** (dataManager.js):
-- Lines 355, 457, 760-765
+**Public API**:
+```javascript
+scanToken(tokenId, teamId)           // Submit scan via HTTP POST /api/scan
+checkConnection()                     // Test orchestrator availability
+processOfflineQueue()                 // Sync queued scans when reconnected
+getQueueStatus()                      // Get queue info
+clearQueue()                          // Clear offline queue
+```
 
-**document usage** (dataManager.js):
-- Lines 374, 728-733
+**Initialization**: SIMPLE - No complex setup required
+```javascript
+const client = new OrchestratorIntegration();
+client.baseUrl = 'http://localhost:3000';
+client.deviceId = 'PLAYER_TEST_01'; // Optional
+// Ready to use - call client.scanToken()
+```
 
-**Other**:
-- `EventTarget` (class extends)
-- `io()` from socket.io-client
+**Browser Dependencies** (all handled by browser-mocks.js):
+- `localStorage` - Offline queue persistence
+- `fetch` - HTTP requests
+- `window.location` - URL detection for auto-config
+
+**Export**: Already Node.js compatible (line 234)
+
+**Testing Scope**: HTTP endpoints, offline queue behavior, fire-and-forget pattern
+
+---
+
+### GM Scanner (ALNScanner)
+
+**Module**: `ALNScanner/js/app/app.js` (main entry point + multiple dependencies)
+**Architecture**: Complex multi-module browser application
+**Purpose**: Real-time game transaction processing with admin panel (FR 3.1-3.4, 4.1-4.2)
+
+**Key Characteristics**:
+- WebSocket-driven bidirectional communication
+- Multi-module architecture with interdependencies
+- Requires global state objects for production operation
+- Admin panel integrated (shares same WebSocket connection)
+- Networked mode requires SessionModeManager coordination
+
+**Core Modules Required** (all must be initialized):
+1. **App** (`app/app.js`) - Main application controller
+2. **SessionModeManager** (`app/sessionModeManager.js`) - Networked vs standalone mode
+3. **NetworkedQueueManager** (`network/networkedQueueManager.js`) - Transaction queueing
+4. **OrchestratorClient** (`network/orchestratorClient.js`) - WebSocket connection
+5. **Settings** (`ui/settings.js`) - Device ID and station mode configuration
+6. **ConnectionManager** - Referenced by scanner code (line 503)
+
+**Public API**:
+```javascript
+// Transaction Processing
+App.recordTransaction(token, tokenId, isUnknown)  // Process token scan
+App.processNFCRead(result)                         // Handle NFC scan event
+
+// Mode Management
+App.toggleMode()                                   // Switch detective ↔ blackmarket
+sessionModeManager.setMode('networked')            // Set session mode
+
+// Settings
+Settings.deviceId = 'GM_TEST_01'                  // Configure device
+Settings.stationMode = 'blackmarket'               // Set mode
+```
+
+**Critical Initialization Requirements**:
+```javascript
+// REQUIRED global objects (scanner expects these to exist):
+global.window.sessionModeManager = new SessionModeManager();
+global.window.sessionModeManager.mode = 'networked';
+global.window.queueManager = new NetworkedQueueManager(client);
+global.window.connectionManager = { client, isConnected: true, ... };
+
+// REQUIRED settings configuration:
+Settings.deviceId = 'GM_TEST_01';
+Settings.stationMode = 'blackmarket'; // or 'detective'
+
+// ONLY THEN can you call:
+scanner.App.currentTeamId = '001';
+scanner.App.recordTransaction(token, tokenId, false);
+```
+
+**Browser Dependencies** (all handled by browser-mocks.js):
+- `localStorage` - Settings and offline queue
+- `window` - Global state management
+- `document` - UI manipulation (mocked as no-ops)
+- `EventTarget` - Event system base class
+- `io()` - Socket.io client
+- `ConnectionManager` - Custom class (mock in browser-mocks)
+
+**The Critical Bug** (revealed only when using real scanner API):
+```javascript
+// What scanner ACTUALLY sends (app.js:663-669):
+window.queueManager.queueTransaction({
+    tokenId: tokenId,
+    teamId: this.currentTeamId,
+    deviceId: Settings.deviceId,
+    stationMode: Settings.stationMode,  // ❌ Contract says 'mode'
+    timestamp: transaction.timestamp
+    // ❌ NO wrapped envelope (event, data, timestamp)
+});
+
+// What contract requires (asyncapi.yaml:534-559):
+{
+    event: 'transaction:submit',
+    data: {
+        tokenId, teamId, deviceId,
+        mode: 'detective' | 'blackmarket'  // ← NOT 'stationMode'
+    },
+    timestamp: ISO8601
+}
+```
+
+**Testing Scope**: WebSocket transaction flow, admin commands, mode switching, networked queue management
+
+**Admin Panel Integration**:
+- Admin panel is part of GM Scanner (same WebSocket connection)
+- Commands sent via `socket.emit('gm:command', {action, payload})`
+- Tests admin panel when using real scanner connection
+- Covers: session control, score adjustment, transaction intervention, video control
+
+---
+
+### Export Verification
+
+**Both scanners are Node.js compatible** when browser APIs are mocked:
+
+```javascript
+// GM Scanner (app.js:905, orchestratorClient.js:end)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = App;  // or OrchestratorClient
+}
+
+// Player Scanner (orchestratorIntegration.js:234)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = OrchestratorIntegration;
+}
+```
 
 ---
 
@@ -433,25 +551,74 @@ async function setupIntegrationTestServer() {
 
 ### Action: Update `websocket-helpers.js`
 
-**Add new function** (append to existing file):
-```javascript
-const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
+**Add TWO new scanner helper functions**:
 
+---
+
+#### Player Scanner Helper (SIMPLE - Already Works)
+
+```javascript
 /**
- * Create authenticated scanner client using REAL scanner code
+ * Create Player Scanner using REAL player scanner code
+ * NOTE: Requires browser-mocks.js to be loaded first
+ * @param {string} url - Server URL
+ * @param {string} deviceId - Optional device ID (auto-generated if omitted)
+ * @returns {OrchestratorIntegration} Player Scanner instance (ready to use)
+ */
+function createPlayerScanner(url, deviceId) {
+  const OrchestratorIntegration = require('../../../aln-memory-scanner/js/orchestratorIntegration');
+
+  const client = new OrchestratorIntegration();
+  client.baseUrl = url;
+
+  if (deviceId) {
+    client.deviceId = deviceId;
+  }
+
+  // That's it - client is ready to use
+  return client;
+}
+```
+
+**Usage**:
+```javascript
+const scanner = createPlayerScanner(server.url, 'PLAYER_TEST_01');
+const result = await scanner.scanToken('534e2b03', '001');
+```
+
+---
+
+#### GM Scanner Helper (COMPLEX - Requires Full Initialization)
+
+**CRITICAL**: This helper must initialize ALL components required for scanner operation.
+
+```javascript
+/**
+ * Create authenticated GM Scanner using REAL scanner code with FULL initialization
+ * NOTE: Requires browser-mocks.js to be loaded first
+ *
+ * Initializes ALL required components:
+ * - OrchestratorClient (WebSocket connection)
+ * - SessionModeManager (networked mode coordination)
+ * - NetworkedQueueManager (transaction queueing)
+ * - Settings (deviceId, stationMode)
+ * - All global window objects scanner expects
+ *
  * @param {string} url - Server URL
  * @param {string} deviceId - Scanner device ID
+ * @param {string} mode - Station mode ('detective' | 'blackmarket')
  * @param {string} password - Admin password
- * @returns {Promise<OrchestratorClient>} Connected scanner
+ * @returns {Promise<Object>} Fully initialized scanner with App API exposed
  */
-async function createAuthenticatedScanner(url, deviceId, password = 'admin-password') {
-  const client = new OrchestratorClient({
-    url,
-    deviceId,
-    version: '1.0.0'
-  });
+async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = 'test-admin-password') {
+  // 1. Import ALL required scanner modules
+  const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
+  const NetworkedQueueManager = require('../../../ALNScanner/js/network/networkedQueueManager');
+  const SessionModeManager = require('../../../ALNScanner/js/app/sessionModeManager');
+  const Settings = require('../../../ALNScanner/js/ui/settings');
+  const App = require('../../../ALNScanner/js/app/app');
 
-  // Authenticate via HTTP
+  // 2. Authenticate via HTTP
   const fetch = require('node-fetch');
   const authResponse = await fetch(`${url}/api/admin/auth`, {
     method: 'POST',
@@ -464,23 +631,113 @@ async function createAuthenticatedScanner(url, deviceId, password = 'admin-passw
   }
 
   const { token } = await authResponse.json();
+
+  // 3. Create and configure OrchestratorClient
+  const client = new OrchestratorClient({
+    url,
+    deviceId,
+    version: '1.0.0'
+  });
   client.token = token;
 
-  // Connect WebSocket
-  await client.connect();
+  // 4. Connect WebSocket and wait for connection
+  client.connect();
 
-  return client;
+  await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      reject(new Error('WebSocket connection timeout'));
+    }, 5000);
+
+    client.socket.once('connect', () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+
+    client.socket.once('connect_error', (error) => {
+      clearTimeout(timeout);
+      reject(new Error(`WebSocket connection failed: ${error.message}`));
+    });
+  });
+
+  // 5. Initialize SessionModeManager (CRITICAL - scanner checks this)
+  global.window.sessionModeManager = new SessionModeManager();
+  global.window.sessionModeManager.mode = 'networked';
+  global.window.sessionModeManager.locked = true;
+
+  // 6. Configure Settings (CRITICAL - used in recordTransaction)
+  Settings.deviceId = deviceId;
+  Settings.stationMode = mode;
+
+  // 7. Create NetworkedQueueManager (CRITICAL - recordTransaction calls this)
+  global.window.queueManager = new NetworkedQueueManager(client);
+
+  // 8. Set ConnectionManager reference (scanner checks this at line 503)
+  global.window.connectionManager = {
+    client: client,
+    isConnected: true,
+    deviceId: deviceId,
+    stationMode: mode
+  };
+
+  // 9. Return fully wired scanner with App API exposed
+  return {
+    client,                       // OrchestratorClient instance
+    socket: client.socket,        // Direct socket access (for event listeners)
+    App,                          // REAL scanner App module (call App.recordTransaction)
+    Settings,                     // Settings reference (for assertions)
+    sessionModeManager: global.window.sessionModeManager,
+    queueManager: global.window.queueManager
+  };
 }
+```
 
+**Usage**:
+```javascript
+const scanner = await createAuthenticatedScanner(server.url, 'GM_TEST_01', 'blackmarket');
+
+// Create token object (matches tokens.json structure)
+const token = {
+  id: '534e2b03',
+  SF_MemoryType: 'Technical',
+  SF_ValueRating: 3,
+  SF_Group: 'TechGroup'
+};
+
+// Set team
+scanner.App.currentTeamId = '001';
+
+// Use REAL scanner API (not socket.emit!)
+scanner.App.recordTransaction(token, '534e2b03', false);
+
+// For admin commands, use socket directly:
+scanner.socket.emit('gm:command', {
+  event: 'gm:command',
+  data: { action: 'session:create', payload: {...} },
+  timestamp: new Date().toISOString()
+});
+```
+
+---
+
+**Module Exports**:
+```javascript
 module.exports = {
-  createAuthenticatedScanner,  // NEW
-  waitForEvent,                // EXISTING - keep
-  connectAndIdentify,          // EXISTING - keep for now, remove later
-  // ... other existing exports
+  createTrackedSocket,
+  waitForEvent,
+  connectAndIdentify,           // Keep for now (contract tests use it)
+  waitForMultipleEvents,
+  cleanupSockets,
+  testDelay,
+  createAuthenticatedScanner,   // NEW - Full GM Scanner
+  createPlayerScanner,          // NEW - Simple Player Scanner
 };
 ```
 
-**Rationale**: Encapsulates auth + connection flow for tests.
+**Rationale**:
+- Player Scanner is simple - just instantiate and use
+- GM Scanner is complex - must initialize all interdependent components
+- Only with full initialization can tests use `App.recordTransaction()` API
+- Only then will tests reveal the `stationMode` bug
 
 ---
 
@@ -651,30 +908,107 @@ describe('POST /api/scan', () => {
 
 ## Part 4: Integration Test Transformation
 
-### Integration Tests to Transform
+**Integration Test Scope**: Test complete workflows from real scanner modules → server processing → broadcasts to all clients. Validate AsyncAPI/OpenAPI contract compliance, state propagation, and network resilience.
 
-```
-backend/tests/integration/
-├── admin-interventions.test.js
-├── duplicate-detection.test.js
-├── error-propagation.test.js
-├── group-completion.test.js
-├── multi-client-broadcasts.test.js
-├── offline-queue-sync.test.js
-├── service-events.test.js
-├── session-lifecycle.test.js
-├── state-synchronization.test.js
-├── transaction-flow.test.js
-└── video-orchestration.test.js
-```
-
-Total: 11 files
+**NOT in scope**: Unit logic, implementation details, performance testing.
 
 ---
 
-### Transformation Pattern
+### Why Tests Must Fail First
 
-**Current pattern** (what tests do now):
+**Core Philosophy**: Fix tests to fix production.
+
+Integration tests currently use fake clients (`socket.io-client`, `axios`) with manually crafted data. This creates a **false positive** problem:
+- Tests pass because manual data matches what server expects
+- Production scanner code may NOT match what server expects
+- Bugs remain hidden until deployment
+
+**The TDD Sequence**:
+
+1. **Transform tests** → Use REAL scanner code (createAuthenticatedScanner, createPlayerScanner)
+2. **Tests FAIL** → Real scanner behavior doesn't match server expectations
+3. **Investigate failures** → Consult contracts (OpenAPI/AsyncAPI) and FRs to understand CORRECT behavior
+4. **Fix implementation** → Update scanner OR server to match contracts (contract is source of truth)
+5. **Tests pass** → Integration now validated end-to-end
+
+**Example (GM Transaction Bug)**:
+
+Current (WRONG):
+```javascript
+// Test manually creates correct data
+gmSocket.emit('transaction:submit', {
+  data: { mode: 'blackmarket' }  // ← Manually correct
+});
+// ✅ Test passes
+```
+
+After transformation (REVEALS BUG):
+```javascript
+// Test uses REAL scanner API
+scanner.App.recordTransaction(token, tokenId, false);
+// Scanner actually sends: { stationMode: 'blackmarket' }  ❌ Wrong field!
+// ❌ Test FAILS - server doesn't recognize 'stationMode'
+```
+
+Investigation:
+- Check AsyncAPI contract (lines 534-559): Requires `mode` field
+- Check scanner code (app.js:667): Sends `stationMode` field
+- Check server validator (validators.js:154): Defaults to 'blackmarket' when `mode` missing
+
+**Bug identified**: Scanner violates contract. Server silently accepts via lenient default.
+
+Fix:
+1. Update scanner (app.js:667): `stationMode` → `mode`
+2. Update server validator: Remove `.default('blackmarket')` - enforce contract strictly
+3. Re-run test: ✅ Passes
+
+**Result**: Production bug fixed, contract compliance validated.
+
+---
+
+**Critical Reminders**:
+- **Don't fix tests to match broken implementation** - Fix implementation to match contracts
+- **Contracts are source of truth** - OpenAPI + AsyncAPI + FRs define correct behavior
+- **NO backward compatibility** - If scanner/server violates contract, implementation is wrong
+- **Let tests reveal unknowns** - We can't predict all bugs, that's why we use real code
+
+---
+
+### Integration Tests by Category
+
+**GM Transaction Tests** (8 files) - Use `scanner.App.recordTransaction()`:
+- `transaction-flow.test.js` [Phase 3.4 - Transform FIRST]
+- `duplicate-detection.test.js`
+- `error-propagation.test.js`
+- `group-completion.test.js`
+- `multi-client-broadcasts.test.js`
+- `offline-queue-sync.test.js` (GM portion)
+- `state-synchronization.test.js`
+- `session-lifecycle.test.js` (transaction portions)
+
+**Admin Command Tests** (2 files) - Use `scanner.socket.emit('gm:command')`:
+- `admin-interventions.test.js`
+- `session-lifecycle.test.js` (admin command portions)
+
+**Player Scanner Tests** (1 existing + 1 new) - Use `scanner.scanToken()`:
+- `video-orchestration.test.js` (transform existing Player Scanner usage)
+- NEW: `player-scanner-http.test.js` (offline queue, batch sync)
+
+**Service-Level Tests** (1 file) - No scanner needed:
+- `service-events.test.js` (pure service event communication)
+
+**Helper Verification** (1 file) - Needs update with Phase 3.3 fix:
+- `_scanner-helpers.test.js` (verify FULL scanner initialization, not just connection)
+
+**Total**: 12 files (10 to transform, 1 new, 2 keep as-is)
+
+---
+
+### Transformation Pattern 1: GM Transaction Tests
+
+**Files**: transaction-flow.test.js, duplicate-detection.test.js, error-propagation.test.js, group-completion.test.js, multi-client-broadcasts.test.js, offline-queue-sync.test.js (GM portion), state-synchronization.test.js
+
+**Current pattern** (WRONG - uses fake socket.io-client):
 ```javascript
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
@@ -709,14 +1043,14 @@ describe('Transaction Flow', () => {
   it('should process transaction', async () => {
     const resultPromise = waitForEvent(gmSocket, 'transaction:result');
 
-    // Raw WebSocket emit
+    // Raw WebSocket emit with manual data
     gmSocket.emit('transaction:submit', {
       event: 'transaction:submit',
       data: {
         tokenId: 'TEST_VIDEO_1',  // ← Fake token
         teamId: '001',
         deviceId: 'GM_TEST',
-        mode: 'blackmarket'
+        mode: 'blackmarket'       // ← Manually adding correct field
       },
       timestamp: new Date().toISOString()
     });
@@ -728,76 +1062,65 @@ describe('Transaction Flow', () => {
 ```
 
 **Problems**:
-- Manual setup (defeats purpose)
-- Uses fake socket.io-client
+- Uses fake socket.io-client (not real scanner)
+- Manually crafts transaction data (bypasses scanner code)
 - Uses fake tokens (TEST_VIDEO_1)
-- Doesn't test production startup
-- Doesn't test real scanner code
+- Manually adds `mode` field (hides scanner's `stationMode` bug)
+- **Doesn't test real scanner code path**
 
 ---
 
-**New pattern** (what tests should do):
+**CORRECT pattern** (use real scanner API):
 ```javascript
-// Import browser mocks FIRST (before any scanner modules)
+// CRITICAL: Import browser mocks FIRST
 require('../helpers/browser-mocks');
 
-// Import real scanner helper
-const { createAuthenticatedScanner } = require('../helpers/websocket-helpers');
+const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const sessionService = require('../../src/services/sessionService');
 
-describe('Transaction Flow - Scanner Integration', () => {
-  let server, scanner;
+describe('Transaction Flow - REAL Scanner Integration', () => {
+  let testContext, scanner;
 
   beforeEach(async () => {
-    // Start production server (tests real initialization)
-    server = await setupIntegrationTestServer();
+    // Start server (initializes services with real tokens)
+    testContext = await setupIntegrationTestServer();
 
-    // Create REAL authenticated scanner
-    scanner = await createAuthenticatedScanner(server.url, 'GM_TEST_01');
+    // Create FULLY initialized scanner (with SessionModeManager, NetworkedQueueManager, Settings)
+    scanner = await createAuthenticatedScanner(testContext.url, 'GM_TEST_01', 'blackmarket');
 
-    // Create session via REAL admin command
-    const sessionPromise = new Promise(resolve => {
-      scanner.socket.once('session:update', resolve);
+    // Create session (via service - simpler than admin command for setup)
+    await sessionService.createSession({
+      name: 'Transaction Flow Test',
+      teams: ['001', '002']
     });
-
-    scanner.socket.emit('gm:command', {
-      event: 'gm:command',
-      data: {
-        action: 'session:create',
-        payload: { name: 'Test Session', teams: ['001', '002'] }
-      },
-      timestamp: new Date().toISOString()
-    });
-
-    await sessionPromise;
   });
 
   afterEach(async () => {
-    if (scanner?.socket?.connected) {
-      scanner.socket.disconnect();
-    }
-    await cleanupIntegrationTestServer(server);
+    if (scanner?.socket?.connected) scanner.socket.disconnect();
+    await cleanupIntegrationTestServer(testContext);
   });
 
-  it('should process transaction with real scanner', async () => {
-    const resultPromise = new Promise(resolve => {
-      scanner.socket.once('transaction:result', resolve);
-    });
+  it('should process transaction using REAL scanner API', async () => {
+    // Listen for server response
+    const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
 
-    // Use REAL scanner socket
-    scanner.socket.emit('transaction:submit', {
-      event: 'transaction:submit',
-      data: {
-        tokenId: '534e2b03',  // ✅ REAL token from ALN-TokenData
-        teamId: '001',
-        deviceId: 'GM_TEST_01',
-        mode: 'blackmarket'
-      },
-      timestamp: new Date().toISOString()
-    });
+    // Create token object (from tokens.json structure)
+    const token = {
+      id: '534e2b03',
+      SF_MemoryType: 'Technical',
+      SF_ValueRating: 3,
+      SF_Group: 'TechGroup'
+    };
+
+    // Set team (how real scanner does it)
+    scanner.App.currentTeamId = '001';
+
+    // Use REAL scanner API (not manual socket.emit!)
+    // This calls scanner's recordTransaction which will send stationMode (revealing bug)
+    scanner.App.recordTransaction(token, '534e2b03', false);
 
     const result = await resultPromise;
-    expect(result.event).toBe('transaction:result');
     expect(result.data.status).toBe('accepted');
     expect(result.data.tokenId).toBe('534e2b03');
     expect(result.data.points).toBe(5000);
@@ -805,13 +1128,391 @@ describe('Transaction Flow - Scanner Integration', () => {
 });
 ```
 
-**Improvements**:
-- Production server startup
-- Real scanner module (`OrchestratorClient`)
-- Real tokens from ALN-TokenData
-- Real authentication flow
-- Real admin commands
-- No manual setup
+**Why this is correct**:
+- Uses `scanner.App.recordTransaction()` (REAL scanner API)
+- Scanner sends `stationMode` field (production bug revealed)
+- Server must handle actual scanner behavior (not idealized test data)
+- Tests REAL code path from production scanner
+- Bug will be revealed when scanner sends wrong field
+
+---
+
+---
+
+### Transformation Pattern 2: Admin Command Tests
+
+**Files**: admin-interventions.test.js, session-lifecycle.test.js (admin command portions)
+
+**Contract Reference**:
+- AsyncAPI gm:command event (lines 983-1075)
+- AsyncAPI gm:command:ack event (lines 1077-1130)
+- Functional Requirements Section 4.2 (Admin Panel Intervention Functions)
+
+**Critical Context**:
+- AsyncAPI contract (line 1002): "Breaking Changes: Admin commands moved from HTTP POST to WebSocket"
+- Admin Panel integrated into GM Scanner (shares same WebSocket connection per FR 4.2)
+- Tests currently use WebSocket `gm:command` (following contract)
+- Tests use fake socket.io-client (NOT real scanner)
+
+---
+
+**Current pattern** (uses fake socket.io-client):
+```javascript
+const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+
+describe('Admin Interventions', () => {
+  let testContext, gmAdmin, gmObserver;
+
+  beforeEach(async () => {
+    testContext = await setupIntegrationTestServer();
+
+    // Fake socket.io-client connections
+    gmAdmin = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ADMIN');
+    gmObserver = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_OBSERVER');
+
+    // Create session
+    await sessionService.createSession({
+      name: 'Admin Test Session',
+      teams: ['001', '002']
+    });
+  });
+
+  it('should adjust score via admin command', async () => {
+    const ackPromise = waitForEvent(gmAdmin, 'gm:command:ack');
+    const scorePromise = waitForEvent(gmObserver, 'score:updated');
+
+    // Raw socket.emit with command structure from AsyncAPI contract
+    gmAdmin.emit('gm:command', {
+      event: 'gm:command',
+      data: {
+        action: 'score:adjust',
+        payload: {
+          teamId: '001',
+          delta: -500,
+          reason: 'Penalty for rule violation'
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    const [ack, scoreUpdate] = await Promise.all([ackPromise, scorePromise]);
+
+    expect(ack.data.success).toBe(true);
+    expect(ack.data.action).toBe('score:adjust');
+    expect(scoreUpdate.data.teamId).toBe('001');
+  });
+});
+```
+
+**Why current pattern is PARTIALLY correct**:
+- ✅ Command structure matches AsyncAPI contract (event, data.action, data.payload, timestamp)
+- ✅ Uses WebSocket (correct per contract line 1002)
+- ✅ Tests command acknowledgment (gm:command:ack) per contract
+- ✅ Tests broadcast propagation (score:updated to observer)
+- ❌ Uses fake socket.io-client (not real GM Scanner)
+- ❌ Doesn't test actual Admin Panel implementation
+
+---
+
+**CORRECT pattern** (use real GM Scanner with integrated Admin Panel):
+```javascript
+// CRITICAL: Import browser mocks FIRST
+require('../helpers/browser-mocks');
+
+const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const sessionService = require('../../src/services/sessionService');
+
+describe('Admin Interventions - REAL Scanner Integration', () => {
+  let testContext, adminScanner, observerScanner;
+
+  beforeEach(async () => {
+    testContext = await setupIntegrationTestServer();
+
+    // Create REAL GM Scanners (Admin Panel integrated into GM Scanner per FR 4.2)
+    adminScanner = await createAuthenticatedScanner(testContext.url, 'GM_ADMIN', 'blackmarket');
+    observerScanner = await createAuthenticatedScanner(testContext.url, 'GM_OBSERVER', 'blackmarket');
+
+    // Create session
+    await sessionService.createSession({
+      name: 'Admin Intervention Test',
+      teams: ['001', '002']
+    });
+  });
+
+  afterEach(async () => {
+    if (adminScanner?.socket?.connected) adminScanner.socket.disconnect();
+    if (observerScanner?.socket?.connected) observerScanner.socket.disconnect();
+    await cleanupIntegrationTestServer(testContext);
+  });
+
+  it('should adjust score via admin command using REAL scanner', async () => {
+    const ackPromise = waitForEvent(adminScanner.socket, 'gm:command:ack');
+    const scorePromise = waitForEvent(observerScanner.socket, 'score:updated');
+
+    // Use REAL GM Scanner socket (Admin Panel shares this connection)
+    // Command structure per AsyncAPI gm:command specification
+    adminScanner.socket.emit('gm:command', {
+      event: 'gm:command',
+      data: {
+        action: 'score:adjust',
+        payload: {
+          teamId: '001',
+          delta: -500,
+          reason: 'Penalty for rule violation'
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    const [ack, scoreUpdate] = await Promise.all([ackPromise, scorePromise]);
+
+    // Validate acknowledgment structure per AsyncAPI gm:command:ack
+    expect(ack.event).toBe('gm:command:ack');
+    expect(ack.data.success).toBeDefined();
+    expect(ack.data.action).toBe('score:adjust');
+    expect(ack.data.message).toBeDefined();
+
+    // Validate broadcast structure per AsyncAPI score:updated
+    expect(scoreUpdate.event).toBe('score:updated');
+    expect(scoreUpdate.data.teamId).toBe('001');
+    expect(scoreUpdate.data.currentScore).toBeDefined();
+  });
+
+  it('should pause/resume session via admin command', async () => {
+    // Test session:pause command (AsyncAPI action: 'session:pause')
+    const pauseAckPromise = waitForEvent(adminScanner.socket, 'gm:command:ack');
+    const sessionUpdatePromise = waitForEvent(observerScanner.socket, 'session:update');
+
+    adminScanner.socket.emit('gm:command', {
+      event: 'gm:command',
+      data: {
+        action: 'session:pause',
+        payload: {}
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    const [ack, update] = await Promise.all([pauseAckPromise, sessionUpdatePromise]);
+
+    // Validate per AsyncAPI contract
+    expect(ack.data.success).toBeDefined();
+    expect(update.data.status).toBe('paused');
+  });
+});
+```
+
+**Why this is correct**:
+- Uses REAL GM Scanner WebSocket connection (Admin Panel integrated per FR 4.2)
+- Tests actual production scanner behavior
+- Admin Panel shares GM Scanner connection (not separate WebSocket)
+- Tests broadcast propagation to multiple real scanners
+- Uses real authentication flow (HTTP POST /api/admin/auth → JWT → WebSocket handshake)
+
+**What this transformation will REVEAL**:
+- Whether Admin Panel actually implements WebSocket commands (contract says it should)
+- Whether command structure matches AsyncAPI specification
+- Whether acknowledgments follow contract structure
+- Whether broadcasts propagate correctly through real scanner connections
+- Any bugs in command validation, authorization, or execution
+
+**Contract Compliance Verification**:
+- All commands must match AsyncAPI action enum (session:create, session:pause, session:resume, session:end, video:skip, score:adjust, etc.)
+- All acknowledgments must include: `success` (boolean), `action` (string), `message` (string)
+- All side effects must broadcast to other clients (session:update, score:updated, video:status)
+- Refer to AsyncAPI gm:command specification (lines 983-1075) for complete action list and payload structures
+- Refer to Functional Requirements Section 4.2 for admin intervention behavior
+
+**NO backward compatibility**: Contract is source of truth. If production Admin Panel uses HTTP instead of WebSocket, implementation must be updated to match contract.
+
+---
+
+### Transformation Pattern 3: Player Scanner Tests
+
+**Files**: video-orchestration.test.js (transform existing), player-scanner-http.test.js (NEW)
+
+**Contract Reference**:
+- OpenAPI POST /api/scan (lines 48-200)
+- OpenAPI POST /api/scan/batch (lines 201-280)
+- Functional Requirements Section 2.1 (Player Scanner token submission)
+- Functional Requirements Section 2.3 (Connection management, offline queue)
+
+**Critical Context**:
+- Player Scanner is HTTP-only client (fire-and-forget, ESP32 compatible per FR 2.1)
+- No WebSocket connection (simpler architecture than GM Scanner)
+- Offline queue with automatic batch sync
+- Tests currently use axios directly (bypassing Player Scanner code)
+
+---
+
+**Current pattern** (bypasses Player Scanner):
+```javascript
+const axios = require('axios');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+
+describe('Video Orchestration', () => {
+  let testContext, gmSocket;
+
+  beforeEach(async () => {
+    testContext = await setupIntegrationTestServer();
+    gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_VIDEO_TEST');
+
+    await sessionService.createSession({
+      name: 'Video Test Session',
+      teams: ['001', '002']
+    });
+  });
+
+  it('should queue video from player scan', async () => {
+    const videoStatusPromise = waitForEvent(gmSocket, 'video:status');
+
+    // Direct HTTP POST (bypasses Player Scanner code entirely)
+    const response = await axios.post(`${testContext.url}/api/scan`, {
+      tokenId: '534e2b03',
+      deviceId: 'PLAYER_SCANNER_01',
+      timestamp: new Date().toISOString()
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.data.status).toBe('accepted');
+    expect(response.data.videoQueued).toBe(true);
+
+    const videoEvent = await videoStatusPromise;
+    expect(videoEvent.data.status).toBe('loading');
+  });
+});
+```
+
+**Why current pattern is WRONG**:
+- ❌ Uses axios directly (doesn't test Player Scanner code)
+- ❌ Doesn't test Player Scanner's offline queue logic
+- ❌ Doesn't test Player Scanner's connection management
+- ❌ Doesn't test Player Scanner's error handling
+- ❌ Doesn't test batch sync after offline queue
+- ✅ Correctly validates video:status broadcast to GM clients
+
+---
+
+**CORRECT pattern** (use real Player Scanner API):
+```javascript
+// CRITICAL: Import browser mocks FIRST
+require('../helpers/browser-mocks');
+
+const { createPlayerScanner } = require('../helpers/websocket-helpers');
+const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+
+describe('Video Orchestration - REAL Player Scanner Integration', () => {
+  let testContext, playerScanner, gmSocket;
+
+  beforeEach(async () => {
+    testContext = await setupIntegrationTestServer();
+
+    // Create REAL Player Scanner
+    playerScanner = createPlayerScanner(testContext.url, 'PLAYER_TEST_01');
+
+    // Connect GM scanner to observe broadcasts
+    gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_VIDEO_TEST');
+
+    await sessionService.createSession({
+      name: 'Video Orchestration Test',
+      teams: ['001', '002']
+    });
+  });
+
+  afterEach(async () => {
+    if (gmSocket?.connected) gmSocket.disconnect();
+    await cleanupIntegrationTestServer(testContext);
+  });
+
+  it('should queue video using REAL Player Scanner API', async () => {
+    const videoStatusPromise = waitForEvent(gmSocket, 'video:status');
+
+    // Use REAL Player Scanner API (not axios!)
+    // This triggers scanner's actual scanToken() implementation
+    const result = await playerScanner.scanToken('534e2b03', '001');
+
+    // Validate Player Scanner response per OpenAPI /api/scan response schema
+    expect(result.status).toBeDefined();
+
+    // Validate video:status broadcast per AsyncAPI contract
+    const videoEvent = await videoStatusPromise;
+    expect(videoEvent.event).toBe('video:status');
+    expect(videoEvent.data.status).toBeDefined();
+    expect(videoEvent.data.queueLength).toBeDefined();
+  });
+
+  it('should handle offline queue when disconnected', async () => {
+    // Disconnect Player Scanner
+    playerScanner.connected = false;
+
+    // Scan while offline (uses REAL offline queue logic from orchestratorIntegration.js)
+    const result = await playerScanner.scanToken('rat001', '001');
+
+    // Validate offline behavior per Player Scanner implementation
+    expect(result.status).toBe('offline');
+    expect(result.queued).toBe(true);
+    expect(playerScanner.offlineQueue.length).toBe(1);
+
+    // Verify queue structure
+    const queued = playerScanner.offlineQueue[0];
+    expect(queued.tokenId).toBe('rat001');
+    expect(queued.teamId).toBe('001');
+    expect(queued.timestamp).toBeDefined();
+  });
+
+  it('should sync offline queue when reconnected', async () => {
+    // Queue multiple offline scans
+    playerScanner.connected = false;
+    await playerScanner.scanToken('rat001', '001');
+    await playerScanner.scanToken('asm001', '002');
+
+    expect(playerScanner.offlineQueue.length).toBe(2);
+
+    // Reconnect and sync (uses REAL processOfflineQueue logic)
+    playerScanner.connected = true;
+    await playerScanner.processOfflineQueue();
+
+    // Validate queue processed
+    expect(playerScanner.offlineQueue.length).toBe(0);
+  });
+});
+```
+
+**Why this is correct**:
+- Uses `playerScanner.scanToken()` (REAL Player Scanner API)
+- Tests actual offline queue implementation (orchestratorIntegration.js lines 61-76)
+- Tests actual batch sync logic (lines 99-129)
+- Tests real connection management and error handling
+- Validates HTTP responses match OpenAPI schema
+- Validates broadcasts match AsyncAPI schema
+
+**What this transformation will REVEAL**:
+- Whether Player Scanner correctly implements HTTP POST /api/scan per OpenAPI contract
+- Whether offline queue persistence works correctly
+- Whether batch sync matches OpenAPI POST /api/scan/batch specification
+- Whether Player Scanner error handling matches documented behavior
+- Any bugs in connection detection, retry logic, or queue management
+
+**Contract Compliance Verification**:
+- HTTP requests must match OpenAPI /api/scan schema (tokenId, deviceId, teamId optional, timestamp)
+- HTTP responses must match OpenAPI response schema (status, message, videoQueued)
+- Batch requests must match OpenAPI /api/scan/batch schema (array of transactions)
+- Refer to Functional Requirements Section 2.1 for scan submission behavior
+- Refer to Functional Requirements Section 2.3 for offline queue behavior
+
+**Additional Player Scanner Test** (NEW file):
+
+Create `tests/integration/player-scanner-http.test.js` to thoroughly test Player Scanner HTTP workflow:
+- Online scanning (immediate HTTP POST)
+- Offline queueing (localStorage persistence)
+- Connection recovery (auto-retry logic)
+- Batch sync (POST /api/scan/batch with multiple scans)
+- Error handling (network failures, server errors)
+
+This complements video-orchestration.test.js which focuses on video playback flow.
 
 ---
 
@@ -1015,14 +1716,8 @@ describe('UDP Discovery Feature', () => {
 - [x] **Verification**: Function exists and creates instance (tested in Phase 3.3)
 
 #### Phase 3.3: Test Scanner Helpers Work ✅ COMPLETE
-- [x] **Create tests/integration/_scanner-helpers.test.js** - Verify helpers connect/communicate
-- [x] **Test createAuthenticatedScanner()** - Can connect and send/receive events
-- [x] **Test createPlayerScanner()** - Can make HTTP requests
-- [x] **Run**: `npm test -- tests/integration/_scanner-helpers.test.js`
-- [x] **Fix connection/auth issues**
-- [x] **Verification**: Helper test passes (7/7 tests)
 
-**PRODUCTION BUG DISCOVERED & FIXED:**
+**PRODUCTION BUG DISCOVERED & FIXED (from initial attempt):**
 - **Bug**: AsyncAPI contract specifies `deviceId` in handshake.auth, production server expected `stationId`
 - **Impact**: GM Scanners would connect but fail all transaction submissions with "Not identified" error
 - **Root Cause**: Contract violation - server.js line 41 extracted `stationId` instead of `deviceId`
@@ -1032,40 +1727,178 @@ describe('UDP Discovery Feature', () => {
   - backend/tests/helpers/integration-test-server.js (lines 53, 55, 60, 72)
   - backend/tests/helpers/websocket-helpers.js (line 78)
   - backend/tests/contract/websocket/session-events.test.js (line 91)
-- **Verification**: All contract tests pass (56/56), scanner helper tests pass (7/7)
+- **Verification**: All contract tests pass (56/56)
 
-#### Phase 3.4: Transform ONE GM Test (Pattern Validation)
-- [ ] **Pick simplest test**: transaction-flow.test.js (already uses real tokens)
-- [ ] **Transform**:
+**What We Actually Did (complete implementation):**
+
+1. **Fixed `createAuthenticatedScanner()` in websocket-helpers.js**:
+   - ✅ Added SessionModeManager initialization (mode='networked', locked=true)
+   - ✅ Added NetworkedQueueManager initialization (with OrchestratorClient)
+   - ✅ Added Settings configuration (deviceId, stationMode)
+   - ✅ Added global window objects (sessionModeManager, queueManager, connectionManager)
+   - ✅ Made Settings globally available (App module expects it)
+   - ✅ Changed return value to wrapper object: `{ client, socket, App, Settings, sessionModeManager, queueManager }`
+
+2. **Enhanced browser-mocks.js** (discovered additional requirements):
+   - ✅ Added global Settings mock (App.recordTransaction uses Settings.deviceId, Settings.stationMode)
+   - ✅ Added global DataManager mock (App.recordTransaction uses DataManager.markTokenAsScanned)
+   - ✅ Added global UIManager mock (App.recordTransaction uses UIManager.updateSessionStats, showTokenResult)
+   - ✅ Enhanced document.getElementById to return proper mock elements with properties (disabled, textContent, style, classList)
+   - ✅ Fixed diagnostic warning (unused `tag` parameter → `_tag`)
+
+3. **Updated _scanner-helpers.test.js**:
+   - ✅ Fixed existing tests to use `scanner.client.*` instead of `scanner.*` (wrapper object change)
+   - ✅ Added comprehensive initialization test:
+     - Verifies all returned object properties (client, socket, App, Settings, sessionModeManager, queueManager)
+     - Verifies Settings configured correctly (deviceId, stationMode)
+     - Verifies SessionModeManager configured (mode='networked', locked=true)
+     - Verifies global window objects exist
+     - **CRITICAL**: Verifies `App.recordTransaction()` can be called without crashing (proves full initialization)
+
+**Test Results**:
+```
+Scanner Helper Verification
+  GM Scanner (OrchestratorClient)
+    ✓ should create GM Scanner instance
+    ✓ should connect and authenticate GM Scanner via HTTP + WebSocket
+    ✓ should receive and process sync:full after connection
+    ✓ should send and receive transaction events
+    ✓ should fully initialize GM Scanner with all required components  ← NEW
+  Player Scanner (OrchestratorIntegration)
+    ✓ should create Player Scanner instance
+    ✓ should POST /api/scan via real Player Scanner code
+    ✓ should queue scans when offline
+
+Test Suites: 1 passed
+Tests:       8 passed, 8 total
+```
+
+**What Changed vs Plan**:
+- **Plan said**: Phase 3.1 browser-mocks.js was complete
+- **Reality**: Needed additional globals (Settings, DataManager, UIManager) discovered during Phase 3.3
+- **Plan said**: Test verifies App.recordTransaction "works" (expects transaction result)
+- **Reality**: Test verifies App.recordTransaction "doesn't crash" (proves initialization, NOT correctness)
+- **Reason**: Phase 3.3 tests helper completeness, Phase 3.4 tests production bug discovery
+
+**Key Learnings**:
+1. **Incremental discovery is normal**: Can't predict all browser mocks needed until real scanner code runs
+2. **Test scope matters**: Phase 3.3 = "helper works", Phase 3.4 = "scanner sends correct data"
+3. **Return wrapper object**: Returning `{ client, App, Settings, ... }` gives tests access to everything
+4. **Global scope required**: Scanner modules expect Settings/DataManager/UIManager globally, not just as imports
+
+#### Phase 3.4: Transform ONE GM Test (Pattern Validation) ✅ COMPLETE (with critical discovery)
+- [x] **Transformed transaction-flow.test.js to use REAL scanner entry point**
+**Final implementation** (used production entry point, not intermediate layer):
   ```javascript
-  // Add at top:
-  require('../helpers/browser-mocks');
-  const { createAuthenticatedScanner } = require('../helpers/websocket-helpers');
+  // Scanner helper loads RAW tokens from ALN-TokenData (not server's transformed tokens)
+  const rawTokens = JSON.parse(fs.readFileSync('../ALN-TokenData/tokens.json'));
+  global.TokenManager.database = rawTokens;
 
-  // Replace connectAndIdentify:
-  scanner = await createAuthenticatedScanner(testContext.url, 'GM_TEST_01', 'admin');
-
-  // Use scanner.socket for events:
-  scanner.socket.emit('transaction:submit', { ... });
+  // Use REAL production entry point (not recordTransaction):
+  scanner.App.currentTeamId = '001';
+  scanner.App.processNFCRead({id: '534e2b03'});  // ← Full production flow
   ```
-- [ ] **Run**: `npm test -- tests/integration/transaction-flow.test.js`
-- [ ] **Fix issues, document pattern**
-- [ ] **Verification**: Transformed test passes
 
-#### Phase 3.5: Transform Remaining 10 GM Tests
-- [ ] **Transform admin-interventions.test.js** - Apply pattern, verify
-- [ ] **Transform duplicate-detection.test.js** - Apply pattern, verify
-- [ ] **Transform error-propagation.test.js** - Apply pattern, replace TEST_VIDEO_ERROR → '534e2b03', verify
-- [ ] **Transform group-completion.test.js** - Apply pattern, verify
-- [ ] **Transform multi-client-broadcasts.test.js** - Apply pattern, verify
-- [ ] **Transform offline-queue-sync.test.js** - Apply pattern, verify
-- [ ] **Transform service-events.test.js** - Apply pattern, verify
-- [ ] **Transform session-lifecycle.test.js** - Apply pattern, verify
-- [ ] **Transform state-synchronization.test.js** - Apply pattern, verify
-- [ ] **Transform video-orchestration.test.js** - Apply pattern, replace TEST_* tokens, verify
-- [ ] **Verification**: All 11 GM integration tests pass
+**Implementation bugs fixed**:
+- [x] Scanner event wrapping (networkedQueueManager.js:60, 90) - now wraps per AsyncAPI
+- [x] Scanner field naming (app.js:667) - `stationMode` → `mode`
+- [x] Server envelope strictness (adminEvents.js:140) - removed fallback
+- [x] Server mode field (validators.js:154) - removed `.default()`, now required
+- [x] Unit tests (validators.test.js) - added missing `mode` field
 
-#### Phase 3.6: Create Player Scanner Integration Tests
+**Token data format issue discovered & fixed**:
+- Scanner expects: Raw format (`SF_Group`, `SF_MemoryType`, `SF_ValueRating`)
+- Server uses: Transformed format (`group`, `memoryType`, `valueRating`)
+- Wire protocol: Only `tokenId` (no format conflict in production)
+- Fix: Load raw tokens for scanner, not server's transformed tokens
+
+**Test Results**: 4/6 passing
+- ✅ Blackmarket transaction processing
+- ✅ Detective mode (no score update)
+- ✅ Broadcast to multiple GMs (1 submits, others observe)
+- ✅ Same-team duplicate detection
+- ❌ Concurrent transactions from different teams
+- ❌ Different-team duplicate detection
+
+**CRITICAL DISCOVERY: Scanner Singleton Architecture**
+
+The 2 failures revealed a fundamental architectural reality:
+
+**Scanner is designed as singleton object literal**:
+```javascript
+const App = { currentTeamId: '', ... }  // Singleton, not class
+const Settings = { deviceId: '001', stationMode: 'detective' }  // Singleton
+```
+
+**In Production** (works correctly):
+- Each GM = separate browser tab = isolated JavaScript execution context
+- Each tab has its own `App` singleton (no collision)
+
+**In Node.js Tests** (cannot work):
+- Module caching returns SAME object for all `require()` calls
+- `gm1.App === gm2.App` (true - same object!)
+- `gm1.App.currentTeamId = '001'; gm2.App.currentTeamId = '002'` → collision!
+
+**This is NOT a bug** - it's an architectural constraint. Scanner code was designed for one-GM-per-browser-tab isolation.
+
+**Decision: Option 3 - Layer-Appropriate Testing**
+
+**Single-GM Integration Tests** (use real scanner):
+- Tests: "Does one GM scanner correctly integrate with server?"
+- Pattern: `scanner.App.processNFCRead()` (real production code path)
+- File: `transaction-flow.test.js`
+
+**Multi-GM Coordination Tests** (use manual socket.emit):
+- Tests: "Does server correctly coordinate multiple independent GM inputs?"
+- Pattern: Manual `socket.emit()` to simulate independent GMs (like contract tests)
+- File: NEW `multi-gm-coordination.test.js`
+
+**Rationale**:
+- Matches production architecture (one GM = one browser tab)
+- Tests each layer appropriately (single-GM integration vs server coordination)
+- E2E multi-GM testing done via manual QA (multiple real browser tabs)
+
+---
+
+#### Phase 3.5: Reorganize Tests by Architecture ✅ COMPLETE
+- [x] **Keep in transaction-flow.test.js** (4 single-GM tests - ALL PASSING)
+  - ✅ Blackmarket transaction processing
+  - ✅ Detective mode (no score update)
+  - ✅ Broadcast observation (1 GM submits, others observe)
+  - ✅ Same-team duplicate detection
+- [x] **Created multi-gm-coordination.test.js** (multi-GM server coordination)
+  - ✅ Concurrent transactions from different teams (PASSES)
+  - ⚠️ Different-team duplicate detection (FAILS - **reveals production bug**)
+- [x] **Pattern documented** - transaction-flow.test.js serves as reference
+
+**New Production Bug Discovered**:
+- Different-team duplicate detection failing
+- Team 001 scans token → +5000 ✓
+- Team 002 scans SAME token → Should reject, but Team 001 gets ANOTHER +5000 ❌
+- Score: Expected 5000, Received 10000
+- Root cause: Duplicate detection logic not properly handling cross-team duplicates
+- File: Likely in transactionService.js duplicate detection
+
+#### Phase 3.6: Transform Remaining Single-GM Integration Tests
+- [ ] **Transform admin-interventions.test.js** - Apply single-GM pattern
+- [ ] **Transform error-propagation.test.js** - Apply pattern, replace TEST_* tokens
+- [ ] **Transform group-completion.test.js** - Apply pattern (single GM scanning group)
+- [ ] **Transform offline-queue-sync.test.js** - Apply pattern (single GM offline/online)
+- [ ] **Transform service-events.test.js** - Keep as-is (no scanner needed)
+- [ ] **Transform session-lifecycle.test.js** - Separate single-GM (admin commands) from multi-GM scenarios
+- [ ] **Transform state-synchronization.test.js** - Apply pattern
+- [ ] **Transform video-orchestration.test.js** - Apply pattern, replace TEST_* tokens
+- [ ] **Verification**: All single-GM integration tests pass
+
+#### Phase 3.7: Create Multi-GM Coordination Tests
+- [ ] **Create tests/integration/multi-gm-coordination.test.js**
+- [ ] **Move concurrent transaction tests** from transaction-flow.test.js
+- [ ] **Move different-team duplicate test** from transaction-flow.test.js
+- [ ] **Use manual socket.emit pattern** (like contract tests)
+- [ ] **Test server coordination logic** (not scanner integration)
+- [ ] **Verification**: Multi-GM coordination tests pass
+
+#### Phase 3.8: Create Player Scanner Integration Tests
 - [ ] **Create tests/integration/player-scanner-http.test.js** - Test real Player Scanner HTTP workflow
 - [ ] **Test POST /api/scan when online**
 - [ ] **Test offline queue** - Scans queued when disconnected
@@ -1074,7 +1907,7 @@ describe('UDP Discovery Feature', () => {
 - [ ] **Fix issues**
 - [ ] **Verification**: Player Scanner integration test passes
 
-#### Phase 3.7: Final Verification
+#### Phase 3.9: Final Verification
 - [ ] **Run all integration tests**: `npm run test:integration`
 - [ ] **Verify**: 12/12 pass (11 GM + 1 Player)
 - [ ] **Verify**: No test-mode conditionals
@@ -1083,12 +1916,19 @@ describe('UDP Discovery Feature', () => {
 - [ ] **Check for leaks**: `npm test -- --detectOpenHandles`
 - [ ] **Verification**: 12/12 integration tests pass
 
-#### Phase 3.8: Documentation & Commit
+#### Phase 3.10: Documentation & Commit
 - [ ] **Update this plan** - Mark Phase 3 complete, document actual changes vs plan, add lessons learned
 - [ ] **Git commit**: Phase 3 implementation with detailed commit message
 - [ ] **Verification**: Plan document updated, changes committed
 
 ---
+
+**Key Learnings from Phase 3.4**:
+1. **Use production entry points**: `processNFCRead()` not `recordTransaction()` - tests full flow
+2. **Respect data format boundaries**: Scanner uses raw tokens, server transforms separately
+3. **Singleton architecture limits testing**: Can't have multiple scanner instances in one process
+4. **Layer-appropriate testing**: Single-GM via real scanner, multi-GM via manual socket.emit
+5. **Architectural constraints are valid**: Not all production patterns can be integration tested
 
 **Anti-Pattern Avoidance for Phase 3**:
 - ❌ Don't batch transform without testing ONE first

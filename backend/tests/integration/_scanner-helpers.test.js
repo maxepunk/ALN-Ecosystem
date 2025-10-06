@@ -56,11 +56,11 @@ describe('Scanner Helper Verification', () => {
       // This tests the REAL auth flow the deployed GM Scanner uses
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_HELPER_TEST');
 
-      // Verify scanner connected
+      // Verify scanner connected (now returns wrapper object)
       expect(scanner.socket).toBeDefined();
       expect(scanner.socket.connected).toBe(true);
-      expect(scanner.isConnected).toBe(true);
-      expect(scanner.token).toBeDefined();
+      expect(scanner.client.isConnected).toBe(true);
+      expect(scanner.client.token).toBeDefined();
     });
 
     it('should receive and process sync:full after connection', async () => {
@@ -69,11 +69,11 @@ describe('Scanner Helper Verification', () => {
       // Verify scanner received and processed sync:full by checking populated state
       // Per AsyncAPI contract: server auto-sends sync:full on connection
       // Per orchestratorClient.js:274: scanner stores connectedDevices from sync:full
-      expect(scanner.connectedDevices).toBeDefined();
-      expect(Array.isArray(scanner.connectedDevices)).toBe(true);
+      expect(scanner.client.connectedDevices).toBeDefined();
+      expect(Array.isArray(scanner.client.connectedDevices)).toBe(true);
 
       // Scanner should have session ID from sync:full (if session exists)
-      expect(scanner.sessionId).toBeDefined();
+      expect(scanner.client.sessionId).toBeDefined();
     });
 
     it('should send and receive transaction events', async () => {
@@ -104,6 +104,49 @@ describe('Scanner Helper Verification', () => {
       expect(result.event).toBe('transaction:result');
       expect(result.data.status).toBe('accepted');
       expect(result.data.tokenId).toBe('534e2b03');
+    });
+
+    it('should fully initialize GM Scanner with all required components', async () => {
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_FULL_TEST', 'blackmarket');
+
+      // 1. Verify returned object structure
+      expect(scanner.client).toBeDefined();
+      expect(scanner.socket).toBeDefined();
+      expect(scanner.App).toBeDefined();
+      expect(scanner.Settings).toBeDefined();
+      expect(scanner.sessionModeManager).toBeDefined();
+      expect(scanner.queueManager).toBeDefined();
+
+      // 2. Verify Settings configured correctly
+      expect(scanner.Settings.deviceId).toBe('GM_FULL_TEST');
+      expect(scanner.Settings.stationMode).toBe('blackmarket');
+
+      // 3. Verify SessionModeManager configured
+      expect(scanner.sessionModeManager.mode).toBe('networked');
+      expect(scanner.sessionModeManager.locked).toBe(true);
+
+      // 4. Verify global window objects exist (scanner code expects these)
+      expect(global.window.sessionModeManager).toBeDefined();
+      expect(global.window.queueManager).toBeDefined();
+      expect(global.window.connectionManager).toBeDefined();
+
+      // 5. CRITICAL: Verify App.recordTransaction can be called without crashing
+      // This proves all dependencies are initialized correctly
+      // We're NOT testing if the transaction is correct (that's Phase 3.4)
+      // We're testing: "Did the helper set up everything so scanner doesn't crash?"
+      const token = {
+        id: '534e2b03',
+        SF_MemoryType: 'Technical',
+        SF_ValueRating: 3,
+        SF_Group: ''
+      };
+
+      scanner.App.currentTeamId = '001';
+
+      // This should not throw "queueManager not initialized" or similar errors
+      expect(() => {
+        scanner.App.recordTransaction(token, '534e2b03', false);
+      }).not.toThrow();
     });
   });
 

@@ -151,7 +151,7 @@ const scanRequestSchema = Joi.object({
     .pattern(/^[A-Za-z_0-9]+$/),  // Allow alphanumeric token IDs (matches tokenSchema)
   teamId: teamId.optional(),  // OPTIONAL per OpenAPI contract - players haven't committed to teams yet
   deviceId: Joi.string().required().min(1).max(100),
-  mode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),  // AsyncAPI contract field (Decision #4)
+  mode: Joi.string().valid('detective', 'blackmarket').required(),  // AsyncAPI contract field (Decision #4) - STRICT: required, no default
   timestamp: isoDate.optional(),
 });
 

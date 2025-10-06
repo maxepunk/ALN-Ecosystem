@@ -137,7 +137,15 @@ async function handleTransactionSubmit(socket, data, io) {
     }
 
     // Unwrap envelope (data.data contains actual transaction data per AsyncAPI contract)
-    const transactionData = data.data || data;
+    // STRICT: Require wrapped envelope per AsyncAPI contract
+    if (!data.data) {
+      emitWrapped(socket, 'error', {
+        code: 'VALIDATION_ERROR',
+        message: 'Event must be wrapped in envelope: {event, data, timestamp}'
+      });
+      return;
+    }
+    const transactionData = data.data;
 
     const { scanRequestSchema, validate } = require('../utils/validators');
     const scanRequest = validate(transactionData, scanRequestSchema);

@@ -12,7 +12,10 @@
  * Contract: backend/contracts/asyncapi.yaml
  */
 
-const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+// CRITICAL: Load browser mocks FIRST before any scanner code
+require('../helpers/browser-mocks');
+
+const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners } = require('../../src/websocket/broadcasts');
@@ -20,7 +23,7 @@ const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
 describe('Transaction Flow Integration', () => {
-  let testContext, gmSocket;
+  let testContext, gmScanner;
 
   beforeAll(async () => {
     testContext = await setupIntegrationTestServer();
@@ -61,31 +64,26 @@ describe('Transaction Flow Integration', () => {
   });
 
   afterEach(async () => {
-    if (gmSocket?.connected) gmSocket.disconnect();
+    if (gmScanner?.socket?.connected) gmScanner.socket.disconnect();
     await sessionService.reset();
   });
 
   describe('Blackmarket Mode Transactions', () => {
     it('should process blackmarket transaction and broadcast to all GMs', async () => {
-      // Setup: Connect GM in blackmarket mode
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_BLACKMARKET');
+      // Setup: Connect GM using REAL scanner code
+      gmScanner = await createAuthenticatedScanner(testContext.url, 'GM_BLACKMARKET', 'blackmarket');
 
-      // Listen for expected events
-      const resultPromise = waitForEvent(gmSocket, 'transaction:result');
-      const newPromise = waitForEvent(gmSocket, 'transaction:new');
-      const scorePromise = waitForEvent(gmSocket, 'score:updated');
+      // Listen for expected events on scanner's socket
+      const resultPromise = waitForEvent(gmScanner.socket, 'transaction:result');
+      const newPromise = waitForEvent(gmScanner.socket, 'transaction:new');
+      const scorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
-      // Trigger: Submit blackmarket transaction
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',  // Technical rating=3 → 1000 * 5.0 = 5000 points
-          teamId: '001',
-          deviceId: 'GM_BLACKMARKET',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Set team (how real scanner does it)
+      gmScanner.App.currentTeamId = '001';
+
+      // Use REAL scanner entry point (production code path)
+      // This triggers: NFC read → TokenManager.findToken() → App.recordTransaction() → NetworkedQueueManager
+      gmScanner.App.processNFCRead({id: '534e2b03'});
 
       // Wait: For all events to propagate
       const [resultEvent, newEvent, scoreEvent] = await Promise.all([
@@ -143,30 +141,24 @@ describe('Transaction Flow Integration', () => {
 
   describe('Detective Mode Transactions', () => {
     it('should process detective transaction but NOT update team score', async () => {
-      // Setup: Connect GM in detective mode
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_DETECTIVE');
+      // Setup: Connect GM using REAL scanner code in detective mode
+      gmScanner = await createAuthenticatedScanner(testContext.url, 'GM_DETECTIVE', 'detective');
 
-      // Listen for expected events
-      const resultPromise = waitForEvent(gmSocket, 'transaction:result');
-      const newPromise = waitForEvent(gmSocket, 'transaction:new');
+      // Listen for expected events on scanner's socket
+      const resultPromise = waitForEvent(gmScanner.socket, 'transaction:result');
+      const newPromise = waitForEvent(gmScanner.socket, 'transaction:new');
 
       // NOTE: We do NOT expect score:updated for detective mode
       let scoreEventReceived = false;
-      gmSocket.once('score:updated', () => {
+      gmScanner.socket.once('score:updated', () => {
         scoreEventReceived = true;
       });
 
-      // Trigger: Submit detective transaction
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',
-          teamId: '002',
-          deviceId: 'GM_DETECTIVE',
-          mode: 'detective'  // Detective mode = logging only, no scoring
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Set team
+      gmScanner.App.currentTeamId = '002';
+
+      // Use REAL scanner entry point (production code path)
+      gmScanner.App.processNFCRead({id: '534e2b03'});
 
       // Wait: For events to propagate
       const [resultEvent, newEvent] = await Promise.all([
@@ -212,25 +204,17 @@ describe('Transaction Flow Integration', () => {
 
   describe('Dual GM Mode Interactions', () => {
     it('should broadcast transactions to both GMs regardless of mode', async () => {
-      // Setup: Connect TWO GMs (realistic 2-GM game setup)
-      const gmBlackmarket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_BLACKMARKET');
-      const gmDetective = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_DETECTIVE');
+      // Setup: Connect TWO GMs using REAL scanner code (realistic 2-GM game setup)
+      const gmBlackmarket = await createAuthenticatedScanner(testContext.url, 'GM_BLACKMARKET', 'blackmarket');
+      const gmDetective = await createAuthenticatedScanner(testContext.url, 'GM_DETECTIVE', 'detective');
 
-      // Listen for broadcasts on BOTH GMs
-      const bmNewPromise = waitForEvent(gmBlackmarket, 'transaction:new');
-      const detNewPromise = waitForEvent(gmDetective, 'transaction:new');
+      // Listen for broadcasts on BOTH GMs' sockets
+      const bmNewPromise = waitForEvent(gmBlackmarket.socket, 'transaction:new');
+      const detNewPromise = waitForEvent(gmDetective.socket, 'transaction:new');
 
-      // Trigger: Blackmarket GM submits transaction
-      gmBlackmarket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',
-          teamId: '001',
-          deviceId: 'GM_BLACKMARKET',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Trigger: Blackmarket GM submits transaction using REAL scanner entry point
+      gmBlackmarket.App.currentTeamId = '001';
+      gmBlackmarket.App.processNFCRead({id: '534e2b03'});
 
       // Wait: For broadcasts to both GMs
       const [bmNewEvent, detNewEvent] = await Promise.all([
@@ -247,152 +231,35 @@ describe('Transaction Flow Integration', () => {
       expect(Math.abs(bmTime - detTime)).toBeLessThan(100);
 
       // Cleanup
-      gmBlackmarket.disconnect();
-      gmDetective.disconnect();
+      gmBlackmarket.socket.disconnect();
+      gmDetective.socket.disconnect();
     });
 
-    it('should handle concurrent transactions from different teams', async () => {
-      // Setup: 2 GMs, both in blackmarket mode
-      const gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_TEAM_001');
-      const gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_TEAM_002');
-
-      // Listen for results
-      const result1Promise = waitForEvent(gm1, 'transaction:result');
-      const result2Promise = waitForEvent(gm2, 'transaction:result');
-
-      // Trigger: Both GMs submit transactions concurrently for different teams
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',  // 5000 points
-          teamId: '001',
-          deviceId: 'GM_TEAM_001',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
-
-      gm2.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: 'tac001',  // Different token (value will vary)
-          teamId: '002',
-          deviceId: 'GM_TEAM_002',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
-
-      // Wait: For both results
-      const [result1, result2] = await Promise.all([result1Promise, result2Promise]);
-
-      // Validate: Both transactions succeed independently
-      expect(result1.data.status).toBe('accepted');
-      expect(result1.data.teamId).toBe('001');
-
-      expect(result2.data.status).toBe('accepted');
-      expect(result2.data.teamId).toBe('002');
-
-      // Validate: Scores updated independently
-      const team001Score = transactionService.teamScores.get('001');
-      const team002Score = transactionService.teamScores.get('002');
-      expect(team001Score.currentScore).toBe(5000);
-      expect(team002Score.currentScore).toBeGreaterThan(0);  // tac001 value
-
-      // Cleanup
-      gm1.disconnect();
-      gm2.disconnect();
-    });
+    // NOTE: Concurrent multi-GM transaction test moved to multi-gm-coordination.test.js
+    // Reason: Scanner singleton architecture prevents multiple GM instances in one Node.js process
+    // Multi-GM coordination tested at server layer using manual socket.emit()
   });
 
   describe('Duplicate Detection', () => {
-    it('should detect duplicate scan by different team (first-come-first-served)', async () => {
-      // Setup: 2 GMs, both in blackmarket mode
-      const gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_DUP_1');
-      const gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_DUP_2');
-
-      // First scan - should succeed (team 001 claims token)
-      const result1Promise = waitForEvent(gm1, 'transaction:result');
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',
-          teamId: '001',
-          deviceId: 'GM_DUP_1',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
-
-      const result1 = await result1Promise;
-      expect(result1.data.status).toBe('accepted');
-      expect(result1.data.points).toBe(5000);
-
-      // Second scan - same token, different team - should be duplicate
-      const result2Promise = waitForEvent(gm2, 'transaction:result');
-      gm2.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',  // SAME token
-          teamId: '002',        // Different team
-          deviceId: 'GM_DUP_2',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
-
-      const result2 = await result2Promise;
-
-      // Validate: Duplicate detected
-      expect(result2.data.status).toBe('duplicate');
-      expect(result2.data.points).toBe(0);
-      expect(result2.data.message).toContain('claimed');  // Message: "Token already claimed by 001"
-      // Error message should mention claiming team (001)
-      expect(result2.data.message).toContain('001');
-
-      // Validate: Only first team got points
-      const team001Score = transactionService.teamScores.get('001');
-      const team002Score = transactionService.teamScores.get('002');
-      expect(team001Score.currentScore).toBe(5000);
-      expect(team002Score.currentScore).toBe(0);
-
-      // Cleanup
-      gm1.disconnect();
-      gm2.disconnect();
-    });
+    // NOTE: Different-team duplicate test moved to multi-gm-coordination.test.js
+    // Reason: Requires multiple independent GM instances (server coordination test)
 
     it('should detect duplicate scan by same team', async () => {
-      // Setup: 1 GM
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_SAME_TEAM');
+      // Setup: 1 GM using REAL scanner code
+      gmScanner = await createAuthenticatedScanner(testContext.url, 'GM_SAME_TEAM', 'blackmarket');
+
+      gmScanner.App.currentTeamId = '001';
 
       // First scan - accepted
-      const result1Promise = waitForEvent(gmSocket, 'transaction:result');
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',
-          teamId: '001',
-          deviceId: 'GM_SAME_TEAM',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      const result1Promise = waitForEvent(gmScanner.socket, 'transaction:result');
+      gmScanner.App.processNFCRead({id: '534e2b03'});
 
       const result1 = await result1Promise;
       expect(result1.data.status).toBe('accepted');
 
       // Second scan - same token, same team - duplicate
-      const result2Promise = waitForEvent(gmSocket, 'transaction:result');
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',  // SAME token
-          teamId: '001',        // SAME team
-          deviceId: 'GM_SAME_TEAM',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      const result2Promise = waitForEvent(gmScanner.socket, 'transaction:result');
+      gmScanner.App.processNFCRead({id: '534e2b03'});
 
       const result2 = await result2Promise;
 
