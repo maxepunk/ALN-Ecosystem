@@ -2015,21 +2015,35 @@ After systematic review of all 13 integration test files (90 tests total):
 - ✅ `admin-interventions.test.js` - Admin commands via real GM scanner (21 tests)
 - ✅ `transaction-flow.test.js` - Single GM transaction flow via real scanner (6 tests)
 
-**CORRECTLY using socket.emit ✅ (7 files, 40 tests):**
+**CORRECTLY using socket.emit ✅ (6 files, 33 tests):**
 These test **SERVER COORDINATION LOGIC** - manual socket.emit is the correct pattern:
 - ✅ `duplicate-detection.test.js` - Server duplicate tracking across teams (6 tests)
 - ✅ `error-propagation.test.js` - Server error handling/error injection (10 tests)
 - ✅ `multi-client-broadcasts.test.js` - Server broadcast infrastructure (7 tests)
 - ✅ `multi-gm-coordination.test.js` - Server concurrent GM resolution (2 tests)
 - ✅ `service-events.test.js` - Internal service events (4 tests)
-- ✅ `session-lifecycle.test.js` - Server session state management (7 tests)
 - ✅ `offline-queue-sync.test.js` - Server offline queue processing (4 tests)
 
-**NEED TRANSFORMATION ❌ (3 files, 18 tests):**
+**NEED TRANSFORMATION ❌ (4 files, 25 tests):**
 These test **SINGLE GM/PLAYER INTEGRATION** - should use real scanner API:
 - [ ] **group-completion.test.js** - Single GM scans group tokens → Use real scanner (6 tests)
 - [ ] **state-synchronization.test.js** - Late-joining GM connection → Use real scanner (3 tests)
+- [ ] **session-lifecycle.test.js** - GM scanner session workflow (create→pause→resume→end) → Use real scanner (7 tests)
 - [ ] **video-orchestration.test.js** - Player scan → video queue → Use createPlayerScanner (9 tests)
+
+**CRITICAL REMINDER:**
+When transforming tests to use real scanner API, **tests may FAIL** - this is EXPECTED and GOOD.
+Failures reveal:
+- Bugs in scanner code (wrong field names, missing data)
+- Bugs in server code (wrong validation, missing handlers)
+- Contract violations (implementation doesn't match AsyncAPI/OpenAPI)
+
+**When tests fail after transformation:**
+1. ✅ Investigate what scanner actually sends vs what contract specifies
+2. ✅ Check if server correctly handles what contract specifies
+3. ✅ Fix implementation code (scanner OR server) to match contract
+4. ❌ DO NOT fix test to match broken implementation
+5. ✅ Contract is source of truth
 
 #### Phase 3.7: Create Multi-GM Coordination Tests ✅ COMPLETE
 - [x] **Create tests/integration/multi-gm-coordination.test.js** (Created in Phase 3.5)
