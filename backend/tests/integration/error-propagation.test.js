@@ -335,7 +335,7 @@ describe('Error Propagation Integration', () => {
 
       // Trigger: Simulate video playback failure
       videoQueueService.emit('video:failed', {
-        tokenId: 'TEST_VIDEO_ERROR',
+        tokenId: '534e2b03',  // Real token with video asset
         error: 'Video file not found'
       });
 
@@ -344,7 +344,7 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Error status broadcast
       expect(failedEvent.data.status).toBe('error');
-      expect(failedEvent.data.tokenId).toBe('TEST_VIDEO_ERROR');
+      expect(failedEvent.data.tokenId).toBe('534e2b03');
       expect(failedEvent.data.error).toContain('Video file not found');
 
       // Validate: Contract compliance

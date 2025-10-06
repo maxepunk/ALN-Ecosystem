@@ -1901,8 +1901,19 @@ const Settings = { deviceId: '001', stationMode: 'detective' }  // Singleton
 4. System reset command defined in FR 4.2.5 but unimplemented
 5. Admin command handler missing required service imports
 
+**Phase 3.6b: error-propagation.test.js** ✅ COMPLETE
+- [x] **Minimal transformation** - Replaced `TEST_VIDEO_ERROR` with real token (534e2b03)
+- [x] **Kept manual socket.emit()** - Tests server error handling, not scanner integration
+- [x] **Kept fake socket.io-client** - Need to inject invalid/malformed data that real scanner wouldn't send
+- [x] **Verification**: All 10 tests pass
+
+**Decision**: Error propagation is at **server coordination layer**, not scanner integration layer.
+- Tests adversarial scenarios (invalid data, malformed requests, missing parameters)
+- Real GM Scanner validates before sending - wouldn't produce these error cases
+- Similar to multi-gm-coordination.test.js - testing server behavior with various inputs
+- Pattern: Keep manual socket.emit for error injection
+
 **Remaining Phase 3.6 Tasks**:
-- [ ] **Transform error-propagation.test.js** - Apply pattern, replace TEST_* tokens
 - [ ] **Transform group-completion.test.js** - Apply pattern (single GM scanning group)
 - [ ] **Transform offline-queue-sync.test.js** - Apply pattern (single GM offline/online)
 - [ ] **Transform service-events.test.js** - Keep as-is (no scanner needed)
