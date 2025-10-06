@@ -2026,7 +2026,10 @@ These test **SERVER COORDINATION LOGIC** - manual socket.emit is the correct pat
 
 **NEED TRANSFORMATION ❌ (4 files, 25 tests):**
 These test **SINGLE GM/PLAYER INTEGRATION** - should use real scanner API:
-- [ ] **group-completion.test.js** - Single GM scans group tokens → Use real scanner (6 tests)
+- [x] **group-completion.test.js** - PARTIALLY complete (3/6 tests) ⚠️
+  - ✅ 3 tests transformed (single GM, single team using real scanner)
+  - ❌ 3 tests need to MOVE to multi-gm-coordination.test.js (multi-team scenarios)
+  - **Issue**: Cannot mix single-GM (real scanner) and multi-GM (socket.emit) tests in same file
 - [ ] **state-synchronization.test.js** - Late-joining GM connection → Use real scanner (3 tests)
 - [ ] **session-lifecycle.test.js** - GM scanner session workflow (create→pause→resume→end) → Use real scanner (7 tests)
 - [ ] **video-orchestration.test.js** - Player scan → video queue → Use createPlayerScanner (9 tests)
@@ -2044,6 +2047,40 @@ Failures reveal:
 3. ✅ Fix implementation code (scanner OR server) to match contract
 4. ❌ DO NOT fix test to match broken implementation
 5. ✅ Contract is source of truth
+
+**Phase 3.6d: Transform group-completion.test.js** ⚠️ ARCHITECTURAL ISSUE DISCOVERED
+
+**Status**: Partially complete (3/6 tests transformed)
+
+**What We Did**:
+- Transformed 3 single-GM tests to use `createAuthenticatedScanner()` + `scanner.App.processNFCRead()`
+- All 3 tests PASS ✅
+
+**Architectural Discovery**:
+Cannot mix single-GM integration tests (real scanner) with multi-GM coordination tests (manual socket.emit) in the same file.
+
+**Tests Successfully Transformed (3 tests):**
+1. ✅ "should detect group completion and award bonus" - Single GM scans both tokens
+2. ✅ "should not award bonus for incomplete group" - Single GM scans only one token
+3. ✅ "should complete group regardless of scan order" - Single GM scans in reverse order
+
+**Tests That Need to Move (3 tests):**
+These test **multi-GM coordination**, not single-GM integration:
+1. "should prevent group completion if other team claimed a token" - TWO teams compete
+2. "should broadcast group:completed to all connected GMs" - Multi-GM broadcast
+3. "should NOT complete group with detective mode scans" - Mode coordination across submissions
+
+**Decision**:
+- Keep 3 single-GM tests in group-completion.test.js (using real scanner)
+- Move 3 multi-GM tests to multi-gm-coordination.test.js (using manual socket.emit)
+- Violates separation of concerns to mix both patterns in one file
+
+**TODO**:
+- [ ] Move 3 multi-GM group completion tests to multi-gm-coordination.test.js
+- [ ] Update multi-gm-coordination.test.js with group completion scenarios
+- [ ] Verify all 6 tests still pass after reorganization
+
+---
 
 #### Phase 3.7: Create Multi-GM Coordination Tests ✅ COMPLETE
 - [x] **Create tests/integration/multi-gm-coordination.test.js** (Created in Phase 3.5)

@@ -1,11 +1,26 @@
 /**
- * Group Completion Integration Tests
+ * Group Completion Integration Tests - SINGLE GM with REAL SCANNER
  *
- * Tests complete group completion flow:
- * Team scans all tokens in group → bonus calculated → group:completed broadcast
+ * Tests complete group completion flow using REAL GM Scanner:
+ * Single team scans all tokens in group → bonus calculated → group:completed broadcast
  *
- * CRITICAL: These tests validate group completion bonus mechanics.
- * Expected to REVEAL implementation bugs if bonus calculation or broadcasting is incorrect.
+ * TRANSFORMATION: Phase 3.6d - Partially complete (3/6 tests)
+ * - ✅ 3 tests transformed to use real scanner (single GM, single team)
+ * - ❌ 3 tests need to move to multi-gm-coordination.test.js (multi-team scenarios)
+ *
+ * ARCHITECTURAL DECISION:
+ * Cannot mix single-GM integration tests (real scanner) with multi-GM coordination tests
+ * (manual socket.emit) in the same file. This violates separation of concerns.
+ *
+ * Tests that need to MOVE to multi-gm-coordination.test.js:
+ * 1. "should prevent group completion if other team claimed a token" - Tests TWO teams
+ * 2. "should broadcast group:completed to all connected GMs" - Tests multi-GM broadcast
+ * 3. "should NOT complete group with detective mode scans" - Tests mode coordination
+ *
+ * Tests remaining here (single GM, single team 001):
+ * 1. ✅ "should detect group completion and award bonus"
+ * 2. ✅ "should not award bonus for incomplete group"
+ * 3. ✅ "should complete group regardless of scan order"
  *
  * Group Details (from ALN-TokenData/tokens.json):
  * - rat001: Business, rating 4, value = 15000 (5000 × 3), group "Marcus Sucks"
@@ -17,15 +32,20 @@
  * Functional Requirements: Section 1.3.6 (Group Completion)
  */
 
-const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+// CRITICAL: Load browser mocks FIRST
+require('../helpers/browser-mocks');
+
+const fs = require('fs');
+const path = require('path');
+const { createAuthenticatedScanner, connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
-describe('Group Completion Integration', () => {
-  let testContext, gmSocket;
+describe('Group Completion Integration - REAL Scanner', () => {
+  let testContext, gmScanner, gmSocket, rawTokens;
 
   beforeAll(async () => {
     testContext = await setupIntegrationTestServer();
@@ -47,6 +67,11 @@ describe('Group Completion Integration', () => {
     const tokenService = require('../../src/services/tokenService');
     const tokens = tokenService.loadTokens();
     await transactionService.init(tokens);
+
+    // CRITICAL: Load RAW tokens for scanner (scanner expects raw format from ALN-TokenData)
+    const rawTokensPath = path.join(__dirname, '../../../ALN-TokenData/tokens.json');
+    rawTokens = JSON.parse(fs.readFileSync(rawTokensPath, 'utf8'));
+    global.TokenManager.database = rawTokens;
 
     // Re-setup broadcast listeners
     const stateService = require('../../src/services/stateService');
@@ -70,11 +95,15 @@ describe('Group Completion Integration', () => {
       teams: ['001', '002']
     });
 
-    // Connect GM scanner
-    gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_GROUP_TEST');
+    // Connect REAL GM scanner (for single-GM integration tests)
+    gmScanner = await createAuthenticatedScanner(testContext.url, 'GM_GROUP_TEST', 'blackmarket');
+
+    // Connect manual GM socket (for multi-GM coordination tests)
+    gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_MANUAL');
   });
 
   afterEach(async () => {
+    if (gmScanner?.socket?.connected) gmScanner.socket.disconnect();
     if (gmSocket?.connected) gmSocket.disconnect();
     await sessionService.reset();
   });
@@ -82,21 +111,16 @@ describe('Group Completion Integration', () => {
   describe('Complete Group Bonus', () => {
     it('should detect group completion and award bonus', async () => {
       // CRITICAL: Set up ALL listeners BEFORE any transactions to avoid race conditions
-      const groupCompletedPromise = waitForEvent(gmSocket, 'group:completed');
+      const groupCompletedPromise = waitForEvent(gmScanner.socket, 'group:completed');
 
-      // Scan first token - set up listener before emitting
-      const firstScorePromise = waitForEvent(gmSocket, 'score:updated');
+      // Scan first token - set up listener before scanning
+      const firstScorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: 'rat001',
-          teamId: '001',
-          deviceId: 'GM_GROUP_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Set team for scanner
+      gmScanner.App.currentTeamId = '001';
+
+      // Use REAL scanner API - scan rat001
+      gmScanner.App.processNFCRead({ id: 'rat001' });
 
       // Wait for first transaction to complete
       await firstScorePromise;
@@ -118,7 +142,7 @@ describe('Group Completion Integration', () => {
       let scoreEventCount = 0;
       let finalScoreEvent;
       const scoreUpdatedPromise = new Promise((resolve) => {
-        gmSocket.on('score:updated', (event) => {
+        gmScanner.socket.on('score:updated', (event) => {
           scoreEventCount++;
           finalScoreEvent = event;
           if (scoreEventCount === 2) {
@@ -127,16 +151,8 @@ describe('Group Completion Integration', () => {
         });
       });
 
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: 'asm001',
-          teamId: '001',
-          deviceId: 'GM_GROUP_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Use REAL scanner API - scan asm001 (completes group)
+      gmScanner.App.processNFCRead({ id: 'asm001' });
 
       // Wait for group completion events
       const [groupEvent, scoreEvent] = await Promise.all([
@@ -170,21 +186,15 @@ describe('Group Completion Integration', () => {
     });
 
     it('should not award bonus for incomplete group', async () => {
-      // CRITICAL: Set up listeners BEFORE emitting to avoid race condition
-      const resultPromise = waitForEvent(gmSocket, 'transaction:result');
-      const scorePromise = waitForEvent(gmSocket, 'score:updated');
+      // CRITICAL: Set up listeners BEFORE scanning to avoid race condition
+      const resultPromise = waitForEvent(gmScanner.socket, 'transaction:result');
+      const scorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
-      // Scan only ONE token from the group (rat001)
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: 'rat001',
-          teamId: '001',
-          deviceId: 'GM_GROUP_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Set team
+      gmScanner.App.currentTeamId = '001';
+
+      // Scan only ONE token from the group (rat001) - Use REAL scanner
+      gmScanner.App.processNFCRead({ id: 'rat001' });
 
       await resultPromise;
       await scorePromise;
@@ -199,8 +209,8 @@ describe('Group Completion Integration', () => {
 
     it('should prevent group completion if other team claimed a token', async () => {
       // CRITICAL: Set up listeners BEFORE first transaction
-      const result1Promise = waitForEvent(gmSocket, 'transaction:result');
-      const score1Promise = waitForEvent(gmSocket, 'score:updated');
+      const result1Promise = waitForEvent(gmScanner.socket, 'transaction:result');
+      const score1Promise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Team 001 scans first token (rat001)
       gmSocket.emit('transaction:submit', {
@@ -218,8 +228,8 @@ describe('Group Completion Integration', () => {
       await score1Promise;
 
       // CRITICAL: Set up listeners BEFORE second transaction
-      const result2Promise = waitForEvent(gmSocket, 'transaction:result');
-      const score2Promise = waitForEvent(gmSocket, 'score:updated');
+      const result2Promise = waitForEvent(gmScanner.socket, 'transaction:result');
+      const score2Promise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Team 002 scans second token (asm001) - "steals" it
       gmSocket.emit('transaction:submit', {
@@ -255,36 +265,21 @@ describe('Group Completion Integration', () => {
   describe('Group Completion Order Independence', () => {
     it('should complete group regardless of scan order', async () => {
       // CRITICAL: Set up ALL listeners BEFORE any transactions
-      const groupCompletedPromise = waitForEvent(gmSocket, 'group:completed');
-      const result1Promise = waitForEvent(gmSocket, 'transaction:result');
-      const score1Promise = waitForEvent(gmSocket, 'score:updated');
+      const groupCompletedPromise = waitForEvent(gmScanner.socket, 'group:completed');
+      const result1Promise = waitForEvent(gmScanner.socket, 'transaction:result');
+      const score1Promise = waitForEvent(gmScanner.socket, 'score:updated');
 
-      // First: asm001 (Personal, rating 3, value 3000)
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: 'asm001',
-          teamId: '001',
-          deviceId: 'GM_GROUP_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Set team
+      gmScanner.App.currentTeamId = '001';
+
+      // First: asm001 (Personal, rating 3, value 3000) - Use REAL scanner
+      gmScanner.App.processNFCRead({ id: 'asm001' });
 
       await result1Promise;
       await score1Promise;
 
-      // Second: rat001 (completes group)
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: 'rat001',
-          teamId: '001',
-          deviceId: 'GM_GROUP_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Second: rat001 (completes group) - Use REAL scanner
+      gmScanner.App.processNFCRead({ id: 'rat001' });
 
       const groupEvent = await groupCompletedPromise;
 
@@ -307,11 +302,11 @@ describe('Group Completion Integration', () => {
 
       // CRITICAL: Set up ALL listeners BEFORE any transactions
       const promises = [
-        waitForEvent(gmSocket, 'group:completed'),
+        waitForEvent(gmScanner.socket, 'group:completed'),
         waitForEvent(gm2, 'group:completed'),
         waitForEvent(gm3, 'group:completed')
       ];
-      const result1Promise = waitForEvent(gmSocket, 'transaction:result');
+      const result1Promise = waitForEvent(gmScanner.socket, 'transaction:result');
 
       // Complete group via gmSocket
       gmSocket.emit('transaction:submit', {
@@ -367,7 +362,7 @@ describe('Group Completion Integration', () => {
         timestamp: new Date().toISOString()
       });
 
-      await waitForEvent(gmSocket, 'transaction:result');
+      await waitForEvent(gmScanner.socket, 'transaction:result');
 
       // Scan second token in DETECTIVE mode (logging only, no scoring)
       gmSocket.emit('transaction:submit', {
@@ -381,7 +376,7 @@ describe('Group Completion Integration', () => {
         timestamp: new Date().toISOString()
       });
 
-      await waitForEvent(gmSocket, 'transaction:result');
+      await waitForEvent(gmScanner.socket, 'transaction:result');
 
       // Wait a bit to ensure no group:completed event
       await new Promise(resolve => setTimeout(resolve, 200));
