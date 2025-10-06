@@ -1,31 +1,39 @@
 /**
- * Session Lifecycle Integration Tests
+ * Session Lifecycle Integration Tests - REAL SCANNER
  *
- * Tests complete session lifecycle via WebSocket gm:command:
- * Admin sends gm:command → Service processes → session:update broadcasts
+ * Tests GM scanner experiencing session lifecycle:
+ * GM sends admin commands → GM receives state broadcasts → GM transaction behavior changes
  *
- * CRITICAL: These tests are designed to REVEAL actual behavior vs. contract.
- * Expected failures indicate implementation bugs that must be fixed.
+ * TRANSFORMATION: Phase 3.6f - Use real scanner for lifecycle experience
+ * - GM uses createAuthenticatedScanner() (real scanner integration)
+ * - GM sends admin commands via scanner.socket.emit('gm:command') (Admin Panel integrated per FR 4.2)
+ * - GM scans via scanner.App.processNFCRead() (real scanner API)
+ * - GM receives broadcasts via scanner.socket (session:update, score:updated)
+ * - Tests single-GM integration (GM experiences its own admin actions)
  *
- * Known Issues This Test Will Reveal:
- * 1. Missing session:create handler in adminEvents.js
- * 2. Wrong event names (session:paused/resumed/ended vs session:update)
- * 3. Missing transaction blocking when session paused
- * 4. Wrong score:adjust implementation (resets vs adjusts by delta)
+ * What This Tests:
+ * 1. GM can control session via Admin Panel (gm:command events)
+ * 2. GM experiences state changes it initiated (receives broadcasts)
+ * 3. GM transaction behavior changes based on session state (blocked when paused)
  *
  * Contract: backend/contracts/asyncapi.yaml (gm:command actions line 1087-1101)
  * Functional Requirements: docs/api-alignment/08-functional-requirements.md Section 1.2
  */
 
-const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+// CRITICAL: Load browser mocks FIRST
+require('../helpers/browser-mocks');
+
+const fs = require('fs');
+const path = require('path');
+const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
-describe('Session Lifecycle Integration', () => {
-  let testContext, gmSocket;
+describe('Session Lifecycle Integration - REAL Scanner', () => {
+  let testContext, scanner, rawTokens;
 
   beforeAll(async () => {
     testContext = await setupIntegrationTestServer();
@@ -48,10 +56,18 @@ describe('Session Lifecycle Integration', () => {
     const tokens = tokenService.loadTokens();
     await transactionService.init(tokens);
 
+    // CRITICAL: Load RAW tokens for scanner (scanner expects raw format from ALN-TokenData)
+    const rawTokensPath = path.join(__dirname, '../../../ALN-TokenData/tokens.json');
+    rawTokens = JSON.parse(fs.readFileSync(rawTokensPath, 'utf8'));
+    global.TokenManager.database = rawTokens;
+
     // Re-setup broadcast listeners after cleanup
     const stateService = require('../../src/services/stateService');
     const videoQueueService = require('../../src/services/videoQueueService');
     const offlineQueueService = require('../../src/services/offlineQueueService');
+
+    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
+    videoQueueService.reset();
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
@@ -63,21 +79,21 @@ describe('Session Lifecycle Integration', () => {
   });
 
   afterEach(async () => {
-    if (gmSocket?.connected) gmSocket.disconnect();
+    if (scanner?.socket?.connected) scanner.socket.disconnect();
     await sessionService.reset();
   });
 
   describe('session:create command', () => {
     it('should create session via gm:command and broadcast session:update', async () => {
-      // Connect GM before session exists
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_LIFECYCLE_1');
+      // Connect REAL GM scanner before session exists
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_LIFECYCLE_1', 'blackmarket');
 
       // Listen for session:update broadcast (should use session:update NOT session:new)
-      const sessionUpdatePromise = waitForEvent(gmSocket, 'session:update');
-      const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
+      const sessionUpdatePromise = waitForEvent(scanner.socket, 'session:update');
+      const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
-      // Trigger: Create session via gm:command (AsyncAPI line 1113-1121)
-      gmSocket.emit('gm:command', {
+      // Trigger: GM sends admin command to create session (Admin Panel integrated per FR 4.2)
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:create',  // Contract-specified action
@@ -124,14 +140,14 @@ describe('Session Lifecycle Integration', () => {
         teams: ['001', '002']
       });
 
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_PAUSE_TEST');
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_PAUSE_TEST', 'blackmarket');
 
       // Listen for session:update (NOT session:paused per AsyncAPI line 968)
-      const sessionUpdatePromise = waitForEvent(gmSocket, 'session:update');
-      const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
+      const sessionUpdatePromise = waitForEvent(scanner.socket, 'session:update');
+      const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
-      // Trigger: Pause session via gm:command
-      gmSocket.emit('gm:command', {
+      // Trigger: GM sends pause command
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:pause',
@@ -160,11 +176,11 @@ describe('Session Lifecycle Integration', () => {
         teams: ['001']
       });
 
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_PAUSE_BLOCK_TEST');
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_PAUSE_BLOCK_TEST', 'blackmarket');
 
-      // Pause session
-      const pauseAckPromise = waitForEvent(gmSocket, 'gm:command:ack');
-      gmSocket.emit('gm:command', {
+      // Pause session via admin command
+      const pauseAckPromise = waitForEvent(scanner.socket, 'gm:command:ack');
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:pause',
@@ -174,18 +190,11 @@ describe('Session Lifecycle Integration', () => {
       });
       await pauseAckPromise;
 
-      // Try to submit transaction while paused (should be REJECTED per FR 1.2)
-      const resultPromise = waitForEvent(gmSocket, 'transaction:result');
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',
-          teamId: '001',
-          deviceId: 'GM_PAUSE_BLOCK_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Try to scan while paused using REAL scanner API (should be REJECTED per FR 1.2)
+      const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
+
+      scanner.App.currentTeamId = '001';
+      scanner.App.processNFCRead({ id: '534e2b03' });
 
       const result = await resultPromise;
 
@@ -210,14 +219,14 @@ describe('Session Lifecycle Integration', () => {
       });
       await sessionService.updateSession({ status: 'paused' });
 
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_RESUME_TEST');
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_RESUME_TEST', 'blackmarket');
 
       // Listen for session:update (NOT session:resumed per AsyncAPI line 969)
-      const sessionUpdatePromise = waitForEvent(gmSocket, 'session:update');
-      const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
+      const sessionUpdatePromise = waitForEvent(scanner.socket, 'session:update');
+      const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
-      // Trigger: Resume session
-      gmSocket.emit('gm:command', {
+      // Trigger: GM sends resume command
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:resume',
@@ -238,18 +247,11 @@ describe('Session Lifecycle Integration', () => {
       expect(sessionUpdate.data.status).toBe('active'); // Resumed = 'active' status
       validateWebSocketEvent(sessionUpdate, 'session:update');
 
-      // Validate: Transactions now allowed
-      const resultPromise = waitForEvent(gmSocket, 'transaction:result');
-      gmSocket.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: '534e2b03',
-          teamId: '001',
-          deviceId: 'GM_RESUME_TEST',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      // Validate: Transactions now allowed - use REAL scanner API
+      const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
+
+      scanner.App.currentTeamId = '001';
+      scanner.App.processNFCRead({ id: '534e2b03' });
 
       const result = await resultPromise;
       expect(result.data.status).toBe('accepted'); // Transaction succeeds after resume
@@ -275,14 +277,14 @@ describe('Session Lifecycle Integration', () => {
       }, session);
       await sessionService.addTransaction(txResult.transaction);
 
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_END_TEST');
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_END_TEST', 'blackmarket');
 
       // Listen for session:update (NOT session:ended per AsyncAPI line 970)
-      const sessionUpdatePromise = waitForEvent(gmSocket, 'session:update');
-      const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
+      const sessionUpdatePromise = waitForEvent(scanner.socket, 'session:update');
+      const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
-      // Trigger: End session
-      gmSocket.emit('gm:command', {
+      // Trigger: GM sends end command
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'session:end',
@@ -339,14 +341,14 @@ describe('Session Lifecycle Integration', () => {
       expect(team001.currentScore).toBe(5000);
       expect(team002.currentScore).toBe(100);  // Corrected: rating 1 Personal = 100
 
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_SCORE_ADJUST_TEST');
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_ADJUST_TEST', 'blackmarket');
 
       // Listen for score:updated broadcast
-      const scoreUpdatedPromise = waitForEvent(gmSocket, 'score:updated');
-      const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
+      const scoreUpdatedPromise = waitForEvent(scanner.socket, 'score:updated');
+      const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
-      // Trigger: Adjust team 001 score by -500 (penalty per AsyncAPI example line 1136)
-      gmSocket.emit('gm:command', {
+      // Trigger: GM sends score:adjust command (penalty per AsyncAPI example line 1136)
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',
@@ -398,16 +400,16 @@ describe('Session Lifecycle Integration', () => {
       }, session);
       await sessionService.addTransaction(tx.transaction);
 
-      scores = transactionService.getTeamScores();
-      team001 = scores.find(s => s.teamId === '001');
+      let scores = transactionService.getTeamScores();
+      let team001 = scores.find(s => s.teamId === '001');
       expect(team001.currentScore).toBe(5000);
 
-      gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_SCORE_BONUS_TEST');
+      scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_BONUS_TEST', 'blackmarket');
 
-      const scoreUpdatedPromise = waitForEvent(gmSocket, 'score:updated');
+      const scoreUpdatedPromise = waitForEvent(scanner.socket, 'score:updated');
 
-      // Trigger: Add bonus points
-      gmSocket.emit('gm:command', {
+      // Trigger: GM sends score:adjust command (bonus)
+      scanner.socket.emit('gm:command', {
         event: 'gm:command',
         data: {
           action: 'score:adjust',
