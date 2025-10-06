@@ -81,17 +81,33 @@ class StateService extends EventEmitter {
   }
 
   /**
-   * Set up listeners for transaction events
+   * Set up listeners for session and transaction events
    * @private
    */
   setupTransactionListeners() {
     // CRITICAL: Prevent duplicate listener registration
     if (this.listenersInitialized) {
-      logger.debug('Transaction listeners already initialized, skipping');
+      logger.debug('Event listeners already initialized, skipping');
       return;
     }
     this.listenersInitialized = true;
-    logger.info('Initializing transaction listeners');
+    logger.info('Initializing event listeners');
+
+    // Listen for new session creation to create game state
+    listenerRegistry.addTrackedListener(sessionService, 'session:created', async (sessionData) => {
+      logger.info('Session created, creating game state', { sessionId: sessionData.id });
+
+      // Get full session object
+      const session = sessionService.getCurrentSession();
+      if (session) {
+        this.currentState = this.createStateFromSession(session);
+        await this.saveState();
+        logger.info('Game state created from new session', { sessionId: session.id });
+
+        // Emit state update
+        this.emit('state:updated', this.currentState.toJSON());
+      }
+    });
 
     // Listen for offline status changes to update state AND cache
     listenerRegistry.addTrackedListener(offlineQueueService, 'status:changed', async ({ offline }) => {
