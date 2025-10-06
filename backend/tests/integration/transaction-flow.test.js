@@ -71,6 +71,8 @@ describe('Transaction Flow Integration', () => {
 
   afterEach(async () => {
     if (gmScanner?.socket?.connected) gmScanner.socket.disconnect();
+    // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
+    global.DataManager.clearScannedTokens();
     await sessionService.reset();
   });
 
@@ -263,7 +265,11 @@ describe('Transaction Flow Integration', () => {
       const result1 = await result1Promise;
       expect(result1.data.status).toBe('accepted');
 
-      // Second scan - same token, same team - duplicate
+      // CRITICAL: Clear client-side duplicate tracking to test SERVER-SIDE duplicate detection
+      // In production, different GM scanners don't share client state, so server must catch duplicates
+      global.DataManager.clearScannedTokens();
+
+      // Second scan - same token, same team - duplicate (server-side detection)
       const result2Promise = waitForEvent(gmScanner.socket, 'transaction:result');
       gmScanner.App.processNFCRead({id: '534e2b03'});
 

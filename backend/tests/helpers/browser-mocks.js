@@ -119,6 +119,17 @@ global.InitializationSteps = {
   },
   // Phase 1A: Token database loading
   loadTokenDatabase: async (tokenManager, uiManager) => {
+    // In Node.js tests, database is pre-populated - skip fetch if already loaded
+    if (tokenManager.database && Object.keys(tokenManager.database).length > 0) {
+      global.Debug.log(`Token database already loaded (${Object.keys(tokenManager.database).length} tokens)`);
+      // Still build group inventory if not already done
+      if (!tokenManager.groupInventory) {
+        tokenManager.groupInventory = tokenManager.buildGroupInventory();
+      }
+      return true;
+    }
+
+    // Otherwise attempt fetch (browser context)
     const dbLoaded = await tokenManager.loadDatabase();
     if (!dbLoaded) {
       const errorMsg = 'CRITICAL: Token database failed to load. Cannot initialize scanner.';
@@ -203,6 +214,7 @@ global.TokenManager = TokenManager;
 // In browser, loaded via separate <script> tag
 // TokenManager.buildGroupInventory() requires parseGroupInfo and normalizeGroupName
 global.DataManager = {
+  transactions: [],  // Transaction history array - required by App.updateAdminPanel() fallback
   scannedTokens: new Set(),  // Track scanned tokens for duplicate detection
 
   markTokenAsScanned(tokenId) {
@@ -213,9 +225,16 @@ global.DataManager = {
     return this.scannedTokens.has(tokenId);
   },
 
-  // Clear scanned tokens (for test cleanup)
+  // Clear scanned tokens (for duplicate detection bypass or test cleanup)
   clearScannedTokens() {
     this.scannedTokens.clear();
+  },
+
+  // Clear all data (for test cleanup between tests)
+  clearAll() {
+    this.scannedTokens.clear();
+    this.transactions = [];
+    this.backendScores.clear();
   },
 
   addTransaction: () => {},
@@ -224,6 +243,13 @@ global.DataManager = {
   clearSession: () => {},
   calculateTokenValue: () => 0,
   backendScores: new Map(),
+
+  // Called by OrchestratorClient when score:updated event received
+  updateTeamScoreFromBackend(scoreData) {
+    if (scoreData && scoreData.teamId) {
+      this.backendScores.set(scoreData.teamId, scoreData);
+    }
+  },
 
   // Required by TokenManager.buildGroupInventory()
   parseGroupInfo(groupName) {

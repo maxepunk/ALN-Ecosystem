@@ -80,6 +80,8 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
   afterEach(async () => {
     if (scanner?.socket?.connected) scanner.socket.disconnect();
+    // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
+    global.DataManager.clearScannedTokens();
     await sessionService.reset();
   });
 

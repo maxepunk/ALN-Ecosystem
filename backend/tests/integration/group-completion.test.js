@@ -97,6 +97,8 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
   afterEach(async () => {
     if (gmScanner?.socket?.connected) gmScanner.socket.disconnect();
+    // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
+    global.DataManager.clearScannedTokens();
     await sessionService.reset();
   });
 
