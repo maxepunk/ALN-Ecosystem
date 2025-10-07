@@ -33,7 +33,7 @@ require('../helpers/browser-mocks');
 
 const fs = require('fs');
 const path = require('path');
-const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
+const { createAuthenticatedScanner, waitForEvent, waitForMultipleEvents } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
@@ -132,27 +132,20 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // CRITICAL: Group completion emits TWO score:updated events:
       //   1. After adding asm001 points (baseScore = 16000)
       //   2. After adding group bonus (currentScore = 32000)
-      // We need to wait for the SECOND one
-      let scoreEventCount = 0;
-      let finalScoreEvent;
-      const scoreUpdatedPromise = new Promise((resolve) => {
-        gmScanner.socket.on('score:updated', (event) => {
-          scoreEventCount++;
-          finalScoreEvent = event;
-          if (scoreEventCount === 2) {
-            resolve(event);
-          }
-        });
-      });
+      // We need to wait for BOTH (waitForMultipleEvents auto-cleans listener)
+      const scoreUpdatedPromise = waitForMultipleEvents(gmScanner.socket, 'score:updated', 2);
 
       // Use REAL scanner API - scan asm001 (completes group)
       gmScanner.App.processNFCRead({ id: 'asm001' });
 
       // Wait for group completion events
-      const [groupEvent, scoreEvent] = await Promise.all([
+      const [groupEvent, scoreEvents] = await Promise.all([
         groupCompletedPromise,
         scoreUpdatedPromise
       ]);
+
+      // Extract final score event (second event has bonus applied)
+      const scoreEvent = scoreEvents[1];
 
       // Validate: group:completed event structure
       expect(groupEvent.event).toBe('group:completed');

@@ -30,7 +30,8 @@ global.window = {
   sessionModeManager: null, // GM Scanner checks this (line 138)
   queueManager: null,       // GM Scanner checks this (line 143)
   dispatchEvent: () => {},  // Player Scanner dispatches custom events (orchestratorIntegration.js:204)
-  CustomEvent: class CustomEvent {}  // Player Scanner creates custom events
+  CustomEvent: class CustomEvent {},  // Player Scanner creates custom events
+  DataManager: null  // Will be set to global.DataManager after it's defined (see below)
 };
 
 // Mock document (minimal - only what scanner uses)
@@ -275,6 +276,10 @@ global.DataManager = {
       .replace(/['\u2018\u2019]/g, "'");
   }
 };
+
+// CRITICAL: Link window.DataManager to global.DataManager so OrchestratorClient can access it
+// OrchestratorClient checks "if (window.DataManager)" and calls updateTeamScoreFromBackend
+global.window.DataManager = global.DataManager;
 
 // Mock UIManager global (App.recordTransaction uses UIManager.updateSessionStats, etc.)
 // In browser, loaded via separate <script> tag

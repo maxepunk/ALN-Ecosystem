@@ -1515,82 +1515,128 @@ beforeEach(() => {
 
 ---
 
-## Phase 5: Remaining Coverage (Days 10-11)
-**Goal:** Complete coverage for UI and utility modules
-**Priority:** Lower (less critical than core logic)
+## Phase 5: UI & Utility Coverage (Days 10-11)
+**Goal:** Comprehensive behavioral testing of entire user interface
+**Priority:** **CRITICAL** - UIManager is 100% of user-facing functionality
 
-### 5.1: UIManager & Utility Tests (Day 10)
+**Status:** 🔄 **IN PROGRESS** (Started 2025-10-06)
+
+**Progress Update (2025-10-06 19:00 - Session Complete):**
+
+### UIManager Tests (STEPS 1-4 Complete)
+- ✅ **STEP 1:** Fixed 3 team display tests (mock setup issue)
+- ✅ **STEP 2:** Rewrote 9 error display tests (eliminated smoke tests → behavioral tests)
+- ✅ **STEP 3:** Added 6 renderScoreboard() tests (empty state, medals, formatting, score sources)
+- ✅ **STEP 4:** Added 5 renderTeamDetails() tests (headers, completed groups, in-progress, ungrouped/unknown, empty state)
+- 📊 **UIManager Tests:** 35 passing (was 21, +14 behavioral tests)
+
+### Integration Test Fixes (Revealed by Improvements)
+During browser-mocks enhancement (adding `window.DataManager`), revealed 4 pre-existing test issues:
+
+1. ✅ **scanner-helpers.test.js** - Fixed incorrect test expectations
+   - **Issue:** Expected `DataManager.addTransaction()` in networked mode
+   - **Root Cause:** In networked mode, scanner queues transaction, doesn't add to DataManager immediately
+   - **Fix:** Corrected test to verify `queueManager.queueTransaction()` only
+
+2. ✅ **admin-panel-display.test.js** - Auto-fixed by first fix (race condition)
+
+3. ✅ **group-completion.test.js** - Event listener memory leak
+   - **Issue:** Custom promise using `socket.on()` without cleanup
+   - **Root Cause:** Listener persisted across tests, causing flaky behavior
+   - **Fix:** Enhanced `waitForMultipleEvents()` helper to support count-based waiting with auto-cleanup
+   - **Infrastructure:** Fixed timeout cleanup bug in existing helper
+
+4. ✅ **video-orchestration.test.js** - Event listener pollution
+   - **Issue:** Tests using `gmSocket.on()` without cleanup in afterEach
+   - **Root Cause:** My waitForMultipleEvents fix revealed this test also had listener pollution
+   - **Fix:** Added `gmSocket.removeAllListeners()` to afterEach
+
+### Bug Discovered & Fixed
+- ✅ **Phase 5 Bug #1 (MEDIUM):** Malformed event data crash in AdminModule
+  - **Location:** `ALNScanner/js/utils/adminModule.js:setupEventListeners()`
+  - **Issue:** No null safety when unwrapping `transaction:new` payload
+  - **Impact:** Scanner crashes on malformed/null event data
+  - **Fix:** Added defensive check: `if (payload && payload.transaction)`
+
+### Test Infrastructure Enhancements
+- ✅ Enhanced `browser-mocks.js` with `window.DataManager = global.DataManager`
+- ✅ Enhanced `websocket-helpers.js` with count-based `waitForMultipleEvents(socket, event, count)`
+- ✅ Fixed timeout cleanup bug in existing `waitForMultipleEvents(predicate)` variant
+- ✅ Added `DataManager` to scanner object returned by `createAuthenticatedScanner()`
+
+### Test Suite Status (100% Passing)
+- ✅ Unit Tests: **575/575** passing
+- ✅ Contract Tests: **69/69** passing
+- ✅ Integration Tests: **179/179** passing
+- 🎯 **TOTAL: 823/823 passing (100%)**
+
+**Time Invested:** ~4 hours (2h UIManager tests, 2h integration test debugging)
+
+**NEXT SESSION:** Continue STEP 6-11 (renderTransactions, filterTransactions, showTokenResult, debug.test.js, nfcHandler.test.js)
+
+**Discovery:** Initial assessment was WRONG. UIManager was assumed complete but actually:
+- Only 40% of code tested
+- 60% of existing tests are smoke tests (not behavioral)
+- **58% of module completely untested** (all rendering functions)
+- **This is the ENTIRE user interface** - absolutely critical
+
+### 5.1: UIManager Comprehensive Testing (Days 10-11)
+
+**Implementation:** 613 lines
+**Current Coverage:** ~24% effective behavioral coverage
+**Target:** 100% behavioral coverage
 
 **Files:**
-- `tests/unit/scanner/uiManager.test.js` *(NEW)*
+- `tests/unit/scanner/uiManager.test.js` *(REWRITE EXISTING + ADD MISSING)*
 - `tests/unit/scanner/debug.test.js` *(NEW)*
 - `tests/unit/scanner/nfcHandler.test.js` *(NEW)*
 
-#### Tests to Write (Brief - Lower Priority)
+**See:** PHASE-5-UIMANAGER-PLAN.md for complete step-by-step implementation plan
 
-```javascript
-// uiManager.test.js
-describe('UIManager - State Management', () => {
-  it('should update UI state for transaction results', () => {
-    UIManager.showTransactionResult({
-      status: 'accepted',
-      tokenId: '534e2b03',
-      points: 5000
-    });
+#### A. Error Display Tests (REWRITE - Eliminate Smoke Tests)
 
-    expect(document.querySelector('.transaction-status'))
-      .toHaveTextContent('accepted');
-  });
+**Current Problem:** 8 tests claim to verify "correct class and text" but only check if `createElement` was called.
 
-  it('should show error messages', () => {
-    UIManager.showError('Test error message');
+**Fix:** Rewrite with actual DOM output verification
 
-    expect(document.querySelector('.error-message'))
-      .toHaveTextContent('Test error message');
-  });
-});
+#### B. Rendering Function Tests (NEW - 349 lines untested)
 
-// debug.test.js
-describe('Debug - Logging Utilities', () => {
-  it('should log debug messages when enabled', () => {
-    const consoleSpy = jest.spyOn(console, 'log');
+**Functions to Test:**
+1. **renderScoreboard()** - 36 lines - Team leaderboard (6 tests)
+2. **renderTeamDetails()** - 106 lines - Team detail display (5 tests)
+3. **renderTokenCard()** - 63 lines - Token card HTML (2 tests)
+4. **renderTransactions()** - 43 lines - Transaction history (3 tests)
+5. **filterTransactions()** - 20 lines - Search/filter logic (3 tests)
+6. **showGroupCompletionNotification()** - 36 lines - Notifications (2 tests)
+7. **showTokenResult()** - 45 lines - Scan result display (2 tests)
 
-    Debug.enabled = true;
-    Debug.log('Test message');
+**Total New Tests:** ~23 rendering tests + 11 rewritten error tests = ~34 UIManager tests
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/Test message/)
-    );
-  });
+### 5.2: Debug & NFC Utility Tests (Day 11)
 
-  it('should not log when disabled', () => {
-    const consoleSpy = jest.spyOn(console, 'log');
+**debug.test.js** - 84 lines, 4-5 tests
+- Message logging with timestamps
+- Error vs normal logging
+- Message array limit management
+- Panel DOM updates
 
-    Debug.enabled = false;
-    Debug.log('Test message');
+**nfcHandler.test.js** - 165 lines, 8-10 tests
+- NFC support detection
+- Scan start/stop
+- NDEF record extraction
+- Error handling
+- Simulation mode
 
-    expect(consoleSpy).not.toHaveBeenCalled();
-  });
-});
-
-// nfcHandler.test.js
-describe('NFCHandler - NFC Simulation', () => {
-  it('should simulate NFC read events', async () => {
-    const handler = jest.fn();
-
-    NFCHandler.onScan(handler);
-    NFCHandler.simulateScan('534e2b03');
-
-    expect(handler).toHaveBeenCalledWith({ id: '534e2b03' });
-  });
-});
-```
+**Total New Tests:** ~12-15 utility tests
 
 #### Exit Criteria
 
-- ✅ Basic coverage for UI modules
-- ✅ Debug utilities tested
-- ✅ NFC simulation tested
+- ✅ UIManager 100% function coverage (all 7 rendering functions tested)
+- ✅ All tests verify actual behavior (DOM output, data transformation)
+- ✅ ZERO smoke tests remaining
+- ✅ Edge cases tested (empty states, null handling, unknown tokens)
+- ✅ debug.js basic coverage (4-5 tests)
+- ✅ nfcHandler.js comprehensive coverage (8-10 tests)
 
 ---
 
@@ -1606,8 +1652,8 @@ describe('NFCHandler - NFC Simulation', () => {
 | Phase 2.3 | **0 tests** (manual) | 1-3 bugs | 1 bug (HIGH) | ✅ COMPLETE |
 | Phase 3 | **69 tests** (pre-existing) | 10-15 bugs | 0 bugs (already compliant) | ✅ COMPLETE |
 | Phase 4 | **2 tests fixed** + fixtures | 2-3 bugs | 2 issues fixed | ✅ COMPLETE |
-| Phase 5 | 10 tests | 1-2 bugs | TBD | 🔴 NOT STARTED |
-| **TOTAL** | **~~75~~ 295 tests** | **28-43 bugs** | **14 bugs found + refactoring** | **✅ Phases 1-4 Complete** |
+| Phase 5 | ~~10~~ **~67 tests** (14 done, 53 remaining) | 2-4 bugs | 1 bug (MEDIUM - malformed events) + 4 test fixes | 🔄 **IN PROGRESS** |
+| **TOTAL** | **~~75~~ ~362 tests** (now **823 total**) | **30-47 bugs** | **16 bugs found + test fixes** | **🔄 Phase 5 In Progress** |
 
 **Notes:**
 - Phase 1.2 dramatically exceeded scope by refactoring instead of testing monolithic code (5 → 58 tests). This preventative approach eliminated potential bugs before they could manifest in tests.
@@ -1615,6 +1661,7 @@ describe('NFCHandler - NFC Simulation', () => {
 - Phase 2.1 exceeded scope (6 → 14 tests) with comprehensive error handling coverage including network failures, malformed data, and offline resilience. Found 1 HIGH severity bug: scanner crash on malformed token data.
 - Phase 2.2 exceeded scope (15 → 88 tests) by adding comprehensive monitoring display tests and event-driven architecture implementation.
 - Phase 2.3 used manual testing instead of automated tests (0 tests written). Found 1 HIGH severity bug via manual admin panel inspection: missing token enrichment in sync:full events caused "UNKNOWN" display for all memory types.
+- **Phase 5 dramatically exceeded scope** (10 → ~67 tests) after discovering UIManager was only 24% effectively tested. Initial assessment was WRONG - assumed "has tests = complete" but 58% of module (all rendering functions) was completely untested and 60% of existing tests were smoke tests. This is the ENTIRE user interface - absolutely critical to test properly. **Session 1 (2025-10-06):** Completed 14 UIManager tests (STEPS 1-4), fixed 4 integration test issues revealed by infrastructure improvements, found 1 MEDIUM bug, achieved 100% test pass rate (823/823).
 - Phase 3 objectives were already complete before test improvement plan started. Contract-first architecture with 69 pre-existing contract tests covering 100% of AsyncAPI messages (14/14). No bugs found - implementation already compliant.
 - Phase 4 focused on test quality rather than quantity. Fixed 2 fragile tests (conditional skip + inadequate smoke test), created test fixtures for deterministic testing, and analyzed all 31 smoke tests finding 29 were appropriately defensive. Module coverage analysis confirmed 96% behavioral test coverage across all 15 scanner modules.
 

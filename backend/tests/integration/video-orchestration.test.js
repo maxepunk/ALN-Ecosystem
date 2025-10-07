@@ -120,6 +120,12 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
   });
 
   afterEach(async () => {
+    // CRITICAL: Remove all listeners from gmSocket BEFORE disconnecting
+    // Tests use gmSocket.on() without cleanup, causing event listener pollution
+    if (gmSocket) {
+      gmSocket.removeAllListeners();
+    }
+
     if (gmSocket?.connected) gmSocket.disconnect();
 
     // Clean up Player Scanner (await to ensure pending connection check completes)

@@ -139,27 +139,15 @@ describe('Scanner Helper Verification', () => {
       scanner.App.currentTeamId = '001';
       scanner.Settings.stationMode = 'blackmarket';
 
-      // Spy on queueManager and DataManager to verify behavior
+      // Spy on queueManager to verify transaction queued for orchestrator
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
       const dataManagerSpy = jest.spyOn(scanner.DataManager, 'addTransaction');
 
       // Execute
       scanner.App.recordTransaction(token, token.id, false);
 
-      // VERIFY: Transaction added to DataManager with correct structure
-      expect(dataManagerSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          rfid: token.id,
-          teamId: '001',
-          stationMode: 'blackmarket',
-          valueRating: token.SF_ValueRating,
-          memoryType: token.SF_MemoryType,
-          group: token.SF_Group,
-          isUnknown: false
-        })
-      );
-
-      // VERIFY: Transaction queued for submission to orchestrator
+      // VERIFY: In networked mode, transaction is queued (NOT added to DataManager immediately)
+      // DataManager.addTransaction is only called after orchestrator confirms via event
       expect(queueSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           tokenId: token.id,
@@ -167,6 +155,10 @@ describe('Scanner Helper Verification', () => {
           mode: 'blackmarket'
         })
       );
+
+      // VERIFY: DataManager.addTransaction NOT called immediately in networked mode
+      // (It will be called later when orchestrator sends transaction:new event)
+      expect(dataManagerSpy).not.toHaveBeenCalled();
     });
   });
 

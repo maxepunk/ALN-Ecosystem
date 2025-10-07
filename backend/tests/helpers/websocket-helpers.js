@@ -101,26 +101,33 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
 
 /**
  * Wait for multiple events with timeout
+ * Supports both count-based and predicate-based waiting
  * @param {Socket} socket - Socket instance
  * @param {string} event - Event name
- * @param {Function} predicate - Function to check if all events received
- * @param {number} timeout - Timeout in ms
+ * @param {number|Function} countOrPredicate - Number of events to wait for, or predicate function
+ * @param {number} timeout - Timeout in ms (default 5000)
  * @returns {Promise<Array>} Array of received events
  */
-function waitForMultipleEvents(socket, event, predicate, timeout = 5000) {
+function waitForMultipleEvents(socket, event, countOrPredicate, timeout = 5000) {
   const events = [];
+  let handler;
+
+  // Convert count to predicate function for uniform handling
+  const predicate = typeof countOrPredicate === 'number'
+    ? (events) => events.length >= countOrPredicate
+    : countOrPredicate;
 
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      // Resolve with what we got even if not all
-      resolve(events);
+      socket.off(event, handler);  // FIX: Always cleanup listener on timeout
+      reject(new Error(`Timeout waiting for ${event} events (received ${events.length})`));
     }, timeout);
 
-    const handler = (data) => {
+    handler = (data) => {
       events.push(data);
       if (predicate(events)) {
         clearTimeout(timer);
-        socket.off(event, handler);
+        socket.off(event, handler);  // Cleanup on success
         resolve(events);
       }
     };
@@ -266,7 +273,8 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
     App,                          // REAL scanner App module (call App.recordTransaction)
     Settings,                     // Settings reference (for assertions)
     sessionModeManager: global.window.sessionModeManager,
-    queueManager: global.window.queueManager
+    queueManager: global.window.queueManager,
+    DataManager: global.DataManager  // For test spies (App.recordTransaction uses DataManager)
   };
 }
 
