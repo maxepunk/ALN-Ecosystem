@@ -6,6 +6,7 @@
 const logger = require('../utils/logger');
 const config = require('../config');
 const sessionService = require('../services/sessionService');
+const persistenceService = require('../services/persistenceService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
 const stateService = require('../services/stateService');
@@ -198,8 +199,27 @@ async function handleGmCommand(socket, data, io) {
         break;
       }
 
-      case 'system:reset':
+      case 'system:reset': {
         // System reset - FR 4.2.5 lines 980-985 (full "nuclear option")
+        // Archive completed sessions before destroying them (preserve game history)
+        const currentSession = sessionService.getCurrentSession();
+
+        if (currentSession) {
+          if (currentSession.status === 'completed') {
+            await persistenceService.archiveSession(currentSession.toJSON());
+            logger.info('Completed session archived before system reset', {
+              sessionId: currentSession.id,
+              gmStation: socket.deviceId
+            });
+          } else {
+            logger.warn('Active session being reset by GM', {
+              sessionId: currentSession.id,
+              status: currentSession.status,
+              gmStation: socket.deviceId
+            });
+          }
+        }
+
         // End current session
         await sessionService.endSession();
 
@@ -208,9 +228,10 @@ async function handleGmCommand(socket, data, io) {
         transactionService.reset();
         videoQueueService.clearQueue();
 
-        resultMessage = 'System reset complete - all data cleared';
+        resultMessage = 'System reset complete - ready for new session';
         logger.info('System reset by GM', { gmStation: socket.deviceId });
         break;
+      }
 
       default:
         emitWrapped(socket, 'error', {
