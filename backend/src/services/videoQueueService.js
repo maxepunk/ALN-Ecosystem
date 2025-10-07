@@ -281,8 +281,16 @@ class VideoQueueService extends EventEmitter {
         logger.error('Error monitoring VLC playback', { error });
         clearInterval(this.progressTimer);
         this.progressTimer = null;
-        // Assume completion after expected duration - TRACK THIS TIMER
-        this.fallbackTimer = setTimeout(() => this.completePlayback(queueItem), expectedDuration * 1000);
+
+        // Mark video as failed and clear currentItem to unblock queue
+        if (queueItem && queueItem === this.currentItem) {
+          queueItem.failPlayback(`VLC monitoring error: ${error.message}`);
+          this.currentItem = null;
+          this.emit('video:failed', queueItem);
+        }
+
+        // Try to process next item in queue
+        setImmediate(() => this.processQueue());
       }
     };
 

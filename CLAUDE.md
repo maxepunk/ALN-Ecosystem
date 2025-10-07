@@ -13,12 +13,6 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 - **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
 - **Submodule Architecture**: Shared token data across modules.
 
-## CURRENT: API Alignment Refactor - Phase 5.3 Complete
-
-**Project Nature**: Multi-phase, meticulous API standardization with formal contracts (OpenAPI/AsyncAPI).
-
-**Status**: Current phase: Building a test suite for ALNScanner: /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/TEST-IMPROVEMENT-PLAN.md
-
 **API CONTRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
 
 **EVENT CONRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/asyncapi.yaml

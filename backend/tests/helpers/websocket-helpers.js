@@ -286,6 +286,11 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
  * @returns {OrchestratorIntegration} Player Scanner instance
  */
 function createPlayerScanner(url, deviceId) {
+  // Configure for NETWORKED mode (enables connection monitoring + offline queue)
+  // Per Bug #6 fix: Player Scanner detects mode via window.location.pathname
+  global.window.location.pathname = '/player-scanner/';
+  global.window.location.origin = url;
+
   // Import real Player Scanner module (requires browser mocks to be loaded first)
   const OrchestratorIntegration = require('../../../aln-memory-scanner/js/orchestratorIntegration');
 
