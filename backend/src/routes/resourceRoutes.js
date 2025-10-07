@@ -45,4 +45,12 @@ router.get('/health', (req, res) => {
   });
 });
 
+/**
+ * GET /scoreboard - Scoreboard display
+ * TV-optimized scoreboard display for Black Market mode
+ */
+router.get('/scoreboard', (req, res) => {
+  res.sendFile('scoreboard.html', { root: './public' });
+});
+
 module.exports = router;

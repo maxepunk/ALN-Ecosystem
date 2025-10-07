@@ -569,6 +569,7 @@ Once running (any method):
 - **Admin Panel**: `http://localhost:3000/admin/`
 - **Player Scanner**: `http://localhost:3000/player-scanner/`
 - **GM Scanner**: `http://localhost:3000/gm-scanner/`
+- **Scoreboard Display**: `http://localhost:3000/scoreboard`
 - **VLC Control**: `http://localhost:8080` (password: vlc)
 
 ## Raspberry Pi Deployment
@@ -672,6 +673,150 @@ Use GitHub Pages directly:
 - GM: `https://[username].github.io/ALNScanner/`
 
 Features work in degraded mode (no video playback).
+
+## Scoreboard Display
+
+### Accessing the Scoreboard
+
+The scoreboard is a TV-optimized display showing live Black Market rankings and Detective Log entries:
+
+**URL**: `http://[SERVER-IP]:3000/scoreboard`
+
+- **Purpose**: Large-screen display of team scores, group completions, and detective scans
+- **Optimized for**: TV/monitor displays with responsive design
+- **Updates**: Real-time via WebSocket connection
+- **Network**: Works on any device with browser access to orchestrator
+
+### Features
+
+1. **Team Rankings** - Live scoreboard with medals (🥇🥈🥉) for top 3 teams
+   - Shows only teams with activity (teams appear after first token scan)
+   - Real-time score updates
+   - Token counts and completed group bonuses
+
+2. **Detective Log** - Token IDs scanned in Detective Mode
+   - Chronological list of detective scans
+   - Shows token ID and scan timestamp
+   - Placeholder for future narrative log expansion
+
+3. **Group Completion Notifications** - Animated alerts when teams complete token groups
+   - Shows team, group name, and bonus points
+   - Auto-dismisses after 8 seconds
+
+4. **Connection Status** - Visual indicator in top-right corner
+   - Green: Connected (live updates)
+   - Red: Offline (displays last known state, attempting reconnect)
+   - Yellow: Connecting
+
+### Setup for Display Devices
+
+#### Option 1: Dedicated Device (Recommended)
+Use any spare device with a browser:
+- Raspberry Pi Zero W ($15) + monitor
+- Old tablet in kiosk mode
+- Spare laptop/computer
+- Amazon Fire Tablet
+
+Steps:
+1. Connect device to same network as orchestrator
+2. Open browser to `http://[ORCHESTRATOR-IP]:3000/scoreboard`
+3. Press F11 for fullscreen (or use device's kiosk mode)
+4. Display auto-updates as teams scan tokens
+
+#### Option 2: Chromium Kiosk Mode (Linux/Raspberry Pi)
+```bash
+# Install Chromium if needed
+sudo apt install chromium-browser
+
+# Create kiosk launcher script
+cat > ~/scoreboard.sh << 'EOF'
+#!/bin/bash
+chromium-browser --kiosk --noerrdialogs --disable-infobars \
+  --disable-session-crashed-bubble \
+  --app=http://[ORCHESTRATOR-IP]:3000/scoreboard
+EOF
+chmod +x ~/scoreboard.sh
+
+# Auto-start on boot (add to ~/.config/lxsession/LXDE-pi/autostart)
+@/home/pi/scoreboard.sh
+```
+
+#### Option 3: Firefox Kiosk Mode
+```bash
+firefox --kiosk http://[ORCHESTRATOR-IP]:3000/scoreboard
+```
+
+### Authentication Details
+
+**IMPORTANT SECURITY NOTE**: The scoreboard uses hardcoded authentication for read-only display access.
+
+- **How it works**: Admin password is embedded in the scoreboard HTML for automatic WebSocket authentication
+- **Security tradeoff**: Password visible in HTML source, but scoreboard is read-only (cannot send commands)
+- **Configuration**: Update the `adminPassword` in `/backend/public/scoreboard.html` to match your `ADMIN_PASSWORD` in `.env`
+
+```javascript
+// In scoreboard.html (line ~440)
+const CONFIG = {
+    adminPassword: '@LN-c0nn3ct',  // CHANGE THIS to match your .env ADMIN_PASSWORD
+    // ...
+};
+```
+
+**Why this approach?**
+1. **No user interaction required** - Perfect for unattended displays
+2. **Auto-reconnect** - Works across network interruptions
+3. **Simplicity** - No separate authentication flow needed
+4. **Read-only access** - Scoreboard can only receive updates, not send commands
+
+**For higher security:**
+- Keep scoreboard on local/trusted network only
+- Use firewall rules to restrict access to port 3000
+- Change `ADMIN_PASSWORD` from default value
+- Consider separate VLAN for display devices
+
+### Troubleshooting Scoreboard
+
+#### Blank screen or "Auth Failed"
+```bash
+# Verify admin password matches between .env and scoreboard.html
+grep ADMIN_PASSWORD backend/.env
+grep adminPassword backend/public/scoreboard.html
+
+# Check orchestrator is running
+curl http://localhost:3000/health
+
+# Check browser console for errors (F12)
+```
+
+#### No teams showing
+- Teams only appear after scanning at least one token
+- Check WebSocket connection status (indicator in top-right)
+- Verify session is active and teams exist: `curl http://localhost:3000/api/state`
+
+#### Connection keeps dropping
+- Check network stability between display device and orchestrator
+- Ensure display device doesn't sleep/hibernate
+- Verify firewall allows WebSocket connections (port 3000)
+
+#### Not responsive on TV
+- Try different browser (Chromium recommended)
+- Check TV resolution settings
+- Use `Ctrl + 0` to reset zoom level
+- Enable fullscreen mode (F11)
+
+### Display Recommendations
+
+**Optimal Setup:**
+- **Resolution**: 1080p or higher
+- **Orientation**: Landscape (responsive design supports both)
+- **Browser**: Chrome/Chromium 89+ or Firefox 90+
+- **Network**: Wired ethernet preferred for reliability
+- **Power**: Disable sleep mode on display device
+
+**Layout Adapts:**
+- **Desktop/TV**: 2-column layout (scoreboard + detective log side-by-side)
+- **Tablet**: Single column, stacked layout
+- **Mobile**: Optimized touch targets and font sizes
 
 ## Testing
 
@@ -858,6 +1003,7 @@ backend/logs/
 | http://[ip]:3000/admin/ | Admin panel | Orchestrated |
 | http://[ip]:3000/player-scanner/ | Player scanner | Orchestrated |
 | http://[ip]:3000/gm-scanner/ | GM scanner | Orchestrated |
+| http://[ip]:3000/scoreboard | Scoreboard display | Orchestrated |
 | https://[user].github.io/ALNPlayerScan/ | Player scanner | Standalone |
 | https://[user].github.io/ALNScanner/ | GM scanner | Standalone |
 

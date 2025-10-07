@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Black Market Scoreboard - About Last Night</title>
+    <style>
+        /* ============================================
+           RESET & BASE STYLES
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* ============================================
+           HEADER
+           ============================================ */
+        .header {
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: 800;
+            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        /* Connection Status */
+        .connection-status {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 2rem;
+            font-size: clamp(0.875rem, 1.5vw, 1.125rem);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .connection-status.offline .status-dot {
+            background: #f87171;
+            box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
+            animation: none;
+        }
+
+        .connection-status.connecting .status-dot {
+            background: #fbbf24;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.1); }
+        }
+
+        /* ============================================
+           MAIN CONTAINER
+           ============================================ */
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 1rem 2rem 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1200px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================================
+           CARD STYLES
+           ============================================ */
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: clamp(1.5rem, 3vw, 2rem);
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* ============================================
+           SCOREBOARD
+           ============================================ */
+        .scoreboard-entry {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            color: #333;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .scoreboard-entry:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .scoreboard-entry.rank-1 {
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            box-shadow: 0 6px 25px rgba(255, 215, 0, 0.3);
+        }
+
+        .scoreboard-entry.rank-2 {
+            background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+        }
+
+        .scoreboard-entry.rank-3 {
+            background: linear-gradient(135deg, #cd7f32 0%, #e5a572 100%);
+        }
+
+        .scoreboard-rank {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            min-width: 4rem;
+            text-align: center;
+        }
+
+        .scoreboard-team {
+            flex: 1;
+        }
+
+        .team-name {
+            font-size: clamp(1.25rem, 2.5vw, 2rem);
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .team-stats {
+            font-size: clamp(0.875rem, 1.5vw, 1.125rem);
+            opacity: 0.7;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .scoreboard-score {
+            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+            font-weight: 800;
+            color: #667eea;
+            text-align: right;
+        }
+
+        .rank-1 .scoreboard-score {
+            color: #b8860b;
+        }
+
+        .rank-2 .scoreboard-score {
+            color: #696969;
+        }
+
+        .rank-3 .scoreboard-score {
+            color: #8b4513;
+        }
+
+        /* ============================================
+           DETECTIVE LOG
+           ============================================ */
+        .detective-log {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            font-family: 'Courier New', monospace;
+            font-size: clamp(0.875rem, 1.5vw, 1rem);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .log-time {
+            opacity: 0.7;
+            font-size: clamp(0.75rem, 1.25vw, 0.875rem);
+        }
+
+        /* ============================================
+           NOTIFICATIONS
+           ============================================ */
+        .notification-container {
+            position: fixed;
+            top: 6rem;
+            right: 2rem;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1rem;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification.group-complete {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .notification-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .notification-body {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOut {
+            to {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+        }
+
+        /* ============================================
+           EMPTY STATE
+           ============================================ */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            opacity: 0.7;
+        }
+
+        .empty-state h3 {
+            font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+        }
+
+        /* ============================================
+           LOADING STATE
+           ============================================ */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================
+           SCROLLBAR
+           ============================================ */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* ============================================
+           RESPONSIVE ADJUSTMENTS
+           ============================================ */
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+
+            .container {
+                padding: 0.5rem 1rem 1rem;
+            }
+
+            .card {
+                padding: 1rem;
+            }
+
+            .connection-status {
+                position: static;
+                margin: 1rem auto 0;
+                width: fit-content;
+            }
+
+            .notification-container {
+                right: 1rem;
+                left: 1rem;
+                max-width: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-dot"></span>
+            <span id="statusText">Connecting...</span>
+        </div>
+        <h1>🏆 Black Market Scoreboard</h1>
+        <p class="subtitle">About Last Night</p>
+    </div>
+
+    <div class="container">
+        <div class="grid">
+            <!-- Scoreboard -->
+            <div class="card">
+                <h2 class="card-title">
+                    <span>📊</span>
+                    Team Rankings
+                </h2>
+                <div id="scoreboardContent">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detective Log -->
+            <div class="card">
+                <h2 class="card-title">
+                    <span>🔍</span>
+                    Detective Log
+                </h2>
+                <div class="detective-log" id="detectiveLog">
+                    <div class="empty-state">
+                        <h3>No Detective Scans Yet</h3>
+                        <p>Detective mode scans will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
+
+    <!-- Socket.io Client Library -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const CONFIG = {
+            // SECURITY NOTE: This password is hardcoded for read-only scoreboard display
+            // The scoreboard has no ability to send commands, only receive score updates
+            // Change this to match your ADMIN_PASSWORD in .env
+            adminPassword: '@LN-c0nn3ct',
+            deviceId: 'SCOREBOARD_DISPLAY',
+            apiUrl: window.location.origin,
+            reconnectDelay: 2000,
+            tokenRefreshInterval: 23 * 60 * 60 * 1000, // 23 hours
+        };
+
+        // ============================================
+        // STATE
+        // ============================================
+        const state = {
+            socket: null,
+            token: null,
+            isConnected: false,
+            teamScores: new Map(),
+            detectiveScans: [],
+        };
+
+        // ============================================
+        // DOM ELEMENTS
+        // ============================================
+        const elements = {
+            connectionStatus: document.getElementById('connectionStatus'),
+            statusText: document.getElementById('statusText'),
+            scoreboardContent: document.getElementById('scoreboardContent'),
+            detectiveLog: document.getElementById('detectiveLog'),
+            notificationContainer: document.getElementById('notificationContainer'),
+        };
+
+        // ============================================
+        // AUTHENTICATION
+        // ============================================
+        async function authenticate() {
+            try {
+                const response = await fetch(`${CONFIG.apiUrl}/api/admin/auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        password: CONFIG.adminPassword,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Authentication failed');
+                }
+
+                const data = await response.json();
+                state.token = data.token;
+
+                console.log('✅ Authentication successful');
+                return true;
+            } catch (error) {
+                console.error('❌ Authentication failed:', error);
+                updateConnectionStatus('error', 'Auth Failed');
+
+                // Retry authentication after delay
+                setTimeout(authenticate, CONFIG.reconnectDelay);
+                return false;
+            }
+        }
+
+        // ============================================
+        // WEBSOCKET CONNECTION
+        // ============================================
+        async function connectWebSocket() {
+            if (!state.token) {
+                console.error('❌ Cannot connect without token');
+                return;
+            }
+
+            updateConnectionStatus('connecting', 'Connecting...');
+
+            try {
+                state.socket = io(CONFIG.apiUrl, {
+                    transports: ['websocket'],
+                    auth: {
+                        token: state.token,
+                        deviceId: CONFIG.deviceId,
+                        deviceType: 'gm',
+                        version: '1.0.0',
+                    },
+                });
+
+                setupSocketHandlers();
+            } catch (error) {
+                console.error('❌ WebSocket connection failed:', error);
+                updateConnectionStatus('error', 'Connection Failed');
+                setTimeout(connectWebSocket, CONFIG.reconnectDelay);
+            }
+        }
+
+        function setupSocketHandlers() {
+            state.socket.on('connect', () => {
+                console.log('✅ WebSocket connected');
+                state.isConnected = true;
+                updateConnectionStatus('connected', 'Live');
+
+                // Request full sync
+                state.socket.emit('sync:request');
+            });
+
+            state.socket.on('disconnect', (reason) => {
+                console.log('⚠️ WebSocket disconnected:', reason);
+                state.isConnected = false;
+                updateConnectionStatus('offline', 'Offline');
+            });
+
+            state.socket.on('connect_error', (error) => {
+                console.error('❌ Connection error:', error);
+                updateConnectionStatus('error', 'Connection Error');
+            });
+
+            state.socket.on('reconnect', () => {
+                console.log('✅ WebSocket reconnected');
+                state.socket.emit('sync:request');
+            });
+
+            // Score updates
+            state.socket.on('score:updated', (eventData) => {
+                const scoreData = eventData.data;
+                console.log('📊 Score updated:', scoreData);
+                updateTeamScore(scoreData);
+            });
+
+            // Group completions
+            state.socket.on('group:completed', (eventData) => {
+                const data = eventData.data;
+                console.log('🏆 Group completed:', data);
+                showGroupCompletionNotification(data);
+            });
+
+            // Transaction events (for detective log)
+            state.socket.on('transaction:new', (eventData) => {
+                const transaction = eventData.data?.transaction;
+                if (transaction && transaction.mode === 'detective') {
+                    console.log('🔍 Detective scan:', transaction);
+                    addDetectiveLogEntry(transaction);
+                }
+            });
+
+            // Full sync
+            state.socket.on('sync:full', (eventData) => {
+                const data = eventData.data;
+                console.log('🔄 Full sync received:', data);
+
+                // Update scores from sync
+                if (data.scores && Array.isArray(data.scores)) {
+                    data.scores.forEach(updateTeamScore);
+                }
+
+                // Load recent transactions for detective log
+                if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
+                    data.recentTransactions
+                        .filter(tx => tx.mode === 'detective')
+                        .forEach(addDetectiveLogEntry);
+                }
+            });
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateConnectionStatus(status, text) {
+            elements.connectionStatus.className = `connection-status ${status}`;
+            elements.statusText.textContent = text;
+        }
+
+        function updateTeamScore(scoreData) {
+            state.teamScores.set(scoreData.teamId, scoreData);
+            renderScoreboard();
+        }
+
+        function renderScoreboard() {
+            const scores = Array.from(state.teamScores.values())
+                .filter(team => team.tokensScanned > 0)  // Only show teams with activity
+                .sort((a, b) => b.currentScore - a.currentScore);
+
+            if (scores.length === 0) {
+                elements.scoreboardContent.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Teams Yet</h3>
+                        <p>Teams will appear after scanning tokens</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = scores.map((team, index) => {
+                const rank = index + 1;
+                const rankClass = rank <= 3 ? `rank-${rank}` : '';
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                const completedGroups = team.completedGroups?.length || 0;
+
+                return `
+                    <div class="scoreboard-entry ${rankClass}">
+                        <div class="scoreboard-rank">${medal}</div>
+                        <div class="scoreboard-team">
+                            <div class="team-name">Team ${team.teamId}</div>
+                            <div class="team-stats">
+                                <span>🎯 ${team.tokensScanned || 0} tokens</span>
+                                ${completedGroups > 0 ? `<span>🏆 ${completedGroups} groups</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="scoreboard-score">$${team.currentScore.toLocaleString()}</div>
+                    </div>
+                `;
+            }).join('');
+
+            elements.scoreboardContent.innerHTML = html;
+        }
+
+        function addDetectiveLogEntry(transaction) {
+            // Prevent duplicates
+            if (state.detectiveScans.some(s => s.id === transaction.id)) {
+                return;
+            }
+
+            state.detectiveScans.unshift({
+                id: transaction.id,
+                tokenId: transaction.tokenId,
+                timestamp: transaction.timestamp,
+            });
+
+            // Keep only last 50 entries
+            if (state.detectiveScans.length > 50) {
+                state.detectiveScans = state.detectiveScans.slice(0, 50);
+            }
+
+            renderDetectiveLog();
+        }
+
+        function renderDetectiveLog() {
+            if (state.detectiveScans.length === 0) {
+                elements.detectiveLog.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Detective Scans Yet</h3>
+                        <p>Detective mode scans will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = state.detectiveScans.map(scan => {
+                const time = new Date(scan.timestamp).toLocaleTimeString();
+                return `
+                    <div class="log-entry">
+                        <span>${scan.tokenId}</span>
+                        <span class="log-time">${time}</span>
+                    </div>
+                `;
+            }).join('');
+
+            elements.detectiveLog.innerHTML = html;
+        }
+
+        function showGroupCompletionNotification(data) {
+            const notification = document.createElement('div');
+            notification.className = 'notification group-complete';
+            notification.innerHTML = `
+                <div class="notification-title">
+                    🏆 Group Completed!
+                </div>
+                <div class="notification-body">
+                    Team ${data.teamId} completed ${data.group}<br>
+                    Bonus: +$${data.bonusPoints.toLocaleString()}
+                </div>
+            `;
+
+            elements.notificationContainer.appendChild(notification);
+
+            // Auto-remove after 8 seconds
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease-out forwards';
+                setTimeout(() => notification.remove(), 300);
+            }, 8000);
+        }
+
+        // ============================================
+        // INITIALIZATION
+        // ============================================
+        async function initialize() {
+            console.log('🚀 Initializing scoreboard display...');
+
+            // Authenticate first
+            const authenticated = await authenticate();
+            if (!authenticated) {
+                return; // Will retry automatically
+            }
+
+            // Connect WebSocket
+            await connectWebSocket();
+
+            // Refresh token periodically (before it expires)
+            setInterval(async () => {
+                console.log('🔄 Refreshing authentication token...');
+                await authenticate();
+                if (state.socket && state.socket.connected) {
+                    state.socket.disconnect();
+                    await connectWebSocket();
+                }
+            }, CONFIG.tokenRefreshInterval);
+        }
+
+        // Start when page loads
+        initialize();
+    </script>
+</body>
+</html>

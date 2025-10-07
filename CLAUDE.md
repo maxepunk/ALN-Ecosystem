@@ -5,17 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 The ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for about last night, a 2 hour immersive game about unlocking and trading in memory tokens containing game characters' lost memories. It is a live event that is run one iteration at a time, either using github pages deployments of player and gm scanners in standalone mode, or using the backend orchestrator to enable syncing across devices and additional features like VLC video playback. It consists of:
-- **Memory Tokens** - RFID tags with IDs corresponding to the keys from tokens.json. Players scan then to get associated media content, and turn them into GMs to be scanned for game logic calculations/scoring. (SUBMODULE: ALN-TokenData) 
-- **Backend Orchestrator**: Node.js server managing video playback, sessions, and state. Used when available; when not, scanners operate independently via deployment on Github Pages. 
+- **Memory Tokens** - RFID tags with IDs corresponding to the keys from tokens.json. Players scan then to get associated media content, and turn them into GMs to be scanned for game logic calculations/scoring. (SUBMODULE: ALN-TokenData)
+- **Backend Orchestrator**: Node.js server managing video playback, sessions, and state. Used when available; when not, scanners operate independently via deployment on Github Pages.
 - **Scanner Apps**: Web-based token scanners (Player and GM) with WebSocket/HTTP integration
   --**Player Scanner**: Uses HTTP endpoints, simple scan logging, display of local assets if token contains audio or image content, and triggering of video files for tokens containing video content (IF orchestrator is present) on separate screen controlled by the orchestrator. intended for players to discover and use as a tool to see the narrative contents of in-game memory tokens. Can operate WITH orchestrator OR WITHOUT in standaalone mode (no video playback). (SUBMODULE: aln-memory-scanner, aka ALNPlayerScan)
   --**GM Scanner**: Uses Websocket after HTTP handshake. Responsible for game logic. Can function in networked mode (in communcation with orchestrator) or standalone. Detective Mode scans and logs tokens (future feature: create player-facing log of narrative events that have been 'made public' by being scanned by the Detective Mode scanner) that were 'turned into' (scanned by) the GM playing the Detective. Black Market Mode scans tokens and handles scoring calculations using scanner/team number for score assignment, by parsing token scoring information from tokens.jason and doing the relevant calculations to keep team scores up to date for each play session.  (SUBMODULE: ALNScanner)
+- **Scoreboard Display**: TV-optimized web display (`backend/public/scoreboard.html`) showing live Black Market rankings, group completions, and detective log. Uses hardcoded admin authentication for read-only WebSocket connection.
 - **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
 - **Submodule Architecture**: Shared token data across modules.
 
-**API CONTRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
-
-**EVENT CONRACT** /home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/asyncapi.yaml
+**Contracts:**
+- **API Contract**: `/home/pi/ALN-Ecosystem/backend/contracts/openapi.yaml`
+- **Event Contract**: `/home/pi/ALN-Ecosystem/backend/contracts/asyncapi.yaml`
+- **Functional Requirements**: `/home/pi/ALN-Ecosystem/docs/api-alignment/08-functional-requirements.md`
 
 ## Critical Architecture Decisions
 
@@ -101,10 +103,10 @@ All services in `backend/src/services/` use singleton pattern with getInstance()
 - **offlineQueueService**: Offline scan queue management
 
 ### WebSocket Event Flow
-/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/asyncapi.yaml
+See `/home/pi/ALN-Ecosystem/backend/contracts/asyncapi.yaml`
 
-### API Response Format
-/home/spide/projects/AboutLastNight/ALN-Ecosystem/backend/contracts/openapi.yaml
+### HTTP API Endpoints
+See `/home/pi/ALN-Ecosystem/backend/contracts/openapi.yaml`
 
 ## Environment Configuration
 
@@ -120,6 +122,7 @@ FEATURE_VIDEO_PLAYBACK=true
 - `VLC_PASSWORD` must be exactly `vlc`, not `vlc-password`
 - `HOST=0.0.0.0` for network access
 - `DISCOVERY_PORT=8888` for UDP broadcast
+- `ADMIN_PASSWORD` must match hardcoded value in `backend/public/scoreboard.html` for scoreboard auth
 
 ## Common Development Tasks
 
@@ -172,6 +175,7 @@ The `ecosystem.config.js` manages both processes:
 - Admin Panel: `http://[IP]:3000/admin/`
 - Player Scanner: `http://[IP]:3000/player-scanner/`
 - GM Scanner: `http://[IP]:3000/gm-scanner/`
+- Scoreboard Display: `http://[IP]:3000/scoreboard`
 - VLC Control: `http://[IP]:8080` (password: vlc)
 
 ## Troubleshooting Quick Reference
