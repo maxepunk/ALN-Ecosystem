@@ -19,7 +19,7 @@ const offlineQueueService = require('./offlineQueueService');
 class StateService extends EventEmitter {
   constructor() {
     super();
-    this.currentState = null;
+    // NOTE: currentState removed - GameState is now computed on-demand from session
     this.previousState = null;
     this.syncInterval = null;
     this.vlcConnected = false;
@@ -41,31 +41,13 @@ class StateService extends EventEmitter {
    */
   async init() {
     try {
-      // Load saved state
+      // NOTE: GameState is now COMPUTED from session, not stored
+      // Legacy state persistence removed - GameState derives from session on-demand
+      // Clear any old persisted state (cleanup from previous architecture)
       const savedState = await persistenceService.loadGameState();
       if (savedState) {
-        try {
-          this.currentState = GameState.fromJSON(savedState);
-          logger.info('Game state restored from storage');
-        } catch (validationError) {
-          // If saved state is invalid (e.g., from older version), clear it and start fresh
-          logger.warn('Saved state validation failed, clearing corrupted data', {
-            error: validationError.message,
-            details: validationError.details
-          });
-          await persistenceService.delete('gameState:current');
-          this.currentState = null;
-        }
-      }
-
-      // If no state but session exists, create state from session
-      if (!this.currentState) {
-        const session = sessionService.getCurrentSession();
-        if (session) {
-          this.currentState = this.createStateFromSession(session);
-          await this.saveState();
-          logger.info('Game state created from current session');
-        }
+        logger.info('Found legacy persisted GameState - clearing (now computed from session)');
+        await persistenceService.delete('gameState:current');
       }
 
       // Set up event listeners for transactions
@@ -93,25 +75,22 @@ class StateService extends EventEmitter {
     this.listenersInitialized = true;
     logger.info('Initializing event listeners');
 
-    // Listen for new session creation to create game state
+    // Listen for new session creation to trigger state update broadcasts
     listenerRegistry.addTrackedListener(sessionService, 'session:created', async (sessionData) => {
       try {
-        logger.info('Session created, creating game state', { sessionId: sessionData.id });
+        logger.info('Session created event received', { sessionId: sessionData.id });
 
-        // Get full session object
-        const session = sessionService.getCurrentSession();
-        if (session) {
-          this.currentState = this.createStateFromSession(session);
-          await this.saveState();
-          logger.info('Game state created from new session', { sessionId: session.id });
-
-          // Emit state update
-          this.emit('state:updated', this.currentState.toJSON());
+        // GameState is now computed on-demand, not stored
+        // Just emit state:updated to trigger broadcasts
+        const currentState = this.getCurrentState();
+        if (currentState) {
+          this.emit('state:updated', currentState.toJSON());
+          logger.info('State updated after session creation', { sessionId: sessionData.id });
         } else {
-          logger.error('session:created event fired but getCurrentSession() returned null');
+          logger.warn('Could not derive GameState after session creation', { sessionId: sessionData.id });
         }
       } catch (error) {
-        logger.error('Failed to create game state from session:created event', {
+        logger.error('Failed to emit state update after session:created', {
           error: error.message,
           stack: error.stack,
           sessionId: sessionData.id
@@ -124,7 +103,9 @@ class StateService extends EventEmitter {
       // Cache offline status (Phase 1.1.4 - aggregator pattern)
       this.cachedOfflineStatus = offline;
 
-      if (this.currentState) {
+      // Emit state update if session exists (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (currentState) {
         await this.updateState({ systemStatus: { offline } }, { immediate: true });
         logger.info('Updated state offline status', { offline });
       }
@@ -132,8 +113,10 @@ class StateService extends EventEmitter {
 
     // Listen for accepted transactions to update scores
     listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted', async (transaction) => {
-      if (!this.currentState) {
-        logger.warn('No current state when transaction accepted', { transactionId: transaction.id });
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (!currentState) {
+        logger.warn('No session when transaction accepted - cannot update state', { transactionId: transaction.id });
         return;
       }
 
@@ -166,17 +149,22 @@ class StateService extends EventEmitter {
 
     // Listen for transaction additions to update recent transactions
     listenerRegistry.addTrackedListener(sessionService, 'transaction:added', async (transaction) => {
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
       logger.info('State received transaction:added event', {
         transactionId: transaction.id,
         tokenId: transaction.tokenId,
-        hasCurrentState: !!this.currentState
+        hasSession: !!currentState
       });
-      if (!this.currentState) return;
+      if (!currentState) return;
 
       try {
-        // Add FULL transaction to recent transactions in state (per data model)
-        const recentTransactions = this.currentState.recentTransactions || [];
-        recentTransactions.push({
+        // GameState is computed from session - recent transactions are in state
+        // Get current recent transactions from computed state
+        const recentTransactions = currentState.recentTransactions || [];
+        const updatedTransactions = [...recentTransactions];
+
+        updatedTransactions.push({
           id: transaction.id,
           tokenId: transaction.tokenId,
           teamId: transaction.teamId,
@@ -189,7 +177,7 @@ class StateService extends EventEmitter {
         });
 
         // Keep only last 10 transactions
-        const trimmed = recentTransactions.slice(-10);
+        const trimmed = updatedTransactions.slice(-10);
 
         logger.info('Updating state with recent transactions', {
           transactionCount: trimmed.length,
@@ -197,6 +185,7 @@ class StateService extends EventEmitter {
         });
 
         // Update state (debounced for rapid transaction additions)
+        // NOTE: This will trigger re-computation and broadcast
         await this.updateState({ recentTransactions: trimmed });
       } catch (error) {
         logger.error('Failed to update recent transactions', { error });
@@ -205,7 +194,9 @@ class StateService extends EventEmitter {
 
     // Listen for video events to update currentVideo
     listenerRegistry.addTrackedListener(videoQueueService, 'video:started', async (data) => {
-      if (!this.currentState) return;
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (!currentState) return;
 
       try {
         // Get proper current video info from videoQueueService
@@ -231,7 +222,9 @@ class StateService extends EventEmitter {
     });
 
     listenerRegistry.addTrackedListener(videoQueueService, 'video:completed', async () => {
-      if (!this.currentState) return;
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (!currentState) return;
 
       try {
         await this.clearCurrentVideo();
@@ -242,7 +235,9 @@ class StateService extends EventEmitter {
     });
 
     listenerRegistry.addTrackedListener(videoQueueService, 'video:failed', async () => {
-      if (!this.currentState) return;
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (!currentState) return;
 
       try {
         await this.clearCurrentVideo();
@@ -254,7 +249,9 @@ class StateService extends EventEmitter {
 
     // Listen for video:idle event (emitted when queue is cleared or no videos)
     listenerRegistry.addTrackedListener(videoQueueService, 'video:idle', async () => {
-      if (!this.currentState) return;
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (!currentState) return;
 
       try {
         await this.clearCurrentVideo();
@@ -266,7 +263,9 @@ class StateService extends EventEmitter {
 
     // Listen for queue:reset event (emitted when entire queue is cleared)
     listenerRegistry.addTrackedListener(videoQueueService, 'queue:reset', async () => {
-      if (!this.currentState) return;
+      // Check if we have a session (GameState is computed from session)
+      const currentState = this.getCurrentState();
+      if (!currentState) return;
 
       try {
         await this.clearCurrentVideo();
@@ -315,23 +314,42 @@ class StateService extends EventEmitter {
   }
 
   /**
-   * Get current game state
+   * Get current game state - COMPUTED from session + live system status
+   *
+   * ARCHITECTURAL NOTE: GameState is a COMPUTED VIEW, not a stored entity.
+   * It's always derived fresh from the current session + live system status.
+   * This eliminates sync bugs on orchestrator restart and ensures state
+   * always matches session (single source of truth pattern).
+   *
    * @returns {GameState|null}
    */
   getCurrentState() {
-    return this.currentState;
+    const session = sessionService.getCurrentSession();
+    if (!session) return null;
+
+    // Always derive fresh from session + current system status
+    return GameState.fromSession(session, {
+      vlcConnected: this.vlcConnected || false,
+      videoDisplayReady: this.videoDisplayReady || false,
+      offline: this.cachedOfflineStatus || false
+    });
   }
 
   /**
    * Set current game state
-   * @param {GameState} state - The state to set
+   * @deprecated GameState is now computed on-demand, not stored
+   * @param {GameState} state - The state to set (ignored)
    */
   setCurrentState(state) {
-    this.currentState = state;
+    // NO-OP: GameState is now computed from session, not stored
+    logger.warn('setCurrentState() called but GameState is now computed (no-op)', {
+      stateSessionId: state?.sessionId
+    });
   }
 
   /**
    * Create default/empty game state
+   * @deprecated GameState should be derived from session, not created standalone
    * @returns {GameState}
    */
   createDefaultState() {
@@ -368,12 +386,14 @@ class StateService extends EventEmitter {
       }
     });
 
-    this.currentState = defaultState;
+    // NOTE: Not storing - GameState is now computed from session
+    logger.warn('createDefaultState() called - prefer creating session and deriving state');
     return defaultState;
   }
 
   /**
    * Create state from session
+   * @deprecated Use getCurrentState() instead (computes on-demand)
    * @param {Object} session - Session object
    * @returns {GameState}
    */
@@ -386,86 +406,60 @@ class StateService extends EventEmitter {
       offline: this.cachedOfflineStatus,
     };
 
-    this.previousState = this.currentState;
-    this.currentState = GameState.fromSession(session, systemStatus);
+    // NOTE: Not storing state anymore - just return computed GameState
+    const state = GameState.fromSession(session, systemStatus);
 
     // Re-setup transaction listeners after creating state
     // (needed because reset() removes all listeners)
     this.setupTransactionListeners();
 
-    return this.currentState;
+    logger.warn('createStateFromSession() called - prefer getCurrentState() for computed view');
+    return state;
   }
 
   /**
    * Update game state
+   * @deprecated GameState is now computed - updates should modify session instead
    * @param {Object} updates - Partial state updates
    * @param {Object} options - Update options
    * @param {boolean} options.immediate - If true, emit update immediately without debouncing
    * @returns {Promise<GameState>}
    */
   async updateState(updates, options = {}) {
-    if (!this.currentState) {
-      throw new Error('No current game state');
+    // GameState is computed from session - we can't mutate it directly
+
+    // System status updates are handled separately to avoid circular calls
+    if (updates.systemStatus !== undefined) {
+      logger.warn('updateState called with systemStatus - use updateSystemStatus() directly instead');
+      // Don't process here - caller should use updateSystemStatus()
+      delete updates.systemStatus;
+    }
+
+    // For other updates, we should be modifying the session instead
+    // But for backwards compatibility during transition, we'll just emit current state
+    const currentState = this.getCurrentState();
+    if (!currentState) {
+      logger.warn('updateState() called but no session exists - cannot derive GameState');
+      return null;
     }
 
     try {
-      this.previousState = this.currentState.toJSON();
+      // Emit full state per contract
+      const fullState = currentState.toJSON();
 
-      // Track if any actual changes were made
-      let hasChanges = false;
+      // Video updates are immediate, scores can be debounced
+      const isImmediate = options.immediate ||
+        updates.currentVideo !== undefined;
 
-      // Apply updates
-      if (updates.currentVideo !== undefined) {
-        this.currentState.setCurrentVideo(updates.currentVideo);
-        hasChanges = true;
-      }
-
-      if (updates.scores !== undefined) {
-        this.currentState.updateScores(updates.scores);
-        hasChanges = true;
-      }
-
-      if (updates.recentTransactions !== undefined) {
-        this.currentState.updateRecentTransactions(updates.recentTransactions);
-        hasChanges = true;
-      }
-
-      if (updates.systemStatus !== undefined) {
-        this.currentState.updateSystemStatus(updates.systemStatus);
-        hasChanges = true;
-      }
-
-      // Only touch if actual changes were made
-      if (hasChanges) {
-        this.currentState.touch();
-      }
-
-      // Save to persistence
-      await this.saveState();
-
-      // Check if there were actual changes
-      const delta = this.createStateDelta();
-      logger.debug('State delta created', {
-        deltaKeys: Object.keys(delta),
-        hasChanges: Object.keys(delta).length > 0,
+      logger.debug('Emitting state update (computed from session)', {
+        isImmediate,
+        stateKeys: Object.keys(fullState),
         updateKeys: Object.keys(updates)
       });
 
-      if (Object.keys(delta).length > 0) {
-        // Emit full state per contract (not delta)
-        const fullState = this.currentState.toJSON();
+      this.emitStateUpdate(fullState, isImmediate);
 
-        // Video and system status updates are immediate, scores can be debounced
-        const isImmediate = options.immediate ||
-          updates.currentVideo !== undefined ||
-          updates.systemStatus !== undefined;
-        logger.debug('Emitting state update', { isImmediate, stateKeys: Object.keys(fullState) });
-        this.emitStateUpdate(fullState, isImmediate);
-      } else {
-        logger.debug('No changes to emit - state unchanged');
-      }
-
-      return this.currentState;
+      return currentState;
     } catch (error) {
       logger.error('Failed to update game state', error);
       throw error;
@@ -486,8 +480,13 @@ class StateService extends EventEmitter {
       this.videoDisplayReady = status.videoDisplayReady;
     }
 
-    if (this.currentState) {
-      await this.updateState({ systemStatus: status });
+    // Emit state update if session exists (GameState is computed from session)
+    const currentState = this.getCurrentState();
+    if (currentState) {
+      // Emit directly without calling updateState (which would call us back)
+      const fullState = currentState.toJSON();
+      this.emitStateUpdate(fullState, true); // immediate emit for system status
+      logger.debug('System status updated', { status });
     }
   }
 
@@ -497,7 +496,10 @@ class StateService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async setCurrentVideo(videoInfo) {
-    if (!this.currentState) {
+    // Check if we have a session (GameState is computed from session)
+    const currentState = this.getCurrentState();
+    if (!currentState) {
+      logger.debug('setCurrentVideo called but no session exists');
       return;
     }
 
@@ -510,7 +512,10 @@ class StateService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async clearCurrentVideo() {
-    if (!this.currentState) {
+    // Check if we have a session (GameState is computed from session)
+    const currentState = this.getCurrentState();
+    if (!currentState) {
+      logger.debug('clearCurrentVideo called but no session exists');
       return;
     }
 
@@ -524,7 +529,10 @@ class StateService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async updateScores(scores) {
-    if (!this.currentState) {
+    // Check if we have a session (GameState is computed from session)
+    const currentState = this.getCurrentState();
+    if (!currentState) {
+      logger.debug('updateScores called but no session exists');
       return;
     }
 
@@ -537,7 +545,10 @@ class StateService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async updateRecentTransactions(transactions) {
-    if (!this.currentState) {
+    // Check if we have a session (GameState is computed from session)
+    const currentState = this.getCurrentState();
+    if (!currentState) {
+      logger.debug('updateRecentTransactions called but no session exists');
       return;
     }
 
@@ -546,70 +557,76 @@ class StateService extends EventEmitter {
 
   /**
    * Sync state from session
+   * @deprecated GameState is now computed on-demand - just use getCurrentState()
    * @param {Object} session - Session object
    * @returns {Promise<GameState>}
    */
   async syncFromSession(session) {
     if (!session) {
-      this.currentState = null;
-      await persistenceService.delete('gameState:current');
+      logger.info('syncFromSession called with no session - state will be null');
       return null;
     }
 
-    // Store previous state before creating new one
-    this.previousState = this.currentState ? this.currentState.toJSON() : null;
+    // GameState is now computed from session - no need to create/store
+    const state = this.getCurrentState();
 
-    const state = this.createStateFromSession(session);
-    await this.saveState();
+    if (state) {
+      // Emit both sync and update events for compatibility
+      this.emit('state:sync', state.toJSON());
 
-    // Emit both sync and update events for compatibility
-    this.emit('state:sync', state.toJSON());
+      // Always emit state:updated when syncing from session changes
+      // This ensures session status changes trigger state updates
+      this.emit('state:updated', state.toJSON());
 
-    // Always emit state:updated when syncing from session changes
-    // This ensures session status changes trigger state updates
-    this.emit('state:updated', state.toJSON());
+      logger.info('State synced from session (computed)', { sessionId: session.id });
+    } else {
+      logger.warn('syncFromSession: Session exists but could not derive GameState', {
+        sessionId: session.id
+      });
+    }
 
     return state;
   }
 
   /**
    * Create state delta
+   * @deprecated GameState is computed on-demand - delta tracking no longer needed
    * @returns {Object} Delta object
    * @private
    */
   createStateDelta() {
-    if (!this.currentState || !this.previousState) {
-      return this.currentState ? this.currentState.toJSON() : {};
+    // GameState is computed from session - delta tracking is no longer meaningful
+    const currentState = this.getCurrentState();
+    if (!currentState || !this.previousState) {
+      return currentState ? currentState.toJSON() : {};
     }
 
     // Pass the previous state JSON directly - createDelta now handles both GameState and plain JSON
-    return this.currentState.createDelta(this.previousState);
+    return currentState.createDelta(this.previousState);
   }
 
   /**
    * Save current state to persistence
+   * @deprecated GameState is now computed from session, not persisted
    * @returns {Promise<void>}
    * @private
    */
   async saveState() {
-    if (this.currentState) {
-      await persistenceService.saveGameState(this.currentState.toJSON());
-    }
+    // NO-OP: GameState is now computed from session, not persisted
+    logger.debug('saveState() called but GameState is no longer persisted (derived from session)');
   }
 
   /**
    * Start sync interval
+   * @deprecated GameState is no longer persisted (computed from session)
    * @private
    */
   startSyncInterval() {
     this.stopSyncInterval();
-    
-    // Periodic save to persistence
-    this.syncInterval = setInterval(async () => {
-      if (this.currentState) {
-        await this.saveState();
-      }
-    }, 30000); // Save every 30 seconds
+
+    // GameState is no longer persisted - this interval is no longer needed
+    // Session is persisted separately by sessionService
+    logger.debug('startSyncInterval called but GameState persistence disabled (computed from session)');
   }
 
   /**
@@ -628,7 +645,7 @@ class StateService extends EventEmitter {
    * @returns {boolean}
    */
   isVideoPlaying() {
-    return this.currentState?.isVideoPlaying() || false;
+    return this.getCurrentState()?.isVideoPlaying() || false;
   }
 
   /**
@@ -636,7 +653,7 @@ class StateService extends EventEmitter {
    * @returns {number} Seconds remaining
    */
   getRemainingVideoTime() {
-    return this.currentState?.getRemainingVideoTime() || 0;
+    return this.getCurrentState()?.getRemainingVideoTime() || 0;
   }
 
   /**
@@ -645,7 +662,7 @@ class StateService extends EventEmitter {
    * @returns {Object|null}
    */
   getTeamScore(teamId) {
-    return this.currentState?.getTeamScore(teamId) || null;
+    return this.getCurrentState()?.getTeamScore(teamId) || null;
   }
 
   /**
@@ -653,7 +670,7 @@ class StateService extends EventEmitter {
    * @returns {Object|null}
    */
   getWinningTeam() {
-    return this.currentState?.getWinningTeam() || null;
+    return this.getCurrentState()?.getWinningTeam() || null;
   }
 
   /**
@@ -661,7 +678,7 @@ class StateService extends EventEmitter {
    * @returns {boolean}
    */
   isSystemOperational() {
-    return this.currentState?.isSystemOperational() || false;
+    return this.getCurrentState()?.isSystemOperational() || false;
   }
 
   /**
@@ -678,17 +695,17 @@ class StateService extends EventEmitter {
 
     // Remove listeners BEFORE resetting flag
     this.removeAllListeners();
-    this.listenersInitialized = false;  // ADD THIS
+    this.listenersInitialized = false;
 
-    // Reset state
-    this.currentState = null;
+    // Reset ephemeral tracking (GameState is computed from session, not stored)
     this.previousState = null;
     this.pendingStateUpdate = null;
 
+    // Clear any legacy persisted state
     await persistenceService.delete('gameState:current');
     this.emit('state:reset');
 
-    logger.info('Game state reset');
+    logger.info('Game state reset (GameState is computed from session)');
   }
 
   /**
@@ -696,9 +713,8 @@ class StateService extends EventEmitter {
    */
   async cleanup() {
     this.stopSyncInterval();
-    if (this.currentState) {
-      await this.saveState();
-    }
+    // GameState is no longer persisted (computed from session)
+    logger.info('StateService cleanup complete (GameState derived from session)');
   }
 }
 

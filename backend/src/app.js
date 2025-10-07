@@ -181,10 +181,24 @@ async function initializeServices() {
       logger.info('VLC service disabled - video playback feature is off');
     }
     
-    // Sync state if there's an active session
+    // GameState is now computed - verify it derives correctly
     const currentSession = sessionService.getCurrentSession();
     if (currentSession) {
-      await stateService.syncFromSession(currentSession);
+      const currentState = stateService.getCurrentState();
+      logger.info('Session loaded on startup', {
+        sessionId: currentSession.id,
+        status: currentSession.status,
+        hasState: !!currentState
+      });
+
+      // Sanity check: state should exist if session exists
+      if (!currentState) {
+        logger.error('CRITICAL: Session exists but GameState failed to derive', {
+          sessionId: currentSession.id
+        });
+      }
+    } else {
+      logger.info('No previous session - ready for new game');
     }
     
     logger.info('All services initialized successfully');
