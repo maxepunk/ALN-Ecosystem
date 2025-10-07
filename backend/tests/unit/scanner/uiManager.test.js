@@ -930,4 +930,281 @@ describe('UIManager - Critical User Interface', () => {
       expect(renderTokenCardSpy).not.toHaveBeenCalled();
     });
   });
+
+  describe('renderTokenCard() - Token Card HTML Generation', () => {
+    it('should render token card with bonus applied styling', () => {
+      const token = {
+        rfid: 'rat001',
+        memoryType: 'Technical',
+        valueRating: 3,
+        group: 'MARCUS_SUCKS (x2)',
+        isUnknown: false
+      };
+
+      global.DataManager.calculateTokenValue.mockReturnValue(3000);
+      global.DataManager.parseGroupInfo.mockReturnValue({ multiplier: 2 });
+      global.DataManager.SCORING_CONFIG = {
+        BASE_VALUES: { 1: 500, 2: 1000, 3: 2000, 4: 4000, 5: 8000 },
+        TYPE_MULTIPLIERS: { Technical: 1.5, Business: 1.0, Personal: 1.25 }
+      };
+
+      const html = UIManager.renderTokenCard(token, true, false);
+
+      // BEHAVIORAL: Verify HTML structure and content
+      expect(html).toContain('bonus-applied');
+      expect(html).toContain('rat001');
+      expect(html).toContain('Technical');
+      expect(html).toContain('$6,000'); // 3000 * 2 multiplier
+      expect(html).toContain('2,000'); // Base value
+      expect(html).toContain('1.5x'); // Type multiplier
+      expect(html).toContain('2x'); // Group multiplier
+      expect(html).toContain('✅ Bonus Applied'); // Status indicator
+    });
+
+    it('should render unknown token with no value', () => {
+      const token = {
+        rfid: 'UNKNOWN_123',
+        memoryType: 'UNKNOWN',
+        isUnknown: true,
+        group: 'Unknown'
+      };
+
+      const html = UIManager.renderTokenCard(token, false, true);
+
+      // BEHAVIORAL: Verify unknown token styling and content
+      expect(html).toContain('unknown');
+      expect(html).toContain('UNKNOWN_123');
+      expect(html).toContain('Unknown token - No value');
+      expect(html).toContain('❓ Unknown'); // Status indicator
+      expect(html).toContain('N/A'); // Base rating for unknown
+    });
+  });
+
+  describe('renderTransactions() - Transaction History Rendering', () => {
+    beforeEach(() => {
+      // Create historyContainer element
+      const historyContainer = { innerHTML: '' };
+      mockElements['historyContainer'] = historyContainer;
+      Object.defineProperty(historyContainer, 'innerHTML', {
+        get() { return this._innerHTML || ''; },
+        set(value) { this._innerHTML = value; }
+      });
+    });
+
+    it('should display empty state when no transactions', () => {
+      UIManager.renderTransactions([]);
+
+      const html = mockElements['historyContainer'].innerHTML;
+
+      // BEHAVIORAL: Verify empty state HTML
+      expect(html).toContain('empty-state');
+      expect(html).toContain('No Transactions Yet');
+    });
+
+    it('should format values as currency in blackmarket mode', () => {
+      const transactions = [{
+        teamId: '001',
+        timestamp: '2025-10-06T10:00:00Z',
+        rfid: 'rat001',
+        memoryType: 'Technical',
+        valueRating: 3,
+        stationMode: 'blackmarket',
+        group: 'MARCUS_SUCKS (x2)',
+        isUnknown: false
+      }];
+
+      global.DataManager.calculateTokenValue.mockReturnValue(3000);
+
+      UIManager.renderTransactions(transactions);
+
+      const html = mockElements['historyContainer'].innerHTML;
+
+      // BEHAVIORAL: Verify blackmarket mode display
+      expect(html).toContain('$3,000'); // Currency format
+      expect(html).toContain('Black Market'); // Mode display
+      expect(html).toContain('Team 001'); // Team display
+      expect(html).toContain('rat001'); // RFID display
+      expect(html).toContain('Technical'); // Memory type
+      expect(html).toContain('MARCUS_SUCKS (x2)'); // Group display
+      expect(html).toContain('blackmarket'); // CSS class
+    });
+
+    it('should format values as stars in detective mode', () => {
+      const transactions = [{
+        teamId: '002',
+        timestamp: '2025-10-06T11:30:00Z',
+        rfid: 'asm001',
+        memoryType: 'Personal',
+        valueRating: 3,
+        stationMode: 'detective',
+        group: 'SERVER_LOGS (x2)',
+        isUnknown: false
+      }];
+
+      UIManager.renderTransactions(transactions);
+
+      const html = mockElements['historyContainer'].innerHTML;
+
+      // BEHAVIORAL: Verify detective mode display
+      expect(html).toContain('⭐⭐⭐'); // Star format (3 stars for rating 3)
+      expect(html).toContain('Detective'); // Mode display
+      expect(html).toContain('Team 002'); // Team display
+      expect(html).toContain('asm001'); // RFID display
+      expect(html).toContain('Personal'); // Memory type
+      expect(html).toContain('detective'); // CSS class
+    });
+  });
+
+  describe('filterTransactions() - Search and Filter Logic', () => {
+    beforeEach(() => {
+      // Create search and filter input elements
+      mockElements['searchFilter'] = { value: '' };
+      mockElements['modeFilter'] = { value: '' };
+
+      // Create historyContainer element (required by renderTransactions)
+      const historyContainer = { innerHTML: '' };
+      mockElements['historyContainer'] = historyContainer;
+      Object.defineProperty(historyContainer, 'innerHTML', {
+        get() { return this._innerHTML || ''; },
+        set(value) { this._innerHTML = value; }
+      });
+    });
+
+    it('should filter transactions by RFID search', () => {
+      const mockTransactions = [
+        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', stationMode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
+        { rfid: 'asm001', teamId: '002', memoryType: 'Business', group: 'B', stationMode: 'detective', timestamp: '2025-10-06T11:00:00Z' }
+      ];
+
+      global.DataManager.transactions = mockTransactions;
+      mockElements['searchFilter'] = { value: 'rat' };
+      mockElements['modeFilter'] = { value: '' };
+
+      const renderSpy = jest.spyOn(UIManager, 'renderTransactions');
+
+      UIManager.filterTransactions();
+
+      // BEHAVIORAL: Verify renderTransactions called with filtered results
+      expect(renderSpy).toHaveBeenCalled();
+      const filtered = renderSpy.mock.calls[0][0];
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].rfid).toBe('rat001');
+
+      renderSpy.mockRestore();
+    });
+
+    it('should filter transactions by mode', () => {
+      const mockTransactions = [
+        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', stationMode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
+        { rfid: 'asm001', teamId: '002', memoryType: 'Business', group: 'B', stationMode: 'detective', timestamp: '2025-10-06T11:00:00Z' }
+      ];
+
+      global.DataManager.transactions = mockTransactions;
+      mockElements['searchFilter'] = { value: '' };
+      mockElements['modeFilter'] = { value: 'detective' };
+
+      const renderSpy = jest.spyOn(UIManager, 'renderTransactions');
+
+      UIManager.filterTransactions();
+
+      // BEHAVIORAL: Verify mode filter applied correctly
+      expect(renderSpy).toHaveBeenCalled();
+      const filtered = renderSpy.mock.calls[0][0];
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].stationMode).toBe('detective');
+
+      renderSpy.mockRestore();
+    });
+
+    it('should apply both search and mode filter', () => {
+      const mockTransactions = [
+        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', stationMode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
+        { rfid: 'rat002', teamId: '002', memoryType: 'Business', group: 'B', stationMode: 'detective', timestamp: '2025-10-06T11:00:00Z' },
+        { rfid: 'asm001', teamId: '003', memoryType: 'Personal', group: 'C', stationMode: 'blackmarket', timestamp: '2025-10-06T12:00:00Z' }
+      ];
+
+      global.DataManager.transactions = mockTransactions;
+      mockElements['searchFilter'] = { value: 'rat' };
+      mockElements['modeFilter'] = { value: 'detective' };
+
+      const renderSpy = jest.spyOn(UIManager, 'renderTransactions');
+
+      UIManager.filterTransactions();
+
+      // BEHAVIORAL: Verify both filters applied (search AND mode)
+      expect(renderSpy).toHaveBeenCalled();
+      const filtered = renderSpy.mock.calls[0][0];
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].rfid).toBe('rat002'); // Only rat002 matches both filters
+
+      renderSpy.mockRestore();
+    });
+  });
+
+  describe('showTokenResult() - Scan Result Display', () => {
+    let showScreenSpy;
+
+    beforeEach(() => {
+      // Create result display elements
+      mockElements['resultStatus'] = { className: '', innerHTML: '' };
+      mockElements['resultRfid'] = { textContent: '' };
+      mockElements['resultType'] = { textContent: '', style: { color: '' } };
+      mockElements['resultGroup'] = { textContent: '' };
+      mockElements['resultValue'] = { textContent: '' };
+
+      // Spy on showScreen
+      showScreenSpy = jest.spyOn(UIManager, 'showScreen').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      showScreenSpy.mockRestore();
+    });
+
+    it('should display known token with all metadata', () => {
+      const token = {
+        SF_RFID: 'rat001',
+        SF_MemoryType: 'Technical',
+        SF_ValueRating: 3,
+        SF_Group: 'MARCUS_SUCKS (x2)'
+      };
+
+      global.Settings.stationMode = 'blackmarket';
+      global.DataManager.calculateTokenValue.mockReturnValue(3000);
+
+      UIManager.showTokenResult(token, 'rat001', false);
+
+      // BEHAVIORAL: Verify success status display
+      expect(mockElements['resultStatus'].className).toBe('status-message success');
+      expect(mockElements['resultStatus'].innerHTML).toContain('Transaction Complete!');
+
+      // BEHAVIORAL: Verify token metadata display
+      expect(mockElements['resultRfid'].textContent).toBe('rat001');
+      expect(mockElements['resultType'].textContent).toBe('Technical');
+      expect(mockElements['resultGroup'].textContent).toBe('MARCUS_SUCKS (x2)');
+      expect(mockElements['resultValue'].textContent).toBe('$3,000');
+
+      // BEHAVIORAL: Verify showScreen called with 'result'
+      expect(showScreenSpy).toHaveBeenCalledWith('result');
+    });
+
+    it('should display unknown token with error styling', () => {
+      global.Settings.stationMode = 'blackmarket';
+
+      UIManager.showTokenResult(null, 'UNKNOWN_123', true);
+
+      // BEHAVIORAL: Verify error status display
+      expect(mockElements['resultStatus'].className).toBe('status-message error');
+      expect(mockElements['resultStatus'].innerHTML).toContain('Unknown Token');
+
+      // BEHAVIORAL: Verify unknown token display
+      expect(mockElements['resultRfid'].textContent).toBe('UNKNOWN_123');
+      expect(mockElements['resultType'].textContent).toBe('UNKNOWN');
+      expect(mockElements['resultType'].style.color).toBe('#FF5722'); // Error color
+      expect(mockElements['resultGroup'].textContent).toContain('Raw ID: UNKNOWN_123');
+      expect(mockElements['resultValue'].textContent).toBe('$0');
+
+      // BEHAVIORAL: Verify showScreen called with 'result'
+      expect(showScreenSpy).toHaveBeenCalledWith('result');
+    });
+  });
 });
