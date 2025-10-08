@@ -76,10 +76,14 @@ class VlcService extends EventEmitter {
       // Wait a bit for VLC to be fully ready
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Play the idle loop video with loop enabled
+      // Play the idle loop video (this clears playlist and disables loop)
       await this.playVideo('idle-loop.mp4');
+
+      // IMPORTANT: Enable loop mode AFTER playVideo for continuous idle playback
+      // playVideo() disables loop by default, so we override for idle loop
       await this.setLoop(true);
-      logger.info('Idle loop video initialized');
+
+      logger.info('Idle loop video initialized with continuous playback enabled');
     } catch (error) {
       logger.warn('Failed to initialize idle loop', { error });
     }
@@ -95,11 +99,14 @@ class VlcService extends EventEmitter {
     }
 
     try {
-      // Play idle loop video
+      // Play idle loop video (this clears playlist and disables loop)
       await this.playVideo('idle-loop.mp4');
-      // Then enable loop mode for continuous playback
+
+      // IMPORTANT: Enable loop mode AFTER playVideo for continuous idle playback
+      // playVideo() disables loop by default, so we override for idle loop
       await this.setLoop(true);
-      logger.info('Returned to idle loop');
+
+      logger.info('Returned to idle loop with continuous playback enabled');
     } catch (error) {
       logger.warn('Failed to return to idle loop', { error });
     }
@@ -151,7 +158,15 @@ class VlcService extends EventEmitter {
     }
 
     try {
-      // Convert relative paths to absolute file:// URLs for VLC
+      // STEP 1: ALWAYS clear playlist first to maintain 1-item invariant
+      await this.clearPlaylist();
+      logger.debug('Playlist cleared before playing video', { videoPath });
+
+      // STEP 2: ALWAYS disable loop for regular videos (idle loop will override)
+      await this.setLoop(false);
+      logger.debug('Loop disabled for video playback', { videoPath });
+
+      // STEP 3: Convert relative paths to absolute file:// URLs for VLC
       let vlcPath = videoPath;
       if (videoPath.startsWith('/')) {
         // Relative to public directory (e.g., /videos/sample.mp4)
@@ -163,8 +178,8 @@ class VlcService extends EventEmitter {
         logger.debug('Converted filename to absolute path', { original: videoPath, converted: vlcPath });
       }
 
-      // Use in_play to immediately replace current video
-      // This avoids the stopped state that happens with clear/enqueue/play
+      // STEP 4: Add video and start playback immediately
+      // Use 'in_play' to add to playlist AND start playing (not 'in_enqueue' which only queues)
       await this.client.get('/requests/status.json', {
         params: {
           command: 'in_play',
@@ -172,16 +187,9 @@ class VlcService extends EventEmitter {
         },
       });
 
-      // Ensure playback starts (in_play might load but not play)
-      await this.client.get('/requests/status.json', {
-        params: {
-          command: 'pl_play',
-        },
-      });
-
       logger.info('Video playback started', { videoPath });
       this.emit('video:played', videoPath);
-      
+
       return await this.getStatus();
     } catch (error) {
       logger.error('Failed to play video - returning degraded response', { videoPath, error });

@@ -85,7 +85,10 @@ class VideoQueueService extends EventEmitter {
       logger.error('Failed to play video', { error, itemId: nextItem.id });
       nextItem.failPlayback(error.message);
       this.emit('video:failed', nextItem);
-      
+
+      // Clean up failed items from queue
+      this.clearCompleted();
+
       // Try next item
       setImmediate(() => this.processQueue());
     }
@@ -330,6 +333,9 @@ class VideoQueueService extends EventEmitter {
     });
 
     this.emit('video:completed', queueItem);
+
+    // Clean up completed items from queue to prevent accumulation
+    this.clearCompleted();
 
     // Process next in queue
     setImmediate(() => this.processQueue());
