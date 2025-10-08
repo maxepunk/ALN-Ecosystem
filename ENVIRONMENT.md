@@ -55,6 +55,7 @@
 
 ### Display Configuration
 - **GPU Driver**: vc4-kms-v3d (KMS/DRM enabled)
+- **GPU Memory**: 256MB (required for hardware-accelerated video decoding)
 - **HDMI Boost**: Level 5 (config_hdmi_boost=5)
 - **Display Output**: Currently headless (no framebuffer devices)
   - Note: tvservice not available (Wayland/KMS mode)
@@ -71,6 +72,7 @@
 dtparam=audio=on
 dtoverlay=vc4-kms-v3d
 dtoverlay=dwc2,dr_mode=host
+gpu_mem=256
 ```
 
 ## Software Environment
@@ -164,4 +166,4 @@ dtoverlay=dwc2,dr_mode=host
 - **VLC Control**: http://10.0.0.176:8080 (password: vlc)
 
 ## Last Updated
-September 28, 2025, 10:40 AM UTC
+October 7, 2025 - Updated GPU memory allocation to 256MB for video playback optimization
