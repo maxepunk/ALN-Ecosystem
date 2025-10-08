@@ -271,6 +271,52 @@ function setupBroadcastListeners(io, services) {
     logger.info('Broadcasted video:resumed as playing to GM stations');
   });
 
+  // Handle video progress updates (emitted every 1s during playback)
+  addTrackedListener(videoQueueService, 'video:progress', (data) => {
+    const payload = {
+      tokenId: data.queueItem?.tokenId || null,
+      progress: data.progress || 0,
+      position: Math.round((data.position || 0) * (data.duration || 0)), // Convert decimal to seconds
+      duration: Math.round(data.duration || 0)
+    };
+
+    emitToRoom(io, 'gm-stations', 'video:progress', payload);
+    // Don't log every progress update (too verbose)
+  });
+
+  // Broadcast queue updates to GM stations
+  function broadcastQueueUpdate() {
+    const queue = videoQueueService.getQueue();
+    const pendingItems = queue
+      .filter(item => item.isPending())
+      .map(item => ({
+        tokenId: item.tokenId,
+        duration: item.duration || 0,
+        requestedBy: item.requestedBy
+      }));
+
+    const payload = {
+      items: pendingItems,
+      length: pendingItems.length
+    };
+
+    emitToRoom(io, 'gm-stations', 'video:queue:update', payload);
+    logger.debug('Broadcasted queue update to GM stations', { queueLength: pendingItems.length });
+  }
+
+  // Listen for queue changes and broadcast updates
+  addTrackedListener(videoQueueService, 'queue:added', () => {
+    broadcastQueueUpdate();
+  });
+
+  addTrackedListener(videoQueueService, 'queue:cleared', () => {
+    broadcastQueueUpdate();
+  });
+
+  addTrackedListener(videoQueueService, 'video:completed', () => {
+    broadcastQueueUpdate();
+  });
+
   // Offline queue events
   if (offlineQueueService) {
     addTrackedListener(offlineQueueService, 'offline:queue:processed', (eventData) => {
