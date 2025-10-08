@@ -286,7 +286,7 @@ function setupBroadcastListeners(io, services) {
 
   // Broadcast queue updates to GM stations
   function broadcastQueueUpdate() {
-    const queue = videoQueueService.getQueue();
+    const queue = videoQueueService.getQueueItems();
     const pendingItems = queue
       .filter(item => item.isPending())
       .map(item => ({
@@ -315,6 +315,10 @@ function setupBroadcastListeners(io, services) {
 
   addTrackedListener(videoQueueService, 'video:completed', () => {
     broadcastQueueUpdate();
+  });
+
+  addTrackedListener(videoQueueService, 'video:started', () => {
+    broadcastQueueUpdate(); // Update queue display with real duration from VLC
   });
 
   // Offline queue events

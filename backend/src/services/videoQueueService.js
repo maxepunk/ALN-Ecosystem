@@ -159,6 +159,9 @@ class VideoQueueService extends EventEmitter {
           });
         }
 
+        // Update queue item with real duration from VLC
+        queueItem.duration = duration;
+
         const expectedEndTime = queueItem.calculateExpectedEndTime(duration);
 
         // Emit play event with real VLC data
@@ -270,7 +273,7 @@ class VideoQueueService extends EventEmitter {
             queueItem,
             progress,
             position: status.position,
-            duration: status.length / 1000
+            duration: status.length // VLC returns length in seconds already
           });
         }
 
@@ -505,19 +508,35 @@ class VideoQueueService extends EventEmitter {
 
   /**
    * Add video to queue by filename (admin manual add - FR 4.2.2 line 907)
-   * @param {string} videoFile - Video filename (e.g., 'rat001.mp4')
+   * @param {string} videoFile - Video filename (e.g., 'rat001.mp4' or 'test_30sec.mp4')
    * @param {string} requestedBy - Device ID requesting video
    * @returns {VideoQueueItem}
    */
   addVideoByFilename(videoFile, requestedBy) {
-    const tokenId = videoFile.replace(/\.\w+$/, ''); // Remove extension
-
-    // Look up token to get duration metadata
+    // Search for token by video filename (not by ID)
     const transactionService = require('./transactionService');
-    const token = transactionService.tokens.get(tokenId);
+    let token = null;
+    let tokenId = null;
 
-    if (!token) {
-      throw new Error(`Token not found for video: ${tokenId}`);
+    // First try: assume filename is tokenId (e.g., "jaw001.mp4" → token "jaw001")
+    const potentialTokenId = videoFile.replace(/\.\w+$/, '');
+    token = transactionService.tokens.get(potentialTokenId);
+
+    if (token && token.mediaAssets?.video === videoFile) {
+      tokenId = potentialTokenId;
+    } else {
+      // Second try: search all tokens for matching video filename
+      for (const [id, t] of transactionService.tokens.entries()) {
+        if (t.mediaAssets?.video === videoFile) {
+          token = t;
+          tokenId = id;
+          break;
+        }
+      }
+    }
+
+    if (!token || !tokenId) {
+      throw new Error(`No token found with video: ${videoFile}`);
     }
 
     if (!token.mediaAssets?.video) {
