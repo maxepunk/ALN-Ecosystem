@@ -94,13 +94,25 @@ npm run health:vlc        # Check VLC status
 
 ### Service Singleton Pattern
 All services in `backend/src/services/` use singleton pattern with getInstance():
-- **sessionService**: Active session management
-- **stateService**: Global state coordination
+- **sessionService**: Active session management (source of truth)
+- **stateService**: Global state coordination (computed from session)
 - **videoQueueService**: Video playback queue
 - **vlcService**: VLC control interface
 - **transactionService**: Token scan transactions
 - **discoveryService**: UDP broadcast for auto-discovery
 - **offlineQueueService**: Offline scan queue management
+
+### Session and State Architecture
+**Critical Design Pattern**: Session is the single source of truth, GameState is computed.
+
+- **Session** (sessionService): Persistent, loads from disk on restart
+- **GameState** (stateService): Computed property derived from Session + live system status
+  - Always call `getCurrentState()` - never store state
+  - Automatically derives from `sessionService.getCurrentSession()`
+  - Includes: session data, VLC status, video display status, offline status
+  - Eliminates sync bugs on orchestrator restart
+
+This pattern ensures GameState always reflects current reality even after crashes/restarts.
 
 ### WebSocket Event Flow
 See `/home/pi/ALN-Ecosystem/backend/contracts/asyncapi.yaml`
@@ -169,6 +181,31 @@ The `ecosystem.config.js` manages both processes:
 - Use `NODE_OPTIONS=--max-old-space-size=256`
 - Ensure HDMI output configured in `/boot/config.txt`
 - VLC needs GUI access (`--intf qt`)
+- **GPU Memory**: Requires minimum 256MB for hardware-accelerated video decoding
+  - Check with: `vcgencmd get_mem gpu`
+  - Configure in: `/boot/firmware/config.txt` with `gpu_mem=256`
+  - Reboot required after changes
+
+### Video Optimization Requirements
+**Critical**: Pi 4 hardware decoder requires properly encoded H.264 videos.
+
+Videos with high bitrates (>5Mbps) will freeze/drop frames. Symptoms:
+- Idle loop stops but new video doesn't appear
+- VLC shows "displayedpictures: 1" (frozen on first frame)
+- Logs show "buffer deadlock" and "dropping frame (computer too slow?)"
+
+**Re-encode large videos with ffmpeg:**
+```bash
+ffmpeg -i INPUT.mp4 \
+  -c:v h264 -preset fast -profile:v main -level 4.0 \
+  -b:v 2M -maxrate 2.5M -bufsize 5M \
+  -pix_fmt yuv420p \
+  -c:a aac -b:a 128k -ac 2 -ar 44100 \
+  -movflags +faststart \
+  OUTPUT.mp4 -y
+```
+
+This creates Pi 4-compatible videos at ~2Mbps bitrate with hardware acceleration support.
 
 ### Network Access URLs
 - Orchestrator: `http://[IP]:3000`
@@ -184,9 +221,12 @@ The `ecosystem.config.js` manages both processes:
 |-------|----------|
 | VLC not connecting | Check `VLC_PASSWORD=vlc` in .env |
 | Video not playing | Verify file exists in `backend/public/videos/` |
+| Video freezes/black screen | Check GPU memory (need 256MB), re-encode video if >5Mbps bitrate |
+| Idle loop stops but video doesn't play | Video bitrate too high - re-encode with ffmpeg (see Video Optimization) |
 | Scanner can't connect | Check firewall, use IP not localhost |
 | Token not found | Update ALN-TokenData submodule |
 | Port in use | `lsof -i :3000` and kill process |
+| GameState null after restart | Session should auto-derive state - check logs for "Session loaded on startup" |
 
 ## Code Style Guidelines
 

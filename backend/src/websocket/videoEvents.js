@@ -200,7 +200,7 @@ async function handleVideoStop(socket, io) {
 async function handleVideoStatusRequest(socket) {
   try {
     const vlcStatus = await vlcService.getStatus();
-    const queue = await videoQueueService.getQueue();
+    const queue = videoQueueService.getQueueItems();
     const currentItem = queue.find(item => item.status === 'playing');
     
     emitWrapped(socket, 'video:status', {
@@ -226,7 +226,7 @@ async function handleVideoStatusRequest(socket) {
  */
 async function handleGetQueue(socket) {
   try {
-    const queue = await videoQueueService.getQueue();
+    const queue = videoQueueService.getQueueItems();
     
     emitWrapped(socket, 'video:queue', {
       items: queue.map(item => ({
