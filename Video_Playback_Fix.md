@@ -1065,21 +1065,34 @@ curl http://localhost:3000/api/state | jq '.videoStatus.queueLength'
 
 ---
 
-## Next Steps
+## Implementation Status Summary
 
-### Phase 2: Queue Visibility (PARTIALLY COMPLETE)
-- ✅ Backend emits `video:progress` events (already implemented)
-- ✅ Frontend receives and processes progress events (Bug #5 fix)
-- ❌ **Still needed**: Visual progress bar HTML in admin panel
-- ❌ **Still needed**: Queue details broadcast (list of pending videos)
-- ❌ **Still needed**: Queue display UI in admin panel
+### ✅ Phase 1: Critical Fixes - COMPLETE (Oct 7, 2025)
+All three critical bugs fixed and deployed:
+- Bug #4: Queue cleanup (clearCompleted() now called)
+- Bug #5: Progress event handler (OrchestratorClient updated)
+- Bug #6: VLC command sequence (changed to in_play)
 
-### Phase 3: Manual Queue Control (HIGH VALUE)
-- Wire up manual video add UI
-- Connect existing backend commands to frontend
+### ✅ Phase 2: Queue Visibility - COMPLETE (Oct 7, 2025)
+Implemented via commit 877e9b31:
+- ✅ Backend emits `video:progress` events every 1s
+- ✅ Backend emits `video:queue:update` on all queue changes
+- ✅ Frontend receives and processes progress events
+- ✅ ALNScanner submodule updated with full queue display UI
+- ✅ Progress bar showing real-time playback position
 
-### Phase 4: Future Enhancements (WHEN READY)
-- GM can queue image/audio tokens for TV
+### ✅ Phase 3: Manual Queue Control - COMPLETE (Oct 7, 2025)
+Implemented in ALNScanner submodule:
+- ✅ Manual video add UI with dropdown
+- ✅ Connected to existing backend video:queue:add command
+- ✅ Queue clear functionality
+- ✅ All admin panel video controls operational
+
+### ⏳ Phase 4: Future Enhancements - DEFERRED
+Not yet implemented (low priority):
+- GM can queue image/audio tokens for TV display
 - Idle mode toggle (video/scoreboard/image)
 - Queue reordering drag-drop UI
 - Transaction history replay buttons
+
+**Note**: Phases 1-3 fully complete as of Oct 7, 2025. System is production-ready.
