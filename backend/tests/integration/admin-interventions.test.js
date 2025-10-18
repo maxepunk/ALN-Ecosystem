@@ -494,7 +494,7 @@ describe('Admin Intervention Integration', () => {
           data: {
             action: 'video:queue:add',
             payload: {
-              videoFile: '534e2b03.mp4'
+              videoFile: 'jaw001.mp4'
             }
           },
           timestamp: new Date().toISOString()

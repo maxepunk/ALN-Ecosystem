@@ -109,6 +109,37 @@ describe('POST /api/scan', () => {
     expect(typeof response.body.error).toBe('string');
     expect(typeof response.body.message).toBe('string');
   });
+
+  it('should return 409 when video already playing', async () => {
+    // Setup: Queue a video token first
+    await request(app.app)
+      .post('/api/scan')
+      .send({
+        tokenId: '534e2b03',
+        deviceId: 'PLAYER_SCANNER_01'
+      })
+      .expect(200);
+
+    // Give video queue time to start processing
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Attempt to scan another video while first is playing
+    const response = await request(app.app)
+      .post('/api/scan')
+      .send({
+        tokenId: 'jaw001',
+        deviceId: 'PLAYER_SCANNER_02'
+      })
+      .expect(409);
+
+    // Validate response structure per actual implementation (scanRoutes.js:93-100)
+    expect(response.body).toHaveProperty('status', 'rejected');
+    expect(response.body).toHaveProperty('message');
+    expect(response.body.message).toContain('Video already playing');
+    expect(response.body).toHaveProperty('tokenId', 'jaw001');
+    expect(response.body).toHaveProperty('videoQueued', false);
+    expect(response.body).toHaveProperty('waitTime');
+  });
 });
 
 describe('POST /api/scan/batch', () => {

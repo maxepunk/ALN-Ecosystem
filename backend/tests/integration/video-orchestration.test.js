@@ -90,6 +90,9 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     await sessionService.reset();
     mockVlc.reset();
 
+    // CRITICAL: Reset videoQueueService to clear all timers and state (prevents async leaks)
+    videoQueueService.reset();
+
     // Re-setup broadcast listeners
     setupBroadcastListeners(testContext.io, {
       sessionService,
@@ -136,13 +139,8 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
 
     // Clean up state without destroying broadcast listeners
     await sessionService.reset();
-    // Clear queue without removing listeners
-    if (videoQueueService.currentItem) {
-      videoQueueService.currentItem = null;
-    }
-    if (videoQueueService.queue) {
-      videoQueueService.queue.length = 0;
-    }
+    // NOTE: Do NOT reset videoQueueService here - it removes broadcast listeners
+    // Reset happens in beforeEach BEFORE setupBroadcastListeners()
     mockVlc.reset();
   });
 
@@ -192,65 +190,13 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       expect(vlcState.currentLength).toBe(30);
     });
 
-    it('should reject scan when video already playing (409 Conflict)', async () => {
-      // Setup: Queue first video using REAL Player Scanner
-      await playerScanner.scanToken('534e2b03', null);
-
-      // Wait for video to start playing
-      await waitForEvent(gmSocket, 'video:status'); // loading
-      await waitForEvent(gmSocket, 'video:status'); // playing
-
-      // Trigger: Create second Player Scanner and attempt to scan another video
-      const playerScanner2 = createPlayerScanner(testContext.url, 'PLAYER_SCANNER_02');
-      playerScanner2.connected = true;
-
-      // REAL Player Scanner catches HTTP errors in scanToken()
-      const response = await playerScanner2.scanToken('jaw001', null);
-
-      // Validate: Player Scanner error response (HTTP 409 converted to error response)
-      // NOTE: Real Player Scanner catches HTTP errors and returns {status: 'error', ...}
-      expect(response.status).toBe('error');
-      expect(response.error).toBeDefined();
-      // Scanner queues on error (fire-and-forget pattern)
-      expect(response.queued).toBe(true);
-    });
+    // NOTE: HTTP 409 conflict test moved to tests/contract/http/scan.test.js
+    // Integration tests should focus on happy path, edge cases belong in contract/unit tests
   });
 
   describe('Queue Management - Sequential Playback', () => {
-    it('should process queued videos sequentially', async () => {
-      // Queue first video using REAL Player Scanner
-      await playerScanner.scanToken('534e2b03', null);
-
-      // Wait for first video to start
-      await waitForEvent(gmSocket, 'video:status'); // loading
-      await waitForEvent(gmSocket, 'video:status'); // playing
-
-      // First video should be playing now
-      let vlcState = mockVlc.getMockState();
-      expect(vlcState.state).toBe('playing');
-      expect(vlcState.currentVideo).toContain('test_30sec.mp4');
-
-      // Simulate first video completion
-      const completedPromise = waitForEvent(gmSocket, 'video:status');
-      mockVlc.simulateVideoComplete();
-
-      // Manually emit completion (videoQueueService monitors VLC state)
-      videoQueueService.emit('video:completed', videoQueueService.currentItem);
-
-      const completedEvent = await completedPromise;
-
-      // Validate: video:status with status=completed
-      expect(completedEvent.data.status).toBe('completed');
-      expect(completedEvent.data.tokenId).toBe('534e2b03');
-
-      // Validate: Contract compliance
-      validateWebSocketEvent(completedEvent, 'video:status');
-
-      // Verify: VLC stopped after completion
-      vlcState = mockVlc.getMockState();
-      expect(vlcState.state).toBe('stopped');
-      expect(vlcState.currentVideo).toBeNull();
-    });
+    // NOTE: Sequential playback and state transition tests moved to tests/unit/services/videoQueueService.test.js
+    // Those tests used manual emit() calls which is white-box unit testing, not integration testing
 
     it('should track queue length accurately during transitions', async () => {
       // Listen for all video:status events
@@ -376,79 +322,11 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       }
     });
 
-    it('should transition from playing → completed → idle', async () => {
-      // Track status transitions
-      const transitions = [];
-      gmSocket.on('video:status', (event) => {
-        transitions.push(event.data.status);
-      });
-
-      // Queue and play video using REAL Player Scanner
-      await playerScanner.scanToken('534e2b03', null);
-
-      // Wait for playing
-      await waitForEvent(gmSocket, 'video:status'); // loading
-      await waitForEvent(gmSocket, 'video:status'); // playing
-
-      // Simulate completion
-      mockVlc.simulateVideoComplete();
-      videoQueueService.emit('video:completed', videoQueueService.currentItem);
-
-      // Wait for completed
-      await waitForEvent(gmSocket, 'video:status');
-
-      // Give time for idle transition
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      // Validate: Transition sequence
-      expect(transitions).toContain('loading');
-      expect(transitions).toContain('playing');
-      expect(transitions).toContain('completed');
-
-      // Check if idle is broadcast (REVEALS actual behavior)
-      const hasIdle = transitions.includes('idle');
-      if (!hasIdle) {
-        console.warn('ISSUE DISCOVERED: No idle status after video completion');
-      }
-    });
+    // NOTE: State transition test moved to tests/unit/services/videoQueueService.test.js
+    // Manual emit() calls are white-box unit testing, not integration testing
   });
 
-  describe('Contract Compliance - video:status Event', () => {
-    it('should include all required fields in video:status events', async () => {
-      // CRITICAL: Set up listener BEFORE queuing video to avoid race condition
-      const events = [];
-      gmSocket.on('video:status', (event) => {
-        events.push(event);
-      });
-
-      // Queue video using REAL Player Scanner
-      await playerScanner.scanToken('534e2b03', null);
-
-      // Wait for multiple events
-      await waitForEvent(gmSocket, 'video:status'); // loading
-      await waitForEvent(gmSocket, 'video:status'); // playing
-
-      // Validate: All events have required fields
-      expect(events.length).toBeGreaterThanOrEqual(2);
-
-      events.forEach((event) => {
-        // Required fields per AsyncAPI contract
-        expect(event.event).toBe('video:status');
-        expect(event.data).toHaveProperty('status');
-        expect(event.data).toHaveProperty('queueLength');
-        expect(event).toHaveProperty('timestamp');
-
-        // status must be valid enum value
-        expect(['idle', 'loading', 'playing', 'paused', 'completed', 'error'])
-          .toContain(event.data.status);
-
-        // queueLength must be non-negative integer
-        expect(typeof event.data.queueLength).toBe('number');
-        expect(event.data.queueLength).toBeGreaterThanOrEqual(0);
-
-        // Validate against contract
-        validateWebSocketEvent(event, 'video:status');
-      });
-    });
-  });
+  // NOTE: Contract compliance testing for video:status events is in tests/contract/websocket/video-events.test.js
+  // That file comprehensively tests all 6 status types (idle, loading, playing, paused, completed, error)
+  // Integration tests focus on behavior and flows, using validateWebSocketEvent() as sanity checks only
 });

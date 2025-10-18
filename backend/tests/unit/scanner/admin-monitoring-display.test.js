@@ -64,9 +64,15 @@ describe('AdminModule.MonitoringDisplay', () => {
         });
         mockElements['device-list'] = deviceList;
 
+        // Session container with innerHTML (new rich UI)
+        const sessionContainer = { _innerHTML: '' };
+        Object.defineProperty(sessionContainer, 'innerHTML', {
+            get() { return this._innerHTML; },
+            set(value) { this._innerHTML = value; }
+        });
+        mockElements['session-status-container'] = sessionContainer;
+
         // Text-based elements
-        mockElements['admin-session-id'] = { textContent: '' };
-        mockElements['admin-session-status'] = { textContent: '' };
         mockElements['admin-current-video'] = { textContent: '' };
         mockElements['admin-queue-length'] = { textContent: '' };
         mockElements['orchestrator-status'] = { className: '', title: '' };
@@ -74,7 +80,14 @@ describe('AdminModule.MonitoringDisplay', () => {
         mockElements['device-count'] = { textContent: '' };
 
         global.document = {
-            getElementById: jest.fn((id) => mockElements[id] || null)
+            getElementById: jest.fn((id) => mockElements[id] || null),
+            createElement: jest.fn((tag) => {
+                // Mock createElement for escapeHtml helper
+                return {
+                    textContent: '',
+                    get innerHTML() { return this.textContent; }
+                };
+            })
         };
 
         // Mock window.DataManager
@@ -335,8 +348,9 @@ describe('AdminModule.MonitoringDisplay', () => {
 
             mockConnection.emit('session:update', session);
 
-            expect(mockElements['admin-session-id'].textContent).toBe('session-12345');
-            expect(mockElements['admin-session-status'].textContent).toBe('active');
+            // New implementation uses rich HTML in container
+            expect(mockElements['session-status-container'].innerHTML).toContain('Friday Night Game');
+            expect(mockElements['session-status-container'].innerHTML).toContain('Active</span>');
         });
 
         it('should display session status correctly (active, paused, ended)', () => {
@@ -350,14 +364,16 @@ describe('AdminModule.MonitoringDisplay', () => {
 
             mockConnection.emit('session:update', sessionPaused);
 
-            expect(mockElements['admin-session-status'].textContent).toBe('paused');
+            // New implementation shows paused state UI
+            expect(mockElements['session-status-container'].innerHTML).toContain('Session Paused');
+            expect(mockElements['session-status-container'].innerHTML).toContain('Test Session');
         });
 
         it('should handle null session (no active session)', () => {
             mockConnection.emit('session:update', null);
 
-            expect(mockElements['admin-session-id'].textContent).toBe('-');
-            expect(mockElements['admin-session-status'].textContent).toBe('No Session');
+            // New implementation shows "No Active Session" message
+            expect(mockElements['session-status-container'].innerHTML).toContain('No Active Session');
         });
 
         it('should handle undefined session fields gracefully', () => {
@@ -370,13 +386,12 @@ describe('AdminModule.MonitoringDisplay', () => {
                 mockConnection.emit('session:update', partialSession);
             }).not.toThrow();
 
-            expect(mockElements['admin-session-id'].textContent).toBe('-');
-            expect(mockElements['admin-session-status'].textContent).toBe('active');
+            // New implementation shows active session UI even with partial data
+            expect(mockElements['session-status-container'].innerHTML).toContain('Active</span>');
         });
 
         it('should handle missing DOM elements gracefully', () => {
-            mockElements['admin-session-id'] = null;
-            mockElements['admin-session-status'] = null;
+            mockElements['session-status-container'] = null;
 
             const session = {
                 id: 'test-session',
@@ -405,7 +420,8 @@ describe('AdminModule.MonitoringDisplay', () => {
 
             mockConnection.emit('video:status', videoStatus);
 
-            expect(mockElements['admin-current-video'].textContent).toBe('video-token-123');
+            // New implementation shows progress percentage with video
+            expect(mockElements['admin-current-video'].textContent).toContain('video-token-123');
             expect(mockElements['admin-queue-length'].textContent).toBe('3');
         });
 
@@ -430,7 +446,8 @@ describe('AdminModule.MonitoringDisplay', () => {
 
             mockConnection.emit('video:status', videoStatus);
 
-            expect(mockElements['admin-current-video'].textContent).toBe('None');
+            // New implementation shows "None (idle loop)"
+            expect(mockElements['admin-current-video'].textContent).toContain('None');
             expect(mockElements['admin-queue-length'].textContent).toBe('0');
         });
 
@@ -539,6 +556,7 @@ describe('AdminModule.MonitoringDisplay', () => {
             const syncData = {
                 session: {
                     id: 'sync-session',
+                    name: 'Test Session',
                     status: 'active',
                     startTime: '2025-10-06T10:00:00Z'
                 },
@@ -574,12 +592,12 @@ describe('AdminModule.MonitoringDisplay', () => {
 
             mockConnection.emit('sync:full', syncData);
 
-            // Verify session display
-            expect(mockElements['admin-session-id'].textContent).toBe('sync-session');
-            expect(mockElements['admin-session-status'].textContent).toBe('active');
+            // Verify session display (new rich UI)
+            expect(mockElements['session-status-container'].innerHTML).toContain('Test Session');
+            expect(mockElements['session-status-container'].innerHTML).toContain('Active</span>');
 
-            // Verify video display
-            expect(mockElements['admin-current-video'].textContent).toBe('sync-video');
+            // Verify video display (now includes progress percentage)
+            expect(mockElements['admin-current-video'].textContent).toContain('sync-video');
             expect(mockElements['admin-queue-length'].textContent).toBe('2');
 
             // Verify score board updated
@@ -609,7 +627,8 @@ describe('AdminModule.MonitoringDisplay', () => {
                 mockConnection.emit('sync:full', minimalSync);
             }).not.toThrow();
 
-            expect(mockElements['admin-session-id'].textContent).toBe('-');
+            // New implementation shows "No Active Session" for null session
+            expect(mockElements['session-status-container'].innerHTML).toContain('No Active Session');
             expect(mockElements['device-count'].textContent).toBe('0');
         });
 

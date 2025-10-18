@@ -680,6 +680,12 @@ describe('AdminModule', () => {
     let monitoringDisplay;
 
     beforeEach(() => {
+      // Mock createElement for escapeHtml helper (used by updateSessionDisplay)
+      global.document.createElement = jest.fn(() => ({
+        textContent: '',
+        get innerHTML() { return this.textContent; }
+      }));
+
       monitoringDisplay = new AdminModule.MonitoringDisplay(mockConnection);
     });
 
@@ -698,39 +704,37 @@ describe('AdminModule', () => {
 
       it('should handle null session gracefully', () => {
         // ARRANGE
-        const idElement = { textContent: '' };
-        const statusElement = { textContent: '' };
+        const containerElement = { innerHTML: '' };
         global.document.getElementById = jest.fn()
-          .mockReturnValueOnce(idElement)  // First call for 'admin-session-id'
-          .mockReturnValueOnce(statusElement); // Second call for 'admin-session-status'
+          .mockReturnValueOnce(containerElement);  // 'session-status-container'
 
         // ACT
         monitoringDisplay.updateSessionDisplay(null);
 
-        // ASSERT: Should show defaults (lines 544, 548 in adminModule.js)
-        expect(idElement.textContent).toBe('-');
-        expect(statusElement.textContent).toBe('No Session');
+        // ASSERT: Should show "No Active Session" message
+        expect(containerElement.innerHTML).toContain('No Active Session');
+        expect(containerElement.innerHTML).toContain('Create a new session');
       });
 
       it('should display session data correctly when provided', () => {
         // ARRANGE
-        const idElement = { textContent: '' };
-        const statusElement = { textContent: '' };
+        const containerElement = { innerHTML: '' };
         global.document.getElementById = jest.fn()
-          .mockReturnValueOnce(idElement)
-          .mockReturnValueOnce(statusElement);
+          .mockReturnValueOnce(containerElement);  // 'session-status-container'
 
         const session = {
           id: 'session-123',
-          status: 'active'
+          name: 'Test Session',
+          status: 'active',
+          startTime: new Date().toISOString()
         };
 
         // ACT
         monitoringDisplay.updateSessionDisplay(session);
 
         // ASSERT: Verify actual DOM content (behavioral test, not smoke test)
-        expect(idElement.textContent).toBe('session-123');
-        expect(statusElement.textContent).toBe('active');
+        expect(containerElement.innerHTML).toContain('Test Session');
+        expect(containerElement.innerHTML).toContain('Status: <span style=\"color: #2e7d32; font-weight: bold;\">Active</span>');
       });
     });
   });

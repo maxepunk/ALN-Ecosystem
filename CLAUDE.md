@@ -15,9 +15,9 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 - **Submodule Architecture**: Shared token data across modules.
 
 **Contracts:**
-- **API Contract**: `/home/pi/ALN-Ecosystem/backend/contracts/openapi.yaml`
-- **Event Contract**: `/home/pi/ALN-Ecosystem/backend/contracts/asyncapi.yaml`
-- **Functional Requirements**: `/home/pi/ALN-Ecosystem/docs/api-alignment/08-functional-requirements.md`
+- **API Contract**: `backend/contracts/openapi.yaml`
+- **Event Contract**: `backend/contracts/asyncapi.yaml`
+- **Functional Requirements**: `docs/ARCHIVE/api-alignment/08-functional-requirements.md` (archived)
 
 ## Critical Architecture Decisions
 
@@ -69,11 +69,15 @@ npm run prod:restart      # Restart all services
 
 ### Testing
 ```bash
-npm test                              # All tests (271 tests)
-npm run test:contract                 # Contract tests only (96 tests)
-npm run test:integration              # Integration tests
-npm run test:watch                    # Watch mode
-npm run test:coverage                 # Coverage report
+cd backend
+npm test                              # All tests (unit + contract + integration)
+npm run test:unit                     # Unit tests only
+npm run test:contract                 # Contract tests (API/WebSocket validation)
+npm run test:integration              # Integration tests (sequential execution)
+npm run test:watch                    # Watch mode for development
+npm run test:coverage                 # Generate coverage report
+npm run test:offline                  # Offline mode integration tests
+npx jest <path/to/test.js>            # Run single test file
 ```
 
 ### Submodule Management
@@ -96,11 +100,13 @@ npm run health:vlc        # Check VLC status
 All services in `backend/src/services/` use singleton pattern with getInstance():
 - **sessionService**: Active session management (source of truth)
 - **stateService**: Global state coordination (computed from session)
-- **videoQueueService**: Video playback queue
-- **vlcService**: VLC control interface
-- **transactionService**: Token scan transactions
-- **discoveryService**: UDP broadcast for auto-discovery
+- **videoQueueService**: Video playback queue management
+- **vlcService**: VLC HTTP interface control
+- **transactionService**: Token scan transaction processing
+- **tokenService**: Token data loading and validation
+- **discoveryService**: UDP broadcast for network auto-discovery
 - **offlineQueueService**: Offline scan queue management
+- **persistenceService**: Disk persistence for sessions and state
 
 ### Session and State Architecture
 **Critical Design Pattern**: Session is the single source of truth, GameState is computed.
@@ -115,10 +121,22 @@ All services in `backend/src/services/` use singleton pattern with getInstance()
 This pattern ensures GameState always reflects current reality even after crashes/restarts.
 
 ### WebSocket Event Flow
-See `/home/pi/ALN-Ecosystem/backend/contracts/asyncapi.yaml`
+See `backend/contracts/asyncapi.yaml` for complete event definitions.
+
+**Key WebSocket Events:**
+- `gm:scan` → `game:state` - GM scanner triggers state broadcast
+- `admin:intervention` - Manual state corrections
+- `session:update` - Session lifecycle events
+- `offline:queue:update` - Offline scan synchronization
 
 ### HTTP API Endpoints
-See `/home/pi/ALN-Ecosystem/backend/contracts/openapi.yaml`
+See `backend/contracts/openapi.yaml` for complete API specification.
+
+**Key Endpoints:**
+- `POST /api/scan` - Player scanner token scans (fire-and-forget)
+- `GET /api/tokens` - Token data retrieval
+- `POST /api/admin/auth` - Admin authentication
+- `GET /health` - System health check
 
 ## Environment Configuration
 

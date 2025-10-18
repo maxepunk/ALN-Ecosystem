@@ -53,8 +53,7 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
         querySelector: jest.fn()
       },
       'admin-score-board': { innerHTML: '' },
-      'admin-session-id': { textContent: '' },
-      'admin-session-status': { textContent: '' },
+      'session-status-container': { innerHTML: '' },
       'admin-current-video': { textContent: '' },
       'admin-queue-length': { textContent: '' },
       'orchestrator-status': { className: '', title: '' },
@@ -67,6 +66,12 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
         textContent: 'Start Scanning'
       }
     };
+
+    // Mock createElement for escapeHtml helper
+    global.document.createElement = jest.fn(() => ({
+      textContent: '',
+      get innerHTML() { return this.textContent; }
+    }));
 
     // Mock document.getElementById to return our specific elements
     global.document.getElementById = jest.fn((id) => {
@@ -142,8 +147,8 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
       expect(sessionUpdate.data.status).toBe('paused');
 
       // VERIFY: DOM elements actually updated by MonitoringDisplay
-      expect(mockElements['admin-session-id'].textContent).toBe(session.id);
-      expect(mockElements['admin-session-status'].textContent).toBe('paused');
+      // New implementation uses rich HTML UI for session
+      expect(mockElements['session-status-container'].innerHTML).toContain('Session Paused');
     });
 
     it('should update session display when session created', async () => {
@@ -169,8 +174,8 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
       expect(newSession.data.name).toBe('New Test Session');
 
       // VERIFY: DOM updated with new session
-      expect(mockElements['admin-session-id'].textContent).toBe(newSession.data.id);
-      expect(mockElements['admin-session-status'].textContent).toBe('active');
+      // New implementation uses rich HTML UI for session
+      expect(mockElements['session-status-container'].innerHTML).toContain('Active</span>');
     });
 
     it('should handle null session (no active session)', async () => {
@@ -191,8 +196,9 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
       // Note: MonitoringDisplay receives ended session, not null
       // It displays the ended session ID with "ended" status
       // This is correct behavior - shows which session just ended
-      expect(mockElements['admin-session-id'].textContent).toBe(session.id);
-      expect(mockElements['admin-session-status'].textContent).toBe('ended');
+      // Session ended - should show ended session details, not "No Active Session"
+      expect(mockElements['session-status-container'].innerHTML).toContain('Previous Session Ended');
+      expect(mockElements['session-status-container'].innerHTML).toContain(session.name);
     });
   });
 
@@ -400,19 +406,21 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
       try {
         const videoStatus = await videoStatusPromise;
 
-        // VERIFY: Video display DOM updated
-        expect(mockElements['admin-current-video'].textContent).toBe('534e2b03');
+        // VERIFY: Video display DOM updated (includes progress percentage)
+        expect(mockElements['admin-current-video'].textContent).toBe('534e2b03 (45%)');
         expect(mockElements['admin-queue-length'].textContent).toBe('2');
       } catch (error) {
         // If timeout, manually trigger the display update to test the logic
         monitoring.updateVideoDisplay({
           status: 'playing',
           tokenId: '534e2b03',
-          queueLength: 2
+          queueLength: 2,
+          progress: 0  // Progress included in display per implementation
         });
 
         // VERIFY: Display updated via manual call
-        expect(mockElements['admin-current-video'].textContent).toBe('534e2b03');
+        // Implementation shows progress percentage for better UX
+        expect(mockElements['admin-current-video'].textContent).toBe('534e2b03 (0%)');
         expect(mockElements['admin-queue-length'].textContent).toBe('2');
       }
     });
@@ -426,7 +434,8 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
       });
 
       // VERIFY: Idle state displayed
-      expect(mockElements['admin-current-video'].textContent).toBe('None');
+      // New implementation shows "None (idle loop)"
+      expect(mockElements['admin-current-video'].textContent).toContain('None');
       expect(mockElements['admin-queue-length'].textContent).toBe('0');
     });
 
@@ -529,8 +538,8 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
       monitoring.updateAllDisplays(syncEvent.data);
 
       // VERIFY: Session display initialized
-      expect(mockElements['admin-session-id'].textContent).toBe(session.id);
-      expect(mockElements['admin-session-status'].textContent).toBe('active');
+      // New implementation uses rich HTML UI for session
+      expect(mockElements['session-status-container'].innerHTML).toContain('Active</span>');
 
       // VERIFY: Score board initialized
       const scoreBoardHtml = mockElements['admin-score-board'].innerHTML;

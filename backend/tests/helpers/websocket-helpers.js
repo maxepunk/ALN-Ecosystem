@@ -180,7 +180,7 @@ function testDelay(ms) {
  * @param {string} password - Admin password
  * @returns {Promise<Object>} Fully initialized scanner with App API exposed
  */
-async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = 'test-admin-password') {
+async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = process.env.ADMIN_PASSWORD || 'admin') {
   // 1. Import ALL required scanner modules
   const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
   const NetworkedQueueManager = require('../../../ALNScanner/js/network/networkedQueueManager');

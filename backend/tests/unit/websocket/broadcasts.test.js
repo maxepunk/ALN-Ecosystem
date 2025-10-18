@@ -40,6 +40,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     mockVideoQueueService = new EventEmitter();
     mockOfflineQueueService = new EventEmitter();
 
+    // Add methods needed by broadcast handlers
+    mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
+
     // Mock transactionService.getToken (needed by transaction:added handler)
     mockTransactionService.getToken = jest.fn().mockReturnValue({
       memoryType: 'TEST_TYPE',
