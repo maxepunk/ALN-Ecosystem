@@ -20,12 +20,13 @@ const videoQueueService = require('./services/videoQueueService');
 const vlcService = require('./services/vlcService');
 const offlineQueueService = require('./services/offlineQueueService');
 
-// Import routes (5 files after Phase 1.2 consolidation)
+// Import routes (6 files after health extraction)
 const scanRoutes = require('./routes/scanRoutes');
 const stateRoutes = require('./routes/stateRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+const healthRoutes = require('./routes/healthRoutes');
 
 // Create Express app
 const app = express();
@@ -105,7 +106,8 @@ app.use('/api/session', sessionRoutes);     // GET /api/session
 app.use('/api/state', stateRoutes);         // GET /api/state
 app.use('/api/admin', adminRoutes);         // POST /api/admin/auth, GET /api/admin/logs
 app.use('/api', resourceRoutes);            // GET /api/tokens
-app.use('/', resourceRoutes);               // GET /health
+app.use('/', healthRoutes);                 // GET /health (with optional device tracking)
+app.use('/', resourceRoutes);               // GET /scoreboard
 
 // Static files (if needed)
 app.use(express.static('public'));

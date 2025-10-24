@@ -77,8 +77,16 @@ router.get('/', async (req, res) => {
       error: null  // TODO: Track VLC errors
     };
 
-    // Get connected devices
-    const devices = []; // TODO: Implement device tracking from WebSocket connections
+    // Get connected devices (from session if exists)
+    const devices = currentSession
+      ? (currentSession.toJSON().connectedDevices || []).map(device => ({
+          deviceId: device.id,
+          type: device.type,
+          name: device.name,
+          connectionTime: device.connectionTime,
+          ipAddress: device.ipAddress
+        }))
+      : [];
 
     // Get system status
     const systemStatus = {

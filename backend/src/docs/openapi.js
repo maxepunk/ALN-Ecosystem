@@ -14,12 +14,16 @@ const openApiSpec = {
   },
   servers: [
     {
-      url: 'http://localhost:3000',
-      description: 'Development server'
+      url: 'https://localhost:3000',
+      description: 'Development server (HTTPS for NFC support)'
     },
     {
-      url: 'http://aln-orchestrator.local',
+      url: 'https://aln-orchestrator.local:3000',
       description: 'Production server (Raspberry Pi)'
+    },
+    {
+      url: 'http://localhost:8000',
+      description: 'HTTP redirect server (redirects to HTTPS)'
     }
   ],
   tags: [

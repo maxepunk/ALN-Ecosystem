@@ -367,9 +367,9 @@ class SessionService extends EventEmitter {
       throw new Error('No active session');
     }
 
-    this.currentSession.updateDevice(device);
+    const isNew = this.currentSession.updateDevice(device);
     await this.saveCurrentSession();
-    this.emit('device:updated', device);
+    this.emit('device:updated', { device, isNew });
   }
 
   /**

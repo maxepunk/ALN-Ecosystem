@@ -1,9 +1,13 @@
 /**
  * Server Entry Point
  * Starts the ALN Orchestrator server with WebSocket support
+ * Supports HTTPS for Web NFC API compatibility
  */
 
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const app = require('./app');
 const { initializeServices } = require('./app');
 const config = require('./config');
@@ -26,6 +30,7 @@ const transactionService = require('./services/transactionService');
 
 // Server instances (created when needed)
 let server = null;
+let httpRedirectServer = null;
 let io = null;
 let discoveryService = null;
 let healthMonitorInterval = null;
@@ -160,13 +165,18 @@ async function shutdown(signal) {
 
     // Cleanup services
     await stateService.cleanup();
-    
-    // Save final state
+
+    // Save current session state (preserve AS-IS, don't end it)
+    // Sessions end via explicit admin commands, not infrastructure events
     const session = sessionService.getCurrentSession();
     if (session) {
-      await sessionService.endSession();
+      await sessionService.saveCurrentSession();
+      logger.info('Session state preserved for restart', {
+        sessionId: session.id,
+        status: session.status
+      });
     }
-    
+
     logger.info('Graceful shutdown complete');
     process.exit(0);
   } catch (error) {
@@ -184,7 +194,40 @@ function registerShutdownHandlers() {
 // Create server instances
 function createServer() {
   if (!server) {
-    server = http.createServer(app);
+    // Create HTTPS server if enabled, otherwise HTTP
+    if (config.ssl.enabled) {
+      try {
+        // Read SSL certificate files
+        const keyPath = path.resolve(process.cwd(), config.ssl.keyPath);
+        const certPath = path.resolve(process.cwd(), config.ssl.certPath);
+
+        const sslOptions = {
+          key: fs.readFileSync(keyPath),
+          cert: fs.readFileSync(certPath)
+        };
+
+        server = https.createServer(sslOptions, app);
+        logger.info('HTTPS server created', { keyPath, certPath });
+      } catch (error) {
+        logger.error('Failed to load SSL certificates', { error: error.message });
+        logger.warn('Falling back to HTTP server');
+        server = http.createServer(app);
+      }
+    } else {
+      server = http.createServer(app);
+      logger.info('HTTP server created (HTTPS disabled)');
+    }
+  }
+
+  // Create HTTP redirect server if HTTPS is enabled
+  if (!httpRedirectServer && config.ssl.enabled) {
+    httpRedirectServer = http.createServer((req, res) => {
+      const host = req.headers.host?.split(':')[0] || 'localhost';
+      const redirectUrl = `https://${host}:${config.server.port}${req.url}`;
+
+      res.writeHead(301, { 'Location': redirectUrl });
+      res.end();
+    });
   }
 
   if (!io) {
@@ -200,7 +243,7 @@ function createServer() {
     discoveryService = new DiscoveryService();
   }
 
-  return { server, io, discoveryService };
+  return { server, httpRedirectServer, io, discoveryService };
 }
 
 // Start server
@@ -220,19 +263,29 @@ async function startServer() {
 
     // Start health monitoring
     startHealthMonitoring(instances.io);
-    
+
     // Start listening
     const port = config.server.port;
     const host = config.server.host;
-    
+    const protocol = config.ssl.enabled ? 'https' : 'http';
+
     instances.server.listen(port, host, async () => {
-      logger.info(`ALN Orchestrator server running at http://${host}:${port}`);
+      logger.info(`ALN Orchestrator server running at ${protocol}://${host}:${port}`);
       logger.info('WebSocket server ready for connections');
       logger.info('Environment:', {
         env: config.server.env,
+        https: config.ssl.enabled,
         maxPlayers: config.session.maxPlayers,
         maxGmStations: config.session.maxGmStations,
       });
+
+      // Start HTTP redirect server if HTTPS is enabled
+      if (instances.httpRedirectServer) {
+        const redirectPort = config.ssl.httpRedirectPort;
+        instances.httpRedirectServer.listen(redirectPort, host, () => {
+          logger.info(`HTTP redirect server running on port ${redirectPort} → ${protocol}://${host}:${port}`);
+        });
+      }
 
       // Start discovery service after server is listening (skip in tests)
       if (instances.discoveryService) {
@@ -305,9 +358,29 @@ async function cleanup() {
         }
       });
     }).catch((err) => {
-      logger.warn('HTTP server close error', { error: err.message });
+      logger.warn('Server close error', { error: err.message });
     });
     server = null;
+  }
+
+  if (httpRedirectServer) {
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('HTTP redirect server close timeout'));
+      }, 5000);
+
+      httpRedirectServer.close((err) => {
+        clearTimeout(timeout);
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    }).catch((err) => {
+      logger.warn('HTTP redirect server close error', { error: err.message });
+    });
+    httpRedirectServer = null;
   }
 
   isInitialized = false;

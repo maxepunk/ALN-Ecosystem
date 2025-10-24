@@ -145,15 +145,8 @@ async function handleGmIdentify(socket, data, io) {
       state: state?.toJSON(),
     });
 
-    // Broadcast device connection to OTHER clients only
-    // Fixed: Send flat structure that admin panel expects
-    emitWrapped(socket.broadcast, 'device:connected', {
-      deviceId: device.id,
-      type: device.type,
-      name: device.name,
-      ipAddress: socket.handshake.address,
-      connectionTime: device.connectionTime || new Date().toISOString()
-    });
+    // Device connection broadcast now handled centrally by broadcasts.js
+    // via device:updated listener (eliminates duplicate broadcasts)
 
     logger.logSocketEvent('gm:identify', socket.id, {
       deviceId: device.id,

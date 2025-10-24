@@ -14,10 +14,21 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 - **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
 - **Submodule Architecture**: Shared token data across modules.
 
-**Contracts:**
-- **API Contract**: `backend/contracts/openapi.yaml`
-- **Event Contract**: `backend/contracts/asyncapi.yaml`
+**Contracts (Contract-First Architecture):**
+- **API Contract**: `backend/contracts/openapi.yaml` - Defines ALL HTTP endpoints
+- **Event Contract**: `backend/contracts/asyncapi.yaml` - Defines ALL WebSocket events
 - **Functional Requirements**: `docs/ARCHIVE/api-alignment/08-functional-requirements.md` (archived)
+
+**CRITICAL - Contract-First Development:**
+- Contracts define the interface between backend orchestrator and scanner submodules
+- ALL API changes MUST update `backend/contracts/openapi.yaml` FIRST
+- ALL WebSocket event changes MUST update `backend/contracts/asyncapi.yaml` FIRST
+- Breaking contract changes require coordinated updates across:
+  - Backend implementation (`backend/src/`)
+  - GM Scanner submodule (ALNScanner - WebSocket client)
+  - Player Scanner submodule (aln-memory-scanner - HTTP client)
+- Contract tests in `backend/tests/contract/` validate implementation matches contracts
+- When debugging cross-module communication issues, ALWAYS check contracts first
 
 ## Critical Architecture Decisions
 
@@ -39,6 +50,41 @@ ALN-Ecosystem/                     # Parent repository
 - Token paths differ by media type:
   - Videos: `"video": "filename.mp4"` → Played from `backend/public/videos/`
   - Images/Audio: `"image": "assets/images/file.jpg"` → Scanner local files
+
+### Cross-Module Data Flow
+**Understanding Token Data Paths Across Submodules:**
+
+The system uses a dual-path architecture to enable both networked and standalone scanner operation:
+
+**Backend Direct Access:**
+```javascript
+// backend/src/services/tokenService.js:51
+path.join(__dirname, '../../../ALN-TokenData/tokens.json')
+```
+- Backend loads tokens directly from root-level `ALN-TokenData/` submodule
+- Used for: Game logic, scoring calculations, video queue decisions
+- Path resolution: `backend/src/` → `../../..` → `ALN-TokenData/`
+
+**Scanner Nested Submodules:**
+```
+aln-memory-scanner/data/      → [NESTED SUBMODULE to ALN-TokenData]
+ALNScanner/data/              → [NESTED SUBMODULE to ALN-TokenData]
+```
+- Scanners have ALN-TokenData nested as `data/` subdirectory
+- Used for: Standalone mode operation (no orchestrator), local media display
+- Enables GitHub Pages deployment with bundled token data
+
+**Data Synchronization:**
+- ALN-TokenData is the single source of truth (updated once)
+- Submodule references propagate changes to all three locations
+- Run `git submodule update --remote --merge` to sync all modules
+- Check sync status: `git submodule status --recursive`
+
+**When Debugging Token Issues:**
+1. Verify ALN-TokenData submodule is up-to-date: `git submodule status`
+2. Check backend can load: `backend/src/services/tokenService.js` logs path on startup
+3. Check scanners have synced: `ls -la aln-memory-scanner/data/tokens.json`
+4. Token ID mismatches indicate stale submodule references
 
 ### Network Flexibility
 - System works on ANY network without router configuration
@@ -119,6 +165,121 @@ All services in `backend/src/services/` use singleton pattern with getInstance()
   - Eliminates sync bugs on orchestrator restart
 
 This pattern ensures GameState always reflects current reality even after crashes/restarts.
+
+### Event-Driven Service Coordination
+**Understanding Internal Event Flow:**
+
+Services use Node.js EventEmitter for internal coordination (separate from WebSocket events):
+
+**Event Flow Pattern:**
+```
+Domain Event (Service) → Event Listener (stateService) → WebSocket Broadcast (broadcasts.js)
+```
+
+**Example: Transaction Processing**
+```javascript
+// 1. Transaction created
+transactionService.emit('transaction:new', transactionData)
+
+// 2. State service listens (stateService.js:100+)
+stateService.on('transaction:new', () => {
+  const currentState = this.getCurrentState(); // Computes from session
+  this.emit('state:updated', currentState);
+})
+
+// 3. Broadcast handler wraps for WebSocket (broadcasts.js)
+stateService.on('state:updated', (state) => {
+  io.to('gm-stations').emit('sync:full', { event: 'sync:full', data: state, timestamp });
+})
+```
+
+**Critical Service Dependencies:**
+- sessionService → Source of truth (persisted)
+- stateService → Aggregates session + live status (computed on-demand)
+- transactionService → Emits scoring events
+- videoQueueService → Emits video status events
+- broadcasts.js → Wraps all domain events for WebSocket clients
+
+**Key Files for Event Tracing:**
+- `backend/src/services/sessionService.js:69` - Session event emission
+- `backend/src/services/stateService.js:79` - Event listener setup
+- `backend/src/websocket/broadcasts.js` - WebSocket broadcast coordination
+- `backend/src/websocket/listenerRegistry.js` - Prevents duplicate listeners
+
+**Debugging Event Flow:**
+1. Check domain event emission: `grep "this.emit" backend/src/services/*.js`
+2. Verify listener registration: Check `listenerRegistry.addTrackedListener()` calls
+3. Trace broadcast wrapping: Check `broadcasts.js` for envelope pattern
+4. Test WebSocket delivery: Monitor client logs for wrapped events
+
+### WebSocket Authentication Flow
+**Complete Authentication Flow (HTTP → WebSocket):**
+
+**Step 1: HTTP Authentication**
+```javascript
+// Client: POST /api/admin/auth
+{ password: "admin-secret" }
+
+// Backend: Returns JWT token
+{ token: "eyJhbGc...", expiresIn: 86400 }
+```
+
+**Step 2: WebSocket Connection with Handshake Auth**
+```javascript
+// Client: Socket.io connection with handshake.auth
+io.connect('http://orchestrator:3000', {
+  auth: {
+    token: "eyJhbGc...",           // JWT from Step 1
+    deviceId: "GM_Station_1",      // Unique device ID
+    deviceType: "gm",              // "gm" or "admin"
+    version: "1.0.0"               // Client version (optional)
+  }
+})
+```
+
+**Step 3: Server Handshake Validation (BEFORE connection accepted)**
+```javascript
+// backend/src/websocket/gmAuth.js
+// Middleware validates JWT in handshake.auth
+// Connection REJECTED if invalid token
+// Connection ACCEPTED if valid → proceeds to Step 4
+```
+
+**Step 4: Auto-Sync on Successful Connection**
+```javascript
+// backend/src/websocket/gmAuth.js:122
+// Server automatically sends sync:full event (NOT request-based)
+emitWrapped(socket, 'sync:full', {
+  session: session?.toJSON(),
+  scores: transactionService.getTeamScores(),
+  recentTransactions: [...],
+  videoStatus: {...},
+  devices: [...],
+  systemStatus: {...}
+})
+```
+
+**Step 5: Broadcast Device Connection**
+```javascript
+// Server broadcasts to OTHER connected clients
+io.to('gm-stations').emit('device:connected', {
+  event: 'device:connected',
+  data: { deviceId, type, name, ipAddress, connectionTime },
+  timestamp
+})
+```
+
+**Authentication Failure Handling:**
+- Invalid/missing JWT → Connection rejected at handshake (transport-level error)
+- Client receives `connect_error` event (NOT application-level `error` event)
+- No `sync:full` sent on authentication failure
+- Socket disconnected immediately
+
+**Key Files:**
+- `backend/src/routes/authRoutes.js` - JWT token generation (Step 1)
+- `backend/src/middleware/socketAuth.js` - Handshake validation (Step 3)
+- `backend/src/websocket/gmAuth.js` - Post-auth sync (Step 4)
+- `backend/contracts/asyncapi.yaml:22-45` - Authentication flow documentation
 
 ### WebSocket Event Flow
 See `backend/contracts/asyncapi.yaml` for complete event definitions.
@@ -226,12 +387,117 @@ ffmpeg -i INPUT.mp4 \
 This creates Pi 4-compatible videos at ~2Mbps bitrate with hardware acceleration support.
 
 ### Network Access URLs
-- Orchestrator: `http://[IP]:3000`
-- Admin Panel: `http://[IP]:3000/admin/`
-- Player Scanner: `http://[IP]:3000/player-scanner/`
-- GM Scanner: `http://[IP]:3000/gm-scanner/`
-- Scoreboard Display: `http://[IP]:3000/scoreboard`
-- VLC Control: `http://[IP]:8080` (password: vlc)
+**HTTPS is enabled for Web NFC API support (required for physical NFC scanning in GM Scanner):**
+
+- Orchestrator: `https://[IP]:3000` (HTTPS - accepts self-signed cert)
+- Admin Panel: `https://[IP]:3000/admin/`
+- Player Scanner: `https://[IP]:3000/player-scanner/`
+- GM Scanner: `https://[IP]:3000/gm-scanner/` (HTTPS required for NFC)
+- Scoreboard Display: `https://[IP]:3000/scoreboard`
+- HTTP Redirect: `http://[IP]:8000` (auto-redirects to HTTPS)
+- VLC Control: `http://[IP]:8080` (password: vlc, internal only)
+
+**Certificate Trust (One-Time Setup Per Device):**
+1. Navigate to `https://[IP]:3000/gm-scanner/` on Android device
+2. Browser shows "Your connection is not private" warning
+3. Click "Advanced" → "Proceed to [IP] (unsafe)"
+4. Certificate is now trusted for this device
+5. NFC scanning works (Web NFC API requires secure context)
+
+## Cross-Module Debugging Guide
+
+**Debugging Issues That Span Multiple Submodules:**
+
+### Player Scanner Connectivity Issues
+**Symptoms:** Player scanner can't reach orchestrator, scans not logged
+**Debug Path:**
+1. Verify orchestrator running: `curl -k https://[IP]:3000/health`
+2. Check scanner using correct IP (not localhost): Inspect scanner config
+3. Test HTTPS endpoint directly (note: -k flag skips cert verification):
+   ```bash
+   curl -k -X POST https://[IP]:3000/api/scan \
+     -H "Content-Type: application/json" \
+     -d '{"tokenId":"test","deviceId":"scanner1"}'
+   ```
+4. Check backend logs: `npm run prod:logs` or `tail -f logs/combined.log`
+5. Verify firewall not blocking: `sudo ufw status` on Pi
+
+**Key Files:**
+- `backend/src/routes/scanRoutes.js` - HTTP endpoint implementation
+- `aln-memory-scanner/` - Player scanner submodule
+- `backend/contracts/openapi.yaml:280-488` - API contract for `/api/scan`
+
+### GM Scanner WebSocket Issues
+**Symptoms:** GM scanner connects but doesn't receive state updates
+**Debug Path:**
+1. Verify JWT authentication (note: -k flag skips cert verification):
+   ```bash
+   curl -k -X POST https://[IP]:3000/api/admin/auth \
+     -H "Content-Type: application/json" \
+     -d '{"password":"your-admin-password"}'
+   ```
+2. Check handshake.auth includes valid token: Inspect browser console
+3. Verify `sync:full` event received after connection: Check client logs
+4. Confirm device joined 'gm-stations' room: Check server logs for "GM already authenticated"
+5. Test event broadcast: Create transaction, check if `transaction:new` received
+
+**Key Files:**
+- `backend/src/websocket/gmAuth.js:21-164` - Authentication and sync
+- `backend/src/middleware/socketAuth.js` - JWT validation middleware
+- `ALNScanner/` - GM scanner submodule (WebSocket client)
+- `backend/contracts/asyncapi.yaml:234-501` - WebSocket contract for `sync:full`
+
+### Token Data Synchronization Issues
+**Symptoms:** Backend reports token not found, scanner shows different tokens
+**Debug Path:**
+1. Check submodule status: `git submodule status --recursive`
+2. Look for detached HEAD or mismatched commits
+3. Update all submodules: `git submodule update --remote --merge`
+4. Verify backend loads correct file:
+   ```bash
+   grep "Loaded tokens from" logs/combined.log
+   ```
+5. Check token count matches: Compare counts in backend logs vs `wc -l ALN-TokenData/tokens.json`
+6. Restart orchestrator to reload: `npm run prod:restart`
+
+**Key Files:**
+- `backend/src/services/tokenService.js:49-66` - Token file loading logic
+- `ALN-TokenData/tokens.json` - Source of truth
+- `.gitmodules` - Submodule configuration
+
+### Video Playback State Issues
+**Symptoms:** Videos queue but don't play, idle loop doesn't resume
+**Debug Path:**
+1. Check VLC connection: `curl http://localhost:8080/requests/status.json -u :vlc`
+2. Verify video file exists: `ls -lh backend/public/videos/[filename].mp4`
+3. Check video queue status: Monitor `video:status` events in GM scanner
+4. Trace video flow:
+   - tokenService → Check token has `video` property
+   - videoQueueService → Check queue not empty
+   - vlcService → Check VLC commands sent successfully
+5. Check VLC logs: `npm run prod:logs | grep vlc`
+
+**Key Files:**
+- `backend/src/services/videoQueueService.js` - Queue management
+- `backend/src/services/vlcService.js` - VLC HTTP interface
+- `backend/src/routes/scanRoutes.js:30-50` - Video queueing trigger
+
+### State Synchronization After Restart
+**Symptoms:** GM scanner shows stale state after orchestrator restart
+**Debug Path:**
+1. Verify session loaded: `grep "Session restored from storage" logs/combined.log`
+2. Check persistence file exists: `ls -lh backend/data/session-*.json`
+3. Confirm GameState computed correctly:
+   - sessionService.getCurrentSession() not null
+   - stateService.getCurrentState() derives from session
+4. Verify clients receive `sync:full` on reconnect
+5. Check event listeners registered: No "duplicate listener" warnings in logs
+
+**Key Files:**
+- `backend/src/services/sessionService.js:28-42` - Session loading on init
+- `backend/src/services/stateService.js:42-63` - State computation
+- `backend/src/services/persistenceService.js` - Disk persistence
+- `backend/src/websocket/gmAuth.js:87-138` - Sync on connection
 
 ## Troubleshooting Quick Reference
 
@@ -245,6 +511,9 @@ This creates Pi 4-compatible videos at ~2Mbps bitrate with hardware acceleration
 | Token not found | Update ALN-TokenData submodule |
 | Port in use | `lsof -i :3000` and kill process |
 | GameState null after restart | Session should auto-derive state - check logs for "Session loaded on startup" |
+| GM scanner connects but no state | Check JWT token valid, verify `sync:full` event sent (see Cross-Module Debugging) |
+| Transaction not scoring | Verify session exists, check transactionService event emission |
+| Submodule out of sync | Run `git submodule update --remote --merge` and restart orchestrator |
 
 ## Code Style Guidelines
 

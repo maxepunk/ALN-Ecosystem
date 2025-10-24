@@ -20,6 +20,10 @@ module.exports = {
         VLC_PASSWORD: 'vlc',
         VLC_HOST: 'localhost',
         VLC_PORT: 8080,
+        ENABLE_HTTPS: 'true',
+        SSL_KEY_PATH: './ssl/key.pem',
+        SSL_CERT_PATH: './ssl/cert.pem',
+        HTTP_REDIRECT_PORT: 8000,
       },
 
       env_development: {
@@ -30,6 +34,10 @@ module.exports = {
         VLC_PASSWORD: 'vlc',
         VLC_HOST: 'localhost',
         VLC_PORT: 8080,
+        ENABLE_HTTPS: 'true',
+        SSL_KEY_PATH: './ssl/key.pem',
+        SSL_CERT_PATH: './ssl/cert.pem',
+        HTTP_REDIRECT_PORT: 8000,
       },
       
       env_staging: {
@@ -78,7 +86,7 @@ module.exports = {
       // Health check
       health_check: {
         interval: 30000, // 30 seconds
-        url: 'http://localhost:3000/health',
+        url: 'https://localhost:3000/health',
         max_failures: 3,
       },
     },

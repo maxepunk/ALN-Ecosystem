@@ -40,10 +40,12 @@ async function handleGmCommand(socket, data, io) {
     switch (action) {
       case 'session:create':
         // Create new session (service will emit session:created → broadcasts.js wraps as session:update)
+        // broadcasts.js will initialize devices into the session (event-driven pattern)
         await sessionService.createSession({
           name: payload.name || 'New Session',
           teams: payload.teams || []
         });
+
         resultMessage = `Session "${payload.name || 'New Session'}" created successfully`;
         logger.info('Session created by GM', {
           gmStation: socket.deviceId,

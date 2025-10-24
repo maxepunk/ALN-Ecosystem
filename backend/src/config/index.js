@@ -20,6 +20,14 @@ const config = {
       : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8001', 'http://localhost:8080'],
   },
 
+  // SSL/HTTPS Configuration (required for Web NFC API)
+  ssl: {
+    enabled: process.env.ENABLE_HTTPS === 'true',
+    keyPath: process.env.SSL_KEY_PATH || './ssl/key.pem',
+    certPath: process.env.SSL_CERT_PATH || './ssl/cert.pem',
+    httpRedirectPort: parseInt(process.env.HTTP_REDIRECT_PORT || '8000', 10),
+  },
+
   // VLC Configuration
   vlc: {
     host: process.env.VLC_HOST || 'localhost',

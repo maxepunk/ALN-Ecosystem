@@ -1,5 +1,6 @@
 const os = require('os');
 const dgram = require('dgram');
+const config = require('../config');
 
 class DiscoveryService {
   constructor() {
@@ -24,10 +25,11 @@ class DiscoveryService {
 
   /**
    * Display network IPs for scanner configuration
-   * @param {number} port - HTTP server port
+   * @param {number} port - Server port
    */
   displayNetworkInfo(port) {
     const addresses = this.getNetworkIPs();
+    const protocol = config.ssl.enabled ? 'https' : 'http';
 
     console.log('\n' + '='.repeat(50));
     console.log('   ALN ORCHESTRATOR STARTED');
@@ -36,11 +38,17 @@ class DiscoveryService {
 
     if (addresses.length > 0) {
       addresses.forEach(addr => {
-        console.log(`  → http://${addr}:${port}`);
+        console.log(`  → ${protocol}://${addr}:${port}`);
       });
-      console.log(`  → http://localhost:${port}`);
+      console.log(`  → ${protocol}://localhost:${port}`);
     } else {
-      console.log('  → http://localhost:' + port + ' (no network interfaces found)');
+      console.log(`  → ${protocol}://localhost:${port} (no network interfaces found)`);
+    }
+
+    if (config.ssl.enabled) {
+      console.log('\n⚠️  HTTPS is enabled - browsers will show certificate warning');
+      console.log('   Accept the warning to establish trust (one-time per device)');
+      console.log(`   HTTP redirect available on port ${config.ssl.httpRedirectPort}`);
     }
 
     console.log('\nFor scanner configuration:');
@@ -75,6 +83,7 @@ class DiscoveryService {
             service: 'ALN_ORCHESTRATOR',
             version: '1.0.0',
             port: this.port,
+            protocol: config.ssl.enabled ? 'https' : 'http',
             addresses: this.getNetworkIPs(),
             timestamp: new Date().toISOString()
           });

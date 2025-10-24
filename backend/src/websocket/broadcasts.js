@@ -6,6 +6,7 @@
 const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
+const vlcService = require('../services/vlcService');
 
 // ADD: Module-level tracking
 const activeListeners = [];
@@ -45,6 +46,7 @@ function setupBroadcastListeners(io, services) {
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
   addTrackedListener(sessionService, 'session:created', (session) => {
+    // Broadcast session update to all clients
     emitWrapped(io, 'session:update', {
       id: session.id,              // Decision #4: 'id' field within resource
       name: session.name,
@@ -54,6 +56,11 @@ function setupBroadcastListeners(io, services) {
       teams: session.teams || [],
       metadata: session.metadata || {}
     });
+
+    // Initialize all currently connected devices into the new session
+    // This handles devices that connected before session existed
+    initializeSessionDevices(io, session);
+
     logger.info('Broadcasted session:update (created)', { sessionId: session.id, status: session.status });
   });
 
@@ -68,6 +75,30 @@ function setupBroadcastListeners(io, services) {
       metadata: session.metadata || {}
     });
     logger.info('Broadcasted session:update', { sessionId: session.id, status: session.status });
+  });
+
+  // Device events - broadcast device connections (centralized)
+  // Handles BOTH WebSocket (GM) and HTTP (Player) device registrations
+  // Replaces manual broadcast from gmAuth.js for consistency
+  addTrackedListener(sessionService, 'device:updated', ({ device, isNew }) => {
+    // Only broadcast device:connected for NEW devices that are CONNECTED
+    // Skip: heartbeat updates (isNew=false), disconnect status changes (connectionStatus!='connected')
+    if (isNew && device.connectionStatus === 'connected') {
+      // Broadcast per AsyncAPI contract
+      emitWrapped(io, 'device:connected', {
+        deviceId: device.id,
+        type: device.type,
+        name: device.name,
+        ipAddress: device.ipAddress,
+        connectionTime: device.connectionTime
+      });
+
+      logger.info('Broadcasted device:connected', {
+        deviceId: device.id,
+        type: device.type,
+        source: 'centralized'
+      });
+    }
   });
 
   addTrackedListener(sessionService, 'transaction:added', (transaction) => {
@@ -381,17 +412,28 @@ function setupBroadcastListeners(io, services) {
         }
       }
 
+      // Get VLC connection status
+      const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
+
       const syncFullPayload = {
         session: session ? session.toJSON() : null,
         scores,
         recentTransactions,
         videoStatus,
-        devices: [], // Device tracking handled elsewhere
+        devices: session ? (session.connectedDevices || []).map(device => ({
+          deviceId: device.id,
+          type: device.type,
+          name: device.name,
+          connectionTime: device.connectionTime,
+          ipAddress: device.ipAddress
+        })) : [],
         systemStatus: {
-          orchestratorOnline: true,
-          vlcConnected: false, // Would need vlcService import
-          videoDisplayReady: false,
-          offline: offlineQueueService.isOffline || false
+          // Contract-compliant fields
+          orchestrator: 'online',  // Per AsyncAPI contract: 'online' | 'offline'
+          vlc: vlcConnected ? 'connected' : 'disconnected',  // Per AsyncAPI contract: 'connected' | 'disconnected' | 'error'
+          // Additional fields not in contract but used by implementation
+          videoDisplayReady: false,  // TODO: Track actual display ready status
+          offline: offlineQueueService?.isOffline || false
         }
       };
 
@@ -418,6 +460,53 @@ function setupBroadcastListeners(io, services) {
   }
 
   logger.info('Broadcast listeners initialized');
+}
+
+/**
+ * Initialize all currently connected devices into newly created session
+ * Called when session is created to add devices that connected before session existed
+ *
+ * This implements the event-driven pattern:
+ * - Service emits 'session:created' domain event
+ * - Broadcast layer handles WebSocket-specific concerns (room joining, device registration)
+ * - Maintains separation of concerns (sessionService stays pure)
+ *
+ * @param {Server} io - Socket.io server instance
+ * @param {Session} session - Newly created session
+ */
+function initializeSessionDevices(io, session) {
+  const sessionService = require('../services/sessionService');
+  const sockets = Array.from(io.sockets.sockets.values());
+  let devicesAdded = 0;
+
+  for (const socket of sockets) {
+    if (socket.isAuthenticated && socket.deviceId) {
+      // Create device data from socket information
+      const deviceData = {
+        id: socket.deviceId,
+        type: socket.deviceType || 'gm',
+        name: `${socket.deviceType === 'gm' ? 'GM Station' : 'Admin'} v${socket.version || '1.0.0'}`,
+        ipAddress: socket.handshake.address,
+        connectionTime: new Date().toISOString(),
+        lastHeartbeat: new Date().toISOString(),
+        connectionStatus: 'connected'
+      };
+
+      // Add to session.connectedDevices (updates existing or creates new)
+      sessionService.updateDevice(deviceData);
+
+      // Join Socket.IO room for session-specific broadcasts (transaction:new, etc)
+      socket.join(`session:${session.id}`);
+
+      devicesAdded++;
+    }
+  }
+
+  logger.info('Initialized session devices', {
+    sessionId: session.id,
+    devicesAdded,
+    totalConnected: sockets.length
+  });
 }
 
 /**

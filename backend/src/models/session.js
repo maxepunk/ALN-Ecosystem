@@ -170,9 +170,12 @@ class Session {
   /**
    * Add or update a device connection
    * @param {Object} device - Device connection to add/update
+   * @returns {boolean} True if device was newly added, false if updated
    */
   updateDevice(device) {
     const index = this.connectedDevices.findIndex(d => d.id === device.id);
+    const isNew = index === -1;
+
     if (index >= 0) {
       this.connectedDevices[index] = device;
     } else {
@@ -183,6 +186,8 @@ class Session {
         this.metadata.playerDevices++;
       }
     }
+
+    return isNew;
   }
 
   /**

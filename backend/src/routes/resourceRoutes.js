@@ -1,13 +1,12 @@
 /**
- * Resource Routes - Static resources (tokens, health)
- * Per Decision #1: Consolidate GET /api/tokens + GET /health
+ * Resource Routes - Static resources
+ * Provides token database and scoreboard HTML
  */
 
 const express = require('express');
 const router = express.Router();
 const tokenService = require('../services/tokenService');
 const { success } = require('../utils/responseBuilder');
-const packageJson = require('../../package.json');
 
 /**
  * GET /api/tokens - Token database
@@ -29,20 +28,6 @@ router.get('/tokens', (req, res) => {
       message: error.message
     });
   }
-});
-
-/**
- * GET /health - Health check
- * Basic health check endpoint for connection validation
- * Contract: openapi.yaml /health response schema
- */
-router.get('/health', (req, res) => {
-  success(res, {
-    status: 'online',
-    version: packageJson.version,
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  });
 });
 
 /**
