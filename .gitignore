@@ -1,8 +1,21 @@
 
 # Log files
 backend/logs/*.log
-docs/ARCHIVEbackend/public/videos/*.mp4
+
+# Archived documentation and test files
+docs/ARCHIVE/
+
+# Video files (too large for git)
 backend/public/videos/*.mp4
+
+# Keep images in loopimages directory
+!backend/public/videos/loopimages/
 
 # Runtime session data
 backend/data/
+
+# Root package lock (not needed)
+package-lock.json
+
+# Video processing temp files
+Video_Reencode_*
