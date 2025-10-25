@@ -118,7 +118,9 @@ function setupBroadcastListeners(io, services) {
         timestamp: transaction.timestamp,
         // Include token details for frontend display (optional per contract)
         memoryType: token?.memoryType || 'UNKNOWN',
-        valueRating: token?.metadata?.rating || 0
+        valueRating: token?.metadata?.rating || 0,
+        group: token?.metadata?.group || token?.groupId || 'No Group',
+        isUnknown: !token  // Frontend needs this to avoid marking valid tokens as unknown
       }
     };
 
@@ -182,6 +184,7 @@ function setupBroadcastListeners(io, services) {
         bonusPoints: teamScore.bonusPoints || 0,
         tokensScanned: teamScore.tokensScanned,
         completedGroups: teamScore.completedGroups || [],
+        adminAdjustments: teamScore.adminAdjustments || [],
         lastUpdate: teamScore.lastUpdate
       };
 
@@ -189,7 +192,23 @@ function setupBroadcastListeners(io, services) {
       logger.info('Broadcasted score:updated to GM stations', {
         teamId: teamScore.teamId,
         score: teamScore.currentScore,
-        bonus: teamScore.bonusPoints || 0
+        bonus: teamScore.bonusPoints || 0,
+        adjustments: (teamScore.adminAdjustments || []).length
+      });
+    });
+
+    addTrackedListener(transactionService, 'transaction:deleted', (data) => {
+      const payload = {
+        transactionId: data.transactionId,
+        teamId: data.teamId,
+        tokenId: data.tokenId
+      };
+
+      emitToRoom(io, 'gm-stations', 'transaction:deleted', payload);
+      logger.info('Broadcasted transaction:deleted to GM stations', {
+        transactionId: data.transactionId,
+        teamId: data.teamId,
+        tokenId: data.tokenId
       });
     });
 

@@ -122,6 +122,12 @@ const teamScoreSchema = Joi.object({
   tokensScanned: Joi.number().integer().min(0).required(),
   bonusPoints: Joi.number().integer().min(0).required(),
   completedGroups: Joi.array().items(Joi.string()).required(),
+  adminAdjustments: Joi.array().items(Joi.object({
+    delta: Joi.number().integer().required(),
+    gmStation: Joi.string().required(),
+    reason: Joi.string().allow('').required(),
+    timestamp: isoDate.required()
+  })).default([]),  // Optional with default empty array for backward compatibility
   lastUpdate: isoDate.required(),
 });
 

@@ -334,6 +334,7 @@ components:
                     - bonusPoints
                     - tokensScanned
                     - completedGroups
+                    - adminAdjustments
                     - lastUpdate
                   properties:
                     teamId:
@@ -357,6 +358,35 @@ components:
                       items:
                         type: string
                       example: ["jaw_group"]
+                    adminAdjustments:
+                      type: array
+                      items:
+                        type: object
+                        required:
+                          - delta
+                          - gmStation
+                          - reason
+                          - timestamp
+                        properties:
+                          delta:
+                            type: integer
+                            description: Score adjustment amount
+                            example: -500
+                          gmStation:
+                            type: string
+                            description: GM station that made the adjustment
+                            example: "GM_Station_1"
+                          reason:
+                            type: string
+                            description: Reason for adjustment
+                            example: "Rule violation penalty"
+                          timestamp:
+                            type: string
+                            format: date-time
+                            description: When adjustment was made
+                            example: "2025-10-24T10:30:00.000Z"
+                      description: Array of admin score adjustments
+                      example: []
                     lastUpdate:
                       type: string
                       format: date-time
@@ -736,7 +766,7 @@ components:
         **Functional Requirement**: Section 1.4 (Score Management)
         **Decisions Applied**: #2 (wrapped envelope)
 
-        **CRITICAL**: All 7 fields REQUIRED with NO fallbacks (scanner expects complete data).
+        **CRITICAL**: All 8 fields REQUIRED with NO fallbacks (scanner expects complete data).
       payload:
         type: object
         required:
@@ -757,6 +787,7 @@ components:
               - bonusPoints
               - tokensScanned
               - completedGroups
+              - adminAdjustments
               - lastUpdate
             properties:
               teamId:
@@ -786,6 +817,35 @@ components:
                   type: string
                 description: Array of completed group IDs
                 example: ["jaw_group"]
+              adminAdjustments:
+                type: array
+                items:
+                  type: object
+                  required:
+                    - delta
+                    - gmStation
+                    - reason
+                    - timestamp
+                  properties:
+                    delta:
+                      type: integer
+                      description: Score adjustment amount (positive or negative)
+                      example: -500
+                    gmStation:
+                      type: string
+                      description: GM station that made the adjustment
+                      example: "GM_Station_1"
+                    reason:
+                      type: string
+                      description: Reason for adjustment
+                      example: "Rule violation penalty"
+                    timestamp:
+                      type: string
+                      format: date-time
+                      description: When adjustment was made
+                      example: "2025-10-24T10:30:00.000Z"
+                description: Array of admin score adjustments with audit trail
+                example: [{"delta": -500, "gmStation": "GM_Station_1", "reason": "Rule violation penalty", "timestamp": "2025-10-24T10:30:00.000Z"}]
               lastUpdate:
                 type: string
                 format: date-time

@@ -470,21 +470,24 @@ class TransactionService extends EventEmitter {
    * @param {string} teamId - Team ID to adjust
    * @param {number} delta - Amount to adjust (can be positive or negative)
    * @param {string} reason - Reason for adjustment
+   * @param {string} gmStation - GM station making the adjustment
    * @returns {TeamScore} Updated team score
    */
-  adjustTeamScore(teamId, delta, reason = '') {
+  adjustTeamScore(teamId, delta, reason = '', gmStation = 'unknown') {
     const teamScore = this.teamScores.get(teamId);
     if (!teamScore) {
       throw new Error(`Team ${teamId} not found`);
     }
 
-    teamScore.adjustScore(delta);
+    teamScore.adjustScore(delta, gmStation, reason);
 
     logger.info('Team score adjusted', {
       teamId,
       delta,
+      gmStation,
+      reason,
       newScore: teamScore.currentScore,
-      reason
+      adjustmentCount: teamScore.adminAdjustments.length
     });
 
     // Emit unwrapped domain event (broadcasts.js will wrap it)
@@ -578,9 +581,17 @@ class TransactionService extends EventEmitter {
     // Emit score update
     this.emitScoreUpdate(updatedScore);
 
+    // Emit transaction deleted event for all scanners to update their local state
+    this.emit('transaction:deleted', {
+      transactionId,
+      teamId: affectedTeamId,
+      tokenId: deletedTx.tokenId
+    });
+
     logger.info('Transaction deleted', {
       transactionId,
       teamId: affectedTeamId,
+      tokenId: deletedTx.tokenId,
       newScore: updatedScore.currentScore,
     });
 

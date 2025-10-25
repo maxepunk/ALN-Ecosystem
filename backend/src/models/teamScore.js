@@ -32,6 +32,10 @@ class TeamScore {
       data.completedGroups = [];
     }
 
+    if (!data.adminAdjustments) {
+      data.adminAdjustments = [];
+    }
+
     if (!data.lastUpdate) {
       data.lastUpdate = new Date().toISOString();
     }
@@ -73,8 +77,18 @@ class TeamScore {
   /**
    * Adjust score by delta (for admin interventions)
    * @param {number} delta - Amount to adjust score by (can be positive or negative)
+   * @param {string} gmStation - GM station that made the adjustment
+   * @param {string} reason - Reason for the adjustment
    */
-  adjustScore(delta) {
+  adjustScore(delta, gmStation = 'unknown', reason = '') {
+    // Log adjustment for audit trail
+    this.adminAdjustments.push({
+      delta,
+      gmStation,
+      reason,
+      timestamp: new Date().toISOString()
+    });
+
     this.currentScore += delta;
     // Also adjust base score to keep the relationship consistent
     this.baseScore += delta;
@@ -181,6 +195,7 @@ class TeamScore {
       tokensScanned: this.tokensScanned,
       bonusPoints: this.bonusPoints,
       completedGroups: [...this.completedGroups],
+      adminAdjustments: this.adminAdjustments || [],
       lastUpdate: this.lastUpdate,
       lastTokenTime: this.lastTokenTime || null,
     };

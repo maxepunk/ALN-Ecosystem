@@ -146,7 +146,7 @@ async function handleGmCommand(socket, data, io) {
         if (!teamId || delta === undefined) {
           throw new Error('teamId and delta are required for score:adjust');
         }
-        transactionService.adjustTeamScore(teamId, delta, reason || 'Admin adjustment');
+        transactionService.adjustTeamScore(teamId, delta, reason || 'Admin adjustment', socket.deviceId);
         resultMessage = `Team ${teamId} score adjusted by ${delta}`;
         logger.info('Team score adjusted by GM', {
           gmStation: socket.deviceId,

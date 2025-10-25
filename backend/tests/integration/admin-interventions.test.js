@@ -136,10 +136,18 @@ describe('Admin Intervention Integration', () => {
       expect(scoreEvent.data.teamId).toBe('001');
       expect(scoreEvent.data.currentScore).toBe(14500); // 15000 - 500
 
+      // Validate: Admin adjustments array populated
+      expect(scoreEvent.data.adminAdjustments).toBeDefined();
+      expect(scoreEvent.data.adminAdjustments).toHaveLength(1);
+      expect(scoreEvent.data.adminAdjustments[0].delta).toBe(-500);
+      expect(scoreEvent.data.adminAdjustments[0].reason).toBe('Rule violation penalty');
+      expect(scoreEvent.data.adminAdjustments[0].gmStation).toBe('GM_ADMIN');
+
       // Validate: Service state matches broadcast
       teamScores = transactionService.getTeamScores();
       teamScore = teamScores.find(s => s.teamId === '001');
       expect(teamScore.currentScore).toBe(14500);
+      expect(teamScore.adminAdjustments).toHaveLength(1);
     });
 
     it('should handle positive score adjustments (bonus points)', async () => {
