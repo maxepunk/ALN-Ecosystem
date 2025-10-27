@@ -1,7 +1,7 @@
 ---
 name: tdd-contract-guardian
-description: PROACTIVELY use this agent when you need to create comprehensive failing tests that define system behavior BEFORE any implementation exists, particularly for TDD workflows. This agent specializes in parsing API contracts, WebSocket specifications, and creating test suites that validate expected behavior according to strict TDD principles. <example>Context: The user is implementing a new API endpoint and wants to follow TDD practices. user: 'Create tests for the new /api/scan endpoint based on our OpenAPI spec' assistant: 'I'll use the tdd-contract-guardian agent to create comprehensive failing tests for the scan endpoint before we implement it' <commentary>Since the user needs failing tests created before implementation for TDD compliance, use the tdd-contract-guardian agent.</commentary></example> <example>Context: The user has defined WebSocket event contracts and needs tests. user: 'We need tests for all the WebSocket events we just specified in the contracts' assistant: 'Let me launch the tdd-contract-guardian agent to create failing tests for all WebSocket events' <commentary>The user needs contract-based tests created before implementation, which is the tdd-contract-guardian's specialty.</commentary></example>
-tools: Bash, Glob, Grep, Read, Edit, MultiEdit, Write, NotebookEdit, TodoWrite, BashOutput, KillShell, mcp__ide__getDiagnostics, mcp__ide__executeCode
+description: >-
+  PROACTIVELY use this agent when you need to create comprehensive failing tests that define system behavior BEFORE any implementation exists, particularly for TDD workflows. This agent specializes in parsing API contracts, WebSocket specifications, and creating test suites that validate expected behavior according to strict TDD principles.
 model: opus
 color: red
 ---
