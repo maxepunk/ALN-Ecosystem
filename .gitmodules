@@ -1,17 +1,17 @@
 [submodule "aln-memory-scanner"]
 	path = aln-memory-scanner
-	url = file:///home/spide/projects/AboutLastNight/aln-memory-scanner
+	url = https://github.com/maxepunk/ALNPlayerScan.git
 	recurse = true
 	branch = main
 	update = merge
 [submodule "ALNScanner"]
 	path = ALNScanner
-	url = file:///home/spide/projects/AboutLastNight/ALNScanner
+	url = https://github.com/maxepunk/ALNScanner.git
 	recurse = true
 	branch = main
 	update = merge
 [submodule "ALN-TokenData"]
 	path = ALN-TokenData
-	url = file:///home/spide/projects/AboutLastNight/ALN-TokenData
+	url = https://github.com/maxepunk/ALN-TokenData.git
 	branch = main
 	update = merge
