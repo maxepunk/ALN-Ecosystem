@@ -88,4 +88,50 @@ async function getTeamScore(page, teamId, sessionMode) {
   }
 }
 
-module.exports = { initializeGMScannerWithMode, getTeamScore };
+/**
+ * Scan a sequence of tokens
+ * @param {GMScannerPage} scanner - Scanner page object
+ * @param {Array<string>} tokenIds - Token IDs to scan
+ * @param {string} teamId - Team ID for scanning
+ */
+async function scanTokenSequence(scanner, tokenIds, teamId) {
+  // Enter team if not already on scan screen
+  const onScanScreen = await scanner.page.isVisible(scanner.selectors.scanScreen);
+  if (!onScanScreen) {
+    await scanner.enterTeam(teamId);
+    await scanner.confirmTeam();
+  }
+
+  // Scan each token
+  for (let i = 0; i < tokenIds.length; i++) {
+    const tokenId = tokenIds[i];
+    console.log(`  Scanning token ${i + 1}/${tokenIds.length}: ${tokenId}`);
+
+    await scanner.manualEntry(tokenId);
+
+    // Wait for result or error
+    try {
+      await scanner.waitForResult(3000);
+      console.log(`    ✓ Token accepted: ${tokenId}`);
+
+      // Continue to next scan (except on last token)
+      if (i < tokenIds.length - 1) {
+        await scanner.continueScan();
+      }
+    } catch (e) {
+      // Check if error was shown (duplicate/invalid)
+      const error = await scanner.getErrorMessage();
+      if (error) {
+        console.log(`    ✗ Token rejected: ${tokenId} (${error})`);
+        // Continue scanning anyway
+        if (i < tokenIds.length - 1) {
+          await scanner.continueScan();
+        }
+      } else {
+        throw e; // Unexpected error
+      }
+    }
+  }
+}
+
+module.exports = { initializeGMScannerWithMode, getTeamScore, scanTokenSequence };
