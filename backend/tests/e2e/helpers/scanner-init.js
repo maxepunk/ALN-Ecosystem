@@ -58,4 +58,34 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
   return gmScanner;
 }
 
-module.exports = { initializeGMScannerWithMode };
+/**
+ * Get team score from scanner (works in both modes)
+ * @param {Page} page - Playwright page
+ * @param {string} teamId - Team ID to get score for
+ * @param {string} sessionMode - 'standalone' or 'networked'
+ * @returns {Promise<number>} Team score
+ */
+async function getTeamScore(page, teamId, sessionMode) {
+  if (sessionMode === 'standalone') {
+    // Standalone: read from localStorage
+    return await page.evaluate((tid) => {
+      const sessionData = JSON.parse(localStorage.getItem('standaloneSession') || '{}');
+      const team = sessionData.teams?.[tid];
+      return team?.score || 0;
+    }, teamId);
+  } else {
+    // Networked: read from DataManager backendScores
+    return await page.evaluate((tid) => {
+      const scores = window.DataManager?.backendScores;
+      if (!scores) return 0;
+      for (const [teamIdKey, scoreData] of scores) {
+        if (teamIdKey === tid) {
+          return scoreData.currentScore || 0;
+        }
+      }
+      return 0;
+    }, teamId);
+  }
+}
+
+module.exports = { initializeGMScannerWithMode, getTeamScore };
