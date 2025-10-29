@@ -60,6 +60,11 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
 
 /**
  * Get team score from scanner (works in both modes)
+ *
+ * IMPORTANT: This function reads production's calculated scores.
+ * It does NOT recalculate scores (that would be testing test logic, not production).
+ * If this returns 0 when it shouldn't, it indicates a production bug that must be fixed.
+ *
  * @param {Page} page - Playwright page
  * @param {string} teamId - Team ID to get score for
  * @param {string} sessionMode - 'standalone' or 'networked'
@@ -67,67 +72,15 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
  */
 async function getTeamScore(page, teamId, sessionMode) {
   if (sessionMode === 'standalone') {
-    // Standalone: calculate from transactions if teams object empty (known GM Scanner bug)
+    // Standalone: read production's calculated score from localStorage
+    // StandaloneDataManager should have calculated and saved this
     return await page.evaluate((tid) => {
       const sessionData = JSON.parse(localStorage.getItem('standaloneSession') || '{}');
       const team = sessionData.teams?.[tid];
 
-      // If teams object has score, use it
-      if (team?.score) {
-        return team.score;
-      }
-
-      // Otherwise, calculate from transactions (workaround for standalone scoring bug)
-      const transactions = sessionData.transactions || [];
-      const SCORING_CONFIG = {
-        BASE_VALUES: { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 },
-        TYPE_MULTIPLIERS: { 'Personal': 1, 'Business': 3, 'Technical': 5, 'UNKNOWN': 0 }
-      };
-
-      let totalScore = 0;
-      const groupTokens = {};
-
-      for (const tx of transactions) {
-        if (tx.teamId !== tid) continue;
-
-        const baseValue = SCORING_CONFIG.BASE_VALUES[tx.valueRating] || 0;
-        const multiplier = SCORING_CONFIG.TYPE_MULTIPLIERS[tx.memoryType] || 0;
-        const points = baseValue * multiplier;
-        totalScore += points;
-
-        // Track group tokens for completion bonus
-        if (tx.group && tx.group !== 'No Group' && tx.group !== '') {
-          if (!groupTokens[tx.group]) {
-            groupTokens[tx.group] = [];
-          }
-          groupTokens[tx.group].push(tx.tokenId);
-        }
-      }
-
-      // Add group completion bonuses
-      for (const [group, tokens] of Object.entries(groupTokens)) {
-        // Parse multiplier from group name (e.g., "Marcus Sucks (x2)" → 2)
-        const match = group.match(/\(x(\d+)\)/);
-        if (match) {
-          const groupMultiplier = parseInt(match[1], 10);
-          // Check if group complete (need to load from token database, but for now assume complete if we have tokens)
-          // In real implementation, would check against TokenManager.getGroupInventory()
-          // For test purposes, calculate bonus: (multiplier - 1) * sum of token values
-          const groupSum = tokens.reduce((sum, tokenId) => {
-            const tx = transactions.find(t => t.tokenId === tokenId && t.teamId === tid);
-            if (tx) {
-              const baseValue = SCORING_CONFIG.BASE_VALUES[tx.valueRating] || 0;
-              const mult = SCORING_CONFIG.TYPE_MULTIPLIERS[tx.memoryType] || 0;
-              return sum + (baseValue * mult);
-            }
-            return sum;
-          }, 0);
-          const bonus = (groupMultiplier - 1) * groupSum;
-          totalScore += bonus;
-        }
-      }
-
-      return totalScore;
+      // ONLY read production's calculation - no fallback recalculation
+      // If this is 0/undefined, test SHOULD FAIL (indicates production bug)
+      return team?.score || 0;
     }, teamId);
   } else {
     // Networked: read from DataManager backendScores
