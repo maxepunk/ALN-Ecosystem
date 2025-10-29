@@ -28,13 +28,11 @@ class SessionService extends EventEmitter {
   async init() {
     try {
       // Load current session from storage if exists
-      const savedState = await persistenceService.loadGameState();
-      if (savedState && savedState.sessionId) {
-        const sessionData = await persistenceService.loadSession(savedState.sessionId);
-        if (sessionData) {
-          this.currentSession = Session.fromJSON(sessionData);
-          logger.info('Session restored from storage', { sessionId: this.currentSession.id });
-        }
+      // Use 'session:current' key instead of gameState (architectural change)
+      const sessionData = await persistenceService.load('session:current');
+      if (sessionData) {
+        this.currentSession = Session.fromJSON(sessionData);
+        logger.info('Session restored from storage', { sessionId: this.currentSession.id });
       }
     } catch (error) {
       logger.error('Failed to initialize session service', error);
@@ -60,8 +58,10 @@ class SessionService extends EventEmitter {
         scores: this.initializeTeamScores(sessionData.teams),
       });
 
-      // Save to persistence
-      await persistenceService.saveSession(this.currentSession.toJSON());
+      // Save to persistence (both specific ID and 'current' reference)
+      const sessionJSON = this.currentSession.toJSON();
+      await persistenceService.saveSession(sessionJSON);
+      await persistenceService.save('session:current', sessionJSON);
 
       // Start session timeout timer
       this.startSessionTimeout();
@@ -144,8 +144,10 @@ class SessionService extends EventEmitter {
         this.currentSession.transactions = updates.transactions;
       }
 
-      // Save to persistence
-      await persistenceService.saveSession(this.currentSession.toJSON());
+      // Save to persistence (both specific ID and 'current' reference)
+      const sessionData = this.currentSession.toJSON();
+      await persistenceService.saveSession(sessionData);
+      await persistenceService.save('session:current', sessionData);
 
       // Emit event
       this.emit('session:updated', this.currentSession);
@@ -218,8 +220,10 @@ class SessionService extends EventEmitter {
         session.complete();
       }
 
-      // Save final state
-      await persistenceService.saveSession(session.toJSON());
+      // Save final state (both specific ID and 'current' reference)
+      const sessionData = session.toJSON();
+      await persistenceService.saveSession(sessionData);
+      await persistenceService.save('session:current', sessionData);
 
       // Create backup
       await persistenceService.backupSession(session.toJSON());
@@ -234,7 +238,7 @@ class SessionService extends EventEmitter {
         name: session.name,
         startTime: session.startTime,
         endTime: session.endTime || new Date().toISOString(),
-        status: 'ended',
+        status: session.status,
         teams: session.scores ? session.scores.map(s => s.teamId) : [],
         metadata: session.metadata || {}
       });
@@ -394,7 +398,9 @@ class SessionService extends EventEmitter {
    */
   async saveCurrentSession() {
     if (this.currentSession) {
-      await persistenceService.saveSession(this.currentSession.toJSON());
+      const sessionData = this.currentSession.toJSON();
+      await persistenceService.saveSession(sessionData);
+      await persistenceService.save('session:current', sessionData);
     }
   }
 

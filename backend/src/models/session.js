@@ -124,7 +124,7 @@ class Session {
    */
   complete() {
     if (this.status === 'active' || this.status === 'paused') {
-      this.status = 'completed';
+      this.status = 'ended';
       this.endTime = new Date().toISOString();
     } else {
       throw new Error(`Cannot complete session with status ${this.status}`);
@@ -135,7 +135,7 @@ class Session {
    * Archive the session
    */
   archive() {
-    if (this.status === 'completed') {
+    if (this.status === 'ended') {
       this.status = 'archived';
     } else {
       throw new Error(`Cannot archive session with status ${this.status}`);

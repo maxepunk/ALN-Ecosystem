@@ -53,6 +53,7 @@ const config = {
 
   // Storage Configuration
   storage: {
+    type: process.env.STORAGE_TYPE || (process.env.NODE_ENV === 'test' ? 'memory' : 'file'),
     dataDir: process.env.DATA_DIR || path.join(process.cwd(), 'data'),
     logsDir: process.env.LOGS_DIR || path.join(process.cwd(), 'logs'),
     backupInterval: parseInt(process.env.BACKUP_INTERVAL || '100', 10), // transactions

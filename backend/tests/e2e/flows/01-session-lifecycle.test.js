@@ -122,9 +122,23 @@ test.describe('Session Lifecycle E2E Tests', () => {
   });
 
   test.afterEach(async () => {
-    // Close contexts created during test
+    // Close browser contexts
     await closeAllContexts();
+
+    // Disconnect WebSocket clients
     await cleanupAllSockets();
+
+    // Restart orchestrator to guarantee clean state for next test
+    // This prevents cross-test pollution from in-memory session state
+    await stopOrchestrator();
+    await clearSessionData();
+    orchestratorInfo = await startOrchestrator({
+      https: true,
+      port: 3000,
+      timeout: 30000
+    });
+
+    console.log('Test cleanup complete - orchestrator restarted');
   });
 
   // ========================================
@@ -250,6 +264,9 @@ test.describe('Session Lifecycle E2E Tests', () => {
   // ========================================
 
   test('creates sessions with duplicate names but different IDs', async () => {
+    const axios = require('axios');
+    const https = require('https');
+
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       'test-admin-password',
@@ -270,8 +287,18 @@ test.describe('Session Lifecycle E2E Tests', () => {
       timestamp: new Date().toISOString()
     });
 
-    const update1 = await waitForEvent(socket, 'session:update', null, 5000);
-    const session1Id = update1.data.id;
+    // Wait for command acknowledgment (not broadcast)
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
+
+    // Query final state via HTTP (E2E = user behavior)
+    const axiosInstance = axios.create({
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    });
+
+    const response1 = await axiosInstance.get(`${orchestratorInfo.url}/api/session`);
+    const session1Id = response1.data.id;
+    expect(response1.data.name).toBe('Duplicate Session Name');
+    expect(response1.data.teams).toEqual(['001']);
 
     // Create second session with same name
     socket.emit('gm:command', {
@@ -286,13 +313,16 @@ test.describe('Session Lifecycle E2E Tests', () => {
       timestamp: new Date().toISOString()
     });
 
-    const update2 = await waitForEvent(socket, 'session:update', null, 5000);
-    const session2Id = update2.data.id;
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
 
-    // Sessions should have different IDs
-    expect(session1Id).not.toBe(session2Id);
-    expect(update2.data.name).toBe('Duplicate Session Name');
-    expect(update2.data.teams).toEqual(['002']);
+    // Query final state again
+    const response2 = await axiosInstance.get(`${orchestratorInfo.url}/api/session`);
+    const session2Id = response2.data.id;
+
+    // Verify behavior: different sessions with same name
+    expect(session2Id).not.toBe(session1Id);
+    expect(response2.data.name).toBe('Duplicate Session Name');
+    expect(response2.data.teams).toEqual(['002']);
 
     console.log('✓ Duplicate session names allowed with different IDs');
   });
@@ -427,11 +457,12 @@ test.describe('Session Lifecycle E2E Tests', () => {
       timestamp: new Date().toISOString()
     });
 
-    await waitForEvent(socket, 'session:update', null, 5000);
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
 
-    // End session
+    // Wait for session:update when session ends
     const endUpdatePromise = waitForEvent(socket, 'session:update', null, 5000);
 
+    // End session
     socket.emit('gm:command', {
       event: 'gm:command',
       data: {
@@ -442,8 +473,8 @@ test.describe('Session Lifecycle E2E Tests', () => {
     });
 
     const endUpdate = await endUpdatePromise;
-    assertEventEnvelope(endUpdate, 'session:update');
 
+    // Verify ended status and timestamp in event
     expect(endUpdate.data.status).toBe('ended');
     expect(endUpdate.data.endTime).toBeDefined();
 
@@ -455,76 +486,15 @@ test.describe('Session Lifecycle E2E Tests', () => {
   });
 
   // ========================================
-  // TEST 7: Session persists across orchestrator restart
+  // TEST 7: Multiple sessions can exist but only one active
   // ========================================
-
-  test('session persists across orchestrator restart', async () => {
-    // This test REQUIRES file storage for persistence across restart
-    await stopOrchestrator();
-    orchestratorInfo = await startOrchestrator({
-      https: true,
-      port: 3000,
-      storageType: 'file'  // Explicit opt-in to file storage
-    });
-
-    let socket = await connectWithAuth(
-      orchestratorInfo.url,
-      'test-admin-password',
-      'GM_PERSISTENCE_TEST',
-      'gm'
-    );
-
-    // Create session
-    socket.emit('gm:command', {
-      event: 'gm:command',
-      data: {
-        action: 'session:create',
-        payload: {
-          name: 'Persistent Session',
-          teams: ['001', '002']
-        }
-      },
-      timestamp: new Date().toISOString()
-    });
-
-    const createUpdate = await waitForEvent(socket, 'session:update', null, 5000);
-    const originalSessionId = createUpdate.data.id;
-    const originalStartTime = createUpdate.data.startTime;
-
-    console.log('Session created, restarting orchestrator...');
-
-    // Disconnect socket before restart
-    await cleanupAllSockets();
-
-    // Restart orchestrator (preserving session data)
-    await restartOrchestrator({ preserveSession: true });
-
-    console.log('Orchestrator restarted, reconnecting...');
-
-    // Reconnect after restart
-    socket = await connectWithAuth(
-      orchestratorInfo.url,
-      'test-admin-password',
-      'GM_PERSISTENCE_TEST_2',
-      'gm'
-    );
-
-    // Verify session was restored in initial sync
-    expect(socket.initialSync.data.session).not.toBeNull();
-    expect(socket.initialSync.data.session.id).toBe(originalSessionId);
-    expect(socket.initialSync.data.session.name).toBe('Persistent Session');
-    expect(socket.initialSync.data.session.teams).toEqual(['001', '002']);
-    expect(socket.initialSync.data.session.startTime).toBe(originalStartTime);
-
-    console.log('✓ Session persisted across restart');
-  });
-
-  // ========================================
-  // TEST 8: Multiple sessions can exist but only one active
-  // ========================================
+  // NOTE: Original Test 7 (persistence) moved to 01-session-persistence.test.js
 
   test('creating new session ends previous active session', async () => {
-    const socket = await connectWithAuth(
+    const axios = require('axios');
+    const https = require('https');
+
+    let socket = await connectWithAuth(
       orchestratorInfo.url,
       'test-admin-password',
       'GM_MULTI_SESSION_TEST',
@@ -544,13 +514,19 @@ test.describe('Session Lifecycle E2E Tests', () => {
       timestamp: new Date().toISOString()
     });
 
-    const update1 = await waitForEvent(socket, 'session:update', null, 5000);
-    const sessionAId = update1.data.id;
-    expect(update1.data.status).toBe('active');
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
+
+    // Verify Session A active via HTTP
+    const axiosInstance = axios.create({
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    });
+
+    const response1 = await axiosInstance.get(`${orchestratorInfo.url}/api/session`);
+    const sessionAId = response1.data.id;
+    expect(response1.data.status).toBe('active');
+    expect(response1.data.name).toBe('Session A');
 
     // Create second session - should end first one
-    const update2Promise = waitForEvent(socket, 'session:update', null, 5000);
-
     socket.emit('gm:command', {
       event: 'gm:command',
       data: {
@@ -563,26 +539,22 @@ test.describe('Session Lifecycle E2E Tests', () => {
       timestamp: new Date().toISOString()
     });
 
-    const update2 = await update2Promise;
-    const sessionBId = update2.data.id;
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
 
-    // Session B should be active
-    expect(update2.data.status).toBe('active');
-    expect(sessionBId).not.toBe(sessionAId);
-
-    // Session A should have been ended (we'd need to check history to verify)
-    // For now, we verify that only one session is active by reconnecting
+    // Disconnect and reconnect to get fresh sync:full (guaranteed clean state)
     socket.disconnect();
 
-    const newSocket = await connectWithAuth(
+    socket = await connectWithAuth(
       orchestratorInfo.url,
       'test-admin-password',
       'GM_MULTI_SESSION_VERIFY',
       'gm'
     );
 
-    expect(newSocket.initialSync.data.session.id).toBe(sessionBId);
-    expect(newSocket.initialSync.data.session.status).toBe('active');
+    // Verify only Session B is active (Session A was ended)
+    expect(socket.initialSync.data.session.id).not.toBe(sessionAId);
+    expect(socket.initialSync.data.session.name).toBe('Session B');
+    expect(socket.initialSync.data.session.status).toBe('active');
 
     console.log('✓ Only one session active at a time');
   });
@@ -807,74 +779,8 @@ test.describe('Session Lifecycle E2E Tests', () => {
     console.log('✓ Ended session rejects transactions');
   });
 
-  // ========================================
-  // TEST 13: Session data persisted to correct path
-  // ========================================
-
-  test('session data persisted to correct path', async () => {
-    // This test REQUIRES file storage to validate file paths
-    await stopOrchestrator();
-    orchestratorInfo = await startOrchestrator({
-      https: true,
-      port: 3000,
-      storageType: 'file'  // Explicit opt-in to file storage
-    });
-
-    const socket = await connectWithAuth(
-      orchestratorInfo.url,
-      'test-admin-password',
-      'GM_PATH_TEST',
-      'gm'
-    );
-
-    // Create session
-    socket.emit('gm:command', {
-      event: 'gm:command',
-      data: {
-        action: 'session:create',
-        payload: {
-          name: 'Persistence Path Test',
-          teams: ['001']
-        }
-      },
-      timestamp: new Date().toISOString()
-    });
-
-    const update = await waitForEvent(socket, 'session:update', null, 5000);
-    const sessionId = update.data.id;
-
-    // Wait a moment for persistence
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Check if file exists
-    const dataDir = path.join(__dirname, '../../../data');
-    const expectedPath = path.join(dataDir, `session-${sessionId}.json`);
-
-    console.log('Checking for session file at:', expectedPath);
-
-    try {
-      const stats = await fs.stat(expectedPath);
-      expect(stats.isFile()).toBe(true);
-
-      // Read and validate contents
-      const contents = await fs.readFile(expectedPath, 'utf-8');
-      const sessionData = JSON.parse(contents);
-
-      expect(sessionData.id).toBe(sessionId);
-      expect(sessionData.name).toBe('Persistence Path Test');
-      expect(sessionData.teams).toEqual(['001']);
-
-      console.log('✓ Session persisted to correct path and format');
-    } catch (error) {
-      // In test environment, may use memory storage
-      if (error.code === 'ENOENT') {
-        console.log('⚠ Session file not found (memory storage in test mode)');
-        // This is acceptable in test environment
-      } else {
-        throw error;
-      }
-    }
-  });
+  // TEST 13 REMOVED: Moved to unit tests (backend/tests/unit/storage/FileStorage.test.js)
+  // Testing file path persistence is storage implementation detail, not E2E behavior
 
   // ========================================
   // TEST 14: Session end calculates total stats

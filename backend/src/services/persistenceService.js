@@ -27,6 +27,7 @@ class PersistenceService {
     try {
       // Create appropriate storage backend
       this.storage = createStorage({
+        type: config.storage.type,  // Pass storage type from config
         dataDir: this.dataDir
       });
 
