@@ -254,17 +254,32 @@ afterEach:  Close connections, NOT clear state (save for next beforeEach)
 - Debugging checklists for future audits
 
 ### Phase 1: Audit Test 07 Series ⏳ IN PROGRESS
-**Started:** 2025-10-28 Evening | **Progress:** 1/3 files ✅
+**Started:** 2025-10-28 Evening | **Progress:** 1.67/3 files (07a ✅, 07b 67% complete)
 
 **Tests to Audit:**
 - [x] 07a-gm-scanner-standalone-blackmarket.test.js - 1/1 ✅ (anti-pattern fix)
-- [ ] 07b-gm-scanner-networked-blackmarket.test.js (~6 tests)
+- [~] 07b-gm-scanner-networked-blackmarket.test.js - 4/6 tests ✅ (2 remaining: duplicate rejection)
 - [ ] 07c-gm-scanner-scoring-parity.test.js (~5 tests)
 
 **What Was Done (07a):**
 Applied `superpowers:testing-anti-patterns` skill → Found test helper was recalculating scores instead of reading production → Removed 64-line fallback → Test still passes, proving production works correctly.
 
-**Next:** Audit 07b (networked mode), then 07c (scoring parity validation).
+**What Was Done (07b) - Session 2025-10-28 Late Evening:**
+1. **Baseline Investigation:** Found 5 tests were empty placeholders (just TODO stubs), only connection test existed
+2. **Test Implementation:** Wrote tests 2, 3, 4 using NFC simulation pattern from 07a
+3. **Key Fixes Applied:**
+   - Use `processNFCRead()` directly (simulates NFC API, not manual entry UI)
+   - Contract alignment: `transaction:new` event has nested `data.transaction` structure
+   - Broadcast transformations: `group:completed` uses `group`/`bonusPoints` not `groupId`/`bonus`
+4. **Tests Passing (4/6):**
+   - ✅ Test 1: Connection and session creation
+   - ✅ Test 2: Single Personal token (500 points)
+   - ✅ Test 3: Business token with 3x multiplier (15,000 points)
+   - ✅ Test 4: Group completion - 5 tokens, x2 multiplier, 53,200 points with bonus
+   - ⏸️ Test 5: Duplicate rejection (same team) - Not yet written
+   - ⏸️ Test 6: Duplicate rejection (different team) - Not yet written
+
+**Next:** Complete tests 5-6 (duplicate rejection scenarios), then audit 07c (scoring parity).
 
 ### Phase 2: Audit Test 21 (Player Scanner) ⏸️ BLOCKED
 **Duration:** Estimated 2-3 hours
@@ -414,6 +429,40 @@ npx playwright test tests/e2e/flows/01-session-lifecycle.test.js --project=chrom
 
 ## 📚 KEY ARCHITECTURAL FINDINGS
 
+### Test 07b: NFC Simulation and Event Contracts (2025-10-28 Late Evening)
+
+**Finding 1: NFC Simulation Pattern (Not Manual Entry)**
+- **Anti-pattern:** Using `scanner.manualEntry()` (clicks button, triggers prompt dialog)
+- **Correct pattern:** Call `processNFCRead()` directly via `page.evaluate()`
+  ```javascript
+  await page.evaluate((tokenId) => {
+    window.App.processNFCRead({
+      id: tokenId,
+      source: 'nfc',
+      raw: tokenId
+    });
+  }, 'sof002');
+  ```
+- **Why:** Tests actual NFC API flow, avoids dialog blocking, matches 07a successful pattern
+
+**Finding 2: WebSocket Event Structure Must Match AsyncAPI Contract Exactly**
+- `transaction:new` has nested structure: `event.data.transaction.tokenId` (NOT `event.data.tokenId`)
+- Backend broadcasts transform domain events (service layer → broadcast layer)
+- Example: `group:completed` domain event emits `groupId` and `bonus`, but broadcast sends `group` and `bonusPoints`
+- **Lesson:** Always check `backend/contracts/asyncapi.yaml` AND `backend/src/websocket/broadcasts.js` for actual structure
+
+**Finding 3: Group Completion is Retroactive**
+- Scanning all tokens in a group triggers bonus calculation
+- Bonus formula: `(multiplier - 1) × sum_of_all_token_values`
+- Example: 5 tokens worth 26,600 base → x2 multiplier → 26,600 bonus → 53,200 total
+- Backend emits `group:completed` event after last token, then `score:updated` with final total
+
+**Finding 4: Test Investigation Using Plan Agents**
+- User directive: "fill gaps in knowledge before writing test" → Use Plan agent to research
+- Plan agent provided complete spec: token data, calculation formulas, event flows, edge cases
+- Prevented test mistakes by understanding exact behavior before implementation
+- Pattern: Investigation phase → Write test → Verify → Fix if needed
+
 ### Dual Storage Pattern (Disk + Memory)
 
 **Discovery:** ALN uses TWO storage layers for session data:
@@ -523,8 +572,8 @@ const sessionData = await persistenceService.load('session:current');
 
 ---
 
-**Plan Status:** 🟡 AUDIT IN PROGRESS - Phase 1 (Test 07) - 1/3 files complete
-**Next Action:** Run test 07b with anti-patterns validation
-**Verified Passing:** 29 tests (00: 14, 01: 14, 07a: 1)
+**Plan Status:** 🟡 AUDIT IN PROGRESS - Phase 1 (Test 07) - 1.67/3 files complete
+**Next Action:** Complete 07b tests 5-6 (duplicate rejection), then audit 07c
+**Verified Passing:** 33 tests (00: 14, 01: 14, 07a: 1, 07b: 4/6)
 
-🤖 Updated after Test 07a anti-patterns audit (2025-10-28 Evening)
+🤖 Updated after Test 07b partial completion (2025-10-28 Late Evening)
