@@ -258,7 +258,7 @@ class PersistenceService {
    * @returns {Promise<void>}
    */
   async backupSession(session) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const timestamp = new Date().toISOString();
     const key = `backup:session:${session.id}:${timestamp}`;
     await this.save(key, session);
     logger.info('Session backed up', { sessionId: session.id, timestamp });
@@ -310,10 +310,12 @@ class PersistenceService {
     let deleted = 0;
 
     for (const key of backupKeys) {
-      // Extract timestamp from key
+      // Extract timestamp from key (ISO 8601 format)
+      // Key format: backup:session:sessionId:2025-10-29T22:30:00.000Z
+      // ISO timestamps contain colons, so rejoin everything after the 3rd colon
       const parts = key.split(':');
-      const timestamp = parts[parts.length - 1];
-      const backupTime = new Date(timestamp.replace(/-/g, ':')).getTime();
+      const timestamp = parts.slice(3).join(':');
+      const backupTime = new Date(timestamp).getTime();
 
       if (now - backupTime > maxAgeMs) {
         await this.storage.delete(key);
