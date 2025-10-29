@@ -1,16 +1,18 @@
 /**
  * Playwright Test Configuration
- * Optimized for Raspberry Pi 4 Environment
+ * Optimized for Raspberry Pi 4 (8GB RAM) Environment
  *
- * Hardware Constraints:
- * - RAM: Limited (256MB Node.js max)
+ * Hardware Configuration:
+ * - RAM: 8GB (Node.js max 2GB)
  * - GPU: 256MB allocated for video decoding
  * - Network: HTTPS with self-signed certificates
  * - Display: HDMI output available
  *
  * Usage:
- * - npm run test:e2e                    # Run all E2E tests
- * - npm run test:e2e -- --headed        # Run with visible browser
+ * - npm run test:e2e                    # Run E2E tests (2 workers)
+ * - npm run test:e2e:fast               # Run E2E tests (3 workers, max speed)
+ * - npm run test:e2e:headed             # Run with visible browser (1 worker)
+ * - npm run test:e2e:ui                 # Interactive UI mode
  * - npx playwright test --list          # List all tests
  * - npx playwright show-report          # View HTML report
  */
@@ -34,10 +36,10 @@ module.exports = defineConfig({
   },
 
   // Test run settings
-  fullyParallel: false, // CRITICAL: Sequential execution for Pi
+  fullyParallel: false, // CRITICAL: Sequential execution for session-based tests
   forbidOnly: !!process.env.CI, // Prevent .only() in CI
   retries: process.env.CI ? 2 : 1, // Retry once on failure (twice in CI)
-  workers: 1, // CRITICAL: Run tests one at a time (Pi RAM constraint)
+  workers: process.env.CI ? 1 : 2, // 8GB Pi: 2 workers for local dev, 1 for CI safety
 
   // Reporter configuration
   reporter: [
@@ -82,13 +84,14 @@ module.exports = defineConfig({
         ...devices['Desktop Chrome'],
         viewport: { width: 1280, height: 720 },
 
-        // Pi-specific browser optimizations
+        // Pi-specific browser optimizations (8GB RAM)
         launchOptions: {
           args: [
-            '--disable-dev-shm-usage', // Use /tmp instead of /dev/shm (Pi RAM optimization)
+            '--disable-dev-shm-usage', // Use /tmp instead of /dev/shm (good practice)
             '--no-sandbox', // Required for Pi compatibility
             '--disable-setuid-sandbox',
-            '--disable-gpu', // GPU reserved for VLC video playback
+            // Conditionally disable GPU if VLC is using it for video playback
+            ...(process.env.FEATURE_VIDEO_PLAYBACK !== 'false' ? ['--disable-gpu'] : []),
             '--disable-web-security', // Allow self-signed certs in tests
           ],
         },
@@ -102,13 +105,14 @@ module.exports = defineConfig({
         ...devices['Pixel 5'],
         viewport: { width: 393, height: 851 },
 
-        // Mobile-specific optimizations
+        // Mobile-specific optimizations (8GB RAM)
         launchOptions: {
           args: [
             '--disable-dev-shm-usage',
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-gpu',
+            // Conditionally disable GPU if VLC is using it for video playback
+            ...(process.env.FEATURE_VIDEO_PLAYBACK !== 'false' ? ['--disable-gpu'] : []),
           ],
         },
       },

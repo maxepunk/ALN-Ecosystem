@@ -1,6 +1,7 @@
 /**
  * PM2 Ecosystem Configuration
  * Production deployment configuration for ALN Orchestrator
+ * Optimized for Raspberry Pi 4 (8GB RAM)
  */
 
 module.exports = {
@@ -49,7 +50,7 @@ module.exports = {
       // Process management
       watch: false, // Disable in production
       ignore_watch: ['node_modules', 'logs', 'data', '.git'],
-      max_memory_restart: '500M', // Restart if memory exceeds 500MB
+      max_memory_restart: '2G', // Restart if memory exceeds 2GB (8GB Pi)
       
       // Logging
       log_file: './logs/combined.log',
@@ -72,7 +73,7 @@ module.exports = {
       instance_var: 'INSTANCE_ID',
       
       // Node.js arguments
-      node_args: '--max-old-space-size=256', // Limit memory for Raspberry Pi
+      node_args: '--max-old-space-size=2048', // 2GB max for 8GB Raspberry Pi
       
       // Cron restart (optional - restart daily at 3 AM)
       // cron_restart: '0 3 * * *',

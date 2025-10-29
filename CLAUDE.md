@@ -243,6 +243,12 @@ Backend Migration → Scanner Not Updated → Mixed Content Blocking
 
 ## Key Commands
 
+**System Configuration:** All commands optimized for Raspberry Pi 4 (8GB RAM) with:
+- Node.js: 2GB max memory (`--max-old-space-size=2048`)
+- Jest tests: 4 parallel workers for unit/contract tests
+- Playwright E2E: 2-3 parallel workers (configurable)
+- Integration tests: Sequential execution (architectural requirement)
+
 ### Development
 ```bash
 cd backend
@@ -265,24 +271,57 @@ npm run prod:restart      # Restart all services
 ### Testing
 ```bash
 cd backend
-npm test                              # All tests (unit + contract + integration)
-npm run test:unit                     # Unit tests only
-npm run test:contract                 # Contract tests (API/WebSocket validation)
-npm run test:integration              # Integration tests (sequential execution)
-npm run test:watch                    # Watch mode for development
-npm run test:coverage                 # Generate coverage report
-npm run test:ci                       # CI pipeline tests (contract + integration)
-npm run test:offline                  # Offline mode integration tests
-npx jest <path/to/test.js>            # Run single test file
+
+# Quick feedback (unit + contract tests - runs in ~15-30 seconds)
+npm test                              # Unit + Contract tests (default - fast feedback)
+
+# Individual test suites (8GB Pi optimized with parallel execution)
+npm run test:unit                     # Unit tests (4 workers)
+npm run test:contract                 # Contract tests (4 workers)
+npm run test:integration              # Integration tests (sequential - state coordination)
 
 # E2E Tests (Playwright-based browser automation)
-npx playwright test                   # Run all E2E tests
-npx playwright test --ui              # Run E2E tests with UI mode
-npx playwright test flows/00-smoke   # Run specific test suite
-npx playwright test --grep "session" # Run tests matching pattern
-npx playwright test --debug           # Run with debugger
-npx playwright show-report            # View test results
+npm run test:e2e                      # E2E tests (2 workers for 8GB Pi)
+npm run test:e2e:fast                 # E2E tests (3 workers - maximum speed)
+npm run test:e2e:headed               # E2E with visible browser (1 worker)
+npm run test:e2e:ui                   # Interactive UI mode
+
+# Comprehensive test suites
+npm run test:all                      # Unit + Contract + Integration
+npm run test:full                     # All tests including E2E
+
+# CI/CD pipeline tests
+npm run test:ci                       # Standard CI (unit + contract + integration)
+npm run test:ci:full                  # Full CI with E2E tests
+
+# Development utilities
+npm run test:watch                    # Watch mode (2 workers)
+npm run test:coverage                 # Coverage report (4 workers)
+npm run test:offline                  # Offline mode integration tests
+
+# Run individual test files (both methods work)
+npx jest tests/unit/services/persistenceService.test.js
+npm test -- tests/unit/services/persistenceService.test.js
+
+# Run tests matching a pattern
+npm test -- persistenceService        # Runs only persistenceService.test.js
+
+# Direct Playwright commands
+npx playwright test                   # All E2E tests (respects playwright.config.js)
+npx playwright test --workers=3       # Override worker count
+npx playwright test flows/00-smoke    # Specific test suite
+npx playwright test --grep "session"  # Tests matching pattern
+npx playwright test --debug           # Step-through debugger
+npx playwright show-report            # View HTML report
 ```
+
+**Test Performance (8GB Pi):**
+- Default (`npm test`): ~15-30 seconds (unit + contract, parallel, 4 workers)
+- Unit tests only: ~10-20 seconds (parallel, 4 workers)
+- Contract tests only: ~5-10 seconds (parallel, 4 workers)
+- Integration tests: ~5 minutes (sequential - architectural requirement)
+- E2E tests: ~4-5 minutes (2-3 workers, down from ~10 minutes)
+- Full suite: ~10-15 minutes total
 
 ### Submodule Management
 ```bash
@@ -529,15 +568,20 @@ The `ecosystem.config.js` manages both processes:
 - `aln-orchestrator`: Node.js server
 - `vlc-http`: VLC with HTTP interface
 
-### Raspberry Pi Specifics
-- Memory limit: 256MB max
-- Use `NODE_OPTIONS=--max-old-space-size=256`
-- Ensure HDMI output configured in `/boot/config.txt`
-- VLC needs GUI access (`--intf qt`)
+### Raspberry Pi Specifics (8GB Model)
+- **RAM**: 8GB total, Node.js configured for 2GB max (`--max-old-space-size=2048`)
+- **PM2 restart threshold**: 2GB (automatically restarts if memory exceeds limit)
+- **Test parallelization**:
+  - Jest: 4 workers for unit/contract tests
+  - Playwright: 2-3 workers for E2E tests (down from sequential)
+  - Integration: Still sequential (architectural requirement, not RAM constraint)
+- **HDMI output**: Configure in `/boot/config.txt`
+- **VLC**: Needs GUI access (`--intf qt`)
 - **GPU Memory**: Requires minimum 256MB for hardware-accelerated video decoding
   - Check with: `vcgencmd get_mem gpu`
   - Configure in: `/boot/firmware/config.txt` with `gpu_mem=256`
   - Reboot required after changes
+  - Browser tests use `--disable-gpu` when VLC is running (GPU reserved for video)
 
 ### Video Optimization Requirements
 **Critical**: Pi 4 hardware decoder requires properly encoded H.264 videos.

@@ -351,20 +351,21 @@ describe('PersistenceService', () => {
   });
 
   describe('cleanOldBackups', () => {
-    it('should attempt to delete old backups (reveals timestamp parsing bug)', async () => {
+    it('should delete old backups when they exceed max age', async () => {
       // ARRANGE
       const session = { id: 'cleanup-test', data: 'old' };
       await persistenceService.backupSession(session);
 
-      // ACT - Clean backups older than 0 hours
+      // Wait a tiny bit to ensure timestamp difference
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // ACT - Clean backups older than 0 hours (immediate cleanup)
       const deleted = await persistenceService.cleanOldBackups(0);
 
-      // ASSERT - Due to timestamp parsing bug in production (line 316),
-      // backupTime becomes NaN, so comparison fails and nothing is deleted
-      // PRODUCTION BUG DISCOVERED: timestamp format is "2025-10-29T14-32-55-684Z"
-      // but code tries to parse it as Date by replacing - with :
-      // This creates invalid date string "2025:10:29T14:32:55:684Z"
-      expect(deleted).toBe(0); // Should be 1, but bug prevents deletion
+      // ASSERT - Bug has been FIXED in production (commit 0e05b16d)
+      // Fixed: ISO timestamp extraction uses parts.slice(3).join(':')
+      // to handle colons in ISO 8601 format (2025-10-29T22:30:00.000Z)
+      expect(deleted).toBe(1); // Backup correctly deleted
     });
 
     it('should return zero when no old backups exist', async () => {
