@@ -162,6 +162,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               bonusPoints: 500,
               tokensScanned: 5,
               completedGroups: ['jaw_group'],
+              adminAdjustments: [],
               lastUpdate: new Date().toISOString()
             }
           ],
@@ -421,7 +422,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
 
   describe('score:updated - Team Score Update Broadcast', () => {
 
-    it('should validate score:updated event with all 7 required fields', () => {
+    it('should validate score:updated event with all 8 required fields', () => {
       const event = {
         event: 'score:updated',
         data: {
@@ -431,18 +432,20 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           bonusPoints: 500,
           tokensScanned: 8,
           completedGroups: ['jaw_group'],
+          adminAdjustments: [],
           lastUpdate: new Date().toISOString()
         },
         timestamp: new Date().toISOString()
       };
 
-      // Verify all 7 fields present (contract requirement)
+      // Verify all 8 fields present (contract requirement)
       expect(event.data).toHaveProperty('teamId');
       expect(event.data).toHaveProperty('currentScore');
       expect(event.data).toHaveProperty('baseScore');
       expect(event.data).toHaveProperty('bonusPoints');
       expect(event.data).toHaveProperty('tokensScanned');
       expect(event.data).toHaveProperty('completedGroups');
+      expect(event.data).toHaveProperty('adminAdjustments');
       expect(event.data).toHaveProperty('lastUpdate');
 
       expect(() => {
@@ -460,6 +463,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           bonusPoints: 0,
           tokensScanned: 2,
           completedGroups: [], // No completions yet
+          adminAdjustments: [],
           lastUpdate: new Date().toISOString()
         },
         timestamp: new Date().toISOString()
@@ -752,6 +756,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               bonusPoints: 0,
               tokensScanned: 1,
               completedGroups: [],
+              adminAdjustments: [],
               lastUpdate: new Date().toISOString()
             },
             timestamp: new Date().toISOString()

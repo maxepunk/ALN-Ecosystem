@@ -122,8 +122,17 @@ npm run test:contract                 # Contract tests (API/WebSocket validation
 npm run test:integration              # Integration tests (sequential execution)
 npm run test:watch                    # Watch mode for development
 npm run test:coverage                 # Generate coverage report
+npm run test:ci                       # CI pipeline tests (contract + integration)
 npm run test:offline                  # Offline mode integration tests
 npx jest <path/to/test.js>            # Run single test file
+
+# E2E Tests (Playwright-based browser automation)
+npx playwright test                   # Run all E2E tests
+npx playwright test --ui              # Run E2E tests with UI mode
+npx playwright test flows/00-smoke   # Run specific test suite
+npx playwright test --grep "session" # Run tests matching pattern
+npx playwright test --debug           # Run with debugger
+npx playwright show-report            # View test results
 ```
 
 ### Submodule Management
@@ -138,6 +147,12 @@ npm run sync:quick                          # Quick sync and commit
 npm run health            # Full system health check
 npm run health:api        # Check orchestrator API
 npm run health:vlc        # Check VLC status
+```
+
+### Utilities
+```bash
+cd backend
+node start-session.js     # Quick CLI tool to create a session (useful for testing)
 ```
 
 ## Core Services Architecture
@@ -286,18 +301,28 @@ See `backend/contracts/asyncapi.yaml` for complete event definitions.
 
 **Key WebSocket Events:**
 - `gm:scan` → `game:state` - GM scanner triggers state broadcast
-- `admin:intervention` - Manual state corrections
+- `admin:intervention` - Manual state corrections with audit trail
+- `transaction:deleted` - Real-time cross-scanner sync for deletions
 - `session:update` - Session lifecycle events
 - `offline:queue:update` - Offline scan synchronization
+- `score:updated` - Includes adminAdjustments audit trail
+
+**Admin Audit Trail:**
+- All admin score adjustments tracked with metadata (gmStation, reason, timestamp, delta)
+- `transaction:deleted` events broadcast to all connected scanners for state sync
+- Audit trail included in `score:updated` events via adminAdjustments array
 
 ### HTTP API Endpoints
 See `backend/contracts/openapi.yaml` for complete API specification.
 
 **Key Endpoints:**
 - `POST /api/scan` - Player scanner token scans (fire-and-forget)
+  - **Important:** Player Scanner sends ALL token scans to orchestrator (since Oct 2025)
+  - Previously only sent video tokens; now includes image/audio for logging
+  - Backend logs all scans but only queues videos for playback
 - `GET /api/tokens` - Token data retrieval
 - `POST /api/admin/auth` - Admin authentication
-- `GET /health` - System health check
+- `GET /health` - System health check (includes device tracking)
 
 ## Environment Configuration
 
@@ -514,6 +539,89 @@ This creates Pi 4-compatible videos at ~2Mbps bitrate with hardware acceleration
 | GM scanner connects but no state | Check JWT token valid, verify `sync:full` event sent (see Cross-Module Debugging) |
 | Transaction not scoring | Verify session exists, check transactionService event emission |
 | Submodule out of sync | Run `git submodule update --remote --merge` and restart orchestrator |
+| NFC scan not triggering | Check NFC listener registered BEFORE scan() call (race condition fixed Oct 2025) |
+| Duplicate warning not showing | Update ALNScanner - showWarning() replaced with showToast() (Oct 2025) |
+| GM Scanner scoring mismatch | Update ALNScanner to latest - scoring parity bugs fixed in Oct 2025 |
+| Player scans not logged | Update aln-memory-scanner - now sends ALL scans to orchestrator (Oct 2025) |
+
+## E2E Testing Infrastructure
+
+### Overview
+The project includes comprehensive end-to-end tests using Playwright to validate full system flows across all components (backend, GM Scanner, Player Scanner).
+
+**Location:** `backend/tests/e2e/`
+
+**Test Organization:**
+```
+backend/tests/e2e/
+├── flows/                              # Test suites organized by feature
+│   ├── 00-smoke-test.test.js          # Basic system health
+│   ├── 01-session-*.test.js           # Session lifecycle tests
+│   ├── 07a-gm-scanner-standalone-*.test.js    # Standalone mode
+│   ├── 07b-gm-scanner-networked-*.test.js     # Networked mode
+│   ├── 07c-gm-scanner-scoring-parity.test.js  # Mode parity validation
+│   └── 21-player-scanner-*.test.js    # Player scanner integration
+├── helpers/
+│   ├── page-objects/                  # Page object models
+│   │   ├── GMScannerPage.js          # GM Scanner interactions
+│   │   └── PlayerScannerPage.js      # Player Scanner interactions
+│   ├── assertions.js                  # Custom assertions
+│   ├── wait-conditions.js            # Async wait utilities
+│   └── scanner-init.js               # Scanner setup helpers
+├── setup/
+│   └── session-helpers.js            # Session management utilities
+└── fixtures/
+    ├── test-tokens.json              # 10 minimal test tokens (2.6KB)
+    ├── test-videos/                  # Small test videos (~50KB total)
+    └── test-assets/                  # Test images and audio
+```
+
+### Test Fixtures
+E2E tests use lightweight fixtures (`backend/tests/e2e/fixtures/`) instead of production ALN-TokenData:
+- **Rationale:** Fast execution, predictable data, Pi-compatible encoding
+- **Size:** ~50KB total (vs 100+ MB production data)
+- **Coverage:** All token types (video, image, audio, combinations)
+- See `backend/tests/e2e/fixtures/README.md` for complete fixture documentation
+
+### Key Test Patterns
+
+**Page Object Model:**
+- `GMScannerPage` and `PlayerScannerPage` encapsulate scanner interactions
+- Methods for scanning, mode switching, authentication, state inspection
+- Handles WebSocket event listening and DOM manipulation
+
+**Wait Conditions:**
+- Never use arbitrary timeouts (`page.waitForTimeout()`)
+- Always use condition-based waiting (`wait-conditions.js`)
+- Polls for actual state changes (score updates, transaction visibility)
+- See `backend/tests/e2e/setup/BROWSER_CONTEXTS_README.md` for patterns
+
+**Assertions:**
+- Custom assertions in `assertions.js` for common validations
+- Score expectations, transaction visibility, session state
+- WebSocket event envelope validation
+
+### Running E2E Tests
+```bash
+cd backend
+npx playwright test                   # All E2E tests
+npx playwright test --ui              # Interactive UI mode
+npx playwright test flows/00-smoke   # Specific suite
+npx playwright test --grep "Black Market"  # Pattern matching
+npx playwright test --debug           # Step-through debugger
+npx playwright show-report            # View HTML report
+```
+
+**Test Isolation:**
+- Each test creates its own session to avoid cross-test pollution
+- Session helpers in `setup/session-helpers.js` manage lifecycle
+- Tests can run in parallel or sequential (`--workers=1` for sequential)
+
+### Important E2E Testing Notes
+- Tests require orchestrator running: `npm run dev:no-video` (VLC optional)
+- Browser contexts are isolated (separate cookies, storage, WebSocket connections)
+- Check `backend/tests/e2e/setup/BROWSER_CONTEXTS_README.md` for architecture details
+- See `backend/tests/e2e/fixtures/FIXTURE_SUMMARY.txt` for fixture token IDs
 
 ## Code Style Guidelines
 

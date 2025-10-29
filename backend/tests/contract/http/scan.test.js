@@ -45,7 +45,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: '534e2b03',
+        tokenId: 'jaw001',  // Valid token with video from ALN-TokenData
         teamId: '001',
         deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
@@ -59,7 +59,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: '534e2b03',
+        tokenId: 'jaw001',  // Valid token with video from ALN-TokenData
         teamId: '001',  // TODO Phase 2: Make optional per contract
         deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
@@ -75,7 +75,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: '534e2b03',
+        tokenId: 'jaw001',  // Valid token with video from ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01',
         teamId: '001',
         timestamp: new Date().toISOString()
@@ -111,11 +111,11 @@ describe('POST /api/scan', () => {
   });
 
   it('should return 409 when video already playing', async () => {
-    // Setup: Queue a video token first
+    // Setup: Queue jaw001 video token first
     await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: '534e2b03',
+        tokenId: 'jaw001',  // Only video token in ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01'
       })
       .expect(200);
@@ -123,11 +123,12 @@ describe('POST /api/scan', () => {
     // Give video queue time to start processing
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Attempt to scan another video while first is playing
+    // Attempt to scan the same video token again while first is still playing
+    // Player scanner has NO duplicate rejection - only video-already-playing rejection
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw001',
+        tokenId: 'jaw001',  // Same token - should reject because video still playing
         deviceId: 'PLAYER_SCANNER_02'
       })
       .expect(409);
@@ -167,12 +168,12 @@ describe('POST /api/scan/batch', () => {
       .send({
         transactions: [
           {
-            tokenId: '534e2b03',
+            tokenId: 'jaw001',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           },
           {
-            tokenId: 'tac001',
+            tokenId: 'tac001',  // Valid non-video token
             deviceId: 'PLAYER_SCANNER_01',
             teamId: '001',
             timestamp: new Date().toISOString()
@@ -190,7 +191,7 @@ describe('POST /api/scan/batch', () => {
       .send({
         transactions: [
           {
-            tokenId: '534e2b03',
+            tokenId: 'jaw001',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           }

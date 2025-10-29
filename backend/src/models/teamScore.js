@@ -223,6 +223,7 @@ class TeamScore {
       tokensScanned: 0,
       bonusPoints: 0,
       completedGroups: [],
+      adminAdjustments: [],
       lastUpdate: new Date().toISOString(),
     });
   }

@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
         deviceId: scanRequest.deviceId,
         teamId: scanRequest.teamId || null,
         videoQueued: token && token.hasVideo(),
-        memoryType: token ? token.SF_MemoryType : null,
+        memoryType: token ? token.memoryType : null,  // Use transformed field, not SF_MemoryType
         timestamp: scanRequest.timestamp || new Date().toISOString()
       });
       logger.debug('Broadcasted player:scan event', {

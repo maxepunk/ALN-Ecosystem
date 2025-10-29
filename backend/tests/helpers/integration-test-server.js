@@ -44,6 +44,9 @@ async function setupIntegrationTestServer() {
   // Create Socket.IO server
   const io = createSocketServer(server);
 
+  // CRITICAL: Attach io to app.locals so scanRoutes can emit player:scan events
+  app.locals.io = io;
+
   // Setup WebSocket handlers (match production src/server.js lines 36-103)
   io.on('connection', async (socket) => {
     logger.debug('Integration test WebSocket connection', { socketId: socket.id });
@@ -52,8 +55,8 @@ async function setupIntegrationTestServer() {
     // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
     const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
 
-    if (token && deviceId && deviceType === 'gm') {
-      // Pre-authenticate as admin (simulates successful HTTP JWT validation)
+    if (token && deviceId && (deviceType === 'gm' || deviceType === 'admin')) {
+      // Pre-authenticate (simulates successful HTTP JWT validation)
       socket.isAuthenticated = true;
       socket.authRole = 'admin';
       socket.authUserId = 'test-admin';
@@ -61,18 +64,25 @@ async function setupIntegrationTestServer() {
       socket.deviceType = deviceType;
       socket.version = version || '1.0.0';
 
-      logger.debug('GM pre-authenticated from handshake', {
+      logger.debug('Socket pre-authenticated from handshake', {
         deviceId: socket.deviceId,
+        deviceType: socket.deviceType,
         socketId: socket.id
       });
 
-      // AUTO-CALL handleGmIdentify like production does (server.js line 64)
-      // This registers device and triggers device:connected + sync:full
-      await handleGmIdentify(socket, {
-        deviceId: socket.deviceId,  // Per AsyncAPI contract
-        version: socket.version,
-        token: token
-      }, io);
+      // Join appropriate room based on device type
+      if (deviceType === 'admin') {
+        socket.join('admin-monitors');
+        logger.debug('Admin socket joined admin-monitors room', { socketId: socket.id });
+      } else if (deviceType === 'gm') {
+        // AUTO-CALL handleGmIdentify like production does (server.js line 64)
+        // This registers device and triggers device:connected + sync:full
+        await handleGmIdentify(socket, {
+          deviceId: socket.deviceId,  // Per AsyncAPI contract
+          version: socket.version,
+          token: token
+        }, io);
+      }
     }
 
     // Sync request
