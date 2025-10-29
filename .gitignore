@@ -28,3 +28,6 @@ test-results/
 
 # Root node_modules (if any)
 /node_modules/
+
+# Git worktrees directory
+.worktrees/
