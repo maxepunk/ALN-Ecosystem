@@ -19,3 +19,4 @@ package-lock.json
 
 # Video processing temp files
 Video_Reencode_*
+backend/node_modules/

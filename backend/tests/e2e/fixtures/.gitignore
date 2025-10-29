@@ -1,0 +1,11 @@
+# Test fixtures should be committed (override parent .gitignore)
+# These are small, safe-to-share test files required for CI/CD
+
+# Include all fixture files
+!test-tokens.json
+!test-videos/*.mp4
+!test-assets/**/*
+
+# Only exclude temporary files
+*.tmp
+.DS_Store
