@@ -1325,6 +1325,87 @@ components:
             example: "2025-10-15T20:15:30.100Z"
 
     # ============================================================================
+    # PLAYER SCANNER MONITORING (1 event)
+    # ============================================================================
+
+    PlayerScan:
+      name: player:scan
+      title: Player Scanner Scan Event
+      summary: Broadcast player scanner scan events to admin monitoring
+      description: |
+        Broadcast player scanner scan events to admin monitoring clients.
+
+        **Purpose**: Enable admin panel to monitor player scanner activity
+        **Audience**: admin-monitors room only (not gm-stations)
+        **Source**: HTTP POST /api/scan endpoint
+
+        This event is emitted for ALL player scanner token scans (video, image, audio).
+        It provides visibility into player activity without creating transaction records.
+
+        **Architecture Decision**: Lightweight monitoring events
+        - NOT transaction records (player scans aren't game transactions)
+        - Emitted directly from HTTP route (no service layer involvement)
+        - Minimal overhead, preserves separation of concerns
+
+        **Key Fields**:
+        - tokenId: Token scanned by player
+        - deviceId: Player scanner device ID (format: PLAYER_*)
+        - teamId: Optional team ID (player scanner doesn't enforce teams)
+        - videoQueued: True if token has video property (queued for TV playback)
+        - memoryType: Token type from token data (Personal, Business, etc.)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: player:scan
+            description: Event name
+          data:
+            type: object
+            required:
+              - tokenId
+              - deviceId
+              - timestamp
+            properties:
+              tokenId:
+                type: string
+                description: Token ID that was scanned
+                example: "sof002"
+              deviceId:
+                type: string
+                description: Player scanner device ID
+                pattern: "^PLAYER_"
+                example: "PLAYER_8a7b9c1d"
+              teamId:
+                type: string
+                nullable: true
+                description: Optional team ID (player scanner doesn't enforce teams)
+                example: null
+              videoQueued:
+                type: boolean
+                description: True if token has video property and was queued for TV playback
+                example: false
+              memoryType:
+                type: string
+                nullable: true
+                description: Token type from token data (Personal, Business, Detective, etc.)
+                example: "Personal"
+              timestamp:
+                type: string
+                format: date-time
+                description: Scan timestamp from client
+                example: "2025-10-29T10:15:30.000Z"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event broadcast timestamp
+            example: "2025-10-29T10:15:30.100Z"
+
+    # ============================================================================
     # ERRORS (1 event)
     # ============================================================================
 

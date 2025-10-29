@@ -84,6 +84,25 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Emit player:scan WebSocket event for admin monitoring
+    const io = req.app.locals.io;
+    if (io) {
+      const { emitToRoom } = require('../websocket/eventWrapper');
+      emitToRoom(io, 'admin-monitors', 'player:scan', {
+        tokenId: scanRequest.tokenId,
+        deviceId: scanRequest.deviceId,
+        teamId: scanRequest.teamId || null,
+        videoQueued: token && token.hasVideo(),
+        memoryType: token ? token.SF_MemoryType : null,
+        timestamp: scanRequest.timestamp || new Date().toISOString()
+      });
+      logger.debug('Broadcasted player:scan event', {
+        tokenId: scanRequest.tokenId,
+        deviceId: scanRequest.deviceId,
+        videoQueued: token && token.hasVideo()
+      });
+    }
+
     // Check if token has video
     if (token && token.hasVideo()) {
       // Check if video is already playing

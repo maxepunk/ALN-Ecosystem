@@ -99,13 +99,17 @@ class PlayerScannerPage {
     await this.page.goto(url, { waitUntil: 'networkidle' });
     await this.waitForInitialization();
 
-    // Verify standalone mode detected
+    // Wait for condition: orchestrator initialized in standalone mode
+    await this.waitForOrchestratorReady('standalone');
+
+    // Verify standalone mode (should always pass after condition-based wait)
     const isStandalone = await this.page.evaluate(() => {
       return window.orchestrator?.isStandalone === true;
     });
 
     if (!isStandalone) {
-      console.warn('WARNING: Standalone mode not detected. Check URL path.');
+      // This should never happen after condition-based wait
+      throw new Error('FATAL: Standalone mode not detected after waiting for condition');
     }
   }
 
@@ -121,13 +125,21 @@ class PlayerScannerPage {
     await this.page.goto(url, { waitUntil: 'networkidle' });
     await this.waitForInitialization();
 
-    // Verify networked mode detected
+    // Wait for condition: orchestrator initialized in networked mode
+    await this.waitForOrchestratorReady('networked');
+
+    // CRITICAL FIX: Wait for orchestrator to establish connection
+    // Without this, scanToken() will queue offline instead of sending HTTP POST
+    await this.waitForOrchestratorConnected();
+
+    // Verify networked mode (should always pass after condition-based wait)
     const isNetworked = await this.page.evaluate(() => {
       return window.orchestrator?.isStandalone === false;
     });
 
     if (!isNetworked) {
-      console.warn('WARNING: Networked mode not detected. Check URL path.');
+      // This should never happen after condition-based wait
+      throw new Error('FATAL: Networked mode not detected after waiting for condition');
     }
   }
 
@@ -147,6 +159,59 @@ class PlayerScannerPage {
       state: 'visible',
       timeout: 5000
     });
+  }
+
+  /**
+   * Wait for orchestrator to be initialized with condition-based polling.
+   * Uses condition-based waiting (not arbitrary timeout).
+   *
+   * @param {string|null} expectedMode - Expected mode ('networked', 'standalone', or null for any)
+   * @returns {Promise<void>}
+   * @throws {Error} If orchestrator not initialized within timeout or wrong mode detected
+   */
+  async waitForOrchestratorReady(expectedMode = null) {
+    await this.page.waitForFunction(
+      (mode) => {
+        // Wait for orchestrator object to exist
+        if (!window.orchestrator) return false;
+
+        // If no mode specified, just check existence
+        if (mode === null) return true;
+
+        // Verify mode if specified
+        if (mode === 'networked') {
+          return window.orchestrator.isStandalone === false;
+        } else if (mode === 'standalone') {
+          return window.orchestrator.isStandalone === true;
+        }
+
+        return false;
+      },
+      expectedMode,  // ARG must come BEFORE options in Playwright API
+      { timeout: 5000, polling: 10 }  // Poll every 10ms (not too fast, not too slow)
+    );
+  }
+
+  /**
+   * Wait for orchestrator to establish connection (networked mode only).
+   * Uses condition-based polling to wait for orchestrator.connected === true.
+   *
+   * CRITICAL: orchestratorIntegration.js performs async connection check on init.
+   * Initial check takes ~5s, then polls every 10s. Tests MUST wait for this.
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} If connection not established within timeout
+   * @see aln-memory-scanner/js/orchestratorIntegration.js:224-246 (connection monitoring)
+   */
+  async waitForOrchestratorConnected() {
+    await this.page.waitForFunction(
+      () => {
+        // Wait for orchestrator to report connected status
+        if (!window.orchestrator) return false;
+        return window.orchestrator.connected === true;
+      },
+      { timeout: 15000, polling: 100 }  // 15s timeout for initial connection check
+    );
   }
 
   // ==================== SCANNING ====================
@@ -175,6 +240,29 @@ class PlayerScannerPage {
     await this.page.waitForSelector(`${this.selectors.welcomeScreen}:not(.hidden)`, {
       timeout: 5000
     });
+  }
+
+  /**
+   * Simulate a token scan by calling handleScan() directly
+   * This bypasses the UI and simulates the scan result being processed.
+   * Matches the NFC simulation pattern used in GM Scanner tests.
+   *
+   * @param {string} tokenId - Token ID to scan
+   * @returns {Promise<void>}
+   * @example
+   * await scanner.simulateScan('test_image_01');
+   */
+  async simulateScan(tokenId) {
+    await this.page.evaluate((id) => {
+      if (!window.app) {
+        throw new Error('Player Scanner app not initialized');
+      }
+      // Call handleScan directly (simulates NFC/QR scan result)
+      window.app.handleScan(id);
+    }, tokenId);
+
+    // Wait a moment for the scan to process
+    await this.page.waitForTimeout(500);
   }
 
   /**
