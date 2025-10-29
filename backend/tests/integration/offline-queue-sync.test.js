@@ -6,6 +6,7 @@
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 const transactionService = require('../../src/services/transactionService');
@@ -28,7 +29,7 @@ describe('Offline Queue Synchronization Integration', () => {
     cleanupBroadcastListeners();
 
     // Reset services
-    await sessionService.reset();
+    await resetAllServices();
 
     // Clear offline queue state without removing listeners
     offlineQueueService.playerScanQueue = [];

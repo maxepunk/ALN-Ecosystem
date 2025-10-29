@@ -19,6 +19,7 @@ const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websock
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const videoQueueService = require('../../src/services/videoQueueService');
@@ -36,9 +37,7 @@ describe('Admin Intervention Integration', () => {
 
   beforeEach(async () => {
     // Reset services
-    await sessionService.reset();
-    await transactionService.reset();
-
+    await resetAllServices();
     // CRITICAL: Cleanup old broadcast listeners
     cleanupBroadcastListeners();
 
@@ -52,7 +51,7 @@ describe('Admin Intervention Integration', () => {
     const offlineQueueService = require('../../src/services/offlineQueueService');
 
     // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
-    videoQueueService.reset();
+    await resetAllServices();
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
@@ -76,7 +75,7 @@ describe('Admin Intervention Integration', () => {
   afterEach(async () => {
     if (gmAdmin?.socket?.connected) gmAdmin.socket.disconnect();
     if (gmObserver?.socket?.connected) gmObserver.socket.disconnect();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('Score Adjustment', () => {

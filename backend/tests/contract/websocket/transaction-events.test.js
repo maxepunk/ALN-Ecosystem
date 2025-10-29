@@ -6,6 +6,7 @@
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Transaction Events - Contract Validation', () => {
@@ -24,7 +25,7 @@ describe('Transaction Events - Contract Validation', () => {
 
   beforeEach(async () => {
     // Reset services to clean state (follow session-events.test.js pattern)
-    await sessionService.reset();
+    await resetAllServices();
 
     // Create session for transaction tests
     await sessionService.createSession({
@@ -40,7 +41,7 @@ describe('Transaction Events - Contract Validation', () => {
     if (socket && socket.connected) {
       socket.disconnect();
     }
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('transaction:result response', () => {

@@ -12,6 +12,7 @@
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent, createTrackedSocket } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Device Events - Contract Validation', () => {
@@ -28,7 +29,7 @@ describe('Device Events - Contract Validation', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
 
     // Create session
     await sessionService.createSession({
@@ -44,7 +45,7 @@ describe('Device Events - Contract Validation', () => {
     if (socket2 && socket2.connected) {
       socket2.disconnect();
     }
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('device:connected event', () => {

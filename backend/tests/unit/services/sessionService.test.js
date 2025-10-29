@@ -4,12 +4,13 @@
  */
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('SessionService - Event Emission', () => {
   beforeEach(async () => {
     // Reset service state
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   afterEach(async () => {
@@ -101,7 +102,7 @@ describe('SessionService - Event Emission', () => {
 
 describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   afterEach(async () => {
@@ -226,7 +227,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         teams: ['001']
       });
 
-      await sessionService.reset();
+      await resetAllServices();
 
       expect(sessionService.getCurrentSession()).toBeNull();
       expect(sessionService.sessionTimeoutTimer).toBeNull();

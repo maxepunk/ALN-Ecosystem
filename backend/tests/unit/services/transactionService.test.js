@@ -5,13 +5,13 @@
  */
 
 const transactionService = require('../../../src/services/transactionService');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('TransactionService - Event Emission', () => {
   beforeEach(async () => {
     // Reset services
-    await sessionService.reset();
-    await transactionService.reset();
+    await resetAllServices();
 
     // Re-register listeners after reset
     if (!transactionService.sessionListenerRegistered) {
@@ -211,8 +211,7 @@ describe('TransactionService - Event Emission', () => {
 
 describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
   beforeEach(async () => {
-    await sessionService.reset();
-    await transactionService.reset();
+    await resetAllServices();
 
     if (!transactionService.sessionListenerRegistered) {
       transactionService.registerSessionListener();

@@ -12,6 +12,7 @@ require('../helpers/browser-mocks');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const tokenService = require('../../src/services/tokenService');
@@ -33,9 +34,8 @@ describe('FR Section 3: Transaction Processing', () => {
     // CRITICAL: Cleanup old broadcast listeners FIRST
     cleanupBroadcastListeners();
 
-    // Reset services
-    await sessionService.reset();
-    await transactionService.reset();
+    // Reset services using centralized helper
+    await resetAllServices();
 
     // Re-load tokens
     const tokens = tokenService.loadTokens();
@@ -45,9 +45,6 @@ describe('FR Section 3: Transaction Processing', () => {
     const stateService = require('../../src/services/stateService');
     const videoQueueService = require('../../src/services/videoQueueService');
     const offlineQueueService = require('../../src/services/offlineQueueService');
-
-    // Reset videoQueueService to clear all timers
-    videoQueueService.reset();
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
@@ -74,7 +71,7 @@ describe('FR Section 3: Transaction Processing', () => {
 
   afterEach(async () => {
     if (scanner?.socket?.connected) scanner.socket.disconnect();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('FR 3.2: Blackmarket Mode Scoring', () => {

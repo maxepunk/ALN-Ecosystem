@@ -13,6 +13,7 @@ const request = require('supertest');
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { waitForEvent, createTrackedSocket } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Player Scan Event - Contract Validation', () => {
@@ -38,7 +39,7 @@ describe('Player Scan Event - Contract Validation', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
     const videoQueueService = require('../../../src/services/videoQueueService');
     videoQueueService.reset();  // Reset video queue to clear any playing videos
 
@@ -73,7 +74,7 @@ describe('Player Scan Event - Contract Validation', () => {
     if (adminSocket && adminSocket.connected) {
       adminSocket.disconnect();
     }
-    await sessionService.reset();
+    await resetAllServices();
     const videoQueueService = require('../../../src/services/videoQueueService');
     videoQueueService.reset();  // Clean up video queue after test
   });

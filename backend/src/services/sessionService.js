@@ -443,6 +443,3 @@ class SessionService extends EventEmitter {
 
 // Export singleton instance
 module.exports = new SessionService();
-
-// Add test helper at end of file
-module.exports.resetForTests = () => module.exports.reset();

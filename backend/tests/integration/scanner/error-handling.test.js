@@ -17,6 +17,7 @@ require('../../helpers/browser-mocks');
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const { createAuthenticatedScanner, waitForEvent } = require('../../helpers/websocket-helpers');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const fs = require('fs');
 const path = require('path');
@@ -33,7 +34,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
     await sessionService.createSession({
       name: 'Error Handling Test',
       teams: ['001', '002']

@@ -29,6 +29,7 @@ const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websock
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -48,9 +49,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
     cleanupBroadcastListeners();
 
     // Reset services for clean test state
-    await sessionService.reset();
-    await transactionService.reset();
-
+    await resetAllServices();
     // CRITICAL: Re-initialize tokens after reset
     const tokenService = require('../../src/services/tokenService');
     const tokens = tokenService.loadTokens();
@@ -67,7 +66,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
     const offlineQueueService = require('../../src/services/offlineQueueService');
 
     // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
-    videoQueueService.reset();
+    await resetAllServices();
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
@@ -82,7 +81,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
     if (scanner?.socket?.connected) scanner.socket.disconnect();
     // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
     global.DataManager.clearScannedTokens();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('session:create command', () => {

@@ -16,6 +16,7 @@ require('../helpers/browser-mocks');
 
 const { createAuthenticatedScanner, createPlayerScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 
 describe('Scanner Helper Verification', () => {
@@ -30,7 +31,7 @@ describe('Scanner Helper Verification', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
     await sessionService.createSession({
       name: 'Helper Test Session',
       teams: ['001', '002']

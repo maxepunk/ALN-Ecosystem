@@ -12,6 +12,7 @@
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Admin Command Events - Contract Validation', () => {
@@ -27,13 +28,13 @@ describe('Admin Command Events - Contract Validation', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_ADMIN_GM');
   });
 
   afterEach(async () => {
     if (socket && socket.connected) socket.disconnect();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('gm:command event (CLIENT → SERVER)', () => {

@@ -786,6 +786,3 @@ class VideoQueueService extends EventEmitter {
 
 // Export singleton instance
 module.exports = new VideoQueueService();
-
-// Export resetForTests method
-module.exports.resetForTests = () => module.exports.reset();

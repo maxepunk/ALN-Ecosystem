@@ -30,6 +30,7 @@ const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const MockVlcServer = require('../helpers/mock-vlc-server');
 
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const stateService = require('../../src/services/stateService');
@@ -87,11 +88,11 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     cleanupBroadcastListeners();
 
     // Reset services
-    await sessionService.reset();
+    await resetAllServices();
     mockVlc.reset();
 
     // CRITICAL: Reset videoQueueService to clear all timers and state (prevents async leaks)
-    videoQueueService.reset();
+    await resetAllServices();
 
     // Re-setup broadcast listeners
     setupBroadcastListeners(testContext.io, {
@@ -138,7 +139,7 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     }
 
     // Clean up state without destroying broadcast listeners
-    await sessionService.reset();
+    await resetAllServices();
     // NOTE: Do NOT reset videoQueueService here - it removes broadcast listeners
     // Reset happens in beforeEach BEFORE setupBroadcastListeners()
     mockVlc.reset();

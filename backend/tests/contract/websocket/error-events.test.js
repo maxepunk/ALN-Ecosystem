@@ -9,6 +9,7 @@
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Error Events - Contract Validation', () => {
@@ -24,7 +25,7 @@ describe('Error Events - Contract Validation', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
 
     // Create session
     await sessionService.createSession({
@@ -40,7 +41,7 @@ describe('Error Events - Contract Validation', () => {
     if (socket && socket.connected) {
       socket.disconnect();
     }
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('error event', () => {

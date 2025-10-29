@@ -17,6 +17,7 @@ const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpe
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -41,9 +42,7 @@ describe('Multi-Client Broadcast Validation', () => {
     });
 
     // Reset services for clean test state
-    await sessionService.reset();
-    await transactionService.reset();
-
+    await resetAllServices();
     // CRITICAL: Cleanup old broadcast listeners before adding new ones
     cleanupBroadcastListeners();
 
@@ -82,7 +81,7 @@ describe('Multi-Client Broadcast Validation', () => {
     [gm1, gm2, gm3].forEach(socket => {
       if (socket?.connected) socket.disconnect();
     });
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('Transaction Broadcasts', () => {

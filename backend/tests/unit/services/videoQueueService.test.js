@@ -4,6 +4,7 @@
  * NOTE: Full video playback flows are tested in integration tests
  */
 
+const { resetAllServices } = require('../../helpers/service-reset');
 const videoQueueService = require('../../../src/services/videoQueueService');
 const tokenService = require('../../../src/services/tokenService');
 const transactionService = require('../../../src/services/transactionService');
@@ -18,16 +19,16 @@ describe('VideoQueueService - Queue Management', () => {
     await transactionService.init(tokens);
   });
 
-  beforeEach(() => {
-    // Reset service state
-    videoQueueService.reset();
+  beforeEach(async () => {
+    // Reset service state using centralized helper
+    await resetAllServices();
 
     // Get test token from transactionService
     testToken = transactionService.tokens.get('534e2b03'); // test_30sec.mp4
   });
 
-  afterEach(() => {
-    videoQueueService.reset();
+  afterEach(async () => {
+    await resetAllServices();
     videoQueueService.removeAllListeners();
   });
 

@@ -22,6 +22,7 @@ require('../../helpers/browser-mocks');
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const { createAuthenticatedScanner, waitForEvent } = require('../../helpers/websocket-helpers');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const AdminModule = require('../../../../ALNScanner/js/utils/adminModule');
 const fs = require('fs');
@@ -41,7 +42,7 @@ describe('Admin Panel Display Integration [Phase 2.3]', () => {
 
   beforeEach(async () => {
     // Reset session
-    await sessionService.reset();
+    await resetAllServices();
 
     // Setup specific mock DOM elements for admin panel (CRITICAL: Phase 2.3 requirement)
     // These mock the actual HTML elements that MonitoringDisplay updates

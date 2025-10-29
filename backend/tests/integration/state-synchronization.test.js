@@ -15,6 +15,7 @@ require('../helpers/browser-mocks');
 
 const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -30,9 +31,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
-    await transactionService.reset();
-  });
+    await resetAllServices();});
 
   afterEach(async () => {
     if (scanner?.socket?.connected) scanner.socket.disconnect();

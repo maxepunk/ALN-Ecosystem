@@ -6,6 +6,7 @@
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent, createTrackedSocket } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 
 describe('Session Events - Contract Validation', () => {
@@ -24,7 +25,7 @@ describe('Session Events - Contract Validation', () => {
 
   beforeEach(async () => {
     // Reset services to clean state
-    await sessionService.reset();
+    await resetAllServices();
 
     // Connect real WebSocket (GM Scanner simulation)
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_PHASE3');
@@ -34,7 +35,7 @@ describe('Session Events - Contract Validation', () => {
     if (socket && socket.connected) {
       socket.disconnect();
     }
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('session:update event', () => {

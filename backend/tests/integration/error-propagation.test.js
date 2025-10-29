@@ -18,6 +18,7 @@ const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpe
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const videoQueueService = require('../../src/services/videoQueueService');
@@ -35,9 +36,7 @@ describe('Error Propagation Integration', () => {
 
   beforeEach(async () => {
     // Reset services
-    await sessionService.reset();
-    await transactionService.reset();
-
+    await resetAllServices();
     // CRITICAL: Cleanup old broadcast listeners
     cleanupBroadcastListeners();
 
@@ -70,7 +69,7 @@ describe('Error Propagation Integration', () => {
 
   afterEach(async () => {
     if (gmSocket?.connected) gmSocket.disconnect();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('Invalid Token Error Handling', () => {

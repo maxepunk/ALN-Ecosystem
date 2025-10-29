@@ -3,6 +3,7 @@
  * Tests aggregator pattern - listens to events, doesn't call other services
  */
 
+const { resetAllServices } = require('../../helpers/service-reset');
 const stateService = require('../../../src/services/stateService');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
@@ -10,10 +11,9 @@ const offlineQueueService = require('../../../src/services/offlineQueueService')
 
 describe('StateService - Aggregator Pattern', () => {
   beforeEach(async () => {
-    // Reset all services
+    // Reset all services using centralized helper
+    await resetAllServices();
     await stateService.reset();
-    await sessionService.reset();
-    await transactionService.reset();
 
     // Re-initialize stateService (will set up event listeners)
     await stateService.init();

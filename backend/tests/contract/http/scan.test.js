@@ -8,6 +8,7 @@ const app = require('../../../src/app');
 const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
 const tokenService = require('../../../src/services/tokenService');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const videoQueueService = require('../../../src/services/videoQueueService');
 const transactionService = require('../../../src/services/transactionService');
@@ -21,8 +22,7 @@ describe('POST /api/scan', () => {
   // Test isolation: Ensure clean state before each test
   beforeEach(async () => {
     // Full reset of all services
-    await sessionService.reset();
-    await transactionService.reset();
+    await resetAllServices();
     videoQueueService.reset();
 
     // CRITICAL: Re-load tokens after reset
@@ -37,7 +37,7 @@ describe('POST /api/scan', () => {
   });
 
   afterEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
     videoQueueService.reset();
   });
   it('should match OpenAPI contract for successful scan', async () => {
@@ -146,8 +146,7 @@ describe('POST /api/scan', () => {
 describe('POST /api/scan/batch', () => {
   // Test isolation: Ensure clean state before each test
   beforeEach(async () => {
-    await sessionService.reset();
-    await transactionService.reset();
+    await resetAllServices();
     videoQueueService.reset();
 
     // Create test session
@@ -158,7 +157,7 @@ describe('POST /api/scan/batch', () => {
   });
 
   afterEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
     videoQueueService.reset();
   });
 

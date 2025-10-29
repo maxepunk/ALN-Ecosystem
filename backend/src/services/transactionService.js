@@ -724,6 +724,3 @@ class TransactionService extends EventEmitter {
 
 // Export singleton instance
 module.exports = new TransactionService();
-
-// Add test helper at end
-module.exports.resetForTests = () => module.exports.reset();

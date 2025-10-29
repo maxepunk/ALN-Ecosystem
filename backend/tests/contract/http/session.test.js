@@ -8,6 +8,7 @@ const app = require('../../../src/app');
 const { initializeServices } = require('../../../src/app');
 const { validateHTTPResponse } = require('../../helpers/contract-validator');
 const tokenService = require('../../../src/services/tokenService');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
 const videoQueueService = require('../../../src/services/videoQueueService');
@@ -22,8 +23,7 @@ describe('GET /api/session', () => {
 
   beforeEach(async () => {
     // Full reset of all services
-    await sessionService.reset();
-    await transactionService.reset();
+    await resetAllServices();
     videoQueueService.reset();
 
     // CRITICAL: Re-load tokens after reset

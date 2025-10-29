@@ -37,6 +37,7 @@ const { createAuthenticatedScanner, waitForEvent, waitForMultipleEvents } = requ
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -53,9 +54,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
   beforeEach(async () => {
     // Reset services
-    await sessionService.reset();
-    await transactionService.reset();
-
+    await resetAllServices();
     // CRITICAL: Cleanup old broadcast listeners before adding new ones
     cleanupBroadcastListeners();
 
@@ -75,7 +74,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
     const offlineQueueService = require('../../src/services/offlineQueueService');
 
     // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
-    videoQueueService.reset();
+    await resetAllServices();
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
@@ -99,7 +98,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
     if (gmScanner?.socket?.connected) gmScanner.socket.disconnect();
     // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
     global.DataManager.clearScannedTokens();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('Complete Group Bonus', () => {

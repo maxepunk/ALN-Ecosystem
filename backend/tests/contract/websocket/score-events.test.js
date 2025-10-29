@@ -8,6 +8,7 @@
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
+const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
 const TeamScore = require('../../../src/models/teamScore');
@@ -25,7 +26,7 @@ describe('Score Events - Contract Validation', () => {
   });
 
   beforeEach(async () => {
-    await sessionService.reset();
+    await resetAllServices();
 
     // Create session with teams
     await sessionService.createSession({
@@ -41,7 +42,7 @@ describe('Score Events - Contract Validation', () => {
     if (socket && socket.connected) {
       socket.disconnect();
     }
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('score:updated broadcast', () => {

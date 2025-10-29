@@ -19,6 +19,7 @@ const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpe
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 
@@ -35,9 +36,7 @@ describe('Duplicate Detection Integration', () => {
 
   beforeEach(async () => {
     // Reset services
-    await sessionService.reset();
-    await transactionService.reset();
-
+    await resetAllServices();
     // CRITICAL: Cleanup old broadcast listeners
     cleanupBroadcastListeners();
 
@@ -73,7 +72,7 @@ describe('Duplicate Detection Integration', () => {
   afterEach(async () => {
     if (gm1?.connected) gm1.disconnect();
     if (gm2?.connected) gm2.disconnect();
-    await sessionService.reset();
+    await resetAllServices();
   });
 
   describe('Same Team Duplicate Detection', () => {

@@ -3,6 +3,7 @@
  * Tests inter-service event-based communication per asyncapi.yaml
  */
 
+const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const stateService = require('../../src/services/stateService');
@@ -10,9 +11,7 @@ const stateService = require('../../src/services/stateService');
 describe('Service Event Communication', () => {
   beforeEach(async () => {
     // Reset all services to clean state
-    await sessionService.reset();
-    await transactionService.reset();
-    await stateService.reset();
+    await resetAllServices();await stateService.reset();
 
     // Ensure listener is registered after reset
     if (!transactionService.sessionListenerRegistered) {
