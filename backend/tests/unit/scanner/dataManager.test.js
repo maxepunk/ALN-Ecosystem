@@ -3,14 +3,13 @@
  * Tests CRITICAL game logic needed for standalone mode
  * Layer 1: Service Logic - NO browser, NO server, pure logic
  *
- * NOTE: These tests EXPECT class-based architecture
- * Current DataManager is singleton - tests will FAIL until refactored
+ * Architecture: Class-based DataManager with dependency injection
+ * Production exports class for Node.js, singleton instance for browser
  */
 
 const path = require('path');
 
-// This will fail initially - DataManager is not yet a class
-// Test-driven refactoring: write test first, then refactor to pass
+// DataManager class exported for Node.js test environment
 const DataManager = require(path.join(__dirname, '../../../..', 'ALNScanner/js/core/dataManager.js'));
 
 describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () => {
@@ -27,10 +26,10 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     mockSettings = {
       deviceId: 'TEST_SCANNER',
-      stationMode: 'blackmarket'
+      mode: 'blackmarket'  // Production code uses 'mode', not 'stationMode'
     };
 
-    // EXPECTS class - will fail until refactored
+    // Class-based instantiation matches production exports (module.exports = DataManager)
     dataManager = new DataManager({
       tokenManager: mockTokenManager,
       settings: mockSettings
@@ -247,7 +246,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 1,
           memoryType: 'Personal',
           group: 'Alpha Group (x2)',
@@ -269,7 +268,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 3,
           memoryType: 'Technical',
           group: 'Alpha Group (x2)',
@@ -278,7 +277,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 3,
           memoryType: 'Technical',
           group: 'Alpha Group (x2)',
@@ -287,7 +286,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 3,
           memoryType: 'Technical',
           group: 'Alpha Group (x2)',
@@ -313,7 +312,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         // Alpha Group
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 2,
           memoryType: 'Business',
           group: 'Alpha Group (x2)',
@@ -322,7 +321,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 2,
           memoryType: 'Business',
           group: 'Alpha Group (x2)',
@@ -331,7 +330,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 2,
           memoryType: 'Business',
           group: 'Alpha Group (x2)',
@@ -341,7 +340,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         // Beta Group
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 1,
           memoryType: 'Personal',
           group: 'Beta (x3)',
@@ -350,7 +349,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 1,
           memoryType: 'Personal',
           group: 'Beta (x3)',
@@ -373,7 +372,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'detective', // Not blackmarket
+          mode: 'detective', // Not blackmarket
           valueRating: 5,
           memoryType: 'Technical',
           group: 'Alpha Group (x2)',
@@ -393,7 +392,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 5,
           memoryType: 'Technical',
           group: 'Unknown Group',
@@ -412,7 +411,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 3,
           memoryType: 'Technical',
           group: 'Alpha Group (x2)',
@@ -421,7 +420,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
         },
         {
           teamId: '002', // Different team
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           valueRating: 5,
           memoryType: 'Technical',
           group: 'Alpha Group (x2)',
@@ -467,7 +466,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           rfid: 'token001',
           isUnknown: false
         }
@@ -483,19 +482,19 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
       dataManager.transactions = [
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           rfid: 'token001',
           isUnknown: false
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           rfid: 'token002',
           isUnknown: false
         },
         {
           teamId: '001',
-          stationMode: 'blackmarket',
+          mode: 'blackmarket',
           rfid: 'token003',
           isUnknown: false
         }
@@ -515,11 +514,11 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
     it('should detect multiple completed groups', () => {
       // Complete both Alpha and Beta
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token001', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token002', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token003', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token004', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token005', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token001', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'token002', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'token003', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'token004', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'token005', isUnknown: false }
       ];
 
       const completed = dataManager.getTeamCompletedGroups('001');
@@ -531,7 +530,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     it('should ignore single-token groups', () => {
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token006', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token006', isUnknown: false }
       ];
 
       const completed = dataManager.getTeamCompletedGroups('001');
@@ -541,8 +540,8 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     it('should ignore groups with multiplier <= 1', () => {
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token007', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token008', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token007', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'token008', isUnknown: false }
       ];
 
       const completed = dataManager.getTeamCompletedGroups('001');
@@ -553,8 +552,8 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
     it('should not count incomplete groups', () => {
       // Only 2 of 3 Alpha tokens
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token001', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token002', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token001', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'token002', isUnknown: false }
         // token003 missing
       ];
 
@@ -565,9 +564,9 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     it('should only count teams blackmarket transactions', () => {
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token001', isUnknown: false },
-        { teamId: '001', stationMode: 'detective', rfid: 'token002', isUnknown: false }, // Detective mode
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token003', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token001', isUnknown: false },
+        { teamId: '001', mode: 'detective', rfid: 'token002', isUnknown: false }, // Detective mode
+        { teamId: '001', mode: 'blackmarket', rfid: 'token003', isUnknown: false }
       ];
 
       const completed = dataManager.getTeamCompletedGroups('001');
@@ -578,9 +577,9 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     it('should ignore unknown tokens', () => {
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token001', isUnknown: false },
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'unknown', isUnknown: true }, // Unknown
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token003', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token001', isUnknown: false },
+        { teamId: '001', mode: 'blackmarket', rfid: 'unknown', isUnknown: true }, // Unknown
+        { teamId: '001', mode: 'blackmarket', rfid: 'token003', isUnknown: false }
       ];
 
       const completed = dataManager.getTeamCompletedGroups('001');
@@ -591,9 +590,9 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     it('should only count specified teams tokens', () => {
       dataManager.transactions = [
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token001', isUnknown: false },
-        { teamId: '002', stationMode: 'blackmarket', rfid: 'token002', isUnknown: false }, // Different team
-        { teamId: '001', stationMode: 'blackmarket', rfid: 'token003', isUnknown: false }
+        { teamId: '001', mode: 'blackmarket', rfid: 'token001', isUnknown: false },
+        { teamId: '002', mode: 'blackmarket', rfid: 'token002', isUnknown: false }, // Different team
+        { teamId: '001', mode: 'blackmarket', rfid: 'token003', isUnknown: false }
       ];
 
       const completed = dataManager.getTeamCompletedGroups('001');
