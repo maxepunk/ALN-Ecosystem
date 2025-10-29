@@ -254,14 +254,14 @@ afterEach:  Close connections, NOT clear state (save for next beforeEach)
 - Debugging checklists for future audits
 
 ### Phase 1: Audit Test 07 Series ⏳ IN PROGRESS
-**Started:** 2025-10-28 Evening | **Progress:** 1.67/3 files (07a ✅, 07b 67% complete)
+**Started:** 2025-10-28 Evening | **Progress:** 2/3 files (07a ✅, 07b ✅, 07c pending)
 
 **Tests to Audit:**
 - [x] 07a-gm-scanner-standalone-blackmarket.test.js - 1/1 ✅ (anti-pattern fix)
-- [~] 07b-gm-scanner-networked-blackmarket.test.js - 4/6 tests ✅ (2 remaining: duplicate rejection)
-- [ ] 07c-gm-scanner-scoring-parity.test.js (~5 tests)
+- [x] 07b-gm-scanner-networked-blackmarket.test.js - 6/6 tests ✅ (duplicate rejection complete)
+- [ ] 07c-gm-scanner-scoring-parity.test.js (~5 tests) - **NEXT**
 
-**What Was Done (07a):**
+**What Was Done (07a) - Session 2025-10-28 Evening:**
 Applied `superpowers:testing-anti-patterns` skill → Found test helper was recalculating scores instead of reading production → Removed 64-line fallback → Test still passes, proving production works correctly.
 
 **What Was Done (07b) - Session 2025-10-28 Late Evening:**
@@ -271,15 +271,58 @@ Applied `superpowers:testing-anti-patterns` skill → Found test helper was reca
    - Use `processNFCRead()` directly (simulates NFC API, not manual entry UI)
    - Contract alignment: `transaction:new` event has nested `data.transaction` structure
    - Broadcast transformations: `group:completed` uses `group`/`bonusPoints` not `groupId`/`bonus`
-4. **Tests Passing (4/6):**
+4. **Tests Passing (4/6):** Connection, single scan, multiplier, group completion
+
+**What Was Done (07b) - Session 2025-10-29 Early Morning:**
+1. **Deep Duplicate Detection Investigation:** Deployed 4 parallel explore agents to investigate:
+   - Backend duplicate detection logic (`transactionService.js:170-185`)
+   - WebSocket event contracts (`asyncapi.yaml:596-667`)
+   - ALNScanner frontend rejection handling (found UI bug in networked mode)
+   - Test anti-patterns for rejection testing (created 930-line guide)
+
+2. **Key Findings:**
+   - **Business Rule Confirmed:** Session-scoped, cross-team, first-come-first-served duplicate detection
+   - **Event Architecture:** `transaction:new` broadcasts ONLY for accepted scans; duplicates NOT broadcast (only scanner receives `transaction:result`)
+   - **Test Pattern Discovery:** Predicates in `waitForEvent()` caused failures; removed predicates following Tests 2-4 pattern
+   - **Critical Bug Found:** `UIManager.showWarning()` doesn't exist in networked mode (should be `showToast('warning')`) -- **FIXED WITH**: 
+● Update(ALNScanner/js/network/orchestratorClient.js)
+  ⎿  Updated ALNScanner/js/network/orchestratorClient.js with 1 addition and 1 
+     removal
+       223                            console.error('Transaction error:', 
+             payload.message, payload);
+       224                        } else if (payload.status === 'duplicate') {
+       225                            if (window.UIManager) {
+       226 -                              window.UIManager.showWarning
+           -  (payload.message || 'Duplicate transaction');
+       226 +                              window.UIManager.showToast
+           +  (payload.message || 'Duplicate transaction', 'warning', 3000);
+       227                            }
+       228                            console.warn('Duplicate transaction:', 
+             payload);
+       229                        } else if (payload.status === 'accepted') {
+
+
+ 
+
+3. **Test Implementation:**
+   - ✅ Test 5: Same team duplicate rejection - Score unchanged (500 not 1000), scanner functional
+   - ✅ Test 6: Different team duplicate rejection - Cross-team enforcement (Team 001 blocks Team 002), both teams functional
+
+4. **Tests Now Passing (6/6):**
    - ✅ Test 1: Connection and session creation
    - ✅ Test 2: Single Personal token (500 points)
    - ✅ Test 3: Business token with 3x multiplier (15,000 points)
    - ✅ Test 4: Group completion - 5 tokens, x2 multiplier, 53,200 points with bonus
-   - ⏸️ Test 5: Duplicate rejection (same team) - Not yet written
-   - ⏸️ Test 6: Duplicate rejection (different team) - Not yet written
+   - ✅ Test 5: Duplicate rejection (same team) - Score unchanged, scanner functional
+   - ✅ Test 6: Different team duplicate rejection - Cross-team blocking, both teams functional
 
-**Next:** Complete tests 5-6 (duplicate rejection scenarios), then audit 07c (scoring parity).
+**Regression Check:** ✅ All 29 baseline tests pass (00, 01, 07a)
+
+**Artifacts Created:**
+- `backend/docs/REJECTION_TESTING_PATTERNS.md` (930 lines) - Comprehensive guide to testing rejection scenarios
+- 4 exploration agent reports with file:line citations for duplicate detection code paths
+
+**Next:** Audit 07c (scoring parity between standalone and networked modes).
 
 ### Phase 2: Audit Test 21 (Player Scanner) ⏸️ BLOCKED
 **Duration:** Estimated 2-3 hours
@@ -570,10 +613,59 @@ const sessionData = await persistenceService.load('session:current');
 
 </details>
 
+<details>
+<summary><b>Test 07b Duplicate Rejection Audit (2025-10-29 Early Morning)</b></summary>
+
+**Challenge:** Tests 5-6 required understanding complete duplicate detection flow across backend, WebSocket contracts, and scanner frontend.
+
+**Investigation Approach:** Deployed 4 parallel explore agents to investigate:
+1. Backend duplicate detection implementation
+2. WebSocket event contract for rejections
+3. ALNScanner frontend rejection handling
+4. Test anti-patterns for rejection testing
+
+**Key Findings:**
+
+1. **Duplicate Detection Logic** (`transactionService.js:170-185`):
+   - Session-scoped, cross-team, first-come-first-served
+   - No `teamId` comparison in check (any team blocks any other team)
+   - Only `accepted` transactions block future scans
+   - Data structure: `session.transactions` array stores all transactions
+
+2. **WebSocket Event Architecture**:
+   - `transaction:new` → Broadcast to ALL GM stations (ONLY for accepted)
+   - `transaction:result` → Only to submitting scanner (for all statuses)
+   - Duplicates NOT broadcast (key insight for test design)
+
+3. **Test Pattern Discovery**:
+   - Predicates in `waitForEvent()` caused timeout failures
+   - Tests 2-4 use no predicates and pass consistently
+   - Solution: Remove predicates, match existing working pattern
+
+4. **Critical Frontend Bug Found**:
+   - `ALNScanner/js/network/orchestratorClient.js:226` calls `UIManager.showWarning()`
+   - Method doesn't exist (should be `showToast(message, 'warning', duration)`)
+   - Duplicates fail silently in networked mode (no UI feedback)
+   - Workaround for tests: Verify via score checks, not UI state
+
+**Tests Implemented:**
+- **Test 5:** Same team duplicate - Score unchanged (500 not 1000), scanner functional with different token (15,500 total)
+- **Test 6:** Different team duplicate - Team 001 blocks Team 002, both teams functional after rejection
+
+**Artifacts Created:**
+- `backend/docs/REJECTION_TESTING_PATTERNS.md` (930 lines) - Comprehensive guide with anti-patterns, correct patterns, and Test 5-6 templates
+- 4 exploration agent reports with file:line citations
+
+**Result:** All 6 tests in 07b pass, no regressions in baseline (29 tests)
+
+**Commit:** [To be added when committed]
+
+</details>
+
 ---
 
-**Plan Status:** 🟡 AUDIT IN PROGRESS - Phase 1 (Test 07) - 1.67/3 files complete
-**Next Action:** Complete 07b tests 5-6 (duplicate rejection), then audit 07c
-**Verified Passing:** 33 tests (00: 14, 01: 14, 07a: 1, 07b: 4/6)
+**Plan Status:** 🟡 AUDIT IN PROGRESS - Phase 1 (Test 07) - 2/3 files complete
+**Next Action:** Audit 07c (scoring parity between standalone and networked modes)
+**Verified Passing:** 35 tests (00: 14, 01: 14, 07a: 1, 07b: 6/6)
 
-🤖 Updated after Test 07b partial completion (2025-10-28 Late Evening)
+🤖 Updated after Test 07b completion (2025-10-29 Early Morning)

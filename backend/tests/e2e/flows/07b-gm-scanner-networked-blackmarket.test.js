@@ -347,11 +347,216 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     console.log('✓ Networked mode: Group completed, x2 multiplier applied, 53,200 total points');
   });
 
-  test.skip('TODO: backend rejects duplicate scan by same team', async () => {
-    // Requires: GM Scanner WebSocket transaction:submit debugging
+  test('backend rejects duplicate scan by same team', async () => {
+    // Create WebSocket connection and session
+    const socket = await connectWithAuth(
+      orchestratorInfo.url,
+      'test-admin-password',
+      'TEST_SAME_TEAM_DUPLICATE',
+      'gm'
+    );
+
+    socket.emit('gm:command', {
+      event: 'gm:command',
+      data: {
+        action: 'session:create',
+        payload: {
+          name: 'Test Session - Same Team Duplicate',
+          teams: ['001']
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
+
+    // Initialize scanner
+    const context = await createBrowserContext(browser, 'mobile');
+    const page = await createPage(context);
+    const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+      orchestratorUrl: orchestratorInfo.url,
+      password: 'test-admin-password'
+    });
+
+    await scanner.enterTeam('001');
+    await scanner.confirmTeam();
+
+    // FIRST SCAN: Token should be accepted
+    // Listen for broadcast (transaction:new is sent to all GM stations)
+    const tx1Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+
+    await page.evaluate((tokenId) => {
+      window.App.processNFCRead({
+        id: tokenId,
+        source: 'nfc',
+        raw: tokenId
+      });
+    }, 'sof002');
+
+    await scanner.waitForResult(5000);
+
+    const tx1Event = await tx1Promise;
+    expect(tx1Event.data.transaction.tokenId).toBe('sof002');
+    expect(tx1Event.data.transaction.status).toBe('accepted');
+
+    console.log('✓ First scan accepted and broadcast received');
+
+    // Verify score after first scan
+    const scoreAfterFirst = await getTeamScore(page, '001', 'networked');
+    expect(scoreAfterFirst).toBe(500);
+
+    // SECOND SCAN: Same team, same token → SHOULD BE REJECTED
+    // NOTE: Duplicates are NOT broadcast. Only the scanner receives transaction:result.
+    // We verify rejection by checking that score doesn't change and scanner shows result.
+
+    await page.evaluate((tokenId) => {
+      window.App.processNFCRead({
+        id: tokenId,
+        source: 'nfc',
+        raw: tokenId
+      });
+    }, 'sof002');
+
+    await scanner.waitForResult(5000);
+
+    console.log('✓ Second scan processed (duplicate expected)');
+
+    // Verify score UNCHANGED after duplicate attempt
+    const scoreAfterDuplicate = await getTeamScore(page, '001', 'networked');
+    expect(scoreAfterDuplicate).toBe(500); // Should still be 500, not 1000
+
+    // Verify scanner still functional - scan different token
+    const tx3Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+
+    await page.evaluate((tokenId) => {
+      window.App.processNFCRead({
+        id: tokenId,
+        source: 'nfc',
+        raw: tokenId
+      });
+    }, 'rat002');
+
+    await scanner.waitForResult(5000);
+
+    const tx3Event = await tx3Promise;
+    expect(tx3Event.data.transaction.tokenId).toBe('rat002');
+    expect(tx3Event.data.transaction.status).toBe('accepted');
+
+    const finalScore = await getTeamScore(page, '001', 'networked');
+    expect(finalScore).toBe(15500); // 500 + 15000 (duplicate didn't add points)
+
+    console.log('✓ Duplicate rejection confirmed: score unchanged, scanner still functional (15,500 total)');
   });
 
-  test.skip('TODO: backend rejects duplicate scan by different team', async () => {
-    // Requires: GM Scanner WebSocket transaction:submit debugging
+  test('backend rejects duplicate scan by different team', async () => {
+    // Create WebSocket connection and session with TWO teams
+    const socket = await connectWithAuth(
+      orchestratorInfo.url,
+      'test-admin-password',
+      'TEST_DIFFERENT_TEAM_DUPLICATE',
+      'gm'
+    );
+
+    socket.emit('gm:command', {
+      event: 'gm:command',
+      data: {
+        action: 'session:create',
+        payload: {
+          name: 'Test Session - Different Team Duplicate',
+          teams: ['001', '002']  // Both teams for cross-team test
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
+
+    await waitForEvent(socket, 'gm:command:ack', null, 5000);
+
+    // Initialize scanner
+    const context = await createBrowserContext(browser, 'mobile');
+    const page = await createPage(context);
+    const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+      orchestratorUrl: orchestratorInfo.url,
+      password: 'test-admin-password'
+    });
+
+    // TEAM 001: Scan first (should be ACCEPTED)
+    await scanner.enterTeam('001');
+    await scanner.confirmTeam();
+
+    const tx1Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+
+    await page.evaluate((tokenId) => {
+      window.App.processNFCRead({
+        id: tokenId,
+        source: 'nfc',
+        raw: tokenId
+      });
+    }, 'sof002');
+
+    await scanner.waitForResult(5000);
+
+    const tx1Event = await tx1Promise;
+    expect(tx1Event.data.transaction.tokenId).toBe('sof002');
+    expect(tx1Event.data.transaction.teamId).toBe('001');
+    expect(tx1Event.data.transaction.status).toBe('accepted');
+
+    console.log('✓ Team 001 scan accepted: 500 points');
+
+    // Verify Team 001 scored
+    const score001After1 = await getTeamScore(page, '001', 'networked');
+    expect(score001After1).toBe(500);
+
+    // SWITCH TO TEAM 002
+    await page.click('button[onclick="App.finishTeam()"]');
+    await scanner.enterTeam('002');
+    await scanner.confirmTeam();
+
+    console.log('✓ Switched to Team 002');
+
+    // TEAM 002: Try same token (should be REJECTED - first-come-first-served)
+    // No broadcast for duplicates - verify via score unchanged
+    await page.evaluate((tokenId) => {
+      window.App.processNFCRead({
+        id: tokenId,
+        source: 'nfc',
+        raw: tokenId
+      });
+    }, 'sof002');
+
+    await scanner.waitForResult(5000);
+
+    console.log('✓ Team 002 duplicate scan processed');
+
+    // Verify cross-team rejection: Team 001 unchanged, Team 002 got nothing
+    const score001After2 = await getTeamScore(page, '001', 'networked');
+    const score002After2 = await getTeamScore(page, '002', 'networked');
+
+    expect(score001After2).toBe(500);  // Team 001 unchanged
+    expect(score002After2).toBe(0);    // Team 002 got nothing (rejected)
+
+    console.log('✓ Cross-team rejection confirmed: Team 001 blocked Team 002');
+
+    // Verify Team 002 still functional - can scan different token
+    const tx3Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+
+    await page.evaluate((tokenId) => {
+      window.App.processNFCRead({
+        id: tokenId,
+        source: 'nfc',
+        raw: tokenId
+      });
+    }, 'mab002');  // Different token
+
+    await scanner.waitForResult(5000);
+
+    const tx3Event = await tx3Promise;
+    expect(tx3Event.data.transaction.tokenId).toBe('mab002');
+    expect(tx3Event.data.transaction.teamId).toBe('002');
+    expect(tx3Event.data.transaction.status).toBe('accepted');
+
+    const finalScore002 = await getTeamScore(page, '002', 'networked');
+    expect(finalScore002).toBe(10000);  // Team 002 can score with different token
+
+    console.log('✓ Team 002 still functional after rejection: 10,000 points from different token');
   });
 });
