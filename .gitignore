@@ -20,3 +20,11 @@ package-lock.json
 # Video processing temp files
 Video_Reencode_*
 backend/node_modules/
+
+# Playwright test artifacts
+backend/playwright-report/
+backend/test-results/
+test-results/
+
+# Root node_modules (if any)
+/node_modules/
