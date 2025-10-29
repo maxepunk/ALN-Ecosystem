@@ -92,6 +92,155 @@ ALNScanner/data/              → [NESTED SUBMODULE to ALN-TokenData]
 - Supports manual configuration fallback
 - Scanners work independently via GitHub Pages when orchestrator unavailable
 
+### HTTPS Architecture and Web NFC Requirements
+
+**CRITICAL**: The system uses HTTPS for all scanner-orchestrator communication to support the Web NFC API, which requires a secure context (HTTPS).
+
+#### HTTPS Configuration (Implemented Oct 24, 2025)
+
+**Backend HTTPS Setup:**
+```env
+# backend/.env
+ENABLE_HTTPS=true
+SSL_KEY_PATH=./ssl/key.pem
+SSL_CERT_PATH=./ssl/cert.pem
+HTTP_REDIRECT_PORT=8000
+```
+
+**Architecture:**
+- **HTTPS Server**: Port 3000 (primary orchestrator endpoint)
+- **HTTP Redirect Server**: Port 8000 (301 redirects to HTTPS:3000)
+- **Self-Signed Certificate**: 365-day validity (`backend/ssl/`)
+- **Discovery Protocol**: UDP service advertises `protocol: "https"` in responses
+
+**Why HTTPS is Required:**
+- **Web NFC API**: GM Scanner uses `NDEFReader` which only works in secure contexts
+- **Mixed Content Security**: HTTPS pages cannot make HTTP fetch/WebSocket requests
+- **Browser Requirement**: Modern browsers block insecure requests from secure pages
+
+#### Scanner Protocol Handling
+
+**GM Scanner (ALNScanner):**
+```javascript
+// Default protocol: HTTPS
+// connectionManager.js:47 - URL normalization defaults to https://
+// orchestratorClient.js:16 - Localhost fallback uses https://
+// scanForServers() - Scans HTTPS:3000 and HTTP:8000 ports
+```
+
+**Player Scanner (aln-memory-scanner):**
+```javascript
+// Uses window.location.origin (preserves protocol)
+// Falls back to https://localhost:3000 for development
+```
+
+**Discovery Service:**
+```javascript
+// backend/src/services/discoveryService.js:86
+protocol: config.ssl.enabled ? 'https' : 'http'  // Dynamic protocol
+```
+
+#### Connection Flow with HTTPS
+
+1. **Scanner Entry**: User enters IP without protocol (e.g., `192.168.1.100:3000`)
+2. **URL Normalization**: Scanner adds `https://` prefix automatically
+3. **Certificate Warning**: Browser shows "not private" warning (first time only)
+4. **User Trust**: User clicks "Advanced" → "Proceed to [IP]"
+5. **Connection**: Health check, authentication, WebSocket connection succeed
+6. **NFC Enabled**: Web NFC API now works (secure context established)
+
+#### Certificate Trust Workflow
+
+**One-Time Setup Per Device:**
+```
+Android Device → https://[IP]:3000/gm-scanner/
+             ↓
+    "Your connection is not private" warning
+             ↓
+    Advanced → Proceed to [IP] (unsafe)
+             ↓
+    Certificate trusted for this device
+             ↓
+    NFC scanning enabled
+```
+
+**Certificate Details:**
+- **Type**: Self-signed X.509 certificate
+- **Validity**: 365 days (expires Oct 24, 2026)
+- **CN**: Server IP address (e.g., `10.0.0.177`)
+- **Location**: `backend/ssl/cert.pem` and `key.pem`
+
+#### Troubleshooting HTTPS Issues
+
+**Mixed Content Blocking:**
+```
+Symptom: "Mixed Content: The page at 'https://...' was loaded over HTTPS,
+          but requested an insecure resource 'http://...'"
+Solution: All scanner code now defaults to HTTPS (fixed Oct 29, 2025)
+Check: Browser DevTools Console for blocked requests
+```
+
+**Certificate Errors:**
+```
+Symptom: "NET::ERR_CERT_AUTHORITY_INVALID"
+Solution: One-time trust required per device (see Certificate Trust Workflow)
+Note: This is expected behavior with self-signed certificates
+```
+
+**Discovery Service Failures:**
+```
+Symptom: "Scan for Servers" finds no servers
+Debug:
+  1. Check backend HTTPS enabled: grep ENABLE_HTTPS backend/.env
+  2. Verify scanner tries HTTPS: Check browser Network tab
+  3. Test manually: curl -k https://[IP]:3000/health
+  4. Check mixed content: HTTPS scanner must scan HTTPS endpoints
+```
+
+**WebSocket Connection Issues:**
+```
+Symptom: Authentication succeeds but connection shows "Connecting..." indefinitely
+Root Cause: Race condition between wizard close and socket connection (fixed Oct 29, 2025)
+Verification: Status indicator should turn GREEN before wizard closes
+```
+
+**HTTP Redirect Server:**
+```
+Purpose: Convenience fallback for users entering http:// URLs
+Port: 8000
+Behavior: Sends 301 redirect to https://[IP]:3000
+Note: Required for backward compatibility, not for NFC functionality
+```
+
+#### Protocol Migration History
+
+**Oct 24, 2025 (Commit 97e7edc5):**
+- ✅ Backend HTTPS server implemented
+- ✅ Self-signed certificates generated
+- ✅ Discovery service updated to advertise `protocol: "https"`
+- ✅ HTTP redirect server added (port 8000)
+- ❌ Scanner clients NOT updated (caused breakage)
+
+**Oct 29, 2025 (Commit 3137b0ec):**
+- ✅ Fixed scanner URL normalization (http → https default)
+- ✅ Fixed discovery service scanning (now tries HTTPS:3000)
+- ✅ Fixed WebSocket connection race condition
+- ✅ Updated both GM and Player scanners
+
+**Breaking Pattern Identified:**
+```
+Backend Migration → Scanner Not Updated → Mixed Content Blocking
+       ↓                    ↓                        ↓
+   HTTPS:3000         http:// default        Browser blocks requests
+```
+
+**Current State:**
+- ✅ Backend advertises HTTPS in discovery responses
+- ✅ Scanners default to HTTPS for all connections
+- ✅ Discovery scans HTTPS:3000 and HTTP:8000
+- ✅ WebSocket connections wait for actual socket establishment
+- ✅ Mixed content errors eliminated
+
 ## Key Commands
 
 ### Development
@@ -532,7 +681,13 @@ This creates Pi 4-compatible videos at ~2Mbps bitrate with hardware acceleration
 | Video not playing | Verify file exists in `backend/public/videos/` |
 | Video freezes/black screen | Check GPU memory (need 256MB), re-encode video if >5Mbps bitrate |
 | Idle loop stops but video doesn't play | Video bitrate too high - re-encode with ffmpeg (see Video Optimization) |
-| Scanner can't connect | Check firewall, use IP not localhost |
+| Scanner can't connect | Check firewall, use IP not localhost, verify HTTPS enabled |
+| Mixed content errors | Update scanners to latest (Oct 29, 2025) - all now default to HTTPS |
+| Certificate errors | One-time trust per device - click "Advanced" → "Proceed" in browser |
+| Discovery finds no servers | Check HTTPS enabled in backend, verify scanner scans HTTPS:3000 |
+| Connection shows "Connecting..." forever | Update to latest (race condition fixed Oct 29, 2025) |
+| Status indicator orange after success | Update to latest (wizard now waits for actual socket connection) |
+| NFC not working | Requires HTTPS (secure context) - verify using https:// not http:// |
 | Token not found | Update ALN-TokenData submodule |
 | Port in use | `lsof -i :3000` and kill process |
 | GameState null after restart | Session should auto-derive state - check logs for "Session loaded on startup" |
