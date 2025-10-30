@@ -201,8 +201,8 @@ module.exports = {
   AUDIO_TOKEN: {
     id: 'tac001',
     name: 'Memory tac001',
-    value: 10,  // Calculated from SF_ValueRating: 1, SF_MemoryType: 'Personal'
-    memoryType: 'Personal',
+    value: 10,  // Calculated from SF_ValueRating: 1, SF_MemoryType: 'Business'
+    memoryType: 'Business',
     groupId: null,
     groupMultiplier: 1,
     mediaAssets: {
