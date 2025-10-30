@@ -242,6 +242,25 @@ global.DataManager = {
   loadTransactions: () => {},  // App.init() loads transaction history
   loadScannedTokens: () => {},  // App.init() loads scanned tokens
   clearSession: () => {},
+
+  // Called by OrchestratorClient when new session detected (sync:full or session:update events)
+  // Matches ALNScanner/js/core/dataManager.js:191-207
+  resetForNewSession(sessionId = null) {
+    this.scannedTokens.clear();
+    this.transactions = [];
+    this.currentSessionId = sessionId;
+
+    // Match scanner localStorage behavior
+    if (global.localStorage) {
+      global.localStorage.removeItem('scannedTokens');
+      if (sessionId) {
+        global.localStorage.setItem('currentSessionId', sessionId);
+      } else {
+        global.localStorage.removeItem('currentSessionId');
+      }
+    }
+  },
+
   calculateTokenValue: () => 0,
   backendScores: new Map(),
 
