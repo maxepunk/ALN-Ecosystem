@@ -117,7 +117,7 @@ describe('Multi-GM Coordination', () => {
       // Validate: Scores updated independently
       const team001Score = transactionService.teamScores.get('001');
       const team002Score = transactionService.teamScores.get('002');
-      expect(team001Score.currentScore).toBe(5000);
+      expect(team001Score.currentScore).toBe(30);
       expect(team002Score.currentScore).toBeGreaterThan(0);  // tac001 value
 
       // Cleanup
@@ -147,7 +147,7 @@ describe('Multi-GM Coordination', () => {
 
       const result1 = await result1Promise;
       expect(result1.data.status).toBe('accepted');
-      expect(result1.data.points).toBe(5000);
+      expect(result1.data.points).toBe(30);
 
       // Second scan - same token, different team - should be duplicate
       const result2Promise = waitForEvent(gm2, 'transaction:result');
@@ -173,7 +173,7 @@ describe('Multi-GM Coordination', () => {
       // Validate: Only first team got points
       const team001Score = transactionService.teamScores.get('001');
       const team002Score = transactionService.teamScores.get('002');
-      expect(team001Score.currentScore).toBe(5000);
+      expect(team001Score.currentScore).toBe(30);
       expect(team002Score.currentScore).toBe(0);
 
       // Cleanup
@@ -227,8 +227,8 @@ describe('Multi-GM Coordination', () => {
       expect(team002Score.bonusPoints).toBe(0);
 
       // Both teams have only their individual token values
-      expect(team001Score.currentScore).toBe(15000); // rat001 only
-      expect(team002Score.currentScore).toBe(1000); // asm001 only
+      expect(team001Score.currentScore).toBe(40); // rat001 only
+      expect(team002Score.currentScore).toBe(30); // asm001 only
 
       // Cleanup
       gm1.disconnect();
@@ -284,7 +284,7 @@ describe('Multi-GM Coordination', () => {
       expect(event2.data).toEqual(event3.data);
 
       expect(event1.data.group).toBe('Marcus Sucks');
-      expect(event1.data.bonusPoints).toBe(16000);
+      expect(event1.data.bonusPoints).toBe(70);
 
       // Cleanup
       gm1.disconnect();
@@ -332,7 +332,7 @@ describe('Multi-GM Coordination', () => {
       const team001Score = scores.find(s => s.teamId === '001');
       expect(team001Score.completedGroups).toEqual([]); // NOT complete
       expect(team001Score.bonusPoints).toBe(0); // NO bonus
-      expect(team001Score.currentScore).toBe(15000); // Only rat001 (blackmarket scan)
+      expect(team001Score.currentScore).toBe(40); // Only rat001 (blackmarket scan)
 
       // Cleanup
       gm1.disconnect();
