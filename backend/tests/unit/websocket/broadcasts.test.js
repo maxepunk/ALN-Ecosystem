@@ -32,7 +32,10 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       emit: jest.fn(),
       to: jest.fn().mockReturnThis(), // Chainable for emitToRoom
       sockets: {
-        sockets: new Map() // Empty map - no devices to initialize (unit test scope)
+        sockets: new Map(), // Empty map - no devices to initialize (unit test scope)
+        adapter: {
+          rooms: new Map()
+        }
       }
     };
 
