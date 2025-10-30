@@ -78,6 +78,15 @@ global.InitializationSteps = {
   initializeUIManager: (uiManager) => {
     uiManager.init();
   },
+  // Phase 0: Show loading screen (added Oct 28, 2024 in ALNScanner commit 0759242)
+  // Called after initializeUIManager to ensure loading screen is visible
+  // Matches ALNScanner/js/app/initializationSteps.js:203-208
+  showLoadingScreen: async (uiManager) => {
+    uiManager.showScreen('loading');
+    // Ensure browser paints the loading screen before continuing (100ms delay)
+    await new Promise(resolve => setTimeout(resolve, 100));
+    global.Debug.log('Loading screen displayed');
+  },
   // Phase 1E: Session mode manager creation
   createSessionModeManager: (SessionModeManagerClass, windowObj) => {
     windowObj.sessionModeManager = new SessionModeManagerClass();
