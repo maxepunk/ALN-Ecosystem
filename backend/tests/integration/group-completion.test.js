@@ -151,7 +151,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       expect(groupEvent.event).toBe('group:completed');
       expect(groupEvent.data.teamId).toBe('001');
       expect(groupEvent.data.group).toBe('Marcus Sucks'); // groupId without "(x2)"
-      expect(groupEvent.data.bonusPoints).toBe(16000); // (2-1) × (15000 + 1000)
+      expect(groupEvent.data.bonusPoints).toBe(70); // (2-1) × (40 + 30)
       expect(groupEvent.data.completedAt).toBeDefined();
 
       // Validate: Contract compliance
@@ -159,16 +159,16 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Validate: score:updated includes bonus
       expect(scoreEvent.data.teamId).toBe('001');
-      expect(scoreEvent.data.currentScore).toBe(32000); // 15000 + 1000 + 16000
-      expect(scoreEvent.data.baseScore).toBe(16000); // 15000 + 1000
-      expect(scoreEvent.data.bonusPoints).toBe(16000); // Group bonus
+      expect(scoreEvent.data.currentScore).toBe(140); // 40 + 30 + 70
+      expect(scoreEvent.data.baseScore).toBe(70); // 40 + 30
+      expect(scoreEvent.data.bonusPoints).toBe(70); // Group bonus
       expect(scoreEvent.data.completedGroups).toContain('Marcus Sucks');
 
       // Validate: Service state matches broadcasts
       scores = transactionService.getTeamScores();
       team001Score = scores.find(s => s.teamId === '001');
-      expect(team001Score.currentScore).toBe(32000);
-      expect(team001Score.bonusPoints).toBe(16000);
+      expect(team001Score.currentScore).toBe(140);
+      expect(team001Score.bonusPoints).toBe(70);
       expect(team001Score.completedGroups).toContain('Marcus Sucks');
     });
 
@@ -218,12 +218,12 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Validate: Group completed with same bonus (order doesn't matter)
       expect(groupEvent.data.group).toBe('Marcus Sucks');
-      expect(groupEvent.data.bonusPoints).toBe(16000);
+      expect(groupEvent.data.bonusPoints).toBe(70);
 
       // Validate: Final score same as forward order
       const scores = transactionService.getTeamScores();
       const team001Score = scores.find(s => s.teamId === '001');
-      expect(team001Score.currentScore).toBe(32000); // 1000 + 15000 + 16000
+      expect(team001Score.currentScore).toBe(140); // 30 + 40 + 70
     });
   });
 });
