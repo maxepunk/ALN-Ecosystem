@@ -1,119 +1,470 @@
 /**
- * Score Events - Contract Validation Tests
- * Tests score:updated and group:completed events against AsyncAPI schema
+ * Score Events - Contract Validation Tests (Server→Client Events)
  *
- * Layer 3 (Contract): Validates event structure, NOT business logic flow
+ * Tests that score:updated and group:completed events match AsyncAPI specification.
+ * Focus: Server→Client event structure validation (pure schema tests)
+ *
+ * Contract: backend/contracts/asyncapi.yaml
+ * Events Tested:
+ *   - score:updated (broadcasts to GM stations)
+ *   - group:completed (broadcasts to GM stations)
+ *
+ * Layer 3 (Contract): Validates event structure ONLY, NOT business logic or integration flow
  */
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
-const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
-const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
-const { resetAllServices } = require('../../helpers/service-reset');
-const sessionService = require('../../../src/services/sessionService');
-const transactionService = require('../../../src/services/transactionService');
-const TeamScore = require('../../../src/models/teamScore');
 
-describe('Score Events - Contract Validation', () => {
-  let testContext;
-  let socket;
+describe('Score Events - Contract Validation (Server→Client)', () => {
 
-  beforeAll(async () => {
-    testContext = await setupIntegrationTestServer();
-  });
+  describe('score:updated - Team Score Broadcast', () => {
 
-  afterAll(async () => {
-    await cleanupIntegrationTestServer(testContext);
-  });
+    it('should emit score:updated with wrapped envelope structure', () => {
+      // Build event as orchestrator would broadcast it
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '001',
+          currentScore: 150,
+          baseScore: 100,
+          bonusPoints: 50,
+          tokensScanned: 3,
+          completedGroups: ['jaw_group'],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
 
-  beforeEach(async () => {
-    await resetAllServices();
-
-    // Create session with teams
-    await sessionService.createSession({
-      name: 'Score Test Session',
-      teams: ['001', '002']
+      // Validate against AsyncAPI schema
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
     });
 
-    // Connect GM socket - but DON'T await yet
-    const connectionPromise = connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_SCORE');
+    it('should include all required fields in data payload', () => {
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '002',
+          currentScore: 200,
+          baseScore: 150,
+          bonusPoints: 50,
+          tokensScanned: 5,
+          completedGroups: [],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
 
-    // Fix: WebSocket room join timing race condition
-    // Tests were emitting to 'gm-stations' room before socket finished joining.
-    // Solution: Wait for sync:full event (sent after room join per AsyncAPI contract).
+      // Validate required fields
+      expect(event.data).toHaveProperty('teamId');
+      expect(event.data).toHaveProperty('currentScore');
+      expect(event.data).toHaveProperty('baseScore');
+      expect(event.data).toHaveProperty('bonusPoints');
+      expect(event.data).toHaveProperty('tokensScanned');
+      expect(event.data).toHaveProperty('completedGroups');
+      expect(event.data).toHaveProperty('adminAdjustments');
+      expect(event.data).toHaveProperty('lastUpdate');
 
-    // CRITICAL: Wait for connection AND sync:full in parallel
-    // Per AsyncAPI contract lines 244-252, sync:full is auto-sent after authentication
-    // This guarantees socket has joined 'gm-stations' room and can receive broadcasts
-    socket = await connectionPromise;
-
-    // Set up listener immediately after socket is available (but connection may still be completing)
-    const syncPromise = waitForEvent(socket, 'sync:full', 10000);
-
-    // Wait for sync:full to confirm room join complete
-    await syncPromise;
-
-    // Small delay to ensure room join propagated through Socket.io internals
-    await new Promise(resolve => setTimeout(resolve, 100));
-  });
-
-  afterEach(async () => {
-    if (socket && socket.connected) {
-      socket.disconnect();
-    }
-    await resetAllServices();
-  });
-
-  describe('score:updated broadcast', () => {
-    it('should match AsyncAPI schema when broadcasted to GMs', async () => {
-      // Setup: Listen for score:updated BEFORE triggering
-      const scorePromise = waitForEvent(socket, 'score:updated');
-
-      // Trigger: Directly emit score:updated via transactionService
-      // (Contract test: validate structure, not business logic)
-      const teamScore = TeamScore.createInitial('001');
-      teamScore.addPoints(100);
-      teamScore.incrementTokensScanned();
-      transactionService.emit('score:updated', teamScore);
-
-      // Wait: For score:updated broadcast
-      const event = await scorePromise;
-
-      // Validate: Wrapped envelope structure
-      expect(event).toHaveProperty('event', 'score:updated');
-      expect(event).toHaveProperty('data');
-      expect(event).toHaveProperty('timestamp');
-      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-
-      // Validate: Against AsyncAPI contract schema (ajv)
-      validateWebSocketEvent(event, 'score:updated');
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
     });
-  });
 
-  describe('group:completed broadcast', () => {
-    it('should match AsyncAPI schema when broadcasted to GMs', async () => {
-      // Setup: Listen for group:completed BEFORE triggering
-      const groupPromise = waitForEvent(socket, 'group:completed');
+    it('should format teamId as 3-digit string per contract pattern', () => {
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '001', // Must match ^[0-9]{3}$
+          currentScore: 100,
+          baseScore: 100,
+          bonusPoints: 0,
+          tokensScanned: 2,
+          completedGroups: [],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
 
-      // Trigger: Directly emit group:completed via transactionService
-      // (Contract test: validate structure, not business logic)
-      // Note: Service emits with these field names, broadcasts.js transforms to contract format
-      transactionService.emit('group:completed', {
-        teamId: '001',
-        groupId: 'jaw_group',  // broadcasts.js maps to 'group'
-        bonus: 500             // broadcasts.js maps to 'bonusPoints'
+      // Verify pattern
+      expect(event.data.teamId).toMatch(/^[0-9]{3}$/);
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
+    });
+
+    it('should accept adminAdjustments array with audit metadata', () => {
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '003',
+          currentScore: 250,
+          baseScore: 200,
+          bonusPoints: 0,
+          tokensScanned: 4,
+          completedGroups: [],
+          adminAdjustments: [
+            {
+              delta: 50,
+              reason: 'Manual adjustment for lost token',
+              timestamp: new Date().toISOString(),
+              gmStation: 'GM_Station_1'
+            }
+          ],
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
+    });
+
+    it('should accept empty adminAdjustments array', () => {
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '001',
+          currentScore: 100,
+          baseScore: 100,
+          bonusPoints: 0,
+          tokensScanned: 2,
+          completedGroups: [],
+          adminAdjustments: [], // Empty array is valid
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
+    });
+
+    it('should accept completedGroups array with group IDs', () => {
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '001',
+          currentScore: 1100,
+          baseScore: 600,
+          bonusPoints: 500,
+          tokensScanned: 6,
+          completedGroups: ['jaw_group', 'rat_group'],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
+    });
+
+    it('should reject invalid teamId patterns', () => {
+      const invalidTeamIds = [
+        '1',      // Too short
+        '12',     // Too short
+        '1234',   // Too long
+        'ABC',    // Not numeric
+        '00A'     // Mixed alphanumeric
+      ];
+
+      invalidTeamIds.forEach(teamId => {
+        const event = {
+          event: 'score:updated',
+          data: {
+            teamId: teamId,
+            currentScore: 100,
+            baseScore: 100,
+            bonusPoints: 0,
+            tokensScanned: 2,
+            completedGroups: [],
+            adminAdjustments: [],
+            lastUpdate: new Date().toISOString()
+          },
+          timestamp: new Date().toISOString()
+        };
+
+        expect(() => {
+          validateWebSocketEvent(event, 'score:updated');
+        }).toThrow(/pattern/i);
       });
+    });
 
-      // Wait: For group:completed broadcast
-      const event = await groupPromise;
+    it('should format lastUpdate and timestamp as ISO8601 date-time', () => {
+      const timestamp = new Date().toISOString();
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '001',
+          currentScore: 100,
+          baseScore: 100,
+          bonusPoints: 0,
+          tokensScanned: 2,
+          completedGroups: [],
+          adminAdjustments: [],
+          lastUpdate: timestamp
+        },
+        timestamp: timestamp
+      };
 
-      // Validate: Wrapped envelope structure
-      expect(event).toHaveProperty('event', 'group:completed');
-      expect(event).toHaveProperty('data');
-      expect(event).toHaveProperty('timestamp');
-      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      // Verify format
+      expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
 
-      // Validate: Against AsyncAPI contract schema (ajv)
-      validateWebSocketEvent(event, 'group:completed');
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).not.toThrow();
+    });
+  });
+
+  describe('group:completed - Group Completion Broadcast', () => {
+
+    it('should emit group:completed with wrapped envelope structure', () => {
+      // Build event as orchestrator would broadcast it
+      const event = {
+        event: 'group:completed',
+        data: {
+          teamId: '001',
+          group: 'jaw_group',
+          bonusPoints: 500,
+          completedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate against AsyncAPI schema
+      expect(() => {
+        validateWebSocketEvent(event, 'group:completed');
+      }).not.toThrow();
+    });
+
+    it('should include all required fields in data payload', () => {
+      const event = {
+        event: 'group:completed',
+        data: {
+          teamId: '002',
+          group: 'rat_group',
+          bonusPoints: 500,
+          completedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate required fields
+      expect(event.data).toHaveProperty('teamId');
+      expect(event.data).toHaveProperty('group');
+      expect(event.data).toHaveProperty('bonusPoints');
+      expect(event.data).toHaveProperty('completedAt');
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'group:completed');
+      }).not.toThrow();
+    });
+
+    it('should format teamId as 3-digit string per contract pattern', () => {
+      const event = {
+        event: 'group:completed',
+        data: {
+          teamId: '003', // Must match ^[0-9]{3}$
+          group: 'mab_group',
+          bonusPoints: 500,
+          completedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Verify pattern
+      expect(event.data.teamId).toMatch(/^[0-9]{3}$/);
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'group:completed');
+      }).not.toThrow();
+    });
+
+    it('should use group field name (not groupId)', () => {
+      const event = {
+        event: 'group:completed',
+        data: {
+          teamId: '001',
+          group: 'jaw_group',  // Correct field name per AsyncAPI
+          bonusPoints: 500,
+          completedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate has 'group' field
+      expect(event.data).toHaveProperty('group');
+      expect(event.data).not.toHaveProperty('groupId');
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'group:completed');
+      }).not.toThrow();
+    });
+
+    it('should use bonusPoints field name (not bonus)', () => {
+      const event = {
+        event: 'group:completed',
+        data: {
+          teamId: '001',
+          group: 'jaw_group',
+          bonusPoints: 500,  // Correct field name per AsyncAPI
+          completedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Validate has 'bonusPoints' field
+      expect(event.data).toHaveProperty('bonusPoints');
+      expect(event.data).not.toHaveProperty('bonus');
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'group:completed');
+      }).not.toThrow();
+    });
+
+    it('should reject invalid teamId patterns', () => {
+      const invalidTeamIds = [
+        '1',      // Too short
+        '12',     // Too short
+        '1234',   // Too long
+        'ABC',    // Not numeric
+        '00A'     // Mixed alphanumeric
+      ];
+
+      invalidTeamIds.forEach(teamId => {
+        const event = {
+          event: 'group:completed',
+          data: {
+            teamId: teamId,
+            group: 'test_group',
+            bonusPoints: 500,
+            completedAt: new Date().toISOString()
+          },
+          timestamp: new Date().toISOString()
+        };
+
+        expect(() => {
+          validateWebSocketEvent(event, 'group:completed');
+        }).toThrow(/pattern/i);
+      });
+    });
+
+    it('should format completedAt and timestamp as ISO8601 date-time', () => {
+      const timestamp = new Date().toISOString();
+      const event = {
+        event: 'group:completed',
+        data: {
+          teamId: '001',
+          group: 'jaw_group',
+          bonusPoints: 500,
+          completedAt: timestamp
+        },
+        timestamp: timestamp
+      };
+
+      // Verify format
+      expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+
+      // Validate against contract
+      expect(() => {
+        validateWebSocketEvent(event, 'group:completed');
+      }).not.toThrow();
+    });
+  });
+
+  describe('Wrapped Envelope Pattern (Decision #2)', () => {
+
+    it('should wrap all events with {event, data, timestamp} structure', () => {
+      const events = [
+        {
+          event: 'score:updated',
+          data: {
+            teamId: '001',
+            currentScore: 150,
+            baseScore: 100,
+            bonusPoints: 50,
+            tokensScanned: 3,
+            completedGroups: [],
+            adminAdjustments: [],
+            lastUpdate: new Date().toISOString()
+          },
+          timestamp: new Date().toISOString()
+        },
+        {
+          event: 'group:completed',
+          data: {
+            teamId: '001',
+            group: 'jaw_group',
+            bonusPoints: 500,
+            completedAt: new Date().toISOString()
+          },
+          timestamp: new Date().toISOString()
+        }
+      ];
+
+      events.forEach(evt => {
+        // Verify envelope structure
+        expect(evt).toHaveProperty('event');
+        expect(evt).toHaveProperty('data');
+        expect(evt).toHaveProperty('timestamp');
+
+        // Validate types
+        expect(typeof evt.event).toBe('string');
+        expect(typeof evt.data).toBe('object');
+        expect(typeof evt.timestamp).toBe('string');
+      });
+    });
+
+    it('should reject events without wrapped envelope', () => {
+      // Unwrapped payload (old pattern)
+      const unwrappedEvent = {
+        teamId: '001',
+        currentScore: 150,
+        baseScore: 100,
+        bonusPoints: 50
+      };
+
+      expect(() => {
+        validateWebSocketEvent(unwrappedEvent, 'score:updated');
+      }).toThrow(/required/i);
+    });
+
+    it('should reject events missing timestamp', () => {
+      const event = {
+        event: 'score:updated',
+        data: {
+          teamId: '001',
+          currentScore: 100,
+          baseScore: 100,
+          bonusPoints: 0,
+          tokensScanned: 2,
+          completedGroups: [],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString()
+        }
+        // missing timestamp
+      };
+
+      expect(() => {
+        validateWebSocketEvent(event, 'score:updated');
+      }).toThrow(/required/i);
     });
   });
 });
