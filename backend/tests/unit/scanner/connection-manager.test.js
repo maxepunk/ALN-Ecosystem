@@ -848,12 +848,12 @@ describe('ConnectionManager', () => {
 
   describe('Storage Management', () => {
     describe('TEST 19: URL normalization', () => {
-      it('should add http:// prefix when missing', () => {
+      it('should add https:// prefix when missing', () => {
         // ACT
         connectionManager.url = 'localhost:3000';
 
         // ASSERT
-        expect(connectionManager.url).toBe('http://localhost:3000');
+        expect(connectionManager.url).toBe('https://localhost:3000');
       });
 
       it('should not modify URL with http:// prefix', () => {
@@ -877,7 +877,7 @@ describe('ConnectionManager', () => {
         connectionManager.url = '  localhost:3000  ';
 
         // ASSERT
-        expect(connectionManager.url).toBe('http://localhost:3000');
+        expect(connectionManager.url).toBe('https://localhost:3000');
       });
 
       it('should remove URL when set to null', () => {
