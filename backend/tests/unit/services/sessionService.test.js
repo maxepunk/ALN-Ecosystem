@@ -372,6 +372,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(scores.length).toBe(3);
       expect(scores[0]).toEqual({
         teamId: '001',
+        adminAdjustments: [],  // Admin score adjustment audit trail
         currentScore: 0,
         baseScore: 0,
         bonusPoints: 0,

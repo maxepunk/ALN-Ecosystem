@@ -67,8 +67,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
 
       orchestrator = new OrchestratorIntegration();
 
-      // Should fall back to local orchestrator
-      expect(orchestrator.baseUrl).toBe('http://localhost:3000');
+      // Should fall back to local orchestrator (HTTPS for Web NFC API - Oct 2025 migration)
+      expect(orchestrator.baseUrl).toBe('https://localhost:3000');
     });
 
     it('should use orchestrator_url from localStorage if present', () => {
@@ -225,8 +225,9 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
 
       orchestrator.updateOrchestratorUrl(newUrl);
 
-      expect(orchestrator.baseUrl).toBe(newUrl);
-      expect(localStorage.getItem('orchestrator_url')).toBe(newUrl);
+      // URLs normalized to HTTPS (Oct 2025 Web NFC API migration)
+      expect(orchestrator.baseUrl).toBe('https://192.168.1.100:3000');
+      expect(localStorage.getItem('orchestrator_url')).toBe('https://192.168.1.100:3000');
     });
 
     it('should trigger connection check when URL updated', async () => {
@@ -240,9 +241,9 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
       // Wait for check to complete
       await orchestrator.pendingConnectionCheck;
 
-      // Should have called new URL
+      // Should have called new URL (HTTPS for Web NFC API - Oct 2025 migration)
       const lastCall = getLastFetchCall();
-      expect(lastCall.url).toContain('http://new.server:3000/health');
+      expect(lastCall.url.toString()).toContain('https://new.server:3000/health');
     });
   });
 

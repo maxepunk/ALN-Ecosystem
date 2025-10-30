@@ -786,11 +786,12 @@ describe('AdminModule', () => {
         global.document.getElementById = jest.fn().mockReturnValue(mockElement);
 
         // ACT
-        systemMonitor.updateVLCStatus('ready');
+        // Per AsyncAPI contract: VLC status is 'connected', 'disconnected', or 'error'
+        systemMonitor.updateVLCStatus('connected');
 
         // ASSERT
         expect(mockElement.className).toBe('status-dot connected');
-        expect(mockElement.title).toBe('ready');
+        expect(mockElement.title).toBe('connected');
       });
 
       it('should update VLC status indicator when error', () => {

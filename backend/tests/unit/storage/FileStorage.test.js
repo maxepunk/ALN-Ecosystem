@@ -35,31 +35,31 @@ describe('FileStorage Persistence', () => {
   });
 
   // ========================================
-  // TEST 1: Save session to correct file path
+  // TEST 1: Persist and retrieve session
   // ========================================
 
-  test('saves session to correct file path with correct structure', async () => {
+  test('persists session and retrieves it correctly', async () => {
     const session = {
       id: 'test-session-123',
-      name: 'Persistence Path Test',
+      name: 'Persistence Test',
       teams: ['001'],
       status: 'active',
       startTime: new Date().toISOString()
     };
 
+    // Save session
     await storage.save(`session:${session.id}`, session);
 
-    // Verify file exists at correct path
-    const expectedPath = path.join(testDir, `session-${session.id}.json`);
-    const stats = await fs.stat(expectedPath);
-    expect(stats.isFile()).toBe(true);
+    // Load session back
+    const loaded = await storage.load(`session:${session.id}`);
 
-    // Verify file contents
-    const contents = await fs.readFile(expectedPath, 'utf-8');
-    const loaded = JSON.parse(contents);
+    // Verify data integrity (behavior test, not file format test)
     expect(loaded).toEqual(session);
+    expect(loaded.id).toBe(session.id);
+    expect(loaded.name).toBe(session.name);
+    expect(loaded.teams).toEqual(session.teams);
 
-    console.log('✓ Session saved to correct path:', expectedPath);
+    console.log('✓ Session persisted and retrieved correctly');
   });
 
   // ========================================
@@ -137,30 +137,34 @@ describe('FileStorage Persistence', () => {
     const session1 = {
       id: 'session-1',
       name: 'Session 1',
-      teams: ['001']
+      teams: ['001', '002'],
+      status: 'active',
+      startTime: new Date().toISOString()
     };
 
     const session2 = {
       id: 'session-2',
       name: 'Session 2',
-      teams: ['002']
+      teams: ['003', '004'],
+      status: 'paused',
+      startTime: new Date().toISOString()
     };
 
-    // Save both
+    // Save both sessions
     await storage.save(`session:${session1.id}`, session1);
     await storage.save(`session:${session2.id}`, session2);
 
-    // Verify both exist
-    const files = await fs.readdir(testDir);
-    expect(files).toContain(`session-${session1.id}.json`);
-    expect(files).toContain(`session-${session2.id}.json`);
-
-    // Load and verify
+    // Load both back
     const loaded1 = await storage.load(`session:${session1.id}`);
     const loaded2 = await storage.load(`session:${session2.id}`);
 
-    expect(loaded1.name).toBe('Session 1');
-    expect(loaded2.name).toBe('Session 2');
+    // Verify both exist independently
+    expect(loaded1).toEqual(session1);
+    expect(loaded2).toEqual(session2);
+
+    // Verify they didn't overwrite each other
+    expect(loaded1.id).not.toBe(loaded2.id);
+    expect(loaded1.name).not.toBe(loaded2.name);
 
     console.log('✓ Multiple sessions persisted independently');
   });

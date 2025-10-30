@@ -67,6 +67,11 @@ describe('UIManager - Critical User Interface', () => {
 
     // Mock global objects
     global.document = mockDocument;
+    global.window = {
+      sessionModeManager: {
+        isNetworked: jest.fn().mockReturnValue(true)
+      }
+    };
     global.Settings = { mode: 'blackmarket' };
     global.DataManager = {
       transactions: [],
@@ -805,11 +810,15 @@ describe('UIManager - Critical User Interface', () => {
       // BEHAVIORAL: Verify renderTokenCard called for each token with hasBonus=true
       expect(renderTokenCardSpy).toHaveBeenCalledWith(
         expect.objectContaining({ rfid: 'token1' }),
-        true  // hasBonus flag
+        true,   // hasBonus flag
+        false,  // isUnknown
+        true    // showDelete (isNetworked)
       );
       expect(renderTokenCardSpy).toHaveBeenCalledWith(
         expect.objectContaining({ rfid: 'token2' }),
-        true
+        true,   // hasBonus flag
+        false,  // isUnknown
+        true    // showDelete (isNetworked)
       );
     });
 
@@ -859,7 +868,9 @@ describe('UIManager - Critical User Interface', () => {
       // BEHAVIORAL: Verify tokens rendered without bonus
       expect(renderTokenCardSpy).toHaveBeenCalledWith(
         expect.objectContaining({ rfid: 'evidence1' }),
-        false  // hasBonus=false for incomplete groups
+        false,  // hasBonus=false for incomplete groups
+        false,  // isUnknown
+        true    // showDelete (isNetworked)
       );
     });
 
@@ -891,7 +902,9 @@ describe('UIManager - Critical User Interface', () => {
       expect(html).toContain('📦 Individual Tokens');
       expect(renderTokenCardSpy).toHaveBeenCalledWith(
         expect.objectContaining({ rfid: 'standalone1' }),
-        false  // hasBonus (only 2 params for ungrouped)
+        false,  // hasBonus
+        false,  // isUnknown
+        true    // showDelete (isNetworked)
       );
 
       // BEHAVIORAL: Verify unknown section
@@ -899,7 +912,8 @@ describe('UIManager - Critical User Interface', () => {
       expect(renderTokenCardSpy).toHaveBeenCalledWith(
         expect.objectContaining({ rfid: 'unknown123', isUnknown: true }),
         false,  // hasBonus
-        true   // isUnknown flag (3 params for unknown)
+        true,   // isUnknown flag
+        true    // showDelete (isNetworked)
       );
     });
 

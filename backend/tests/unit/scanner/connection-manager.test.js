@@ -1009,7 +1009,7 @@ describe('ConnectionManager', () => {
 
         // ASSERT
         expect(result).toBe(true);
-        expect(connectionManager.url).toBe('http://localhost:3000');
+        expect(connectionManager.url).toBe('https://localhost:3000'); // HTTPS normalized (Oct 2025 Web NFC migration)
         expect(connectionManager.stationName).toBe('GM Station 1');
         expect(connectionManager.deviceId).toBe('GM_Station_1'); // Whitespace replaced
         expect(connectionManager.token).toBe(validToken);
