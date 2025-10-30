@@ -24,7 +24,7 @@
 ## Test Results Comparison
 
 ### Baseline (Start of Session 1)
-From `backend/TEST_BASELINE_2025-10-29.md`:
+From `docs/ARCHIVE/TEST_BASELINE_2025-10-29.md`:
 ```
 Unit Tests:        45 failures / 651 passing (696 total)
 Contract Tests:     3 failures / 118 passing (121 total)

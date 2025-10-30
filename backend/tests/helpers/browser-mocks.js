@@ -155,7 +155,7 @@ global.InitializationSteps = {
     const urlParams = new URLSearchParams(locationSearch);
     const modeParam = urlParams.get('mode');
     if (modeParam === 'blackmarket' || modeParam === 'black-market') {
-      settings.stationMode = 'blackmarket';
+      settings.mode = 'blackmarket';
       settings.save();
       global.Debug.log('Station mode set to blackmarket via URL parameter');
       return true;
@@ -205,12 +205,12 @@ global.ConnectionManager = class ConnectionManager {
   }
 };
 
-// Mock Settings global (App module uses Settings.deviceId, Settings.stationMode)
+// Mock Settings global (App module uses Settings.deviceId, Settings.mode)
 // In browser, loaded via separate <script> tag
 // Will be overwritten by actual Settings module when imported
 global.Settings = {
   deviceId: '001',
-  stationMode: 'detective',
+  mode: 'detective',
   load: () => {},
   save: () => {}
 };

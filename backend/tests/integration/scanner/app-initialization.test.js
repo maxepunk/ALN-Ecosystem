@@ -99,7 +99,7 @@ describe('App - Initialization Sequence [Phase 1.2]', () => {
       await App.init();
 
       // VERIFY: Station mode was set to blackmarket
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
 
       // VERIFY: Settings were saved
       expect(saveSpy).toHaveBeenCalled();
@@ -113,7 +113,7 @@ describe('App - Initialization Sequence [Phase 1.2]', () => {
 
       await App.init();
 
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
     });
 
     it('should ignore invalid mode parameters', async () => {
@@ -121,13 +121,13 @@ describe('App - Initialization Sequence [Phase 1.2]', () => {
 
       global.window.location.search = '?mode=invalid_mode';
 
-      const originalMode = Settings.stationMode;
+      const originalMode = Settings.mode;
 
       await App.init();
 
       // VERIFY: Invalid mode ignored, original setting preserved
       // (Should NOT change to 'invalid_mode')
-      expect(Settings.stationMode).not.toBe('invalid_mode');
+      expect(Settings.mode).not.toBe('invalid_mode');
     });
   });
 

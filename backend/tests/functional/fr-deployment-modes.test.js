@@ -19,7 +19,7 @@ describe('FR Section 0: Deployment Modes', () => {
 
     // Reset Settings
     Settings.deviceId = '001';
-    Settings.stationMode = 'detective';
+    Settings.mode = 'detective';
   });
 
   describe('FR 0.1: Networked Mode', () => {
@@ -163,14 +163,14 @@ describe('FR Section 0: Deployment Modes', () => {
     });
 
     it('should persist station mode (detective/blackmarket) across sessions', () => {
-      Settings.stationMode = 'blackmarket';
+      Settings.mode = 'blackmarket';
       Settings.save();
 
       // Reset and load
-      Settings.stationMode = 'detective';
+      Settings.mode = 'detective';
       Settings.load();
 
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
     });
 
     it('should support multiple GM stations with unique device IDs', () => {

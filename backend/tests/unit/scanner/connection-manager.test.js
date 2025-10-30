@@ -924,7 +924,7 @@ describe('ConnectionManager', () => {
     describe('TEST 21: Station mode storage', () => {
       it('should default to detective mode when not stored', () => {
         // ACT
-        const mode = connectionManager.stationMode;
+        const mode = connectionManager.mode;
 
         // ASSERT
         expect(mode).toBe('detective');
@@ -932,11 +932,11 @@ describe('ConnectionManager', () => {
 
       it('should persist station mode to localStorage', () => {
         // ACT
-        connectionManager.stationMode = 'blackmarket';
+        connectionManager.mode = 'blackmarket';
 
         // ASSERT
-        expect(localStorage.getItem('stationMode')).toBe('blackmarket');
-        expect(connectionManager.stationMode).toBe('blackmarket');
+        expect(localStorage.getItem('mode')).toBe('blackmarket');
+        expect(connectionManager.mode).toBe('blackmarket');
       });
     });
 

@@ -47,7 +47,7 @@ async function test() {
                 tokenId: 'TEST_TOKEN',
                 teamId: 'TEAM_A',
                 scannerId: 'TEST_GM',
-                stationMode: 'blackmarket'
+                mode: 'blackmarket'
             });
         }, 1000);
     });

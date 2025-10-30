@@ -17,7 +17,7 @@ describe('Settings - Device Configuration', () => {
 
     // Reset Settings to defaults
     Settings.deviceId = '001';
-    Settings.stationMode = 'detective';
+    Settings.mode = 'detective';
 
     // Clear connectionManager
     global.window.connectionManager = null;
@@ -28,8 +28,8 @@ describe('Settings - Device Configuration', () => {
       expect(Settings.deviceId).toBe('001');
     });
 
-    it('should have default stationMode', () => {
-      expect(Settings.stationMode).toBe('detective');
+    it('should have default mode', () => {
+      expect(Settings.mode).toBe('detective');
     });
 
     it('should be an object', () => {
@@ -48,37 +48,37 @@ describe('Settings - Device Configuration', () => {
   describe('Load from localStorage', () => {
     it('should load deviceId from localStorage when no connectionManager', () => {
       localStorage.setItem('deviceId', 'GM_005');
-      localStorage.setItem('stationMode', 'blackmarket');
+      localStorage.setItem('mode', 'blackmarket');
 
       Settings.load();
 
       expect(Settings.deviceId).toBe('GM_005');
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
     });
 
     it('should use defaults when localStorage is empty', () => {
       Settings.load();
 
       expect(Settings.deviceId).toBe('001');
-      expect(Settings.stationMode).toBe('detective');
+      expect(Settings.mode).toBe('detective');
     });
 
-    it('should load only deviceId if stationMode missing', () => {
+    it('should load only deviceId if mode missing', () => {
       localStorage.setItem('deviceId', 'GM_010');
 
       Settings.load();
 
       expect(Settings.deviceId).toBe('GM_010');
-      expect(Settings.stationMode).toBe('detective');
+      expect(Settings.mode).toBe('detective');
     });
 
-    it('should load only stationMode if deviceId missing', () => {
-      localStorage.setItem('stationMode', 'blackmarket');
+    it('should load only mode if deviceId missing', () => {
+      localStorage.setItem('mode', 'blackmarket');
 
       Settings.load();
 
       expect(Settings.deviceId).toBe('001');
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
     });
   });
 
@@ -86,42 +86,42 @@ describe('Settings - Device Configuration', () => {
     it('should prioritize connectionManager over localStorage', () => {
       // Set localStorage values
       localStorage.setItem('deviceId', 'GM_LOCAL');
-      localStorage.setItem('stationMode', 'detective');
+      localStorage.setItem('mode', 'detective');
 
       // Set connectionManager values (should take priority)
       global.window.connectionManager = {
         deviceId: 'GM_CONN',
-        stationMode: 'blackmarket'
+        mode: 'blackmarket'
       };
 
       Settings.load();
 
       expect(Settings.deviceId).toBe('GM_CONN');
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
     });
 
     it('should handle connectionManager with partial data', () => {
       global.window.connectionManager = {
         deviceId: 'GM_PARTIAL'
-        // stationMode missing
+        // mode missing
       };
 
       Settings.load();
 
       expect(Settings.deviceId).toBe('GM_PARTIAL');
-      expect(Settings.stationMode).toBeUndefined();
+      expect(Settings.mode).toBeUndefined();
     });
   });
 
   describe('Save to localStorage', () => {
     it('should save to localStorage when no connectionManager', () => {
       Settings.deviceId = 'GM_SAVE';
-      Settings.stationMode = 'blackmarket';
+      Settings.mode = 'blackmarket';
 
       Settings.save();
 
       expect(localStorage.getItem('deviceId')).toBe('GM_SAVE');
-      expect(localStorage.getItem('stationMode')).toBe('blackmarket');
+      expect(localStorage.getItem('mode')).toBe('blackmarket');
     });
 
     it('should not save to localStorage when settings screen inactive', () => {
@@ -138,54 +138,54 @@ describe('Settings - Device Configuration', () => {
     it('should save to connectionManager when available', () => {
       const mockConnectionManager = {
         deviceId: 'OLD',
-        stationMode: 'detective'
+        mode: 'detective'
       };
 
       global.window.connectionManager = mockConnectionManager;
 
       Settings.deviceId = 'GM_NEW';
-      Settings.stationMode = 'blackmarket';
+      Settings.mode = 'blackmarket';
 
       Settings.save();
 
       expect(mockConnectionManager.deviceId).toBe('GM_NEW');
-      expect(mockConnectionManager.stationMode).toBe('blackmarket');
+      expect(mockConnectionManager.mode).toBe('blackmarket');
     });
 
     it('should NOT save to localStorage when connectionManager available', () => {
       global.window.connectionManager = {
         deviceId: 'OLD',
-        stationMode: 'detective'
+        mode: 'detective'
       };
 
       Settings.deviceId = 'GM_CONN_ONLY';
-      Settings.stationMode = 'blackmarket';
+      Settings.mode = 'blackmarket';
 
       Settings.save();
 
       // localStorage should remain empty (connectionManager takes priority)
       expect(localStorage.getItem('deviceId')).toBeNull();
-      expect(localStorage.getItem('stationMode')).toBeNull();
+      expect(localStorage.getItem('mode')).toBeNull();
     });
   });
 
   describe('Station Mode Values', () => {
     it('should accept detective mode', () => {
-      Settings.stationMode = 'detective';
-      expect(Settings.stationMode).toBe('detective');
+      Settings.mode = 'detective';
+      expect(Settings.mode).toBe('detective');
     });
 
     it('should accept blackmarket mode', () => {
-      Settings.stationMode = 'blackmarket';
-      expect(Settings.stationMode).toBe('blackmarket');
+      Settings.mode = 'blackmarket';
+      expect(Settings.mode).toBe('blackmarket');
     });
 
     it('should handle case sensitivity', () => {
-      Settings.stationMode = 'DETECTIVE';
-      expect(Settings.stationMode).toBe('DETECTIVE');
+      Settings.mode = 'DETECTIVE';
+      expect(Settings.mode).toBe('DETECTIVE');
 
-      Settings.stationMode = 'BlackMarket';
-      expect(Settings.stationMode).toBe('BlackMarket');
+      Settings.mode = 'BlackMarket';
+      expect(Settings.mode).toBe('BlackMarket');
     });
   });
 
@@ -209,18 +209,18 @@ describe('Settings - Device Configuration', () => {
   describe('Persistence Round-trip', () => {
     it('should persist and load deviceId correctly', () => {
       Settings.deviceId = 'GM_ROUND_TRIP';
-      Settings.stationMode = 'blackmarket';
+      Settings.mode = 'blackmarket';
       Settings.save();
 
       // Reset to defaults
       Settings.deviceId = '001';
-      Settings.stationMode = 'detective';
+      Settings.mode = 'detective';
 
       // Load from storage
       Settings.load();
 
       expect(Settings.deviceId).toBe('GM_ROUND_TRIP');
-      expect(Settings.stationMode).toBe('blackmarket');
+      expect(Settings.mode).toBe('blackmarket');
     });
 
     it('should handle multiple save/load cycles', () => {

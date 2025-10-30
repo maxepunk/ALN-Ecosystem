@@ -34,7 +34,7 @@
 
             // Set test data using old keys
             localStorage.setItem('orchestrator_url', 'http://old-url:3000');
-            localStorage.setItem('stationMode', 'detective');
+            localStorage.setItem('mode', 'detective');
 
             // Check if migration would work
             const oldUrl = localStorage.getItem('orchestrator_url');
@@ -68,7 +68,7 @@
                 TOKEN: 'gmToken',
                 STATION_ID: 'stationId',
                 STATION_NAME: 'stationName',
-                STATION_MODE: 'stationMode',
+                STATION_MODE: 'mode',
                 PREFER_OFFLINE: 'preferOfflineMode',
                 LAST_STATION_NUM: 'lastStationNum',
                 OFFLINE_QUEUE: 'orchestratorOfflineQueue'

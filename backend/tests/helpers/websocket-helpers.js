@@ -171,7 +171,7 @@ function testDelay(ms) {
  * - OrchestratorClient (WebSocket connection)
  * - SessionModeManager (networked mode coordination)
  * - NetworkedQueueManager (transaction queueing)
- * - Settings (deviceId, stationMode)
+ * - Settings (deviceId, mode)
  * - All global window objects scanner expects
  *
  * @param {string} url - Server URL
@@ -250,7 +250,7 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
 
   // 7. Configure Settings (CRITICAL - used in recordTransaction)
   Settings.deviceId = deviceId;
-  Settings.stationMode = mode;
+  Settings.mode = mode;
 
   // Make Settings globally available (App module expects it)
   global.Settings = Settings;
@@ -263,7 +263,7 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
     client: client,
     isConnected: true,
     deviceId: deviceId,
-    stationMode: mode
+    mode: mode
   };
 
   // 10. Return fully wired scanner with App API exposed

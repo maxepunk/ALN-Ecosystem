@@ -26,7 +26,7 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
 
     mockSettings = {
       deviceId: 'TEST_SCANNER',
-      mode: 'blackmarket'  // Production code uses 'mode', not 'stationMode'
+      mode: 'blackmarket'  // Production code uses 'mode', not 'mode'
     };
 
     // Class-based instantiation matches production exports (module.exports = DataManager)

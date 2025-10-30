@@ -35,8 +35,6 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 ### October 2025: mode Field Standardization
 - **Breaking Change**: Removed `stationMode` field entirely
 - All code now uses `mode` consistently (matches AsyncAPI/OpenAPI contracts)
-- localStorage key remains `'stationMode'` for backward compatibility with existing deployments
-- **Migration**: Users must clear localStorage or re-configure station mode after update
 
 ## Critical Architecture Decisions
 

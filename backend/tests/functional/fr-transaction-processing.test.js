@@ -79,7 +79,7 @@ describe('FR Section 3: Transaction Processing', () => {
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
       const scorePromise = waitForEvent(scanner.socket, 'score:updated');
 
-      scanner.Settings.stationMode = 'blackmarket';
+      scanner.Settings.mode = 'blackmarket';
       scanner.App.currentTeamId = '001';
 
       // Use production entry point
@@ -99,7 +99,7 @@ describe('FR Section 3: Transaction Processing', () => {
     it('should assign points to correct team', async () => {
       const scorePromise = waitForEvent(scanner.socket, 'score:updated');
 
-      scanner.Settings.stationMode = 'blackmarket';
+      scanner.Settings.mode = 'blackmarket';
       scanner.App.currentTeamId = '002'; // Team 002
 
       scanner.App.processNFCRead({ id: 'tac001' });
@@ -114,7 +114,7 @@ describe('FR Section 3: Transaction Processing', () => {
     it('should assign star ratings but NOT update scores in detective mode', async () => {
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
 
-      scanner.Settings.stationMode = 'detective';
+      scanner.Settings.mode = 'detective';
       scanner.App.currentTeamId = '001';
 
       scanner.App.processNFCRead({ id: '534e2b03' });
@@ -129,7 +129,7 @@ describe('FR Section 3: Transaction Processing', () => {
 
   describe('FR 3.3: Duplicate Detection', () => {
     it('should detect duplicate scans by same team', async () => {
-      scanner.Settings.stationMode = 'blackmarket';
+      scanner.Settings.mode = 'blackmarket';
       scanner.App.currentTeamId = '001';
 
       // First scan
@@ -147,7 +147,7 @@ describe('FR Section 3: Transaction Processing', () => {
     });
 
     it('should reject duplicate when different team scans same token (first-come-first-served)', async () => {
-      scanner.Settings.stationMode = 'blackmarket';
+      scanner.Settings.mode = 'blackmarket';
 
       // Team 001 scans first - claims the token
       scanner.App.currentTeamId = '001';
@@ -182,7 +182,7 @@ describe('FR Section 3: Transaction Processing', () => {
         );
       }
 
-      scanner.Settings.stationMode = 'blackmarket';
+      scanner.Settings.mode = 'blackmarket';
       scanner.App.currentTeamId = '001';
 
       // Scan first token (rat001)

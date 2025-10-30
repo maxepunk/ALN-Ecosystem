@@ -67,7 +67,7 @@ describe('UIManager - Critical User Interface', () => {
 
     // Mock global objects
     global.document = mockDocument;
-    global.Settings = { stationMode: 'blackmarket' };
+    global.Settings = { mode: 'blackmarket' };
     global.DataManager = {
       transactions: [],
       getSessionStats: jest.fn(() => ({ count: 0, totalScore: 0, totalValue: 0 })),
@@ -421,12 +421,12 @@ describe('UIManager - Critical User Interface', () => {
       const scoreboardButton = mockDocument.getElementById('scoreboardButton');
 
       // Black Market mode - scoreboard visible
-      global.Settings.stationMode = 'blackmarket';
+      global.Settings.mode = 'blackmarket';
       UIManager.updateNavigationButtons();
       expect(scoreboardButton.style.display).toBe('block');
 
       // Detective mode - scoreboard hidden
-      global.Settings.stationMode = 'detective';
+      global.Settings.mode = 'detective';
       UIManager.updateNavigationButtons();
       expect(scoreboardButton.style.display).toBe('none');
     });
@@ -510,7 +510,7 @@ describe('UIManager - Critical User Interface', () => {
     });
 
     it('should update session stats in blackmarket mode with score format', () => {
-      global.Settings.stationMode = 'blackmarket';
+      global.Settings.mode = 'blackmarket';
       global.DataManager.getSessionStats.mockReturnValue({
         count: 8,
         totalScore: 15000,
@@ -529,7 +529,7 @@ describe('UIManager - Critical User Interface', () => {
     });
 
     it('should update session stats in detective mode with value format', () => {
-      global.Settings.stationMode = 'detective';
+      global.Settings.mode = 'detective';
       global.DataManager.getSessionStats.mockReturnValue({
         count: 5,
         totalScore: 0,
@@ -1008,7 +1008,7 @@ describe('UIManager - Critical User Interface', () => {
         rfid: 'rat001',
         memoryType: 'Technical',
         valueRating: 3,
-        stationMode: 'blackmarket',
+        mode: 'blackmarket',
         group: 'MARCUS_SUCKS (x2)',
         isUnknown: false
       }];
@@ -1036,7 +1036,7 @@ describe('UIManager - Critical User Interface', () => {
         rfid: 'asm001',
         memoryType: 'Personal',
         valueRating: 3,
-        stationMode: 'detective',
+        mode: 'detective',
         group: 'SERVER_LOGS (x2)',
         isUnknown: false
       }];
@@ -1072,8 +1072,8 @@ describe('UIManager - Critical User Interface', () => {
 
     it('should filter transactions by RFID search', () => {
       const mockTransactions = [
-        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', stationMode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
-        { rfid: 'asm001', teamId: '002', memoryType: 'Business', group: 'B', stationMode: 'detective', timestamp: '2025-10-06T11:00:00Z' }
+        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', mode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
+        { rfid: 'asm001', teamId: '002', memoryType: 'Business', group: 'B', mode: 'detective', timestamp: '2025-10-06T11:00:00Z' }
       ];
 
       global.DataManager.transactions = mockTransactions;
@@ -1095,8 +1095,8 @@ describe('UIManager - Critical User Interface', () => {
 
     it('should filter transactions by mode', () => {
       const mockTransactions = [
-        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', stationMode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
-        { rfid: 'asm001', teamId: '002', memoryType: 'Business', group: 'B', stationMode: 'detective', timestamp: '2025-10-06T11:00:00Z' }
+        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', mode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
+        { rfid: 'asm001', teamId: '002', memoryType: 'Business', group: 'B', mode: 'detective', timestamp: '2025-10-06T11:00:00Z' }
       ];
 
       global.DataManager.transactions = mockTransactions;
@@ -1111,16 +1111,16 @@ describe('UIManager - Critical User Interface', () => {
       expect(renderSpy).toHaveBeenCalled();
       const filtered = renderSpy.mock.calls[0][0];
       expect(filtered).toHaveLength(1);
-      expect(filtered[0].stationMode).toBe('detective');
+      expect(filtered[0].mode).toBe('detective');
 
       renderSpy.mockRestore();
     });
 
     it('should apply both search and mode filter', () => {
       const mockTransactions = [
-        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', stationMode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
-        { rfid: 'rat002', teamId: '002', memoryType: 'Business', group: 'B', stationMode: 'detective', timestamp: '2025-10-06T11:00:00Z' },
-        { rfid: 'asm001', teamId: '003', memoryType: 'Personal', group: 'C', stationMode: 'blackmarket', timestamp: '2025-10-06T12:00:00Z' }
+        { rfid: 'rat001', teamId: '001', memoryType: 'Technical', group: 'A', mode: 'blackmarket', timestamp: '2025-10-06T10:00:00Z' },
+        { rfid: 'rat002', teamId: '002', memoryType: 'Business', group: 'B', mode: 'detective', timestamp: '2025-10-06T11:00:00Z' },
+        { rfid: 'asm001', teamId: '003', memoryType: 'Personal', group: 'C', mode: 'blackmarket', timestamp: '2025-10-06T12:00:00Z' }
       ];
 
       global.DataManager.transactions = mockTransactions;
@@ -1168,7 +1168,7 @@ describe('UIManager - Critical User Interface', () => {
         SF_Group: 'MARCUS_SUCKS (x2)'
       };
 
-      global.Settings.stationMode = 'blackmarket';
+      global.Settings.mode = 'blackmarket';
       global.DataManager.calculateTokenValue.mockReturnValue(3000);
 
       UIManager.showTokenResult(token, 'rat001', false);
@@ -1188,7 +1188,7 @@ describe('UIManager - Critical User Interface', () => {
     });
 
     it('should display unknown token with error styling', () => {
-      global.Settings.stationMode = 'blackmarket';
+      global.Settings.mode = 'blackmarket';
 
       UIManager.showTokenResult(null, 'UNKNOWN_123', true);
 

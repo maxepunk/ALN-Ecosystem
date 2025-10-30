@@ -147,7 +147,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_01',
-        stationMode: 'blackmarket',
+        mode: 'blackmarket',
         status: 'accepted',
         points: 100,
         timestamp: new Date().toISOString()

@@ -24,7 +24,7 @@ describe('URL Parameter Mode Override', () => {
 
         // Create fresh mock for each test
         mockSettings = {
-            stationMode: 'detective',  // Default mode
+            mode: 'detective',  // Default mode
             save: jest.fn()
         };
 
@@ -48,7 +48,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('blackmarket');
+            expect(mockSettings.mode).toBe('blackmarket');
             expect(mockSettings.save).toHaveBeenCalledTimes(1);
             expect(result).toBe(true);
         });
@@ -61,7 +61,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('blackmarket');
+            expect(mockSettings.mode).toBe('blackmarket');
             expect(mockSettings.save).toHaveBeenCalledTimes(1);
             expect(result).toBe(true);
         });
@@ -74,7 +74,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('blackmarket');
+            expect(mockSettings.mode).toBe('blackmarket');
             expect(mockSettings.save).toHaveBeenCalledTimes(1);
             expect(result).toBe(true);
         });
@@ -89,7 +89,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -102,7 +102,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -115,7 +115,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -130,7 +130,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -143,7 +143,7 @@ describe('URL Parameter Mode Override', () => {
             const result = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -159,7 +159,7 @@ describe('URL Parameter Mode Override', () => {
 
             // ASSERT
             // URLSearchParams is case-sensitive, so MODE !== mode
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -173,7 +173,7 @@ describe('URL Parameter Mode Override', () => {
 
             // ASSERT
             // Values are case-sensitive in URLSearchParams
-            expect(mockSettings.stationMode).toBe('detective');  // Unchanged
+            expect(mockSettings.mode).toBe('detective');  // Unchanged
             expect(mockSettings.save).not.toHaveBeenCalled();
             expect(result).toBe(false);
         });
@@ -198,13 +198,13 @@ describe('URL Parameter Mode Override', () => {
 
             // ACT
             const result1 = applyURLModeOverride(locationSearch, mockSettings);
-            mockSettings.stationMode = 'detective';  // Reset
+            mockSettings.mode = 'detective';  // Reset
             mockSettings.save.mockClear();
             const result2 = applyURLModeOverride(locationSearch, mockSettings);
 
             // ASSERT
             expect(result1).toBe(result2);
-            expect(mockSettings.stationMode).toBe('blackmarket');
+            expect(mockSettings.mode).toBe('blackmarket');
         });
     });
 

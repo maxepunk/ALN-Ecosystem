@@ -40,7 +40,7 @@ const transactionSchema = Joi.object({
   tokenId: Joi.string().required().min(1).max(100),
   teamId: teamId.required(),
   deviceId: Joi.string().required().min(1).max(100),
-  stationMode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
+  mode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
   timestamp: isoDate.required(),
   sessionId: uuid.required(),
   status: Joi.string().valid('accepted', 'error', 'duplicate').required(),  // AsyncAPI contract values (Decision #4)

@@ -120,7 +120,7 @@ describe('Scanner Helper Verification', () => {
 
       // 2. Verify Settings configured correctly
       expect(scanner.Settings.deviceId).toBe('GM_FULL_TEST');
-      expect(scanner.Settings.stationMode).toBe('blackmarket');
+      expect(scanner.Settings.mode).toBe('blackmarket');
 
       // 3. Verify SessionModeManager configured
       expect(scanner.sessionModeManager.mode).toBe('networked');
@@ -138,7 +138,7 @@ describe('Scanner Helper Verification', () => {
       const token = TestTokens.STANDALONE_TOKENS[0]; // 534e2b02
 
       scanner.App.currentTeamId = '001';
-      scanner.Settings.stationMode = 'blackmarket';
+      scanner.Settings.mode = 'blackmarket';
 
       // Spy on queueManager to verify transaction queued for orchestrator
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
