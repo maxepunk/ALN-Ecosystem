@@ -7,12 +7,16 @@
 
 const path = require('path');
 
-// Mock Debug globally before any imports
+// Set up Debug mocks BEFORE loading browser-mocks
+// This ensures the mocked functions are captured by InitializationSteps
 global.Debug = {
     log: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn()
+    warn: jest.fn(),
+    error: jest.fn()
 };
+
+// Load browser environment mocks (will use above Debug mock)
+require('../../helpers/browser-mocks');
 
 describe('Connection Restoration Logic', () => {
     let determineInitialScreen;

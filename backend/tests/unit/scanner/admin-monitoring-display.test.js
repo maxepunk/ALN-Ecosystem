@@ -10,6 +10,9 @@
  * - Edge cases and error handling
  */
 
+// Load browser environment mocks FIRST
+require('../../helpers/browser-mocks');
+
 const AdminModule = require('../../../../ALNScanner/js/utils/adminModule');
 
 describe('AdminModule.MonitoringDisplay', () => {
