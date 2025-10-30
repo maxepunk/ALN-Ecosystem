@@ -1345,156 +1345,147 @@ Added integration tests to verify listener lifecycle across reset cycles."
 
 ---
 
-### Task 3.2: Add jsdom for Scanner Browser Tests
+### Task 3.2: Fix uiManager Test Failures (REVISED after Investigation)
 
-**Root Cause:** Scanner UI tests (uiManager, settings, admin-monitoring) test browser code in Node
-**Impact:** 19 test failures → 0
+**REVISED:** October 30, 2025 after comprehensive investigation
+**Investigation:** `docs/investigations/2025-10-30-task-3.2-uimanager-test-analysis.md`
+
+**Original Plan Assumption:** "Add jsdom for browser environment" (INCORRECT)
+**Actual Root Causes (Discovered):**
+1. October 2025 field standardization incomplete (`stationMode` → `mode`) - **FIXED GLOBALLY**
+2. Missing `window` global in test setup (5 failures remaining)
+
+**Impact:** 14 test failures → 0 (9 fixed by global migration, 5 require window mock)
 
 **Files:**
-- Modify: `backend/jest.config.js` (add jsdom configuration)
-- Modify: `backend/tests/unit/scanner/uiManager.test.js` (remove mock DOM)
-- Modify: `backend/tests/unit/scanner/admin-monitoring-display.test.js` (remove mock DOM)
+- Modify: `backend/tests/unit/scanner/uiManager.test.js` (add window mock)
+- Reference: 18 files changed in global stationMode→mode migration (see git diff)
 
-**Step 1: Install jsdom dependency**
+---
+
+**CONTEXT: Global stationMode→mode Migration Completed**
+
+Before starting this task, a global find-and-replace was performed:
+- All `stationMode` references changed to `mode` across codebase
+- localStorage key changed from `'stationMode'` to `'mode'`
+- Deprecated getter/setter methods deleted from connectionManager.js
+- API validators updated (backend/src/utils/validators.js)
+- 27 tests fixed globally (9 uiManager, 11 other unit, 7 integration)
+
+This migration fixed the PRIMARY root cause identified in investigation.
+
+---
+
+**Step 1: Add window global mock to test setup**
+
+**Root Cause:** UIManager.renderTeamDetails() accesses `window.sessionModeManager?.isNetworked()` (line 266)
+Tests run in Node environment where `window` is undefined, causing `ReferenceError`.
+
+Update `backend/tests/unit/scanner/uiManager.test.js` around line 70:
+
+```javascript
+// BEFORE (line 68-97):
+// Mock global objects
+global.document = mockDocument;
+global.Settings = { mode: 'blackmarket' };
+global.DataManager = { ... };
+global.App = { ... };
+
+// AFTER: Add window global with sessionModeManager mock
+global.document = mockDocument;
+global.Settings = { mode: 'blackmarket' };
+global.window = {
+  sessionModeManager: {
+    isNetworked: jest.fn(() => false)  // Default to standalone mode for tests
+  }
+};
+global.DataManager = { ... };
+global.App = { ... };
+```
+
+**Why this works:**
+- UIManager uses optional chaining: `window.sessionModeManager?.isNetworked()`
+- Providing `window` object prevents `ReferenceError: window is not defined`
+- Mocking `isNetworked()` to return `false` simulates standalone mode
+- Tests can override for networked mode scenarios if needed
+
+**Step 2: Verify fix**
 
 ```bash
 cd backend
-npm install --save-dev jest-environment-jsdom
-```
-
-**Step 2: Create jsdom-specific Jest config**
-
-Update `backend/jest.config.js`:
-
-```javascript
-// Add after line 10 (after testEnvironment: 'node')
-
-// Override test environment for scanner UI tests
-testEnvironmentOptions: {
-  customExportConditions: ['node', 'node-addons'],
-},
-
-// Test environment per file pattern
-testEnvironment: 'node',
-testMatch: [
-  '**/tests/unit/**/*.test.js',
-  '**/tests/contract/**/*.test.js'
-],
-
-// Use jsdom for scanner UI tests
-projects: [
-  {
-    displayName: 'node',
-    testEnvironment: 'node',
-    testMatch: [
-      '<rootDir>/tests/unit/services/**/*.test.js',
-      '<rootDir>/tests/unit/models/**/*.test.js',
-      '<rootDir>/tests/unit/utils/**/*.test.js',
-      '<rootDir>/tests/unit/storage/**/*.test.js',
-      '<rootDir>/tests/unit/websocket/**/*.test.js',
-      '<rootDir>/tests/contract/**/*.test.js'
-    ]
-  },
-  {
-    displayName: 'jsdom',
-    testEnvironment: 'jsdom',
-    testMatch: [
-      '<rootDir>/tests/unit/scanner/**/*.test.js'
-    ]
-  }
-]
-```
-
-**Step 3: Update uiManager.test.js to use real DOM**
-
-Remove mock DOM setup (lines 20-98) and replace with:
-
-```javascript
-// BEFORE: Lines 20-98 create elaborate mock DOM
-const mockElements = { ... };
-const mockDocument = { ... };
-
-// AFTER: Use real jsdom DOM
-describe('UIManager - Mode Display', () => {
-  let container;
-
-  beforeEach(() => {
-    // Create real DOM elements
-    container = document.createElement('div');
-    container.innerHTML = `
-      <div id="station-mode-display" class=""></div>
-      <div id="team-number-display"></div>
-      <div id="current-score"></div>
-      <div id="last-transaction"></div>
-    `;
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    // Clean up DOM
-    document.body.removeChild(container);
-  });
-
-  test('updates mode display classes', () => {
-    const modeDisplay = document.getElementById('station-mode-display');
-
-    // Test actual DOM manipulation
-    modeDisplay.className = 'blackmarket';
-    expect(modeDisplay.classList.contains('blackmarket')).toBe(true);
-  });
-
-  // Update all tests to use real DOM elements
-});
-```
-
-**Step 4: Run uiManager tests to verify jsdom works**
-
-```bash
-npm run test:unit -- uiManager
-```
-
-**Expected Result:** Tests now run in browser-like environment
-
-**CRITICAL - Implementation Bug Detection:**
-
-If tests fail after switching to jsdom, check for:
-- UIManager not finding DOM elements (null references)
-- Event handlers not attaching correctly
-- CSS class manipulation not working
-- Window/document references incorrect
-
-These are likely REAL BUGS that mocks were hiding.
-
-Document in: `docs/bugs/2025-10-30-uimanager-dom-bugs.md`
-
-**Step 5: Update admin-monitoring-display.test.js similarly**
-
-Follow same pattern: remove mocks, use real jsdom DOM.
-
-**Step 6: Run all scanner tests**
-
-```bash
-npm run test:unit -- scanner/
+npm test -- tests/unit/scanner/uiManager.test.js
 ```
 
 **Expected Result:**
-- uiManager: 14 failures → 0 (or documented bugs)
-- admin-monitoring-display: 5 failures → 0 (or documented bugs)
+- Before: 5 failures (all in renderTeamDetails tests)
+- After: 0 failures ✅
 
-**Step 7: Commit (only if tests PASS)**
+**Failing tests that should now pass:**
+1. "should display team header with correct title and summary"
+2. "should render completed groups section with bonus display"
+3. "should render in-progress groups with progress bars"
+4. "should render ungrouped and unknown token sections"
+5. "should display empty state when no transactions exist"
+
+**Step 3: Run full unit test suite**
 
 ```bash
-git add jest.config.js tests/unit/scanner/uiManager.test.js tests/unit/scanner/admin-monitoring-display.test.js package.json package-lock.json
-git commit -m "test: use jsdom for scanner UI tests
-
-Replace mock DOM with real jsdom environment for browser-based tests.
-Tests now validate actual DOM manipulation instead of mock behavior.
-
-Benefits:
-- Tests verify real browser behavior
-- No more mock DOM maintenance
-- Catches real DOM interaction bugs"
+npm run test:unit
 ```
+
+**Expected Result:**
+- Baseline after global migration: 18 failures
+- After window mock: 18 - 5 = **13 failures**
+- uiManager: 5 → 0 failures ✅
+
+**Step 4: Commit**
+
+```bash
+git add tests/unit/scanner/uiManager.test.js
+git commit -m "test: add window global mock to fix renderTeamDetails tests
+
+UIManager.renderTeamDetails() accesses window.sessionModeManager which
+doesn't exist in Node test environment. Add mock window object with
+sessionModeManager.isNetworked() to prevent ReferenceError.
+
+Fixes 5 renderTeamDetails test failures (completes uiManager fixes):
+- should display team header with correct title and summary
+- should render completed groups section with bonus display
+- should render in-progress groups with progress bars
+- should render ungrouped and unknown token sections
+- should display empty state when no transactions exist
+
+Combined with global stationMode→mode migration, all 14 uiManager
+test failures now resolved."
+```
+
+---
+
+**Task 3.2 Summary**
+
+**Time Investment:**
+- Investigation: 30 minutes (testing-anti-patterns skill analysis)
+- Global migration: 15 minutes (manual find-and-replace by user)
+- Window mock fix: 5 minutes
+- **Total: ~50 minutes** (vs original estimate of 2-3 hours!)
+
+**Tests Fixed:**
+- uiManager: 14 → 0 failures ✅
+- Global impact: 27 tests fixed across all suites
+
+**Key Learnings:**
+1. Original plan assumed jsdom needed - INCORRECT
+2. Real issue was incomplete October 2025 field standardization
+3. Testing anti-patterns skill identified mock behavior testing
+4. Investigation before execution prevented wasted effort on wrong solution
+
+**Files Changed (Global Migration):**
+- ALNScanner/js/network/connectionManager.js
+- backend/src/utils/validators.js
+- 15 test files
+- CLAUDE.md documentation
+
+**Next:** Task 3.3 (settings.test.js refactor) - estimated 30 minutes
 
 ---
 
@@ -1732,16 +1723,28 @@ See docs/implementation-bug-priorities.md
 
 ---
 
-## Plan Complete
+## Plan Status
 
 ### Summary
 
 **Three-Tier Approach:**
-1. ✅ Tier 1: Quick wins (11 failures fixed in ~30 min)
-2. ✅ Tier 2: Test data alignment (37 failures fixed in ~90 min)
-3. ✅ Tier 3: Architectural decisions (20 failures fixed in ~3 hours)
+1. ✅ Tier 1: Quick wins (11 failures fixed in ~30 min) - COMPLETE
+2. ✅ Tier 2: Test data alignment (37 failures fixed in ~90 min) - COMPLETE
+3. ⚠️ Tier 3: Architectural decisions - **REVISED after investigation**
 
-**Total Estimated Time:** ~5 hours
+**Original Tier 3 Estimate:** 20 failures fixed in ~3 hours
+**Revised Tier 3 (October 30, 2025):**
+- Global stationMode→mode migration completed (27 tests fixed!)
+- Task 3.2 revised: jsdom NOT needed, simple window mock fix
+- New baseline: 31 failures (down from 58)
+- Estimated time: ~2 hours (down from 3 hours)
+
+**Total Time Investment:**
+- Tiers 1 & 2: ~2 hours (Sessions 1 & 2)
+- Investigation: 30 minutes
+- Global migration: 15 minutes (user)
+- Tier 3 remaining: ~2 hours
+- **Total: ~4.5 hours** (vs original 5 hours)
 
 **Key Principles Enforced:**
 - ❌ No bandaiding test failures when they reveal real bugs
