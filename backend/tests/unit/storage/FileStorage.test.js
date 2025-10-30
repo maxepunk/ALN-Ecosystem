@@ -79,7 +79,7 @@ describe('FileStorage Persistence', () => {
     await storage.save(`session:${session.id}`, session);
 
     // Load session
-    const loaded = await storage.get(`session:${session.id}`);
+    const loaded = await storage.load(`session:${session.id}`);
     expect(loaded).toEqual(session);
 
     console.log('✓ Session loaded correctly');
@@ -111,7 +111,7 @@ describe('FileStorage Persistence', () => {
     await storage.save(`session:${session.id}`, updatedSession);
 
     // Load and verify
-    const loaded = await storage.get(`session:${session.id}`);
+    const loaded = await storage.load(`session:${session.id}`);
     expect(loaded.status).toBe('ended');
     expect(loaded.endTime).toBeDefined();
 
@@ -123,7 +123,7 @@ describe('FileStorage Persistence', () => {
   // ========================================
 
   test('returns null for non-existent session', async () => {
-    const loaded = await storage.get('session:non-existent');
+    const loaded = await storage.load('session:non-existent');
     expect(loaded).toBeNull();
 
     console.log('✓ Non-existent session handled gracefully');
@@ -156,8 +156,8 @@ describe('FileStorage Persistence', () => {
     expect(files).toContain(`session-${session2.id}.json`);
 
     // Load and verify
-    const loaded1 = await storage.get(`session:${session1.id}`);
-    const loaded2 = await storage.get(`session:${session2.id}`);
+    const loaded1 = await storage.load(`session:${session1.id}`);
+    const loaded2 = await storage.load(`session:${session2.id}`);
 
     expect(loaded1.name).toBe('Session 1');
     expect(loaded2.name).toBe('Session 2');
@@ -180,14 +180,14 @@ describe('FileStorage Persistence', () => {
     await storage.save(`session:${session.id}`, session);
 
     // Verify exists
-    let loaded = await storage.get(`session:${session.id}`);
+    let loaded = await storage.load(`session:${session.id}`);
     expect(loaded).not.toBeNull();
 
     // Delete
     await storage.delete(`session:${session.id}`);
 
     // Verify deleted
-    loaded = await storage.get(`session:${session.id}`);
+    loaded = await storage.load(`session:${session.id}`);
     expect(loaded).toBeNull();
 
     console.log('✓ Session deleted correctly');
