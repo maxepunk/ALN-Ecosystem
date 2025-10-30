@@ -3,14 +3,16 @@
  * CRITICAL DIFFERENCES from contract test-server.js:
  * 1. Properly cleans up broadcast listeners (prevents leaks)
  * 2. Preserves state between test steps (stateful flows)
- * 3. Uses full service initialization with real token data
+ * 3. Uses TEST token fixtures (not production data)
  */
 
 const http = require('http');
 const app = require('../../src/app');
-const { initializeServices } = require('../../src/app');
 const { createSocketServer } = require('../../src/websocket/socketServer');
 const logger = require('../../src/utils/logger');
+
+// Import test fixtures
+const TestTokens = require('../fixtures/test-tokens');
 
 // Import WebSocket setup
 const { handleGmIdentify } = require('../../src/websocket/gmAuth');
@@ -23,13 +25,28 @@ const { handleGmCommand, handleTransactionSubmit } = require('../../src/websocke
  * @returns {Promise<Object>} Server context { server, io, port, url, socketUrl }
  */
 async function setupIntegrationTestServer() {
-  // Initialize ALL services with real token data
-  await initializeServices();
-
-  // Load all services (needed for verification + broadcast listeners)
-  const sessionService = require('../../src/services/sessionService');
+  // Initialize services with TEST token fixtures (not production data)
+  const persistenceService = require('../../src/services/persistenceService');
   const transactionService = require('../../src/services/transactionService');
+  const sessionService = require('../../src/services/sessionService');
   const stateService = require('../../src/services/stateService');
+
+  logger.info('Initializing integration test services with test fixtures...');
+
+  // Initialize persistence first
+  await persistenceService.init();
+
+  // Load TEST tokens from fixtures
+  const testTokens = TestTokens.getAllAsArray();
+  await transactionService.init(testTokens);
+
+  // Initialize other services
+  await sessionService.init();
+  await stateService.init();
+
+  logger.info(`Integration test services initialized with ${testTokens.length} test tokens`);
+
+  // Load remaining services (needed for broadcast listeners)
   const videoQueueService = require('../../src/services/videoQueueService');
   const offlineQueueService = require('../../src/services/offlineQueueService');
 

@@ -20,6 +20,7 @@ const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../sr
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+const TestTokens = require('../fixtures/test-tokens');
 
 describe('Multi-Client Broadcast Validation', () => {
   let testContext;
@@ -47,9 +48,9 @@ describe('Multi-Client Broadcast Validation', () => {
     cleanupBroadcastListeners();
 
     // CRITICAL: Re-initialize tokens after reset
-    const tokenService = require('../../src/services/tokenService');
-    const tokens = tokenService.loadTokens();
-    await transactionService.init(tokens);
+    // Use test fixtures instead of production tokens
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // CRITICAL: Re-setup broadcast listeners after reset
     const stateService = require('../../src/services/stateService');

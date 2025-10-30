@@ -22,6 +22,7 @@ const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../sr
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+const TestTokens = require('../fixtures/test-tokens');
 
 describe('Transaction Flow Integration', () => {
   let testContext, gmScanner;
@@ -40,10 +41,9 @@ describe('Transaction Flow Integration', () => {
 
     // Reset services for clean test state
     await resetAllServices();
-    // CRITICAL: Re-initialize tokens after reset
-    const tokenService = require('../../src/services/tokenService');
-    const tokens = tokenService.loadTokens();
-    await transactionService.init(tokens);
+    // CRITICAL: Re-initialize with TEST tokens after reset (not production)
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Re-setup broadcast listeners after cleanup
     const stateService = require('../../src/services/stateService');

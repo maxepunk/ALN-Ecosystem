@@ -22,6 +22,7 @@ const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../sr
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+const TestTokens = require('../fixtures/test-tokens');
 
 describe('Duplicate Detection Integration', () => {
   let testContext, gm1, gm2;
@@ -41,9 +42,9 @@ describe('Duplicate Detection Integration', () => {
     cleanupBroadcastListeners();
 
     // Re-initialize tokens
-    const tokenService = require('../../src/services/tokenService');
-    const tokens = tokenService.loadTokens();
-    await transactionService.init(tokens);
+    // Use test fixtures instead of production tokens
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Re-setup broadcast listeners
     const stateService = require('../../src/services/stateService');

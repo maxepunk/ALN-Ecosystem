@@ -22,6 +22,7 @@ const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../sr
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+const TestTokens = require('../fixtures/test-tokens');
 const videoQueueService = require('../../src/services/videoQueueService');
 
 describe('Admin Intervention Integration', () => {
@@ -42,9 +43,9 @@ describe('Admin Intervention Integration', () => {
     cleanupBroadcastListeners();
 
     // Re-initialize tokens
-    const tokenService = require('../../src/services/tokenService');
-    const tokens = tokenService.loadTokens();
-    await transactionService.init(tokens);
+    // Use test fixtures instead of production tokens
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Re-setup broadcast listeners
     const stateService = require('../../src/services/stateService');
@@ -522,6 +523,7 @@ describe('Admin Intervention Integration', () => {
         // First, add videos to the queue to have something to reorder
         const videoQueueService = require('../../src/services/videoQueueService');
         const transactionService = require('../../src/services/transactionService');
+const TestTokens = require('../fixtures/test-tokens');
         const token = transactionService.tokens.get('534e2b03');
         videoQueueService.addToQueue(token, 'GM_ADMIN');
         videoQueueService.addToQueue(token, 'GM_ADMIN');
