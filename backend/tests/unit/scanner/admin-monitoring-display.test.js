@@ -505,13 +505,17 @@ describe('AdminModule.MonitoringDisplay', () => {
         });
 
         it('should update device count correctly', () => {
-            mockConnection.connectedDevices = [
-                { deviceId: 'GM_Station_1', type: 'gm' },
-                { deviceId: 'GM_Station_2', type: 'gm' },
-                { deviceId: 'Player_001', type: 'player' }
-            ];
+            // Per AsyncAPI contract: sync:full contains devices array
+            // This initializes the device list (simulates connection)
+            const syncData = {
+                devices: [
+                    { deviceId: 'GM_Station_1', type: 'gm' },
+                    { deviceId: 'GM_Station_2', type: 'gm' },
+                    { deviceId: 'Player_001', type: 'player' }
+                ]
+            };
 
-            mockConnection.emit('device:connected', mockConnection.connectedDevices[2]);
+            mockConnection.emit('sync:full', syncData);
 
             expect(mockElements['device-count'].textContent).toBe('3');
         });
@@ -530,12 +534,18 @@ describe('AdminModule.MonitoringDisplay', () => {
         });
 
         it('should handle empty device list', () => {
-            mockConnection.connectedDevices = [];
+            // Per AsyncAPI contract: Initialize with sync:full containing one device
+            const syncData = {
+                devices: [{ deviceId: 'last-device', type: 'gm' }]
+            };
+            mockConnection.emit('sync:full', syncData);
 
+            // Now disconnect that device
             mockConnection.emit('device:disconnected', { deviceId: 'last-device' });
 
+            // Should show 0 devices and empty list
             expect(mockElements['device-count'].textContent).toBe('0');
-            expect(mockElements['device-list'].innerHTML).toBe('');
+            expect(mockElements['device-list'].innerHTML).toContain('No devices connected');
         });
 
         it('should handle missing DOM elements gracefully', () => {
