@@ -92,7 +92,7 @@ describe('Admin Intervention Integration', () => {
       // Verify initial score
       let teamScores = transactionService.getTeamScores();
       let teamScore = teamScores.find(s => s.teamId === '001');
-      expect(teamScore.currentScore).toBe(15000); // rat001 = 15000
+      expect(teamScore.currentScore).toBe(40); // rat001 = 40
 
       // CRITICAL: Set up listeners BEFORE command to avoid race condition
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
@@ -134,7 +134,7 @@ describe('Admin Intervention Integration', () => {
 
       // Validate: Score updated broadcast reached observer
       expect(scoreEvent.data.teamId).toBe('001');
-      expect(scoreEvent.data.currentScore).toBe(14500); // 15000 - 500
+      expect(scoreEvent.data.currentScore).toBe(-460); // 40 - 500
 
       // Validate: Admin adjustments array populated
       expect(scoreEvent.data.adminAdjustments).toBeDefined();
@@ -146,7 +146,7 @@ describe('Admin Intervention Integration', () => {
       // Validate: Service state matches broadcast
       teamScores = transactionService.getTeamScores();
       teamScore = teamScores.find(s => s.teamId === '001');
-      expect(teamScore.currentScore).toBe(14500);
+      expect(teamScore.currentScore).toBe(-460);
       expect(teamScore.adminAdjustments).toHaveLength(1);
     });
 
@@ -164,7 +164,7 @@ describe('Admin Intervention Integration', () => {
       // Wait for score event with ADJUSTED value
       const scorePromise = new Promise((resolve) => {
         gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === 3000) { // 1000 + 2000
+          if (event.data.currentScore === 2030) { // 30 + 2000
             resolve(event);
           }
         });
@@ -187,11 +187,11 @@ describe('Admin Intervention Integration', () => {
       const [ack, scoreEvent] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreEvent.data.currentScore).toBe(3000); // 1000 + 2000
+      expect(scoreEvent.data.currentScore).toBe(2030); // 30 + 2000
 
       const teamScores = transactionService.getTeamScores();
       const teamScore = teamScores.find(s => s.teamId === '002');
-      expect(teamScore.currentScore).toBe(3000);
+      expect(teamScore.currentScore).toBe(2030);
     });
 
     it('should reject score adjustment for non-existent team', async () => {
@@ -348,7 +348,7 @@ describe('Admin Intervention Integration', () => {
       const result = await resultPromise;
 
       expect(result.data.status).toBe('accepted');
-      expect(result.data.points).toBe(15000);
+      expect(result.data.points).toBe(40);
     });
 
     it('should end session and cleanup services', async () => {
@@ -362,7 +362,7 @@ describe('Admin Intervention Integration', () => {
 
       let teamScores = transactionService.getTeamScores();
       const scoreBefore = teamScores.find(s => s.teamId === '001');
-      expect(scoreBefore.currentScore).toBe(15000);
+      expect(scoreBefore.currentScore).toBe(40);
 
       const sessionUpdatePromise = waitForEvent(gmObserver.socket, 'session:update');
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
