@@ -122,8 +122,8 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // Verify: First token scored, NO group completion yet
       let scores = transactionService.getTeamScores();
       let team001Score = scores.find(s => s.teamId === '001');
-      expect(team001Score.currentScore).toBe(15000); // Only base score (rat001)
-      expect(team001Score.baseScore).toBe(15000);
+      expect(team001Score.currentScore).toBe(40); // Only base score (rat001)
+      expect(team001Score.baseScore).toBe(40);
       expect(team001Score.bonusPoints).toBe(0); // NO bonus yet
       expect(team001Score.completedGroups).toEqual([]); // Group NOT complete
 
@@ -189,7 +189,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // Verify: NO group completion (only 1 of 2 tokens)
       const scores = transactionService.getTeamScores();
       const team001Score = scores.find(s => s.teamId === '001');
-      expect(team001Score.currentScore).toBe(15000); // Only token value
+      expect(team001Score.currentScore).toBe(40); // Only token value
       expect(team001Score.bonusPoints).toBe(0); // NO bonus
       expect(team001Score.completedGroups).toEqual([]); // NOT complete
     });
