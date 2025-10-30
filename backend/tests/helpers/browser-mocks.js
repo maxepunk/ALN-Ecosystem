@@ -209,10 +209,32 @@ global.ConnectionManager = class ConnectionManager {
 // In browser, loaded via separate <script> tag
 // Will be overwritten by actual Settings module when imported
 global.Settings = {
+  _mode: 'detective',  // Default mode (can be overridden by tests)
   deviceId: '001',
-  mode: 'detective',
-  load: () => {},
-  save: () => {}
+
+  // Getter/setter for mode to enable test overrides
+  get mode() {
+    return this._mode;
+  },
+
+  set mode(value) {
+    this._mode = value;
+    // Also update localStorage to match real Settings behavior
+    global.localStorage.setItem('mode', value);
+  },
+
+  load: function() {
+    // Load from localStorage if available
+    const storedMode = global.localStorage.getItem('mode');
+    if (storedMode) {
+      this._mode = storedMode;
+    }
+  },
+
+  save: function() {
+    global.localStorage.setItem('mode', this._mode);
+    global.localStorage.setItem('deviceId', this.deviceId);
+  }
 };
 
 // Load REAL TokenManager (scanner's token database module)
