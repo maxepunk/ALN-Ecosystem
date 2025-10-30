@@ -6,25 +6,36 @@
 
 const { resetAllServices } = require('../../helpers/service-reset');
 const videoQueueService = require('../../../src/services/videoQueueService');
-const tokenService = require('../../../src/services/tokenService');
 const transactionService = require('../../../src/services/transactionService');
 const VideoQueueItem = require('../../../src/models/videoQueueItem');
+const Token = require('../../../src/models/token');
 
 describe('VideoQueueService - Queue Management', () => {
   let testToken;
-
-  beforeAll(async () => {
-    // Initialize transactionService with tokens
-    const tokens = tokenService.loadTokens();
-    await transactionService.init(tokens);
-  });
 
   beforeEach(async () => {
     // Reset service state using centralized helper
     await resetAllServices();
 
-    // Get test token from transactionService
-    testToken = transactionService.tokens.get('534e2b03'); // test_30sec.mp4
+    // Create mock token with video (following transactionService.test.js pattern)
+    testToken = new Token({
+      id: 'test_video_token',
+      name: 'Test Video Token',
+      value: 100,
+      memoryType: 'Technical',
+      mediaAssets: {
+        image: null,
+        audio: null,
+        video: 'test_30sec.mp4',
+        processingImage: null
+      },
+      metadata: {
+        rating: 3
+      }
+    });
+
+    // Manually add to transactionService.tokens for consistency
+    transactionService.tokens.set('test_video_token', testToken);
   });
 
   afterEach(async () => {
@@ -39,7 +50,7 @@ describe('VideoQueueService - Queue Management', () => {
       const item1 = videoQueueService.addToQueue(testToken, 'DEVICE_1');
       expect(videoQueueService.queue.length).toBe(1);
       expect(item1).toBeInstanceOf(VideoQueueItem);
-      expect(item1.tokenId).toBe('534e2b03');
+      expect(item1.tokenId).toBe('test_video_token');
 
       const item2 = videoQueueService.addToQueue(testToken, 'DEVICE_2');
       expect(videoQueueService.queue.length).toBe(2);
@@ -52,7 +63,7 @@ describe('VideoQueueService - Queue Management', () => {
       videoQueueService.once('queue:added', (queueItem) => {
         try {
           expect(queueItem).toBeInstanceOf(VideoQueueItem);
-          expect(queueItem.tokenId).toBe('534e2b03');
+          expect(queueItem.tokenId).toBe('test_video_token');
           done();
         } catch (error) {
           done(error);

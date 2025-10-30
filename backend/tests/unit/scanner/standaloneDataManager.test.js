@@ -107,7 +107,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'token123',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
@@ -123,7 +123,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'token123',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
@@ -141,7 +141,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'token123',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
@@ -157,7 +157,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
         it('should create team entry on first transaction', () => {
             const transaction = {
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
@@ -178,14 +178,14 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
         it('should add points for blackmarket mode', () => {
             const tx1 = {
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
 
             const tx2 = {
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 200,
                 timestamp: new Date().toISOString()
             };
@@ -200,7 +200,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
         it('should not add points for detective mode', () => {
             const transaction = {
                 teamId: '001',
-                stationMode: 'detective',
+                mode: 'detective',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
@@ -214,14 +214,14 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
         it('should track tokens scanned regardless of mode', () => {
             const tx1 = {
                 teamId: '001',
-                stationMode: 'detective',
+                mode: 'detective',
                 points: 0,
                 timestamp: new Date().toISOString()
             };
 
             const tx2 = {
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             };
@@ -238,14 +238,14 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
 
             manager.updateLocalScores({
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: timestamp1
             });
 
             manager.updateLocalScores({
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 50,
                 timestamp: timestamp2
             });
@@ -256,14 +256,14 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
         it('should handle multiple teams independently', () => {
             manager.updateLocalScores({
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 100,
                 timestamp: new Date().toISOString()
             });
 
             manager.updateLocalScores({
                 teamId: '002',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 200,
                 timestamp: new Date().toISOString()
             });
@@ -529,7 +529,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -547,7 +547,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-002',
                 tokenId: 'asm001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 1000,
                 tokenGroup: 'Marcus Sucks (x2)',
                 timestamp: new Date().toISOString()
@@ -567,7 +567,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'asm001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 1000,
                 tokenGroup: 'Marcus Sucks (x2)',
                 timestamp: new Date().toISOString()
@@ -578,7 +578,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-002',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -597,7 +597,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -616,7 +616,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -627,7 +627,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-002',
                 tokenId: 'asm001',
                 teamId: '001',
-                stationMode: 'detective',
+                mode: 'detective',
                 points: 0,
                 tokenGroup: 'Marcus Sucks (x2)',
                 timestamp: new Date().toISOString()
@@ -646,7 +646,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -656,7 +656,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-002',
                 tokenId: 'asm001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 1000,
                 tokenGroup: 'Marcus Sucks (x2)',
                 timestamp: new Date().toISOString()
@@ -670,7 +670,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-003',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -688,7 +688,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -699,7 +699,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-002',
                 tokenId: 'asm001',
                 teamId: '002',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 1000,
                 tokenGroup: 'Marcus Sucks (x2)',
                 timestamp: new Date().toISOString()
@@ -724,7 +724,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'nogrouptoken',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 500,
                 tokenGroup: 'No Multiplier Group', // No (xN) suffix
                 timestamp: new Date().toISOString()
@@ -751,7 +751,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()
@@ -773,7 +773,7 @@ describe('StandaloneDataManager - Business Logic (Layer 1 Unit Tests)', () => {
                 id: 'tx-001',
                 tokenId: 'rat001',
                 teamId: '001',
-                stationMode: 'blackmarket',
+                mode: 'blackmarket',
                 points: 15000,
                 tokenGroup: 'Marcus Sucks(x2)',
                 timestamp: new Date().toISOString()

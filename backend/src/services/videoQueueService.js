@@ -751,6 +751,7 @@ class VideoQueueService extends EventEmitter {
 
   /**
    * Reset service state (for testing)
+   * NOTE: Does NOT remove listeners - broadcast listeners must persist across resets
    * @returns {void}
    */
   reset() {
@@ -772,14 +773,11 @@ class VideoQueueService extends EventEmitter {
       this.monitoringDelayTimer = null;
     }
 
-    // 2. Remove all listeners
-    this.removeAllListeners();
-
-    // 3. Reset state
+    // 2. Reset state (but NOT listeners - broadcasts.js listeners must persist)
     this.queue = [];
     this.currentItem = null;
 
-    // 4. Log completion
+    // 3. Log completion
     logger.info('Video queue service reset');
   }
 }
