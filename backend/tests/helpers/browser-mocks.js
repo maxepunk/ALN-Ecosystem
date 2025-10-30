@@ -191,11 +191,14 @@ global.InitializationSteps = {
 };
 
 // Mock Debug global (GM Scanner uses Debug.log)
-global.Debug = {
-  log: () => {},
-  warn: () => {},
-  error: () => {}
-};
+// Preserve existing jest mocks if they exist (for Debug logging verification tests)
+if (!global.Debug) {
+  global.Debug = {
+    log: () => {},
+    warn: () => {},
+    error: () => {}
+  };
+}
 
 // Mock ConnectionManager (referenced but not imported in orchestratorClient.js:503)
 // In browser, loaded via separate <script> tag
