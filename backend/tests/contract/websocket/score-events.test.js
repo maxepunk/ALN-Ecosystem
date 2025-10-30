@@ -34,8 +34,26 @@ describe('Score Events - Contract Validation', () => {
       teams: ['001', '002']
     });
 
-    // Connect GM socket
-    socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_SCORE');
+    // Connect GM socket - but DON'T await yet
+    const connectionPromise = connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_SCORE');
+
+    // Fix: WebSocket room join timing race condition
+    // Tests were emitting to 'gm-stations' room before socket finished joining.
+    // Solution: Wait for sync:full event (sent after room join per AsyncAPI contract).
+
+    // CRITICAL: Wait for connection AND sync:full in parallel
+    // Per AsyncAPI contract lines 244-252, sync:full is auto-sent after authentication
+    // This guarantees socket has joined 'gm-stations' room and can receive broadcasts
+    socket = await connectionPromise;
+
+    // Set up listener immediately after socket is available (but connection may still be completing)
+    const syncPromise = waitForEvent(socket, 'sync:full', 10000);
+
+    // Wait for sync:full to confirm room join complete
+    await syncPromise;
+
+    // Small delay to ensure room join propagated through Socket.io internals
+    await new Promise(resolve => setTimeout(resolve, 100));
   });
 
   afterEach(async () => {
