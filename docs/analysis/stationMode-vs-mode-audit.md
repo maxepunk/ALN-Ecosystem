@@ -1,5 +1,10 @@
 # stationMode vs mode: Complete Architectural Analysis
 
+> **STATUS UPDATE (2025-10-29)**: ✅ **IMPLEMENTED - Option A (Full Cleanup)**
+> - All `stationMode` references removed from codebase
+> - Standardized on `mode` field throughout
+> - See implementation commit history for details
+
 ## Executive Summary
 
 **Status**: ⚠️ **ARCHITECTURAL INCONSISTENCY IDENTIFIED**
@@ -279,9 +284,18 @@ So Settings.js DOES use ConnectionManager, which uses the 'stationMode' localSto
 
 ## Recommendations
 
-### Priority 1: Standardize on `mode` (HIGH PRIORITY)
+### ✅ Priority 1: Standardize on `mode` (COMPLETED)
 
-**Rationale**:
+**Implementation Date**: 2025-10-29
+**Plan**: `docs/plans/2025-10-29-standardize-mode-field.md`
+
+**Changes Completed**:
+- ✅ Backend Validator (`validators.js`) - removed stationMode
+- ✅ ConnectionManager (`connectionManager.js`) - removed stationMode alias
+- ✅ All test code - updated to use mode
+- ✅ Documentation - updated to reflect changes
+
+**Original Rationale**:
 - ✅ Matches AsyncAPI/OpenAPI contracts (authoritative)
 - ✅ Shorter, clearer name
 - ✅ Already used in 90% of codebase
