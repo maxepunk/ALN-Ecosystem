@@ -277,59 +277,73 @@ npm run prod:restart      # Restart all services
 ```
 
 ### Testing
+
+**Test Architecture:**
+- **jest.config.base.js**: Shared base configuration for all Jest tests
+- **jest.config.js**: Unit + Contract tests (parallel execution, 4 workers)
+- **jest.integration.config.js**: Integration tests (sequential, 1 worker - required)
+- **playwright.config.js**: E2E browser tests (2-3 workers)
+
 ```bash
 cd backend
 
-# Quick feedback (unit + contract tests - runs in ~15-30 seconds)
-npm test                              # Unit + Contract tests (default - fast feedback)
+# Quick feedback (default - runs unit + contract in ~15-30 seconds)
+npm test                              # Uses jest.config.js (parallel, 4 workers)
 
-# Individual test suites (8GB Pi optimized with parallel execution)
-npm run test:unit                     # Unit tests (4 workers)
-npm run test:contract                 # Contract tests (4 workers)
-npm run test:integration              # Integration tests (sequential - state coordination)
+# Individual test suites (8GB Pi optimized)
+npm run test:unit                     # Unit tests only (parallel, 4 workers)
+npm run test:contract                 # Contract tests only (parallel, 4 workers)
+npm run test:integration              # Uses jest.integration.config.js (sequential)
 
-# E2E Tests (Playwright-based browser automation)
-npm run test:e2e                      # E2E tests (2 workers for 8GB Pi)
-npm run test:e2e:fast                 # E2E tests (3 workers - maximum speed)
-npm run test:e2e:headed               # E2E with visible browser (1 worker)
+# E2E Tests (Playwright browser automation)
+npm run test:e2e                      # E2E tests (2 workers, ~4-5 min)
+npm run test:e2e:fast                 # E2E tests (3 workers, max speed)
+npm run test:e2e:headed               # Visible browser (1 worker, debugging)
 npm run test:e2e:ui                   # Interactive UI mode
 
 # Comprehensive test suites
-npm run test:all                      # Unit + Contract + Integration
-npm run test:full                     # All tests including E2E
+npm run test:all                      # Unit + Contract + Integration (~5-6 min)
+npm run test:full                     # All tests including E2E (~10-15 min)
 
-# CI/CD pipeline tests
+# CI/CD pipeline
 npm run test:ci                       # Standard CI (unit + contract + integration)
-npm run test:ci:full                  # Full CI with E2E tests
+npm run test:ci:full                  # Full CI with E2E
 
 # Development utilities
 npm run test:watch                    # Watch mode (2 workers)
 npm run test:coverage                 # Coverage report (4 workers)
-npm run test:offline                  # Offline mode integration tests
+npm run test:offline                  # Offline mode integration test only
 
-# Run individual test files (both methods work)
-npx jest tests/unit/services/persistenceService.test.js
+# Running individual test files
 npm test -- tests/unit/services/persistenceService.test.js
+npm test -- persistenceService        # Pattern matching
 
-# Run tests matching a pattern
-npm test -- persistenceService        # Runs only persistenceService.test.js
+# Running specific test suites
+npm run test:unit -- sessionService   # Unit tests matching pattern
+npm run test:integration -- offline   # Integration test matching pattern
 
-# Direct Playwright commands
-npx playwright test                   # All E2E tests (respects playwright.config.js)
+# Playwright commands
+npx playwright test                   # All E2E tests (uses playwright.config.js)
 npx playwright test --workers=3       # Override worker count
 npx playwright test flows/00-smoke    # Specific test suite
-npx playwright test --grep "session"  # Tests matching pattern
+npx playwright test --grep "session"  # Pattern matching
 npx playwright test --debug           # Step-through debugger
-npx playwright show-report            # View HTML report
+npx playwright show-report            # View HTML report after run
 ```
 
 **Test Performance (8GB Pi):**
-- Default (`npm test`): ~15-30 seconds (unit + contract, parallel, 4 workers)
-- Unit tests only: ~10-20 seconds (parallel, 4 workers)
-- Contract tests only: ~5-10 seconds (parallel, 4 workers)
-- Integration tests: ~5 minutes (sequential - architectural requirement)
-- E2E tests: ~4-5 minutes (2-3 workers, down from ~10 minutes)
-- Full suite: ~10-15 minutes total
+- `npm test`: ~15-30 seconds (unit + contract, parallel, 4 workers)
+- `npm run test:unit`: ~10-20 seconds (parallel, 4 workers)
+- `npm run test:contract`: ~5-10 seconds (parallel, 4 workers)
+- `npm run test:integration`: ~5 minutes (sequential - MUST run single-threaded)
+- `npm run test:e2e`: ~4-5 minutes (2 workers, down from ~10 min sequential)
+- `npm run test:full`: ~10-15 minutes total
+
+**Critical Testing Notes:**
+- Integration tests MUST run sequentially (`--runInBand`) to prevent state contamination
+- E2E tests require orchestrator running: `npm run dev:no-video` (VLC optional)
+- Default `npm test` provides fastest feedback for typical development
+- Use `npm run test:all` before commits to catch integration issues
 
 ### Submodule Management
 ```bash

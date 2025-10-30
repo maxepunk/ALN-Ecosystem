@@ -1,13 +1,13 @@
 # Standardize 'mode' Field (Remove 'stationMode') Implementation Plan
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILLS: Use superpowers:executing-plans to implement this plan task-by-task. Use verification-before-completion for EACH task. 
 
 **Goal:** Eliminate the `stationMode` vs `mode` architectural inconsistency by standardizing on `mode` throughout the codebase, removing all references to `stationMode`.
 
 **Architecture:** This is a pure refactoring task with no functional changes. We will remove the deprecated `stationMode` field from backend validators, remove the alias property from GM Scanner's ConnectionManager, and update all test code to use `mode` consistently. The AsyncAPI/OpenAPI contracts already specify `mode` as canonical. NO migration code will be added - users must clear localStorage if needed (breaking change).
 
 **Tech Stack:** Node.js (backend), Vanilla JavaScript (frontend), Joi validation, Jest/Playwright tests
-
+**Testing Baseline:** PASSING: 682 | FAILURES: 68
 ---
 
 ## Pre-Implementation Checklist
@@ -724,6 +724,101 @@ Test Results (Post-Refactor):
 ```bash
 git add -A
 git commit -m "test: verify all tests pass after mode standardization"
+```
+
+---
+
+## Task 14a: Fix connection-manager.test.js HTTPS Expectations
+
+**Context:** ConnectionManager now defaults to `https://` (Oct 29, 2025 HTTPS architecture), but tests expect `http://`
+
+**Files:**
+- Modify: `backend/tests/unit/scanner/connection-manager.test.js:856, 880, 1012`
+
+**Step 1: Update URL normalization test expectations (lines 856, 880)**
+
+Replace http expectations with https:
+```javascript
+// Line 856 (TEST 19: should add http:// prefix when missing)
+// Before
+expect(connectionManager.url).toBe('http://localhost:3000');
+
+// After
+expect(connectionManager.url).toBe('https://localhost:3000');
+
+// Line 880 (TEST 19: should trim whitespace from URL)
+// Before
+expect(connectionManager.url).toBe('http://localhost:3000');
+
+// After
+expect(connectionManager.url).toBe('https://localhost:3000');
+```
+
+**Step 2: Update configuration test expectation (line 1012)**
+
+```javascript
+// Line 1012 (TEST 23: Complete configuration flow)
+// Before
+expect(connectionManager.url).toBe('http://localhost:3000');
+
+// After
+expect(connectionManager.url).toBe('https://localhost:3000');
+```
+
+**Step 3: Verify tests pass**
+
+Run: `cd backend && npm run test:unit -- scanner/connection-manager.test.js`
+Expected: All 85 tests pass (was 82/85 before fix)
+
+**Step 4: Commit fix**
+
+```bash
+git add backend/tests/unit/scanner/connection-manager.test.js
+git commit -m "test(connection-manager): update URL expectations to https (HTTPS architecture)"
+```
+
+---
+
+## Task 14b: Fix transaction.test.js Missing mode Field
+
+**Context:** Transaction validator now requires `mode` field (changed from optional `stationMode`), test data needs updating
+
+**Files:**
+- Modify: `backend/tests/unit/models/transaction.test.js`
+
+**Step 1: Identify failing test objects**
+
+Search for transaction objects causing ValidationError, add `mode` field:
+```javascript
+// Pattern to find and fix
+const transaction = {
+  tokenId: 'test-token',
+  teamId: '001',
+  // MISSING: mode field (now required)
+};
+
+// Should be
+const transaction = {
+  tokenId: 'test-token',
+  teamId: '001',
+  mode: 'blackmarket',  // ADD THIS
+};
+```
+
+**Step 2: Update all test transaction objects**
+
+Add `mode: 'blackmarket'` or `mode: 'detective'` to each test transaction object that's missing it
+
+**Step 3: Verify tests pass**
+
+Run: `cd backend && npm run test:unit -- models/transaction.test.js`
+Expected: All tests pass (no ValidationErrors)
+
+**Step 4: Commit fix**
+
+```bash
+git add backend/tests/unit/models/transaction.test.js
+git commit -m "test(transaction): add required mode field to test data"
 ```
 
 ---

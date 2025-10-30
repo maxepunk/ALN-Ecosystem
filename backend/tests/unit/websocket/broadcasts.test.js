@@ -11,7 +11,8 @@
  */
 
 const EventEmitter = require('events');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
+const broadcasts = require('../../../src/websocket/broadcasts');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = broadcasts;
 
 describe('broadcasts.js - Event Wrapper Integration', () => {
   let mockIo;
@@ -20,16 +21,18 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
   let mockStateService;
   let mockVideoQueueService;
   let mockOfflineQueueService;
+  let initializeSessionDevicesSpy;
 
   beforeEach(() => {
-    // Mock Socket.io server
+    // Mock Socket.io server with minimal structure needed for wrapper tests
+    // Note: session:created event triggers initializeSessionDevices() which needs io.sockets.sockets
+    // This is device initialization behavior (tested in integration tests), not wrapper behavior
+    // For unit tests, we provide minimal structure to prevent crashes, not to test device logic
     mockIo = {
       emit: jest.fn(),
-      to: jest.fn().mockReturnThis(), // Chainable
+      to: jest.fn().mockReturnThis(), // Chainable for emitToRoom
       sockets: {
-        adapter: {
-          rooms: new Map()
-        }
+        sockets: new Map() // Empty map - no devices to initialize (unit test scope)
       }
     };
 
