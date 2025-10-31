@@ -18,8 +18,7 @@
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const TestTokens = require('../fixtures/test-tokens');
@@ -36,28 +35,18 @@ describe('Duplicate Detection Integration', () => {
   });
 
   beforeEach(async () => {
-    // Reset services
-    await resetAllServices();
-    // CRITICAL: Cleanup old broadcast listeners
-    cleanupBroadcastListeners();
-
-    // Re-initialize tokens
-    // Use test fixtures instead of production tokens
-    const testTokens = TestTokens.getAllAsArray();
-    await transactionService.init(testTokens);
-
-    // Re-setup broadcast listeners
-    const stateService = require('../../src/services/stateService');
-    const videoQueueService = require('../../src/services/videoQueueService');
-    const offlineQueueService = require('../../src/services/offlineQueueService');
-
-    setupBroadcastListeners(testContext.io, {
+    // Complete reset cycle: cleanup → reset → setup
+    await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
-      videoQueueService,
-      offlineQueueService
+      stateService: require('../../src/services/stateService'),
+      videoQueueService: require('../../src/services/videoQueueService'),
+      offlineQueueService: require('../../src/services/offlineQueueService')
     });
+
+    // Re-initialize tokens after reset
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Create test session
     await sessionService.createSession({
