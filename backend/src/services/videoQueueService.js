@@ -124,50 +124,37 @@ class VideoQueueService extends EventEmitter {
         // Actually play the video through VLC
         const vlcResponse = await vlcService.playVideo(videoPath);
 
-        // Wait for VLC to switch to the new video and load metadata
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Wait for VLC to actually start playing (condition-based waiting)
+        // This replaces arbitrary 1000ms delay + retry loop
+        const status = await this.waitForVlcState(
+          ['playing'],
+          'VLC to start playing video',
+          5000  // 5 second timeout (generous for Pi 4)
+        );
 
-        // Get duration from VLC status with retry
-        let duration = 0;
-        let retries = 5;
-        while (retries > 0) {
-          const status = await vlcService.getStatus();
-          // VLC returns length in seconds (not milliseconds!)
-          // Only trust duration if it's reasonable (> 1 second)
-          if (status.length > 1) {
-            duration = status.length; // Already in seconds, no division needed!
-            logger.debug('Got video duration from VLC', {
-              tokenId: queueItem.tokenId,
-              duration,
-              filename: status.information?.category?.meta?.filename
-            });
-            break;
-          }
-          retries--;
-          if (retries > 0) {
-            logger.debug('Waiting for VLC to load video metadata', {
-              attempt: 6 - retries,
-              currentLength: status.length
-            });
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
+        // VLC is now playing - duration is reliable
+        let duration = status.length || 0;
 
-        // Fallback to default if still no reasonable duration
         if (duration <= 1) {
+          // Fallback to default if VLC still hasn't loaded metadata
           duration = this.getVideoDuration(queueItem.tokenId);
-          logger.warn('Could not get valid duration from VLC, using default', {
+          logger.warn('VLC playing but no duration metadata, using default', {
             tokenId: queueItem.tokenId,
             defaultDuration: duration
           });
+        } else {
+          logger.debug('Got reliable duration from playing VLC', {
+            tokenId: queueItem.tokenId,
+            duration
+          });
         }
 
-        // Update queue item with real duration from VLC
+        // Update queue item with real duration
         queueItem.duration = duration;
 
         const expectedEndTime = queueItem.calculateExpectedEndTime(duration);
 
-        // Emit play event with real VLC data
+        // Emit play event with VLC data
         logger.debug('Emitting video:started with VLC data', { tokenId: queueItem.tokenId, duration });
         this.emit('video:started', {
           queueItem,
@@ -182,12 +169,8 @@ class VideoQueueService extends EventEmitter {
           vlcConnected: vlcService.connected,
         });
 
-        // Give VLC a moment to transition before monitoring (especially from idle loop)
-        this.monitoringDelayTimer = setTimeout(() => {
-          this.monitoringDelayTimer = null;
-          // Monitor VLC status for completion
-          this.monitorVlcPlayback(queueItem, duration);
-        }, 1500); // 1.5 second delay before monitoring starts
+        // Start monitoring immediately (VLC is confirmed playing)
+        this.monitorVlcPlayback(queueItem, duration);
 
       } else {
         // Only in test mode without VLC - use timer simulation
