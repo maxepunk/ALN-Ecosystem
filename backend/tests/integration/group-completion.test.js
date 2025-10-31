@@ -36,8 +36,7 @@ const path = require('path');
 const { createAuthenticatedScanner, waitForEvent, waitForMultipleEvents } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const TestTokens = require('../fixtures/test-tokens');
@@ -54,13 +53,16 @@ describe('Group Completion Integration - REAL Scanner', () => {
   });
 
   beforeEach(async () => {
-    // Reset services
-    await resetAllServices();
-    // CRITICAL: Cleanup old broadcast listeners before adding new ones
-    cleanupBroadcastListeners();
+    // Complete reset cycle: cleanup → reset → setup
+    await resetAllServicesForTesting(testContext.io, {
+      sessionService,
+      transactionService,
+      stateService: require('../../src/services/stateService'),
+      videoQueueService: require('../../src/services/videoQueueService'),
+      offlineQueueService: require('../../src/services/offlineQueueService')
+    });
 
     // Re-initialize tokens after reset
-    // Use test fixtures instead of production tokens
     const testTokens = TestTokens.getAllAsArray();
     await transactionService.init(testTokens);
 
@@ -68,22 +70,6 @@ describe('Group Completion Integration - REAL Scanner', () => {
     const rawTokensPath = path.join(__dirname, '../../../ALN-TokenData/tokens.json');
     rawTokens = JSON.parse(fs.readFileSync(rawTokensPath, 'utf8'));
     global.TokenManager.database = rawTokens;
-
-    // Re-setup broadcast listeners
-    const stateService = require('../../src/services/stateService');
-    const videoQueueService = require('../../src/services/videoQueueService');
-    const offlineQueueService = require('../../src/services/offlineQueueService');
-
-    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
-    await resetAllServices();
-
-    setupBroadcastListeners(testContext.io, {
-      sessionService,
-      transactionService,
-      stateService,
-      videoQueueService,
-      offlineQueueService
-    });
 
     // Create test session
     await sessionService.createSession({
