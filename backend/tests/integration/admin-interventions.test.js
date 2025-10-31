@@ -18,8 +18,7 @@ require('../helpers/browser-mocks');
 const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServices, resetAllServicesForTesting, logTestFileEntry, logTestFileExit } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const TestTokens = require('../fixtures/test-tokens');
@@ -29,38 +28,28 @@ describe('Admin Intervention Integration', () => {
   let testContext, gmAdmin, gmObserver;
 
   beforeAll(async () => {
+    logTestFileEntry('admin-interventions.test.js');
     testContext = await setupIntegrationTestServer();
   });
 
   afterAll(async () => {
     await cleanupIntegrationTestServer(testContext);
+    logTestFileExit('admin-interventions.test.js');
   });
 
   beforeEach(async () => {
-    // Reset services
-    await resetAllServices();
-    // CRITICAL: Cleanup old broadcast listeners
-    cleanupBroadcastListeners();
-
-    // Re-initialize tokens
-    // Use test fixtures instead of production tokens
-    const testTokens = TestTokens.getAllAsArray();
-    await transactionService.init(testTokens);
-
-    // Re-setup broadcast listeners
-    const stateService = require('../../src/services/stateService');
-    const offlineQueueService = require('../../src/services/offlineQueueService');
-
-    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
-    await resetAllServices();
-
-    setupBroadcastListeners(testContext.io, {
+    // Complete reset cycle: cleanup → reset → setup
+    await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
+      stateService: require('../../src/services/stateService'),
       videoQueueService,
-      offlineQueueService
+      offlineQueueService: require('../../src/services/offlineQueueService')
     });
+
+    // Re-initialize tokens after reset
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Create test session
     await sessionService.createSession({
@@ -100,7 +89,7 @@ describe('Admin Intervention Integration', () => {
       // CRITICAL: Wait for score:updated event with ADJUSTED score (not setup transaction score)
       const scorePromise = new Promise((resolve) => {
         gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === 14500) { // Expected after adjustment
+          if (event.data.currentScore === -460) { // Expected after adjustment: 40 - 500 = -460
             resolve(event);
           }
         });
@@ -788,7 +777,7 @@ const TestTokens = require('../fixtures/test-tokens');
       // Wait for score event with ADJUSTED value
       const observerScorePromise = new Promise((resolve) => {
         gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === 14000) { // 15000 - 1000
+          if (event.data.currentScore === -960) { // 40 - 1000 = -960
             resolve(event);
           }
         });
@@ -819,7 +808,7 @@ const TestTokens = require('../fixtures/test-tokens');
 
       // Validate: Observer received score update (side effect)
       expect(observerScore.event).toBe('score:updated');
-      expect(observerScore.data.currentScore).toBe(14000); // 15000 - 1000
+      expect(observerScore.data.currentScore).toBe(-960); // 40 - 1000
 
       // Observer should NOT receive ack (ack is to sender only)
       // We can't easily test "did not receive" without waiting, so we validate timing
