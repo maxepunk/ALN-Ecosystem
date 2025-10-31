@@ -158,33 +158,13 @@ class VlcService extends EventEmitter {
     }
 
     try {
-      // ROOT CAUSE TRACING: Check VLC state BEFORE any commands
-      const statusBefore = await this.getStatus();
-      logger.info('ROOT CAUSE TRACE: VLC state BEFORE playVideo', {
-        videoPath,
-        state: statusBefore.state,
-        currentItem: statusBefore.currentItem,
-        loop: statusBefore.loop,
-        position: statusBefore.position
-      });
-
       // STEP 1: ALWAYS clear playlist first to maintain 1-item invariant
       await this.clearPlaylist();
-      const statusAfterClear = await this.getStatus();
-      logger.info('ROOT CAUSE TRACE: VLC state AFTER clearPlaylist', {
-        state: statusAfterClear.state,
-        currentItem: statusAfterClear.currentItem,
-        loop: statusAfterClear.loop
-      });
+      logger.debug('Playlist cleared before playing video', { videoPath });
 
       // STEP 2: ALWAYS disable loop for regular videos (idle loop will override)
       await this.setLoop(false);
-      const statusAfterLoop = await this.getStatus();
-      logger.info('ROOT CAUSE TRACE: VLC state AFTER setLoop(false)', {
-        state: statusAfterLoop.state,
-        currentItem: statusAfterLoop.currentItem,
-        loop: statusAfterLoop.loop
-      });
+      logger.debug('Loop disabled for video playback', { videoPath });
 
       // STEP 3: Convert relative paths to absolute file:// URLs for VLC
       let vlcPath = videoPath;
@@ -200,7 +180,6 @@ class VlcService extends EventEmitter {
 
       // STEP 4: Add video and start playback immediately
       // Use 'in_play' to add to playlist AND start playing (not 'in_enqueue' which only queues)
-      logger.info('ROOT CAUSE TRACE: Sending in_play command', { vlcPath });
       await this.client.get('/requests/status.json', {
         params: {
           command: 'in_play',
@@ -208,19 +187,10 @@ class VlcService extends EventEmitter {
         },
       });
 
-      const statusAfterPlay = await this.getStatus();
-      logger.info('ROOT CAUSE TRACE: VLC state IMMEDIATELY AFTER in_play command', {
-        state: statusAfterPlay.state,
-        currentItem: statusAfterPlay.currentItem,
-        loop: statusAfterPlay.loop,
-        length: statusAfterPlay.length,
-        position: statusAfterPlay.position
-      });
-
       logger.info('Video playback started', { videoPath });
       this.emit('video:played', videoPath);
 
-      return statusAfterPlay;
+      return await this.getStatus();
     } catch (error) {
       logger.error('Failed to play video - returning degraded response', { videoPath, error });
       // Graceful degradation - don't crash

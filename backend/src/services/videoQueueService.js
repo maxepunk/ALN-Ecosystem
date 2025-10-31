@@ -350,18 +350,6 @@ class VideoQueueService extends EventEmitter {
       try {
         const status = await vlcService.getStatus();
 
-        // ROOT CAUSE TRACING: Log every VLC status check with full details
-        logger.info('VLC monitoring check', {
-          tokenId: queueItem.tokenId,
-          state: status.state,
-          currentItem: status.currentItem,
-          position: status.position,
-          length: status.length,
-          loop: status.loop,
-          connected: status.connected,
-          nonPlayingChecks
-        });
-
         // Check if still playing or paused
         if (status.state !== 'playing' && status.state !== 'paused') {
           nonPlayingChecks++;
