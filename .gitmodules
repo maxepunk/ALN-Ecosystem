@@ -15,3 +15,8 @@
 	url = https://github.com/maxepunk/ALN-TokenData.git
 	branch = main
 	update = merge
+[submodule "arduino-cyd-player-scanner"]
+	path = arduino-cyd-player-scanner
+	url = https://github.com/maxepunk/arduino-cyd-player-scanner.git
+	branch = main
+	update = merge

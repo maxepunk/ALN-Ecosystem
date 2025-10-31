@@ -7,8 +7,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 The ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for about last night, a 2 hour immersive game about unlocking and trading in memory tokens containing game characters' lost memories. It is a live event that is run one iteration at a time, either using github pages deployments of player and gm scanners in standalone mode, or using the backend orchestrator to enable syncing across devices and additional features like VLC video playback. It consists of:
 - **Memory Tokens** - RFID tags with IDs corresponding to the keys from tokens.json. Players scan then to get associated media content, and turn them into GMs to be scanned for game logic calculations/scoring. (SUBMODULE: ALN-TokenData)
 - **Backend Orchestrator**: Node.js server managing video playback, sessions, and state. Used when available; when not, scanners operate independently via deployment on Github Pages.
-- **Scanner Apps**: Web-based token scanners (Player and GM) with WebSocket/HTTP integration
-  --**Player Scanner**: Uses HTTP endpoints, simple scan logging, display of local assets if token contains audio or image content, and triggering of video files for tokens containing video content (IF orchestrator is present) on separate screen controlled by the orchestrator. intended for players to discover and use as a tool to see the narrative contents of in-game memory tokens. Can operate WITH orchestrator OR WITHOUT in standaalone mode (no video playback). (SUBMODULE: aln-memory-scanner, aka ALNPlayerScan)
+- **Scanner Apps**: Token scanners with WebSocket/HTTP integration
+  --**Player Scanner (Web)**: PWA using HTTP endpoints, simple scan logging, display of local assets if token contains audio or image content, and triggering of video files for tokens containing video content (IF orchestrator is present) on separate screen controlled by the orchestrator. Intended for players to discover and use as a tool to see the narrative contents of in-game memory tokens. Can operate WITH orchestrator OR WITHOUT in standalone mode (no video playback). (SUBMODULE: aln-memory-scanner, aka ALNPlayerScan)
+  --**Player Scanner (ESP32)**: Hardware implementation using ESP32-2432S028R (CYD) with TFT display and MFRC522 RFID reader. Downloads tokens from orchestrator on boot, caches to SD card for offline operation. Uses HTTP endpoints for scan submission. (SUBMODULE: arduino-cyd-player-scanner)
   --**GM Scanner**: Uses Websocket after HTTP handshake. Responsible for game logic. Can function in networked mode (in communcation with orchestrator) or standalone. Detective Mode scans and logs tokens (future feature: create player-facing log of narrative events that have been 'made public' by being scanned by the Detective Mode scanner) that were 'turned into' (scanned by) the GM playing the Detective. Black Market Mode scans tokens and handles scoring calculations using scanner/team number for score assignment, by parsing token scoring information from tokens.jason and doing the relevant calculations to keep team scores up to date for each play session.  (SUBMODULE: ALNScanner)
 - **Scoreboard Display**: TV-optimized web display (`backend/public/scoreboard.html`) showing live Black Market rankings, group completions, and detective log. Uses hardcoded admin authentication for read-only WebSocket connection.
 - **VLC Integration**: Video display on TV/monitor via VLC HTTP interface
@@ -27,10 +28,18 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
   - Backend implementation (`backend/src/`)
   - GM Scanner submodule (ALNScanner - WebSocket client)
   - Player Scanner submodule (aln-memory-scanner - HTTP client)
+  - ESP32 Player Scanner submodule (arduino-cyd-player-scanner - HTTP client)
 - Contract tests in `backend/tests/contract/` validate implementation matches contracts
 - When debugging cross-module communication issues, ALWAYS check contracts first
 
 ## Recent Changes
+
+### October 2025: ESP32 Player Scanner Integration
+- **New Submodule**: Added `arduino-cyd-player-scanner` for hardware-based scanning
+- **Hardware**: ESP32-2432S028R (CYD) with TFT display, MFRC522 RFID reader, SD card
+- **Token Strategy**: Downloads from orchestrator `/api/tokens`, caches to SD for offline mode
+- **HTTPS Migration Needed**: Currently HTTP-only, requires WiFiClientSecure for backend compatibility
+- **Flash Constraints**: 92% capacity (1.2MB/1.3MB), HTTPS support requires optimization
 
 ### October 2025: Connection Monitoring Simplification
 - **Breaking Change**: Removed custom heartbeat system for WebSocket clients
@@ -60,6 +69,7 @@ ALN-Ecosystem/                     # Parent repository
 │   └── data/                      # [NESTED SUBMODULE → ALN-TokenData]
 ├── ALNScanner/                    # [SUBMODULE] GM scanner web app
 │   └── data/                      # [NESTED SUBMODULE → ALN-TokenData]
+├── arduino-cyd-player-scanner/    # [SUBMODULE] ESP32 hardware player scanner
 ├── ALN-TokenData/                 # [SUBMODULE] Token definitions (backend direct access)
 └── backend/                       # [DIRECT FOLDER] Orchestrator server
 ```
@@ -85,14 +95,23 @@ path.join(__dirname, '../../../ALN-TokenData/tokens.json')
 - Used for: Game logic, scoring calculations, video queue decisions
 - Path resolution: `backend/src/` → `../../..` → `ALN-TokenData/`
 
-**Scanner Nested Submodules:**
+**Scanner Nested Submodules (Web Scanners Only):**
 ```
 aln-memory-scanner/data/      → [NESTED SUBMODULE to ALN-TokenData]
 ALNScanner/data/              → [NESTED SUBMODULE to ALN-TokenData]
 ```
-- Scanners have ALN-TokenData nested as `data/` subdirectory
+- Web scanners have ALN-TokenData nested as `data/` subdirectory
 - Used for: Standalone mode operation (no orchestrator), local media display
 - Enables GitHub Pages deployment with bundled token data
+
+**ESP32 Scanner (Different Approach):**
+```
+arduino-cyd-player-scanner/   → [NO NESTED SUBMODULE]
+```
+- ESP32 scanner downloads tokens from orchestrator `/api/tokens` on boot
+- Caches to SD card for offline operation
+- NO embedded tokens in firmware (orchestrator is source of truth)
+- Reduces flash memory usage (currently at 92% capacity)
 
 **Data Synchronization:**
 - ALN-TokenData is the single source of truth (updated once)
@@ -152,6 +171,15 @@ HTTP_REDIRECT_PORT=8000
 ```javascript
 // Uses window.location.origin (preserves protocol)
 // Falls back to https://localhost:3000 for development
+```
+
+**ESP32 Player Scanner (arduino-cyd-player-scanner):**
+```cpp
+// CRITICAL: Requires HTTPS migration (currently HTTP only)
+// Current: Plain HTTPClient with http:// URLs
+// Required: WiFiClientSecure for HTTPS support
+// Configuration: SD card config.txt specifies orchestrator URL
+// No UDP discovery - uses hardcoded URL from config
 ```
 
 **Discovery Service:**
