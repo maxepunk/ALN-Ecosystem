@@ -97,7 +97,7 @@ module.exports = {
       name: 'vlc-http',
       script: '/usr/bin/cvlc',
       // Optimized for RPi 4: Hardware decode via v4l2_m2m, ALSA audio to HDMI
-      args: '--intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 -A alsa --alsa-audio-device=hdmi:CARD=vc4hdmi0,DEV=0 --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd --codec=avcodec --avcodec-hw=v4l2_m2m',
+      args: '--no-loop --intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 -A alsa --alsa-audio-device=hdmi:CARD=vc4hdmi0,DEV=0 --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd --codec=avcodec --avcodec-hw=v4l2_m2m',
       interpreter: 'none', // Not a Node.js process
       exec_mode: 'fork',
 
