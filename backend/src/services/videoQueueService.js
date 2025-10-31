@@ -222,6 +222,65 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
+   * Wait for VLC to reach expected state (condition-based waiting pattern)
+   * @param {Array<string>} expectedStates - States to wait for (e.g., ['playing'])
+   * @param {string} description - Description for timeout error message
+   * @param {number} timeoutMs - Timeout in milliseconds (default 5000)
+   * @returns {Promise<Object>} VLC status when condition met
+   * @throws {Error} If timeout exceeded
+   * @private
+   */
+  async waitForVlcState(expectedStates, description, timeoutMs = 5000) {
+    const startTime = Date.now();
+
+    while (true) {
+      try {
+        const status = await vlcService.getStatus();
+
+        // Check if VLC reached expected state
+        if (expectedStates.includes(status.state)) {
+          logger.debug('VLC reached expected state', {
+            expectedStates,
+            actualState: status.state,
+            elapsed: Date.now() - startTime
+          });
+          return status; // Success!
+        }
+
+        // Check timeout
+        const elapsed = Date.now() - startTime;
+        if (elapsed > timeoutMs) {
+          throw new Error(
+            `Timeout waiting for ${description} after ${timeoutMs}ms. ` +
+            `Expected states: [${expectedStates.join(', ')}], ` +
+            `Current state: ${status.state}`
+          );
+        }
+
+        // Poll every 100ms (not too fast, not too slow)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+      } catch (error) {
+        // If it's our timeout error, rethrow it
+        if (error.message.includes('Timeout waiting for')) {
+          throw error;
+        }
+
+        // VLC connection error - check if we've exceeded timeout
+        if (Date.now() - startTime > timeoutMs) {
+          throw new Error(
+            `VLC connection failed while waiting for ${description}: ${error.message}`
+          );
+        }
+
+        // Otherwise, keep trying (VLC might be recovering)
+        logger.debug('VLC status check failed, retrying', { error: error.message });
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  }
+
+  /**
    * Monitor VLC playback status
    * @param {VideoQueueItem} queueItem - Queue item being played
    * @param {number} expectedDuration - Expected duration in seconds
