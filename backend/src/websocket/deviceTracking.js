@@ -134,45 +134,6 @@ function handleSyncRequest(socket) {
 }
 
 /**
- * Monitor device health and remove stale connections
- * @param {Server} io - Socket.io server instance
- * @param {number} staleThresholdMs - Threshold in milliseconds for stale connections
- */
-async function monitorDeviceHealth(io, staleThresholdMs = 60000) {
-  const session = sessionService.getCurrentSession();
-  if (!session) return;
-
-  const now = Date.now();
-  const staleDevices = [];
-
-  for (const device of session.connectedDevices) {
-    if (device.connectionStatus === 'connected' && device.lastHeartbeat) {
-      const lastHeartbeat = new Date(device.lastHeartbeat).getTime();
-      if (now - lastHeartbeat > staleThresholdMs) {
-        staleDevices.push(device);
-      }
-    }
-  }
-
-  // Mark stale devices as disconnected
-  for (const device of staleDevices) {
-    device.connectionStatus = 'disconnected';
-    await sessionService.updateDevice(device);
-    
-    // Broadcast disconnection
-    emitWrapped(io, 'device:disconnected', {
-      deviceId: device.id,
-      reason: 'timeout',
-    });
-    
-    logger.warn('Device marked as disconnected due to timeout', { 
-      deviceId: device.id,
-      lastHeartbeat: device.lastHeartbeat,
-    });
-  }
-}
-
-/**
  * Get connected device statistics
  * @returns {Object} Device statistics
  */
@@ -203,6 +164,5 @@ function getDeviceStats() {
 module.exports = {
   handleDisconnect,
   handleSyncRequest,
-  monitorDeviceHealth,
   getDeviceStats,
 };

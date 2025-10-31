@@ -163,45 +163,6 @@ async function handleGmIdentify(socket, data, io) {
   }
 }
 
-/**
- * Handle heartbeat from GM station
- * @param {Socket} socket - Socket.io socket instance
- * @param {Object} data - Heartbeat data containing stationId
- */
-async function handleHeartbeat(socket, data) {
-  try {
-    // Validate heartbeat data
-    const { wsHeartbeatSchema, validate: validateHeartbeat } = require('../utils/validators');
-    const heartbeatData = validateHeartbeat(data, wsHeartbeatSchema);
-
-    // Verify the stationId matches the socket's deviceId
-    if (!socket.deviceId || socket.deviceId !== heartbeatData.stationId) {
-      emitWrapped(socket, 'error', {
-        code: 'AUTH_REQUIRED',
-        message: 'Station not identified or ID mismatch',
-      });
-      return;
-    }
-
-    // Update device heartbeat
-    const session = sessionService.getCurrentSession();
-    if (session) {
-      const device = session.connectedDevices.find(d => d.id === socket.deviceId);
-      if (device) {
-        device.lastHeartbeat = new Date().toISOString();
-        await sessionService.updateDevice(device);
-      }
-    }
-
-    emitWrapped(socket, 'heartbeat:ack', {
-
-    });
-  } catch (error) {
-    logger.error('Heartbeat error', { error, socketId: socket.id });
-  }
-}
-
 module.exports = {
   handleGmIdentify,
-  handleHeartbeat,
 };

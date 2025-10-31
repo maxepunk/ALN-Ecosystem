@@ -16,7 +16,7 @@ const DiscoveryService = require('./services/discoveryService');
 
 // Import WebSocket modules
 const { createSocketServer } = require('./websocket/socketServer');
-const { handleGmIdentify, handleHeartbeat } = require('./websocket/gmAuth');
+const { handleGmIdentify } = require('./websocket/gmAuth');
 const { setupBroadcastListeners } = require('./websocket/broadcasts');
 const { handleDisconnect, handleSyncRequest } = require('./websocket/deviceTracking');
 const { handleGmCommand, handleTransactionSubmit, handleStateRequest } = require('./websocket/adminEvents');
@@ -33,7 +33,6 @@ let server = null;
 let httpRedirectServer = null;
 let io = null;
 let discoveryService = null;
-let healthMonitorInterval = null;
 let isInitialized = false;
 
 // Setup WebSocket handlers (called when server is created)
@@ -78,11 +77,6 @@ function setupWebSocketHandlers(ioInstance) {
     }
   }
 
-  // Heartbeat handling
-  socket.on('heartbeat', async (data) => {
-    await handleHeartbeat(socket, data);
-  });
-  
   // State sync request
   socket.on('sync:request', () => {
     handleSyncRequest(socket);
@@ -123,24 +117,6 @@ function setupServiceListeners(ioInstance) {
   // Note: transaction:added is already handled by stateService.js which properly
   // manages recentTransactions updates. We don't need a duplicate listener here.
   // Scores are updated via transactionService's score:updated event.
-}
-
-// Setup periodic device health monitoring
-const { monitorDeviceHealth } = require('./websocket/deviceTracking');
-
-function startHealthMonitoring(ioInstance) {
-  if (process.env.NODE_ENV !== 'test' && !healthMonitorInterval) {
-    healthMonitorInterval = setInterval(() => {
-      monitorDeviceHealth(ioInstance, 60000); // 60 second stale threshold
-    }, 30000); // Check every 30 seconds
-  }
-}
-
-function stopHealthMonitoring() {
-  if (healthMonitorInterval) {
-    clearInterval(healthMonitorInterval);
-    healthMonitorInterval = null;
-  }
 }
 
 // Graceful shutdown handling
@@ -261,9 +237,6 @@ async function startServer() {
     // Setup service listeners
     setupServiceListeners(instances.io);
 
-    // Start health monitoring
-    startHealthMonitoring(instances.io);
-
     // Start listening
     const port = config.server.port;
     const host = config.server.host;
@@ -300,8 +273,6 @@ async function startServer() {
 
 // Cleanup function for tests
 async function cleanup() {
-  stopHealthMonitoring();
-
   if (discoveryService) {
     discoveryService.stop();
     discoveryService = null;

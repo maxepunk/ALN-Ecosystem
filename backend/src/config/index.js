@@ -43,7 +43,6 @@ const config = {
     maxGmStations: parseInt(process.env.MAX_GM_STATIONS || '5', 10),
     duplicateWindow: parseInt(process.env.DUPLICATE_WINDOW || '5', 10), // seconds
     sessionTimeout: parseInt(process.env.SESSION_TIMEOUT || '120', 10), // minutes
-    heartbeatInterval: parseInt(process.env.HEARTBEAT_INTERVAL || '30000', 10), // ms
   },
 
   // Video Configuration

@@ -32,8 +32,22 @@ The ALN (About Last Night) Ecosystem is a memory token scanning and video playba
 
 ## Recent Changes
 
+### October 2025: Connection Monitoring Simplification
+- **Breaking Change**: Removed custom heartbeat system for WebSocket clients
+- GM Scanner and Scoreboard now rely solely on Socket.io's built-in ping/pong mechanism
+- Removed `handleHeartbeat` function, `monitorDeviceHealth` interval, and related code
+- Eliminated ~80 lines of unused heartbeat handling code
+- Player Scanner HTTP polling unchanged (different transport, still required)
+- Fixes erratic "disconnected" status despite active Socket.io connections
+
+### October 2025: Test Infrastructure and Service Stability
+- **Test Helper**: Added `resetAllServicesForTesting()` to eliminate listener leaks in integration tests
+- **Unit Test Achievement**: All 12 unit tests now passing (100% pass rate achieved Oct 30, 2025)
+- **Service Cleanup**: Migrated all integration tests to use `resetAllServicesForTesting()` helper
+- **Submodule Updates**: ALNScanner and aln-memory-scanner updated with HTTPS normalization and disconnect fixes
+
 ### October 2025: mode Field Standardization
-- **Breaking Change**: Removed `stationMode` field entirely
+- **Breaking Change**: Removed `stationMode` field entirely from all code
 - All code now uses `mode` consistently (matches AsyncAPI/OpenAPI contracts)
 
 ## Critical Architecture Decisions
@@ -339,6 +353,7 @@ npx playwright show-report            # View HTML report after run
 
 **Critical Testing Notes:**
 - Integration tests MUST run sequentially (`--runInBand`) to prevent state contamination
+- Use `resetAllServicesForTesting()` helper in integration tests to prevent event listener leaks
 - E2E tests require orchestrator running: `npm run dev:no-video` (VLC optional)
 - Default `npm test` provides fastest feedback for typical development
 - Use `npm run test:all` before commits to catch integration issues
@@ -504,6 +519,43 @@ io.to('gm-stations').emit('device:connected', {
 - `backend/src/websocket/gmAuth.js` - Post-auth sync (Step 4)
 - `backend/contracts/asyncapi.yaml:22-45` - Authentication flow documentation
 
+### Connection Monitoring
+
+The system uses different connection monitoring strategies for different client types:
+
+**WebSocket Clients (GM Scanner, Scoreboard):**
+- Rely on Socket.io's built-in ping/pong mechanism
+- `pingInterval: 25000ms` (server sends ping every 25 seconds)
+- `pingTimeout: 60000ms` (disconnect if no pong received within 60 seconds)
+- `disconnect` event fired automatically when connection lost
+- Backend's `handleDisconnect` marks device as disconnected and broadcasts
+- No custom heartbeat events required
+
+**HTTP-Only Clients (Player Scanner):**
+- Poll `/health?deviceId=X&type=player` every 10 seconds
+- Each poll updates `device.lastHeartbeat` timestamp
+- Different transport, same convergence point (`sessionService.updateDevice`)
+- Backend processes query params and updates device status
+
+**Convergence Point:**
+Both WebSocket and HTTP paths update devices through the same service methods:
+```javascript
+// Both paths call:
+sessionService.updateDevice(device);  // Updates device in session
+session.updateDevice(device);         // Adds/updates device in connectedDevices array
+```
+
+**Why Different Strategies:**
+- WebSocket: Persistent connection → use transport-level monitoring (Socket.io ping/pong)
+- HTTP: Stateless → require application-level polling
+- Socket.io's built-in mechanism is industry standard for WebSocket connections
+- Custom heartbeats are unnecessary duplication for WebSocket clients
+
+**Connection Loss Detection:**
+- WebSocket: Socket.io detects automatically via ping timeout → `disconnect` event
+- HTTP: Health check polling fails → orchestrator marks stale after timeout
+- Both cases: `handleDisconnect` broadcasts `device:disconnected` event to all clients
+
 ### WebSocket Event Flow
 See `backend/contracts/asyncapi.yaml` for complete event definitions.
 
@@ -562,8 +614,8 @@ FEATURE_VIDEO_PLAYBACK=true
 # Start system
 cd backend && npm run dev:full
 
-# Trigger test scan
-curl -X POST http://localhost:3000/api/scan \
+# Trigger test scan (note: -k flag skips cert verification for self-signed cert)
+curl -k -X POST https://localhost:3000/api/scan \
   -H "Content-Type: application/json" \
   -d '{"tokenId": "534e2b03", "teamId": "001", "deviceId": "test"}'
 ```
@@ -746,22 +798,15 @@ This creates Pi 4-compatible videos at ~2Mbps bitrate with hardware acceleration
 | Video freezes/black screen | Check GPU memory (need 256MB), re-encode video if >5Mbps bitrate |
 | Idle loop stops but video doesn't play | Video bitrate too high - re-encode with ffmpeg (see Video Optimization) |
 | Scanner can't connect | Check firewall, use IP not localhost, verify HTTPS enabled |
-| Mixed content errors | Update scanners to latest (Oct 29, 2025) - all now default to HTTPS |
-| Certificate errors | One-time trust per device - click "Advanced" → "Proceed" in browser |
-| Discovery finds no servers | Check HTTPS enabled in backend, verify scanner scans HTTPS:3000 |
-| Connection shows "Connecting..." forever | Update to latest (race condition fixed Oct 29, 2025) |
-| Status indicator orange after success | Update to latest (wizard now waits for actual socket connection) |
-| NFC not working | Requires HTTPS (secure context) - verify using https:// not http:// |
+| Certificate errors | One-time trust per device - see HTTPS Architecture section |
+| Discovery finds no servers | Check HTTPS enabled, verify scanner scans HTTPS:3000 |
+| NFC not working | Requires HTTPS (secure context) - see HTTPS Architecture section |
 | Token not found | Update ALN-TokenData submodule |
 | Port in use | `lsof -i :3000` and kill process |
 | GameState null after restart | Session should auto-derive state - check logs for "Session loaded on startup" |
 | GM scanner connects but no state | Check JWT token valid, verify `sync:full` event sent (see Cross-Module Debugging) |
 | Transaction not scoring | Verify session exists, check transactionService event emission |
 | Submodule out of sync | Run `git submodule update --remote --merge` and restart orchestrator |
-| NFC scan not triggering | Check NFC listener registered BEFORE scan() call (race condition fixed Oct 2025) |
-| Duplicate warning not showing | Update ALNScanner - showWarning() replaced with showToast() (Oct 2025) |
-| GM Scanner scoring mismatch | Update ALNScanner to latest - scoring parity bugs fixed in Oct 2025 |
-| Player scans not logged | Update aln-memory-scanner - now sends ALL scans to orchestrator (Oct 2025) |
 
 ## E2E Testing Infrastructure
 
