@@ -278,19 +278,42 @@ class VideoQueueService extends EventEmitter {
       this.progressTimer = null;
     }
 
+    // Small grace period (1 check) to handle brief VLC state transitions
+    // This is NOT the old 3-second grace period that masked the bug
+    let nonPlayingChecks = 0;
+    const maxNonPlayingChecks = 1; // Allow 1 check (1 second) of non-playing state
+
     const checkStatus = async () => {
       try {
         const status = await vlcService.getStatus();
 
         // Check if still playing or paused
         if (status.state !== 'playing' && status.state !== 'paused') {
-          // Video stopped - it's actually complete (no grace period needed)
-          // We waited for 'playing' state before monitoring, so 'stopped' is real
-          clearInterval(this.progressTimer);
-          this.progressTimer = null;
-          this.completePlayback(queueItem);
+          nonPlayingChecks++;
+
+          // If consistently non-playing for more than 1 check, video is complete
+          if (nonPlayingChecks > maxNonPlayingChecks) {
+            logger.debug('Video confirmed stopped after grace period', {
+              state: status.state,
+              nonPlayingChecks
+            });
+            clearInterval(this.progressTimer);
+            this.progressTimer = null;
+            this.completePlayback(queueItem);
+            return;
+          }
+
+          // Still in grace period, wait for next check
+          logger.debug('Video in non-playing state, checking again', {
+            state: status.state,
+            nonPlayingChecks,
+            maxNonPlayingChecks
+          });
           return;
         }
+
+        // Video is playing/paused, reset grace counter
+        nonPlayingChecks = 0;
 
         // Emit progress updates
         if (status.position !== undefined && status.length > 0) {
