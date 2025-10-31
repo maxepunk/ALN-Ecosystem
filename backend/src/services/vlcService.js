@@ -318,6 +318,8 @@ class VlcService extends EventEmitter {
         position: 0,
         length: 0,
         volume: 0,
+        loop: false,
+        repeat: false,
       };
     }
 
@@ -334,6 +336,8 @@ class VlcService extends EventEmitter {
         time: status.time || 0,
         volume: status.volume || 0,
         fullscreen: status.fullscreen || false,
+        loop: status.loop || false,
+        repeat: status.repeat || false,
       };
     } catch (error) {
       logger.error('Failed to get VLC status', error);
@@ -341,6 +345,8 @@ class VlcService extends EventEmitter {
         connected: false,
         state: 'error',
         error: error.message,
+        loop: false,
+        repeat: false,
       };
     }
   }
