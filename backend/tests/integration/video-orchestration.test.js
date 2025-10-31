@@ -27,10 +27,9 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } =
   require('../helpers/integration-test-server');
 const { createPlayerScanner, connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 const MockVlcServer = require('../helpers/mock-vlc-server');
 
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const stateService = require('../../src/services/stateService');
@@ -84,24 +83,16 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
   });
 
   beforeEach(async () => {
-    // CRITICAL: Cleanup old broadcast listeners FIRST (sessionService.reset() doesn't remove them)
-    cleanupBroadcastListeners();
-
-    // Reset services
-    await resetAllServices();
-    mockVlc.reset();
-
-    // CRITICAL: Reset videoQueueService to clear all timers and state (prevents async leaks)
-    await resetAllServices();
-
-    // Re-setup broadcast listeners
-    setupBroadcastListeners(testContext.io, {
+    // Complete reset cycle: cleanup → reset → setup
+    await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
       stateService,
       videoQueueService,
       offlineQueueService
     });
+
+    mockVlc.reset();
 
     // Create test session
     await sessionService.createSession({
