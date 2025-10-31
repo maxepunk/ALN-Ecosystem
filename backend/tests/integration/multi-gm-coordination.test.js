@@ -15,8 +15,7 @@
 
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const TestTokens = require('../fixtures/test-tokens');
@@ -33,31 +32,18 @@ describe('Multi-GM Coordination', () => {
   });
 
   beforeEach(async () => {
-    // CRITICAL: Cleanup old broadcast listeners FIRST (sessionService.reset() doesn't remove them)
-    cleanupBroadcastListeners();
-
-    // Reset services for clean test state
-    await resetAllServices();
-    // CRITICAL: Re-initialize tokens after reset
-    // Use test fixtures instead of production tokens
-    const testTokens = TestTokens.getAllAsArray();
-    await transactionService.init(testTokens);
-
-    // Re-setup broadcast listeners after cleanup
-    const stateService = require('../../src/services/stateService');
-    const videoQueueService = require('../../src/services/videoQueueService');
-    const offlineQueueService = require('../../src/services/offlineQueueService');
-
-    // CRITICAL: Reset videoQueueService to clear all timers (prevents async leaks)
-    await resetAllServices();
-
-    setupBroadcastListeners(testContext.io, {
+    // Complete reset cycle: cleanup → reset → setup
+    await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
-      videoQueueService,
-      offlineQueueService
+      stateService: require('../../src/services/stateService'),
+      videoQueueService: require('../../src/services/videoQueueService'),
+      offlineQueueService: require('../../src/services/offlineQueueService')
     });
+
+    // Re-initialize tokens after reset
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Create session with multiple teams
     await sessionService.createSession({
