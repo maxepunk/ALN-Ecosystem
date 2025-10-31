@@ -11,6 +11,9 @@ const vlcService = require('../services/vlcService');
 // ADD: Module-level tracking
 const activeListeners = [];
 
+// Idempotency guard flag
+let broadcastListenersActive = false;
+
 /**
  * Helper function to add and track event listeners
  * @param {EventEmitter} service - Service instance
@@ -41,6 +44,17 @@ function addTrackedListener(service, event, handler) {
  * @param {Object} services - Service instances
  */
 function setupBroadcastListeners(io, services) {
+  // Idempotency check - prevent duplicate listener registration
+  if (broadcastListenersActive) {
+    logger.debug('Broadcast listeners already active, skipping duplicate setup', {
+      activeListeners: activeListeners.length
+    });
+    return;
+  }
+
+  logger.info('Setting up broadcast listeners');
+  broadcastListenersActive = true;
+
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService } = services;
 
   // Session events - session:update replaces session:new/paused/resumed/ended
@@ -533,6 +547,11 @@ function initializeSessionDevices(io, session) {
  * CRITICAL: Call this between tests to prevent listener accumulation
  */
 function cleanupBroadcastListeners() {
+  if (!broadcastListenersActive) {
+    logger.debug('Broadcast listeners not active, nothing to cleanup');
+    return;
+  }
+
   logger.info('Starting broadcast listener cleanup', {
     activeCount: activeListeners.length
   });
@@ -555,6 +574,9 @@ function cleanupBroadcastListeners() {
 
   // Also cleanup registry
   listenerRegistry.cleanup();
+
+  // Reset flag to allow re-setup
+  broadcastListenersActive = false;
 
   logger.info('Broadcast listener cleanup completed');
 }
