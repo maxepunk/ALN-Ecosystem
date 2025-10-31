@@ -124,11 +124,13 @@ class VideoQueueService extends EventEmitter {
         // Actually play the video through VLC
         const vlcResponse = await vlcService.playVideo(videoPath);
 
-        // Wait for VLC to actually start playing (condition-based waiting)
-        // This replaces arbitrary 1000ms delay + retry loop
-        const status = await this.waitForVlcState(
-          ['playing'],
-          'VLC to start playing video',
+        // Wait for VLC to actually load and play the NEW video (condition-based waiting)
+        // ROOT CAUSE FIX: VLC's in_play doesn't immediately switch videos
+        // We need to wait for currentItem to match the expected video file
+        const expectedFilename = videoPath.split('/').pop(); // Extract filename
+        const status = await this.waitForVlcLoaded(
+          expectedFilename,
+          'VLC to load and play new video',
           5000  // 5 second timeout (generous for Pi 4)
         );
 
@@ -201,6 +203,67 @@ class VideoQueueService extends EventEmitter {
 
       // Try next item
       setImmediate(() => this.processQueue());
+    }
+  }
+
+  /**
+   * Wait for VLC to load and play a specific video file (condition-based waiting pattern)
+   * @param {string} expectedFilename - Filename to wait for (e.g., 'jaw001.mp4')
+   * @param {string} description - Description for timeout error message
+   * @param {number} timeoutMs - Timeout in milliseconds (default 5000)
+   * @returns {Promise<Object>} VLC status when condition met
+   * @throws {Error} If timeout exceeded
+   * @private
+   */
+  async waitForVlcLoaded(expectedFilename, description, timeoutMs = 5000) {
+    const startTime = Date.now();
+
+    while (true) {
+      try {
+        const status = await vlcService.getStatus();
+
+        // Check if VLC is playing the CORRECT video file
+        if (status.state === 'playing' && status.currentItem === expectedFilename) {
+          logger.debug('VLC loaded and playing correct video', {
+            expectedFilename,
+            actualItem: status.currentItem,
+            state: status.state,
+            elapsed: Date.now() - startTime
+          });
+          return status; // Success!
+        }
+
+        // Check timeout
+        const elapsed = Date.now() - startTime;
+        if (elapsed > timeoutMs) {
+          throw new Error(
+            `Timeout waiting for ${description} after ${timeoutMs}ms. ` +
+            `Expected file: ${expectedFilename}, ` +
+            `Current item: ${status.currentItem || 'null'}, ` +
+            `Current state: ${status.state}`
+          );
+        }
+
+        // Poll every 100ms (not too fast, not too slow)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+      } catch (error) {
+        // If it's our timeout error, rethrow it
+        if (error.message.includes('Timeout waiting for')) {
+          throw error;
+        }
+
+        // VLC connection error - check if we've exceeded timeout
+        if (Date.now() - startTime > timeoutMs) {
+          throw new Error(
+            `VLC connection failed while waiting for ${description}: ${error.message}`
+          );
+        }
+
+        // Otherwise, keep trying (VLC might be recovering)
+        logger.debug('VLC status check failed, retrying', { error: error.message });
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
     }
   }
 
