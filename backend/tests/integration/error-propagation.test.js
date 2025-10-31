@@ -60,7 +60,6 @@ describe('Error Propagation Integration', () => {
 
   afterEach(async () => {
     if (gmSocket?.connected) gmSocket.disconnect();
-    await resetAllServices();
   });
 
   describe('Invalid Token Error Handling', () => {

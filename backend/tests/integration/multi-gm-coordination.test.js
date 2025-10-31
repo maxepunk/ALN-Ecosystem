@@ -53,7 +53,7 @@ describe('Multi-GM Coordination', () => {
   });
 
   afterEach(async () => {
-    await resetAllServices();
+    // Cleanup now happens in beforeEach via resetAllServicesForTesting
   });
 
   describe('Concurrent Transaction Processing', () => {

@@ -73,7 +73,6 @@ describe('Multi-Client Broadcast Validation', () => {
     [gm1, gm2, gm3].forEach(socket => {
       if (socket?.connected) socket.disconnect();
     });
-    await resetAllServices();
   });
 
   describe('Transaction Broadcasts', () => {

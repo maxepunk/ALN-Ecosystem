@@ -62,7 +62,6 @@ describe('Duplicate Detection Integration', () => {
   afterEach(async () => {
     if (gm1?.connected) gm1.disconnect();
     if (gm2?.connected) gm2.disconnect();
-    await resetAllServices();
   });
 
   describe('Same Team Duplicate Detection', () => {
