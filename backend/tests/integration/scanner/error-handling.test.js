@@ -54,8 +54,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     global.TokenManager.database = rawTokens;
   });
 
-  afterEach(() => {
-    if (scanner?.socket?.connected) scanner.socket.disconnect();
+  afterEach(async () => {
+    // Use scanner.cleanup() to properly disconnect and clear resources
+    if (scanner?.cleanup) await scanner.cleanup();
   });
 
   describe('TEST 1: Server Error Response Handling', () => {

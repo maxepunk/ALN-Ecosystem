@@ -63,7 +63,7 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
 
       // Verify health endpoint called
       const request = getLastFetchCall();
-      expect(request.url).toContain('/health');
+      expect(String(request.url)).toContain('/health');
       expect(request.method).toBe('GET');
     });
 

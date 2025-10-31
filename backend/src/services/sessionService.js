@@ -427,8 +427,10 @@ class SessionService extends EventEmitter {
     // Stop timers FIRST
     this.stopSessionTimeout();
 
-    // NOTE: Do NOT remove listeners - broadcast listeners are infrastructure
-    // and should persist across resets. cleanupTestServer() handles cleanup.
+    // Remove all listeners registered ON this service (observers)
+    // This clears the observer list for this EventEmitter subject
+    // Infrastructure listeners will be re-registered by setupBroadcastListeners()
+    this.removeAllListeners();
 
     // Reinitialize state
     this.initState();

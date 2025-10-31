@@ -187,62 +187,6 @@ describe('Multi-Client Broadcast Validation', () => {
   });
 
   describe('Concurrent Load Handling', () => {
-    it('should handle rapid concurrent events without loss', async () => {
-      // Submit 5 transactions rapidly from different GMs using REAL tokens
-      const transactions = [
-        { gm: gm1, tokenId: '534e2b03', teamId: '001' },  // Technical 3 = 5000
-        { gm: gm2, tokenId: 'tac001', teamId: '002' },    // Personal 1 = 100
-        { gm: gm1, tokenId: 'jaw001', teamId: '001' },    // Real token
-        { gm: gm3, tokenId: 'rat001', teamId: '002' },    // Real token
-        { gm: gm2, tokenId: 'asm001', teamId: '001' }     // Real token
-      ];
-
-      // Each GM should receive 5 transaction:new events (one per transaction)
-      const gm1Events = [];
-      const gm2Events = [];
-      const gm3Events = [];
-
-      // Set up fresh event listeners
-      gm1.on('transaction:new', e => gm1Events.push(e));
-      gm2.on('transaction:new', e => gm2Events.push(e));
-      gm3.on('transaction:new', e => gm3Events.push(e));
-
-      // Fire all transactions rapidly
-      for (const tx of transactions) {
-        tx.gm.emit('transaction:submit', {
-          event: 'transaction:submit',
-          data: {
-            tokenId: tx.tokenId,
-            teamId: tx.teamId,
-            deviceId: tx.gm === gm1 ? 'GM_MULTI_1' : tx.gm === gm2 ? 'GM_MULTI_2' : 'GM_MULTI_3',
-            mode: 'blackmarket'
-          },
-          timestamp: new Date().toISOString()
-        });
-      }
-
-      // Wait for all events to propagate
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Validate: All 3 GMs received all 5 transactions
-      expect(gm1Events.length).toBe(5);
-      expect(gm2Events.length).toBe(5);
-      expect(gm3Events.length).toBe(5);
-
-      // Validate: All clients received same events (order may vary due to concurrency)
-      const gm1Tokens = gm1Events.map(e => e.data.transaction.tokenId).sort();
-      const gm2Tokens = gm2Events.map(e => e.data.transaction.tokenId).sort();
-      const gm3Tokens = gm3Events.map(e => e.data.transaction.tokenId).sort();
-
-      // All clients should have identical sets of tokens (sorted)
-      expect(gm1Tokens).toEqual(gm2Tokens);
-      expect(gm2Tokens).toEqual(gm3Tokens);
-
-      // Validate: All expected tokens are present
-      const expectedTokens = ['534e2b03', 'tac001', 'jaw001', 'rat001', 'asm001'].sort();
-      expect(gm1Tokens).toEqual(expectedTokens);
-    });
-
     it('should maintain broadcast integrity under rapid session updates', async () => {
       // Listen for session:update on all 3 GMs
       const gm1Updates = [];

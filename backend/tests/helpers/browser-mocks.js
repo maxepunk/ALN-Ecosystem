@@ -275,6 +275,7 @@ global.DataManager = {
   addTransaction: () => {},
   loadTransactions: () => {},  // App.init() loads transaction history
   loadScannedTokens: () => {},  // App.init() loads scanned tokens
+  saveScannedTokens: () => {},  // Called by orchestratorClient.js:305 on transaction:deleted
   clearSession: () => {},
 
   // Called by OrchestratorClient when new session detected (sync:full or session:update events)

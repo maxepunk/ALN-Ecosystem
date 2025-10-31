@@ -185,6 +185,15 @@ async function resetAllServices(options = {}) {
     await offlineQueueService.reset(); // Async
   }
 
+  // Re-register cross-service listeners after reset
+  // Services that listen to sessionService must re-register (listeners cleared by reset)
+  if (typeof stateService.setupTransactionListeners === 'function') {
+    stateService.setupTransactionListeners();
+  }
+  if (typeof transactionService.registerSessionListener === 'function') {
+    transactionService.registerSessionListener();
+  }
+
   // Capture AFTER state
   const afterCounts = {
     sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
@@ -220,7 +229,7 @@ async function resetAllServices(options = {}) {
 
 /**
  * Complete reset cycle for integration tests
- * Encapsulates cleanup → reset → setup in correct order
+ * Uses production performSystemReset() for consistency
  *
  * @param {Object} io - Socket.io server instance
  * @param {Object} services - Service instances
@@ -235,26 +244,63 @@ async function resetAllServicesForTesting(io, services, options = {}) {
     console.log('\n🔄 Starting resetAllServicesForTesting cycle...');
   }
 
-  // Step 1: Cleanup old broadcast listeners (test-specific infrastructure)
-  const { cleanupBroadcastListeners, setupBroadcastListeners } = require('../../src/websocket/broadcasts');
-  cleanupBroadcastListeners();
-
+  // Capture BEFORE state for diagnostics
+  let beforeCounts = {};
   if (enableDiagnostics) {
-    console.log('  ✓ Broadcast listeners cleaned up');
+    beforeCounts = {
+      sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
+      transactionService: getServiceListenerCounts(transactionService, 'transactionService'),
+      stateService: getServiceListenerCounts(stateService, 'stateService'),
+      videoQueueService: getServiceListenerCounts(videoQueueService, 'videoQueueService'),
+      offlineQueueService: getServiceListenerCounts(offlineQueueService, 'offlineQueueService')
+    };
+
+    const totalBefore = Object.values(beforeCounts)
+      .reduce((sum, counts) => sum + getTotalListenerCount(counts), 0);
+
+    if (totalBefore > 0) {
+      console.log('\n📊 Listener counts BEFORE reset:');
+      for (const [serviceName, counts] of Object.entries(beforeCounts)) {
+        const total = getTotalListenerCount(counts);
+        if (total > 0) {
+          console.log(`  ${serviceName}: ${total} total`);
+        }
+      }
+    }
   }
 
-  // Step 2: Reset all service state (calls production reset methods)
-  await resetAllServices(options);  // Use existing function (includes diagnostics)
+  // Use production performSystemReset() for consistency
+  const { performSystemReset } = require('../../src/services/systemReset');
+  await performSystemReset(io, services);
 
+  // Capture AFTER state for diagnostics
   if (enableDiagnostics) {
-    console.log('  ✓ Service state reset');
-  }
+    const afterCounts = {
+      sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
+      transactionService: getServiceListenerCounts(transactionService, 'transactionService'),
+      stateService: getServiceListenerCounts(stateService, 'stateService'),
+      videoQueueService: getServiceListenerCounts(videoQueueService, 'videoQueueService'),
+      offlineQueueService: getServiceListenerCounts(offlineQueueService, 'offlineQueueService')
+    };
 
-  // Step 3: Re-setup broadcast listeners (test-specific infrastructure)
-  setupBroadcastListeners(io, services);
+    const totalAfter = Object.values(afterCounts)
+      .reduce((sum, counts) => sum + getTotalListenerCount(counts), 0);
 
-  if (enableDiagnostics) {
-    console.log('  ✓ Broadcast listeners re-registered');
+    if (totalAfter > 0) {
+      console.log('\n📊 Listener counts AFTER reset:');
+      for (const [serviceName, counts] of Object.entries(afterCounts)) {
+        const total = getTotalListenerCount(counts);
+        if (total > 0) {
+          console.log(`  ${serviceName}: ${total} total 🔴`);
+        }
+      }
+    } else {
+      console.log('\n✅ All listeners cleaned up successfully');
+    }
+
+    // Check for leaks
+    checkForListenerLeaks(beforeCounts, afterCounts);
+
     console.log('✅ resetAllServicesForTesting cycle complete\n');
   }
 }

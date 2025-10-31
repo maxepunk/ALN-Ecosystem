@@ -34,7 +34,8 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     await resetAllServices();});
 
   afterEach(async () => {
-    if (scanner?.socket?.connected) scanner.socket.disconnect();
+    // Use scanner.cleanup() to properly disconnect and clear resources
+    if (scanner?.cleanup) await scanner.cleanup();
   });
 
   it('should send complete sync:full on new GM connection', async () => {
@@ -82,7 +83,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     // Validate: Scores include both teams
     expect(syncEvent.data.scores).toHaveLength(2);
     const team001Score = syncEvent.data.scores.find(s => s.teamId === '001');
-    expect(team001Score.currentScore).toBe(5000); // Token 534e2b03: Technical (5x) * rating 3 (1000) = 5000
+    expect(team001Score.currentScore).toBe(30); // Token 534e2b03: value = 30 points (from test fixtures)
 
     // Validate: Recent transactions include our prior transaction
     expect(syncEvent.data.recentTransactions).toHaveLength(1);

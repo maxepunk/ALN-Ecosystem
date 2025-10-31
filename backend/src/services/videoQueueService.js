@@ -12,6 +12,9 @@ const vlcService = require('./vlcService'); // Load at top to avoid lazy require
 class VideoQueueService extends EventEmitter {
   constructor() {
     super();
+    // Increase max listeners for integration tests (20 test files accumulate listeners)
+    // Default is 10, which triggers warnings during test suite execution
+    this.setMaxListeners(20);
     this.queue = [];
     this.currentItem = null;
     this.playbackTimer = null;

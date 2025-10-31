@@ -41,10 +41,9 @@ describe('Scanner Helper Verification', () => {
   describe('GM Scanner (OrchestratorClient)', () => {
     let scanner;
 
-    afterEach(() => {
-      if (scanner?.socket?.connected) {
-        scanner.socket.disconnect();
-      }
+    afterEach(async () => {
+      // Use scanner.cleanup() to properly disconnect and clear resources
+      if (scanner?.cleanup) await scanner.cleanup();
     });
 
     it('should create GM Scanner instance', () => {

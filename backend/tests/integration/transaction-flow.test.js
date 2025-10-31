@@ -56,7 +56,8 @@ describe('Transaction Flow Integration', () => {
   });
 
   afterEach(async () => {
-    if (gmScanner?.socket?.connected) gmScanner.socket.disconnect();
+    // Use scanner.cleanup() to properly disconnect and clear resources
+    if (gmScanner?.cleanup) await gmScanner.cleanup();
     // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
     global.DataManager.clearScannedTokens();
     await resetAllServices();

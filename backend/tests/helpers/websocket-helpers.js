@@ -153,6 +153,36 @@ function cleanupSockets(sockets) {
 }
 
 /**
+ * Disconnect socket and wait for disconnection to complete
+ * Uses condition-based waiting instead of guessing at timing
+ *
+ * @param {Socket} socket - Socket to disconnect
+ * @param {number} timeout - Timeout in ms (default 2000)
+ * @returns {Promise<void>}
+ */
+async function disconnectAndWait(socket, timeout = 2000) {
+  if (!socket) return;
+
+  // Already disconnected - nothing to do
+  if (!socket.connected) return;
+
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Timeout waiting for socket disconnection'));
+    }, timeout);
+
+    // Wait for disconnect event
+    socket.once('disconnect', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+
+    // Initiate disconnect
+    socket.disconnect();
+  });
+}
+
+/**
  * Wait with shorter delay for tests
  * @param {number} ms - Milliseconds to wait
  * @returns {Promise}
@@ -266,7 +296,7 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
     mode: mode
   };
 
-  // 10. Return fully wired scanner with App API exposed
+  // 10. Return fully wired scanner with App API exposed + cleanup
   return {
     client,                       // OrchestratorClient instance
     socket: client.socket,        // Direct socket access (for event listeners)
@@ -274,7 +304,27 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
     Settings,                     // Settings reference (for assertions)
     sessionModeManager: global.window.sessionModeManager,
     queueManager: global.window.queueManager,
-    DataManager: global.DataManager  // For test spies (App.recordTransaction uses DataManager)
+    DataManager: global.DataManager,  // For test spies (App.recordTransaction uses DataManager)
+
+    // CRITICAL: Provide cleanup for resources we created
+    // Following first principles: creator provides lifecycle management
+    cleanup: async () => {
+      // Disconnect client (calls socket.disconnect() + clears timers + clears token)
+      if (client) {
+        client.disconnect();
+      }
+
+      // Clean up global state we modified
+      if (global.window.queueManager) {
+        global.window.queueManager = null;
+      }
+      if (global.window.sessionModeManager) {
+        global.window.sessionModeManager = null;
+      }
+      if (global.window.connectionManager) {
+        global.window.connectionManager = null;
+      }
+    }
   };
 }
 
@@ -310,6 +360,7 @@ module.exports = {
   connectAndIdentify,
   waitForMultipleEvents,
   cleanupSockets,
+  disconnectAndWait,
   testDelay,
   createAuthenticatedScanner, // GM Scanner - uses real scanner code
   createPlayerScanner,        // Player Scanner - uses real scanner code

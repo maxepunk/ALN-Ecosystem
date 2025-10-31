@@ -6,13 +6,15 @@
 const logger = require('../utils/logger');
 const config = require('../config');
 const sessionService = require('../services/sessionService');
-const persistenceService = require('../services/persistenceService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
 const stateService = require('../services/stateService');
 const videoQueueService = require('../services/videoQueueService');
 const vlcService = require('../services/vlcService');
 const { emitWrapped } = require('./eventWrapper');
+
+// Mutex flag to prevent concurrent system resets
+let resetInProgress = false;
 
 /**
  * Handle GM command from authenticated GM station
@@ -203,35 +205,31 @@ async function handleGmCommand(socket, data, io) {
 
       case 'system:reset': {
         // System reset - FR 4.2.5 lines 980-985 (full "nuclear option")
-        // Archive completed sessions before destroying them (preserve game history)
-        const currentSession = sessionService.getCurrentSession();
-
-        if (currentSession) {
-          if (currentSession.status === 'completed') {
-            await persistenceService.archiveSession(currentSession.toJSON());
-            logger.info('Completed session archived before system reset', {
-              sessionId: currentSession.id,
-              gmStation: socket.deviceId
-            });
-          } else {
-            logger.warn('Active session being reset by GM', {
-              sessionId: currentSession.id,
-              status: currentSession.status,
-              gmStation: socket.deviceId
-            });
-          }
+        // Uses performSystemReset() for consistent reset behavior
+        // MUTEX PROTECTION: Prevent concurrent resets from causing race conditions
+        if (resetInProgress) {
+          throw new Error('System reset already in progress. Please wait.');
         }
 
-        // End current session
-        await sessionService.endSession();
+        resetInProgress = true;
+        try {
+          const { performSystemReset } = require('../services/systemReset');
 
-        // Reset all services
-        await sessionService.reset();
-        transactionService.reset();
-        videoQueueService.clearQueue();
+          logger.info('System reset requested by GM', { gmStation: socket.deviceId });
 
-        resultMessage = 'System reset complete - ready for new session';
-        logger.info('System reset by GM', { gmStation: socket.deviceId });
+          await performSystemReset(io, {
+            sessionService,
+            stateService,
+            transactionService,
+            videoQueueService,
+            offlineQueueService
+          });
+
+          resultMessage = 'System reset complete - ready for new session';
+          logger.info('System reset by GM complete', { gmStation: socket.deviceId });
+        } finally {
+          resetInProgress = false;
+        }
         break;
       }
 
@@ -414,27 +412,7 @@ function handleStateRequest(socket) {
       return;
     }
 
-    let state = stateService.getCurrentState();
-
-    // DEFENSIVE FIX: If no GameState but session exists, create GameState on-the-fly
-    // This handles the case where session:created event listener failed or wasn't registered
-    if (!state) {
-      const session = sessionService.getCurrentSession();
-      if (session) {
-        logger.warn('GameState missing but session exists - creating state on-the-fly', {
-          sessionId: session.id,
-          deviceId: socket.deviceId
-        });
-
-        // Create GameState from current session (synchronously - createStateFromSession returns immediately)
-        state = stateService.createStateFromSession(session);
-
-        // Save asynchronously (don't wait - state is already usable)
-        stateService.saveState().catch(err => {
-          logger.error('Failed to save auto-created GameState', { error: err.message });
-        });
-      }
-    }
+    const state = stateService.getCurrentState();
 
     if (state) {
       emitWrapped(socket, 'state:sync', state.toJSON());

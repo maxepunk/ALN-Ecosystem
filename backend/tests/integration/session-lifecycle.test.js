@@ -65,7 +65,8 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
   });
 
   afterEach(async () => {
-    if (scanner?.socket?.connected) scanner.socket.disconnect();
+    // Use scanner.cleanup() to properly disconnect and clear resources
+    if (scanner?.cleanup) await scanner.cleanup();
     // CRITICAL: Clear DataManager scanned tokens to prevent duplicate detection across tests
     global.DataManager.clearScannedTokens();
     await resetAllServices();

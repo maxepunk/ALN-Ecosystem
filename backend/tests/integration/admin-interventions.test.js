@@ -63,8 +63,9 @@ describe('Admin Intervention Integration', () => {
   });
 
   afterEach(async () => {
-    if (gmAdmin?.socket?.connected) gmAdmin.socket.disconnect();
-    if (gmObserver?.socket?.connected) gmObserver.socket.disconnect();
+    // Use scanner.cleanup() to properly disconnect and clear resources
+    if (gmAdmin?.cleanup) await gmAdmin.cleanup();
+    if (gmObserver?.cleanup) await gmObserver.cleanup();
   });
 
   describe('Score Adjustment', () => {
