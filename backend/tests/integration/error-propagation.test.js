@@ -17,8 +17,7 @@
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const TestTokens = require('../fixtures/test-tokens');
@@ -36,27 +35,18 @@ describe('Error Propagation Integration', () => {
   });
 
   beforeEach(async () => {
-    // Reset services
-    await resetAllServices();
-    // CRITICAL: Cleanup old broadcast listeners
-    cleanupBroadcastListeners();
-
-    // Re-initialize tokens
-    // Use test fixtures instead of production tokens
-    const testTokens = TestTokens.getAllAsArray();
-    await transactionService.init(testTokens);
-
-    // Re-setup broadcast listeners
-    const stateService = require('../../src/services/stateService');
-    const offlineQueueService = require('../../src/services/offlineQueueService');
-
-    setupBroadcastListeners(testContext.io, {
+    // Complete reset cycle: cleanup → reset → setup
+    await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
+      stateService: require('../../src/services/stateService'),
       videoQueueService,
-      offlineQueueService
+      offlineQueueService: require('../../src/services/offlineQueueService')
     });
+
+    // Re-initialize tokens after reset
+    const testTokens = TestTokens.getAllAsArray();
+    await transactionService.init(testTokens);
 
     // Create test session
     await sessionService.createSession({
@@ -232,7 +222,7 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Valid transaction processed correctly
       expect(validResult.data.status).toBe('accepted');
-      expect(validResult.data.points).toBe(5000); // Technical rating 3 = 5000 points
+      expect(validResult.data.points).toBe(30); // Token value from test fixtures
     });
 
     it('should handle concurrent errors from multiple GMs', async () => {
@@ -385,22 +375,22 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Valid transaction processed successfully
       expect(validResult.data.status).toBe('accepted');
-      expect(validResult.data.points).toBe(5000);
+      expect(validResult.data.points).toBe(30);
 
       // Verify: Score updated correctly
       const teamScores = transactionService.getTeamScores();
       const team001Score = teamScores.find(s => s.teamId === '001');
-      expect(team001Score.currentScore).toBe(5000);
+      expect(team001Score.currentScore).toBe(30);
     });
 
     it('should maintain correct state after mixed valid/invalid transactions', async () => {
       // Sequence: Valid → Invalid → Valid → Invalid → Valid
       const transactions = [
-        { tokenId: '534e2b03', valid: true, points: 5000 },   // Technical 3
+        { tokenId: '534e2b03', valid: true, points: 30 },   // Technical 3 = 30 points
         { tokenId: 'invalid_token', valid: false, points: 0 },
-        { tokenId: 'tac001', valid: true, points: 100 },      // Personal 1
+        { tokenId: 'tac001', valid: true, points: 10 },      // Business 1 = 10 points
         { tokenId: 'NONEXISTENT', valid: false, points: 0 },
-        { tokenId: 'rat001', valid: true, points: 15000 }     // Business 4
+        { tokenId: 'rat001', valid: true, points: 40 }     // Business 4 = 40 points
       ];
 
       let expectedScore = 0;
@@ -434,7 +424,7 @@ describe('Error Propagation Integration', () => {
       // Validate: Final score reflects only valid transactions
       const teamScores = transactionService.getTeamScores();
       const team001Score = teamScores.find(s => s.teamId === '001');
-      expect(team001Score.currentScore).toBe(expectedScore); // 5000 + 100 + 15000 = 20100
+      expect(team001Score.currentScore).toBe(expectedScore); // 30 + 10 + 40 = 80
     });
   });
 });
