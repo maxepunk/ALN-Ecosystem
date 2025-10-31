@@ -278,38 +278,19 @@ class VideoQueueService extends EventEmitter {
       this.progressTimer = null;
     }
 
-    // Grace period tracking for video transitions
-    let graceCounter = 0;
-    const maxGracePeriod = 3; // Allow up to 3 checks (3 seconds) of non-playing state
-
     const checkStatus = async () => {
       try {
         const status = await vlcService.getStatus();
 
-        // Check if still playing
+        // Check if still playing or paused
         if (status.state !== 'playing' && status.state !== 'paused') {
-          // Video might be transitioning, use grace period
-          graceCounter++;
-
-          if (graceCounter >= maxGracePeriod) {
-            // Video has been stopped for too long, consider it complete
-            clearInterval(this.progressTimer);
-            this.progressTimer = null;
-            this.completePlayback(queueItem);
-            return;
-          }
-
-          // Still in grace period, wait for next check
-          logger.debug('Video in transition state', {
-            state: status.state,
-            graceCounter,
-            maxGracePeriod
-          });
+          // Video stopped - it's actually complete (no grace period needed)
+          // We waited for 'playing' state before monitoring, so 'stopped' is real
+          clearInterval(this.progressTimer);
+          this.progressTimer = null;
+          this.completePlayback(queueItem);
           return;
         }
-
-        // Video is playing/paused, reset grace counter
-        graceCounter = 0;
 
         // Emit progress updates
         if (status.position !== undefined && status.length > 0) {
