@@ -485,13 +485,31 @@ class VlcService extends EventEmitter {
     }
 
     try {
-      const command = enabled ? 'pl_loop' : 'pl_repeat';
-      await this.client.get('/requests/status.json', {
-        params: { command },
-      });
-      logger.info(`Playlist loop ${enabled ? 'enabled' : 'disabled'}`);
+      // STEP 1: Read current state
+      const status = await this.getStatus();
+      const currentLoopState = status.loop || false;
+
+      // STEP 2: Only toggle if current state differs from desired state
+      if (currentLoopState !== enabled) {
+        await this.client.get('/requests/status.json', {
+          params: { command: 'pl_loop' },  // pl_loop is a toggle
+        });
+        logger.info(`Playlist loop toggled to ${enabled ? 'enabled' : 'disabled'}`);
+
+        // STEP 3: Verify the toggle worked (defensive)
+        const verifyStatus = await this.getStatus();
+        if (verifyStatus.loop !== enabled) {
+          logger.warn('Loop state verification failed', {
+            desired: enabled,
+            actual: verifyStatus.loop
+          });
+        }
+      } else {
+        logger.debug(`Playlist loop already ${enabled ? 'enabled' : 'disabled'}, no toggle needed`);
+      }
     } catch (error) {
       logger.error('Failed to set loop mode', error);
+      throw error; // Don't silently fail - this is critical for video playback
     }
   }
 
