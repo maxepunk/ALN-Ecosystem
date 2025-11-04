@@ -31,3 +31,6 @@ test-results/
 
 # Git worktrees directory
 .worktrees/
+
+# Environment variables
+.env
