@@ -162,19 +162,53 @@ router.post('/', async (req, res) => {
   }
 });
 
+// PHASE 1.2 (P0.2): Track processed batches for idempotency
+// In-memory cache with automatic cleanup after 1 hour
+const processedBatches = new Map();
+
+// Cleanup old batches every 5 minutes
+setInterval(() => {
+  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  for (const [batchId, data] of processedBatches.entries()) {
+    if (data.timestamp < oneHourAgo) {
+      processedBatches.delete(batchId);
+      logger.debug('Cleaned up old batch', { batchId });
+    }
+  }
+}, 5 * 60 * 1000);
+
 /**
  * POST /api/scan/batch
  * Process multiple scan requests from player scanner offline queue
  * NO SCORING OR GAME MECHANICS (handled by GM scanner)
+ * PHASE 1.2 (P0.2): Now supports idempotency via batchId and emits batch:ack
  */
 router.post('/batch', async (req, res) => {
-  const { transactions } = req.body;
+  const { batchId, transactions } = req.body;
+
+  // PHASE 1.2 (P0.2): Validate batchId (required for idempotency)
+  if (!batchId) {
+    return res.status(400).json({
+      error: 'VALIDATION_ERROR',
+      message: 'batchId is required'
+    });
+  }
 
   if (!Array.isArray(transactions)) {
     return res.status(400).json({
       error: 'VALIDATION_ERROR',
       message: 'Transactions must be an array'
     });
+  }
+
+  // PHASE 1.2 (P0.2): Check for duplicate batch (idempotency)
+  if (processedBatches.has(batchId)) {
+    const cachedResult = processedBatches.get(batchId);
+    logger.info('Duplicate batch detected, returning cached result', {
+      batchId,
+      processedCount: cachedResult.processedCount
+    });
+    return res.json(cachedResult.response);
   }
 
   // Check services are initialized
@@ -244,7 +278,54 @@ router.post('/batch', async (req, res) => {
     }
   }
 
-  res.json({ results });
+  // PHASE 1.2 (P0.2): Build response with batch metadata
+  const processedCount = results.filter(r => r.status === 'processed').length;
+  const failedCount = results.filter(r => r.status === 'failed').length;
+  const response = {
+    batchId,
+    processedCount,
+    totalCount: transactions.length,
+    failedCount,
+    results
+  };
+
+  // PHASE 1.2 (P0.2): Cache result for idempotency
+  processedBatches.set(batchId, {
+    response,
+    timestamp: Date.now(),
+    processedCount
+  });
+
+  // PHASE 1.2 (P0.2): Emit batch:ack WebSocket event
+  const io = req.app.locals.io;
+  if (io) {
+    const { emitWrapped } = require('../websocket/eventWrapper');
+    const deviceId = transactions[0]?.deviceId;
+
+    // Emit to specific device room if deviceId present
+    if (deviceId) {
+      emitWrapped(io.to(`device:${deviceId}`), 'batch:ack', {
+        batchId,
+        processedCount,
+        totalCount: transactions.length,
+        failedCount,
+        failures: results.filter(r => r.status === 'failed').map((r, index) => ({
+          index,
+          tokenId: r.tokenId,
+          error: r.error
+        }))
+      });
+
+      logger.info('Emitted batch:ack event', {
+        batchId,
+        deviceId,
+        processedCount,
+        failedCount
+      });
+    }
+  }
+
+  res.json(response);
 });
 
 module.exports = router;
