@@ -162,10 +162,10 @@ function setupBroadcastListeners(io, services) {
     });
 
     // CRITICAL: Only broadcast to GM stations, not all clients
-    const gmRoom = io.sockets.adapter.rooms.get('gm-stations');
+    const gmRoom = io.sockets.adapter.rooms.get('gm');
     const gmCount = gmRoom ? gmRoom.size : 0;
 
-    emitToRoom(io, 'gm-stations', 'state:update', delta);
+    emitToRoom(io, 'gm', 'state:update', delta);
 
     logger.debug('Broadcasted state:update to GM stations', {
       deltaKeys: Object.keys(delta),
@@ -202,7 +202,7 @@ function setupBroadcastListeners(io, services) {
         lastUpdate: teamScore.lastUpdate
       };
 
-      emitToRoom(io, 'gm-stations', 'score:updated', payload);
+      emitToRoom(io, 'gm', 'score:updated', payload);
       logger.info('Broadcasted score:updated to GM stations', {
         teamId: teamScore.teamId,
         score: teamScore.currentScore,
@@ -218,7 +218,7 @@ function setupBroadcastListeners(io, services) {
         tokenId: data.tokenId
       };
 
-      emitToRoom(io, 'gm-stations', 'transaction:deleted', payload);
+      emitToRoom(io, 'gm', 'transaction:deleted', payload);
       logger.info('Broadcasted transaction:deleted to GM stations', {
         transactionId: data.transactionId,
         teamId: data.teamId,
@@ -234,7 +234,7 @@ function setupBroadcastListeners(io, services) {
         completedAt: new Date().toISOString()  // AsyncAPI: required timestamp
       };
 
-      emitToRoom(io, 'gm-stations', 'group:completed', payload);
+      emitToRoom(io, 'gm', 'group:completed', payload);
       logger.info('Broadcasted group:completed to GM stations', data);
     });
 
@@ -243,7 +243,7 @@ function setupBroadcastListeners(io, services) {
         teamId: data.teamId
       };
 
-      emitToRoom(io, 'gm-stations', 'team:created', payload);
+      emitToRoom(io, 'gm', 'team:created', payload);
       logger.info('Broadcasted team:created to GM stations', { teamId: data.teamId });
     });
   }
@@ -256,7 +256,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:loading to GM stations', { tokenId: data.tokenId });
   });
 
@@ -270,7 +270,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:started to GM stations', { tokenId: data.queueItem.tokenId });
   });
 
@@ -282,7 +282,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:completed to GM stations', { tokenId: queueItem.tokenId });
   });
 
@@ -294,7 +294,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.error('Broadcasted video:failed to GM stations', { tokenId: queueItem.tokenId, error: queueItem.error });
   });
 
@@ -306,7 +306,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:paused to GM stations', { tokenId: queueItem?.tokenId });
   });
 
@@ -318,7 +318,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:idle to GM stations');
   });
 
@@ -331,7 +331,7 @@ function setupBroadcastListeners(io, services) {
       queueLength: (videoQueueService.queue || []).length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:status', payload);
+    emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:resumed as playing to GM stations');
   });
 
@@ -344,7 +344,7 @@ function setupBroadcastListeners(io, services) {
       duration: Math.round(data.duration || 0)
     };
 
-    emitToRoom(io, 'gm-stations', 'video:progress', payload);
+    emitToRoom(io, 'gm', 'video:progress', payload);
     // Don't log every progress update (too verbose)
   });
 
@@ -364,7 +364,7 @@ function setupBroadcastListeners(io, services) {
       length: pendingItems.length
     };
 
-    emitToRoom(io, 'gm-stations', 'video:queue:update', payload);
+    emitToRoom(io, 'gm', 'video:queue:update', payload);
     logger.debug('Broadcasted queue update to GM stations', { queueLength: pendingItems.length });
   }
 
@@ -397,7 +397,7 @@ function setupBroadcastListeners(io, services) {
         results
       };
 
-      emitToRoom(io, 'gm-stations', 'offline:queue:processed', payload);
+      emitToRoom(io, 'gm', 'offline:queue:processed', payload);
       logger.info('Broadcasted offline queue processing results', {
         queueSize: payload.queueSize,
         resultCount: payload.results?.length || 0
