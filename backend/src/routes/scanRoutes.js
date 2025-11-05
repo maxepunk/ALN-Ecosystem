@@ -13,6 +13,21 @@ const videoQueueService = require('../services/videoQueueService');
 const offlineQueueService = require('../services/offlineQueueService');
 const { isOffline } = require('../middleware/offlineStatus');
 
+// PHASE 1 (P0.2): Idempotency tracking for batch uploads
+// In-memory Map: batchId -> { response, timestamp }
+const processedBatches = new Map();
+
+// Cleanup old batches every 5 minutes (prevent memory leak)
+setInterval(() => {
+  const oneHourAgo = Date.now() - (60 * 60 * 1000);
+  for (const [batchId, data] of processedBatches.entries()) {
+    if (data.timestamp < oneHourAgo) {
+      processedBatches.delete(batchId);
+      logger.debug('Cleaned up old batch from cache', { batchId });
+    }
+  }
+}, 5 * 60 * 1000);
+
 /**
  * POST /api/scan
  * Player scanner endpoint - logs scan and triggers video only
@@ -166,15 +181,32 @@ router.post('/', async (req, res) => {
  * POST /api/scan/batch
  * Process multiple scan requests from player scanner offline queue
  * NO SCORING OR GAME MECHANICS (handled by GM scanner)
+ *
+ * PHASE 1 (P0.2): Added batchId for idempotency and batch:ack emission
  */
 router.post('/batch', async (req, res) => {
-  const { transactions } = req.body;
+  const { batchId, transactions } = req.body;
+
+  // PHASE 1 (P0.2): Validate batchId (REQUIRED)
+  if (!batchId) {
+    return res.status(400).json({
+      error: 'VALIDATION_ERROR',
+      message: 'batchId required'
+    });
+  }
 
   if (!Array.isArray(transactions)) {
     return res.status(400).json({
       error: 'VALIDATION_ERROR',
       message: 'Transactions must be an array'
     });
+  }
+
+  // PHASE 1 (P0.2): Check for duplicate batch (idempotency)
+  if (processedBatches.has(batchId)) {
+    const cached = processedBatches.get(batchId);
+    logger.info('Duplicate batch detected, returning cached result', { batchId });
+    return res.json(cached.response);
   }
 
   // Check services are initialized
@@ -186,12 +218,18 @@ router.post('/batch', async (req, res) => {
     });
   }
 
+  logger.info('Processing batch upload', {
+    batchId,
+    transactionCount: transactions.length
+  });
+
   const results = [];
 
   for (const scanRequest of transactions) {
     try {
       // Log the scan
-      logger.info('Batch scan received', {
+      logger.debug('Batch scan processing', {
+        batchId,
         tokenId: scanRequest.tokenId,
         teamId: scanRequest.teamId,
         deviceId: scanRequest.deviceId,
@@ -202,7 +240,7 @@ router.post('/batch', async (req, res) => {
       const token = scanRequest.tokenId ? transactionService.tokens.get(scanRequest.tokenId) : null;
 
       if (!token) {
-        logger.warn('Batch scan: token not found', { tokenId: scanRequest.tokenId });
+        logger.warn('Batch scan: token not found', { batchId, tokenId: scanRequest.tokenId });
         results.push({
           ...scanRequest,
           status: 'failed',
@@ -244,7 +282,43 @@ router.post('/batch', async (req, res) => {
     }
   }
 
-  res.json({ results });
+  // PHASE 1 (P0.2): Build response with batch metadata
+  const response = {
+    batchId,
+    processedCount: results.filter(r => r.status === 'processed').length,
+    totalCount: transactions.length,
+    results
+  };
+
+  // PHASE 1 (P0.2): Cache result for idempotency
+  processedBatches.set(batchId, {
+    response,
+    timestamp: Date.now()
+  });
+
+  logger.info('Batch processed successfully', {
+    batchId,
+    processedCount: response.processedCount,
+    totalCount: response.totalCount
+  });
+
+  // PHASE 1 (P0.2): Emit batch:ack WebSocket event to device
+  const io = req.app.locals.io;
+  if (io && transactions.length > 0) {
+    const deviceId = transactions[0].deviceId;
+    if (deviceId) {
+      const { emitToRoom } = require('../websocket/eventWrapper');
+      emitToRoom(io, `device:${deviceId}`, 'batch:ack', {
+        batchId,
+        processedCount: response.processedCount,
+        totalCount: response.totalCount,
+        timestamp: new Date().toISOString()
+      });
+      logger.info('Emitted batch:ack to device', { batchId, deviceId });
+    }
+  }
+
+  res.json(response);
 });
 
 module.exports = router;

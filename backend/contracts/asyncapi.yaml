@@ -85,6 +85,7 @@ channels:
           - $ref: '#/components/messages/SessionUpdate'
           - $ref: '#/components/messages/GmCommandAck'
           - $ref: '#/components/messages/OfflineQueueProcessed'
+          - $ref: '#/components/messages/BatchAck'
           - $ref: '#/components/messages/GroupCompleted'
           - $ref: '#/components/messages/Error'
     publish:
@@ -1265,6 +1266,70 @@ components:
             format: date-time
             description: Event timestamp
             example: "2025-10-15T19:10:00.000Z"
+
+    # ============================================================================
+    # BATCH ACKNOWLEDGMENT (1 event) - PHASE 1 (P0.2)
+    # ============================================================================
+
+    BatchAck:
+      name: batch:ack
+      title: Batch Upload Acknowledgment
+      summary: Confirm batch processing to device
+      description: |
+        Sent to device-specific room after batch processing completes.
+        Enables idempotent offline queue syncing with ACK-based clearing.
+
+        **Functional Requirement**: Section 1.8 (Offline Queue Management) - PHASE 1 (P0.2)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **Flow**:
+        1. GM Scanner uploads batch with batchId via HTTP POST /api/scan/batch
+        2. Server processes batch (idempotency: duplicate batchId returns cached result)
+        3. Server emits batch:ack to device-specific room (device:GM_001)
+        4. Client waits for ACK before clearing queue
+        5. Network failure → client retries with same batchId → idempotent response
+
+        **Idempotency**:
+        - Server caches batch results for 1 hour by batchId
+        - Duplicate batchId returns cached response without reprocessing
+        - Prevents double-processing on network failures
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: batch:ack
+            description: Event name
+          data:
+            type: object
+            required:
+              - batchId
+              - processedCount
+              - totalCount
+            properties:
+              batchId:
+                type: string
+                description: Unique batch identifier (UUID from client)
+                example: "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"
+              processedCount:
+                type: integer
+                description: Number of transactions successfully processed
+                minimum: 0
+                example: 8
+              totalCount:
+                type: integer
+                description: Total transactions in batch
+                minimum: 0
+                example: 10
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-11-05T21:30:00.000Z"
 
     # ============================================================================
     # GROUP COMPLETION (1 event)
