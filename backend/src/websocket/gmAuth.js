@@ -144,8 +144,24 @@ async function handleGmIdentify(socket, data, io) {
       };
     });
 
+    // PHASE 2.1 (P1.1): Get device-specific scanned tokens for state restoration
+    const deviceScannedTokens = session
+      ? Array.from(session.getDeviceScannedTokens(deviceId))
+      : [];
+
+    // Determine if this is a reconnection (Socket.io sets socket.recovered on recovery)
+    const isReconnection = socket.recovered || false;
+
+    logger.info('GM state synchronized', {
+      deviceId,
+      scannedCount: deviceScannedTokens.length,
+      reconnection: isReconnection,
+      socketId: socket.id
+    });
+
     // Send full state sync per AsyncAPI contract (sync:full event)
     // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
+    // PHASE 2.1 (P1.1): Added deviceScannedTokens and reconnection flag
     emitWrapped(socket, 'sync:full', {
       session: session ? session.toJSON() : null,
       scores: transactionService.getTeamScores(),
@@ -161,7 +177,11 @@ async function handleGmIdentify(socket, data, io) {
       systemStatus: {
         orchestrator: 'online',
         vlc: vlcConnected ? 'connected' : 'disconnected'
-      }
+      },
+      // PHASE 2.1 (P1.1): Include device-specific scanned tokens for state restoration
+      deviceScannedTokens,
+      // PHASE 2.1 (P1.1): Include reconnection flag for frontend notification
+      reconnection: isReconnection
     });
 
     // Confirm identification with contract-compliant response
