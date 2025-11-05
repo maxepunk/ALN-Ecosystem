@@ -125,6 +125,9 @@ class TransactionService extends EventEmitter {
       const points = (transaction.mode === 'detective') ? 0 : token.value;
       transaction.accept(points)
 
+      // PHASE 1.1 (P0.1): Track scanned token for this device (server-side duplicate detection)
+      session.addDeviceScannedToken(transaction.deviceId, transaction.tokenId);
+
       // Update team score (only for blackmarket mode)
       if (transaction.mode !== 'detective') {
         this.updateTeamScore(transaction.teamId, token);
@@ -168,9 +171,19 @@ class TransactionService extends EventEmitter {
    * @private
    */
   isDuplicate(transaction, session) {
+    // PHASE 1.1 (P0.1): Server-side per-device duplicate detection
+    // Check if THIS DEVICE has already scanned this token
+    if (session.hasDeviceScannedToken(transaction.deviceId, transaction.tokenId)) {
+      logger.info('Duplicate scan detected (per-device)', {
+        tokenId: transaction.tokenId,
+        deviceId: transaction.deviceId
+      });
+      return true;
+    }
+
     // FR-009: Detect and prevent duplicate token scans for the ENTIRE SESSION
     // FIRST-COME-FIRST-SERVED: Once ANY team claims a token, no other team can claim it
-    
+
     // Check if this token was already claimed by ANY team
     for (const existing of session.transactions || []) {
       if (existing.tokenId === transaction.tokenId &&

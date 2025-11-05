@@ -522,8 +522,13 @@ paths:
             schema:
               type: object
               required:
+                - batchId
                 - transactions
               properties:
+                batchId:
+                  type: string
+                  description: Unique batch identifier for idempotency (Phase 1.2 P0.2)
+                  example: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
                 transactions:
                   type: array
                   description: Array of queued scan requests
@@ -552,6 +557,7 @@ paths:
                         description: Original scan timestamp
                         example: "2025-09-30T14:25:00.000Z"
             example:
+              batchId: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
               transactions:
                 - tokenId: "534e2b02"
                   teamId: "001"
@@ -572,8 +578,28 @@ paths:
               schema:
                 type: object
                 required:
+                  - batchId
+                  - processedCount
+                  - totalCount
+                  - failedCount
                   - results
                 properties:
+                  batchId:
+                    type: string
+                    description: Batch identifier from request (Phase 1.2 P0.2)
+                    example: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
+                  processedCount:
+                    type: integer
+                    description: Number of successfully processed transactions
+                    example: 2
+                  totalCount:
+                    type: integer
+                    description: Total number of transactions in batch
+                    example: 3
+                  failedCount:
+                    type: integer
+                    description: Number of failed transactions
+                    example: 1
                   results:
                     type: array
                     description: Per-scan results
@@ -604,6 +630,10 @@ paths:
                           description: Error message if status=failed
                           example: null
               example:
+                batchId: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
+                processedCount: 3
+                totalCount: 3
+                failedCount: 0
                 results:
                   - tokenId: "534e2b02"
                     status: "processed"

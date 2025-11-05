@@ -201,7 +201,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
     it('should use emitToRoom for state:updated (GM stations only)', () => {
       // Mock GM stations room
-      mockIo.sockets.adapter.rooms.set('gm-stations', new Set(['socket-1', 'socket-2']));
+      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket-1', 'socket-2']));
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
@@ -214,8 +214,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       const delta = { scores: { '001': 100 } };
       mockStateService.emit('state:updated', delta);
 
-      // Assert: io.to called with gm-stations room
-      expect(mockIo.to).toHaveBeenCalledWith('gm-stations');
+      // Assert: io.to called with gm room
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
 
       // Assert: emit called with wrapped structure
       expect(mockIo.emit).toHaveBeenCalledWith(
@@ -241,8 +241,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       mockVideoQueueService.emit('video:loading', { tokenId: '534e2b03' });
 
-      // Assert: io.to called with gm-stations room
-      expect(mockIo.to).toHaveBeenCalledWith('gm-stations');
+      // Assert: io.to called with gm room
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
 
       // Assert: emit called with wrapped structure
       expect(mockIo.emit).toHaveBeenCalledWith(
@@ -273,7 +273,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expectedEndTime: new Date().toISOString()
       });
 
-      expect(mockIo.to).toHaveBeenCalledWith('gm-stations');
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
       expect(mockIo.emit).toHaveBeenCalledWith(
         'video:status',
         expect.objectContaining({
@@ -309,7 +309,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         lastUpdate: new Date().toISOString()
       });
 
-      expect(mockIo.to).toHaveBeenCalledWith('gm-stations');
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
       expect(mockIo.emit).toHaveBeenCalledWith(
         'score:updated',
         expect.objectContaining({
@@ -341,7 +341,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         multiplier: 1.5
       });
 
-      expect(mockIo.to).toHaveBeenCalledWith('gm-stations');
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
       expect(mockIo.emit).toHaveBeenCalledWith(
         'group:completed',
         expect.objectContaining({

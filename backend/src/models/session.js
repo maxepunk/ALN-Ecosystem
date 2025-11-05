@@ -48,7 +48,13 @@ class Session {
         playerDevices: 0,
         totalScans: 0,
         uniqueTokensScanned: [],
+        scannedTokensByDevice: {},  // Per-device duplicate detection tracking
       };
+    }
+
+    // Ensure scannedTokensByDevice exists (migration for old sessions)
+    if (!data.metadata.scannedTokensByDevice) {
+      data.metadata.scannedTokensByDevice = {};
     }
 
     this.validate(data);
@@ -299,6 +305,56 @@ class Session {
   canAcceptGmStation(maxGmStations) {
     const connectedGms = this.getConnectedDevicesByType('gm').length;
     return connectedGms < maxGmStations;
+  }
+
+  /**
+   * Get scanned tokens for a specific device
+   * @param {string} deviceId - Device ID
+   * @returns {Set<string>} Set of scanned token IDs
+   */
+  getDeviceScannedTokens(deviceId) {
+    if (!this.metadata.scannedTokensByDevice[deviceId]) {
+      this.metadata.scannedTokensByDevice[deviceId] = [];
+    }
+
+    // Return as Set for O(1) lookup performance
+    return new Set(this.metadata.scannedTokensByDevice[deviceId]);
+  }
+
+  /**
+   * Check if a device has already scanned a token
+   * @param {string} deviceId - Device ID
+   * @param {string} tokenId - Token ID
+   * @returns {boolean} True if device has scanned this token
+   */
+  hasDeviceScannedToken(deviceId, tokenId) {
+    const scannedTokens = this.getDeviceScannedTokens(deviceId);
+    return scannedTokens.has(tokenId);
+  }
+
+  /**
+   * Add a scanned token for a device
+   * @param {string} deviceId - Device ID
+   * @param {string} tokenId - Token ID to add
+   */
+  addDeviceScannedToken(deviceId, tokenId) {
+    if (!this.metadata.scannedTokensByDevice[deviceId]) {
+      this.metadata.scannedTokensByDevice[deviceId] = [];
+    }
+
+    // Only add if not already present
+    if (!this.metadata.scannedTokensByDevice[deviceId].includes(tokenId)) {
+      this.metadata.scannedTokensByDevice[deviceId].push(tokenId);
+    }
+  }
+
+  /**
+   * Get all scanned tokens for a device as array (for serialization)
+   * @param {string} deviceId - Device ID
+   * @returns {Array<string>} Array of scanned token IDs
+   */
+  getDeviceScannedTokensArray(deviceId) {
+    return this.metadata.scannedTokensByDevice[deviceId] || [];
   }
 }
 

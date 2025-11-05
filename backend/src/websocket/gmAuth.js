@@ -36,6 +36,9 @@ async function handleGmIdentify(socket, data, io) {
       version: socket.version || '1.0.0',
     };
 
+    // Extract deviceId for room joining
+    const deviceId = identifyData.deviceId;
+
     logger.info('GM already authenticated from handshake', {
       deviceId: identifyData.deviceId,
       socketId: socket.id,
@@ -67,21 +70,45 @@ async function handleGmIdentify(socket, data, io) {
       socket.disconnect(true);
       return;
     }
-    socket.join('gm-stations');
-    // Note: Removed else block - deviceType is always 'gm' (see line 44)
+
+    // PHASE 2.2 (P1.2): Join rooms in correct order
+    // Order matters: device room → type room → session room → team rooms
+
+    // 1. Device-specific room (for targeted messages like batch:ack)
+    socket.join(`device:${deviceId}`);
+    logger.debug('Socket joined device room', { deviceId, room: `device:${deviceId}` });
+
+    // 2. Device type room (for broadcast to all GMs)
+    socket.join('gm');
+    logger.debug('Socket joined type room', { deviceId, room: 'gm' });
 
     // Update session with device ONLY if session exists
     const session = sessionService.getCurrentSession();
     if (session) {
       await sessionService.updateDevice(device.toJSON());
-      // Join session room
+
+      // 3. Session room (legacy, maintained for compatibility)
       socket.join(`session:${session.id}`);
+      logger.debug('Socket joined session room', { deviceId, room: `session:${session.id}` });
+
+      // 4. Team rooms (for team-specific broadcasts in the future)
+      // Teams are stored in session.scores, not session.teams
+      const teams = session.scores ? session.scores.map(score => score.teamId) : [];
+      if (teams && teams.length > 0) {
+        teams.forEach(teamId => {
+          socket.join(`team:${teamId}`);
+          logger.debug('Socket joined team room', { deviceId, room: `team:${teamId}` });
+        });
+      }
     } else {
       // No session yet - GM is connecting to create one via Admin panel
       logger.info('GM connected without active session - awaiting session creation', {
         deviceId: socket.deviceId,
       });
     }
+
+    // Store rooms for tracking
+    socket.rooms = Array.from(socket.rooms);
 
     // Get current state
     const state = stateService.getCurrentState();
@@ -117,8 +144,24 @@ async function handleGmIdentify(socket, data, io) {
       };
     });
 
+    // PHASE 2.1 (P1.1): Get device-specific scanned tokens for state restoration
+    const deviceScannedTokens = session
+      ? Array.from(session.getDeviceScannedTokens(deviceId))
+      : [];
+
+    // Determine if this is a reconnection (Socket.io sets socket.recovered on recovery)
+    const isReconnection = socket.recovered || false;
+
+    logger.info('GM state synchronized', {
+      deviceId,
+      scannedCount: deviceScannedTokens.length,
+      reconnection: isReconnection,
+      socketId: socket.id
+    });
+
     // Send full state sync per AsyncAPI contract (sync:full event)
     // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
+    // PHASE 2.1 (P1.1): Added deviceScannedTokens and reconnection flag
     emitWrapped(socket, 'sync:full', {
       session: session ? session.toJSON() : null,
       scores: transactionService.getTeamScores(),
@@ -134,7 +177,11 @@ async function handleGmIdentify(socket, data, io) {
       systemStatus: {
         orchestrator: 'online',
         vlc: vlcConnected ? 'connected' : 'disconnected'
-      }
+      },
+      // PHASE 2.1 (P1.1): Include device-specific scanned tokens for state restoration
+      deviceScannedTokens,
+      // PHASE 2.1 (P1.1): Include reconnection flag for frontend notification
+      reconnection: isReconnection
     });
 
     // Confirm identification with contract-compliant response

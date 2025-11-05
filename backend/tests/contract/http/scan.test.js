@@ -45,7 +45,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw001',  // Valid token with video from ALN-TokenData
+        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         teamId: '001',
         deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
@@ -59,7 +59,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw001',  // Valid token with video from ALN-TokenData
+        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         teamId: '001',  // TODO Phase 2: Make optional per contract
         deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
@@ -75,7 +75,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw001',  // Valid token with video from ALN-TokenData
+        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01',
         teamId: '001',
         timestamp: new Date().toISOString()
@@ -111,11 +111,11 @@ describe('POST /api/scan', () => {
   });
 
   it('should return 409 when video already playing', async () => {
-    // Setup: Queue jaw001 video token first
+    // Setup: Queue jaw011 video token first
     await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw001',  // Only video token in ALN-TokenData
+        tokenId: 'jaw011',  // Only video token in ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01'
       })
       .expect(200);
@@ -128,7 +128,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw001',  // Same token - should reject because video still playing
+        tokenId: 'jaw011',  // Same token - should reject because video still playing
         deviceId: 'PLAYER_SCANNER_02'
       })
       .expect(409);
@@ -137,17 +137,26 @@ describe('POST /api/scan', () => {
     expect(response.body).toHaveProperty('status', 'rejected');
     expect(response.body).toHaveProperty('message');
     expect(response.body.message).toContain('Video already playing');
-    expect(response.body).toHaveProperty('tokenId', 'jaw001');
+    expect(response.body).toHaveProperty('tokenId', 'jaw011');
     expect(response.body).toHaveProperty('videoQueued', false);
     expect(response.body).toHaveProperty('waitTime');
   });
 });
 
 describe('POST /api/scan/batch', () => {
+  // Initialize services ONCE for all tests
+  beforeAll(async () => {
+    await initializeServices();
+  });
+
   // Test isolation: Ensure clean state before each test
   beforeEach(async () => {
     await resetAllServices();
     videoQueueService.reset();
+
+    // CRITICAL: Re-load tokens after reset
+    const tokens = tokenService.loadTokens();
+    await transactionService.init(tokens);
 
     // Create test session
     await sessionService.createSession({
@@ -165,9 +174,10 @@ describe('POST /api/scan/batch', () => {
     const response = await request(app.app)
       .post('/api/scan/batch')
       .send({
+        batchId: 'test-batch-001',  // PHASE 1.2 (P0.2): batchId required
         transactions: [
           {
-            tokenId: 'jaw001',  // Valid video token from ALN-TokenData
+            tokenId: 'jaw011',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           },
@@ -188,9 +198,10 @@ describe('POST /api/scan/batch', () => {
     const response = await request(app.app)
       .post('/api/scan/batch')
       .send({
+        batchId: `test-batch-${Date.now()}`,  // PHASE 1.2 (P0.2): batchId required (unique per test)
         transactions: [
           {
-            tokenId: 'jaw001',  // Valid video token from ALN-TokenData
+            tokenId: 'jaw011',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           }
@@ -207,6 +218,7 @@ describe('POST /api/scan/batch', () => {
     const response = await request(app.app)
       .post('/api/scan/batch')
       .send({
+        batchId: `test-batch-empty-${Date.now()}`,  // PHASE 1.2 (P0.2): batchId required (unique per test)
         transactions: []
       })
       .expect(200);
