@@ -5,6 +5,71 @@
 
 ---
 
+## ⚠️ CRITICAL: Submodule Management
+
+### Before Starting ANY Phase
+
+**ALWAYS initialize submodules first:**
+```bash
+git submodule update --init --recursive
+```
+
+This initializes:
+- ALN-TokenData (token definitions)
+- ALNScanner (GM Scanner frontend)
+  - ALNScanner/data (nested token data)
+- aln-memory-scanner (Player Scanner frontend)
+  - aln-memory-scanner/data (nested token data)
+- arduino-cyd-player-scanner (ESP32 firmware)
+
+**Why This Matters:**
+- Tests require submodule files to pass (788 passing tests vs 248 without)
+- Frontend changes are made in submodules (ALNScanner, aln-memory-scanner)
+- Missing submodules = 540 fewer passing tests
+
+### During Implementation
+
+When making changes to:
+- **GM Scanner:** Work in `ALNScanner/` submodule
+- **Player Scanner:** Work in `aln-memory-scanner/` submodule
+- **Backend:** Work in `backend/` (main repo)
+
+### Before Committing
+
+**Check submodule status:**
+```bash
+git submodule status --recursive
+```
+
+Expected output (clean):
+```
+ a25ffae ALN-TokenData (heads/main)
+ 74954a9 ALNScanner (heads/main)
+ 3ae3a0e ALNScanner/data (heads/main)
+ 25d447d aln-memory-scanner (heads/main)
+ 3ae3a0e aln-memory-scanner/data (heads/main)
+ 57d8ae5 arduino-cyd-player-scanner (heads/main)
+```
+
+If you see `+` or `-` prefix → Submodule changed, needs commit
+
+### Deployment
+
+**Update submodule references in main repo:**
+```bash
+cd ALNScanner
+git add .
+git commit -m "fix: socket cleanup on reconnection"
+git push origin main
+
+cd ../
+git add ALNScanner
+git commit -m "chore: update ALNScanner submodule with socket cleanup fix"
+git push origin feature/critical-data-integrity
+```
+
+---
+
 ## Key Simplifications
 
 ### ❌ REMOVED (Backward Compatibility)
