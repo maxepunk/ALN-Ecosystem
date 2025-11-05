@@ -307,6 +307,12 @@ async function cleanup() {
     discoveryService = null;
   }
 
+  // PHASE 1.4 (P0.4): Cleanup broadcast listeners BEFORE closing io
+  // This prevents listener leaks across startup/cleanup cycles
+  const { cleanupBroadcastListeners } = require('./websocket/broadcasts');
+  cleanupBroadcastListeners();
+  logger.debug('Broadcast listeners cleaned up');
+
   if (io) {
     // CRITICAL: Disconnect all sockets BEFORE closing server (Socket.io best practice)
     try {
