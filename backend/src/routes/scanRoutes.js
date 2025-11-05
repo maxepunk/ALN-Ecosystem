@@ -240,6 +240,7 @@ router.post('/batch', async (req, res) => {
         results.push({
           ...scanRequest,
           status: 'failed',
+          videoQueued: false,
           error: 'Token not recognized'
         });
         continue;
@@ -273,6 +274,7 @@ router.post('/batch', async (req, res) => {
       results.push({
         ...scanRequest,
         status: 'failed',
+        videoQueued: false,
         error: error.message
       });
     }
