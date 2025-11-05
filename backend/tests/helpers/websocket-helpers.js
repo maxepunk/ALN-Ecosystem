@@ -4,6 +4,7 @@
  */
 
 const io = require('socket.io-client');
+const { generateAdminToken } = require('../../src/middleware/auth');
 
 /**
  * Create a socket with automatic cleanup tracking
@@ -71,10 +72,15 @@ function waitForEvent(socket, eventOrEvents, timeout = 5000) {
 async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5000) {
   // If URL provided, create socket with handshake auth (production flow)
   // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
+
+  // PHASE 2.1 (P1.3): Generate valid JWT token for GM stations
+  // Middleware now validates tokens, so tests need real tokens
+  const token = deviceType === 'gm' ? generateAdminToken('test-admin') : undefined;
+
   const socket = typeof socketOrUrl === 'string'
     ? createTrackedSocket(socketOrUrl, {
         auth: {
-          token: 'test-jwt-token',
+          token,
           deviceId: deviceId,
           deviceType: deviceType,
           version: '1.0.0'

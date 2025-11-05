@@ -6,6 +6,7 @@
 const { Server } = require('socket.io');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { verifyToken } = require('../middleware/auth');
 
 /**
  * Create and configure Socket.io server
@@ -37,6 +38,53 @@ function createSocketServer(httpServer) {
     pingTimeout: config.websocket.pingTimeout,
     pingInterval: config.websocket.pingInterval,
     maxHttpBufferSize: config.websocket.maxPayloadSize,
+  });
+
+  // PHASE 2.1 (P1.3): Socket.io middleware for GM authentication
+  // Validates JWT tokens at handshake level BEFORE connection is established
+  io.use((socket, next) => {
+    const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
+
+    // Only GM stations require JWT authentication
+    if (deviceType === 'gm') {
+      // Validate required fields
+      if (!token) {
+        logger.warn('GM connection rejected: missing token', { socketId: socket.id });
+        return next(new Error('AUTH_REQUIRED: Token required for GM stations'));
+      }
+
+      if (!deviceId) {
+        logger.warn('GM connection rejected: missing deviceId', { socketId: socket.id });
+        return next(new Error('AUTH_REQUIRED: deviceId required'));
+      }
+
+      // Verify JWT token
+      const decoded = verifyToken(token);
+      if (!decoded || decoded.role !== 'admin') {
+        logger.warn('GM connection rejected: invalid token', {
+          socketId: socket.id,
+          deviceId
+        });
+        return next(new Error('AUTH_INVALID: Invalid or expired token'));
+      }
+
+      // Pre-authenticate socket - store auth data for connection handler
+      socket.isAuthenticated = true;
+      socket.authRole = decoded.role;
+      socket.authUserId = decoded.id;
+      socket.deviceId = deviceId;
+      socket.deviceType = deviceType;
+      socket.version = version || '1.0.0';
+
+      logger.info('GM station authenticated at handshake', {
+        deviceId,
+        socketId: socket.id,
+        version: socket.version
+      });
+    }
+
+    // Allow connection
+    next();
   });
 
   logger.info('Socket.io server created with configuration', {

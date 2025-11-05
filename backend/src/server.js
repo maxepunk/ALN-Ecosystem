@@ -55,41 +55,14 @@ function setupWebSocketHandlers(ioInstance) {
   ioInstance.on('connection', async (socket) => {
   logger.info('WebSocket connection established', { socketId: socket.id });
 
-  // Check for auth in handshake (Phase 1 fix: prevent undefined device)
-  // Extract auth from handshake per AsyncAPI contract (uses deviceId, not stationId)
-  const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
-
-  if (token && deviceId && deviceType === 'gm') {
-    // Pre-authenticate from handshake to prevent "undefined device"
-    try {
-      const { verifyToken } = require('./middleware/auth');
-      const decoded = verifyToken(token);
-
-      if (decoded && decoded.role === 'admin') {
-        // Store auth info immediately
-        socket.isAuthenticated = true;
-        socket.authRole = decoded.role;
-        socket.authUserId = decoded.id;
-        socket.deviceId = deviceId;
-        socket.deviceType = deviceType;
-        socket.version = version;
-
-        logger.info('GM station pre-authenticated from handshake', {
-          deviceId: deviceId,
-          socketId: socket.id
-        });
-
-        // Automatically trigger identification for pre-authenticated connections
-        // This replaces the need for the scanner to send gm:identify
-        await handleGmIdentify(socket, {
-          deviceId: deviceId,  // Per AsyncAPI contract
-          version,
-          token
-        }, ioInstance);
-      }
-    } catch (error) {
-      logger.warn('Handshake auth failed', { error: error.message, socketId: socket.id });
-    }
+  // PHASE 2.1 (P1.3): Authentication now handled by Socket.io middleware
+  // If socket is pre-authenticated (GM station), automatically trigger identification
+  if (socket.isAuthenticated && socket.deviceType === 'gm') {
+    await handleGmIdentify(socket, {
+      deviceId: socket.deviceId,
+      version: socket.version,
+      token: socket.handshake.auth.token
+    }, ioInstance);
   }
 
   // State sync request
