@@ -317,10 +317,35 @@ components:
                         example: ["001", "002", "003"]
                       metadata:
                         type: object
-                        example:
-                          gmStations: 2
-                          playerDevices: 3
-                          totalScans: 47
+                        properties:
+                          gmStations:
+                            type: integer
+                            description: Number of connected GM stations
+                            example: 2
+                          playerDevices:
+                            type: integer
+                            description: Number of connected player devices
+                            example: 3
+                          totalScans:
+                            type: integer
+                            description: Total number of scans in session
+                            example: 47
+                          uniqueTokensScanned:
+                            type: array
+                            items:
+                              type: string
+                            description: List of unique token IDs scanned
+                            example: ["kaa001", "kaa002", "kaa003"]
+                          scannedTokensByDevice:
+                            type: object
+                            description: Per-device scanned token tracking (Phase 1.1 P0.1)
+                            additionalProperties:
+                              type: array
+                              items:
+                                type: string
+                            example:
+                              GM_STATION_1: ["kaa001", "kaa002"]
+                              PLAYER_001: ["kaa003", "kaa004"]
                   - type: "null"
               scores:
                 type: array
