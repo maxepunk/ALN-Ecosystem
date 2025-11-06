@@ -267,6 +267,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token-123',
         teamId: '001',
         deviceId: 'test-device-1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         sessionId: session.id,
         timestamp: new Date().toISOString(),
         status: 'accepted',

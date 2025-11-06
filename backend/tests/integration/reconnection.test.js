@@ -43,23 +43,27 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
       // Step 3: Scan tokens
-      await fetch(`${testContext.httpUrl}/api/scan`, {
+      await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
       });
 
-      await fetch(`${testContext.httpUrl}/api/scan`, {
+      await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'kaa001',
           deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -95,12 +99,14 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 2: Connect and scan
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      const response1 = await fetch(`${testContext.httpUrl}/api/scan`, {
+      const response1 = await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -118,12 +124,14 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await waitForEvent(gm1, 'sync:full', 3000);
 
       // Step 4: Try to scan same token (should be rejected as duplicate)
-      const response2 = await fetch(`${testContext.httpUrl}/api/scan`, {
+      const response2 = await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -146,12 +154,14 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 2: GM_001 scans jaw011
       let gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      await fetch(`${testContext.httpUrl}/api/scan`, {
+      await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -160,12 +170,14 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 3: GM_002 scans kaa001
       const gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_002');
 
-      await fetch(`${testContext.httpUrl}/api/scan`, {
+      await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'kaa001',
           deviceId: 'GM_002',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -251,12 +263,14 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Initial connection and scan
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      await fetch(`${testContext.httpUrl}/api/scan`, {
+      await fetch(`${testContext.url}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })

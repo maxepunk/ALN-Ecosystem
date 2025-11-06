@@ -194,6 +194,7 @@ describe('TransactionService - Event Emission', () => {
         tokenId: 'test_video',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       };
 
@@ -323,6 +324,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -334,6 +336,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '002',
         deviceId: 'GM_02',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -355,6 +358,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session1.id);
       tx1.accept(100);
@@ -373,6 +377,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '002',
         deviceId: 'GM_02',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session2.id);
 
@@ -394,6 +399,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -405,6 +411,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '002',
         deviceId: 'GM_02',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -427,6 +434,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'new_token',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -575,6 +583,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -583,6 +592,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token2',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx2.accept(100);
@@ -667,6 +677,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -692,6 +703,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
           tokenId: `token${i}`,
           teamId: '001',
           deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           timestamp: new Date().toISOString()
         }, session.id);
         transactionService.addRecentTransaction(tx);
@@ -714,6 +726,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date('2025-01-01').toISOString()
       }, session.id);
 
@@ -721,6 +734,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token2',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date('2025-01-02').toISOString()
       }, session.id);
 
@@ -759,6 +773,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -799,6 +814,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -853,6 +869,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result1 = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -864,6 +881,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result2 = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -876,6 +894,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -892,6 +911,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result1 = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -906,6 +926,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result2 = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_002',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '002',
         timestamp: new Date().toISOString()
       }, session);
@@ -919,6 +940,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -933,6 +955,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -958,6 +981,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result1 = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -968,6 +992,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result2 = await transactionService.processScan({
         tokenId: 'kaa002',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -984,6 +1009,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -1002,6 +1028,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, session);
@@ -1018,6 +1045,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const result = await transactionService.processScan({
         tokenId: 'kaa001',
         deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         teamId: '001',
         timestamp: new Date().toISOString()
       }, restoredSession);

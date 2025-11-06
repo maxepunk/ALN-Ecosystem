@@ -76,6 +76,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -100,6 +102,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',  // Same token
           teamId: '001',        // Same team
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -132,6 +136,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: 'tac001',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -147,6 +153,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: 'tac001',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -170,6 +178,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -191,6 +201,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',  // Same token
           teamId: '002',        // Different team
           deviceId: 'GM_DUP_2',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -227,6 +239,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: 'rat001',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -238,6 +252,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: 'rat001',  // Same token
           teamId: '002',
           deviceId: 'GM_DUP_2',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -277,6 +293,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -295,6 +313,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',  // Same token
           teamId: '002',
           deviceId: 'GM_DUP_2',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'detective'     // Detective mode
         },
         timestamp: new Date().toISOString()
@@ -320,6 +340,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: 'tac001',  // Unclaimed token
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'detective'
         },
         timestamp: new Date().toISOString()
@@ -340,6 +362,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: 'tac001',  // Same token
           teamId: '002',
           deviceId: 'GM_DUP_2',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -368,6 +392,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -390,6 +416,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',  // Same token
           teamId: '002',
           deviceId: 'GM_DUP_2',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -418,6 +446,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -446,6 +476,8 @@ describe('Duplicate Detection Integration', () => {
           tokenId: '534e2b03',  // Same token as first session
           teamId: '001',
           deviceId: 'GM_DUP_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()

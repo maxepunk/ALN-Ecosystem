@@ -74,6 +74,8 @@ describe('Error Propagation Integration', () => {
           tokenId: 'invalid_token',  // Explicitly invalid (see transactionService.js line 118-121)
           teamId: '001',
           deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -107,6 +109,8 @@ describe('Error Propagation Integration', () => {
           tokenId: 'NONEXISTENT_FAKE_TOKEN_12345',
           teamId: '001',
           deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -132,6 +136,8 @@ describe('Error Propagation Integration', () => {
           tokenId: '534e2b03',
           // Missing teamId (required)
           deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -185,6 +191,8 @@ describe('Error Propagation Integration', () => {
             tokenId: `INVALID_${i}`,
             teamId: '001',
             deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
           },
           timestamp: new Date().toISOString()
@@ -212,6 +220,8 @@ describe('Error Propagation Integration', () => {
           tokenId: '534e2b03',  // Valid token
           teamId: '001',
           deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -239,6 +249,8 @@ describe('Error Propagation Integration', () => {
             tokenId: 'invalid_token',
             teamId: '001',
             deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
           },
           timestamp: new Date().toISOString()
@@ -250,6 +262,8 @@ describe('Error Propagation Integration', () => {
             tokenId: 'ANOTHER_INVALID_TOKEN',
             teamId: '002',
             deviceId: 'GM_ERROR_2',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
           },
           timestamp: new Date().toISOString()
@@ -269,6 +283,8 @@ describe('Error Propagation Integration', () => {
             tokenId: '534e2b03',
             teamId: '001',
             deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
           },
           timestamp: new Date().toISOString()
@@ -351,6 +367,8 @@ describe('Error Propagation Integration', () => {
           tokenId: 'invalid_token',
           teamId: '001',
           deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -366,6 +384,8 @@ describe('Error Propagation Integration', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -403,6 +423,8 @@ describe('Error Propagation Integration', () => {
             tokenId: tx.tokenId,
             teamId: '001',
             deviceId: 'GM_ERROR_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
           },
           timestamp: new Date().toISOString()

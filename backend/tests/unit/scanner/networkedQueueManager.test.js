@@ -40,7 +40,7 @@ describe('NetworkedQueueManager - Offline Queue', () => {
     it('should load persisted queue from localStorage on init', () => {
       // Pre-populate localStorage
       const savedQueue = [
-        { tokenId: 'abc123', teamId: '001', deviceId: 'GM_TEST' }
+        { tokenId: 'abc123', teamId: '001', deviceId: 'GM_TEST' , deviceType: 'gm' }
       ];
       localStorage.setItem('networkedTempQueue', JSON.stringify(savedQueue));
 
@@ -65,6 +65,7 @@ describe('NetworkedQueueManager - Offline Queue', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket',
         timestamp: new Date().toISOString()
       };
@@ -82,6 +83,7 @@ describe('NetworkedQueueManager - Offline Queue', () => {
         tokenId: 'rat001',
         teamId: '002',
         deviceId: 'GM_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'detective',
         timestamp: new Date().toISOString()
       };
@@ -99,6 +101,7 @@ describe('NetworkedQueueManager - Offline Queue', () => {
         tokenId: 'hos001',
         teamId: '001',
         deviceId: 'GM_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket',
         timestamp: new Date().toISOString()
       };
@@ -125,9 +128,9 @@ describe('NetworkedQueueManager - Offline Queue', () => {
       mockConnection.socket.connected = false;
 
       const transactions = [
-        { tokenId: 'abc1', teamId: '001', deviceId: 'GM_TEST', mode: 'blackmarket' },
-        { tokenId: 'abc2', teamId: '001', deviceId: 'GM_TEST', mode: 'blackmarket' },
-        { tokenId: 'abc3', teamId: '002', deviceId: 'GM_TEST', mode: 'detective' }
+        { tokenId: 'abc1', teamId: '001', deviceId: 'GM_TEST', deviceType: 'gm', mode: 'blackmarket' },
+        { tokenId: 'abc2', teamId: '001', deviceId: 'GM_TEST', deviceType: 'gm', mode: 'blackmarket' },
+        { tokenId: 'abc3', teamId: '002', deviceId: 'GM_TEST', deviceType: 'gm', mode: 'detective' }
       ];
 
       transactions.forEach(tx => queueManager.queueTransaction(tx));
@@ -302,6 +305,7 @@ describe('NetworkedQueueManager - Offline Queue', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_TEST',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket',
         timestamp: '2025-10-06T12:00:00.000Z'
       };
@@ -325,6 +329,7 @@ describe('NetworkedQueueManager - Offline Queue', () => {
         tokenId: 'rat001',
         teamId: '002',
         deviceId: 'GM_STATION_1',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'detective',
         timestamp: new Date().toISOString()
       };

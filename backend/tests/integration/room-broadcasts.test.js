@@ -123,7 +123,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       });
 
       // Send batch from GM_001 (ACK should go to device:GM_001 only)
-      const response = await fetch(`${testContext.httpUrl}/api/scan/batch`, {
+      const response = await fetch(`${testContext.url}/api/scan/batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -131,6 +131,8 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
           transactions: [{
             tokenId: 'jaw011',
             deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
             teamId: '001',
             mode: 'networked'
           }]
