@@ -171,12 +171,29 @@ class TransactionService extends EventEmitter {
    * @private
    */
   isDuplicate(transaction, session) {
+    // P0.1 CORRECTION: Device-type-specific duplicate detection
+    // CRITICAL: Only GM scanners reject duplicates
+    // Player and ESP32 scanners MUST be allowed to re-scan tokens (content re-viewing)
+
+    if (transaction.deviceType !== 'gm') {
+      // Players and ESP32 devices: ALWAYS allow duplicates
+      logger.debug('Duplicate check skipped for non-GM device', {
+        deviceType: transaction.deviceType,
+        deviceId: transaction.deviceId,
+        tokenId: transaction.tokenId
+      });
+      return false;  // NOT a duplicate for player/ESP32
+    }
+
+    // GM Scanner duplicate detection below
+
     // PHASE 1.1 (P0.1): Server-side per-device duplicate detection
-    // Check if THIS DEVICE has already scanned this token
+    // Check if THIS GM DEVICE has already scanned this token
     if (session.hasDeviceScannedToken(transaction.deviceId, transaction.tokenId)) {
-      logger.info('Duplicate scan detected (per-device)', {
+      logger.info('Duplicate scan detected (per-device, GM only)', {
         tokenId: transaction.tokenId,
-        deviceId: transaction.deviceId
+        deviceId: transaction.deviceId,
+        deviceType: transaction.deviceType
       });
       return true;
     }
@@ -184,12 +201,17 @@ class TransactionService extends EventEmitter {
     // FR-009: Detect and prevent duplicate token scans for the ENTIRE SESSION
     // FIRST-COME-FIRST-SERVED: Once ANY team claims a token, no other team can claim it
 
-    // Check if this token was already claimed by ANY team
+    // Check if this token was already claimed by ANY team (GM scanners only)
     for (const existing of session.transactions || []) {
       if (existing.tokenId === transaction.tokenId &&
           existing.status === 'accepted' &&
           existing.sessionId === session.id) {
         // Token already claimed - reject it (first-come-first-served)
+        logger.info('Duplicate scan detected (first-come-first-served)', {
+          tokenId: transaction.tokenId,
+          claimedBy: existing.teamId,
+          attemptedBy: transaction.teamId
+        });
         return true;
       }
     }

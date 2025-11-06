@@ -111,6 +111,7 @@ class Transaction {
       tokenId: this.tokenId,
       teamId: this.teamId,
       deviceId: this.deviceId,
+      deviceType: this.deviceType,  // P0.1 Correction: Include deviceType
       timestamp: this.timestamp,
       sessionId: this.sessionId,
       status: this.status,
@@ -136,11 +137,20 @@ class Transaction {
    * @returns {Transaction}
    */
   static fromScanRequest(scanRequest, sessionId) {
+    // P0.1 Correction: Validate deviceType is provided
+    if (!scanRequest.deviceType) {
+      throw new Error('deviceType is required in scan request');
+    }
+    if (!['gm', 'player', 'esp32'].includes(scanRequest.deviceType)) {
+      throw new Error(`Invalid deviceType: ${scanRequest.deviceType}. Must be 'gm', 'player', or 'esp32'`);
+    }
+
     return new Transaction({
       id: scanRequest.id, // Use provided ID if available
       tokenId: scanRequest.tokenId,
       teamId: scanRequest.teamId,
       deviceId: scanRequest.deviceId,
+      deviceType: scanRequest.deviceType,  // P0.1 Correction: Include deviceType
       mode: scanRequest.mode || 'blackmarket', // AsyncAPI contract field (Decision #4)
       timestamp: scanRequest.timestamp || new Date().toISOString(),
       sessionId: sessionId,

@@ -12,18 +12,21 @@
  */
 
 const transactionService = require('../../../src/services/transactionService');
+const sessionService = require('../../../src/services/sessionService');
+const { resetAllServices } = require('../../helpers/service-reset');
 const Transaction = require('../../../src/models/transaction');
 const Token = require('../../../src/models/token');
-const Session = require('../../../src/models/session');
 
 describe('TransactionService - Device-Type Specific Duplicate Detection', () => {
-  let session;
+  beforeEach(async () => {
+    // Reset all services
+    await resetAllServices();
 
-  beforeEach(() => {
-    // Reset service state
-    transactionService.tokens.clear();
-    transactionService.teamScores.clear();
-    transactionService.recentTransactions = [];
+    // Re-register listeners after reset
+    if (!transactionService.sessionListenerRegistered) {
+      transactionService.registerSessionListener();
+      transactionService.sessionListenerRegistered = true;
+    }
 
     // Initialize with test tokens
     const testTokens = [
@@ -63,18 +66,26 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
 
     transactionService.init(testTokens);
 
-    // Create test session
-    session = new Session({
-      id: 'test-session-001',
+    // Create test session using sessionService
+    await sessionService.createSession({
       name: 'Test Session',
-      teams: ['001', '002'],
-      status: 'active',
-      mode: 'blackmarket'
+      teams: ['001', '002']
     });
+  });
+
+  afterEach(async () => {
+    // Cleanup
+    if (sessionService.currentSession) {
+      await sessionService.endSession();
+    }
+    sessionService.removeAllListeners();
+    transactionService.removeAllListeners();
   });
 
   describe('GM Scanner Duplicate Detection', () => {
     it('should REJECT duplicate scans from same GM scanner', () => {
+      const session = sessionService.getCurrentSession();
+
       // Scan 1: GM_STATION_1 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -107,6 +118,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should ALLOW same token from different GM scanners', () => {
+      const session = sessionService.getCurrentSession();
       // Scan 1: GM_STATION_1 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -137,6 +149,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should ALLOW different tokens from same GM scanner', () => {
+      const session = sessionService.getCurrentSession();
       // Scan 1: GM_STATION_1 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -168,6 +181,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
 
   describe('Player Scanner Duplicate Detection', () => {
     it('should ALLOW duplicate scans from same Player scanner (content re-viewing)', () => {
+      const session = sessionService.getCurrentSession();
       // Scan 1: PLAYER_001 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -200,6 +214,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should ALLOW multiple scans from different Player scanners', () => {
+      const session = sessionService.getCurrentSession();
       // Scan 1: PLAYER_001 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -228,6 +243,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should track Player scans in session metadata (for analytics)', () => {
+      const session = sessionService.getCurrentSession();
       // PLAYER_001 scans kaa001 three times
       for (let i = 0; i < 3; i++) {
         const scanRequest = {
@@ -262,6 +278,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
 
   describe('ESP32 Scanner Duplicate Detection', () => {
     it('should ALLOW duplicate scans from same ESP32 scanner (content re-viewing)', () => {
+      const session = sessionService.getCurrentSession();
       // Scan 1: ESP32_001 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -294,6 +311,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should ALLOW multiple scans from different ESP32 scanners', () => {
+      const session = sessionService.getCurrentSession();
       // Scan 1: ESP32_001 scans kaa001
       const scanRequest1 = {
         tokenId: 'kaa001',
@@ -324,6 +342,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
 
   describe('Mixed Device Type Scenarios', () => {
     it('should handle GM duplicate check while allowing Player/ESP32 duplicates', () => {
+      const session = sessionService.getCurrentSession();
       // GM scanner scans kaa001
       const gmScan1 = {
         tokenId: 'kaa001',
@@ -375,6 +394,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should validate deviceType is provided', () => {
+      const session = sessionService.getCurrentSession();
       const scanRequestNoType = {
         tokenId: 'kaa001',
         deviceId: 'SOME_DEVICE',
@@ -389,6 +409,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     });
 
     it('should validate deviceType is valid', () => {
+      const session = sessionService.getCurrentSession();
       const scanRequestInvalidType = {
         tokenId: 'kaa001',
         deviceId: 'SOME_DEVICE',
@@ -405,6 +426,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
 
   describe('Session Metadata Tracking', () => {
     it('should track all device types in scannedTokensByDevice', () => {
+      const session = sessionService.getCurrentSession();
       // GM scan
       transactionService.processScan({
         tokenId: 'kaa001',
