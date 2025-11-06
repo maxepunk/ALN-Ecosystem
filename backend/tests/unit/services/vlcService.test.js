@@ -85,7 +85,7 @@ describe('VLCService', () => {
       // ARRANGE
       mockAxiosInstance.get.mockResolvedValue({
         status: 200,
-        data: { state: 'playing' }
+        data: { state: 'playing', loop: true } // Mock loop enabled so setLoop(false) will toggle
       });
 
       // ACT
@@ -100,11 +100,11 @@ describe('VLCService', () => {
         })
       );
 
-      // Verify loop was disabled
+      // Verify loop was toggled (setLoop uses pl_loop, not pl_repeat)
       expect(mockAxiosInstance.get).toHaveBeenCalledWith(
         '/requests/status.json',
         expect.objectContaining({
-          params: { command: 'pl_repeat' }
+          params: { command: 'pl_loop' }
         })
       );
 

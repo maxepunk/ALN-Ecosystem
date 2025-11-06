@@ -8,6 +8,7 @@ const { connectAndIdentify, waitForEvent, createTrackedSocket } = require('../..
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
+const { generateAdminToken } = require('../../../src/middleware/auth');
 
 describe('Session Events - Contract Validation', () => {
   let testContext;
@@ -26,6 +27,22 @@ describe('Session Events - Contract Validation', () => {
   beforeEach(async () => {
     // Reset services to clean state
     await resetAllServices();
+
+    // Re-setup broadcast listeners after reset
+    const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
+    const stateService = require('../../../src/services/stateService');
+    const videoQueueService = require('../../../src/services/videoQueueService');
+    const offlineQueueService = require('../../../src/services/offlineQueueService');
+    const transactionService = require('../../../src/services/transactionService');
+
+    cleanupBroadcastListeners();
+    setupBroadcastListeners(testContext.io, {
+      sessionService,
+      stateService,
+      videoQueueService,
+      offlineQueueService,
+      transactionService
+    });
 
     // Connect real WebSocket (GM Scanner simulation)
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_PHASE3');
@@ -86,17 +103,26 @@ describe('Session Events - Contract Validation', () => {
       // Setup: Create socket with handshake auth (production flow)
       // sync:full is sent automatically after successful handshake auth
       // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
+      // IMPORTANT: Use autoConnect: false to set up listener BEFORE connecting
+      const token = generateAdminToken('test-admin');
       socket = createTrackedSocket(testContext.socketUrl, {
+        autoConnect: false,
         auth: {
-          token: 'test-jwt-token',
+          token: token,
           deviceId: 'TEST_GM_SYNC',
           deviceType: 'gm',
           version: '1.0.0'
         }
       });
 
+      // Setup listener BEFORE connecting to avoid race condition
+      const eventPromise = waitForEvent(socket, 'sync:full');
+
+      // Now connect
+      socket.connect();
+
       // Wait: For sync:full (auto-sent after handshake auth per contract)
-      const event = await waitForEvent(socket, 'sync:full');
+      const event = await eventPromise;
 
       // Validate: Wrapped envelope structure
       expect(event).toHaveProperty('event', 'sync:full');

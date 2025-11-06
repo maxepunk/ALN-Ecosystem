@@ -260,17 +260,23 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         teams: ['001']
       });
 
+      const session = sessionService.getCurrentSession();
+      const { v4: uuidv4 } = require('uuid');
       const transaction = {
-        id: 'tx-001',
+        id: uuidv4(),
         tokenId: 'token-123',
         teamId: '001',
-        timestamp: new Date().toISOString()
+        deviceId: 'test-device-1',
+        sessionId: session.id,
+        timestamp: new Date().toISOString(),
+        status: 'accepted',
+        points: 10
       };
 
       await sessionService.addTransaction(transaction);
 
-      const session = sessionService.getCurrentSession();
-      expect(session.transactions).toContain(transaction);
+      const updatedSession = sessionService.getCurrentSession();
+      expect(updatedSession.transactions).toContain(transaction);
     });
 
     it('should handle addTransaction when no current session', async () => {
