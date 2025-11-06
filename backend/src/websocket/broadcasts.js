@@ -59,7 +59,7 @@ function setupBroadcastListeners(io, services) {
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
-  addTrackedListener(sessionService, 'session:created', (session) => {
+  addTrackedListener(sessionService, 'session:created', async (session) => {
     // Broadcast session update to all clients
     emitWrapped(io, 'session:update', {
       id: session.id,              // Decision #4: 'id' field within resource
@@ -73,7 +73,8 @@ function setupBroadcastListeners(io, services) {
 
     // Initialize all currently connected devices into the new session
     // This handles devices that connected before session existed
-    initializeSessionDevices(io, session);
+    // AWAIT to ensure all devices are registered before continuing
+    await initializeSessionDevices(io, session);
 
     logger.info('Broadcasted session:update (created)', { sessionId: session.id, status: session.status });
   });
@@ -507,11 +508,13 @@ function setupBroadcastListeners(io, services) {
  * @param {Server} io - Socket.io server instance
  * @param {Session} session - Newly created session
  */
-function initializeSessionDevices(io, session) {
+async function initializeSessionDevices(io, session) {
   const sessionService = require('../services/sessionService');
   const sockets = Array.from(io.sockets.sockets.values());
   let devicesAdded = 0;
 
+  // CRITICAL FIX: Process devices sequentially to prevent race conditions
+  // where device:connected broadcasts fire before all devices are added
   for (const socket of sockets) {
     if (socket.isAuthenticated && socket.deviceId) {
       // Create device data from socket information
@@ -526,7 +529,9 @@ function initializeSessionDevices(io, session) {
       };
 
       // Add to session.connectedDevices (updates existing or creates new)
-      sessionService.updateDevice(deviceData);
+      // AWAIT to ensure device is fully added before processing next device
+      // This prevents race condition where broadcasts fire with incomplete device list
+      await sessionService.updateDevice(deviceData);
 
       // Join Socket.IO room for session-specific broadcasts (transaction:new, etc)
       socket.join(`session:${session.id}`);
