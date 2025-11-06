@@ -46,7 +46,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
   describe('POST /api/scan - Request Structure', () => {
 
     it('should include all required fields per OpenAPI contract', async () => {
-      // Contract requires: tokenId, deviceId, timestamp
+      // Contract requires: tokenId, deviceId, deviceType, timestamp
       orchestrator.connected = true;
 
       await orchestrator.scanToken('test_token_001', '001');
@@ -60,6 +60,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Verify required fields present
       expect(request.body).toHaveProperty('tokenId');
       expect(request.body).toHaveProperty('deviceId');
+      expect(request.body).toHaveProperty('deviceType');
       expect(request.body).toHaveProperty('timestamp');
 
       // Verify Content-Type header
@@ -116,6 +117,27 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Verify length constraints
       expect(request.body.deviceId.length).toBeGreaterThanOrEqual(1);
       expect(request.body.deviceId.length).toBeLessThanOrEqual(100);
+    });
+
+    it('should include deviceType field matching contract enum (Phase 3 P2.1)', async () => {
+      // Contract: deviceType must be 'player' or 'esp32' (Phase 3 P0.1)
+      orchestrator.connected = true;
+
+      await orchestrator.scanToken('test_token', '001');
+
+      const request = getLastFetchCall();
+
+      // Verify deviceType is present
+      expect(request.body).toHaveProperty('deviceType');
+
+      // Verify deviceType is string
+      expect(typeof request.body.deviceType).toBe('string');
+
+      // Verify deviceType matches enum (player or esp32)
+      expect(['player', 'esp32']).toContain(request.body.deviceType);
+
+      // For web player scanner, should be 'player'
+      expect(request.body.deviceType).toBe('player');
     });
 
     it('should include teamId when provided and format as 3-digit string', async () => {
@@ -192,16 +214,21 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
 
       const request = getLastFetchCall();
 
-      // Each transaction must have: tokenId, deviceId, timestamp
+      // Each transaction must have: tokenId, deviceId, deviceType, timestamp
       request.body.transactions.forEach(txn => {
         expect(txn).toHaveProperty('tokenId');
         expect(txn).toHaveProperty('deviceId');
+        expect(txn).toHaveProperty('deviceType');
         expect(txn).toHaveProperty('timestamp');
 
         // Verify types
         expect(typeof txn.tokenId).toBe('string');
         expect(typeof txn.deviceId).toBe('string');
+        expect(typeof txn.deviceType).toBe('string');
         expect(typeof txn.timestamp).toBe('string');
+
+        // Verify deviceType enum (Phase 3 P2.1)
+        expect(['player', 'esp32']).toContain(txn.deviceType);
 
         // Verify timestamp format
         expect(txn.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
