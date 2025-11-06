@@ -23,7 +23,9 @@ describe('NetworkedQueueManager - Offline Queue', () => {
       socket: {
         connected: false,
         emit: jest.fn(),
-        once: jest.fn()
+        once: jest.fn(),
+        on: jest.fn(),
+        off: jest.fn()
       }
     };
 
@@ -450,6 +452,181 @@ describe('NetworkedQueueManager - Offline Queue', () => {
 
       expect(queueManager.tempQueue).toHaveLength(0);
       expect(localStorage.getItem('networkedTempQueue')).toBeNull();
+    });
+  });
+
+  describe('Event Listener Cleanup (Bug #3)', () => {
+    beforeEach(() => {
+      // Mock timer functions
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should cleanup event listener on timeout', async () => {
+      const transaction = {
+        tokenId: 'timeout-test',
+        teamId: '001',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      // Track socket.on and socket.off calls
+      const onSpy = jest.spyOn(mockConnection.socket, 'on');
+      const offSpy = jest.spyOn(mockConnection.socket, 'off');
+
+      // Start replay (will timeout after 30s)
+      const replayPromise = queueManager.replayTransaction(transaction);
+
+      // Verify listener registered
+      expect(onSpy).toHaveBeenCalledWith('transaction:result', expect.any(Function));
+      const registeredHandler = onSpy.mock.calls[0][1];
+
+      // Fast-forward past timeout (30s)
+      jest.advanceTimersByTime(30000);
+
+      // Wait for promise to reject
+      await expect(replayPromise).rejects.toThrow(/Transaction replay timeout/);
+
+      // Verify listener was removed
+      expect(offSpy).toHaveBeenCalledWith('transaction:result', registeredHandler);
+
+      // Verify handler is not in activeHandlers Map
+      const handlerKey = `${transaction.tokenId}-${transaction.teamId}`;
+      expect(queueManager.activeHandlers.has(handlerKey)).toBe(false);
+    });
+
+    it('should cleanup event listener on successful result', async () => {
+      const transaction = {
+        tokenId: 'success-test',
+        teamId: '002',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'detective',
+        timestamp: new Date().toISOString()
+      };
+
+      // Track socket.on and socket.off calls
+      const onSpy = jest.spyOn(mockConnection.socket, 'on');
+      const offSpy = jest.spyOn(mockConnection.socket, 'off');
+
+      // Start replay
+      const replayPromise = queueManager.replayTransaction(transaction);
+
+      // Verify listener registered
+      expect(onSpy).toHaveBeenCalledWith('transaction:result', expect.any(Function));
+      const registeredHandler = onSpy.mock.calls[0][1];
+
+      // Simulate successful result from backend
+      const successResult = {
+        event: 'transaction:result',
+        data: {
+          tokenId: 'success-test',
+          teamId: '002',
+          status: 'success',
+          points: 500
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Trigger the handler (simulating backend response)
+      registeredHandler(successResult);
+
+      // Wait for promise to resolve
+      const result = await replayPromise;
+      expect(result.status).toBe('success');
+
+      // Verify listener was removed
+      expect(offSpy).toHaveBeenCalledWith('transaction:result', registeredHandler);
+
+      // Verify handler is not in activeHandlers Map
+      const handlerKey = `${transaction.tokenId}-${transaction.teamId}`;
+      expect(queueManager.activeHandlers.has(handlerKey)).toBe(false);
+    });
+
+    it('should cleanup event listener on error result', async () => {
+      const transaction = {
+        tokenId: 'error-test',
+        teamId: '003',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      // Track socket.on and socket.off calls
+      const onSpy = jest.spyOn(mockConnection.socket, 'on');
+      const offSpy = jest.spyOn(mockConnection.socket, 'off');
+
+      // Start replay
+      const replayPromise = queueManager.replayTransaction(transaction);
+
+      // Verify listener registered
+      expect(onSpy).toHaveBeenCalledWith('transaction:result', expect.any(Function));
+      const registeredHandler = onSpy.mock.calls[0][1];
+
+      // Simulate error result from backend
+      const errorResult = {
+        event: 'transaction:result',
+        data: {
+          tokenId: 'error-test',
+          teamId: '003',
+          status: 'error',
+          message: 'Token not found'
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Trigger the handler
+      registeredHandler(errorResult);
+
+      // Wait for promise to reject
+      await expect(replayPromise).rejects.toThrow('Token not found');
+
+      // Verify listener was removed
+      expect(offSpy).toHaveBeenCalledWith('transaction:result', registeredHandler);
+
+      // Verify handler is not in activeHandlers Map
+      const handlerKey = `${transaction.tokenId}-${transaction.teamId}`;
+      expect(queueManager.activeHandlers.has(handlerKey)).toBe(false);
+    });
+
+    it('should track multiple concurrent replays without leaks', async () => {
+      const transactions = [
+        { tokenId: 'concurrent1', teamId: '001', deviceId: 'GM_TEST', deviceType: 'gm', mode: 'blackmarket' },
+        { tokenId: 'concurrent2', teamId: '001', deviceId: 'GM_TEST', deviceType: 'gm', mode: 'blackmarket' },
+        { tokenId: 'concurrent3', teamId: '002', deviceId: 'GM_TEST', deviceType: 'gm', mode: 'detective' }
+      ];
+
+      // Start all replays concurrently
+      const promises = transactions.map(tx => queueManager.replayTransaction(tx));
+
+      // Should have 3 active handlers
+      expect(queueManager.activeHandlers.size).toBe(3);
+
+      // Resolve first two
+      mockConnection.socket.on.mock.calls[0][1]({
+        data: { tokenId: 'concurrent1', teamId: '001', status: 'success' }
+      });
+      mockConnection.socket.on.mock.calls[1][1]({
+        data: { tokenId: 'concurrent2', teamId: '001', status: 'success' }
+      });
+
+      await Promise.all(promises.slice(0, 2));
+
+      // Should have 1 active handler remaining
+      expect(queueManager.activeHandlers.size).toBe(1);
+
+      // Timeout the last one
+      jest.advanceTimersByTime(30000);
+      await expect(promises[2]).rejects.toThrow(/timeout/);
+
+      // All handlers should be cleaned up
+      expect(queueManager.activeHandlers.size).toBe(0);
     });
   });
 });
