@@ -327,6 +327,7 @@ paths:
               required:
                 - tokenId
                 - deviceId
+                - deviceType
               properties:
                 tokenId:
                   type: string
@@ -349,6 +350,14 @@ paths:
                   minLength: 1
                   maxLength: 100
                   example: "PLAYER_SCANNER_01"
+                deviceType:
+                  type: string
+                  enum: [player, esp32]
+                  description: |
+                    Device type for duplicate detection behavior (Phase 3 P0.1).
+                    - player: Web-based player scanner (allows duplicate scans for content re-viewing)
+                    - esp32: Hardware ESP32 scanner (allows duplicate scans for content re-viewing)
+                  example: "player"
                 timestamp:
                   type: string
                   format: date-time
@@ -537,6 +546,7 @@ paths:
                     required:
                       - tokenId
                       - deviceId
+                      - deviceType
                     properties:
                       tokenId:
                         type: string
@@ -551,6 +561,11 @@ paths:
                         type: string
                         description: Player Scanner device ID
                         example: "PLAYER_SCANNER_01"
+                      deviceType:
+                        type: string
+                        enum: [player, esp32]
+                        description: Device type for duplicate detection behavior (Phase 3 P0.1)
+                        example: "player"
                       timestamp:
                         type: string
                         format: date-time
@@ -562,13 +577,16 @@ paths:
                 - tokenId: "534e2b02"
                   teamId: "001"
                   deviceId: "PLAYER_SCANNER_01"
+                  deviceType: "player"
                   timestamp: "2025-09-30T14:25:00.000Z"
                 - tokenId: "tac001"
                   deviceId: "PLAYER_SCANNER_01"
+                  deviceType: "player"
                   timestamp: "2025-09-30T14:26:30.000Z"
                 - tokenId: "534e2b03"
                   teamId: "002"
                   deviceId: "PLAYER_SCANNER_01"
+                  deviceType: "player"
                   timestamp: "2025-09-30T14:27:15.000Z"
       responses:
         '200':
