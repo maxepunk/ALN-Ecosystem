@@ -27,6 +27,22 @@ describe('Transaction Events - Contract Validation', () => {
     // Reset services to clean state (follow session-events.test.js pattern)
     await resetAllServices();
 
+    // Re-setup broadcast listeners after reset
+    const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
+    const stateService = require('../../../src/services/stateService');
+    const videoQueueService = require('../../../src/services/videoQueueService');
+    const offlineQueueService = require('../../../src/services/offlineQueueService');
+    const transactionService = require('../../../src/services/transactionService');
+
+    cleanupBroadcastListeners();
+    setupBroadcastListeners(testContext.io, {
+      sessionService,
+      stateService,
+      videoQueueService,
+      offlineQueueService,
+      transactionService
+    });
+
     // Create session for transaction tests
     await sessionService.createSession({
       name: 'Transaction Test Session',
@@ -56,6 +72,7 @@ describe('Transaction Events - Contract Validation', () => {
           tokenId: '534e2b03',  // Real token: Technical, rating=3
           teamId: '001',
           deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',  // P0.1: Required for device-type-specific behavior
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -87,6 +104,7 @@ describe('Transaction Events - Contract Validation', () => {
           tokenId: 'tac001',  // Real token: Personal, rating=1
           teamId: '001',
           deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',  // P0.1: Required for device-type-specific behavior
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()

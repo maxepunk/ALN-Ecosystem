@@ -317,10 +317,35 @@ components:
                         example: ["001", "002", "003"]
                       metadata:
                         type: object
-                        example:
-                          gmStations: 2
-                          playerDevices: 3
-                          totalScans: 47
+                        properties:
+                          gmStations:
+                            type: integer
+                            description: Number of connected GM stations
+                            example: 2
+                          playerDevices:
+                            type: integer
+                            description: Number of connected player devices
+                            example: 3
+                          totalScans:
+                            type: integer
+                            description: Total number of scans in session
+                            example: 47
+                          uniqueTokensScanned:
+                            type: array
+                            items:
+                              type: string
+                            description: List of unique token IDs scanned
+                            example: ["kaa001", "kaa002", "kaa003"]
+                          scannedTokensByDevice:
+                            type: object
+                            description: Per-device scanned token tracking (Phase 1.1 P0.1)
+                            additionalProperties:
+                              type: array
+                              items:
+                                type: string
+                            example:
+                              GM_STATION_1: ["kaa001", "kaa002"]
+                              PLAYER_001: ["kaa003", "kaa004"]
                   - type: "null"
               scores:
                 type: array
@@ -1265,6 +1290,96 @@ components:
             format: date-time
             description: Event timestamp
             example: "2025-10-15T19:10:00.000Z"
+
+    BatchAck:
+      name: batch:ack
+      title: Batch Upload Acknowledgment
+      summary: Acknowledge successful batch processing
+      description: |
+        Server confirms batch upload processed successfully. Sent to specific device after POST /api/scan/batch.
+
+        **Phase 1.2 (P0.2)**: Offline Queue Acknowledgment
+        - Prevents data loss on network failures
+        - Client waits for ACK before clearing queue
+        - Idempotency via batchId prevents double-processing
+
+        **Flow**:
+        1. GM Scanner uploads batch via POST /api/scan/batch with batchId
+        2. Server processes all transactions in batch
+        3. Server emits batch:ack to device room (device:${deviceId})
+        4. GM Scanner receives ACK, clears queue
+        5. If ACK timeout (60s), queue preserved for retry
+
+        **Idempotency**: Server caches results by batchId for 1 hour.
+        Retry with same batchId returns cached result without reprocessing.
+
+        **Functional Requirement**: Section 1.8 (Offline Queue Management)
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: batch:ack
+            description: Event name
+          data:
+            type: object
+            required:
+              - batchId
+              - processedCount
+              - totalCount
+              - failedCount
+              - failures
+            properties:
+              batchId:
+                type: string
+                format: uuid
+                description: Unique batch identifier for idempotency
+                example: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
+              processedCount:
+                type: integer
+                description: Number of successfully processed transactions
+                example: 8
+              totalCount:
+                type: integer
+                description: Total number of transactions in batch
+                example: 10
+              failedCount:
+                type: integer
+                description: Number of failed transactions
+                example: 2
+              failures:
+                type: array
+                description: Details of failed transactions
+                items:
+                  type: object
+                  required:
+                    - index
+                    - tokenId
+                    - error
+                  properties:
+                    index:
+                      type: integer
+                      description: Index in original batch array
+                      example: 3
+                    tokenId:
+                      type: string
+                      description: Token ID that failed
+                      example: "kaa001"
+                    error:
+                      type: string
+                      description: Error message
+                      example: "Token not recognized"
+                example: []
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:10:05.000Z"
 
     # ============================================================================
     # GROUP COMPLETION (1 event)

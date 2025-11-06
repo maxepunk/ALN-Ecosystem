@@ -189,8 +189,9 @@ async function handleGmCommand(socket, data, io) {
         if (!createSession) {
           throw new Error('No active session');
         }
-        // Add admin's deviceId
+        // Add admin's deviceId and deviceType from authenticated socket
         txData.deviceId = socket.deviceId;
+        txData.deviceType = socket.deviceType || 'gm';  // Explicit assignment
         const createResult = await transactionService.createManualTransaction(txData, createSession);
         resultMessage = `Manual transaction created for team ${txData.teamId}: ${createResult.points} points`;
         logger.info('Manual transaction created by GM', {
@@ -286,7 +287,16 @@ async function handleTransactionSubmit(socket, data, _io) {
     const transactionData = data.data;
 
     const { gmTransactionSchema, validate } = require('../utils/validators');
-    const scanRequest = validate(transactionData, gmTransactionSchema);
+
+    // Inject deviceId and deviceType from authenticated socket
+    // (GM scanners are pre-authenticated, so deviceId/deviceType are on the socket)
+    const enrichedData = {
+      ...transactionData,
+      deviceId: socket.deviceId,
+      deviceType: socket.deviceType || 'gm'
+    };
+
+    const scanRequest = validate(enrichedData, gmTransactionSchema);
 
     // Check if system is offline - use service directly for consistency
     logger.info('Transaction handler checking offline status', {

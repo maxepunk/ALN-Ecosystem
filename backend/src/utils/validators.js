@@ -40,6 +40,7 @@ const transactionSchema = Joi.object({
   tokenId: Joi.string().required().min(1).max(100),
   teamId: teamId.required(),
   deviceId: Joi.string().required().min(1).max(100),
+  deviceType: Joi.string().valid('gm', 'player', 'esp32').required(),  // P0.1 Correction: Required for duplicate detection logic
   mode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
   timestamp: isoDate.required(),
   sessionId: uuid.required(),
@@ -160,6 +161,7 @@ const playerScanRequestSchema = Joi.object({
     .pattern(/^[A-Za-z_0-9]+$/),
   teamId: teamId.optional(),  // OPTIONAL - players haven't committed to teams yet
   deviceId: Joi.string().required().min(1).max(100),
+  deviceType: Joi.string().valid('player', 'esp32').required(),  // P0.1 Correction: Required for duplicate detection logic
   timestamp: isoDate.optional(),
 });
 
@@ -170,6 +172,7 @@ const gmTransactionSchema = Joi.object({
     .pattern(/^[A-Za-z_0-9]+$/),
   teamId: teamId.required(),  // REQUIRED for GM transactions
   deviceId: Joi.string().required().min(1).max(100),
+  deviceType: Joi.string().valid('gm').required(),  // P0.1 Correction: Required, must be 'gm'
   mode: Joi.string().valid('detective', 'blackmarket').required(),  // REQUIRED - no default
   timestamp: isoDate.optional(),
 });

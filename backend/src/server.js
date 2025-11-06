@@ -28,53 +28,41 @@ const videoQueueService = require('./services/videoQueueService');
 const offlineQueueService = require('./services/offlineQueueService');
 const transactionService = require('./services/transactionService');
 
+// PHASE 1.3 (P0.3): Server state machine to enforce initialization order
+const ServerState = {
+  UNINITIALIZED: 'uninitialized',
+  SERVICES_READY: 'services_ready',
+  HANDLERS_READY: 'handlers_ready',
+  LISTENING: 'listening'
+};
+
 // Server instances (created when needed)
 let server = null;
 let httpRedirectServer = null;
 let io = null;
 let discoveryService = null;
 let isInitialized = false;
+let serverState = ServerState.UNINITIALIZED;
 
 // Setup WebSocket handlers (called when server is created)
+// PHASE 1.3 (P0.3): Defensive check to enforce initialization order
 function setupWebSocketHandlers(ioInstance) {
+  // Validate state: services must be ready before setting up handlers
+  if (serverState !== ServerState.SERVICES_READY && serverState !== ServerState.HANDLERS_READY) {
+    throw new Error(`Cannot setup handlers in state: ${serverState}`);
+  }
+
   ioInstance.on('connection', async (socket) => {
   logger.info('WebSocket connection established', { socketId: socket.id });
 
-  // Check for auth in handshake (Phase 1 fix: prevent undefined device)
-  // Extract auth from handshake per AsyncAPI contract (uses deviceId, not stationId)
-  const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
-
-  if (token && deviceId && deviceType === 'gm') {
-    // Pre-authenticate from handshake to prevent "undefined device"
-    try {
-      const { verifyToken } = require('./middleware/auth');
-      const decoded = verifyToken(token);
-
-      if (decoded && decoded.role === 'admin') {
-        // Store auth info immediately
-        socket.isAuthenticated = true;
-        socket.authRole = decoded.role;
-        socket.authUserId = decoded.id;
-        socket.deviceId = deviceId;
-        socket.deviceType = deviceType;
-        socket.version = version;
-
-        logger.info('GM station pre-authenticated from handshake', {
-          deviceId: deviceId,
-          socketId: socket.id
-        });
-
-        // Automatically trigger identification for pre-authenticated connections
-        // This replaces the need for the scanner to send gm:identify
-        await handleGmIdentify(socket, {
-          deviceId: deviceId,  // Per AsyncAPI contract
-          version,
-          token
-        }, ioInstance);
-      }
-    } catch (error) {
-      logger.warn('Handshake auth failed', { error: error.message, socketId: socket.id });
-    }
+  // PHASE 2.1 (P1.3): Authentication now handled by Socket.io middleware
+  // If socket is pre-authenticated (GM station), automatically trigger identification
+  if (socket.isAuthenticated && socket.deviceType === 'gm') {
+    await handleGmIdentify(socket, {
+      deviceId: socket.deviceId,
+      version: socket.version,
+      token: socket.handshake.auth.token
+    }, ioInstance);
   }
 
   // State sync request
@@ -102,6 +90,10 @@ function setupWebSocketHandlers(ioInstance) {
     await handleDisconnect(socket, ioInstance);
     });
   });
+
+  // PHASE 1.3 (P0.3): Transition state after handlers are set up
+  serverState = ServerState.HANDLERS_READY;
+  logger.info('WebSocket handlers configured', { state: serverState });
 }
 
 // Setup service event listeners (called when server is created)
@@ -211,8 +203,8 @@ function createServer() {
     // Store io in app.locals for routes to access
     app.locals.io = io;
 
-    // Setup WebSocket handlers
-    setupWebSocketHandlers(io);
+    // PHASE 1.3 (P0.3): Don't setup handlers here - wait for startServer()
+    // setupWebSocketHandlers will be called AFTER setupServiceListeners
   }
 
   if (!discoveryService && process.env.NODE_ENV !== 'test') {
@@ -228,14 +220,21 @@ async function startServer() {
     // Create server instances
     const instances = createServer();
 
-    // Initialize all services
+    // PHASE 1.3 (P0.3): Initialize services and set state
     if (!isInitialized) {
       await initializeServices();
       isInitialized = true;
+      serverState = ServerState.SERVICES_READY;
+      logger.info('Services initialized', { state: serverState });
     }
 
-    // Setup service listeners
+    // PHASE 1.3 (P0.3): Setup service listeners BEFORE WebSocket handlers
+    // Critical order: listeners must be registered before accepting connections
     setupServiceListeners(instances.io);
+    logger.info('Service listeners configured');
+
+    // PHASE 1.3 (P0.3): Setup WebSocket handlers (validates state)
+    setupWebSocketHandlers(instances.io);
 
     // Start listening
     const port = config.server.port;
@@ -243,6 +242,9 @@ async function startServer() {
     const protocol = config.ssl.enabled ? 'https' : 'http';
 
     instances.server.listen(port, host, async () => {
+      // PHASE 1.3 (P0.3): Transition to LISTENING state
+      serverState = ServerState.LISTENING;
+      logger.info('Server transition to LISTENING state', { state: serverState });
       logger.info(`ALN Orchestrator server running at ${protocol}://${host}:${port}`);
       logger.info('WebSocket server ready for connections');
       logger.info('Environment:', {
@@ -277,6 +279,12 @@ async function cleanup() {
     discoveryService.stop();
     discoveryService = null;
   }
+
+  // PHASE 1.4 (P0.4): Cleanup broadcast listeners BEFORE closing io
+  // This prevents listener leaks across startup/cleanup cycles
+  const { cleanupBroadcastListeners } = require('./websocket/broadcasts');
+  cleanupBroadcastListeners();
+  logger.debug('Broadcast listeners cleaned up');
 
   if (io) {
     // CRITICAL: Disconnect all sockets BEFORE closing server (Socket.io best practice)
@@ -355,6 +363,8 @@ async function cleanup() {
   }
 
   isInitialized = false;
+  // PHASE 1.3 (P0.3): Reset server state
+  serverState = ServerState.UNINITIALIZED;
 }
 
 // Export for testing
@@ -365,7 +375,42 @@ module.exports = {
   app,
   initializeServices,
   get server() { return server; },
-  get io() { return io; }
+  get io() { return io; },
+  // PHASE 1.3 (P0.3): Export state and test helpers
+  ServerState,
+  getServerState: () => serverState,
+  // Test helper: initialize services without starting server
+  initializeForTest: async () => {
+    if (!isInitialized) {
+      await initializeServices();
+      isInitialized = true;
+      serverState = ServerState.SERVICES_READY;
+    }
+  },
+  // Test helper: setup WebSocket handlers for testing
+  setupWebSocketHandlersForTest: (ioInstance) => {
+    setupWebSocketHandlers(ioInstance);
+  },
+  // Test helper: start server for testing (not exported by default)
+  startServerForTest: async (options = {}) => {
+    const instances = createServer();
+
+    if (!isInitialized) {
+      await initializeServices();
+      isInitialized = true;
+      serverState = ServerState.SERVICES_READY;
+    }
+
+    setupServiceListeners(instances.io);
+
+    if (options.setupWebSocketHandlersOverride) {
+      options.setupWebSocketHandlersOverride(instances.io);
+    } else {
+      setupWebSocketHandlers(instances.io);
+    }
+
+    return instances;
+  }
 };
 
 // Only start server if run directly (not imported)

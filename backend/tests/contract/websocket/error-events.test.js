@@ -27,6 +27,22 @@ describe('Error Events - Contract Validation', () => {
   beforeEach(async () => {
     await resetAllServices();
 
+    // Re-setup broadcast listeners after reset
+    const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
+    const stateService = require('../../../src/services/stateService');
+    const videoQueueService = require('../../../src/services/videoQueueService');
+    const offlineQueueService = require('../../../src/services/offlineQueueService');
+    const transactionService = require('../../../src/services/transactionService');
+
+    cleanupBroadcastListeners();
+    setupBroadcastListeners(testContext.io, {
+      sessionService,
+      stateService,
+      videoQueueService,
+      offlineQueueService,
+      transactionService
+    });
+
     // Create session
     await sessionService.createSession({
       name: 'Error Test Session',

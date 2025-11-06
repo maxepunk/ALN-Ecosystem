@@ -9,6 +9,7 @@ describe('Transaction model - deviceId field', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_01',  // deviceId (not scannerId)
+        deviceType: 'gm',  // P0.1: Required
         timestamp: new Date().toISOString(),
         sessionId: uuidv4(),  // UUID required
         status: 'accepted',
@@ -26,6 +27,7 @@ describe('Transaction model - deviceId field', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // P0.1: Required
         timestamp: new Date().toISOString(),
         sessionId: uuidv4(),  // UUID required
         status: 'accepted',
@@ -45,6 +47,7 @@ describe('Transaction model - deviceId field', () => {
         tokenId: 'tac001',
         teamId: '002',
         deviceId: 'PLAYER_SCANNER_01',
+        deviceType: 'player',  // P0.1: Required
         timestamp: new Date().toISOString(),
         sessionId: uuidv4(),  // UUID required
         status: 'accepted',
@@ -66,6 +69,7 @@ describe('Transaction model - deviceId field', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // P0.1: Required
         timestamp: new Date().toISOString(),
         sessionId: uuidv4(),  // UUID required
         status: 'accepted',

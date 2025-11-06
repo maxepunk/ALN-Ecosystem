@@ -9,6 +9,7 @@ describe('validators.js - deviceId field validation', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_SCANNER_01',  // deviceId (not scannerId)
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString(),
         sessionId: uuidv4(),  // UUID required
         status: 'accepted',
@@ -43,6 +44,7 @@ describe('validators.js - deviceId field validation', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'GM_SCANNER_01',  // deviceId (not scannerId)
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket',  // Required field per AsyncAPI contract
         timestamp: new Date().toISOString()
       };
@@ -78,6 +80,7 @@ describe('validators.js - deviceId field validation', () => {
           tokenId: '534e2b03',
           teamId: '001',  // Required field
           deviceId,
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket',  // Required field per AsyncAPI contract
           timestamp: new Date().toISOString()
         };

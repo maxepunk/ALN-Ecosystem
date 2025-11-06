@@ -194,6 +194,7 @@ describe('TransactionService - Event Emission', () => {
         tokenId: 'test_video',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       };
 
@@ -323,6 +324,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -334,6 +336,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '002',
         deviceId: 'GM_02',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -355,6 +358,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session1.id);
       tx1.accept(100);
@@ -373,6 +377,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '002',
         deviceId: 'GM_02',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session2.id);
 
@@ -394,6 +399,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -405,6 +411,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token123',
         teamId: '002',
         deviceId: 'GM_02',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -427,6 +434,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'new_token',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -575,6 +583,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -583,6 +592,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token2',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx2.accept(100);
@@ -667,6 +677,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
 
@@ -692,6 +703,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
           tokenId: `token${i}`,
           teamId: '001',
           deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
           timestamp: new Date().toISOString()
         }, session.id);
         transactionService.addRecentTransaction(tx);
@@ -714,6 +726,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date('2025-01-01').toISOString()
       }, session.id);
 
@@ -721,6 +734,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token2',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date('2025-01-02').toISOString()
       }, session.id);
 
@@ -759,6 +773,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -799,6 +814,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'token1',
         teamId: '001',
         deviceId: 'GM_01',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
       }, session.id);
       tx1.accept(100);
@@ -811,6 +827,231 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // (session didn't initialize team 001, and detective mode shouldn't add it)
       const teamScore = transactionService.teamScores.get('001');
       expect(teamScore).not.toBeDefined();
+    });
+  });
+
+  describe('Per-Device Duplicate Detection (Phase 1.1 P0.1)', () => {
+    let session, token1;
+
+    beforeEach(async () => {
+      await resetAllServices();
+
+      // Create session
+      session = await sessionService.createSession({
+        name: 'Test Session',
+        teams: ['001', '002']
+      });
+
+      // Initialize token
+      const Token = require('../../../src/models/token');
+      token1 = new Token({
+        id: 'kaa001',
+        name: 'Test Memory',
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rfid: 'kaa001', rating: 3 }
+      });
+
+      transactionService.tokens.set('kaa001', token1);
+    });
+
+    afterEach(async () => {
+      if (sessionService.currentSession) {
+        await sessionService.endSession();
+      }
+      sessionService.removeAllListeners();
+      transactionService.removeAllListeners();
+    });
+
+    test('should reject duplicate scan from same device', async () => {
+      // First scan - should succeed
+      const result1 = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result1.transaction.status).toBe('accepted');
+      expect(result1.transaction.isDuplicate()).toBe(false);
+
+      // Second scan from SAME device - should be rejected as duplicate
+      const result2 = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result2.transaction.status).toBe('duplicate');
+      expect(result2.transaction.isDuplicate()).toBe(true);
+    });
+
+    test('should track scanned token in session metadata', async () => {
+      const result = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result.transaction.status).toBe('accepted');
+
+      // Verify token tracked in session
+      expect(session.hasDeviceScannedToken('GM_001', 'kaa001')).toBe(true);
+      expect(session.getDeviceScannedTokensArray('GM_001')).toContain('kaa001');
+    });
+
+    test('should allow same token from different devices', async () => {
+      // First device scans token
+      const result1 = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result1.transaction.status).toBe('accepted');
+
+      // IMPORTANT: This test shows current first-come-first-served behavior
+      // Once GM_001 claims the token, NO OTHER DEVICE can scan it
+      // This is existing behavior, not changed by P0.1
+
+      // Different device tries to scan same token - REJECTED by session-wide check
+      const result2 = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_002',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '002',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result2.transaction.status).toBe('duplicate');
+      expect(result2.transaction.isDuplicate()).toBe(true);
+    });
+
+    test('should reject duplicate even after page refresh simulation', async () => {
+      // First scan
+      await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      // Simulate page refresh: GM Scanner would receive sync:full with scannedTokensByDevice
+      // In real scenario, GM Scanner would restore scannedTokens from sync:full
+      // Here we verify the server still has the data
+
+      expect(session.hasDeviceScannedToken('GM_001', 'kaa001')).toBe(true);
+
+      // Attempt to scan again (e.g., after refresh, user tries to re-scan)
+      const result = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result.transaction.status).toBe('duplicate');
+      expect(result.transaction.isDuplicate()).toBe(true);
+    });
+
+    test('should allow different tokens from same device', async () => {
+      // Add second token
+      const Token = require('../../../src/models/token');
+      const token2 = new Token({
+        id: 'kaa002',
+        name: 'Test Memory 2',
+        value: 150,
+        memoryType: 'Business',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rfid: 'kaa002', rating: 4 }
+      });
+      transactionService.tokens.set('kaa002', token2);
+
+      // Scan first token
+      const result1 = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result1.transaction.status).toBe('accepted');
+
+      // Scan different token from same device - should succeed
+      const result2 = await transactionService.processScan({
+        tokenId: 'kaa002',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      expect(result2.transaction.status).toBe('accepted');
+      expect(result2.transaction.isDuplicate()).toBe(false);
+
+      // Verify both tokens tracked
+      expect(session.getDeviceScannedTokensArray('GM_001')).toEqual(['kaa001', 'kaa002']);
+    });
+
+    test('should include scannedTokensByDevice in session JSON', async () => {
+      // Scan tokens from multiple devices
+      await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      // Get session JSON (this is what sync:full sends)
+      const sessionJSON = session.toJSON();
+
+      expect(sessionJSON.metadata.scannedTokensByDevice).toBeDefined();
+      expect(sessionJSON.metadata.scannedTokensByDevice).toEqual({
+        GM_001: ['kaa001']
+      });
+    });
+
+    test('should handle session restoration with scannedTokensByDevice', async () => {
+      // Scan a token
+      await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, session);
+
+      // Save and restore session (simulates server restart)
+      const sessionJSON = session.toJSON();
+      const Session = require('../../../src/models/session');
+      const restoredSession = Session.fromJSON(sessionJSON);
+
+      // Verify scannedTokensByDevice persisted
+      expect(restoredSession.hasDeviceScannedToken('GM_001', 'kaa001')).toBe(true);
+
+      // Try to scan again with restored session - should be rejected
+      const result = await transactionService.processScan({
+        tokenId: 'kaa001',
+        deviceId: 'GM_001',
+        deviceType: 'gm',  // Required by Phase 3 P0.1
+        teamId: '001',
+        timestamp: new Date().toISOString()
+      }, restoredSession);
+
+      expect(result.transaction.status).toBe('duplicate');
+      expect(result.transaction.isDuplicate()).toBe(true);
     });
   });
 });

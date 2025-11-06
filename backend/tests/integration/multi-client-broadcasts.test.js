@@ -91,6 +91,7 @@ describe('Multi-Client Broadcast Validation', () => {
           tokenId: '534e2b03',  // Technical rating 3 = 30 points (value field in test fixtures)
           teamId: '001',
           deviceId: 'GM_MULTI_1',
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -134,6 +135,7 @@ describe('Multi-Client Broadcast Validation', () => {
           tokenId: '534e2b03',  // Technical rating 3 = 30 points (value field in test fixtures)
           teamId: '001',
           deviceId: 'GM_MULTI_1',
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -258,6 +260,7 @@ describe('Multi-Client Broadcast Validation', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_MULTI_1',
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
