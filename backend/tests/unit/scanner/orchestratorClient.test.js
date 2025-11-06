@@ -102,11 +102,21 @@ describe('OrchestratorClient - WebSocket Event Handling', () => {
     mockSocket.connected = false;
     mockSocket._events = {};  // Clear registered event handlers
 
-    // Clear mock call history (spies are already set up above)
+    // Clear mock call history BUT preserve implementations
+    // BUG FIX: mockClear() removes implementations when using jest.fn(impl) constructor
+    // Solution: Re-attach implementations after mockClear()
     mockSocket.on.mockClear();
+    mockSocket.on.mockImplementation(_onImpl);
+
     mockSocket.once.mockClear();
+    mockSocket.once.mockImplementation(_onceImpl);
+
     mockSocket.off.mockClear();
+    mockSocket.off.mockImplementation(_offImpl);
+
     mockSocket.removeAllListeners.mockClear();
+    mockSocket.removeAllListeners.mockImplementation(_removeAllListenersImpl);
+
     mockSocket.emit.mockClear();
     mockSocket.disconnect.mockClear();
 
@@ -419,6 +429,133 @@ describe('OrchestratorClient - WebSocket Event Handling', () => {
       expect(status.sessionId).toBe('test-session-id');
       expect(status.connectedDevices).toBe(2);
       expect(status.queueSize).toBe(0);
+    });
+  });
+
+  describe('Token Restoration Race Condition', () => {
+    beforeEach(() => {
+      // Mock DataManager with resetForNewSession method
+      global.window.DataManager = {
+        scannedTokens: new Set(['token1', 'token2']),
+        saveScannedTokens: jest.fn(),
+        resetForNewSession: jest.fn()  // Add this to prevent errors
+      };
+
+      client.token = 'test-token';
+
+      // Set existing session ID to match what we'll send in sync:full
+      // This prevents resetForNewSession() from being called
+      client.sessionId = 'test-session';
+
+      // Manually set up socket to simulate connected state
+      // This bypasses connect() which is integration-level
+      client.socket = mockSocket;
+      client.isConnected = true;
+      mockSocket.connected = true;
+
+      // Clear any existing handlers
+      mockSocket._events = {};
+
+      // Register event handlers (normally done in createSocketConnection)
+      // This will clear handlers first, then register them
+      client.setupSocketEventHandlers();
+    });
+
+    it('should merge server tokens with local scans on sync:full', () => {
+      // Simulate local scan happening
+      global.window.DataManager.scannedTokens.add('token3');
+
+      // Server sends sync:full with partial list (doesn't know about token3 yet)
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' },
+        deviceScannedTokens: ['token1', 'token2', 'token4']
+      };
+
+      // Trigger sync:full handler by simulating the event
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      // Should have ALL tokens (merge, not replace)
+      expect(global.window.DataManager.scannedTokens.has('token1')).toBe(true);
+      expect(global.window.DataManager.scannedTokens.has('token2')).toBe(true);
+      expect(global.window.DataManager.scannedTokens.has('token3')).toBe(true); // Local scan preserved
+      expect(global.window.DataManager.scannedTokens.has('token4')).toBe(true); // Server token added
+    });
+
+    it('should validate deviceScannedTokens is an array', () => {
+      // Malformed data should not crash
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' },
+        deviceScannedTokens: null  // Invalid
+      };
+
+      expect(() => {
+        mockSocket._mockEmit('sync:full', {
+          event: 'sync:full',
+          data: syncPayload,
+          timestamp: new Date().toISOString()
+        });
+      }).not.toThrow();
+
+      // Original tokens preserved
+      expect(global.window.DataManager.scannedTokens.has('token1')).toBe(true);
+      expect(global.window.DataManager.scannedTokens.has('token2')).toBe(true);
+    });
+
+    it('should handle undefined deviceScannedTokens gracefully', () => {
+      // Missing field should not cause issues
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' }
+        // No deviceScannedTokens field
+      };
+
+      expect(() => {
+        mockSocket._mockEmit('sync:full', {
+          event: 'sync:full',
+          data: syncPayload,
+          timestamp: new Date().toISOString()
+        });
+      }).not.toThrow();
+
+      // Original tokens preserved
+      expect(global.window.DataManager.scannedTokens.has('token1')).toBe(true);
+      expect(global.window.DataManager.scannedTokens.has('token2')).toBe(true);
+    });
+
+    it('should log detailed merge statistics', () => {
+      const consoleSpy = jest.spyOn(console, 'log');
+
+      global.window.DataManager.scannedTokens = new Set(['token1', 'token2']);
+
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' },
+        deviceScannedTokens: ['token2', 'token3', 'token4']
+      };
+
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      // Check that merge statistics were logged
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Merged scanned tokens:')
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('2 local')
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('3 server')
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('4 total')
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 });
