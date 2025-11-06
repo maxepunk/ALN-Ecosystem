@@ -5,10 +5,12 @@
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
-const { resetAllServices } = require('../helpers/service-reset');
+const { resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const stateService = require('../../src/services/stateService');
+const videoQueueService = require('../../src/services/videoQueueService');
+const offlineQueueService = require('../../src/services/offlineQueueService');
 
 describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
   let testContext;
@@ -23,7 +25,15 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
   });
 
   beforeEach(async () => {
-    await resetAllServices();
+    // CRITICAL: Use resetAllServicesForTesting to properly cleanup and re-register broadcast listeners
+    // Room broadcast tests depend on state:update events which are emitted by broadcast listeners
+    await resetAllServicesForTesting(testContext.io, {
+      sessionService,
+      stateService,
+      transactionService,
+      videoQueueService,
+      offlineQueueService
+    });
   });
 
   afterEach(async () => {
@@ -129,7 +139,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         body: JSON.stringify({
           batchId: `test-${Date.now()}`,
           transactions: [{
-            tokenId: 'jaw011',
+            tokenId: 'jaw001',
             deviceId: 'GM_001',
           deviceType: 'gm',  // Required by Phase 3 P0.1
             teamId: '001',
