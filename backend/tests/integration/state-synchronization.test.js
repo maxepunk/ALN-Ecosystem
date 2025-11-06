@@ -51,7 +51,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
       tokenId: '534e2b03',
       teamId: '001',
       deviceId: 'SETUP_GM',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket'
     }, session);
 

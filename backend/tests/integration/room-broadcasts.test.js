@@ -131,7 +131,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
           transactions: [{
             tokenId: 'jaw011',
             deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
             teamId: '001',
             mode: 'networked'
           }]

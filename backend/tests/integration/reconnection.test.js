@@ -49,7 +49,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -61,7 +61,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'kaa001',
           deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -103,7 +103,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -127,7 +127,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -156,7 +156,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -171,7 +171,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'kaa001',
           deviceId: 'GM_002',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })
@@ -263,7 +263,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         body: JSON.stringify({
           tokenId: 'jaw011',
           deviceId: 'GM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           teamId: '001',
           mode: 'networked'
         })

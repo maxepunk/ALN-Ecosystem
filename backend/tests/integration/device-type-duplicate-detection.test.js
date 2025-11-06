@@ -82,7 +82,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'PLAYER_INTEGRATION_TEST',
-        deviceType: 'player',
+          deviceType: 'player',
         timestamp: new Date().toISOString()
       };
 
@@ -128,7 +128,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'ESP32_INTEGRATION_TEST',
-        deviceType: 'esp32',
+          deviceType: 'esp32',
         timestamp: new Date().toISOString()
       };
 
@@ -211,7 +211,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,
         teamId: '002',
         deviceId: 'PLAYER_MIXED_TEST',
-        deviceType: 'player',
+          deviceType: 'player',
         timestamp: new Date().toISOString()
       });
 
@@ -223,7 +223,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,
         teamId: '002',
         deviceId: 'ESP32_MIXED_TEST',
-        deviceType: 'esp32',
+          deviceType: 'esp32',
         timestamp: new Date().toISOString()
       });
 
@@ -273,7 +273,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,
         teamId: '002',
         deviceId: 'PLAYER_CLAIM_TEST',
-        deviceType: 'player',
+          deviceType: 'player',
         timestamp: new Date().toISOString()
       });
 
@@ -285,7 +285,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,
         teamId: '002',
         deviceId: 'PLAYER_CLAIM_TEST',
-        deviceType: 'player',
+          deviceType: 'player',
         timestamp: new Date().toISOString()
       });
 
@@ -306,7 +306,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       offlineQueueService.enqueue({
         tokenId: TOKEN_ID,
         deviceId: 'PLAYER_OFFLINE_1',
-        deviceType: 'player',
+          deviceType: 'player',
         teamId: '001',
         timestamp: new Date().toISOString()
       });
@@ -314,7 +314,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       offlineQueueService.enqueue({
         tokenId: TOKEN_ID,  // DUPLICATE for player (should be allowed)
         deviceId: 'PLAYER_OFFLINE_1',
-        deviceType: 'player',
+          deviceType: 'player',
         teamId: '001',
         timestamp: new Date().toISOString()
       });
@@ -322,7 +322,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       offlineQueueService.enqueueGmTransaction({
         tokenId: TOKEN_ID,
         deviceId: 'GM_OFFLINE_1',
-        deviceType: 'gm',
+          deviceType: 'gm',
         teamId: '002',
         mode: 'blackmarket',
         timestamp: new Date().toISOString()
@@ -331,7 +331,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       offlineQueueService.enqueueGmTransaction({
         tokenId: TOKEN_ID,  // DUPLICATE for GM (should be rejected)
         deviceId: 'GM_OFFLINE_1',
-        deviceType: 'gm',
+          deviceType: 'gm',
         teamId: '002',
         mode: 'blackmarket',
         timestamp: new Date().toISOString()
@@ -391,7 +391,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'INVALID_TYPE_DEVICE',
-        deviceType: 'invalid',  // Not 'gm', 'player', or 'esp32'
+          deviceType: 'invalid',  // Not 'gm', 'player', or 'esp32'
         timestamp: new Date().toISOString()
       });
 

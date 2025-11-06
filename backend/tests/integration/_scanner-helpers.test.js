@@ -89,7 +89,7 @@ describe('Scanner Helper Verification', () => {
           tokenId: '534e2b03',
           teamId: '001',
           deviceId: 'GM_TX_TEST',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
