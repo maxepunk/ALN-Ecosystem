@@ -558,4 +558,141 @@ describe('OrchestratorClient - WebSocket Event Handling', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('Reconnection Toast Behavior', () => {
+    beforeEach(() => {
+      // Mock UIManager for toast notifications
+      global.window.UIManager = {
+        showToast: jest.fn()
+      };
+
+      client.token = 'test-token';
+
+      // Set existing session ID to match what we'll send in sync:full
+      // This prevents resetForNewSession() from being called
+      client.sessionId = 'test-session';
+
+      // Manually set up socket to simulate connected state
+      client.socket = mockSocket;
+      client.isConnected = true;
+      mockSocket.connected = true;
+
+      // Clear any existing handlers
+      mockSocket._events = {};
+
+      // Register event handlers (normally done in createSocketConnection)
+      client.setupSocketEventHandlers();
+    });
+
+    it('should set hasEverConnected flag on first connection', () => {
+      expect(client.hasEverConnected).toBe(false);
+
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' },
+        deviceScannedTokens: []
+      };
+
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      expect(client.hasEverConnected).toBe(true);
+    });
+
+    it('should not show reconnection toast on first connection', () => {
+      client.hasEverConnected = false;
+
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' },
+        deviceScannedTokens: []
+      };
+
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      // Should not show "Reconnected" toast on first connection
+      expect(global.window.UIManager.showToast).not.toHaveBeenCalled();
+    });
+
+    it('should show reconnection toast with restored scan count', () => {
+      client.hasEverConnected = true;  // Simulate previous connection
+
+      const syncPayload = {
+        session: {
+          id: 'test-session',
+          status: 'active',
+          transactions: [
+            { id: 1 },
+            { id: 2 },
+            { id: 3 }
+          ]
+        },
+        deviceScannedTokens: []
+      };
+
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      expect(global.window.UIManager.showToast).toHaveBeenCalledWith(
+        'Reconnected! 3 scans restored',
+        'success',
+        5000
+      );
+    });
+
+    it('should show generic reconnection message when no scans exist', () => {
+      client.hasEverConnected = true;
+
+      const syncPayload = {
+        session: { id: 'test-session', status: 'active' },
+        deviceScannedTokens: []
+        // No transactions array
+      };
+
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      expect(global.window.UIManager.showToast).toHaveBeenCalledWith(
+        'Reconnected to orchestrator',
+        'success',
+        3000
+      );
+    });
+
+    it('should show generic reconnection message when transactions array is empty', () => {
+      client.hasEverConnected = true;
+
+      const syncPayload = {
+        session: {
+          id: 'test-session',
+          status: 'active',
+          transactions: []  // Empty array
+        },
+        deviceScannedTokens: []
+      };
+
+      mockSocket._mockEmit('sync:full', {
+        event: 'sync:full',
+        data: syncPayload,
+        timestamp: new Date().toISOString()
+      });
+
+      expect(global.window.UIManager.showToast).toHaveBeenCalledWith(
+        'Reconnected to orchestrator',
+        'success',
+        3000
+      );
+    });
+  });
 });

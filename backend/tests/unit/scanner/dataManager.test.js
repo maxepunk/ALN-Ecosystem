@@ -224,6 +224,55 @@ describe('DataManager - Score Calculation (CRITICAL for Standalone Mode)', () =>
     });
   });
 
+  describe('addTransaction', () => {
+    it('should preserve status field when provided', () => {
+      const transaction = {
+        rfid: 'test123',
+        tokenId: 'test123',
+        teamId: '001',
+        status: 'duplicate'  // Important: preserve this
+      };
+
+      dataManager.addTransaction(transaction);
+
+      expect(dataManager.transactions).toHaveLength(1);
+      expect(dataManager.transactions[0].status).toBe('duplicate');
+    });
+
+    it('should default status to accepted when not provided', () => {
+      const transaction = {
+        rfid: 'test456',
+        tokenId: 'test456',
+        teamId: '002'
+        // No status field
+      };
+
+      dataManager.addTransaction(transaction);
+
+      expect(dataManager.transactions[0].status).toBe('accepted');
+    });
+
+    it('should handle transactions with missing fields using fallback values', () => {
+      // DataManager doesn't reject transactions - it uses fallback values
+      const transaction = {
+        rfid: 'test789'
+        // Missing teamId - will use app.currentTeamId or undefined
+      };
+
+      const initialLength = dataManager.transactions.length;
+      dataManager.addTransaction(transaction);
+
+      // Transaction is added (not rejected)
+      expect(dataManager.transactions.length).toBe(initialLength + 1);
+
+      // Fallback values are used
+      const addedTx = dataManager.transactions[dataManager.transactions.length - 1];
+      expect(addedTx.tokenId).toBe('test789');
+      expect(addedTx.rfid).toBe('test789');
+      // teamId will be undefined since no fallback is available in test
+    });
+  });
+
   describe('calculateTeamScoreWithBonuses', () => {
     beforeEach(() => {
       // Setup group inventory mock
