@@ -265,6 +265,13 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       // Inject into transactionService for this test only
       transactionService.tokens.set('bad_video_token', badVideoToken);
 
+      // CRITICAL: Collect ALL video:status events to avoid race condition
+      // Events emit quickly: loading → error → idle (all within milliseconds)
+      const videoStatusEvents = [];
+      gmSocket.on('video:status', (event) => {
+        videoStatusEvents.push(event);
+      });
+
       // Trigger: REAL Player Scanner scans with token that has invalid video
       const response = await playerScanner.scanToken('bad_video_token', null);
 
@@ -272,20 +279,21 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       expect(response.status).toBe('accepted');
       expect(response.videoQueued).toBe(true);
 
-      // Wait for events
-      await waitForEvent(gmSocket, 'video:status'); // loading
+      // Wait for all events to arrive (loading + error + idle)
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Video should fail during playback (real error path, not test code)
-      const failEvent = await waitForEvent(gmSocket, 'video:status');
+      // Validate: Should have received multiple video:status events
+      expect(videoStatusEvents.length).toBeGreaterThan(0);
+
+      // Find the error event
+      const errorEvent = videoStatusEvents.find(e => e.data.status === 'error');
 
       // Validate: Error handling
       // This test REVEALS how videoQueueService handles invalid videos
-      expect(failEvent.data.status).toBeDefined();
-
-      if (failEvent.data.status === 'error') {
-        expect(failEvent.data.error).toBeDefined();
-        validateWebSocketEvent(failEvent, 'video:status');
-      }
+      expect(errorEvent).toBeDefined();
+      expect(errorEvent.data.error).toBeDefined();
+      expect(errorEvent.data.error).toContain('not found');
+      validateWebSocketEvent(errorEvent, 'video:status');
 
       // Cleanup: Remove test token
       transactionService.tokens.delete('bad_video_token');

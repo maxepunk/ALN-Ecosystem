@@ -638,12 +638,12 @@ class TransactionService extends EventEmitter {
 
   /**
    * Create manual transaction (FR 4.2.4 line 954)
-   * @param {Object} data - Transaction data {tokenId, teamId, mode, deviceId}
+   * @param {Object} data - Transaction data {tokenId, teamId, mode, deviceId, deviceType}
    * @param {Object} session - Current session
    * @returns {Object} Created transaction and scan response
    */
   async createManualTransaction(data, session) {
-    const { tokenId, teamId, mode, deviceId } = data;
+    const { tokenId, teamId, mode, deviceId, deviceType } = data;
 
     if (!tokenId || !teamId || !mode) {
       throw new Error('tokenId, teamId, and mode are required');
@@ -664,6 +664,7 @@ class TransactionService extends EventEmitter {
       tokenId,
       teamId,
       deviceId: deviceId || 'ADMIN_MANUAL',
+      deviceType: deviceType || 'gm',  // Default to 'gm' for admin-created transactions
       mode,
     }, session);
 
