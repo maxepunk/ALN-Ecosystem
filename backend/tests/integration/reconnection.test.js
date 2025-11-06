@@ -42,29 +42,30 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 2: Connect GM
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      // Step 3: Scan tokens
-      await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'jaw011',
-          deviceId: 'GM_001',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      // Step 3: Scan tokens via WebSocket (GM scanners use WebSocket, not HTTP)
+      // Helper to submit transaction and wait for result
+      const submitTransaction = (socket, data) => {
+        return new Promise((resolve) => {
+          socket.once('transaction:result', resolve);
+          // Wrap data in envelope per AsyncAPI contract
+          socket.emit('transaction:submit', {
+            event: 'transaction:submit',
+            data: data,
+            timestamp: new Date().toISOString()
+          });
+        });
+      };
+
+      await submitTransaction(gm1, {
+        tokenId: 'jaw001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
-      await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'kaa001',
-          deviceId: 'GM_001',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      await submitTransaction(gm1, {
+        tokenId: 'tac001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
       // Step 4: Disconnect
@@ -80,13 +81,25 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 7: Verify deviceScannedTokens included
       expect(syncEvent.data).toHaveProperty('deviceScannedTokens');
       expect(Array.isArray(syncEvent.data.deviceScannedTokens)).toBe(true);
-      expect(syncEvent.data.deviceScannedTokens).toContain('jaw011');
-      expect(syncEvent.data.deviceScannedTokens).toContain('kaa001');
+      expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
+      expect(syncEvent.data.deviceScannedTokens).toContain('tac001');
       expect(syncEvent.data.deviceScannedTokens).toHaveLength(2);
     });
 
     it('should prevent duplicate scans after reconnection', async () => {
       // PHASE 2.1 P1.1: Reconnected device should not be able to scan same token
+
+      // Helper to submit transaction
+      const submitTransaction = (socket, data) => {
+        return new Promise((resolve) => {
+          socket.once('transaction:result', resolve);
+          socket.emit('transaction:submit', {
+            event: 'transaction:submit',
+            data: data,
+            timestamp: new Date().toISOString()
+          });
+        });
+      };
 
       // Step 1: Create session
       await sessionService.createSession({
@@ -94,24 +107,17 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         teams: ['001']
       });
 
-      // Step 2: Connect and scan
+      // Step 2: Connect and scan via WebSocket
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      const response1 = await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'jaw011',
-          deviceId: 'GM_001',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      const result1 = await submitTransaction(gm1, {
+        tokenId: 'jaw001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
-      expect(response1.ok).toBe(true);
-      const result1 = await response1.json();
-      expect(result1.success).toBe(true);
+      expect(result1.data.status).toBe('accepted');
+      expect(result1.data.points).toBeGreaterThan(0);
 
       // Step 3: Disconnect and reconnect
       gm1.disconnect();
@@ -121,25 +127,29 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await waitForEvent(gm1, 'sync:full', 3000);
 
       // Step 4: Try to scan same token (should be rejected as duplicate)
-      const response2 = await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'jaw011',
-          deviceId: 'GM_001',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      const result2 = await submitTransaction(gm1, {
+        tokenId: 'jaw001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
-      expect(response2.status).toBe(409); // Conflict - duplicate
-      const result2 = await response2.json();
-      expect(result2.duplicate).toBe(true);
+      expect(result2.data.status).toBe('duplicate');
+      expect(result2.data.points).toBe(0);
     });
 
     it('should only restore tokens for the specific device', async () => {
       // PHASE 2.1 P1.1: GM_001 should not see GM_002's tokens
+
+      const submitTransaction = (socket, data) => {
+        return new Promise((resolve) => {
+          socket.once('transaction:result', resolve);
+          socket.emit('transaction:submit', {
+            event: 'transaction:submit',
+            data: data,
+            timestamp: new Date().toISOString()
+          });
+        });
+      };
 
       // Step 1: Create session
       await sessionService.createSession({
@@ -150,31 +160,19 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 2: GM_001 scans jaw011
       let gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'jaw011',
-          deviceId: 'GM_001',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      await submitTransaction(gm1, {
+        tokenId: 'jaw001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
       // Step 3: GM_002 scans kaa001
       const gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_002');
 
-      await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'kaa001',
-          deviceId: 'GM_002',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      await submitTransaction(gm2, {
+        tokenId: 'tac001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
       // Step 4: GM_001 reconnects
@@ -185,8 +183,8 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       const syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
 
       // Step 5: GM_001 should only see jaw011 (not kaa001)
-      expect(syncEvent.data.deviceScannedTokens).toContain('jaw011');
-      expect(syncEvent.data.deviceScannedTokens).not.toContain('kaa001');
+      expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
+      expect(syncEvent.data.deviceScannedTokens).not.toContain('tac001');
       expect(syncEvent.data.deviceScannedTokens).toHaveLength(1);
 
       gm2.disconnect();
@@ -249,6 +247,17 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
     it('should maintain state across multiple reconnections', async () => {
       // PHASE 2.1 P1.1: State persistence across multiple disconnects
 
+      const submitTransaction = (socket, data) => {
+        return new Promise((resolve) => {
+          socket.once('transaction:result', resolve);
+          socket.emit('transaction:submit', {
+            event: 'transaction:submit',
+            data: data,
+            timestamp: new Date().toISOString()
+          });
+        });
+      };
+
       await sessionService.createSession({
         name: 'Multiple Reconnection Test',
         teams: ['001']
@@ -257,16 +266,10 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Initial connection and scan
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
-      await fetch(`${testContext.url}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: 'jaw011',
-          deviceId: 'GM_001',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-          teamId: '001',
-          mode: 'networked'
-        })
+      await submitTransaction(gm1, {
+        tokenId: 'jaw001',
+        teamId: '001',
+        mode: 'blackmarket'
       });
 
       // First reconnection
@@ -274,21 +277,21 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
       let syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
-      expect(syncEvent.data.deviceScannedTokens).toContain('jaw011');
+      expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
 
       // Second reconnection
       gm1.disconnect();
       await new Promise(resolve => setTimeout(resolve, 500));
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
       syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
-      expect(syncEvent.data.deviceScannedTokens).toContain('jaw011');
+      expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
 
       // Third reconnection
       gm1.disconnect();
       await new Promise(resolve => setTimeout(resolve, 500));
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
       syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
-      expect(syncEvent.data.deviceScannedTokens).toContain('jaw011');
+      expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
 
       // State should persist
       expect(syncEvent.data.deviceScannedTokens).toHaveLength(1);

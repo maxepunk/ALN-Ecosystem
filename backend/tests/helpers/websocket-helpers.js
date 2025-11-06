@@ -37,6 +37,13 @@ function createTrackedSocket(url, options = {}) {
 function waitForEvent(socket, eventOrEvents, timeout = 5000) {
   const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
 
+  // CRITICAL FIX: Check if this is a sync:full request and we have cached data
+  // (from connectAndIdentify for GM devices)
+  if (events.includes('sync:full') && socket.lastSyncFull) {
+    // Return cached data immediately
+    return Promise.resolve(socket.lastSyncFull);
+  }
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for event: ${events.join(' or ')}`));
@@ -89,9 +96,38 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
     : socketOrUrl;
 
   try {
-    // Wait for connection (handshake auth + device registration happens automatically)
-    if (!socket.connected) {
-      await waitForEvent(socket, 'connect', timeout);
+    // CRITICAL FIX: For GM devices, register sync:full listener BEFORE connecting
+    // The server emits sync:full immediately after connection (same millisecond),
+    // so we must register the listener before the connection completes to avoid race condition
+    //
+    // We also store the sync:full data on the socket for tests that need it later,
+    // and set up a persistent listener to capture future sync:full events
+    if (deviceType === 'gm') {
+      // Store initial sync:full data on socket (for immediate access)
+      socket.lastSyncFull = null;
+
+      // Persistent listener to always capture sync:full events
+      socket.on('sync:full', (data) => {
+        socket.lastSyncFull = data;
+      });
+
+      // Wait for first sync:full (emitted during connection)
+      await Promise.race([
+        waitForEvent(socket, 'connect', timeout),
+        new Promise(resolve => setTimeout(resolve, timeout + 1000))
+      ]);
+
+      // Give sync:full a moment to arrive after connect
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      if (!socket.lastSyncFull) {
+        throw new Error('Failed to receive sync:full event after GM connection');
+      }
+    } else {
+      // Wait for connection (handshake auth + device registration happens automatically)
+      if (!socket.connected) {
+        await waitForEvent(socket, 'connect', timeout);
+      }
     }
 
     // Store device info for debugging
