@@ -629,4 +629,123 @@ describe('NetworkedQueueManager - Offline Queue', () => {
       expect(queueManager.activeHandlers.size).toBe(0);
     });
   });
+
+  describe('Queue Indicator Events', () => {
+    it('should emit queue:changed event when transaction queued offline', () => {
+      mockConnection.socket.connected = false;
+
+      // Setup event listener spy
+      const eventSpy = jest.fn();
+      queueManager.addEventListener('queue:changed', eventSpy);
+
+      // Queue transaction
+      queueManager.queueTransaction({
+        tokenId: 'test1',
+        teamId: '001',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket'
+      });
+
+      // Verify event was emitted
+      expect(eventSpy).toHaveBeenCalled();
+
+      // Verify event detail contains status
+      const eventDetail = eventSpy.mock.calls[0][0].detail;
+      expect(eventDetail).toBeDefined();
+      expect(eventDetail.queuedCount).toBe(1);
+      expect(eventDetail.syncing).toBe(false);
+    });
+
+    it('should emit queue:changed event after queue sync completes', async () => {
+      // Queue transaction while offline
+      mockConnection.socket.connected = false;
+      queueManager.queueTransaction({
+        tokenId: 'test2',
+        teamId: '002',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'detective'
+      });
+
+      expect(queueManager.tempQueue).toHaveLength(1);
+
+      // Setup event listener spy
+      const eventSpy = jest.fn();
+      queueManager.addEventListener('queue:changed', eventSpy);
+
+      // Restore connection
+      mockConnection.socket.connected = true;
+
+      // Mock successful replay
+      jest.spyOn(queueManager, 'replayTransaction').mockResolvedValue({
+        status: 'success',
+        tokenId: 'test2',
+        teamId: '002'
+      });
+
+      // Sync queue
+      await queueManager.syncQueue();
+
+      // Verify event was emitted after sync
+      expect(eventSpy).toHaveBeenCalled();
+
+      // Verify queue is now empty
+      const eventDetail = eventSpy.mock.calls[0][0].detail;
+      expect(eventDetail.queuedCount).toBe(0);
+    });
+
+    it('should not emit events when transaction sent immediately (connected)', () => {
+      mockConnection.socket.connected = true;
+
+      // Setup event listener spy
+      const eventSpy = jest.fn();
+      queueManager.addEventListener('queue:changed', eventSpy);
+
+      // Queue transaction (will be sent immediately)
+      queueManager.queueTransaction({
+        tokenId: 'test3',
+        teamId: '003',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket'
+      });
+
+      // Should NOT emit event (not queued, sent immediately)
+      expect(eventSpy).not.toHaveBeenCalled();
+      expect(queueManager.tempQueue).toHaveLength(0);
+    });
+
+    it('should provide queue status in event detail', () => {
+      mockConnection.socket.connected = false;
+
+      const eventSpy = jest.fn();
+      queueManager.addEventListener('queue:changed', eventSpy);
+
+      // Queue multiple transactions
+      queueManager.queueTransaction({
+        tokenId: 'test4',
+        teamId: '004',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket'
+      });
+
+      queueManager.queueTransaction({
+        tokenId: 'test5',
+        teamId: '005',
+        deviceId: 'GM_TEST',
+        deviceType: 'gm',
+        mode: 'detective'
+      });
+
+      // Verify multiple events emitted
+      expect(eventSpy).toHaveBeenCalledTimes(2);
+
+      // Check last event has correct count
+      const lastEventDetail = eventSpy.mock.calls[1][0].detail;
+      expect(lastEventDetail.queuedCount).toBe(2);
+      expect(lastEventDetail.syncing).toBe(false);
+    });
+  });
 });
