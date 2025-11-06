@@ -263,7 +263,6 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         teamId: '001',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, session);
       await sessionService.addTransaction(txResult.transaction);
@@ -314,7 +313,6 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         teamId: '001',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, session);
       await sessionService.addTransaction(tx1.transaction);
@@ -323,7 +321,6 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         tokenId: 'tac001',  // 100 points (rating 1, Personal type)
         teamId: '002',
         deviceId: 'SETUP',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, session);
@@ -391,7 +388,6 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         tokenId: '534e2b03',
         teamId: '001',
         deviceId: 'SETUP',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, session);

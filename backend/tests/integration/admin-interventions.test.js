@@ -76,7 +76,6 @@ describe('Admin Intervention Integration', () => {
         teamId: '001',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 
@@ -147,7 +146,6 @@ describe('Admin Intervention Integration', () => {
         tokenId: 'asm001',
         teamId: '002',
         deviceId: 'SETUP',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
@@ -283,7 +281,6 @@ describe('Admin Intervention Integration', () => {
           teamId: '001',
           deviceId: 'GM_OBSERVER',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -336,7 +333,6 @@ describe('Admin Intervention Integration', () => {
           teamId: '001',
           deviceId: 'GM_OBSERVER',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -354,7 +350,6 @@ describe('Admin Intervention Integration', () => {
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'SETUP',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
@@ -591,7 +586,6 @@ const TestTokens = require('../fixtures/test-tokens');
           teamId: '001',
           deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         }, sessionService.getCurrentSession());
 
@@ -639,7 +633,6 @@ const TestTokens = require('../fixtures/test-tokens');
               teamId: '002',
               deviceId: 'ADMIN_MANUAL',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
               mode: 'blackmarket'
             }
           },
@@ -666,7 +659,6 @@ const TestTokens = require('../fixtures/test-tokens');
           tokenId: 'rat001',
           teamId: '001',
           deviceId: 'SETUP',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         }, sessionService.getCurrentSession());
@@ -784,7 +776,6 @@ const TestTokens = require('../fixtures/test-tokens');
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'SETUP',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());

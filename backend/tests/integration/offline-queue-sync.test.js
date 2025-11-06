@@ -59,14 +59,12 @@ describe('Offline Queue Synchronization Integration', () => {
       tokenId: '534e2b03',
       deviceId: 'PLAYER_OFFLINE_1',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
       timestamp: new Date().toISOString()
     });
 
     offlineQueueService.enqueue({
       tokenId: 'jaw001',
       deviceId: 'PLAYER_OFFLINE_2',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
       timestamp: new Date().toISOString()
     });
@@ -103,7 +101,6 @@ describe('Offline Queue Synchronization Integration', () => {
       teamId: '001',
       deviceId: 'GM_OFFLINE_1',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket',
       timestamp: new Date().toISOString()
     });
@@ -112,7 +109,6 @@ describe('Offline Queue Synchronization Integration', () => {
       tokenId: 'jaw001',
       teamId: '002',
       deviceId: 'GM_OFFLINE_2',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket',
       timestamp: new Date().toISOString()
@@ -152,7 +148,6 @@ describe('Offline Queue Synchronization Integration', () => {
       tokenId: '534e2b03',
       teamId: '001',
       deviceId: 'GM_OFFLINE',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket',
       timestamp: new Date().toISOString()

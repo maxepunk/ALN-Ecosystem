@@ -194,7 +194,6 @@ describe('System Reset Regression Tests', () => {
         teamId: '001',
         deviceId: 'GM_RESET_TEST',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, session);
 

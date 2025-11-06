@@ -75,7 +75,6 @@ describe('Multi-GM Coordination', () => {
           teamId: '001',
           deviceId: 'GM_TEAM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -87,7 +86,6 @@ describe('Multi-GM Coordination', () => {
           tokenId: 'tac001',
           teamId: '002',
           deviceId: 'GM_TEAM_002',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
@@ -131,7 +129,6 @@ describe('Multi-GM Coordination', () => {
           teamId: '001',
           deviceId: 'GM_DUP_1',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -149,7 +146,6 @@ describe('Multi-GM Coordination', () => {
           tokenId: '534e2b03',  // SAME token
           teamId: '002',        // Different team
           deviceId: 'GM_DUP_2',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
@@ -189,7 +185,6 @@ describe('Multi-GM Coordination', () => {
           teamId: '001',
           deviceId: 'GM_TEAM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -206,7 +201,6 @@ describe('Multi-GM Coordination', () => {
           tokenId: 'asm001',
           teamId: '002', // Different team
           deviceId: 'GM_TEAM_002',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
@@ -255,7 +249,6 @@ describe('Multi-GM Coordination', () => {
           teamId: '001',
           deviceId: 'GM_GROUP_1',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -270,7 +263,6 @@ describe('Multi-GM Coordination', () => {
           tokenId: 'asm001',
           teamId: '001',
           deviceId: 'GM_GROUP_1',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
@@ -307,7 +299,6 @@ describe('Multi-GM Coordination', () => {
           teamId: '001',
           deviceId: 'GM_TEAM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -322,7 +313,6 @@ describe('Multi-GM Coordination', () => {
           tokenId: 'asm001',
           teamId: '001',
           deviceId: 'GM_TEAM_001',
-        deviceType: 'gm',  // Required by Phase 3 P0.1
         deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'detective' // Detective mode
         },
