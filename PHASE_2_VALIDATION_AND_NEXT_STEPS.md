@@ -166,9 +166,11 @@ Phases 1 and 2 built the **foundation** (backend orchestrator). Phase 3 **extend
 
 ## Phase 3 Implementation Plan (From Simplified Plan)
 
-### P2.1: Player Scanner Integration (6 hours)
+### P2.1: Player Scanner Integration (4 hours)
 
-**Goal:** Extend duplicate detection and offline queue to Player Scanner (web PWA)
+**Goal:** Enhance offline queue reliability with proper ACK handling (NO duplicate detection - players can re-scan)
+
+**⚠️ CRITICAL:** Player scanners ALLOW duplicate scans. This task is ONLY about offline queue improvements.
 
 **Implementation:**
 

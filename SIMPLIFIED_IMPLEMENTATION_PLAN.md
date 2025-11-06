@@ -105,9 +105,14 @@ git push origin feature/critical-data-integrity
 
 ### P0.1: Server-Side Duplicate Detection (12h → 10h)
 
+**⚠️ CRITICAL: GM-Only Duplicate Detection**
+- **GM Scanners:** ❌ REJECT duplicate scans (scoring system)
+- **Player Scanners:** ✅ ALLOW duplicate scans (content re-viewing)
+- **ESP32 Scanners:** ✅ ALLOW duplicate scans (content re-viewing)
+- **Reference:** See `DEVICE_TYPE_BEHAVIOR_REQUIREMENTS.md` for complete rules
+
 **REMOVED:**
 - ✖️ Feature flags (ENABLE_SERVER_DUPLICATE_DETECTION, applyToPlayers, applyToGM)
-- ✖️ Conditional logic for GM vs Player
 - ✖️ Migration concerns for old clients
 
 **SIMPLIFIED IMPLEMENTATION:**
@@ -122,7 +127,7 @@ class Session {
         playerDevices: 0,
         totalScans: 0,
         uniqueTokensScanned: [],
-        scannedTokensByDevice: {}  // NEW: Per-device tracking (all devices)
+        scannedTokensByDevice: {}  // Per-device tracking (all devices, for analytics)
       };
     }
   }
@@ -135,45 +140,39 @@ class Session {
     return this.metadata.scannedTokensByDevice[deviceId];
   }
 
-  addScannedToken(deviceId, tokenId) {
+  addDeviceScannedToken(deviceId, tokenId) {
     const tokens = this.getDeviceScannedTokens(deviceId);
     tokens.add(tokenId);
     return tokens;
+  }
+
+  hasDeviceScannedToken(deviceId, tokenId) {
+    const tokens = this.getDeviceScannedTokens(deviceId);
+    return tokens.has(tokenId);
   }
 }
 ```
 
 ```javascript
 // backend/src/services/transactionService.js
-async processTransaction(transaction) {
-  const session = sessionService.getCurrentSession();
-  if (!session) {
-    return { success: false, error: 'No active session' };
+isDuplicate(transaction, session) {
+  // CRITICAL: Only GM scanners reject duplicates
+  // Players and ESP32 MUST be allowed to re-scan tokens
+  if (transaction.deviceType !== 'gm') {
+    return false;  // ← ALWAYS allow duplicates for player/ESP32
   }
 
-  const { tokenId, deviceId } = transaction;
-  const scannedTokens = session.getDeviceScannedTokens(deviceId);
-
-  // SIMPLE: Always check duplicates (GM and Player)
-  if (scannedTokens.has(tokenId)) {
-    logger.info('Duplicate scan rejected', { tokenId, deviceId });
-    return {
-      success: false,
-      duplicate: true,
-      message: 'Token already scanned by this device'
-    };
+  // GM Scanner: Check if THIS GM device already scanned this token
+  if (session.hasDeviceScannedToken(transaction.deviceId, transaction.tokenId)) {
+    logger.info('Duplicate scan rejected (GM only)', {
+      tokenId: transaction.tokenId,
+      deviceId: transaction.deviceId,
+      deviceType: transaction.deviceType
+    });
+    return true;
   }
 
-  // Add to scanned tokens
-  session.addScannedToken(deviceId, tokenId);
-
-  // Process transaction...
-  const result = await this._processTransaction(transaction);
-
-  // Persist session
-  await sessionService.saveSession();
-
-  return result;
+  return false;
 }
 ```
 
@@ -187,18 +186,29 @@ npm run test:unit -- transactionService-duplicates
 
 # Integration test
 npm run test:integration -- duplicate-detection
-# Expected: Server rejects ALL duplicate scans (GM and Player)
+# Expected: GM duplicates rejected, Player/ESP32 duplicates ALLOWED
 
-# Manual test
+# Manual test - GM Scanner (should reject duplicate)
 curl -k -X POST https://localhost:3000/api/scan \
   -H "Content-Type: application/json" \
-  -d '{"tokenId":"kaa001","deviceId":"PLAYER_001","teamId":"001"}'
+  -d '{"tokenId":"kaa001","deviceId":"GM_STATION_1","deviceType":"gm","teamId":"001"}'
 # Expected: 200 OK
 
 curl -k -X POST https://localhost:3000/api/scan \
   -H "Content-Type: application/json" \
-  -d '{"tokenId":"kaa001","deviceId":"PLAYER_001","teamId":"001"}'
+  -d '{"tokenId":"kaa001","deviceId":"GM_STATION_1","deviceType":"gm","teamId":"001"}'
 # Expected: 409 Conflict {"duplicate": true}
+
+# Manual test - Player Scanner (should ALLOW duplicate)
+curl -k -X POST https://localhost:3000/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"tokenId":"kaa001","deviceId":"PLAYER_001","deviceType":"player","teamId":"001"}'
+# Expected: 200 OK
+
+curl -k -X POST https://localhost:3000/api/scan \
+  -H "Content-Type: application/json" \
+  -d '{"tokenId":"kaa001","deviceId":"PLAYER_001","deviceType":"player","teamId":"001"}'
+# Expected: 200 OK (NOT 409!) - Players can re-scan
 ```
 
 **Estimated:** 10 hours (was 17h with feature flags)
