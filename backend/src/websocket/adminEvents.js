@@ -189,8 +189,9 @@ async function handleGmCommand(socket, data, io) {
         if (!createSession) {
           throw new Error('No active session');
         }
-        // Add admin's deviceId
+        // Add admin's deviceId and deviceType from authenticated socket
         txData.deviceId = socket.deviceId;
+        txData.deviceType = socket.deviceType || 'gm';  // Explicit assignment
         const createResult = await transactionService.createManualTransaction(txData, createSession);
         resultMessage = `Manual transaction created for team ${txData.teamId}: ${createResult.points} points`;
         logger.info('Manual transaction created by GM', {

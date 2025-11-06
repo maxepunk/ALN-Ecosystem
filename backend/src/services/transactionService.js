@@ -177,11 +177,32 @@ class TransactionService extends EventEmitter {
 
     if (transaction.deviceType !== 'gm') {
       // Players and ESP32 devices: ALWAYS allow duplicates
-      logger.debug('Duplicate check skipped for non-GM device', {
-        deviceType: transaction.deviceType,
-        deviceId: transaction.deviceId,
-        tokenId: transaction.tokenId
-      });
+
+      // Check if this is a re-scan (for analytics)
+      const isRescan = session.hasDeviceScannedToken(transaction.deviceId, transaction.tokenId);
+
+      if (isRescan) {
+        logger.debug('Player re-scan tracked for analytics', {
+          deviceType: transaction.deviceType,
+          deviceId: transaction.deviceId,
+          tokenId: transaction.tokenId
+        });
+
+        // Emit analytics event for dashboards/reporting
+        this.emit('transaction:rescan', {
+          deviceId: transaction.deviceId,
+          deviceType: transaction.deviceType,
+          tokenId: transaction.tokenId,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        logger.debug('Duplicate check skipped for non-GM device', {
+          deviceType: transaction.deviceType,
+          deviceId: transaction.deviceId,
+          tokenId: transaction.tokenId
+        });
+      }
+
       return false;  // NOT a duplicate for player/ESP32
     }
 
@@ -657,6 +678,15 @@ class TransactionService extends EventEmitter {
     const token = this.tokens.get(tokenId);
     if (!token) {
       throw new Error(`Token not found: ${tokenId}`);
+    }
+
+    // Validate deviceType provided (warn if missing)
+    if (!deviceType) {
+      logger.warn('Manual transaction missing deviceType, defaulting to gm', {
+        tokenId,
+        deviceId: deviceId || 'ADMIN_MANUAL',
+        source: 'admin_command'
+      });
     }
 
     // Process as normal scan

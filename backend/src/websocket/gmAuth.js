@@ -71,8 +71,11 @@ async function handleGmIdentify(socket, data, io) {
       return;
     }
 
-    // PHASE 2.2 (P1.2): Join rooms in correct order
-    // Order matters: device room → type room → session room → team rooms
+    // PHASE 2.2 (P1.2): Join rooms in hierarchical order
+    // Order is for code clarity and debugging, not a Socket.io technical requirement
+    // (Socket.io uses set union for broadcasts - order doesn't affect delivery)
+    // Hierarchy: most specific → least specific
+    //   device:GM_001 (targeted) → gm (type-wide) → session:ABC (legacy) → team:001 (future)
 
     // 1. Device-specific room (for targeted messages like batch:ack)
     socket.join(`device:${deviceId}`);
