@@ -72,6 +72,7 @@ describe('Transaction Events - Contract Validation', () => {
           tokenId: '534e2b03',  // Real token: Technical, rating=3
           teamId: '001',
           deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',  // P0.1: Required for device-type-specific behavior
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
@@ -103,6 +104,7 @@ describe('Transaction Events - Contract Validation', () => {
           tokenId: 'tac001',  // Real token: Personal, rating=1
           teamId: '001',
           deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',  // P0.1: Required for device-type-specific behavior
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()

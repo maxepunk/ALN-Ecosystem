@@ -90,6 +90,7 @@ describe('Player Scan Event - Contract Validation', () => {
         .send({
           tokenId: 'jaw001',  // Only video token in ALN-TokenData
           deviceId: 'PLAYER_8a7b9c1d',
+          deviceType: 'player',  // P0.1: Required for device-type-specific behavior
           teamId: '001',
           timestamp: new Date().toISOString()
         })
@@ -127,6 +128,7 @@ describe('Player Scan Event - Contract Validation', () => {
         .send({
           tokenId: 'tac001',  // Non-video token (image + audio only)
           deviceId: 'PLAYER_test123',
+          deviceType: 'player',  // P0.1: Required for device-type-specific behavior
           timestamp: new Date().toISOString()
         })
         .expect(200);
@@ -161,6 +163,7 @@ describe('Player Scan Event - Contract Validation', () => {
         .send({
           tokenId: 'jaw001',  // Only video token in ALN-TokenData
           deviceId: 'PLAYER_scanner_1',
+          deviceType: 'player',  // P0.1: Required for device-type-specific behavior
           // teamId omitted (optional per contract)
           timestamp: new Date().toISOString()
         })

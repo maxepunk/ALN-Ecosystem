@@ -48,6 +48,7 @@ describe('POST /api/scan', () => {
         tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         teamId: '001',
         deviceId: 'PLAYER_SCANNER_01',
+        deviceType: 'player',  // P0.1: Required for device-type-specific behavior
         timestamp: new Date().toISOString()
       })
       .expect(200);
@@ -62,6 +63,7 @@ describe('POST /api/scan', () => {
         tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         teamId: '001',  // TODO Phase 2: Make optional per contract
         deviceId: 'PLAYER_SCANNER_01',
+        deviceType: 'player',  // P0.1: Required for device-type-specific behavior
         timestamp: new Date().toISOString()
       })
       .expect(200);
@@ -77,6 +79,7 @@ describe('POST /api/scan', () => {
       .send({
         tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01',
+        deviceType: 'player',  // P0.1: Required for device-type-specific behavior
         teamId: '001',
         timestamp: new Date().toISOString()
       })
@@ -116,7 +119,8 @@ describe('POST /api/scan', () => {
       .post('/api/scan')
       .send({
         tokenId: 'jaw011',  // Only video token in ALN-TokenData
-        deviceId: 'PLAYER_SCANNER_01'
+        deviceId: 'PLAYER_SCANNER_01',
+        deviceType: 'player'  // P0.1: Required for device-type-specific behavior
       })
       .expect(200);
 
@@ -129,7 +133,8 @@ describe('POST /api/scan', () => {
       .post('/api/scan')
       .send({
         tokenId: 'jaw011',  // Same token - should reject because video still playing
-        deviceId: 'PLAYER_SCANNER_02'
+        deviceId: 'PLAYER_SCANNER_02',
+        deviceType: 'player'  // P0.1: Required for device-type-specific behavior
       })
       .expect(409);
 
