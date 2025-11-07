@@ -648,8 +648,8 @@
         }
 
         function addDetectiveLogEntry(transaction) {
-            // Prevent duplicates
-            if (state.detectiveScans.some(s => s.id === transaction.id)) {
+            // Prevent duplicates (check by tokenId, not transaction id)
+            if (state.detectiveScans.some(s => s.tokenId === transaction.tokenId)) {
                 return;
             }
 
