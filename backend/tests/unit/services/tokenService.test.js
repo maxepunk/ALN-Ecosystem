@@ -275,7 +275,8 @@ describe('TokenService - Token Loading', () => {
         rfid: 'token001',
         group: 'Alpha Group (x2)',
         originalType: 'Technical',
-        rating: 3
+        rating: 3,
+        summary: null
       });
     });
 

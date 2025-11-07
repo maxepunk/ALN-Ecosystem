@@ -240,6 +240,73 @@ module.exports = {
     }
   },
 
+  // Detective mode tokens with summary field
+  DETECTIVE_TOKEN_WITH_SUMMARY: {
+    id: 'det001',
+    name: 'Memory det001',
+    value: 25,  // Calculated from SF_ValueRating: 2, SF_MemoryType: 'Technical'
+    memoryType: 'Technical',
+    groupId: null,
+    groupMultiplier: 1,
+    mediaAssets: {
+      image: 'assets/images/placeholder.bmp',
+      audio: null,
+      video: null,
+      processingImage: null
+    },
+    metadata: {
+      rfid: 'det001',
+      group: '',
+      originalType: 'Technical',
+      rating: 2,
+      summary: 'Security footage from warehouse district - timestamp 23:47'
+    }
+  },
+
+  DETECTIVE_TOKEN_WITHOUT_SUMMARY: {
+    id: 'alr001',
+    name: 'Memory alr001',
+    value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Technical'
+    memoryType: 'Technical',
+    groupId: null,
+    groupMultiplier: 1,
+    mediaAssets: {
+      image: 'assets/images/placeholder.bmp',
+      audio: null,
+      video: null,
+      processingImage: null
+    },
+    metadata: {
+      rfid: 'alr001',
+      group: '',
+      originalType: 'Technical',
+      rating: 3,
+      summary: null
+    }
+  },
+
+  DETECTIVE_TOKEN_WITH_HTML: {
+    id: 'det999',
+    name: 'Memory det999',
+    value: 25,  // Calculated from SF_ValueRating: 2, SF_MemoryType: 'Technical'
+    memoryType: 'Technical',
+    groupId: null,
+    groupMultiplier: 1,
+    mediaAssets: {
+      image: 'assets/images/placeholder.bmp',
+      audio: null,
+      video: null,
+      processingImage: null
+    },
+    metadata: {
+      rfid: 'det999',
+      group: '',
+      originalType: 'Technical',
+      rating: 2,
+      summary: '<script>alert("XSS")</script> Test & "special" \'chars\''
+    }
+  },
+
   /**
    * Get all tokens as an object keyed by ID (matches ALN-TokenData format)
    * Usage: TokenManager.database = TestTokens.getAllAsObject()
@@ -266,6 +333,11 @@ module.exports = {
     tokens[this.VIDEO_TOKEN.id] = this.VIDEO_TOKEN;
     tokens[this.AUDIO_TOKEN.id] = this.AUDIO_TOKEN;
     tokens[this.IMAGE_TOKEN.id] = this.IMAGE_TOKEN;
+
+    // Add detective mode tokens
+    tokens[this.DETECTIVE_TOKEN_WITH_SUMMARY.id] = this.DETECTIVE_TOKEN_WITH_SUMMARY;
+    tokens[this.DETECTIVE_TOKEN_WITHOUT_SUMMARY.id] = this.DETECTIVE_TOKEN_WITHOUT_SUMMARY;
+    tokens[this.DETECTIVE_TOKEN_WITH_HTML.id] = this.DETECTIVE_TOKEN_WITH_HTML;
 
     return tokens;
   },

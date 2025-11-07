@@ -222,12 +222,30 @@
             font-size: clamp(0.875rem, 1.5vw, 1rem);
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .log-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .log-summary {
+            margin: 0;
+            margin-top: 0.5rem;
+            font-size: clamp(0.75rem, 1.25vw, 0.875rem);
+            font-style: italic;
+            color: #b0b0b0;  /* WCAG AA compliant contrast against dark background */
+            line-height: 1.4;
         }
 
         .log-time {
             opacity: 0.7;
             font-size: clamp(0.75rem, 1.25vw, 0.875rem);
+            white-space: nowrap;
         }
 
         /* ============================================
@@ -464,6 +482,24 @@
         };
 
         // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        /**
+         * Escapes HTML special characters to prevent XSS attacks
+         * @param {string} unsafe - The string to escape
+         * @returns {string} The escaped string safe for HTML insertion
+         */
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // ============================================
         // AUTHENTICATION
         // ============================================
         async function authenticate() {
@@ -657,6 +693,7 @@
                 id: transaction.id,
                 tokenId: transaction.tokenId,
                 timestamp: transaction.timestamp,
+                summary: transaction.summary || null
             });
 
             // Keep only last 50 entries
@@ -680,9 +717,13 @@
 
             const html = state.detectiveScans.map(scan => {
                 const time = new Date(scan.timestamp).toLocaleTimeString();
+                const summaryHtml = scan.summary ? `<p class="log-summary">${escapeHtml(scan.summary)}</p>` : '';
                 return `
                     <div class="log-entry">
-                        <span>${scan.tokenId}</span>
+                        <div class="log-content">
+                            <strong>${escapeHtml(scan.tokenId)}</strong>
+                            ${summaryHtml}
+                        </div>
                         <span class="log-time">${time}</span>
                     </div>
                 `;

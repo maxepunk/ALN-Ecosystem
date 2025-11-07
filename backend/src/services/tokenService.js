@@ -24,6 +24,25 @@ const extractGroupName = (group) => {
 };
 
 /**
+ * Validate and sanitize summary field per AsyncAPI contract
+ * @param {string} summary - Summary text from token data
+ * @param {string} tokenId - Token ID for logging purposes
+ * @returns {string|null} Validated summary (max 350 chars) or null
+ */
+const validateSummary = (summary, tokenId) => {
+  if (!summary) return null;
+
+  const MAX_LENGTH = 350;  // Per AsyncAPI contract
+
+  if (summary.length > MAX_LENGTH) {
+    console.warn(`⚠️  Token ${tokenId}: summary exceeds ${MAX_LENGTH} chars (${summary.length}), truncating`);
+    return summary.substring(0, MAX_LENGTH);
+  }
+
+  return summary;
+};
+
+/**
  * Calculate token value based on rating and type
  * @param {number} rating - SF_ValueRating (1-5)
  * @param {string} type - SF_MemoryType (Personal, Business, Technical)
@@ -74,7 +93,11 @@ const loadRawTokens = () => _loadTokensFile();
 
 /**
  * Load and transform tokens for backend use (game logic needs calculated values)
- * @returns {Array} Transformed tokens array with calculated scores
+ * Transforms raw token data into backend format with:
+ * - Calculated value scores (based on rating + memory type)
+ * - Parsed group multipliers
+ * - Optional summary field (max 350 chars, for detective mode display)
+ * @returns {Array} Transformed tokens array with calculated scores and metadata
  */
 const loadTokens = () => {
   const tokensObject = _loadTokensFile();
@@ -105,7 +128,8 @@ const loadTokens = () => {
         rfid: token.SF_RFID,
         group: token.SF_Group,
         originalType: token.SF_MemoryType,
-        rating: token.SF_ValueRating
+        rating: token.SF_ValueRating,
+        summary: validateSummary(token.summary, token.SF_RFID)
       }
     };
   });
