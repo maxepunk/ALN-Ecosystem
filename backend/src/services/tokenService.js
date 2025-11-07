@@ -105,7 +105,8 @@ const loadTokens = () => {
         rfid: token.SF_RFID,
         group: token.SF_Group,
         originalType: token.SF_MemoryType,
-        rating: token.SF_ValueRating
+        rating: token.SF_ValueRating,
+        summary: token.summary || null
       }
     };
   });

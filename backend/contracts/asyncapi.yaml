@@ -775,6 +775,10 @@ components:
                     type: string
                     description: Token group (from tokens.json)
                     example: "jaw_group"
+                  summary:
+                    type: [string, "null"]
+                    description: Brief summary of memory content for detective mode (from tokens.json, optional)
+                    example: "Security footage from warehouse district - timestamp 23:47"
           timestamp:
             type: string
             format: date-time

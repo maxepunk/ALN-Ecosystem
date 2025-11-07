@@ -122,5 +122,60 @@ describe('Transaction Events - Contract Validation', () => {
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'transaction:new');
     });
+
+    it('should include summary field when token has summary (detective mode)', async () => {
+      // Setup: Listen for transaction:new BEFORE submitting
+      const broadcastPromise = waitForEvent(socket, 'transaction:new');
+
+      // Trigger: Submit detective mode transaction for token with summary
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'det001',  // Detective token with summary field
+          teamId: '001',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'detective'  // Detective mode
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Wait: For transaction:new broadcast
+      const event = await broadcastPromise;
+
+      // Validate: Summary is included
+      expect(event.data.transaction).toHaveProperty('summary');
+      expect(event.data.transaction.summary).toBe('Security footage from warehouse district - timestamp 23:47');
+
+      // Validate: Against AsyncAPI contract schema (ajv)
+      validateWebSocketEvent(event, 'transaction:new');
+    });
+
+    it('should handle tokens without summary gracefully', async () => {
+      // Setup: Listen for transaction:new BEFORE submitting
+      const broadcastPromise = waitForEvent(socket, 'transaction:new');
+
+      // Trigger: Submit transaction for token without summary
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'alr001',  // Token without summary field
+          teamId: '001',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'detective'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Wait: For transaction:new broadcast
+      const event = await broadcastPromise;
+
+      // Validate: Summary is null or undefined (graceful handling)
+      expect(event.data.transaction.summary).toBeNull();
+
+      // Validate: Against AsyncAPI contract schema (ajv)
+      validateWebSocketEvent(event, 'transaction:new');
+    });
   });
 });

@@ -135,6 +135,7 @@ function setupBroadcastListeners(io, services) {
         memoryType: token?.memoryType || 'UNKNOWN',
         valueRating: token?.metadata?.rating || 0,
         group: token?.metadata?.group || token?.groupId || 'No Group',
+        summary: token?.metadata?.summary || null,  // Brief memory summary for detective mode
         isUnknown: !token  // Frontend needs this to avoid marking valid tokens as unknown
       }
     };
@@ -441,7 +442,8 @@ function setupBroadcastListeners(io, services) {
             points: transaction.points,
             timestamp: transaction.timestamp,
             memoryType: token?.memoryType || 'UNKNOWN',
-            valueRating: token?.metadata?.rating || 0
+            valueRating: token?.metadata?.rating || 0,
+            summary: token?.metadata?.summary || null
           });
         }
       }
