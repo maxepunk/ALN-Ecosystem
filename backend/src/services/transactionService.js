@@ -98,6 +98,18 @@ class TransactionService extends EventEmitter {
         return this.createScanResponse(transaction, token);
       }
 
+      // CRITICAL: Enrich transaction with token's default summary if not provided
+      // Per AsyncAPI contract line 785: "custom from transaction or default from tokens.json"
+      // This ensures transaction object is complete before persistence (source of truth pattern)
+      if (!transaction.summary && token.metadata?.summary) {
+        transaction.summary = token.metadata.summary;
+        logger.debug('Enriched transaction with token default summary', {
+          transactionId: transaction.id,
+          tokenId: transaction.tokenId,
+          summaryLength: transaction.summary.length
+        });
+      }
+
       // Check for duplicates
       if (this.isDuplicate(transaction, session)) {
         const original = this.findOriginalTransaction(transaction, session);

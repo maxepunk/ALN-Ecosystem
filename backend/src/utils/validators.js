@@ -42,6 +42,7 @@ const transactionSchema = Joi.object({
   deviceId: Joi.string().required().min(1).max(100),
   deviceType: Joi.string().valid('gm', 'player', 'esp32').required(),  // P0.1 Correction: Required for duplicate detection logic
   mode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
+  summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for detective mode (per AsyncAPI contract)
   timestamp: isoDate.required(),
   sessionId: uuid.required(),
   status: Joi.string().valid('accepted', 'error', 'duplicate').required(),  // AsyncAPI contract values (Decision #4)
@@ -174,6 +175,7 @@ const gmTransactionSchema = Joi.object({
   deviceId: Joi.string().required().min(1).max(100),
   deviceType: Joi.string().valid('gm').required(),  // P0.1 Correction: Required, must be 'gm'
   mode: Joi.string().valid('detective', 'blackmarket').required(),  // REQUIRED - no default
+  summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for detective mode (per AsyncAPI contract)
   timestamp: isoDate.optional(),
 });
 

@@ -112,6 +112,8 @@ class Transaction {
       teamId: this.teamId,
       deviceId: this.deviceId,
       deviceType: this.deviceType,  // P0.1 Correction: Include deviceType
+      mode: this.mode,  // Include mode for detective/blackmarket distinction
+      summary: this.summary || null,  // Include custom summary for detective mode
       timestamp: this.timestamp,
       sessionId: this.sessionId,
       status: this.status,
@@ -152,6 +154,7 @@ class Transaction {
       deviceId: scanRequest.deviceId,
       deviceType: scanRequest.deviceType,  // P0.1 Correction: Include deviceType
       mode: scanRequest.mode || 'blackmarket', // AsyncAPI contract field (Decision #4)
+      summary: scanRequest.summary || null,  // Optional custom summary for detective mode
       timestamp: scanRequest.timestamp || new Date().toISOString(),
       sessionId: sessionId,
       status: 'accepted',

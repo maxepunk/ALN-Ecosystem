@@ -59,6 +59,7 @@ def parse_sf_fields(description_text):
     SF_ValueRating: [value]
     SF_MemoryType: [value]
     SF_Group: [value]
+    SF_Summary: [value]
     """
     sf_data = {}
 
@@ -68,6 +69,7 @@ def parse_sf_fields(description_text):
         'SF_ValueRating': r'SF_ValueRating:\s*\[([^\]]*)\]',
         'SF_MemoryType': r'SF_MemoryType:\s*\[([^\]]*)\]',
         'SF_Group': r'SF_Group:\s*\[([^\]]*)\]',
+        'SF_Summary': r'SF_Summary:\s*\[([^\]]*)\]',
     }
 
     for field, pattern in patterns.items():
@@ -87,6 +89,8 @@ def parse_sf_fields(description_text):
                 sf_data[field] = value if value else None
             elif field == 'SF_Group':
                 sf_data[field] = value if value else ""
+            elif field == 'SF_Summary':
+                sf_data[field] = value if value else None
         else:
             # Set defaults
             if field == 'SF_RFID':
@@ -97,6 +101,8 @@ def parse_sf_fields(description_text):
                 sf_data[field] = None
             elif field == 'SF_Group':
                 sf_data[field] = ""
+            elif field == 'SF_Summary':
+                sf_data[field] = None
 
     return sf_data
 
@@ -239,6 +245,10 @@ def process_token(page):
         "SF_MemoryType": sf_data.get('SF_MemoryType'),
         "SF_Group": sf_data.get('SF_Group', "")
     }
+
+    # Add summary field if it exists (optional field)
+    if sf_data.get('SF_Summary'):
+        token_entry["summary"] = sf_data.get('SF_Summary')
 
     # Set processingImage only if video exists
     if video_file and image_file:

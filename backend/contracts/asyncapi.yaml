@@ -612,6 +612,11 @@ components:
                 enum: [detective, blackmarket]
                 description: Scan mode (game logic)
                 example: "blackmarket"
+              summary:
+                type: [string, "null"]
+                description: Optional custom summary for detective mode scans (overrides token default)
+                maxLength: 350
+                example: "Security footage from warehouse district - timestamp 23:47"
           timestamp:
             type: string
             format: date-time
@@ -777,7 +782,7 @@ components:
                     example: "jaw_group"
                   summary:
                     type: [string, "null"]
-                    description: Brief summary of memory content for detective mode (from tokens.json, optional)
+                    description: Brief summary of memory content for detective mode (custom from transaction or default from tokens.json, optional)
                     maxLength: 350
                     example: "Security footage from warehouse district - timestamp 23:47"
           timestamp:

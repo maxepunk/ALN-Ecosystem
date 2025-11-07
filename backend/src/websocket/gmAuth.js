@@ -143,7 +143,8 @@ async function handleGmIdentify(socket, data, io) {
         points: transaction.points,
         timestamp: transaction.timestamp,
         memoryType: token?.memoryType || 'UNKNOWN',
-        valueRating: token?.metadata?.rating || 0
+        valueRating: token?.metadata?.rating || 0,
+        summary: transaction.summary || null  // Summary from transaction (complete persisted record)
       };
     });
 

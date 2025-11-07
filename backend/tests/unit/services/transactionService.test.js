@@ -1054,4 +1054,210 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(result.transaction.isDuplicate()).toBe(true);
     });
   });
+
+  describe('Transaction Enrichment (Summary Field)', () => {
+    let session;
+
+    beforeEach(async () => {
+      // Create session for all enrichment tests
+      session = await sessionService.createSession({
+        name: 'Enrichment Test Session',
+        teams: ['001']
+      });
+    });
+
+    test('should enrich transaction with token default summary when not provided', async () => {
+      // Setup: Token with default summary
+      const Token = require('../../../src/models/token');
+      const token = new Token({
+        id: 'det001',
+        name: 'Detective Token',
+        value: 0,
+        memoryType: 'Technical',
+        groupId: null,
+        groupMultiplier: 1,
+        mediaAssets: {},
+        metadata: {
+          rfid: 'det001',
+          rating: 2,
+          summary: 'Default summary from token data'
+        }
+      });
+
+      transactionService.tokens.set('det001', token);
+
+      // Scan request WITHOUT summary
+      const scanRequest = {
+        tokenId: 'det001',
+        teamId: '001',
+        deviceId: 'TEST_GM',
+        deviceType: 'gm',
+        mode: 'detective',
+        // summary: NOT PROVIDED
+        timestamp: new Date().toISOString()
+      };
+
+      // Execute
+      const result = await transactionService.processScan(scanRequest, session);
+
+      // Verify: Transaction should be enriched with token's default summary
+      expect(result.transaction.summary).toBe('Default summary from token data');
+
+      // Verify: Persisted transaction has summary
+      const persistedTransaction = session.transactions.find(t => t.tokenId === 'det001');
+      expect(persistedTransaction.summary).toBe('Default summary from token data');
+    });
+
+    test('should use custom summary from scan request when provided', async () => {
+      // Setup: Token with default summary
+      const Token = require('../../../src/models/token');
+      const token = new Token({
+        id: 'det001',
+        name: 'Detective Token',
+        value: 0,
+        memoryType: 'Technical',
+        groupId: null,
+        groupMultiplier: 1,
+        mediaAssets: {},
+        metadata: {
+          rfid: 'det001',
+          rating: 2,
+          summary: 'Default summary from token data'
+        }
+      });
+
+      transactionService.tokens.set('det001', token);
+
+      // Scan request WITH custom summary
+      const scanRequest = {
+        tokenId: 'det001',
+        teamId: '001',
+        deviceId: 'TEST_GM',
+        deviceType: 'gm',
+        mode: 'detective',
+        summary: 'Custom summary from GM operator',  // Custom override
+        timestamp: new Date().toISOString()
+      };
+
+      // Execute
+      const result = await transactionService.processScan(scanRequest, session);
+
+      // Verify: Custom summary takes precedence
+      expect(result.transaction.summary).toBe('Custom summary from GM operator');
+
+      // Verify: Persisted transaction has custom summary
+      const persistedTransaction = session.transactions.find(t => t.tokenId === 'det001');
+      expect(persistedTransaction.summary).toBe('Custom summary from GM operator');
+    });
+
+    test('should handle tokens without default summary gracefully', async () => {
+      // Setup: Token WITHOUT summary
+      const Token = require('../../../src/models/token');
+      const token = new Token({
+        id: 'alr001',
+        name: 'Regular Token',
+        value: 1000,
+        memoryType: 'Technical',
+        groupId: null,
+        groupMultiplier: 1,
+        mediaAssets: {},
+        metadata: {
+          rfid: 'alr001',
+          rating: 3,
+          // No summary field
+        }
+      });
+
+      transactionService.tokens.set('alr001', token);
+
+      const scanRequest = {
+        tokenId: 'alr001',
+        teamId: '001',
+        deviceId: 'TEST_GM',
+        deviceType: 'gm',
+        mode: 'detective',
+        timestamp: new Date().toISOString()
+      };
+
+      // Execute
+      const result = await transactionService.processScan(scanRequest, session);
+
+      // Verify: Summary should be null (graceful handling)
+      expect(result.transaction.summary).toBeNull();
+
+      // Verify: Persisted transaction has null summary
+      const persistedTransaction = session.transactions.find(t => t.tokenId === 'alr001');
+      expect(persistedTransaction.summary).toBeNull();
+    });
+
+    test('should handle token with empty metadata object gracefully', async () => {
+      // Setup: Token with empty metadata (no summary field)
+      const Token = require('../../../src/models/token');
+      const token = new Token({
+        id: 'test001',
+        name: 'Test Token',
+        value: 100,
+        memoryType: 'Technical',
+        groupId: null,
+        groupMultiplier: 1,
+        mediaAssets: {},
+        metadata: {}  // Empty metadata object (no summary field)
+      });
+
+      transactionService.tokens.set('test001', token);
+
+      const scanRequest = {
+        tokenId: 'test001',
+        teamId: '001',
+        deviceId: 'TEST_GM',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      // Execute
+      const result = await transactionService.processScan(scanRequest, session);
+
+      // Verify: Should not crash, summary should be null
+      expect(result.transaction.summary).toBeNull();
+      expect(result.transaction.status).toBe('accepted');
+    });
+
+    test('should enrich summary for both detective and blackmarket modes', async () => {
+      // Summary enrichment should work regardless of game mode
+      const Token = require('../../../src/models/token');
+      const token = new Token({
+        id: 'det002',
+        name: 'Detective Token',
+        value: 0,
+        memoryType: 'Technical',
+        groupId: null,
+        groupMultiplier: 1,
+        mediaAssets: {},
+        metadata: {
+          rfid: 'det002',
+          rating: 5,
+          summary: 'This is a test summary'
+        }
+      });
+
+      transactionService.tokens.set('det002', token);
+
+      // Test blackmarket mode
+      const blackmarketRequest = {
+        tokenId: 'det002',
+        teamId: '001',
+        deviceId: 'TEST_GM',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      const result = await transactionService.processScan(blackmarketRequest, session);
+
+      // Verify: Summary enriched even in blackmarket mode
+      expect(result.transaction.summary).toBe('This is a test summary');
+      expect(result.transaction.mode).toBe('blackmarket');
+    });
+  });
 });
