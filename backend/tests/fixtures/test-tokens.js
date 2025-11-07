@@ -285,6 +285,28 @@ module.exports = {
     }
   },
 
+  DETECTIVE_TOKEN_WITH_HTML: {
+    id: 'det999',
+    name: 'Memory det999',
+    value: 25,  // Calculated from SF_ValueRating: 2, SF_MemoryType: 'Technical'
+    memoryType: 'Technical',
+    groupId: null,
+    groupMultiplier: 1,
+    mediaAssets: {
+      image: 'assets/images/placeholder.bmp',
+      audio: null,
+      video: null,
+      processingImage: null
+    },
+    metadata: {
+      rfid: 'det999',
+      group: '',
+      originalType: 'Technical',
+      rating: 2,
+      summary: '<script>alert("XSS")</script> Test & "special" \'chars\''
+    }
+  },
+
   /**
    * Get all tokens as an object keyed by ID (matches ALN-TokenData format)
    * Usage: TokenManager.database = TestTokens.getAllAsObject()
@@ -315,6 +337,7 @@ module.exports = {
     // Add detective mode tokens
     tokens[this.DETECTIVE_TOKEN_WITH_SUMMARY.id] = this.DETECTIVE_TOKEN_WITH_SUMMARY;
     tokens[this.DETECTIVE_TOKEN_WITHOUT_SUMMARY.id] = this.DETECTIVE_TOKEN_WITHOUT_SUMMARY;
+    tokens[this.DETECTIVE_TOKEN_WITH_HTML.id] = this.DETECTIVE_TOKEN_WITH_HTML;
 
     return tokens;
   },

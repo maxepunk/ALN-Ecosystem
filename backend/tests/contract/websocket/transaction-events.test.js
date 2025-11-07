@@ -177,5 +177,32 @@ describe('Transaction Events - Contract Validation', () => {
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'transaction:new');
     });
+
+    it('should transmit HTML/special characters in summary without modification', async () => {
+      // Setup: Listen for transaction:new BEFORE submitting
+      const broadcastPromise = waitForEvent(socket, 'transaction:new');
+
+      // Trigger: Submit transaction for token with HTML/special characters
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'det999',  // Token with HTML/special characters in summary
+          teamId: '001',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'detective'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Wait: For transaction:new broadcast
+      const event = await broadcastPromise;
+
+      // Validate: Summary contains unescaped HTML (backend does not escape)
+      expect(event.data.transaction.summary).toBe('<script>alert("XSS")</script> Test & "special" \'chars\'');
+
+      // Validate: Against AsyncAPI contract schema (ajv)
+      validateWebSocketEvent(event, 'transaction:new');
+    });
   });
 });

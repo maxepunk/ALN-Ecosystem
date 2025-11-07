@@ -482,6 +482,24 @@
         };
 
         // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        /**
+         * Escapes HTML special characters to prevent XSS attacks
+         * @param {string} unsafe - The string to escape
+         * @returns {string} The escaped string safe for HTML insertion
+         */
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // ============================================
         // AUTHENTICATION
         // ============================================
         async function authenticate() {
@@ -699,11 +717,11 @@
 
             const html = state.detectiveScans.map(scan => {
                 const time = new Date(scan.timestamp).toLocaleTimeString();
-                const summaryHtml = scan.summary ? `<p class="log-summary">${scan.summary}</p>` : '';
+                const summaryHtml = scan.summary ? `<p class="log-summary">${escapeHtml(scan.summary)}</p>` : '';
                 return `
                     <div class="log-entry">
                         <div class="log-content">
-                            <strong>${scan.tokenId}</strong>
+                            <strong>${escapeHtml(scan.tokenId)}</strong>
                             ${summaryHtml}
                         </div>
                         <span class="log-time">${time}</span>
