@@ -18,10 +18,8 @@ import os
 import json
 import argparse
 import sys
+import requests
 from typing import Dict, List, Set, Tuple
-from notion_client import Client
-from notion_client.helpers import iterate_paginated_api
-from notion_client import APIErrorCode, APIResponseError
 from collections import defaultdict
 
 # Database IDs
@@ -39,8 +37,8 @@ NARRATIVE_TYPES = [
 ]
 
 
-def init_notion_client():
-    """Initialize Notion client with authentication"""
+def get_notion_headers():
+    """Get Notion API headers with authentication"""
     token = os.environ.get("NOTION_TOKEN")
 
     if not token:
@@ -49,7 +47,11 @@ def init_notion_client():
         print("  export NOTION_TOKEN='your_token_here'")
         sys.exit(1)
 
-    return Client(auth=token)
+    return {
+        "Authorization": f"Bearer {token}",
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json"
+    }
 
 
 def safe_get_title(page: Dict, property_name: str) -> str:
@@ -84,16 +86,32 @@ def safe_get_relation(page: Dict, property_name: str) -> List[str]:
     return [ref["id"] for ref in page["properties"].get(property_name, {}).get("relation", [])]
 
 
-def fetch_all_characters(notion: Client) -> Dict[str, Dict]:
+def fetch_all_characters(headers: Dict) -> Dict[str, Dict]:
     """Fetch all characters and return as dict keyed by page ID"""
     print("Fetching all characters...")
     characters = {}
 
-    try:
-        for char in iterate_paginated_api(
-            notion.databases.query,
-            database_id=CHARACTERS_DB
-        ):
+    # Manual pagination
+    has_more = True
+    start_cursor = None
+    query_data = {}
+
+    while has_more:
+        if start_cursor:
+            query_data["start_cursor"] = start_cursor
+
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{CHARACTERS_DB}/query",
+            headers=headers,
+            json=query_data
+        )
+        data = resp.json()
+
+        if "results" not in data:
+            print(f"Error fetching characters from Notion: {data}")
+            sys.exit(1)
+
+        for char in data["results"]:
             char_id = char["id"]
             characters[char_id] = {
                 "id": char_id,
@@ -109,25 +127,41 @@ def fetch_all_characters(notion: Client) -> Dict[str, Dict]:
                 "associated_elements": safe_get_relation(char, "Associated Elements")
             }
 
-        print(f"Found {len(characters)} characters")
-        return characters
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
 
-    except APIResponseError as error:
-        print(f"API Error fetching characters: {error}")
-        sys.exit(1)
+    print(f"Found {len(characters)} characters")
+    return characters
 
 
-def fetch_all_timeline_events(notion: Client) -> Dict[str, Dict]:
+def fetch_all_timeline_events(headers: Dict) -> Dict[str, Dict]:
     """Fetch all timeline events and return as dict keyed by page ID"""
     print("Fetching all timeline events...")
     events = {}
 
-    try:
-        for event in iterate_paginated_api(
-            notion.databases.query,
-            database_id=TIMELINE_DB,
-            sorts=[{"property": "Date", "direction": "ascending"}]
-        ):
+    # Manual pagination
+    has_more = True
+    start_cursor = None
+    query_data = {
+        "sorts": [{"property": "Date", "direction": "ascending"}]
+    }
+
+    while has_more:
+        if start_cursor:
+            query_data["start_cursor"] = start_cursor
+
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{TIMELINE_DB}/query",
+            headers=headers,
+            json=query_data
+        )
+        data = resp.json()
+
+        if "results" not in data:
+            print(f"Error fetching timeline from Notion: {data}")
+            sys.exit(1)
+
+        for event in data["results"]:
             event_id = event["id"]
             events[event_id] = {
                 "id": event_id,
@@ -138,33 +172,47 @@ def fetch_all_timeline_events(notion: Client) -> Dict[str, Dict]:
                 "memory_evidence": safe_get_relation(event, "Memory/Evidence")
             }
 
-        print(f"Found {len(events)} timeline events")
-        return events
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
 
-    except APIResponseError as error:
-        print(f"API Error fetching timeline: {error}")
-        sys.exit(1)
+    print(f"Found {len(events)} timeline events")
+    return events
 
 
-def fetch_narrative_elements(notion: Client) -> Dict[str, Dict]:
+def fetch_narrative_elements(headers: Dict) -> Dict[str, Dict]:
     """Fetch all elements with narrative content"""
     print("Fetching narrative elements...")
     elements = {}
 
-    try:
-        # Build filter for narrative types
-        filter_obj = {
-            "or": [
-                {"property": "Basic Type", "select": {"equals": elem_type}}
-                for elem_type in NARRATIVE_TYPES
-            ]
-        }
+    # Build filter for narrative types
+    filter_obj = {
+        "or": [
+            {"property": "Basic Type", "select": {"equals": elem_type}}
+            for elem_type in NARRATIVE_TYPES
+        ]
+    }
 
-        for element in iterate_paginated_api(
-            notion.databases.query,
-            database_id=ELEMENTS_DB,
-            filter=filter_obj
-        ):
+    # Manual pagination
+    has_more = True
+    start_cursor = None
+    query_data = {"filter": filter_obj}
+
+    while has_more:
+        if start_cursor:
+            query_data["start_cursor"] = start_cursor
+
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{ELEMENTS_DB}/query",
+            headers=headers,
+            json=query_data
+        )
+        data = resp.json()
+
+        if "results" not in data:
+            print(f"Error fetching elements from Notion: {data}")
+            sys.exit(1)
+
+        for element in data["results"]:
             elem_id = element["id"]
             elements[elem_id] = {
                 "id": elem_id,
@@ -177,12 +225,11 @@ def fetch_narrative_elements(notion: Client) -> Dict[str, Dict]:
                 "narrative_threads": [opt["name"] for opt in element["properties"].get("Narrative Threads", {}).get("multi_select", [])]
             }
 
-        print(f"Found {len(elements)} narrative elements")
-        return elements
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
 
-    except APIResponseError as error:
-        print(f"API Error fetching elements: {error}")
-        sys.exit(1)
+    print(f"Found {len(elements)} narrative elements")
+    return elements
 
 
 def analyze_timeline_not_in_characters(
@@ -404,13 +451,13 @@ def main():
 
     args = parser.parse_args()
 
-    # Initialize Notion client
-    notion = init_notion_client()
+    # Get Notion API headers
+    headers = get_notion_headers()
 
     # Fetch all data
-    characters = fetch_all_characters(notion)
-    timeline = fetch_all_timeline_events(notion)
-    elements = fetch_narrative_elements(notion)
+    characters = fetch_all_characters(headers)
+    timeline = fetch_all_timeline_events(headers)
+    elements = fetch_narrative_elements(headers)
 
     # Analyze gaps
     timeline_gaps = analyze_timeline_not_in_characters(characters, timeline)
