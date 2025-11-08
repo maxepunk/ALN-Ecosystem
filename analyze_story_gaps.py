@@ -11,7 +11,7 @@ This script:
 
 import json
 import os
-from notion_client import Client
+import requests
 from pathlib import Path
 
 # Load environment variables from .env file if present
@@ -33,16 +33,18 @@ if not NOTION_TOKEN:
     print("  2. Set environment variable: export NOTION_TOKEN='your_token_here'")
     exit(1)
 
-NOTION_VERSION = "2022-06-28"
+# Database IDs (must include dashes)
+ELEMENTS_DB_ID = "18c2f33d-583f-8020-91bc-d84c7dd94306"
+CHARACTERS_DB_ID = "18c2f33d-583f-8060-a6ab-de32ff06bca2"
+PUZZLES_DB_ID = "1b62f33d-583f-80cc-87cf-d7d6c4b0b265"
+TIMELINE_DB_ID = "1b52f33d-583f-80de-ae5a-d20020c120dd"
 
-# Database IDs
-ELEMENTS_DB_ID = "18c2f33d583f802091bcd84c7dd94306"
-CHARACTERS_DB_ID = "18c2f33d583f8060a6abde32ff06bca2"
-PUZZLES_DB_ID = "1b62f33d583f80cc87cfd7d6c4b0b265"
-TIMELINE_DB_ID = "1b52f33d583f80deae5ad20020c120dd"
-
-# Initialize client
-notion = Client(auth=NOTION_TOKEN, notion_version=NOTION_VERSION)
+# Notion API headers (same as sync script)
+headers = {
+    "Authorization": f"Bearer {NOTION_TOKEN}",
+    "Notion-Version": "2022-06-28",
+    "Content-Type": "application/json"
+}
 
 def safe_get_text(prop_data, prop_type="title"):
     """Safely extract text from Notion property."""
@@ -77,17 +79,22 @@ def fetch_all_characters():
     start_cursor = None
 
     while has_more:
-        body = {}
+        query_data = {}
         if start_cursor:
-            body["start_cursor"] = start_cursor
+            query_data["start_cursor"] = start_cursor
 
-        response = notion.request(
-            path=f"databases/{CHARACTERS_DB_ID}/query",
-            method="POST",
-            body=body
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{CHARACTERS_DB_ID}/query",
+            headers=headers,
+            json=query_data
         )
+        data = resp.json()
 
-        for page in response["results"]:
+        if "results" not in data:
+            print(f"Error fetching characters: {data}")
+            break
+
+        for page in data["results"]:
             props = page["properties"]
 
             character = {
@@ -105,8 +112,8 @@ def fetch_all_characters():
 
             characters.append(character)
 
-        has_more = response["has_more"]
-        start_cursor = response.get("next_cursor")
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
 
     print(f"Fetched {len(characters)} characters")
     return characters
@@ -119,19 +126,24 @@ def fetch_all_timeline_events():
     start_cursor = None
 
     while has_more:
-        body = {
+        query_data = {
             "sorts": [{"property": "Date", "direction": "ascending"}]
         }
         if start_cursor:
-            body["start_cursor"] = start_cursor
+            query_data["start_cursor"] = start_cursor
 
-        response = notion.request(
-            path=f"databases/{TIMELINE_DB_ID}/query",
-            method="POST",
-            body=body
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{TIMELINE_DB_ID}/query",
+            headers=headers,
+            json=query_data
         )
+        data = resp.json()
 
-        for page in response["results"]:
+        if "results" not in data:
+            print(f"Error fetching timeline events: {data}")
+            break
+
+        for page in data["results"]:
             props = page["properties"]
 
             event = {
@@ -147,8 +159,8 @@ def fetch_all_timeline_events():
 
             events.append(event)
 
-        has_more = response["has_more"]
-        start_cursor = response.get("next_cursor")
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
 
     print(f"Fetched {len(events)} timeline events")
     return events
@@ -161,17 +173,22 @@ def fetch_all_elements():
     start_cursor = None
 
     while has_more:
-        body = {}
+        query_data = {}
         if start_cursor:
-            body["start_cursor"] = start_cursor
+            query_data["start_cursor"] = start_cursor
 
-        response = notion.request(
-            path=f"databases/{ELEMENTS_DB_ID}/query",
-            method="POST",
-            body=body
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{ELEMENTS_DB_ID}/query",
+            headers=headers,
+            json=query_data
         )
+        data = resp.json()
 
-        for page in response["results"]:
+        if "results" not in data:
+            print(f"Error fetching elements: {data}")
+            break
+
+        for page in data["results"]:
             props = page["properties"]
 
             element = {
@@ -188,8 +205,8 @@ def fetch_all_elements():
 
             elements.append(element)
 
-        has_more = response["has_more"]
-        start_cursor = response.get("next_cursor")
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
 
     print(f"Fetched {len(elements)} elements")
     return elements
