@@ -14,6 +14,7 @@ import json
 import os
 import re
 from pathlib import Path
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 # Load environment variables from .env file if present
 try:
@@ -42,6 +43,7 @@ ASSETS_IMAGES = ECOSYSTEM_ROOT / "aln-memory-scanner/assets/images"
 ASSETS_AUDIO = ECOSYSTEM_ROOT / "aln-memory-scanner/assets/audio"
 VIDEOS_DIR = ECOSYSTEM_ROOT / "backend/public/videos"
 TOKENS_JSON = ECOSYSTEM_ROOT / "ALN-TokenData/tokens.json"
+ESP32_SD_IMAGES = ECOSYSTEM_ROOT / "arduino-cyd-player-scanner/sd-card-deploy/images"
 
 # Notion API headers
 headers = {
@@ -49,6 +51,144 @@ headers = {
     "Notion-Version": "2022-06-28",
     "Content-Type": "application/json"
 }
+
+# Display dimensions
+WIDTH = 240
+HEIGHT = 320
+
+def generate_neurai_display(rfid, text):
+    """
+    Generate a NeurAI-styled 240x320 BMP display image.
+    Replicates the design from neurai-display-generator.jsx
+
+    Args:
+        rfid: Token RFID (used for filename)
+        text: Summary text to display
+
+    Returns:
+        Tuple of (pwa_path, esp32_path) for generated files
+    """
+    # Create image with black background
+    img = Image.new('RGB', (WIDTH, HEIGHT), color='#0a0a0a')
+    draw = ImageDraw.Draw(img)
+
+    # Dynamic font sizing based on text length
+    text_length = len(text)
+    if text_length > 200:
+        font_size = 10  # Smaller for long text
+        line_height = 15
+    elif text_length > 150:
+        font_size = 12
+        line_height = 16
+    else:
+        font_size = 13
+        line_height = 18
+
+    # Try to use monospace font, fall back to default if not available
+    try:
+        # Try common monospace fonts
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", font_size)
+        logo_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 8)  # Smaller logo
+        brand_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 12)  # Smaller branding
+    except:
+        try:
+            # Try alternative monospace fonts
+            font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", font_size)
+            logo_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf", 8)
+            brand_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf", 12)
+        except:
+            # Fall back to default font
+            font = ImageFont.load_default()
+            logo_font = ImageFont.load_default()
+            brand_font = ImageFont.load_default()
+
+    # Add subtle red glow border
+    border_color = (204, 0, 0, 77)  # rgba(204, 0, 0, 0.3)
+    draw.rectangle([1, 1, WIDTH - 2, HEIGHT - 2], outline=border_color, width=2)
+
+    # NeurAI ASCII Logo (top right corner, smaller)
+    logo = [
+        '███╗░░██╗',
+        '████╗░██║',
+        '██╔██╗██║',
+        '██║╚████║',
+        '██║░╚███║',
+        '╚═╝░░╚══╝'
+    ]
+    logo_color = (204, 0, 0, 102)  # rgba(204, 0, 0, 0.4)
+    for i, line in enumerate(logo):
+        draw.text((WIDTH - 65, 10 + i * 7), line, fill=logo_color, font=logo_font)
+
+    # Red accent line below logo (higher up now)
+    draw.line([(10, 55), (WIDTH - 10, 55)], fill=(204, 0, 0), width=2)
+
+    # Text rendering with word wrap
+    text_color = (255, 255, 255)
+    padding = 15
+    max_width = WIDTH - (padding * 2)
+    start_y = 62  # Start higher since logo is smaller
+
+    # Word wrap function
+    def wrap_text(text, max_width):
+        words = text.split(' ')
+        lines = []
+        current_line = ''
+
+        for word in words:
+            test_line = current_line + (' ' if current_line else '') + word
+            bbox = draw.textbbox((0, 0), test_line, font=font)
+            text_width = bbox[2] - bbox[0]
+
+            if text_width > max_width and current_line:
+                lines.append(current_line)
+                current_line = word
+            else:
+                current_line = test_line
+
+        if current_line:
+            lines.append(current_line)
+
+        return lines
+
+    lines = wrap_text(text, max_width)
+    max_lines = int((HEIGHT - start_y - 18) / line_height)  # Reduced bottom space to 18px
+    display_lines = lines[:max_lines]
+
+    # Draw each line (clean white text, no harsh glow)
+    for i, line in enumerate(display_lines):
+        y = start_y + (i * line_height)
+        draw.text((padding, y), line, fill=text_color, font=font)
+
+    # Add truncation indicator if text was cut off
+    if len(lines) > max_lines:
+        truncate_color = (204, 0, 0, 204)  # rgba(204, 0, 0, 0.8)
+        truncate_y = start_y + (max_lines * line_height) + 5
+        draw.text((padding, truncate_y), '[...]', fill=truncate_color, font=font)
+
+    # Bottom NeurAI branding (smaller, tighter to bottom)
+    brand_color = (204, 0, 0, 153)  # rgba(204, 0, 0, 0.6)
+    brand_text = 'N E U R A I'
+    bbox = draw.textbbox((0, 0), brand_text, font=brand_font)
+    brand_width = bbox[2] - bbox[0]
+    brand_x = (WIDTH - brand_width) / 2
+    draw.text((brand_x, HEIGHT - 16), brand_text, fill=brand_color, font=brand_font)
+
+    # Scanline effect removed - was too prominent
+
+    # Save to both PWA and ESP32 locations
+    pwa_path = ASSETS_IMAGES / f"{rfid}.bmp"
+    esp32_path = ESP32_SD_IMAGES / f"{rfid}.bmp"
+
+    # Ensure directories exist
+    pwa_path.parent.mkdir(parents=True, exist_ok=True)
+    esp32_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Save as 24-bit BMP
+    img.save(pwa_path, 'BMP')
+    img.save(esp32_path, 'BMP')
+
+    return (str(pwa_path.relative_to(ECOSYSTEM_ROOT)),
+            str(esp32_path.relative_to(ECOSYSTEM_ROOT)))
 
 def parse_sf_fields(description_text):
     """
@@ -217,19 +357,38 @@ def process_token(page):
     # Parse SF_ fields
     sf_data = parse_sf_fields(description)
 
+    # Extract only the text BEFORE SF_ fields for display
+    display_text = description
+    if description:
+        # Find the first SF_ field marker
+        sf_start = description.find('SF_')
+        if sf_start > 0:
+            # Get only text before SF_ fields, strip whitespace
+            display_text = description[:sf_start].strip()
+
     if not sf_data.get('SF_RFID'):
         print(f"⚠️  Skipping {name}: No SF_RFID found in description")
         return None
 
     rfid = sf_data['SF_RFID']
 
+    # Generate NeurAI display BMP if display text exists
+    generated_bmp = False
+    if display_text and display_text.strip():
+        try:
+            pwa_path, esp32_path = generate_neurai_display(rfid, display_text)
+            print(f"   Generated NeurAI display for {rfid}")
+            generated_bmp = True
+        except Exception as e:
+            print(f"⚠️  Failed to generate NeurAI display for {rfid}: {e}")
+
     # Find assets
     image_file = find_asset_file(rfid, ASSETS_IMAGES, ['.bmp', '.jpg', '.png', '.jpeg'])
     audio_file = find_asset_file(rfid, ASSETS_AUDIO, ['.mp3', '.wav', '.ogg'])
     video_file = find_video_file(rfid)
 
-    # Use placeholder if no image found
-    if not image_file:
+    # Use placeholder if no image found and no BMP was generated
+    if not image_file and not generated_bmp:
         placeholder_path = ASSETS_IMAGES / "placeholder.bmp"
         if placeholder_path.exists():
             image_file = "assets/images/placeholder.bmp"
