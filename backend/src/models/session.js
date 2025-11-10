@@ -88,22 +88,6 @@ class Session {
   }
 
   /**
-   * Check if session is completed
-   * @returns {boolean}
-   */
-  isCompleted() {
-    return this.status === 'completed';
-  }
-
-  /**
-   * Check if session is archived
-   * @returns {boolean}
-   */
-  isArchived() {
-    return this.status === 'archived';
-  }
-
-  /**
    * Start/resume the session
    */
   start() {
@@ -126,7 +110,7 @@ class Session {
   }
 
   /**
-   * Complete the session
+   * Complete the session (sets status to 'ended' per contract)
    */
   complete() {
     if (this.status === 'active' || this.status === 'paused') {
@@ -134,17 +118,6 @@ class Session {
       this.endTime = new Date().toISOString();
     } else {
       throw new Error(`Cannot complete session with status ${this.status}`);
-    }
-  }
-
-  /**
-   * Archive the session
-   */
-  archive() {
-    if (this.status === 'ended') {
-      this.status = 'archived';
-    } else {
-      throw new Error(`Cannot archive session with status ${this.status}`);
     }
   }
 

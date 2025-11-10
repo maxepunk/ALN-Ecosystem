@@ -185,13 +185,6 @@ class SessionService extends EventEmitter {
         this.currentSession.pause();
         this.stopSessionTimeout();
         break;
-      case 'completed':
-        this.currentSession.complete();
-        this.stopSessionTimeout();
-        break;
-      case 'archived':
-        this.currentSession.archive();
-        break;
       default:
         throw new Error(`Invalid session status: ${status}`);
     }

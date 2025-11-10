@@ -43,12 +43,12 @@ async function performSystemReset(io, services) {
 
   logger.info('Starting system reset');
 
-  // Step 1: Archive completed session (preserve game history)
+  // Step 1: Archive ended session (preserve game history)
   const currentSession = sessionService.getCurrentSession();
   if (currentSession) {
-    if (currentSession.status === 'completed') {
+    if (currentSession.status === 'ended') {
       await persistenceService.archiveSession(currentSession.toJSON());
-      logger.info('Completed session archived before system reset', {
+      logger.info('Ended session archived before system reset', {
         sessionId: currentSession.id
       });
     } else {
