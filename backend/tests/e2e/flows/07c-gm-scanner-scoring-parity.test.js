@@ -31,6 +31,7 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
   createBrowserContext,
@@ -116,7 +117,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_PARITY_PERSONAL',
       'gm'
     );
@@ -139,7 +140,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     const transactionPromise = waitForEvent(
@@ -194,7 +195,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_PARITY_BUSINESS',
       'gm'
     );
@@ -217,7 +218,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     const transactionPromise = waitForEvent(
@@ -281,7 +282,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_PARITY_GROUP',
       'gm'
     );
@@ -304,7 +305,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     await networkedScanner.enterTeam('006');
@@ -378,7 +379,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_PARITY_MIXED',
       'gm'
     );
@@ -401,7 +402,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     await networkedScanner.enterTeam('008');
@@ -472,7 +473,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_PARITY_DUPLICATE',
       'gm'
     );
@@ -495,7 +496,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     await networkedScanner.enterTeam('010');

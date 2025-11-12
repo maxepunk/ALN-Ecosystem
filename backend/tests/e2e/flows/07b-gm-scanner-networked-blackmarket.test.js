@@ -27,6 +27,7 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
   createBrowserContext,
@@ -93,7 +94,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
   test('connects to orchestrator and initializes in networked mode', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_NETWORKED_CONNECTION',
       'gm'
     );
@@ -124,7 +125,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     // Verify scanner is on scan screen
@@ -145,7 +146,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_SINGLE_SCAN',
       'gm'
     );
@@ -170,7 +171,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     // Enter team
@@ -203,7 +204,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_BUSINESS_SCAN',
       'gm'
     );
@@ -227,7 +228,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     await scanner.enterTeam('001');
@@ -259,7 +260,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_GROUP_COMPLETION',
       'gm'
     );
@@ -283,7 +284,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     await scanner.enterTeam('001');
@@ -339,7 +340,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_SAME_TEAM_DUPLICATE',
       'gm'
     );
@@ -363,7 +364,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     await scanner.enterTeam('001');
@@ -428,7 +429,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // Create WebSocket connection and session with TWO teams
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'TEST_DIFFERENT_TEAM_DUPLICATE',
       'gm'
     );
@@ -452,7 +453,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct'
+      password: ADMIN_PASSWORD
     });
 
     // TEAM 001: Scan first (should be ACCEPTED)

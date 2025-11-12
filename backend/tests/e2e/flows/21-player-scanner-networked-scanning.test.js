@@ -54,6 +54,7 @@ const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 
 // Test fixtures
 const testTokens = require('../fixtures/test-tokens.json');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 // Global test state
 let browser = null;
@@ -108,7 +109,7 @@ test.describe('Player Scanner Networked Scanning', () => {
       const session = await createSessionViaWebSocket(orchestratorInfo.url, {
         sessionName: 'Test 21: Player Scanner Session',
         mode: 'test',
-        password: '@LN-c0nn3ct'  // Must match TEST_ENV in test-server.js
+        password: ADMIN_PASSWORD  // Must match TEST_ENV in test-server.js
       });
       console.log(`Session created: ${session.name} (${session.id})`);
     } catch (error) {

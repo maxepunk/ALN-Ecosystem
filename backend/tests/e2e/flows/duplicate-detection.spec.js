@@ -30,6 +30,7 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
   createBrowserContext,
@@ -121,7 +122,7 @@ test.describe('Duplicate Detection', () => {
     // Initialize in networked mode
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct',
+      password: ADMIN_PASSWORD,
       stationName: 'DUPLICATE_TEST_GM'
     });
 
@@ -217,7 +218,7 @@ test.describe('Duplicate Detection', () => {
     // Initialize in networked mode
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: '@LN-c0nn3ct',
+      password: ADMIN_PASSWORD,
       stationName: 'PERSISTENCE_TEST_GM'
     });
 

@@ -27,6 +27,7 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
   closeAllContexts
@@ -117,7 +118,7 @@ test.describe('Session Persistence E2E Test', () => {
 
     let socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'GM_PERSISTENCE_TEST',
       'gm'
     );
@@ -152,7 +153,7 @@ test.describe('Session Persistence E2E Test', () => {
     // Reconnect after restart
     socket = await connectWithAuth(
       orchestratorInfo.url,
-      '@LN-c0nn3ct',
+      ADMIN_PASSWORD,
       'GM_PERSISTENCE_TEST_2',
       'gm'
     );
