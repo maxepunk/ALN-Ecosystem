@@ -121,7 +121,7 @@ test.describe('Duplicate Detection', () => {
     // Initialize in networked mode
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password',
+      password: '@LN-c0nn3ct',
       stationName: 'DUPLICATE_TEST_GM'
     });
 
@@ -130,52 +130,40 @@ test.describe('Duplicate Detection', () => {
     await scanner.confirmTeam();
 
     // Wait for scan screen
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     console.log('Scan screen visible');
 
     // Scan token first time (manual entry to avoid NFC prompt)
-    await page.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'test_video_01');
+    await scanner.manualScan('test_video_01');
     console.log('First scan: test_video_01');
 
     // Wait for result screen
-    await page.waitForSelector(scanner.selectors.resultScreen, { state: 'visible', timeout: 5000 });
+    await scanner.resultScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // Verify it's accepted (not duplicate)
-    const firstResultStatus = await page.textContent(scanner.selectors.resultStatus);
+    const firstResultStatus = await scanner.resultStatus.textContent();
     expect(firstResultStatus.toLowerCase()).toContain('accepted');
     console.log('✓ First scan accepted');
 
     // Return to scan screen
-    await page.click(scanner.selectors.continueScanButton);
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.continueScanBtn.click();
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan SAME token again (duplicate)
-    await page.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'test_video_01');
+    await scanner.manualScan('test_video_01');
     console.log('Second scan: test_video_01 (duplicate)');
 
     // Wait for error message (duplicate detection should prevent result screen)
-    await page.waitForSelector(scanner.selectors.errorMessage, { state: 'visible', timeout: 5000 });
+    await scanner.errorMessage.waitFor({ state: 'visible', timeout: 5000 });
 
     // Verify duplicate error shown
-    const errorMessage = await page.textContent(scanner.selectors.errorMessage);
+    const errorMessage = await scanner.errorMessage.textContent();
     expect(errorMessage.toLowerCase()).toContain('duplicate');
     console.log('✓ Duplicate error message shown');
 
     // Check transaction history for duplicate marker
-    await page.click(scanner.selectors.historyButton);
-    await page.waitForSelector(scanner.selectors.historyScreen, { state: 'visible', timeout: 5000 });
+    await scanner.historyButton.click();
+    await scanner.historyScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // Look for duplicate badge in history
     const duplicateBadges = await page.$$('.duplicate-badge-small');
@@ -184,13 +172,13 @@ test.describe('Duplicate Detection', () => {
 
     // Return to scan screen
     await page.click('button:has-text("Back")');
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // Check admin panel (if networked mode)
-    const adminTabVisible = await page.isVisible(scanner.selectors.adminTab);
+    const adminTabVisible = await scanner.adminTab.isVisible();
     if (adminTabVisible) {
-      await page.click(scanner.selectors.adminTab);
-      await page.waitForSelector(scanner.selectors.adminView, { state: 'visible', timeout: 5000 });
+      await scanner.adminTab.click();
+      await scanner.adminView.waitFor({ state: 'visible', timeout: 5000 });
 
       // Look for duplicate markers in admin transaction list
       const adminDuplicates = await page.$$('.transaction-item.duplicate');
@@ -198,8 +186,8 @@ test.describe('Duplicate Detection', () => {
       console.log(`✓ Found ${adminDuplicates.length} duplicate marker(s) in admin panel`);
 
       // Return to scanner view
-      await page.click(scanner.selectors.scannerTab);
-      await page.waitForSelector(scanner.selectors.scannerView, { state: 'visible', timeout: 5000 });
+      await scanner.scannerTab.click();
+      await scanner.scannerView.waitFor({ state: 'visible', timeout: 5000 });
     }
 
     // Check team details view
@@ -207,7 +195,7 @@ test.describe('Duplicate Detection', () => {
     const teamDetailsBtn = await page.$('button:has-text("Team Details")');
     if (teamDetailsBtn) {
       await teamDetailsBtn.click();
-      await page.waitForSelector(scanner.selectors.teamDetailsScreen, { state: 'visible', timeout: 5000 });
+      await scanner.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       // Look for duplicate markers in token detail cards
       const detailDuplicates = await page.$$('.token-detail-card.duplicate');
@@ -229,7 +217,7 @@ test.describe('Duplicate Detection', () => {
     // Initialize in networked mode
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password',
+      password: '@LN-c0nn3ct',
       stationName: 'PERSISTENCE_TEST_GM'
     });
 
@@ -238,71 +226,51 @@ test.describe('Duplicate Detection', () => {
     await scanner.confirmTeam();
 
     // Wait for scan screen
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan token
-    await page.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'test_image_01');
+    await scanner.manualScan('test_image_01');
     console.log('Scanned: test_image_01');
 
     // Wait for result
-    await page.waitForSelector(scanner.selectors.resultScreen, { state: 'visible', timeout: 5000 });
-    const resultStatus = await page.textContent(scanner.selectors.resultStatus);
+    await scanner.resultScreen.waitFor({ state: 'visible', timeout: 5000 });
+    const resultStatus = await scanner.resultStatus.textContent();
     expect(resultStatus.toLowerCase()).toContain('accepted');
     console.log('✓ Token accepted');
 
     // Return to scan screen
-    await page.click(scanner.selectors.continueScanButton);
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.continueScanBtn.click();
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Simulate disconnection (close WebSocket)
-    await page.evaluate(() => {
-      if (window.connectionManager?.client?.socket) {
-        window.connectionManager.client.socket.close();
-      }
-    });
+    // Simulate disconnection (using Page Object method - no window globals)
+    await scanner.disconnectWebSocket();
     console.log('Disconnected WebSocket');
 
     // Wait for disconnection indicator
     await page.waitForTimeout(2000); // Give it time to detect disconnection
 
     // Check connection status (should show disconnected or offline)
-    const connectionStatus = await page.textContent(scanner.selectors.connectionStatus);
+    const connectionStatus = await scanner.connectionStatus.textContent();
     console.log(`Connection status after disconnect: ${connectionStatus}`);
 
-    // Reconnect
-    await page.evaluate(() => {
-      if (window.connectionManager) {
-        window.connectionManager.connect();
-      }
-    });
+    // Reconnect (using Page Object method - no window globals)
+    await scanner.reconnectWebSocket();
     console.log('Reconnecting...');
 
     // Wait for reconnection (look for connected status or sync completion)
     await page.waitForTimeout(3000); // Give time for reconnection and sync:full
 
     // Verify reconnected
-    const reconnectedStatus = await page.textContent(scanner.selectors.connectionStatus);
+    const reconnectedStatus = await scanner.connectionStatus.textContent();
     console.log(`Connection status after reconnect: ${reconnectedStatus}`);
 
     // Try to scan same token (should still be detected as duplicate)
-    await page.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'test_image_01');
+    await scanner.manualScan('test_image_01');
     console.log('Attempted duplicate scan after reconnect: test_image_01');
 
     // Verify duplicate error shown (detection persisted through reconnection)
-    await page.waitForSelector(scanner.selectors.errorMessage, { state: 'visible', timeout: 5000 });
-    const duplicateError = await page.textContent(scanner.selectors.errorMessage);
+    await scanner.errorMessage.waitFor({ state: 'visible', timeout: 5000 });
+    const duplicateError = await scanner.errorMessage.textContent();
     expect(duplicateError.toLowerCase()).toContain('duplicate');
 
     console.log('✓ Duplicate detection persisted across reconnection');
@@ -324,49 +292,31 @@ test.describe('Duplicate Detection', () => {
     await scanner.confirmTeam();
 
     // Wait for scan screen
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Add workaround for standalone mode bug (updateScoreboard)
-    await page.evaluate(() => {
-      if (!window.UIManager.updateScoreboard) {
-        window.UIManager.updateScoreboard = () => {};
-      }
-    });
-
-    // Scan token first time
-    await page.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'test_video_01');
-    console.log('First scan in standalone: test_video_01');
+    // Scan token first time (use production token - standalone mode loads from ALNScanner/data/)
+    // Note: UIManager.updateScoreboard bug will be fixed in Phase S1 - no workaround needed
+    await scanner.manualScan('sof002');
+    console.log('First scan in standalone: sof002');
 
     // Wait for result
-    await page.waitForSelector(scanner.selectors.resultScreen, { state: 'visible', timeout: 5000 });
-    const firstResult = await page.textContent(scanner.selectors.resultStatus);
-    expect(firstResult.toLowerCase()).toContain('accepted');
+    await scanner.resultScreen.waitFor({ state: 'visible', timeout: 5000 });
+    const firstResult = await scanner.resultStatus.textContent();
+    expect(firstResult.toLowerCase()).toContain('complete');  // Standalone shows "Transaction Complete!"
     console.log('✓ First scan accepted in standalone mode');
 
     // Return to scan screen
-    await page.click(scanner.selectors.continueScanButton);
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.continueScanBtn.click();
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan same token again
-    await page.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'test_video_01');
-    console.log('Second scan in standalone: test_video_01 (duplicate)');
+    await scanner.manualScan('sof002');
+    console.log('Second scan in standalone: sof002 (duplicate)');
 
-    // Verify duplicate error
-    await page.waitForSelector(scanner.selectors.errorMessage, { state: 'visible', timeout: 5000 });
-    const duplicateError = await page.textContent(scanner.selectors.errorMessage);
-    expect(duplicateError.toLowerCase()).toContain('duplicate');
+    // Verify duplicate error shows on result screen (matches ALNScanner pattern)
+    await scanner.resultScreen.waitFor({ state: 'visible', timeout: 5000 });
+    const duplicateResult = await scanner.getResultStatus();
+    expect(duplicateResult.toLowerCase()).toContain('already');  // "Token Already Scanned"
 
     console.log('✓ Duplicate detection works in standalone mode');
   });

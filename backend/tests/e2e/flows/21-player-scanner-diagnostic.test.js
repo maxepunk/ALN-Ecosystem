@@ -32,7 +32,7 @@ test.describe('Player Scanner Diagnostic', () => {
     const session = await createSessionViaWebSocket(orchestratorInfo.url, {
       sessionName: 'Diagnostic Session',
       mode: 'test',
-      password: 'test-admin-password'
+      password: '@LN-c0nn3ct'
     });
     console.log(`✓ Session created: ${session.name}`);
   });

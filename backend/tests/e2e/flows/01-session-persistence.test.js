@@ -117,7 +117,7 @@ test.describe('Session Persistence E2E Test', () => {
 
     let socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'GM_PERSISTENCE_TEST',
       'gm'
     );
@@ -152,7 +152,7 @@ test.describe('Session Persistence E2E Test', () => {
     // Reconnect after restart
     socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'GM_PERSISTENCE_TEST_2',
       'gm'
     );

@@ -103,20 +103,12 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await standaloneScanner.enterTeam('001');
     await standaloneScanner.confirmTeam();
-    await standalonePage.waitForSelector(standaloneScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await standalonePage.waitForTimeout(500);
+    await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan token in standalone mode
-    await standalonePage.evaluate((tokenId) => {
-      if (!window.UIManager.updateScoreboard) {
-        window.UIManager.updateScoreboard = () => {};
-      }
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
+    await standaloneScanner.manualScan('sof002');
     await standaloneScanner.waitForResult(5000);
 
     const standaloneScore = await getTeamScore(standalonePage, '001', 'standalone');
@@ -124,7 +116,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'TEST_PARITY_PERSONAL',
       'gm'
     );
@@ -147,7 +139,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password'
+      password: '@LN-c0nn3ct'
     });
 
     const transactionPromise = waitForEvent(
@@ -159,21 +151,16 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await networkedScanner.enterTeam('002');
     await networkedScanner.confirmTeam();
-    await networkedPage.waitForSelector(networkedScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await networkedPage.waitForTimeout(500);
+    await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await networkedScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan token in networked mode
-    await networkedPage.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
+    await networkedScanner.manualScan('sof002');
     await networkedScanner.waitForResult(5000);
     await transactionPromise;
 
-    const networkedScore = await getTeamScore(networkedPage, '002', 'networked');
+    const networkedScore = await getTeamScore(networkedPage, '002', 'networked', adminSocket);
 
     // PARITY CHECK
     expect(standaloneScore).toBe(500);
@@ -195,19 +182,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await standaloneScanner.enterTeam('003');
     await standaloneScanner.confirmTeam();
-    await standalonePage.waitForSelector(standaloneScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await standalonePage.waitForTimeout(500);
+    await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
-    await standalonePage.evaluate((tokenId) => {
-      if (!window.UIManager.updateScoreboard) {
-        window.UIManager.updateScoreboard = () => {};
-      }
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'rat002');
+    await standaloneScanner.manualScan('rat002');
     await standaloneScanner.waitForResult(5000);
 
     const standaloneScore = await getTeamScore(standalonePage, '003', 'standalone');
@@ -215,7 +194,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'TEST_PARITY_BUSINESS',
       'gm'
     );
@@ -238,7 +217,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password'
+      password: '@LN-c0nn3ct'
     });
 
     const transactionPromise = waitForEvent(
@@ -250,20 +229,15 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await networkedScanner.enterTeam('004');
     await networkedScanner.confirmTeam();
-    await networkedPage.waitForSelector(networkedScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await networkedPage.waitForTimeout(500);
+    await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await networkedScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
-    await networkedPage.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'rat002');
+    await networkedScanner.manualScan('rat002');
     await networkedScanner.waitForResult(5000);
     await transactionPromise;
 
-    const networkedScore = await getTeamScore(networkedPage, '004', 'networked');
+    const networkedScore = await getTeamScore(networkedPage, '004', 'networked', adminSocket);
 
     // PARITY CHECK
     expect(standaloneScore).toBe(15000);
@@ -287,22 +261,14 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await standaloneScanner.enterTeam('005');
     await standaloneScanner.confirmTeam();
-    await standalonePage.waitForSelector(standaloneScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await standalonePage.waitForTimeout(500);
+    await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan group tokens in standalone mode
     for (let i = 0; i < groupTokens.length; i++) {
       const tokenId = groupTokens[i];
-      await standalonePage.evaluate((tid) => {
-        if (!window.UIManager.updateScoreboard) {
-          window.UIManager.updateScoreboard = () => {};
-        }
-        window.App.processNFCRead({
-          id: tid,
-          source: 'manual',
-          raw: tid
-        });
-      }, tokenId);
+      await standaloneScanner.manualScan(tokenId);
       await standaloneScanner.waitForResult(5000);
 
       if (i < groupTokens.length - 1) {
@@ -315,7 +281,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'TEST_PARITY_GROUP',
       'gm'
     );
@@ -338,13 +304,14 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password'
+      password: '@LN-c0nn3ct'
     });
 
     await networkedScanner.enterTeam('006');
     await networkedScanner.confirmTeam();
-    await networkedPage.waitForSelector(networkedScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await networkedPage.waitForTimeout(500);
+    await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await networkedScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // Scan group tokens in networked mode
     for (let i = 0; i < groupTokens.length; i++) {
@@ -356,13 +323,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         10000
       );
 
-      await networkedPage.evaluate((tid) => {
-        window.App.processNFCRead({
-          id: tid,
-          source: 'manual',
-          raw: tid
-        });
-      }, tokenId);
+      await networkedScanner.manualScan(tokenId);
       await networkedScanner.waitForResult(5000);
       await transactionPromise;
 
@@ -371,7 +332,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       }
     }
 
-    const networkedScore = await getTeamScore(networkedPage, '006', 'networked');
+    const networkedScore = await getTeamScore(networkedPage, '006', 'networked', adminSocket);
 
     // PARITY CHECK
     expect(standaloneScore).toBe(135000);
@@ -398,21 +359,13 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await standaloneScanner.enterTeam('007');
     await standaloneScanner.confirmTeam();
-    await standalonePage.waitForSelector(standaloneScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await standalonePage.waitForTimeout(500);
+    await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     for (let i = 0; i < mixedTokens.length; i++) {
       const tokenId = mixedTokens[i];
-      await standalonePage.evaluate((tid) => {
-        if (!window.UIManager.updateScoreboard) {
-          window.UIManager.updateScoreboard = () => {};
-        }
-        window.App.processNFCRead({
-          id: tid,
-          source: 'manual',
-          raw: tid
-        });
-      }, tokenId);
+      await standaloneScanner.manualScan(tokenId);
       await standaloneScanner.waitForResult(5000);
 
       if (i < mixedTokens.length - 1) {
@@ -425,7 +378,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'TEST_PARITY_MIXED',
       'gm'
     );
@@ -448,13 +401,14 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password'
+      password: '@LN-c0nn3ct'
     });
 
     await networkedScanner.enterTeam('008');
     await networkedScanner.confirmTeam();
-    await networkedPage.waitForSelector(networkedScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await networkedPage.waitForTimeout(500);
+    await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await networkedScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     for (let i = 0; i < mixedTokens.length; i++) {
       const tokenId = mixedTokens[i];
@@ -465,13 +419,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         10000
       );
 
-      await networkedPage.evaluate((tid) => {
-        window.App.processNFCRead({
-          id: tid,
-          source: 'manual',
-          raw: tid
-        });
-      }, tokenId);
+      await networkedScanner.manualScan(tokenId);
       await networkedScanner.waitForResult(5000);
       await transactionPromise;
 
@@ -480,7 +428,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       }
     }
 
-    const networkedScore = await getTeamScore(networkedPage, '008', 'networked');
+    const networkedScore = await getTeamScore(networkedPage, '008', 'networked', adminSocket);
 
     // PARITY CHECK
     // Expected: sof002 (500) + rat002 (15,000) + mab002 (10,000) = 25,500
@@ -506,31 +454,17 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     await standaloneScanner.enterTeam('009');
     await standaloneScanner.confirmTeam();
-    await standalonePage.waitForSelector(standaloneScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await standalonePage.waitForTimeout(500);
+    await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // First scan - should succeed
-    await standalonePage.evaluate((tokenId) => {
-      if (!window.UIManager.updateScoreboard) {
-        window.UIManager.updateScoreboard = () => {};
-      }
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
+    await standaloneScanner.manualScan('sof002');
     await standaloneScanner.waitForResult(5000);
     await standaloneScanner.continueScan();
 
     // Second scan - should be duplicate
-    await standalonePage.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
+    await standaloneScanner.manualScan('sof002');
     await standaloneScanner.waitForResult(5000);
 
     const standaloneScore = await getTeamScore(standalonePage, '009', 'standalone');
@@ -538,7 +472,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'TEST_PARITY_DUPLICATE',
       'gm'
     );
@@ -561,36 +495,25 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
-      password: 'test-admin-password'
+      password: '@LN-c0nn3ct'
     });
 
     await networkedScanner.enterTeam('010');
     await networkedScanner.confirmTeam();
-    await networkedPage.waitForSelector(networkedScanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
-    await networkedPage.waitForTimeout(500);
+    await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for manual entry button ready (replaces arbitrary timeout)
+    await networkedScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
     // First scan - should succeed
-    await networkedPage.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
+    await networkedScanner.manualScan('sof002');
     await networkedScanner.waitForResult(5000);
     await networkedScanner.continueScan();
 
     // Second scan - should be duplicate
-    await networkedPage.evaluate((tokenId) => {
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
+    await networkedScanner.manualScan('sof002');
     await networkedScanner.waitForResult(5000);
 
-    const networkedScore = await getTeamScore(networkedPage, '010', 'networked');
+    const networkedScore = await getTeamScore(networkedPage, '010', 'networked', adminSocket);
 
     // PARITY CHECK - both modes should only count the token once
     expect(standaloneScore).toBe(500);

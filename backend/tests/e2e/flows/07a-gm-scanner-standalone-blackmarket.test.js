@@ -92,31 +92,30 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
     await scanner.confirmTeam();
 
     // Wait for scan screen to be fully visible
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     console.log('Scan screen visible');
 
-    // Wait a moment for any animations/state updates
-    await page.waitForTimeout(500);
+    // Wait for manual entry button to be enabled (indicates app is ready)
+    await scanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await scanner.manualEntryBtn.waitFor({ state: 'attached', timeout: 5000 });
 
-    // Manually scan token using direct function call instead of clicking button
-    // This avoids the prompt() dialog blocking issue in headless mode
-    // Add mock for missing updateScoreboard function (standalone mode bug workaround)
-    await page.evaluate((tokenId) => {
-      // Workaround for standalone mode bug - updateScoreboard doesn't exist
-      if (!window.UIManager.updateScoreboard) {
-        window.UIManager.updateScoreboard = () => {};
-      }
-
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
-    console.log('Token scanned via direct API');
+    // Scan token using Page Object pattern (ES6 architecture - no window.App)
+    // manualEntry() handles dialog interaction via Page Object
+    await scanner.manualScan('sof002');
+    console.log('Token scanned via Page Object');
 
     // Wait for result
     await scanner.waitForResult(5000);
+
+    // DEBUG: Check localStorage contents
+    const localStorageDebug = await page.evaluate(() => {
+      const session = localStorage.getItem('standaloneSession');
+      return {
+        raw: session,
+        parsed: session ? JSON.parse(session) : null
+      };
+    });
+    console.log('📦 localStorage.standaloneSession:', JSON.stringify(localStorageDebug.parsed, null, 2));
 
     const score = await getTeamScore(page, '001', 'standalone');
     expect(score).toBe(500);

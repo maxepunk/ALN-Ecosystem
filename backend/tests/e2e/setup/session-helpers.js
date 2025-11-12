@@ -31,7 +31,7 @@ async function createSessionViaWebSocket(orchestratorUrl, options = {}) {
   const {
     sessionName = 'E2E Test Session',
     mode = 'test',
-    password = process.env.ADMIN_PASSWORD || 'admin',  // Use env or fallback to default
+    password = process.env.ADMIN_PASSWORD || '@LN-c0nn3ct',  // Use actual password from .env
     timeout = 5000
   } = options;
 

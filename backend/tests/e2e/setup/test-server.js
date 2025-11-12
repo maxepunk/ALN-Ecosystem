@@ -76,17 +76,7 @@ const TEST_ENV = {
  * console.log(`Server running at ${server.url}`);
  */
 async function startOrchestrator(options = {}) {
-  // Prevent multiple server instances
-  if (orchestratorProcess) {
-    logger.warn('Orchestrator already running');
-    return {
-      url: getOrchestratorUrl(),
-      port: serverPort,
-      protocol: serverProtocol,
-      process: orchestratorProcess
-    };
-  }
-
+  // Extract options FIRST to validate against running instance
   const {
     https: enableHttps = false,
     port = TEST_ENV.PORT,
@@ -94,6 +84,42 @@ async function startOrchestrator(options = {}) {
     preserveSession = false,
     storageType = 'memory'
   } = options;
+
+  // Prevent multiple server instances - but verify options match
+  if (orchestratorProcess) {
+    const requestedProtocol = enableHttps ? 'https' : 'http';
+    const optionsMismatch =
+      (requestedProtocol !== serverProtocol) ||
+      (port !== serverPort);
+
+    if (optionsMismatch) {
+      logger.warn('Orchestrator already running with different options - stopping and restarting', {
+        current: { protocol: serverProtocol, port: serverPort },
+        requested: { protocol: requestedProtocol, port }
+      });
+      await stopOrchestrator();
+      // Continue to start new instance below
+    } else if (!preserveSession) {
+      // CRITICAL FIX: Force restart to clear in-memory state
+      // Even though options match, we need fresh orchestrator to clear MemoryStorage
+      // Without this, MemoryStorage.data Map persists session state between tests
+      logger.debug('Orchestrator running but preserveSession=false - forcing restart to clear memory state');
+      await stopOrchestrator();
+      // Continue to start new instance below
+    } else {
+      logger.debug('Orchestrator already running with matching options - reusing', {
+        protocol: serverProtocol,
+        port: serverPort,
+        preserveSession
+      });
+      return {
+        url: getOrchestratorUrl(),
+        port: serverPort,
+        protocol: serverProtocol,
+        process: orchestratorProcess
+      };
+    }
+  }
 
   // Clear session data unless preserveSession is true
   if (!preserveSession) {
@@ -106,19 +132,22 @@ async function startOrchestrator(options = {}) {
     ...TEST_ENV,
     PORT: String(port),
     ENABLE_HTTPS: String(enableHttps),
-    STORAGE_TYPE: storageType  // Use parameter instead of TEST_ENV default
+    STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
+    ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD  // Explicitly override to prevent .env contamination
   };
-
-  serverPort = port;
-  serverProtocol = enableHttps ? 'https' : 'http';
 
   // Path to server entry point
   const serverPath = path.join(__dirname, '../../../src/server.js');
 
+  // Set protocol BEFORE logging
+  serverPort = port;
+  serverProtocol = enableHttps ? 'https' : 'http';
+
   logger.info('Starting orchestrator for E2E tests', {
     protocol: serverProtocol,
     port: serverPort,
-    preserveSession
+    preserveSession,
+    enableHttps  // Debug: Show what was requested
   });
 
   // Spawn orchestrator process
@@ -320,13 +349,22 @@ async function clearSessionData() {
   try {
     await fs.access(dataDir);
 
-    // Use node-persist API to properly clear storage
-    // This handles MD5-hashed filenames correctly
-    const storage = require('node-persist');
-    await storage.init({ dir: dataDir });
-    await storage.clear();
+    // Direct file deletion to avoid race conditions with parallel workers
+    // When workers run in parallel, node-persist's async API can conflict:
+    // - Worker 1 stops orchestrator → writes session asynchronously
+    // - Worker 2 clears data → may run before Worker 1's write completes
+    // - Result: Worker 2 restores stale session from Worker 1
+    //
+    // Direct file deletion eliminates the async timing dependency
+    const files = await fs.readdir(dataDir);
+    await Promise.all(
+      files.map(file => fs.unlink(path.join(dataDir, file)).catch(err => {
+        // Ignore file not found (may have been deleted by another worker)
+        if (err.code !== 'ENOENT') throw err;
+      }))
+    );
 
-    logger.debug('Session data cleared using node-persist API');
+    logger.debug('Session data cleared via direct file deletion');
   } catch (error) {
     if (error.code !== 'ENOENT') {
       logger.warn('Failed to clear session data', { error: error.message });

@@ -60,7 +60,7 @@ const {
   assertSyncFullStructure
 } = require('../helpers/assertions');
 
-const GMScannerPage = require('../helpers/page-objects/GMScannerPage');
+const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
 
 // Test fixtures
 const testTokens = require('../fixtures/test-tokens.json');
@@ -218,7 +218,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   test('WebSocket client connects with JWT authentication', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'SMOKE_TEST_GM',
       'gm'
     );
@@ -232,7 +232,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   test('receives sync:full event after connection', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'SMOKE_TEST_SYNC',
       'gm'
     );
@@ -333,9 +333,9 @@ test.describe('E2E Infrastructure Smoke Test', () => {
 
     // Create 3 WebSocket connections
     const sockets = await Promise.all([
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'GM_1', 'gm'),
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'GM_2', 'gm'),
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'GM_3', 'gm')
+      connectWithAuth(orchestratorInfo.url, '@LN-c0nn3ct', 'GM_1', 'gm'),
+      connectWithAuth(orchestratorInfo.url, '@LN-c0nn3ct', 'GM_2', 'gm'),
+      connectWithAuth(orchestratorInfo.url, '@LN-c0nn3ct', 'GM_3', 'gm')
     ]);
 
     // All should connect successfully
@@ -360,7 +360,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   test('event-driven waits work correctly', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'WAIT_TEST',
       'gm'
     );
@@ -392,8 +392,8 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     // Create resources
     const contexts = await createMultipleContexts(browser, 2, 'desktop');
     const sockets = await Promise.all([
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'CLEANUP_1', 'gm'),
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'CLEANUP_2', 'gm')
+      connectWithAuth(orchestratorInfo.url, '@LN-c0nn3ct', 'CLEANUP_1', 'gm'),
+      connectWithAuth(orchestratorInfo.url, '@LN-c0nn3ct', 'CLEANUP_2', 'gm')
     ]);
 
     expect(getActiveContextCount()).toBe(2);
@@ -422,7 +422,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     // 2. Create WebSocket connection
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      '@LN-c0nn3ct',
       'FULL_FLOW_GM',
       'gm'
     );
@@ -433,12 +433,9 @@ test.describe('E2E Infrastructure Smoke Test', () => {
 
     // 4. Load GM Scanner page
     const gmScanner = new GMScannerPage(page);
-    await gmScanner.goto();
+    await gmScanner.goto();  // goto() already waits for #gameModeScreen.active
 
-    // 5. Wait for page to load
-    await page.waitForSelector('#loadingScreen', { state: 'hidden', timeout: 10000 });
-
-    // 6. Verify connection status in UI
+    // 5. Verify connection status in UI (page is loaded after goto() completes)
     const connectionStatus = await gmScanner.getConnectionStatus();
     // In networked mode, should show connected or connecting
     expect(['connected', 'connecting', 'disconnected']).toContain(connectionStatus);
