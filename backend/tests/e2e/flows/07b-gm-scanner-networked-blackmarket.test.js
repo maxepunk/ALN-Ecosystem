@@ -1,18 +1,18 @@
 /**
  * E2E Test: GM Scanner Networked Mode - Black Market
  *
- * NOTE: These tests are currently simplified due to WebSocket integration limitations.
- * Full transaction testing requires GM Scanner WebSocket `transaction:submit` debugging.
- * See: backend/TEST_07_NETWORKED_IMPLEMENTATION_NOTES.md
- *
- * Current Coverage:
+ * Comprehensive L3 E2E tests validating full transaction flow:
  * - Scanner initialization in networked mode ✓
  * - WebSocket authentication ✓
  * - Session creation via WebSocket ✓
  * - UI navigation ✓
+ * - Transaction submission (scanner → backend via WebSocket) ✓
+ * - Type multiplier scoring (Personal 1x, Business 3x) ✓
+ * - Group completion bonuses (x2 multiplier) ✓
+ * - Duplicate detection (same team & cross-team) ✓
  *
- * TODO: Complete transaction testing once WebSocket integration is fixed
- * Production Tokens: sof002, rat002, mab001, mab002
+ * Validates NetworkedQueueManager constructor bug fix (config object vs bare client).
+ * Production Tokens: sof002, rat002, mab001, mab002, asm031, fli031, rat031
  *
  * @group critical
  * @group phase2
