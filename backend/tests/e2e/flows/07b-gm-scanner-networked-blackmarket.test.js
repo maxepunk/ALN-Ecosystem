@@ -46,6 +46,11 @@ const {
   getTeamScore,
 } = require('../helpers/scanner-init');
 
+const {
+  waitForScoreUpdate,
+  waitForScoreValue,
+} = require('../helpers/wait-conditions');
+
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
@@ -193,6 +198,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     expect(txEvent.data.transaction).toBeDefined();
     expect(txEvent.data.transaction.tokenId).toBe('sof002');
 
+    // Wait for score:updated event (event-driven, not polling)
+    await waitForScoreUpdate(socket, '001', 2000);
+
     // Verify score via helper (pass socket for authoritative backend query)
     const score = await getTeamScore(page, '001', 'networked', socket);
     expect(score).toBe(500);
@@ -248,6 +256,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     expect(txEvent.data).toBeDefined();
     expect(txEvent.data.transaction).toBeDefined();
     expect(txEvent.data.transaction.tokenId).toBe('rat002');
+
+    // Wait for score:updated event (event-driven, not polling)
+    await waitForScoreUpdate(socket, '001', 2000);
 
     // Verify score with multiplier applied (pass socket for authoritative backend query)
     const score = await getTeamScore(page, '001', 'networked', socket);
@@ -329,6 +340,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     expect(groupEvent.data.teamId).toBe('001');
     expect(groupEvent.data.completedAt).toBeDefined();   // Timestamp added by broadcast
 
+    // Wait for score:updated event after bonus applied (event-driven, not polling)
+    await waitForScoreUpdate(socket, '001', 2000);
+
     // Verify final score (base + bonus) (pass socket for authoritative backend query)
     const finalScore = await getTeamScore(page, '001', 'networked', socket);
     expect(finalScore).toBe(33000);
@@ -384,6 +398,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     console.log('✓ First scan accepted and broadcast received');
 
+    // Wait for score:updated event (event-driven, not polling)
+    await waitForScoreUpdate(socket, '001', 2000);
+
     // Verify score after first scan (pass socket for authoritative backend query)
     const scoreAfterFirst = await getTeamScore(page, '001', 'networked', socket);
     expect(scoreAfterFirst).toBe(500);
@@ -401,8 +418,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     console.log('✓ Second scan processed (duplicate expected)');
 
-    // Verify score UNCHANGED after duplicate attempt (pass socket for authoritative backend query)
-    const scoreAfterDuplicate = await getTeamScore(page, '001', 'networked', socket);
+    // Wait for backend score to stabilize (polls until score === expected value)
+    // Using condition-based waiting instead of arbitrary timeout (testing-anti-patterns skill)
+    const scoreAfterDuplicate = await waitForScoreValue(page, '001', socket, 500, 2000);
     expect(scoreAfterDuplicate).toBe(500); // Should still be 500, not 1000
 
     // Navigate back to scan screen for third scan
@@ -418,6 +436,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const tx3Event = await tx3Promise;
     expect(tx3Event.data.transaction.tokenId).toBe('rat002');
     expect(tx3Event.data.transaction.status).toBe('accepted');
+
+    // Wait for score:updated event (event-driven, not polling)
+    await waitForScoreUpdate(socket, '001', 2000);
 
     const finalScore = await getTeamScore(page, '001', 'networked', socket);
     expect(finalScore).toBe(15500); // 500 + 15000 (duplicate didn't add points)
@@ -473,6 +494,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     console.log('✓ Team 001 scan accepted: 500 points');
 
+    // Wait for score:updated event (event-driven, not polling)
+    await waitForScoreUpdate(socket, '001', 2000);
+
     // Verify Team 001 scored (pass socket for authoritative backend query)
     const score001After1 = await getTeamScore(page, '001', 'networked', socket);
     expect(score001After1).toBe(500);
@@ -493,9 +517,10 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     console.log('✓ Team 002 duplicate scan processed');
 
-    // Verify cross-team rejection: Team 001 unchanged, Team 002 got nothing (pass socket for authoritative backend query)
-    const score001After2 = await getTeamScore(page, '001', 'networked', socket);
-    const score002After2 = await getTeamScore(page, '002', 'networked', socket);
+    // Wait for backend scores to stabilize (condition-based waiting)
+    // Team 002 should get 0 (rejected), Team 001 should remain 500 (unchanged)
+    const score002After2 = await waitForScoreValue(page, '002', socket, 0, 2000);
+    const score001After2 = await waitForScoreValue(page, '001', socket, 500, 2000);
 
     expect(score001After2).toBe(500);  // Team 001 unchanged
     expect(score002After2).toBe(0);    // Team 002 got nothing (rejected)
@@ -516,6 +541,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     expect(tx3Event.data.transaction.tokenId).toBe('mab002');
     expect(tx3Event.data.transaction.teamId).toBe('002');
     expect(tx3Event.data.transaction.status).toBe('accepted');
+
+    // Wait for score:updated event (event-driven, not polling)
+    await waitForScoreUpdate(socket, '002', 2000);
 
     const finalScore002 = await getTeamScore(page, '002', 'networked', socket);
     expect(finalScore002).toBe(10000);  // Team 002 can score with different token

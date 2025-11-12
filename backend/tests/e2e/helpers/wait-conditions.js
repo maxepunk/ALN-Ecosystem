@@ -84,6 +84,51 @@ async function waitForScoreUpdate(socket, teamId, timeout = 10000) {
 }
 
 /**
+ * Wait for team score to reach expected value (polling-based)
+ *
+ * Use this instead of arbitrary timeouts when checking backend score state.
+ * Polls backend via sync:request until score matches expected value.
+ *
+ * @param {Page} page - Playwright page
+ * @param {string} teamId - Team ID to check
+ * @param {Socket} socket - Socket.io client
+ * @param {number} expectedScore - Expected score value
+ * @param {number} [timeout=2000] - Timeout in ms
+ * @returns {Promise<number>} The score (equals expectedScore)
+ *
+ * @example
+ * // Wait for duplicate to be rejected (score unchanged)
+ * await scanner.manualScan('duplicate_token');
+ * await scanner.waitForResult();
+ * const score = await waitForScoreValue(page, '001', socket, 500, 2000);
+ * expect(score).toBe(500); // No change
+ */
+async function waitForScoreValue(page, teamId, socket, expectedScore, timeout = 2000) {
+  const startTime = Date.now();
+
+  // Import getTeamScore from scanner-init.js
+  const { getTeamScore } = require('./scanner-init.js');
+
+  while (true) {
+    const score = await getTeamScore(page, teamId, 'networked', socket);
+
+    if (score === expectedScore) {
+      return score;
+    }
+
+    if (Date.now() - startTime > timeout) {
+      throw new Error(
+        `Timeout: Score for team ${teamId} did not reach ${expectedScore} within ${timeout}ms ` +
+        `(last polled value: ${score})`
+      );
+    }
+
+    // Poll every 50ms (backend processes events within ~10-100ms typically)
+    await new Promise(r => setTimeout(r, 50));
+  }
+}
+
+/**
  * Wait for video state change
  * @param {Socket} socket - Socket.io client
  * @param {string} expectedState - 'playing' | 'paused' | 'stopped' | 'idle' | 'loading' | 'completed' | 'error'
@@ -307,6 +352,7 @@ module.exports = {
   waitForTransactionBroadcast,
   waitForTransactionResult,
   waitForScoreUpdate,
+  waitForScoreValue,
   waitForGroupCompletion,
 
   // Video
