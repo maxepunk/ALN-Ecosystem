@@ -35,12 +35,16 @@
  * @module tests/e2e/setup/websocket-client
  */
 
-const io = require('socket.io-client');
-const axios = require('axios');
-const https = require('https');
-
-// Track all sockets for cleanup
-const activeSockets = new Set();
+// Delegate to shared WebSocket core module
+const {
+  connectWithAuth: coreConnectWithAuth,
+  waitForEvent: coreWaitForEvent,
+  disconnectSocket: coreDisconnectSocket,
+  cleanupAllSockets: coreCleanupAllSockets,
+  getAllActiveSockets: coreGetAllActiveSockets,
+  getActiveSocketCount: coreGetActiveSocketCount,
+  clearEventCache
+} = require('../../helpers/websocket-core');
 
 /**
  * Connect to WebSocket with JWT authentication
@@ -75,103 +79,8 @@ const activeSockets = new Set();
  * );
  */
 async function connectWithAuth(baseUrl, password, deviceId, deviceType, options = {}) {
-  const {
-    timeout = 10000,
-    version = '1.0.0'
-  } = options;
-
-  // Step 1: Authenticate via HTTP and get JWT token
-  const authUrl = `${baseUrl}/api/admin/auth`;
-
-  // Create axios instance with HTTPS agent that accepts self-signed certs
-  const axiosInstance = axios.create({
-    httpsAgent: new https.Agent({
-      rejectUnauthorized: false // Allow self-signed certificates
-    })
-  });
-
-  let authResponse;
-  try {
-    authResponse = await axiosInstance.post(authUrl, { password });
-  } catch (error) {
-    throw new Error(`HTTP authentication failed: ${error.message}`);
-  }
-
-  const { token } = authResponse.data;
-
-  if (!token) {
-    throw new Error('No JWT token returned from authentication endpoint');
-  }
-
-  // Step 2: Connect WebSocket with JWT token in handshake.auth
-  // Per AsyncAPI contract (lines 22-45): handshake.auth requires token, deviceId, deviceType
-  const socket = io(baseUrl, {
-    transports: ['websocket'],
-    reconnection: false, // Disable auto-reconnect for predictable test behavior
-    rejectUnauthorized: false, // Accept self-signed certificates
-    auth: {
-      token: token,
-      deviceId: deviceId,
-      deviceType: deviceType,
-      version: version
-    }
-  });
-
-  // Track for cleanup
-  activeSockets.add(socket);
-
-  // Step 3: Wait for connection AND initial sync:full event
-  // FIX: Eagerly register sync:full listener to avoid race condition
-  // Server emits sync:full during connection handler, so we must listen BEFORE connect completes
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      socket.disconnect();
-      activeSockets.delete(socket);
-      reject(new Error(`WebSocket connection timeout after ${timeout}ms`));
-    }, timeout);
-
-    let syncData = null;
-    let connectReceived = false;
-
-    // Eagerly register sync:full listener BEFORE connect event
-    // Captures the sync data for test validation
-    socket.once('sync:full', (data) => {
-      syncData = data;
-      // Resolve if both connect and sync:full received
-      if (connectReceived) {
-        clearTimeout(timer);
-        // Return object with socket AND sync data for test validation
-        socket.initialSync = syncData;
-        resolve(socket);
-      }
-    });
-
-    // Handle successful connection
-    socket.once('connect', () => {
-      connectReceived = true;
-
-      // Store device info for debugging
-      socket.deviceId = deviceId;
-      socket.deviceType = deviceType;
-      socket.isAuthenticated = true;
-
-      // Resolve if both connect and sync:full received
-      if (syncData) {
-        clearTimeout(timer);
-        // Return object with socket AND sync data for test validation
-        socket.initialSync = syncData;
-        resolve(socket);
-      }
-    });
-
-    // Handle connection errors (authentication failures occur here)
-    socket.once('connect_error', (error) => {
-      clearTimeout(timer);
-      socket.disconnect();
-      activeSockets.delete(socket);
-      reject(new Error(`WebSocket connection failed: ${error.message}`));
-    });
-  });
+  // Delegate to shared core implementation
+  return await coreConnectWithAuth(baseUrl, password, deviceId, deviceType, options);
 }
 
 /**
@@ -220,25 +129,8 @@ function setupEventListener(socket, eventName, handler) {
  * );
  */
 async function waitForEvent(socket, eventName, predicate = null, timeout = 5000) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      socket.off(eventName, handler);
-      reject(new Error(`Timeout waiting for event: ${eventName}`));
-    }, timeout);
-
-    const handler = (data) => {
-      // If predicate provided, check if event matches
-      if (predicate && !predicate(data)) {
-        return; // Keep waiting for matching event
-      }
-
-      clearTimeout(timer);
-      socket.off(eventName, handler);
-      resolve(data);
-    };
-
-    socket.on(eventName, handler);
-  });
+  // Delegate to shared core implementation (which checks cache first)
+  return await coreWaitForEvent(socket, eventName, predicate, timeout);
 }
 
 /**
@@ -308,15 +200,8 @@ function validateEventEnvelope(event, expectedEventType) {
  * disconnectSocket(socket);
  */
 function disconnectSocket(socket) {
-  if (!socket) {
-    return;
-  }
-
-  if (socket.connected) {
-    socket.disconnect();
-  }
-
-  activeSockets.delete(socket);
+  // Delegate to shared core implementation
+  return coreDisconnectSocket(socket);
 }
 
 /**
@@ -333,12 +218,8 @@ function disconnectSocket(socket) {
  * });
  */
 function cleanupAllSockets() {
-  activeSockets.forEach(socket => {
-    if (socket && socket.connected) {
-      socket.disconnect();
-    }
-  });
-  activeSockets.clear();
+  // Delegate to core (handles cache clearing + disconnect + tracking)
+  return coreCleanupAllSockets();
 }
 
 /**
@@ -350,7 +231,22 @@ function cleanupAllSockets() {
  * console.log(`Active sockets: ${getActiveSocketCount()}`);
  */
 function getActiveSocketCount() {
-  return activeSockets.size;
+  // Delegate to shared core implementation
+  return coreGetActiveSocketCount();
+}
+
+/**
+ * Get all active sockets (for cache clearing)
+ *
+ * @returns {Array<Socket>} Array of active sockets
+ *
+ * @example
+ * const sockets = getAllActiveSockets();
+ * sockets.forEach(socket => clearEventCache(socket));
+ */
+function getAllActiveSockets() {
+  // Delegate to shared core implementation
+  return coreGetAllActiveSockets();
 }
 
 module.exports = {
@@ -367,5 +263,9 @@ module.exports = {
   // Cleanup
   disconnectSocket,
   cleanupAllSockets,
-  getActiveSocketCount
+  getAllActiveSockets,
+  getActiveSocketCount,
+
+  // Event cache management
+  clearEventCache
 };
