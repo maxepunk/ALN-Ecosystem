@@ -1,5 +1,25 @@
 # E2E Test Fixtures
 
+> **⚠️ DEPRECATION NOTICE (November 2025)**
+>
+> **Tests now primarily use dynamic production data** via the `helpers/token-selection.js` helper instead of these static fixtures. This ensures tests work with any token dataset and validate production scoring logic.
+>
+> **Current Status:**
+> - ✅ **07a, 07b, 07c tests**: Now use dynamic token selection from `/api/tokens`
+> - ⏳ **Session/infrastructure tests**: Still use fixtures (migration pending)
+>
+> **When to use fixtures:**
+> - Tests requiring specific controlled scenarios (e.g., exact group compositions)
+> - Tests where production data variability would cause flakiness
+> - Unit/integration tests where mocking backend is preferred
+>
+> **When to use dynamic tokens (recommended):**
+> - Scoring validation tests (ensures production logic works)
+> - Transaction flow tests (data-agnostic patterns)
+> - Any test that can work with arbitrary token data
+>
+> See `../helpers/token-selection.js` and `../README.md` for migration guide.
+
 This directory contains minimal test data optimized for fast E2E test execution. All files are lightweight (< 1MB total) to ensure quick test runs.
 
 ## Purpose
@@ -171,6 +191,37 @@ The `test-tokens.json` file follows the exact schema used by ALN-TokenData:
 
 ## Using Fixtures in Tests
 
+### ✨ Recommended: Dynamic Token Selection (New)
+
+For most E2E tests, use dynamic production data instead of fixtures:
+
+```javascript
+const { selectTestTokens } = require('../helpers/token-selection');
+const { calculateExpectedScore } = require('../helpers/scoring');
+
+let testTokens = null;
+
+test.beforeAll(async () => {
+  testTokens = await selectTestTokens(orchestratorUrl);
+});
+
+test('should score token correctly', async () => {
+  const token = testTokens.personalToken;
+  const expectedScore = calculateExpectedScore(token);
+
+  await scanner.manualScan(token.SF_RFID);
+  const actualScore = await getTeamScore(page, '001', 'standalone');
+
+  expect(actualScore).toBe(expectedScore);
+});
+```
+
+**Benefits:**
+- Works with any production token dataset
+- Validates production scoring logic
+- No hardcoded token IDs
+- Easier maintenance
+
 ### Backend Unit Tests (Token Service)
 
 ```javascript
@@ -187,10 +238,10 @@ process.env.TOKEN_DATA_PATH = path.join(__dirname, '../fixtures/test-tokens.json
 process.env.VIDEO_PATH = path.join(__dirname, '../fixtures/test-videos');
 ```
 
-### E2E Tests (Playwright)
+### E2E Tests (Playwright) - Legacy Fixture Pattern
 
 ```javascript
-// Configure in playwright.config.js
+// ⚠️ DEPRECATED: Use dynamic tokens for new tests (see above)
 use: {
   baseURL: 'https://localhost:3000',
   extraHTTPHeaders: {

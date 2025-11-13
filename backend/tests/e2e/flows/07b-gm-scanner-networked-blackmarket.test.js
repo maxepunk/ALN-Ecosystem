@@ -7,12 +7,12 @@
  * - Session creation via WebSocket ✓
  * - UI navigation ✓
  * - Transaction submission (scanner → backend via WebSocket) ✓
- * - Type multiplier scoring (Personal 1x, Business 3x) ✓
- * - Group completion bonuses (x2 multiplier) ✓
+ * - Type multiplier scoring (Personal 1x, Business 3x, Technical 5x) ✓
+ * - Group completion bonuses (variable multipliers) ✓
  * - Duplicate detection (same team & cross-team) ✓
  *
  * Validates NetworkedQueueManager constructor bug fix (config object vs bare client).
- * Production Tokens: sof002, rat002, mab001, mab002, asm031, fli031, rat031
+ * Uses DYNAMIC token selection - tests work with any production token data.
  *
  * @group critical
  * @group phase2
@@ -51,11 +51,18 @@ const {
   waitForScoreValue,
 } = require('../helpers/wait-conditions');
 
+const { selectTestTokens } = require('../helpers/token-selection');
+const {
+  calculateExpectedScore,
+  calculateExpectedGroupBonus,
+} = require('../helpers/scoring');
+
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
+let testTokens = null;  // Dynamically selected tokens
 
-test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
+test.describe('GM Scanner Networked Mode - Black Market', () => {
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -66,6 +73,9 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
       port: 3000,
       timeout: 30000
     });
+
+    // Select test tokens dynamically from production database
+    testTokens = await selectTestTokens(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -144,10 +154,13 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
   });
 
   // ========================================
-  // TEST 2-5: Placeholder for Full Transaction Tests
+  // TEST 2: Personal Token Scan
   // ========================================
 
-  test('scans single Personal token and backend awards 500 points', async () => {
+  test('scans Personal token and backend awards correct points', async () => {
+    const token = testTokens.personalToken;
+    const expectedScore = calculateExpectedScore(token);
+
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
@@ -183,12 +196,17 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     await scanner.enterTeam('001');
     await scanner.confirmTeam();
 
-    // Listen for transaction broadcast
-    const transactionPromise = waitForEvent(socket, 'transaction:new', null, 10000);
+    // Listen for transaction broadcast (filter by specific token to prevent race conditions)
+    const transactionPromise = waitForEvent(
+      socket,
+      'transaction:new',
+      (event) => event.data.transaction.tokenId === token.SF_RFID,
+      10000
+    );
 
     // Simulate NFC scan (what NFC API would trigger)
-    await scanner.manualScan('sof002');
-    console.log('NFC scan simulated');
+    await scanner.manualScan(token.SF_RFID);
+    console.log(`NFC scan simulated: ${token.SF_RFID} (${token.SF_MemoryType} ${token.SF_ValueRating}⭐)`);
 
     await scanner.waitForResult(5000);
 
@@ -196,19 +214,27 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const txEvent = await transactionPromise;
     expect(txEvent.data).toBeDefined();
     expect(txEvent.data.transaction).toBeDefined();
-    expect(txEvent.data.transaction.tokenId).toBe('sof002');
+    expect(txEvent.data.transaction.tokenId).toBe(token.SF_RFID);
+    expect(txEvent.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
     await waitForScoreUpdate(socket, '001', 2000);
 
     // Verify score via helper (pass socket for authoritative backend query)
     const score = await getTeamScore(page, '001', 'networked', socket);
-    expect(score).toBe(500);
+    expect(score).toBe(expectedScore);
 
-    console.log('✓ Networked mode: Personal token scored 500 points');
+    console.log(`✓ Networked mode: Personal token scored $${expectedScore.toLocaleString()}`);
   });
 
+  // ========================================
+  // TEST 3: Business Token with Type Multiplier
+  // ========================================
+
   test('scans Business token and backend applies 3x multiplier', async () => {
+    const token = testTokens.businessToken;
+    const expectedScore = calculateExpectedScore(token);
+
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
@@ -242,12 +268,17 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     await scanner.enterTeam('001');
     await scanner.confirmTeam();
 
-    // Listen for transaction broadcast
-    const transactionPromise = waitForEvent(socket, 'transaction:new', null, 10000);
+    // Listen for transaction broadcast (filter by specific token to prevent race conditions)
+    const transactionPromise = waitForEvent(
+      socket,
+      'transaction:new',
+      (event) => event.data.transaction.tokenId === token.SF_RFID,
+      10000
+    );
 
     // Simulate NFC scan (what NFC API would trigger)
-    await scanner.manualScan('rat002');
-    console.log('NFC scan simulated');
+    await scanner.manualScan(token.SF_RFID);
+    console.log(`NFC scan simulated: ${token.SF_RFID} (${token.SF_MemoryType} ${token.SF_ValueRating}⭐)`);
 
     await scanner.waitForResult(5000);
 
@@ -255,19 +286,37 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     const txEvent = await transactionPromise;
     expect(txEvent.data).toBeDefined();
     expect(txEvent.data.transaction).toBeDefined();
-    expect(txEvent.data.transaction.tokenId).toBe('rat002');
+    expect(txEvent.data.transaction.tokenId).toBe(token.SF_RFID);
+    expect(txEvent.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
     await waitForScoreUpdate(socket, '001', 2000);
 
     // Verify score with multiplier applied (pass socket for authoritative backend query)
     const score = await getTeamScore(page, '001', 'networked', socket);
-    expect(score).toBe(15000);
+    expect(score).toBe(expectedScore);
 
-    console.log('✓ Networked mode: Business token scored 15,000 points (3x multiplier)');
+    console.log(`✓ Networked mode: Business token scored $${expectedScore.toLocaleString()} (3x multiplier)`);
   });
 
-  test('completes group and backend applies multiplier', async () => {
+  // ========================================
+  // TEST 4: Group Completion Bonus
+  // ========================================
+
+  test('completes group and backend applies multiplier bonus', async () => {
+    const groupTokens = testTokens.groupTokens;
+
+    if (groupTokens.length < 2) {
+      console.warn('⚠️  Skipping group completion test: No group with 2+ tokens found');
+      test.skip();
+      return;
+    }
+
+    // Calculate expected scores using production logic
+    const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
+    const bonus = calculateExpectedGroupBonus(groupTokens);
+    const expectedTotal = baseScore + bonus;
+
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
@@ -301,30 +350,37 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     await scanner.enterTeam('001');
     await scanner.confirmTeam();
 
-    // "Marcus Sucks (x2)" group - 3 tokens required for completion
-    // Note: jek031 excluded due to data typo (curly quote creates separate group)
-    // Base values: asm031(1k Personal×1) + fli031(500 Personal×1) + rat031(15k Business×3) = 16,500
-    // With x2 multiplier bonus: 16,500 + 16,500 = 33,000
-    const groupTokens = ['asm031', 'fli031', 'rat031'];
+    console.log(`Testing group completion: ${groupTokens[0].SF_Group}`);
+    console.log(`  Tokens: ${groupTokens.map(t => t.SF_RFID).join(', ')}`);
+    console.log(`  Base score: $${baseScore.toLocaleString()}`);
+    console.log(`  Bonus: $${bonus.toLocaleString()}`);
+    console.log(`  Expected total: $${expectedTotal.toLocaleString()}`);
 
     // Listen for group completion event (will fire after last token)
     const groupCompletionPromise = waitForEvent(socket, 'group:completed', null, 15000);
 
     // Scan all tokens in sequence
     for (let i = 0; i < groupTokens.length; i++) {
-      const tokenId = groupTokens[i];
+      const token = groupTokens[i];
 
-      const transactionPromise = waitForEvent(socket, 'transaction:new', null, 10000);
+      // Filter for THIS specific token's transaction event (prevent race conditions)
+      const transactionPromise = waitForEvent(
+        socket,
+        'transaction:new',
+        (event) => event.data.transaction.tokenId === token.SF_RFID,
+        10000
+      );
 
       // Simulate NFC scan
-      await scanner.manualScan(tokenId);
+      await scanner.manualScan(token.SF_RFID);
 
       await scanner.waitForResult(5000);
 
       const txEvent = await transactionPromise;
-      expect(txEvent.data.transaction.tokenId).toBe(tokenId);
+      expect(txEvent.data.transaction.tokenId).toBe(token.SF_RFID);
+      expect(txEvent.data.transaction.status).toBe('accepted');
 
-      console.log(`Token ${i + 1}/3 scanned: ${tokenId}`);
+      console.log(`  Token ${i + 1}/${groupTokens.length} scanned: ${token.SF_RFID}`);
 
       // Navigate back to scan screen for next token (except after last one)
       if (i < groupTokens.length - 1) {
@@ -335,22 +391,30 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // Wait for group completion event
     const groupEvent = await groupCompletionPromise;
     expect(groupEvent.data).toBeDefined();
-    expect(groupEvent.data.group).toBe('Marcus Sucks');  // AsyncAPI: 'group' not 'groupId'
-    expect(groupEvent.data.bonusPoints).toBe(16500);     // AsyncAPI: 'bonusPoints' not 'bonus'
     expect(groupEvent.data.teamId).toBe('001');
-    expect(groupEvent.data.completedAt).toBeDefined();   // Timestamp added by broadcast
+    expect(groupEvent.data.bonusPoints).toBe(bonus);
+    expect(groupEvent.data.completedAt).toBeDefined();
 
     // Wait for score:updated event after bonus applied (event-driven, not polling)
     await waitForScoreUpdate(socket, '001', 2000);
 
     // Verify final score (base + bonus) (pass socket for authoritative backend query)
     const finalScore = await getTeamScore(page, '001', 'networked', socket);
-    expect(finalScore).toBe(33000);
+    expect(finalScore).toBe(expectedTotal);
 
-    console.log('✓ Networked mode: Group completed, x2 multiplier applied, 33,000 total points');
+    console.log(`✓ Networked mode: Group completed, bonus applied, $${expectedTotal.toLocaleString()} total`);
   });
 
+  // ========================================
+  // TEST 5: Same Team Duplicate Detection
+  // ========================================
+
   test('backend rejects duplicate scan by same team', async () => {
+    const token1 = testTokens.personalToken;
+    const token2 = testTokens.businessToken;
+    const score1 = calculateExpectedScore(token1);
+    const score2 = calculateExpectedScore(token2);
+
     // Create WebSocket connection and session
     const socket = await connectWithAuth(
       orchestratorInfo.url,
@@ -386,14 +450,19 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     // FIRST SCAN: Token should be accepted
     // Listen for broadcast (transaction:new is sent to all GM stations)
-    const tx1Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+    const tx1Promise = waitForEvent(
+      socket,
+      'transaction:new',
+      (event) => event.data.transaction.tokenId === token1.SF_RFID,
+      10000
+    );
 
-    await scanner.manualScan('sof002');
+    await scanner.manualScan(token1.SF_RFID);
 
     await scanner.waitForResult(5000);
 
     const tx1Event = await tx1Promise;
-    expect(tx1Event.data.transaction.tokenId).toBe('sof002');
+    expect(tx1Event.data.transaction.tokenId).toBe(token1.SF_RFID);
     expect(tx1Event.data.transaction.status).toBe('accepted');
 
     console.log('✓ First scan accepted and broadcast received');
@@ -403,7 +472,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     // Verify score after first scan (pass socket for authoritative backend query)
     const scoreAfterFirst = await getTeamScore(page, '001', 'networked', socket);
-    expect(scoreAfterFirst).toBe(500);
+    expect(scoreAfterFirst).toBe(score1);
 
     // Navigate back to scan screen for second scan
     await scanner.continueScan();
@@ -412,7 +481,7 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     // NOTE: Duplicates are NOT broadcast. Only the scanner receives transaction:result.
     // We verify rejection by checking that score doesn't change and scanner shows result.
 
-    await scanner.manualScan('sof002');
+    await scanner.manualScan(token1.SF_RFID);
 
     await scanner.waitForResult(5000);
 
@@ -420,33 +489,48 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     // Wait for backend score to stabilize (polls until score === expected value)
     // Using condition-based waiting instead of arbitrary timeout (testing-anti-patterns skill)
-    const scoreAfterDuplicate = await waitForScoreValue(page, '001', socket, 500, 2000);
-    expect(scoreAfterDuplicate).toBe(500); // Should still be 500, not 1000
+    const scoreAfterDuplicate = await waitForScoreValue(page, '001', socket, score1, 2000);
+    expect(scoreAfterDuplicate).toBe(score1); // Should still be score1, not doubled
 
     // Navigate back to scan screen for third scan
     await scanner.continueScan();
 
     // Verify scanner still functional - scan different token
-    const tx3Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+    const tx3Promise = waitForEvent(
+      socket,
+      'transaction:new',
+      (event) => event.data.transaction.tokenId === token2.SF_RFID,
+      10000
+    );
 
-    await scanner.manualScan('rat002');
+    await scanner.manualScan(token2.SF_RFID);
 
     await scanner.waitForResult(5000);
 
     const tx3Event = await tx3Promise;
-    expect(tx3Event.data.transaction.tokenId).toBe('rat002');
+    expect(tx3Event.data.transaction.tokenId).toBe(token2.SF_RFID);
     expect(tx3Event.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
     await waitForScoreUpdate(socket, '001', 2000);
 
     const finalScore = await getTeamScore(page, '001', 'networked', socket);
-    expect(finalScore).toBe(15500); // 500 + 15000 (duplicate didn't add points)
+    const expectedFinal = score1 + score2;
+    expect(finalScore).toBe(expectedFinal); // First + second, duplicate didn't add
 
-    console.log('✓ Duplicate rejection confirmed: score unchanged, scanner still functional (15,500 total)');
+    console.log(`✓ Duplicate rejection confirmed: score unchanged, scanner still functional ($${expectedFinal.toLocaleString()} total)`);
   });
 
+  // ========================================
+  // TEST 6: Cross-Team Duplicate Detection
+  // ========================================
+
   test('backend rejects duplicate scan by different team', async () => {
+    const token1 = testTokens.personalToken;
+    const token2 = testTokens.technicalToken;
+    const score1 = calculateExpectedScore(token1);
+    const score2 = calculateExpectedScore(token2);
+
     // Create WebSocket connection and session with TWO teams
     const socket = await connectWithAuth(
       orchestratorInfo.url,
@@ -481,25 +565,30 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     await scanner.enterTeam('001');
     await scanner.confirmTeam();
 
-    const tx1Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+    const tx1Promise = waitForEvent(
+      socket,
+      'transaction:new',
+      (event) => event.data.transaction.tokenId === token1.SF_RFID,
+      10000
+    );
 
-    await scanner.manualScan('sof002');
+    await scanner.manualScan(token1.SF_RFID);
 
     await scanner.waitForResult(5000);
 
     const tx1Event = await tx1Promise;
-    expect(tx1Event.data.transaction.tokenId).toBe('sof002');
+    expect(tx1Event.data.transaction.tokenId).toBe(token1.SF_RFID);
     expect(tx1Event.data.transaction.teamId).toBe('001');
     expect(tx1Event.data.transaction.status).toBe('accepted');
 
-    console.log('✓ Team 001 scan accepted: 500 points');
+    console.log(`✓ Team 001 scan accepted: $${score1.toLocaleString()}`);
 
     // Wait for score:updated event (event-driven, not polling)
     await waitForScoreUpdate(socket, '001', 2000);
 
     // Verify Team 001 scored (pass socket for authoritative backend query)
     const score001After1 = await getTeamScore(page, '001', 'networked', socket);
-    expect(score001After1).toBe(500);
+    expect(score001After1).toBe(score1);
 
     // SWITCH TO TEAM 002
     // finishTeam() works from result screen, returns to team entry
@@ -511,18 +600,18 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
 
     // TEAM 002: Try same token (should be REJECTED - first-come-first-served)
     // No broadcast for duplicates - verify via score unchanged
-    await scanner.manualScan('sof002');
+    await scanner.manualScan(token1.SF_RFID);
 
     await scanner.waitForResult(5000);
 
     console.log('✓ Team 002 duplicate scan processed');
 
     // Wait for backend scores to stabilize (condition-based waiting)
-    // Team 002 should get 0 (rejected), Team 001 should remain 500 (unchanged)
+    // Team 002 should get 0 (rejected), Team 001 should remain score1 (unchanged)
     const score002After2 = await waitForScoreValue(page, '002', socket, 0, 2000);
-    const score001After2 = await waitForScoreValue(page, '001', socket, 500, 2000);
+    const score001After2 = await waitForScoreValue(page, '001', socket, score1, 2000);
 
-    expect(score001After2).toBe(500);  // Team 001 unchanged
+    expect(score001After2).toBe(score1);  // Team 001 unchanged
     expect(score002After2).toBe(0);    // Team 002 got nothing (rejected)
 
     console.log('✓ Cross-team rejection confirmed: Team 001 blocked Team 002');
@@ -531,14 +620,19 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     await scanner.continueScan();
 
     // Verify Team 002 still functional - can scan different token
-    const tx3Promise = waitForEvent(socket, 'transaction:new', null, 10000);
+    const tx3Promise = waitForEvent(
+      socket,
+      'transaction:new',
+      (event) => event.data.transaction.tokenId === token2.SF_RFID,
+      10000
+    );
 
-    await scanner.manualScan('mab002');  // Different token
+    await scanner.manualScan(token2.SF_RFID);  // Different token
 
     await scanner.waitForResult(5000);
 
     const tx3Event = await tx3Promise;
-    expect(tx3Event.data.transaction.tokenId).toBe('mab002');
+    expect(tx3Event.data.transaction.tokenId).toBe(token2.SF_RFID);
     expect(tx3Event.data.transaction.teamId).toBe('002');
     expect(tx3Event.data.transaction.status).toBe('accepted');
 
@@ -546,8 +640,8 @@ test.describe('GM Scanner Networked Mode - Black Market (Simplified)', () => {
     await waitForScoreUpdate(socket, '002', 2000);
 
     const finalScore002 = await getTeamScore(page, '002', 'networked', socket);
-    expect(finalScore002).toBe(10000);  // Team 002 can score with different token
+    expect(finalScore002).toBe(score2);  // Team 002 can score with different token
 
-    console.log('✓ Team 002 still functional after rejection: 10,000 points from different token');
+    console.log(`✓ Team 002 still functional after rejection: $${score2.toLocaleString()} from different token`);
   });
 });

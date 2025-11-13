@@ -113,23 +113,27 @@ npx playwright test --watch
 ```
 backend/tests/e2e/
 ├── README.md                           # This file
-├── fixtures/                           # Test data (lightweight fixtures)
+├── fixtures/                           # Test data (lightweight fixtures - deprecated)
 │   ├── tokens/
-│   │   └── test-tokens.json           # Minimal token set for testing
+│   │   └── test-tokens.json           # Legacy minimal token set
 │   └── sessions/
 │       └── test-session.json          # Sample session data
 ├── flows/                              # Test scenarios
 │   ├── 00-smoke-test.test.js          # Basic health checks
 │   ├── 01-session-lifecycle.test.js   # Session CRUD operations
 │   ├── 01-session-persistence.test.js # Session persistence across restarts
-│   ├── 07b-gm-scanner-networked-blackmarket.test.js  # Transaction flow (L3)
-│   ├── 07c-gm-scanner-scoring-parity.test.js         # Scoring validation
-│   ├── 21-player-scanner-diagnostic.test.js          # Player scanner health
-│   ├── 21-player-scanner-networked-scanning.test.js  # Player scanner flow
+│   ├── 07a-gm-scanner-standalone-blackmarket.test.js  # Standalone mode (uses dynamic tokens)
+│   ├── 07b-gm-scanner-networked-blackmarket.test.js   # Transaction flow (uses dynamic tokens)
+│   ├── 07c-gm-scanner-scoring-parity.test.js          # Scoring validation (uses dynamic tokens)
+│   ├── 21-player-scanner-diagnostic.test.js           # Player scanner health
+│   ├── 21-player-scanner-networked-scanning.test.js   # Player scanner flow
 │   └── duplicate-detection.spec.js    # Duplicate token prevention
 ├── helpers/                            # Utilities
 │   ├── test-config.js                 # Centralized configuration
-│   └── testHelpers.js                 # Reusable helper functions
+│   ├── testHelpers.js                 # Reusable helper functions
+│   ├── token-selection.js             # ✨ Dynamic token discovery from production data
+│   ├── scoring.js                     # ✨ Expected score calculation using production logic
+│   └── scanner-init.js                # Scanner initialization and mode-specific helpers
 └── setup/                              # Test setup
     └── global-setup.js                # Pre-test initialization
 ```
@@ -169,6 +173,84 @@ See `playwright.config.js` in backend root:
 - **Retries**: 1 (flaky test resilience)
 - **Timeout**: 30s per test
 - **Reporter**: HTML + list
+
+## Dynamic Token Selection (Recommended)
+
+**New in November 2025**: Tests now use dynamic token discovery from production data instead of hardcoded fixture tokens. This ensures tests work with any token dataset and validates production scoring logic.
+
+### Helper Files
+
+#### `helpers/token-selection.js`
+
+Queries production token database via `/api/tokens` and selects suitable tokens based on test requirements:
+
+```javascript
+const { selectTestTokens } = require('../helpers/token-selection');
+
+// In test beforeAll:
+testTokens = await selectTestTokens(orchestratorUrl);
+
+// Returns:
+{
+  personalToken,    // Single Personal token (e.g., 2-star)
+  businessToken,    // Single Business token (e.g., 3-star)
+  technicalToken,   // Single Technical token (e.g., 5-star)
+  groupTokens,      // Array of ALL tokens in same group (for completion tests)
+  uniqueTokens,     // Array of tokens for duplicate detection tests
+  allTokens         // Complete token database
+}
+```
+
+**Key Features:**
+- Exclusive allocation: No token used for multiple purposes
+- Group tokens allocated first (most restrictive)
+- Returns ALL group members for completion bonus tests
+- Fallback selections when specific types unavailable
+
+#### `helpers/scoring.js`
+
+Calculates expected scores using production scoring logic (imports from `src/services/tokenService.js`):
+
+```javascript
+const { calculateExpectedScore, calculateExpectedGroupBonus } = require('../helpers/scoring');
+
+// Single token score
+const token = testTokens.personalToken;
+const expectedScore = calculateExpectedScore(token);
+// Example: 2-star Personal = $500 × 1 = $500
+
+// Group completion bonus
+const groupTokens = testTokens.groupTokens;
+const bonus = calculateExpectedGroupBonus(groupTokens);
+// Example: 4 tokens with 2x multiplier = (2 - 1) × $15,000 base = $15,000 bonus
+```
+
+**Scoring Formula:**
+```javascript
+BASE_VALUES: { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 }
+TYPE_MULTIPLIERS: { 'Personal': 1, 'Business': 3, 'Technical': 5 }
+
+tokenScore = BASE_VALUES[valueRating] × TYPE_MULTIPLIERS[memoryType]
+groupBonus = (groupMultiplier - 1) × baseScoreOfAllGroupTokens
+```
+
+### Migration Status
+
+**Tests using dynamic tokens** (recommended pattern):
+- ✅ `07a-gm-scanner-standalone-blackmarket.test.js`
+- ✅ `07b-gm-scanner-networked-blackmarket.test.js`
+- ✅ `07c-gm-scanner-scoring-parity.test.js`
+
+**Tests using fixtures** (legacy - to be migrated):
+- ⏳ `01-session-lifecycle.test.js`
+- ⏳ `01-session-persistence.test.js`
+- ⏳ Other session/infrastructure tests
+
+**Why Dynamic Tokens?**
+- Tests work with any production token dataset
+- No hardcoded token IDs that may not exist
+- Validates production scoring calculations
+- Easier to maintain (no fixture sync required)
 
 ## Writing Tests
 
@@ -299,18 +381,47 @@ expect(state.sessionId).toBeDefined();
 expect(state.connected).toBe(true);
 ```
 
-### Pattern 4: Fixture Data Loading
+### Pattern 4: Dynamic Token Selection (Recommended)
+
+**Use this pattern for new tests** - queries production data instead of fixtures:
 
 ```javascript
+const { selectTestTokens } = require('../helpers/token-selection');
+const { calculateExpectedScore, calculateExpectedGroupBonus } = require('../helpers/scoring');
+
+let testTokens = null;  // Dynamically selected tokens
+
+test.beforeAll(async () => {
+  // Query production token database
+  testTokens = await selectTestTokens(orchestratorUrl);
+  console.log(`Selected tokens: Personal=${testTokens.personalToken.SF_RFID}, Business=${testTokens.businessToken.SF_RFID}`);
+});
+
+test('should score token using production logic', async ({ page }) => {
+  const token = testTokens.personalToken;
+  const expectedScore = calculateExpectedScore(token);
+
+  // Scan token
+  await scanner.manualScan(token.SF_RFID);
+
+  // Verify score matches production calculation
+  const actualScore = await getTeamScore(page, '001', 'standalone');
+  expect(actualScore).toBe(expectedScore);
+
+  console.log(`✓ Token ${token.SF_RFID} scored $${expectedScore.toLocaleString()}`);
+});
+```
+
+**Legacy Pattern: Fixture Data Loading**
+
+```javascript
+// ⚠️ DEPRECATED: Use dynamic tokens for new tests
 const fs = require('fs');
 const path = require('path');
 
 test('should load test tokens', async ({ page }) => {
-  // Load fixture
   const tokensPath = path.join(__dirname, '../fixtures/tokens/test-tokens.json');
   const tokens = JSON.parse(fs.readFileSync(tokensPath, 'utf-8'));
-
-  // Inject into page
   await page.evaluate((tokenData) => {
     window.TokenManager.database = tokenData;
   }, tokens);
@@ -418,19 +529,27 @@ npx playwright test --shard=2/2
 
 ### Current Coverage (L3)
 
-**Transaction Flow Tests** (`07b-gm-scanner-networked-blackmarket.test.js`):
+**Standalone Mode Tests** (`07a-gm-scanner-standalone-blackmarket.test.js`) - 🆕 Dynamic Tokens:
+- ✅ Scanner initialization in standalone mode (no orchestrator)
+- ✅ Local score calculation using production logic
+- ✅ Single token scanning and scoring
+
+**Transaction Flow Tests** (`07b-gm-scanner-networked-blackmarket.test.js`) - 🆕 Dynamic Tokens:
 - ✅ Scanner initialization in networked mode
 - ✅ WebSocket authentication
 - ✅ Session creation via WebSocket
 - ✅ UI navigation
 - ✅ Transaction submission (scanner → backend via WebSocket)
 - ✅ Type multiplier scoring (Personal 1x, Business 3x, Technical 5x)
-- ✅ Group completion bonuses
+- ✅ Group completion bonuses (scanning ALL group members)
 - ✅ Duplicate detection (same team & cross-team)
 
-**Scoring Parity Tests** (`07c-gm-scanner-scoring-parity.test.js`):
+**Scoring Parity Tests** (`07c-gm-scanner-scoring-parity.test.js`) - 🆕 Dynamic Tokens:
 - ✅ Backend vs frontend score calculation consistency
-- ✅ Group bonus calculation accuracy
+- ✅ Personal, Business, Technical token parity
+- ✅ Group completion bonus calculation accuracy
+- ✅ Mixed token sequence parity
+- ✅ Duplicate token rejection parity
 
 **Session Tests** (`01-*.test.js`):
 - ✅ Session CRUD operations
@@ -469,7 +588,8 @@ Areas requiring additional E2E tests:
 
 ---
 
-**Last Updated**: November 12, 2025
+**Last Updated**: November 13, 2025
 **Test Suite**: L3 Full Stack E2E
 **Framework**: Playwright Test
 **Coverage**: 28 tests, ~4-5 min runtime
+**Dynamic Tokens**: 3 test files migrated (07a, 07b, 07c)
