@@ -46,7 +46,7 @@ const TEST_ENV = {
   HOST: '0.0.0.0',
   VLC_PASSWORD: 'vlc',
   FEATURE_VIDEO_PLAYBACK: 'true',
-  ADMIN_PASSWORD: 'test-admin-password',
+  ADMIN_PASSWORD: process.env.TEST_ADMIN_PASSWORD || '@LN-c0nn3ct',
   LOG_LEVEL: 'warn', // Reduce noise in test output
   ENABLE_HTTPS: process.env.TEST_HTTPS || 'false',
   SSL_KEY_PATH: './ssl/key.pem',
