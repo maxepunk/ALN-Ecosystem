@@ -120,7 +120,8 @@ module.exports = defineConfig({
   ],
 
   // Web server configuration (optional - auto-start orchestrator for tests)
-  // Uncomment if you want Playwright to manage the server lifecycle
+  // DISABLED: Tests manage orchestrator lifecycle via test-server.js
+  // Each test suite calls startOrchestrator() in beforeAll() with specific options
   /*
   webServer: {
     command: 'npm run dev:no-video', // Start orchestrator without VLC

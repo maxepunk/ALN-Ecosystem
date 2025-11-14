@@ -15,9 +15,9 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
   const { GMScannerPage } = require('./page-objects/GMScannerPage');
   const gmScanner = new GMScannerPage(page);
 
-  // Navigate to scanner (use simple pattern from ALNScanner tests)
+  // Navigate to scanner using relative URL (baseURL set in browser context)
   // Browser context isolation ensures localStorage is already clean
-  await page.goto('https://localhost:3000/gm-scanner/', {
+  await page.goto('/gm-scanner/', {
     waitUntil: 'networkidle',
     timeout: 10000
   });

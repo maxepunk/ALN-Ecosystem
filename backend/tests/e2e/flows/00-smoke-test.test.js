@@ -39,6 +39,8 @@ const {
   getActiveContextCount
 } = require('../setup/browser-contexts');
 
+const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
+
 const {
   connectWithAuth,
   waitForEvent,
@@ -61,15 +63,16 @@ const {
 } = require('../helpers/assertions');
 
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
+const { selectTestTokens } = require('../helpers/token-selection');
 
-// Test fixtures
-const testTokens = require('../fixtures/test-tokens.json');
+// Test config
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 // Global test state
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
+let testTokens = null;  // Dynamically selected tokens from production database
 
 // ========================================
 // SETUP & TEARDOWN
@@ -93,7 +96,10 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     });
     console.log(`Orchestrator started: ${orchestratorInfo.url}`);
 
-    // 4. Launch browser
+    // 4. Select test tokens dynamically from production database
+    testTokens = await selectTestTokens(orchestratorInfo.url);
+
+    // 5. Launch browser
     browser = await chromium.launch({
       headless: true,
       args: [
@@ -258,17 +264,12 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     const context = await createBrowserContext(browser, 'mobile');
     const page = await createPage(context);
 
-    const gmScanner = new GMScannerPage(page);
-    await gmScanner.goto();
+    // Use initializeGMScannerWithMode for proper initialization
+    await initializeGMScannerWithMode(page, 'standalone', 'blackmarket');
 
-    // Wait for app to initialize (loading screen disappears)
-    await page.waitForSelector('#loadingScreen', { state: 'hidden', timeout: 10000 });
-
-    // Verify we're on team entry screen or game mode screen
+    // Verify we're on team entry screen (initialization complete)
     const teamEntryVisible = await page.isVisible('#teamEntryScreen');
-    const gameModeVisible = await page.isVisible('#gameModeScreen');
-
-    expect(teamEntryVisible || gameModeVisible).toBe(true);
+    expect(teamEntryVisible).toBe(true);
 
     console.log('✓ GM Scanner loaded successfully');
   });
@@ -277,33 +278,36 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   // TEST 6: Test Fixtures Validation
   // ========================================
 
-  test('test fixtures load correctly', async () => {
-    // Validate test-tokens.json structure
+  test('test tokens load correctly from production database', async () => {
+    // Validate dynamically selected tokens from selectTestTokens()
+    expect(testTokens).toBeDefined();
     expect(testTokens).toBeInstanceOf(Object);
-    expect(Object.keys(testTokens).length).toBe(10);
 
-    // Check a video token
-    const videoToken = testTokens['test_video_01'];
-    expect(videoToken).toHaveProperty('SF_RFID', 'test_video_01');
-    expect(videoToken).toHaveProperty('video', 'test_10sec.mp4');
-    expect(videoToken).toHaveProperty('SF_MemoryType', 'Personal');
-    expect(videoToken).toHaveProperty('SF_ValueRating', 5);
+    // Verify required token types exist
+    expect(testTokens.personalToken).toBeDefined();
+    expect(testTokens.personalToken.SF_MemoryType).toBe('Personal');
+    expect(testTokens.personalToken.SF_ValueRating).toBeGreaterThanOrEqual(1);
+    expect(testTokens.personalToken.SF_ValueRating).toBeLessThanOrEqual(5);
 
-    // Check an image token
-    const imageToken = testTokens['test_image_01'];
-    expect(imageToken).toHaveProperty('image', 'assets/images/test_image.jpg');
+    expect(testTokens.businessToken).toBeDefined();
+    expect(testTokens.businessToken.SF_MemoryType).toBe('Business');
 
-    // Check an audio token
-    const audioToken = testTokens['test_audio_01'];
-    expect(audioToken).toHaveProperty('audio', 'assets/audio/test_audio.mp3');
+    expect(testTokens.technicalToken).toBeDefined();
+    expect(testTokens.technicalToken.SF_MemoryType).toBe('Technical');
 
-    // Check unknown token
-    const unknownToken = testTokens['test_unknown_01'];
-    expect(unknownToken.video).toBeNull();
-    expect(unknownToken.image).toBeNull();
-    expect(unknownToken.audio).toBeNull();
+    // Verify allTokens array has production data
+    expect(testTokens.allTokens).toBeInstanceOf(Array);
+    expect(testTokens.allTokens.length).toBeGreaterThan(0);
 
-    console.log('✓ Test fixtures validated');
+    // All tokens should have required fields
+    testTokens.allTokens.forEach(token => {
+      expect(token).toHaveProperty('SF_RFID');
+      expect(token).toHaveProperty('SF_ValueRating');
+      expect(token).toHaveProperty('SF_MemoryType');
+      expect(['Personal', 'Business', 'Technical']).toContain(token.SF_MemoryType);
+    });
+
+    console.log(`✓ Test tokens validated (${testTokens.allTokens.length} total tokens from production)`);
   });
 
   test('test video files exist', async () => {
