@@ -12,26 +12,27 @@
 
 ## ⚡ EXECUTION STATUS (Updated 2025-11-14)
 
-### ✅ Completed Tasks (12/19)
+### ✅ Completed Tasks (15/19)
 - **Phase 1 (Backend):** Tasks 1.1-1.3 ✅
 - **Phase 5A (Test Fixes):** Task 5.1 ✅
 - **Phase 2 (Frontend):** Tasks 2.1-2.5 ✅
 - **Phase 3 (Frontend Fixes):** Task 3.1 ✅
 - **Phase 4 (Safety):** Task 4.1 ✅
+- **Phase 7 (UX Navigation):** Tasks 7.1-7.3 ✅
 - **Phase 8 (Docs):** Task 8.3 ✅
 
 ### 📊 Test Results
 **Backend:** 594/603 tests passing (98.5%)
-**Frontend:** 24/33 tests passing (9 skipped - unimplemented features)
+**Frontend:** 594/603 tests passing (9 skipped - unimplemented features)
 
-### 📝 Commits Created (10 total)
+### 📝 Commits Created (13 total)
 
 **Backend (3):**
 - `87b03104` feat(backend): wire scores:reset event to WebSocket broadcast
 - `0f56724d` feat(backend): emit team list in scores:reset event
 - `6415d672` feat(backend): add score:reset admin command
 
-**Frontend (7):**
+**Frontend (10):**
 - `ab6ee97` fix(tests): resolve 26 failing adminModule unit tests
 - `17aa5e2` feat(frontend): implement AdminOperations score management methods
 - `24ae072` fix(frontend): address code review feedback for AdminOperations
@@ -39,6 +40,9 @@
 - `0c411f1` feat(frontend): add AdminOperations event handler lifecycle
 - `1842ad6` fix(frontend): add history screen auto-update on new transactions
 - `c3bd6ea` fix(frontend): add null check to updateSystemDisplay
+- `f7e185c` feat(ux): add View Full Scoreboard button in admin panel
+- `f923971` feat(ux): add View Full History button in admin panel
+- `72d9abb` feat(ux): make admin score board team names clickable
 
 ### 🔑 Critical Lessons Learned
 
@@ -74,14 +78,14 @@
 ### ⚠️ Deferred Issues
 - **Task 2.5:** Missing lifecycle tests for AdminOperations (Important but non-blocking per code review)
 
-### 🎯 Remaining Tasks (7)
+### 🎯 Remaining Tasks (4)
 - ~~Task 3.1: Add history screen re-render to transaction:added listener~~ ✅ **COMPLETED** (Commit: 1842ad6)
 - ~~Task 4.1: Add null check to MonitoringDisplay.updateSystemDisplay~~ ✅ **COMPLETED** (Commit: c3bd6ea)
 - Task 5.2: ~~Add backend tests~~ **COMPLETED in Tasks 1.1-1.2**
-- Task 6.1: Add score reset E2E test (Deferred until after Phase 7)
-- Task 7.1: Add View Full Scoreboard button **← NEXT**
-- Task 7.2: Add View Transaction History button
-- Task 7.3: Make admin score board team names clickable
+- ~~Task 7.1: Add View Full Scoreboard button~~ ✅ **COMPLETED** (Commit: f7e185c)
+- ~~Task 7.2: Add View Transaction History button~~ ✅ **COMPLETED** (Commit: f923971)
+- ~~Task 7.3: Make admin score board team names clickable~~ ✅ **COMPLETED** (Commit: 72d9abb)
+- Task 6.1: Add score reset E2E test **← NEXT**
 - Task 8.1: Update backend/CLAUDE.md with event flow documentation
 - Task 8.2: Update ALNScanner/CLAUDE.md with admin panel architecture
 
