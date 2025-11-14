@@ -1128,6 +1128,7 @@ components:
                   - video:queue:reorder
                   - video:queue:clear
                   - score:adjust
+                  - score:reset
                   - transaction:delete
                   - transaction:create
                   - system:reset

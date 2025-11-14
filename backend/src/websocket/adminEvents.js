@@ -158,6 +158,16 @@ async function handleGmCommand(socket, data, io) {
         });
         break;
 
+      case 'score:reset':
+        // Reset all team scores (triggers scores:reset event → broadcasts)
+        transactionService.resetScores();
+        resultMessage = 'All team scores reset to zero';
+        logger.info('All team scores reset by GM', {
+          gmStation: socket.deviceId,
+          sessionId: session?.id
+        });
+        break;
+
       case 'transaction:delete': {
         // Delete transaction and recalculate scores (FR 4.2.4 line 949)
         const { transactionId } = payload;
