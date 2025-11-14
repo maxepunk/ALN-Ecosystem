@@ -527,10 +527,16 @@ class TransactionService extends EventEmitter {
    * Reset scores
    */
   resetScores() {
+    // Capture teams before clearing
+    const teams = Array.from(this.teamScores.keys());
+
     this.teamScores.clear();
     this.recentTransactions = [];
-    this.emit('scores:reset');
-    logger.info('Scores reset');
+
+    // Emit with team list for broadcast handler
+    this.emit('scores:reset', { teamsReset: teams });
+
+    logger.info('Scores reset', { teamsReset: teams.length });
   }
 
   /**

@@ -1260,4 +1260,33 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(result.transaction.mode).toBe('blackmarket');
     });
   });
+
+  describe('resetScores', () => {
+    it('should emit scores:reset event with teamsReset array', () => {
+      // Setup: Add some team scores
+      transactionService.teamScores.set('001', { currentScore: 500 });
+      transactionService.teamScores.set('002', { currentScore: 300 });
+
+      // Listen for event using Promise pattern
+      const eventPromise = new Promise((resolve) => {
+        transactionService.once('scores:reset', resolve);
+      });
+
+      // Execute
+      transactionService.resetScores();
+
+      // Verify
+      return eventPromise.then((eventData) => {
+        expect(eventData.teamsReset).toEqual(expect.arrayContaining(['001', '002']));
+        expect(eventData.teamsReset.length).toBe(2);
+      });
+    });
+
+    it('should clear teamScores Map', () => {
+      transactionService.teamScores.set('001', { currentScore: 500 });
+      transactionService.resetScores();
+
+      expect(transactionService.teamScores.size).toBe(0);
+    });
+  });
 });
