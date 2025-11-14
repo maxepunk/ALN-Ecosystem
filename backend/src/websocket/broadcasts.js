@@ -248,6 +248,28 @@ function setupBroadcastListeners(io, services) {
       emitToRoom(io, 'gm', 'team:created', payload);
       logger.info('Broadcasted team:created to GM stations', { teamId: data.teamId });
     });
+
+    // Transaction service - scores reset (bulk operation)
+    addTrackedListener(transactionService, 'scores:reset', (data) => {
+      // Notify GM stations about score reset (bulk event)
+      emitToRoom(io, 'gm', 'scores:reset', {
+        teamsReset: data?.teamsReset || []
+      });
+
+      // Provide complete updated state (follows processQueue pattern)
+      const session = sessionService.getCurrentSession();
+      if (!session) {
+        logger.warn('No active session during scores:reset');
+        return;
+      }
+
+      const fullState = stateService.getCurrentState();
+      emitWrapped(io, 'sync:full', fullState);
+
+      logger.info('Broadcasted scores:reset + sync:full to GM stations', {
+        teamsReset: data?.teamsReset?.length || 0
+      });
+    });
   }
 
   // Video events (contract-compliant)

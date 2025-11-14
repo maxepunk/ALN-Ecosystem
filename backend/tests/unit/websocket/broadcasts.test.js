@@ -358,6 +358,57 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
+  describe('scores:reset event', () => {
+    it('should broadcast scores:reset and sync:full when transactionService emits scores:reset', () => {
+      // Mock getCurrentSession for sync:full emission
+      mockSessionService.getCurrentSession = jest.fn().mockReturnValue({
+        id: 'test-session',
+        toJSON: () => ({ id: 'test-session', status: 'active' })
+      });
+
+      // Mock getCurrentState for sync:full emission
+      mockStateService.getCurrentState = jest.fn().mockReturnValue({
+        session: { id: 'test-session', status: 'active' },
+        scores: [],
+        recentTransactions: []
+      });
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService
+      });
+
+      // Emit scores:reset from transactionService
+      mockTransactionService.emit('scores:reset', { teamsReset: ['001', '002'] });
+
+      // Verify scores:reset broadcast to GM room
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'scores:reset',
+        expect.objectContaining({
+          event: 'scores:reset',
+          data: { teamsReset: ['001', '002'] },
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+
+      // Verify sync:full broadcast
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'sync:full',
+        expect.objectContaining({
+          event: 'sync:full',
+          data: expect.objectContaining({
+            scores: []
+          }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+  });
+
   describe('Error Events - Unwrapped → Wrapped Conversion', () => {
     it('should wrap service error events using emitWrapped helper', () => {
       setupBroadcastListeners(mockIo, {
