@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "// PRIMARY COMMANDS": "=== Main commands for typical usage ===",
+    "prestart": "./scripts/build-scanner.sh",
     "start": "pm2 start ecosystem.config.js",
     "dev": "node scripts/start-dev.js",
     "test": "jest --config jest.config.js",

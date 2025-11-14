@@ -37,6 +37,11 @@ echo ""
 echo "📦 Installing npm dependencies..."
 npm install
 
+# Build GM Scanner
+echo ""
+echo "🔨 Building GM Scanner..."
+./scripts/build-scanner.sh
+
 # Create required directories if they don't exist
 echo ""
 echo "📁 Creating directory structure..."

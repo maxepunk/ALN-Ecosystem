@@ -419,10 +419,15 @@ backend/
 ```bash
 cd backend
 npm install         # Install dependencies (if not done)
-npm start           # Start full system with PM2
+npm start           # Builds GM Scanner + starts full system with PM2
 ```
 
-This starts BOTH the orchestrator AND VLC with video output using PM2.
+**What happens when you run `npm start`:**
+1. **Automatic GM Scanner Build** - Builds ALNScanner/dist/ via prestart hook
+2. **Orchestrator Launch** - Starts orchestrator with PM2
+3. **VLC Launch** - Starts VLC with video output via PM2
+
+The GM Scanner is automatically served at `https://localhost:3000/gm-scanner/` via symlink.
 
 ### Development Workflows
 
@@ -459,6 +464,7 @@ npm run vlc:gui             # Just VLC with video output
 ```bash
 # Start production system
 npm run prod:start          # or just: npm start
+# Note: Automatically builds GM Scanner before starting
 
 # Monitor and manage
 npm run prod:status         # Check process status
