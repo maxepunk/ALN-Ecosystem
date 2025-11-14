@@ -8,6 +8,7 @@
  */
 
 const { connectWithAuth } = require('./websocket-client');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 /**
  * Create a session via temporary WebSocket connection.
@@ -31,7 +32,7 @@ async function createSessionViaWebSocket(orchestratorUrl, options = {}) {
   const {
     sessionName = 'E2E Test Session',
     mode = 'test',
-    password = process.env.ADMIN_PASSWORD || 'admin',  // Use env or fallback to default
+    password = ADMIN_PASSWORD,  // Use centralized config (supports .env override)
     timeout = 5000
   } = options;
 

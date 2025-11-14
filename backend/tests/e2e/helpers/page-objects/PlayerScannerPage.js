@@ -214,6 +214,29 @@ class PlayerScannerPage {
     );
   }
 
+  /**
+   * Wait for orchestrator to report disconnected status (networked mode only).
+   * Uses condition-based polling to wait for orchestrator.connected === false.
+   *
+   * CRITICAL: After context.setOffline(true), connection monitor must detect offline state.
+   * Connection check runs every 10s, so next check could be up to 10s away.
+   * This method waits for actual state change, not arbitrary timeout.
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} If disconnection not detected within timeout
+   * @see aln-memory-scanner/js/orchestratorIntegration.js:201-238 (checkConnection)
+   */
+  async waitForOrchestratorDisconnected() {
+    await this.page.waitForFunction(
+      () => {
+        // Wait for orchestrator to report disconnected status
+        if (!window.orchestrator) return false;
+        return window.orchestrator.connected === false;
+      },
+      { timeout: 15000, polling: 100 }  // 15s timeout to allow for next connection check cycle
+    );
+  }
+
   // ==================== SCANNING ====================
 
   /**
@@ -261,8 +284,8 @@ class PlayerScannerPage {
       window.app.handleScan(id);
     }, tokenId);
 
-    // Wait a moment for the scan to process
-    await this.page.waitForTimeout(500);
+    // Wait for memory display to become active (condition-based, not arbitrary timeout)
+    await this.waitForMemoryDisplay();
   }
 
   /**
@@ -283,7 +306,7 @@ class PlayerScannerPage {
    * @param {string} tokenId - Token ID to enter
    * @returns {Promise<void>}
    * @example
-   * await scanner.manualEntry('mab002');
+   * await scanner.manualScan('mab002');
    */
   async manualEntry(tokenId) {
     // Open modal if not already open

@@ -6,6 +6,14 @@
 const io = require('socket.io-client');
 const { generateAdminToken } = require('../../src/middleware/auth');
 
+// Import shared WebSocket core for event caching and auth
+const {
+  connectWithAuth: coreConnectWithAuth,
+  setupEventCaching,
+  waitForEvent: coreWaitForEvent,
+  clearEventCache
+} = require('./websocket-core');
+
 /**
  * Create a socket with automatic cleanup tracking
  * @param {string} url - Socket URL
@@ -35,37 +43,8 @@ function createTrackedSocket(url, options = {}) {
  * @returns {Promise} Resolves with event data or rejects on timeout
  */
 function waitForEvent(socket, eventOrEvents, timeout = 5000) {
-  const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
-
-  // CRITICAL FIX: Check if this is a sync:full request and we have cached data
-  // (from connectAndIdentify for GM devices)
-  if (events.includes('sync:full') && socket.lastSyncFull) {
-    // Return cached data immediately
-    return Promise.resolve(socket.lastSyncFull);
-  }
-
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`Timeout waiting for event: ${events.join(' or ')}`));
-    }, timeout);
-
-    const handlers = [];
-
-    // Register handler for each event
-    events.forEach(event => {
-      const handler = (data) => {
-        clearTimeout(timer);
-        // Clean up all handlers
-        handlers.forEach(({ event: e, handler: h }) => {
-          socket.off(e, h);
-        });
-        // Resolve with the data and which event triggered
-        resolve(data);
-      };
-      socket.once(event, handler);
-      handlers.push({ event, handler });
-    });
-  });
+  // Delegate to shared core implementation (checks cache first)
+  return coreWaitForEvent(socket, eventOrEvents, null, timeout);
 }
 
 /**
@@ -80,8 +59,7 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
   // If URL provided, create socket with handshake auth (production flow)
   // Per AsyncAPI contract: handshake.auth uses deviceId, not stationId
 
-  // PHASE 2.1 (P1.3): Generate valid JWT token for GM stations
-  // Middleware now validates tokens, so tests need real tokens
+  // Generate valid JWT token for GM stations (middleware validates tokens)
   const token = deviceType === 'gm' ? generateAdminToken('test-admin') : undefined;
 
   const socket = typeof socketOrUrl === 'string'
@@ -96,37 +74,21 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
     : socketOrUrl;
 
   try {
-    // CRITICAL FIX: For GM devices, register sync:full listener BEFORE connecting
-    // The server emits sync:full immediately after connection (same millisecond),
-    // so we must register the listener before the connection completes to avoid race condition
-    //
-    // We also store the sync:full data on the socket for tests that need it later,
-    // and set up a persistent listener to capture future sync:full events
+    // Setup event caching using shared core (prevents race conditions)
+    setupEventCaching(socket);
+
+    // Wait for connection (handshake auth + device registration happens automatically)
+    if (!socket.connected) {
+      await waitForEvent(socket, 'connect', timeout);
+    }
+
+    // For GM devices, verify we received sync:full
     if (deviceType === 'gm') {
-      // Store initial sync:full data on socket (for immediate access)
-      socket.lastSyncFull = null;
-
-      // Persistent listener to always capture sync:full events
-      socket.on('sync:full', (data) => {
-        socket.lastSyncFull = data;
-      });
-
-      // Wait for first sync:full (emitted during connection)
-      await Promise.race([
-        waitForEvent(socket, 'connect', timeout),
-        new Promise(resolve => setTimeout(resolve, timeout + 1000))
-      ]);
-
-      // Give sync:full a moment to arrive after connect
+      // Give sync:full a moment to arrive after connect (server emits during connection)
       await new Promise(resolve => setTimeout(resolve, 100));
 
       if (!socket.lastSyncFull) {
         throw new Error('Failed to receive sync:full event after GM connection');
-      }
-    } else {
-      // Wait for connection (handshake auth + device registration happens automatically)
-      if (!socket.connected) {
-        await waitForEvent(socket, 'connect', timeout);
       }
     }
 

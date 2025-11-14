@@ -1,786 +1,461 @@
 /**
- * GMScannerPage - Page Object Model for GM Scanner PWA
+ * Page Object Model for GM Scanner
  *
- * Provides a high-level API for interacting with the GM Scanner interface in E2E tests.
- * Supports both networked and standalone modes.
+ * Encapsulates DOM interactions for maintainable E2E tests.
+ * Uses Playwright locators and web-first assertions.
  *
- * @example
- * const page = await browser.newPage();
- * const gmScanner = new GMScannerPage(page);
- * await gmScanner.goto();
- * await gmScanner.enterTeam('001');
- * await gmScanner.manualEntry('sof002');
- * const result = await gmScanner.waitForResult();
- * expect(result.tokenId).toBe('sof002');
+ * NO window globals - pure DOM interaction via data-action attributes.
+ *
+ * ARCHITECTURE:
+ * - Views (top-level): #scanner-view (default), #admin-view, #debug-view (networked only)
+ * - Screens (within scanner-view): Toggle with .active class
+ * - L2 tests focus on standalone mode (scanner-view only, no backend)
  */
 
 class GMScannerPage {
-  /**
-   * @param {import('playwright').Page} page - Playwright page object
-   */
   constructor(page) {
     this.page = page;
 
-    // Define all selectors used across the GM Scanner UI
-    this.selectors = {
-      // Header and navigation
-      connectionStatus: '#connectionStatus',
-      modeIndicator: '#modeIndicator',
-      deviceIdDisplay: '#deviceIdDisplay',
-      historyButton: 'button[onclick="App.showHistory()"]',
-      historyBadge: '#historyBadge',
-      scoreboardButton: '#scoreboardButton',
-      settingsButton: 'button[onclick="App.showSettings()"]',
+    // View locators (top-level containers, networked mode only)
+    this.scannerView = page.locator('#scanner-view');
+    this.adminView = page.locator('#admin-view');
+    this.debugView = page.locator('#debug-view');
 
-      // Screens
-      loadingScreen: '#loadingScreen',
-      gameModeScreen: '#gameModeScreen',
-      teamEntryScreen: '#teamEntryScreen',
-      scanScreen: '#scanScreen',
-      resultScreen: '#resultScreen',
-      historyScreen: '#historyScreen',
-      scoreboardScreen: '#scoreboardScreen',
-      teamDetailsScreen: '#teamDetailsScreen',
-      settingsScreen: '#settingsScreen',
+    // Screen locators (within scanner-view, toggled with .active class)
+    this.loadingScreen = page.locator('#loadingScreen.active');
+    this.settingsScreen = page.locator('#settingsScreen.active');
+    this.gameModeScreen = page.locator('#gameModeScreen.active');
+    this.teamEntryScreen = page.locator('#teamEntryScreen.active');
+    this.scanScreen = page.locator('#scanScreen.active');
+    this.resultScreen = page.locator('#resultScreen.active');
+    this.historyScreen = page.locator('#historyScreen.active');
+    this.scoreboardScreen = page.locator('#scoreboardScreen.active');
+    this.teamDetailsScreen = page.locator('#teamDetailsScreen.active');
 
-      // View tabs (networked mode only)
-      viewSelector: '#viewSelector',
-      scannerTab: 'button[data-view="scanner"]',
-      adminTab: 'button[data-view="admin"]',
-      debugTab: 'button[data-view="debug"]',
-      scannerView: '#scanner-view',
-      adminView: '#admin-view',
-      debugView: '#debug-view',
+    // Mode selection buttons
+    this.standaloneBtn = page.locator('button[data-action="app.selectGameMode"][data-arg="standalone"]');
+    this.networkedBtn = page.locator('button[data-action="app.selectGameMode"][data-arg="networked"]');
 
-      // Connection wizard modal
-      connectionModal: '#connectionModal',
-      scanServersBtn: '#scanServersBtn',
-      discoveryStatus: '#discoveryStatus',
-      discoveredServers: '#discoveredServers',
-      serverUrl: '#serverUrl',
-      stationName: '#stationName',
-      gmPassword: '#gmPassword',
-      connectionStatusMsg: '#connectionStatusMsg',
-      connectionForm: '#connectionForm',
+    // Team entry elements
+    this.teamDisplay = page.locator('#teamDisplay');
+    this.confirmTeamBtn = page.locator('button[data-action="app.confirmTeamId"]');
+    this.clearTeamBtn = page.locator('button[data-action="app.clearTeamId"]');
 
-      // Team entry
-      teamDisplay: '#teamDisplay',
-      numpadButtons: '.numpad button',
-      clearButton: 'button.clear',
-      enterButton: 'button.enter',
+    // Scan screen elements
+    this.currentTeam = page.locator('#currentTeam');
+    this.scanStatus = page.locator('#scanStatus');
+    this.scanButton = page.locator('#scanButton[data-action="app.startScan"]');
+    this.manualEntryBtn = page.locator('button[data-action="app.manualEntry"]');
+    this.cancelScanBtn = page.locator('button[data-action="app.cancelScan"]');
+    this.teamTokenCount = page.locator('#teamTokenCount');
+    this.teamTotalValue = page.locator('#teamTotalValue');
 
-      // Scan screen
-      currentTeam: '#currentTeam',
-      scanStatus: '#scanStatus',
-      scanButton: '#scanButton',
-      manualEntryButton: 'button[onclick="App.manualEntry()"]',
-      cancelScanButton: 'button[onclick="App.cancelScan()"]',
-      teamTokenCount: '#teamTokenCount',
-      teamTotalValue: '#teamTotalValue',
-      teamValueLabel: '#teamValueLabel',
+    // Result screen elements
+    this.resultStatus = page.locator('#resultStatus');
+    this.resultTitle = page.locator('#resultTitle');
+    this.resultValue = page.locator('#resultValue');
+    this.continueScanBtn = page.locator('button[data-action="app.continueScan"]');
+    this.finishTeamBtn = page.locator('button[data-action="app.finishTeam"]');
 
-      // Result screen
-      resultStatus: '#resultStatus',
-      resultRfid: '#resultRfid',
-      resultType: '#resultType',
-      resultGroup: '#resultGroup',
-      resultValue: '#resultValue',
-      continueScanButton: 'button[onclick="App.continueScan()"]',
-      finishTeamButton: 'button[onclick="App.finishTeam()"]',
+    // History screen elements
+    this.historyBadge = page.locator('#historyBadge');
+    this.historyButton = page.locator('button[data-action="app.showHistory"]');
+    this.totalScans = page.locator('#totalScans');
+    this.historyContainer = page.locator('#historyContainer');
+    this.closeHistoryBtn = page.locator('button[data-action="app.closeHistory"]');
 
-      // History screen
-      historyContainer: '#historyContainer',
-      searchFilter: '#searchFilter',
-      modeFilter: '#modeFilter',
-      totalScans: '#totalScans',
-      uniqueTeams: '#uniqueTeams',
-      totalValue: '#totalValue',
-      avgValue: '#avgValue',
+    // Settings elements
+    this.settingsButton = page.locator('button[data-action="app.showSettings"]');
+    this.deviceIdInput = page.locator('#deviceId');
+    this.modeIndicator = page.locator('#modeIndicator');
+    this.saveSettingsBtn = page.locator('button[data-action="app.saveSettings"]');
 
-      // Scoreboard screen
-      scoreboardContainer: '#scoreboardContainer',
-      scoreboardEntry: '.scoreboard-entry',
+    // Connection wizard and status (networked mode)
+    this.connectionModal = page.locator('#connectionModal');
+    this.connectionStatus = page.locator('#connectionStatus');
 
-      // Team details screen
-      teamDetailsTitle: '#teamDetailsTitle',
-      teamDetailsSummary: '#teamDetailsSummary',
-      teamDetailsContainer: '#teamDetailsContainer',
-      teamBaseScore: '#teamBaseScore',
-      teamBonusScore: '#teamBonusScore',
-      teamTotalScore: '#teamTotalScore',
-      teamInterventionControls: '#teamInterventionControls',
-      scoreAdjustmentInput: '#scoreAdjustmentInput',
-      scoreAdjustmentReason: '#scoreAdjustmentReason',
+    // View tabs (networked mode only)
+    this.adminTab = page.locator('[data-view="admin"]');
+    this.scannerTab = page.locator('[data-view="scanner"]');
 
-      // Settings screen
-      deviceId: '#deviceId',
-      modeToggle: '#modeToggle',
-      modeText: '#modeText',
-
-      // Admin view (networked mode only)
-      sessionStatusContainer: '#session-status-container',
-      videoInfo: '#video-info',
-      videoProgressFill: '#video-progress-fill',
-      videoProgressTime: '#video-progress-time',
-      videoQueueList: '#video-queue-list',
-      manualVideoInput: '#manual-video-input',
-      orchestratorStatus: '#orchestrator-status',
-      vlcStatus: '#vlc-status',
-      deviceCount: '#device-count',
-      deviceList: '#device-list',
-      adminScoreBoard: '#admin-score-board',
-      adminTransactionLog: '#admin-transaction-log',
-
-      // Debug view
-      debugContent: '#debugContent',
-
-      // Error display
-      errorContainer: '.error-container',
-      errorMessage: '.error-message',
-      toast: '.toast',
-    };
-  }
-
-  // ============================================
-  // NAVIGATION METHODS
-  // ============================================
-
-  /**
-   * Navigate to the GM Scanner page
-   * @param {string} [mode] - Optional mode override ('networked' or 'standalone')
-   */
-  async goto(mode) {
-    const baseUrl = process.env.ORCHESTRATOR_URL || 'https://localhost:3000';
-    const url = mode ? `${baseUrl}/gm-scanner/?mode=${mode}` : `${baseUrl}/gm-scanner/`;
-    await this.page.goto(url);
-
-    // Accept self-signed certificate if needed
-    await this.acceptSelfSignedCert();
-
-    // Wait for app to initialize by checking for final screen
-    // App shows either gameModeScreen (no saved mode) or teamEntry (saved mode)
-    // Loading screen may appear/disappear too fast to catch (~100ms), so wait for actual outcome
-    await this.page.waitForSelector('#gameModeScreen.active, #teamEntryScreen.active', {
-      state: 'visible',
-      timeout: 10000
-    });
+    // Error displays
+    this.errorToast = page.locator('.toast.error:visible');
+    this.errorMessage = page.locator('.error-message:visible');
   }
 
   /**
-   * Accept self-signed SSL certificate (Playwright automatically handles this)
-   * This method is a placeholder for documentation purposes
+   * Navigate to scanner homepage
+   *
+   * NOTE: This method is now deprecated in favor of initializeGMScannerWithMode()
+   * which properly handles localStorage clearing to prevent stale state.
+   * Kept for backward compatibility with existing tests.
    */
-  async acceptSelfSignedCert() {
-    // Playwright automatically handles self-signed certs with ignoreHTTPSErrors: true
-    // This is configured in playwright.config.js
+  async goto() {
+    await this.page.goto('/gm-scanner/');
+    await this.page.waitForLoadState('networkidle');
+
+    // Wait for game mode screen (app should load fresh)
+    await this.gameModeScreen.waitFor({ state: 'visible', timeout: 10000 });
   }
 
   /**
-   * Authenticate with admin password (HTTP authentication)
-   * @param {string} password - Admin password
-   * @returns {Promise<string>} JWT token
+   * Select standalone mode
    */
-  async authenticate(password) {
-    const baseUrl = process.env.ORCHESTRATOR_URL || 'https://localhost:3000';
-    const response = await this.page.request.post(`${baseUrl}/api/admin/auth`, {
-      data: { password }
-    });
-    const data = await response.json();
-    return data.token;
-  }
-
-  // ============================================
-  // CONNECTION WIZARD METHODS (Networked Mode)
-  // ============================================
-
-  /**
-   * Open the connection wizard modal
-   */
-  async openConnectionWizard() {
-    await this.page.click(this.selectors.connectionStatus);
-    await this.page.waitForSelector(this.selectors.connectionModal, { state: 'visible' });
+  async selectStandaloneMode() {
+    await this.standaloneBtn.click();
+    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Scan for servers using UDP discovery
-   * @returns {Promise<Array>} Array of discovered servers
+   * Select networked mode
    */
-  async scanForServers() {
-    await this.page.click(this.selectors.scanServersBtn);
-    await this.page.waitForSelector(this.selectors.discoveryStatus, { timeout: 5000 });
-
-    // Wait for discovery to complete (3s timeout in app)
-    await this.page.waitForTimeout(3500);
-
-    // Get discovered servers
-    const servers = await this.page.$$eval(this.selectors.discoveredServers + ' .server-item',
-      elements => elements.map(el => el.textContent.trim())
-    );
-    return servers;
+  async selectNetworkedMode() {
+    await this.networkedBtn.click();
+    // Connection wizard modal should appear
+    await this.page.locator('#connectionModal').waitFor({ state: 'visible', timeout: 5000 });
   }
-
-  /**
-   * Select a server from the discovered list
-   * @param {string} url - Server URL to select
-   */
-  async selectServer(url) {
-    await this.page.evaluate((serverUrl) => {
-      selectServer(serverUrl);
-    }, url);
-  }
-
-  /**
-   * Manually connect to orchestrator
-   * @param {string} url - Server URL
-   * @param {string} stationName - Station name
-   * @param {string} password - Admin password
-   */
-  async manualConnect(url, stationName, password) {
-    await this.page.fill(this.selectors.serverUrl, url);
-    await this.page.fill(this.selectors.stationName, stationName);
-    await this.page.fill(this.selectors.gmPassword, password);
-    await this.page.click('button[type="submit"]');
-  }
-
-  /**
-   * Wait for connection to be established
-   * @param {number} [timeout=10000] - Timeout in milliseconds
-   */
-  async waitForConnection(timeout = 10000) {
-    await this.page.waitForSelector(this.selectors.connectionStatus + '.connected', { timeout });
-    await this.page.waitForSelector(this.selectors.connectionModal, { state: 'hidden', timeout: 5000 });
-  }
-
-  /**
-   * Cancel networked mode and return to game mode selection
-   */
-  async cancelNetworkedMode() {
-    await this.page.evaluate(() => cancelNetworkedMode());
-    await this.page.waitForSelector(this.selectors.gameModeScreen, { state: 'visible' });
-  }
-
-  // ============================================
-  // TEAM SELECTION METHODS
-  // ============================================
 
   /**
    * Enter team ID using numpad
-   * @param {string} teamId - Team ID (e.g., "001")
+   * @param {string} teamId - Team ID (e.g., "123")
    */
   async enterTeam(teamId) {
-    await this.page.waitForSelector(this.selectors.teamEntryScreen, { state: 'visible' });
-
-    // Click each digit
     for (const digit of teamId) {
-      await this.page.click(`button[onclick="App.appendNumber(${digit})"]`);
+      const button = this.page.locator(`button[data-action="app.appendNumber"][data-arg="${digit}"]`);
+      await button.click();
     }
-
-    // Verify team display
-    const displayedTeam = await this.page.textContent(this.selectors.teamDisplay);
-    if (displayedTeam.trim() !== teamId) {
-      throw new Error(`Team ID mismatch: expected ${teamId}, got ${displayedTeam}`);
-    }
-  }
-
-  /**
-   * Clear the team ID
-   */
-  async clearTeam() {
-    await this.page.click(this.selectors.clearButton);
   }
 
   /**
    * Confirm team ID and proceed to scan screen
    */
   async confirmTeam() {
-    await this.page.click(this.selectors.enterButton);
-    await this.page.waitForSelector(this.selectors.scanScreen, { state: 'visible' });
-  }
-
-  // ============================================
-  // SCANNING METHODS
-  // ============================================
-
-  /**
-   * Start NFC scanning
-   */
-  async startScan() {
-    await this.page.click(this.selectors.scanButton);
-    // Wait for scan status to update
-    await this.page.waitForTimeout(500);
+    await this.confirmTeamBtn.click();
+    await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Stop NFC scanning
+   * Clear team ID
    */
-  async stopScan() {
-    // NFC scanning stops automatically when token is detected
-    // This is a no-op for manual entry testing
+  async clearTeam() {
+    await this.clearTeamBtn.click();
   }
 
   /**
-   * Use manual entry to simulate NFC scan
-   * @param {string} tokenId - Token ID (e.g., "sof002")
+   * Get current team display value
+   * @returns {Promise<string>}
    */
-  async manualEntry(tokenId) {
-    // CRITICAL: Set up dialog handler BEFORE clicking button to avoid race condition
-    // The prompt() dialog shows synchronously when button is clicked
-    const dialogPromise = this.page.waitForEvent('dialog');
+  async getTeamDisplay() {
+    return await this.teamDisplay.textContent();
+  }
 
-    // Trigger the manual entry dialog
-    await this.page.click(this.selectors.manualEntryButton);
+  /**
+   * Get current team on scan screen
+   * @returns {Promise<string>}
+   */
+  async getCurrentTeam() {
+    return await this.currentTeam.textContent();
+  }
 
-    // Wait for and handle the dialog
-    const dialog = await dialogPromise;
-    await dialog.accept(tokenId);
+  /**
+   * Perform manual token scan via prompt dialog
+   * @param {string} tokenId - Token ID to scan
+   */
+  async manualScan(tokenId) {
+    // Setup dialog handler BEFORE clicking button (use once, not waitForEvent)
+    // This prevents the click from hanging when dialog appears
+    this.page.once('dialog', dialog => dialog.accept(tokenId));
 
-    // Small delay for UI update after dialog acceptance
-    await this.page.waitForTimeout(100);
+    // Click manual entry button (dialog will be auto-handled)
+    await this.manualEntryBtn.click();
+
+    // Wait for result screen to appear
+    await this.resultScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
    * Wait for result screen to appear
-   * @param {number} [timeout=5000] - Timeout in milliseconds
-   * @returns {Promise<Object>} Transaction result details
    */
-  async waitForResult(timeout = 5000) {
-    await this.page.waitForSelector(this.selectors.resultScreen, { state: 'visible', timeout });
-
-    // Extract result data
-    return {
-      tokenId: await this.page.textContent(this.selectors.resultRfid),
-      type: await this.page.textContent(this.selectors.resultType),
-      group: await this.page.textContent(this.selectors.resultGroup),
-      value: await this.page.textContent(this.selectors.resultValue),
-    };
+  async waitForResult() {
+    await this.resultScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Continue scanning (return to scan screen)
+   * Get result status text
+   * @returns {Promise<string>}
+   */
+  async getResultStatus() {
+    return await this.resultStatus.textContent();
+  }
+
+  /**
+   * Get result title text
+   * @returns {Promise<string>}
+   */
+  async getResultTitle() {
+    return await this.resultTitle.textContent();
+  }
+
+  /**
+   * Get result value text
+   * @returns {Promise<string>}
+   */
+  async getResultValue() {
+    return await this.resultValue.textContent();
+  }
+
+  /**
+   * Continue scanning (after result)
    */
   async continueScan() {
-    await this.page.click(this.selectors.continueScanButton);
-    await this.page.waitForSelector(this.selectors.scanScreen, { state: 'visible' });
+    await this.continueScanBtn.click();
+    await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Finish team (return to team entry)
+   * Finish team (after result)
    */
   async finishTeam() {
-    await this.page.click(this.selectors.finishTeamButton);
-    await this.page.waitForSelector(this.selectors.teamEntryScreen, { state: 'visible' });
+    await this.finishTeamBtn.click();
+    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
    * Cancel scan and return to team entry
    */
   async cancelScan() {
-    await this.page.click(this.selectors.cancelScanButton);
-    await this.page.waitForSelector(this.selectors.teamEntryScreen, { state: 'visible' });
+    await this.cancelScanBtn.click();
+    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
-  // ============================================
-  // MODE SWITCHING
-  // ============================================
-
   /**
-   * Toggle between Detective and Black Market modes
+   * Get team token count
+   * @returns {Promise<number>}
    */
-  async toggleMode() {
-    await this.page.click(this.selectors.modeIndicator);
-    await this.page.waitForTimeout(300); // Wait for mode change animation
+  async getTokenCount() {
+    const text = await this.teamTokenCount.textContent();
+    return parseInt(text, 10);
   }
 
   /**
-   * Get current game mode
-   * @returns {Promise<string>} 'detective' or 'blackmarket'
+   * Get team total value
+   * @returns {Promise<number>}
    */
-  async getCurrentMode() {
-    const text = await this.page.textContent(this.selectors.modeIndicator);
-    return text.toLowerCase().includes('detective') ? 'detective' : 'blackmarket';
+  async getTotalValue() {
+    const text = await this.teamTotalValue.textContent();
+    return parseInt(text, 10);
   }
 
-  // ============================================
-  // NAVIGATION
-  // ============================================
-
   /**
-   * Open transaction history screen
+   * Open history screen
    */
   async openHistory() {
-    await this.page.click(this.selectors.historyButton);
-    await this.page.waitForSelector(this.selectors.historyScreen, { state: 'visible' });
+    await this.historyButton.click();
+    await this.historyScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
    * Close history screen
    */
   async closeHistory() {
-    await this.page.click('button[onclick="App.closeHistory()"]');
+    await this.closeHistoryBtn.click();
+    await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Open scoreboard screen
+   * Get history total scans count
+   * @returns {Promise<number>}
    */
-  async openScoreboard() {
-    await this.page.click(this.selectors.scoreboardButton);
-    await this.page.waitForSelector(this.selectors.scoreboardScreen, { state: 'visible' });
+  async getHistoryTotalScans() {
+    const text = await this.totalScans.textContent();
+    return parseInt(text, 10);
   }
 
   /**
-   * Close scoreboard screen
+   * Get history badge count
+   * @returns {Promise<number|null>} Returns null if badge is hidden
    */
-  async closeScoreboard() {
-    await this.page.click('button[onclick="App.closeScoreboard()"]');
+  async getHistoryBadgeCount() {
+    const isVisible = await this.historyBadge.isVisible();
+    if (!isVisible) return null;
+
+    const text = await this.historyBadge.textContent();
+    return parseInt(text, 10);
   }
 
   /**
    * Open settings screen
    */
   async openSettings() {
-    await this.page.click(this.selectors.settingsButton);
-    await this.page.waitForSelector(this.selectors.settingsScreen, { state: 'visible' });
+    await this.settingsButton.click();
+    await this.settingsScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Save settings and return to team entry
+   * Set device ID in settings
+   * @param {string} deviceId
+   */
+  async setDeviceId(deviceId) {
+    await this.deviceIdInput.fill(deviceId);
+  }
+
+  /**
+   * Get device ID from settings
+   * @returns {Promise<string>}
+   */
+  async getDeviceId() {
+    return await this.deviceIdInput.inputValue();
+  }
+
+  /**
+   * Save settings and return to team entry screen
    */
   async saveSettings() {
-    await this.page.click('button[onclick="App.saveSettings()"]');
-    await this.page.waitForSelector(this.selectors.teamEntryScreen, { state: 'visible' });
+    await this.saveSettingsBtn.click();
+    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Switch to admin tab (networked mode only)
+   * Toggle mode (detective/blackmarket) via mode indicator
    */
-  async switchToAdminTab() {
-    await this.page.click(this.selectors.adminTab);
-    await this.page.waitForSelector(this.selectors.adminView, { state: 'visible' });
+  async toggleMode() {
+    await this.modeIndicator.click();
   }
 
   /**
-   * Switch to debug tab (networked mode only)
+   * Get current mode text
+   * @returns {Promise<string>}
    */
-  async switchToDebugTab() {
-    await this.page.click(this.selectors.debugTab);
-    await this.page.waitForSelector(this.selectors.debugView, { state: 'visible' });
+  async getModeText() {
+    return await this.modeIndicator.textContent();
   }
 
   /**
-   * Switch to scanner tab
+   * Manual connection to orchestrator (networked mode)
+   * @param {string} url - Orchestrator URL (e.g., 'https://localhost:3000')
+   * @param {string} stationName - Station identifier
+   * @param {string} password - Admin password
    */
-  async switchToScannerTab() {
-    await this.page.click(this.selectors.scannerTab);
-    await this.page.waitForSelector(this.selectors.scannerView, { state: 'visible' });
-  }
+  async manualConnect(url, stationName, password) {
+    // Wait for connection modal to appear
+    await this.connectionModal.waitFor({ state: 'visible', timeout: 5000 });
 
-  // ============================================
-  // SCOREBOARD
-  // ============================================
+    // Fill connection form using actual input IDs from index.html (line 1519-1529)
+    // IDs: serverUrl, stationName, gmPassword (NOT name attributes)
+    await this.page.fill('#serverUrl', url);
+    await this.page.fill('#stationName', stationName);
+    await this.page.fill('#gmPassword', password);
 
-  /**
-   * Get team rankings from scoreboard
-   * @returns {Promise<Array>} Array of team ranking objects
-   */
-  async getTeamRankings() {
-    await this.page.waitForSelector(this.selectors.scoreboardEntry, { timeout: 5000 });
-
-    return await this.page.$$eval(this.selectors.scoreboardEntry, entries => {
-      return entries.map(entry => ({
-        rank: entry.querySelector('.scoreboard-rank')?.textContent.trim(),
-        team: entry.querySelector('.scoreboard-team')?.textContent.trim(),
-        score: entry.querySelector('.scoreboard-score')?.textContent.trim(),
-        tokens: entry.querySelector('.scoreboard-tokens')?.textContent.trim(),
-      }));
-    });
+    // Submit connection form (triggers handleConnectionSubmit via event listener)
+    const form = this.page.locator('#connectionForm');
+    await form.evaluate(f => f.requestSubmit());
   }
 
   /**
-   * Click on a team in the scoreboard
-   * @param {string} teamId - Team ID to click
+   * Wait for WebSocket connection established
+   * @param {number} timeout - Max wait time in ms (default 10000)
    */
-  async clickTeam(teamId) {
-    await this.page.click(`${this.selectors.scoreboardEntry}:has-text("Team ${teamId}")`);
-    await this.page.waitForSelector(this.selectors.teamDetailsScreen, { state: 'visible' });
+  async waitForConnection(timeout = 10000) {
+    // Wait for connection - check for error or success
+    // Per Architecture Refactoring 2025-11: Connection wizard closes after success,
+    // so we check for team entry screen and view selector (networked mode indicators)
+    await this.page.waitForFunction(() => {
+      // Check for error message in connection form (if still visible)
+      const errorMsg = document.querySelector('#connectionStatusMsg');
+      if (errorMsg && errorMsg.style.display !== 'none' && errorMsg.textContent.includes('❌')) {
+        throw new Error(`Connection failed: ${errorMsg.textContent}`);
+      }
+
+      // Check for successful networked mode initialization:
+      // - Connection modal should be hidden
+      // - View selector (admin tabs) should be visible
+      // - Team entry screen should be visible
+      const modal = document.querySelector('#connectionModal');
+      const viewSelector = document.querySelector('#viewSelector');
+      const teamEntry = document.querySelector('#teamEntryScreen');
+
+      const modalHidden = !modal || modal.style.display === 'none';
+      const viewSelectorVisible = viewSelector && viewSelector.style.display !== 'none';
+      const teamEntryVisible = teamEntry && teamEntry.classList.contains('active');
+
+      return modalHidden && viewSelectorVisible && teamEntryVisible;
+    }, { timeout });
+
+    // Additional verification: wait for team entry screen locator
+    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 2000 });
   }
 
   /**
-   * Get team details
-   * @param {string} teamId - Team ID
-   * @returns {Promise<Object>} Team details object
+   * Disconnect WebSocket (for testing reconnection scenarios)
+   * Uses DOM-based disconnection (no window globals)
    */
-  async getTeamDetails(teamId) {
-    await this.clickTeam(teamId);
+  async disconnectWebSocket() {
+    // Navigate to admin panel
+    if (await this.adminTab.isVisible()) {
+      await this.adminTab.click();
+      await this.adminView.waitFor({ state: 'visible', timeout: 5000 });
 
-    return {
-      title: await this.page.textContent(this.selectors.teamDetailsTitle),
-      summary: await this.page.textContent(this.selectors.teamDetailsSummary),
-      baseScore: await this.page.textContent(this.selectors.teamBaseScore),
-      bonusScore: await this.page.textContent(this.selectors.teamBonusScore),
-      totalScore: await this.page.textContent(this.selectors.teamTotalScore),
-    };
-  }
+      // Click disconnect button in admin panel
+      await this.page.click('button[data-action="connection.disconnect"]');
 
-  /**
-   * Close team details screen
-   */
-  async closeTeamDetails() {
-    await this.page.click('button[onclick="App.closeTeamDetails()"]');
-    await this.page.waitForSelector(this.selectors.scoreboardScreen, { state: 'visible' });
-  }
-
-  // ============================================
-  // ADMIN INTERVENTIONS (Networked Mode Only)
-  // ============================================
-
-  /**
-   * Adjust team score
-   * @param {string} teamId - Team ID
-   * @param {number} delta - Score change (positive or negative)
-   * @param {string} [reason] - Reason for adjustment
-   */
-  async adjustScore(teamId, delta, reason = '') {
-    // Navigate to team details if not already there
-    if (!await this.page.isVisible(this.selectors.teamInterventionControls)) {
-      await this.clickTeam(teamId);
+      // Wait for disconnected status
+      await this.page.waitForFunction(() => {
+        const statusElement = document.querySelector('#connectionStatus');
+        return statusElement && statusElement.textContent.toLowerCase().includes('disconnected');
+      }, { timeout: 5000 });
+    } else {
+      throw new Error('Admin panel not available - cannot disconnect via DOM');
     }
-
-    await this.page.fill(this.selectors.scoreAdjustmentInput, delta.toString());
-    if (reason) {
-      await this.page.fill(this.selectors.scoreAdjustmentReason, reason);
-    }
-    await this.page.click('button[onclick="App.adjustTeamScore()"]');
-
-    // Wait for adjustment to be processed
-    await this.page.waitForTimeout(500);
   }
 
-  // ============================================
-  // STATE VERIFICATION
-  // ============================================
-
   /**
-   * Get connection status
-   * @returns {Promise<string>} 'connected', 'connecting', or 'disconnected'
+   * Reconnect WebSocket after disconnection
    */
-  async getConnectionStatus() {
-    const statusElement = await this.page.$(this.selectors.connectionStatus);
-    const classes = await statusElement.getAttribute('class');
+  async reconnectWebSocket() {
+    // Admin panel should still be visible from disconnectWebSocket()
+    await this.page.click('button[data-action="connection.reconnect"]');
+    await this.waitForConnection();
 
-    if (classes.includes('connected')) return 'connected';
-    if (classes.includes('connecting')) return 'connecting';
-    return 'disconnected';
+    // Return to scanner view
+    await this.scannerTab.click();
+    await this.scannerView.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Get session statistics from scan screen
-   * @returns {Promise<Object>} Session stats (token count, total value)
-   */
-  async getSessionStats() {
-    return {
-      tokenCount: await this.page.textContent(this.selectors.teamTokenCount),
-      totalValue: await this.page.textContent(this.selectors.teamTotalValue),
-    };
-  }
-
-  /**
-   * Get transaction count from history badge
-   * @returns {Promise<number>} Number of transactions
-   */
-  async getTransactionCount() {
-    const badgeText = await this.page.textContent(this.selectors.historyBadge);
-    return parseInt(badgeText, 10) || 0;
-  }
-
-  /**
-   * Check if scanner is in offline mode
-   * @returns {Promise<boolean>} True if offline
-   */
-  async isOffline() {
-    const status = await this.getConnectionStatus();
-    return status === 'disconnected';
-  }
-
-  /**
-   * Check if networked mode is active
-   * @returns {Promise<boolean>} True if networked
-   */
-  async isNetworkedMode() {
-    return await this.page.isVisible(this.selectors.viewSelector);
-  }
-
-  /**
-   * Check if standalone mode is active
-   * @returns {Promise<boolean>} True if standalone
-   */
-  async isStandaloneMode() {
-    return !(await this.isNetworkedMode());
-  }
-
-  // ============================================
-  // ERROR CHECKING
-  // ============================================
-
-  /**
-   * Get current error message if displayed
-   * @returns {Promise<string|null>} Error message or null
+   * Get error message from toast or inline error display
+   * @returns {Promise<string|null>} Error message text, or null if no error visible
    */
   async getErrorMessage() {
-    const errorElement = await this.page.$(this.selectors.errorMessage);
-    if (!errorElement) return null;
-    return await errorElement.textContent();
+    // Check for toast notification
+    if (await this.errorToast.isVisible()) {
+      return await this.errorToast.textContent();
+    }
+
+    // Check for inline error message
+    if (await this.errorMessage.isVisible()) {
+      return await this.errorMessage.textContent();
+    }
+
+    // Check for result screen error
+    const resultError = this.page.locator('#resultScreen.active .error-text');
+    if (await resultError.isVisible()) {
+      return await resultError.textContent();
+    }
+
+    return null;
   }
 
   /**
-   * Check if error message is displayed
-   * @returns {Promise<boolean>} True if error visible
+   * Get connection status text
+   * @returns {Promise<string>} Connection status (e.g., "Connected", "Disconnected", "Connecting...")
    */
-  async hasErrorMessage() {
-    return await this.page.isVisible(this.selectors.errorMessage);
-  }
-
-  /**
-   * Wait for error to appear
-   * @param {number} [timeout=5000] - Timeout in milliseconds
-   * @returns {Promise<string>} Error message text
-   */
-  async waitForError(timeout = 5000) {
-    await this.page.waitForSelector(this.selectors.errorMessage, { state: 'visible', timeout });
-    return await this.getErrorMessage();
-  }
-
-  // ============================================
-  // ADMIN PANEL METHODS (Networked Mode Only)
-  // ============================================
-
-  /**
-   * Create a new session
-   * @param {string} name - Session name
-   * @param {Array<string>} teams - Array of team IDs
-   */
-  async adminCreateSession(name, teams = []) {
-    await this.switchToAdminTab();
-    // Implementation depends on admin panel UI structure
-    // This is a placeholder for future implementation
-    throw new Error('Admin session creation not yet implemented in page object');
-  }
-
-  /**
-   * Play video from admin panel
-   */
-  async adminPlayVideo() {
-    await this.switchToAdminTab();
-    await this.page.click('button[onclick="App.adminPlayVideo()"]');
-  }
-
-  /**
-   * Pause video from admin panel
-   */
-  async adminPauseVideo() {
-    await this.switchToAdminTab();
-    await this.page.click('button[onclick="App.adminPauseVideo()"]');
-  }
-
-  /**
-   * Stop video from admin panel
-   */
-  async adminStopVideo() {
-    await this.switchToAdminTab();
-    await this.page.click('button[onclick="App.adminStopVideo()"]');
-  }
-
-  /**
-   * Skip video from admin panel
-   */
-  async adminSkipVideo() {
-    await this.switchToAdminTab();
-    await this.page.click('button[onclick="App.adminSkipVideo()"]');
-  }
-
-  /**
-   * Add video to queue manually
-   * @param {string} videoFilename - Video filename (e.g., "jaw001.mp4")
-   */
-  async adminAddVideoToQueue(videoFilename) {
-    await this.switchToAdminTab();
-    await this.page.fill(this.selectors.manualVideoInput, videoFilename);
-    await this.page.click('button[onclick="App.adminAddVideoToQueue()"]');
-  }
-
-  /**
-   * Clear entire video queue
-   */
-  async adminClearQueue() {
-    await this.switchToAdminTab();
-    await this.page.click('button[onclick="App.adminClearQueue()"]');
-  }
-
-  /**
-   * Reset all scores
-   */
-  async adminResetScores() {
-    await this.switchToAdminTab();
-
-    // Handle confirmation dialog
-    this.page.once('dialog', async dialog => {
-      await dialog.accept();
-    });
-
-    await this.page.click('button[onclick="App.adminResetScores()"]');
-  }
-
-  /**
-   * Clear transaction history
-   */
-  async adminClearTransactions() {
-    await this.switchToAdminTab();
-
-    // Handle confirmation dialog
-    this.page.once('dialog', async dialog => {
-      await dialog.accept();
-    });
-
-    await this.page.click('button[onclick="App.adminClearTransactions()"]');
-  }
-
-  // ============================================
-  // UTILITY METHODS
-  // ============================================
-
-  /**
-   * Take a screenshot
-   * @param {string} filename - Screenshot filename
-   */
-  async screenshot(filename) {
-    await this.page.screenshot({ path: filename, fullPage: true });
-  }
-
-  /**
-   * Wait for specified time
-   * @param {number} ms - Milliseconds to wait
-   */
-  async wait(ms) {
-    await this.page.waitForTimeout(ms);
-  }
-
-  /**
-   * Get current screen ID
-   * @returns {Promise<string>} Active screen ID
-   */
-  async getCurrentScreen() {
-    const activeScreen = await this.page.$('.screen.active');
-    if (!activeScreen) return null;
-    return await activeScreen.getAttribute('id');
-  }
-
-  /**
-   * Check if element is visible
-   * @param {string} selector - CSS selector
-   * @returns {Promise<boolean>} True if visible
-   */
-  async isVisible(selector) {
-    return await this.page.isVisible(selector);
+  async getConnectionStatus() {
+    if (await this.connectionStatus.isVisible()) {
+      const text = await this.connectionStatus.textContent();
+      return text.trim().toLowerCase();  // Normalize whitespace and capitalization
+    }
+    return 'unknown';
   }
 }
 
-module.exports = GMScannerPage;
+module.exports = { GMScannerPage };

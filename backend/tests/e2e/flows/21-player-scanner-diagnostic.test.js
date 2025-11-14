@@ -15,6 +15,7 @@ const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { createSessionViaWebSocket } = require('../setup/session-helpers');
 const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 let browser = null;
 let orchestratorInfo = null;
@@ -32,7 +33,7 @@ test.describe('Player Scanner Diagnostic', () => {
     const session = await createSessionViaWebSocket(orchestratorInfo.url, {
       sessionName: 'Diagnostic Session',
       mode: 'test',
-      password: 'test-admin-password'
+      password: ADMIN_PASSWORD
     });
     console.log(`✓ Session created: ${session.name}`);
   });

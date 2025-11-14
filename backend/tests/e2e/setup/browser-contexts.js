@@ -118,6 +118,7 @@ async function createBrowserContext(browser, contextType = 'desktop', options = 
     permissions: options.permissions || [],
     locale: options.locale || 'en-US',
     timezoneId: options.timezoneId || 'America/New_York',
+    baseURL: options.baseURL || process.env.ORCHESTRATOR_URL || 'https://localhost:3000',
   };
 
   // Create browser context

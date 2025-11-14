@@ -2,13 +2,8 @@
  * E2E Test: GM Scanner Standalone Mode - Black Market
  *
  * Tests token scanning in standalone mode (no orchestrator connection).
- * Validates local scoring calculations, duplicate detection, and group completion.
- *
- * Production Tokens Used:
- * - sof002: Personal, 2 stars = 500 points
- * - rat002: Business, 4 stars = 15,000 points
- * - mab001: Personal, 5 stars, group "Marcus Sucks (x2)" = 10,000 points
- * - mab002: Personal, 5 stars, group "Marcus Sucks (x2)" = 10,000 points
+ * Validates local scoring calculations using dynamic token selection.
+ * Uses production token data via /api/tokens for data-agnostic testing.
  *
  * @group critical
  * @group phase2
@@ -37,10 +32,14 @@ const {
   scanTokenSequence
 } = require('../helpers/scanner-init');
 
+const { selectTestTokens } = require('../helpers/token-selection');
+const { calculateExpectedScore } = require('../helpers/scoring');
+
 // Global state
 let browser = null;
 let orchestratorInfo = null; // Still needed for backend to exist
 let vlcInfo = null;
+let testTokens = null;  // Dynamically selected tokens
 
 test.describe('GM Scanner Standalone Mode - Black Market', () => {
 
@@ -54,6 +53,9 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
       port: 3000,
       timeout: 30000
     });
+
+    // Select test tokens dynamically from production database
+    testTokens = await selectTestTokens(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -82,7 +84,10 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
   // TEST 1: Single Token Scan
   // ========================================
 
-  test('scans single Personal token and awards 500 points', async () => {
+  test('scans single Personal token and awards correct points', async () => {
+    const token = testTokens.personalToken;
+    const expectedScore = calculateExpectedScore(token);
+
     const context = await createBrowserContext(browser, 'mobile');
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'standalone', 'blackmarket');
@@ -92,35 +97,24 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
     await scanner.confirmTeam();
 
     // Wait for scan screen to be fully visible
-    await page.waitForSelector(scanner.selectors.scanScreen, { state: 'visible', timeout: 5000 });
+    await scanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     console.log('Scan screen visible');
 
-    // Wait a moment for any animations/state updates
-    await page.waitForTimeout(500);
+    // Wait for manual entry button to be enabled (indicates app is ready)
+    await scanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await scanner.manualEntryBtn.waitFor({ state: 'attached', timeout: 5000 });
 
-    // Manually scan token using direct function call instead of clicking button
-    // This avoids the prompt() dialog blocking issue in headless mode
-    // Add mock for missing updateScoreboard function (standalone mode bug workaround)
-    await page.evaluate((tokenId) => {
-      // Workaround for standalone mode bug - updateScoreboard doesn't exist
-      if (!window.UIManager.updateScoreboard) {
-        window.UIManager.updateScoreboard = () => {};
-      }
-
-      window.App.processNFCRead({
-        id: tokenId,
-        source: 'manual',
-        raw: tokenId
-      });
-    }, 'sof002');
-    console.log('Token scanned via direct API');
+    // Scan token using Page Object pattern (ES6 architecture - no window.App)
+    await scanner.manualScan(token.SF_RFID);
+    console.log(`Token scanned: ${token.SF_RFID} (${token.SF_MemoryType} ${token.SF_ValueRating}⭐)`);
 
     // Wait for result
     await scanner.waitForResult(5000);
 
+    // Verify standalone mode calculated score correctly
     const score = await getTeamScore(page, '001', 'standalone');
-    expect(score).toBe(500);
+    expect(score).toBe(expectedScore);
 
-    console.log('✓ Personal token scored correctly: 500 points');
+    console.log(`✓ Standalone mode: Personal token scored $${expectedScore.toLocaleString()}`);
   });
 });

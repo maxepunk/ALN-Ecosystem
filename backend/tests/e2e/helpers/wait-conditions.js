@@ -75,12 +75,64 @@ async function waitForConnectionStatus(page, status, timeout = 10000) {
  * @returns {Promise<Object>} Score update data
  */
 async function waitForScoreUpdate(socket, teamId, timeout = 10000) {
+  // Check cache first (event may have already fired)
+  if (socket.lastScoreUpdate &&
+      socket.lastScoreUpdate.data?.teamId === teamId) {
+    return socket.lastScoreUpdate;
+  }
+
+  // If not cached, wait for next event
   return await waitForEvent(
     socket,
     'score:updated',
-    (data) => data.teamId === teamId,
+    (event) => event.data.teamId === teamId, // Event envelope: { event, data, timestamp }
     timeout
   );
+}
+
+/**
+ * Wait for team score to reach expected value (polling-based)
+ *
+ * Use this instead of arbitrary timeouts when checking backend score state.
+ * Polls backend via sync:request until score matches expected value.
+ *
+ * @param {Page} page - Playwright page
+ * @param {string} teamId - Team ID to check
+ * @param {Socket} socket - Socket.io client
+ * @param {number} expectedScore - Expected score value
+ * @param {number} [timeout=2000] - Timeout in ms
+ * @returns {Promise<number>} The score (equals expectedScore)
+ *
+ * @example
+ * // Wait for duplicate to be rejected (score unchanged)
+ * await scanner.manualScan('duplicate_token');
+ * await scanner.waitForResult();
+ * const score = await waitForScoreValue(page, '001', socket, 500, 2000);
+ * expect(score).toBe(500); // No change
+ */
+async function waitForScoreValue(page, teamId, socket, expectedScore, timeout = 2000) {
+  const startTime = Date.now();
+
+  // Import getTeamScore from scanner-init.js
+  const { getTeamScore } = require('./scanner-init.js');
+
+  while (true) {
+    const score = await getTeamScore(page, teamId, 'networked', socket);
+
+    if (score === expectedScore) {
+      return score;
+    }
+
+    if (Date.now() - startTime > timeout) {
+      throw new Error(
+        `Timeout: Score for team ${teamId} did not reach ${expectedScore} within ${timeout}ms ` +
+        `(last polled value: ${score})`
+      );
+    }
+
+    // Poll every 50ms (backend processes events within ~10-100ms typically)
+    await new Promise(r => setTimeout(r, 50));
+  }
 }
 
 /**
@@ -107,6 +159,13 @@ async function waitForVideoState(socket, expectedState, timeout = 30000) {
  * @returns {Promise<Object>} Transaction data
  */
 async function waitForTransactionBroadcast(socket, tokenId, timeout = 5000) {
+  // Check cache first
+  if (socket.lastTransactionNew &&
+      socket.lastTransactionNew.transaction?.tokenId === tokenId) {
+    return socket.lastTransactionNew;
+  }
+
+  // If not cached, wait for next event
   return await waitForEvent(
     socket,
     'transaction:new',
@@ -123,6 +182,14 @@ async function waitForTransactionBroadcast(socket, tokenId, timeout = 5000) {
  * @returns {Promise<Object>} Session data
  */
 async function waitForSessionUpdate(socket, expectedStatus = null, timeout = 5000) {
+  // Check cache first
+  if (socket.lastSessionUpdate) {
+    if (!expectedStatus || socket.lastSessionUpdate.status === expectedStatus) {
+      return socket.lastSessionUpdate;
+    }
+  }
+
+  // If not cached or doesn't match, wait for next event
   return await waitForEvent(
     socket,
     'session:update',
@@ -182,6 +249,14 @@ async function waitForDeviceDisconnected(socket, deviceId, timeout = 5000) {
  * @returns {Promise<Object>} Group completion data
  */
 async function waitForGroupCompletion(socket, teamId, groupName, timeout = 5000) {
+  // Check cache first
+  if (socket.lastGroupCompletion &&
+      socket.lastGroupCompletion.teamId === teamId &&
+      socket.lastGroupCompletion.group === groupName) {
+    return socket.lastGroupCompletion;
+  }
+
+  // If not cached, wait for next event
   return await waitForEvent(
     socket,
     'group:completed',
@@ -307,6 +382,7 @@ module.exports = {
   waitForTransactionBroadcast,
   waitForTransactionResult,
   waitForScoreUpdate,
+  waitForScoreValue,
   waitForGroupCompletion,
 
   // Video

@@ -30,6 +30,7 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
   createBrowserContext,
@@ -148,7 +149,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('creates session with valid configuration', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_SESSION_CREATE',
       'gm'
     );
@@ -208,9 +209,9 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('session creation broadcasts to all connected GM stations', async () => {
     // Connect 3 GM scanners
     const [gm1, gm2, gm3] = await Promise.all([
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'GM_1', 'gm'),
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'GM_2', 'gm'),
-      connectWithAuth(orchestratorInfo.url, 'test-admin-password', 'GM_3', 'gm')
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_1', 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_2', 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_3', 'gm')
     ]);
 
     // All should have received initial sync
@@ -226,7 +227,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     // Connect admin and create session
     const admin = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_BROADCAST_TEST',
       'gm'
     );
@@ -269,7 +270,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_DUPLICATE_TEST',
       'gm'
     );
@@ -334,7 +335,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('pauses active session', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_PAUSE_TEST',
       'gm'
     );
@@ -381,7 +382,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('resumes paused session', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_RESUME_TEST',
       'gm'
     );
@@ -439,7 +440,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('ending session sets status to ended and records timestamp', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_END_TEST',
       'gm'
     );
@@ -496,7 +497,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     let socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_MULTI_SESSION_TEST',
       'gm'
     );
@@ -546,7 +547,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_MULTI_SESSION_VERIFY',
       'gm'
     );
@@ -566,7 +567,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('session without teams defaults to empty array', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_NO_TEAMS_TEST',
       'gm'
     );
@@ -600,7 +601,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('session metadata includes valid creation timestamp', async () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_TIMESTAMP_TEST',
       'gm'
     );
@@ -647,7 +648,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_PAUSED_TXN_TEST',
       'gm'
     );
@@ -718,7 +719,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_ENDED_TXN_TEST',
       'gm'
     );
@@ -792,7 +793,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_STATS_TEST',
       'gm'
     );
@@ -874,7 +875,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     const socket = await connectWithAuth(
       orchestratorInfo.url,
-      'test-admin-password',
+      ADMIN_PASSWORD,
       'GM_RESUME_TXN_TEST',
       'gm'
     );

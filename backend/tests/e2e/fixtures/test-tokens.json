@@ -1,102 +1,72 @@
 {
-  "test_video_01": {
+  "sof002": {
     "image": null,
     "audio": null,
-    "video": "test_10sec.mp4",
-    "processingImage": "assets/images/test_video_01.jpg",
-    "SF_RFID": "test_video_01",
+    "video": null,
+    "processingImage": null,
+    "SF_RFID": "sof002",
+    "SF_ValueRating": 2,
+    "SF_MemoryType": "Personal",
+    "SF_Group": ""
+  },
+  "rat002": {
+    "image": null,
+    "audio": null,
+    "video": null,
+    "processingImage": null,
+    "SF_RFID": "rat002",
+    "SF_ValueRating": 3,
+    "SF_MemoryType": "Business",
+    "SF_Group": ""
+  },
+  "mab001": {
+    "image": null,
+    "audio": null,
+    "video": null,
+    "processingImage": null,
+    "SF_RFID": "mab001",
+    "SF_ValueRating": 3,
+    "SF_MemoryType": "Technical",
+    "SF_Group": "Server Logs (x5)"
+  },
+  "mab002": {
+    "image": null,
+    "audio": null,
+    "video": null,
+    "processingImage": null,
+    "SF_RFID": "mab002",
     "SF_ValueRating": 5,
-    "SF_MemoryType": "Personal",
-    "SF_Group": "Test Group A (x2)"
-  },
-  "test_video_02": {
-    "image": null,
-    "audio": null,
-    "video": "test_30sec.mp4",
-    "processingImage": "assets/images/test_video_02.jpg",
-    "SF_RFID": "test_video_02",
-    "SF_ValueRating": 4,
-    "SF_MemoryType": "Business",
-    "SF_Group": "Test Group A (x2)"
-  },
-  "test_video_03": {
-    "image": null,
-    "audio": null,
-    "video": "test_10sec.mp4",
-    "processingImage": "assets/images/test_video_03.jpg",
-    "SF_RFID": "test_video_03",
-    "SF_ValueRating": 3,
     "SF_MemoryType": "Technical",
-    "SF_Group": "Test Group B (x3)"
+    "SF_Group": "Server Logs (x5)"
   },
-  "test_image_01": {
-    "image": "assets/images/test_image.jpg",
+  "asm031": {
+    "image": null,
     "audio": null,
     "video": null,
     "processingImage": null,
-    "SF_RFID": "test_image_01",
+    "SF_RFID": "asm031",
     "SF_ValueRating": 2,
     "SF_MemoryType": "Personal",
     "SF_Group": ""
   },
-  "test_image_02": {
-    "image": "assets/images/test_image.jpg",
+  "fli031": {
+    "image": null,
     "audio": null,
     "video": null,
     "processingImage": null,
-    "SF_RFID": "test_image_02",
-    "SF_ValueRating": 1,
-    "SF_MemoryType": "Business",
-    "SF_Group": "Test Group B (x3)"
-  },
-  "test_audio_01": {
-    "image": null,
-    "audio": "assets/audio/test_audio.mp3",
-    "video": null,
-    "processingImage": null,
-    "SF_RFID": "test_audio_01",
-    "SF_ValueRating": 3,
-    "SF_MemoryType": "Technical",
-    "SF_Group": ""
-  },
-  "test_audio_02": {
-    "image": null,
-    "audio": "assets/audio/test_audio.mp3",
-    "video": null,
-    "processingImage": null,
-    "SF_RFID": "test_audio_02",
-    "SF_ValueRating": 2,
-    "SF_MemoryType": "Personal",
-    "SF_Group": "Test Group B (x3)"
-  },
-  "test_combo_01": {
-    "image": "assets/images/test_image.jpg",
-    "audio": "assets/audio/test_audio.mp3",
-    "video": null,
-    "processingImage": null,
-    "SF_RFID": "test_combo_01",
+    "SF_RFID": "fli031",
     "SF_ValueRating": 4,
     "SF_MemoryType": "Business",
     "SF_Group": ""
   },
-  "test_unknown_01": {
+  "rat031": {
     "image": null,
     "audio": null,
     "video": null,
     "processingImage": null,
-    "SF_RFID": "test_unknown_01",
+    "SF_RFID": "rat031",
     "SF_ValueRating": 1,
     "SF_MemoryType": "Personal",
-    "SF_Group": ""
-  },
-  "test_unknown_02": {
-    "image": null,
-    "audio": null,
-    "video": null,
-    "processingImage": null,
-    "SF_RFID": "test_unknown_02",
-    "SF_ValueRating": 1,
-    "SF_MemoryType": "Technical",
     "SF_Group": ""
   }
 }

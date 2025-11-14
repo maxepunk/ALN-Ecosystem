@@ -54,6 +54,7 @@ const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 
 // Test fixtures
 const testTokens = require('../fixtures/test-tokens.json');
+const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 // Global test state
 let browser = null;
@@ -108,7 +109,7 @@ test.describe('Player Scanner Networked Scanning', () => {
       const session = await createSessionViaWebSocket(orchestratorInfo.url, {
         sessionName: 'Test 21: Player Scanner Session',
         mode: 'test',
-        password: 'test-admin-password'  // Must match TEST_ENV in test-server.js
+        password: ADMIN_PASSWORD  // Must match TEST_ENV in test-server.js
       });
       console.log(`Session created: ${session.name} (${session.id})`);
     } catch (error) {
@@ -198,7 +199,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Set up request interception promise BEFORE scan
     let requestPayload = null;
@@ -237,7 +238,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Capture console logs
     const consoleLogs = [];
@@ -277,7 +278,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Test 4a: Image display
     await scanner.simulateScan('sof002');
@@ -326,11 +327,11 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Simulate offline mode
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     // Scan while offline
     await scanner.simulateScan('sof002');
@@ -351,11 +352,11 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Go offline and scan
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     await scanner.simulateScan('rat002');
 
@@ -386,7 +387,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Clear existing queue
     await scanner.clearCollection();
@@ -398,7 +399,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Go offline
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     // Simulate scanning 105 tokens (exceeds max of 100)
     for (let i = 0; i < 105; i++) {
@@ -437,7 +438,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Clear queue
     await page.evaluate(() => {
@@ -448,7 +449,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Go offline and scan multiple tokens
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     await scanner.simulateScan('sof002');
 
@@ -463,20 +464,21 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Restore connection
     await context.setOffline(false);
-    await page.waitForTimeout(3000); // Wait for connection monitor to detect restoration
+    await scanner.waitForOrchestratorConnected(); // Wait for connection monitor to detect restoration
 
     // Wait for queue processing (condition-based)
     // Queue should decrease as batch processing completes
-    const maxWait = 10000;
-    const startTime = Date.now();
-    while (Date.now() - startTime < maxWait) {
-      queueSize = await scanner.getOfflineQueueSize();
-      if (queueSize < initialQueueSize) break;
-      await page.waitForTimeout(500); // Poll every 500ms
-    }
+    await page.waitForFunction(
+      (initialSize) => {
+        return window.orchestrator && window.orchestrator.offlineQueue.length < initialSize;
+      },
+      initialQueueSize,
+      { timeout: 10000, polling: 500 }
+    );
 
-    // Queue should be smaller or empty (depending on batch processing)
-    expect(queueSize).toBeLessThanOrEqual(initialQueueSize);
+    // Queue should be smaller (processing occurred)
+    queueSize = await scanner.getOfflineQueueSize();
+    expect(queueSize).toBeLessThan(initialQueueSize);
 
     console.log('✓ Queue processing triggered on reconnection (remaining:', queueSize, ')');
   });
@@ -487,7 +489,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Clear queue
     await page.evaluate(() => {
@@ -498,7 +500,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Go offline and scan
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     await scanner.simulateScan('sof002');
 
@@ -510,7 +512,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Restore connection
     await context.setOffline(false);
-    await page.waitForTimeout(3000);
+    await scanner.waitForOrchestratorConnected();
 
     try {
       // Wait for batch request
@@ -538,7 +540,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Clear queue
     await page.evaluate(() => {
@@ -549,7 +551,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Go offline and scan
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     await scanner.simulateScan('asm001');
 
@@ -559,21 +561,22 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Restore connection
     await context.setOffline(false);
-    await page.waitForTimeout(3000);
+    await scanner.waitForOrchestratorConnected();
 
     // Wait for queue processing attempt (condition-based)
     // Queue should decrease as batch processing occurs
     // Note: Items may be re-queued if batch fails (correct retry behavior)
-    const maxWait = 10000;
-    const startTime = Date.now();
     const initialSize = queueSize;
-    while (Date.now() - startTime < maxWait) {
-      queueSize = await scanner.getOfflineQueueSize();
-      if (queueSize < initialSize) break; // Processing attempted
-      await page.waitForTimeout(500); // Poll every 500ms
-    }
+    await page.waitForFunction(
+      (initialSize) => {
+        return window.orchestrator && window.orchestrator.offlineQueue.length < initialSize;
+      },
+      initialSize,
+      { timeout: 10000, polling: 500 }
+    );
 
     // Queue should be cleared OR processing in progress (≤1 item for retry)
+    queueSize = await scanner.getOfflineQueueSize();
     expect(queueSize).toBeLessThanOrEqual(1);
 
     console.log('✓ Queue processing triggered (final size:', queueSize, ')');
@@ -585,7 +588,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const scanner = new PlayerScannerPage(page);
 
     await scanner.gotoNetworked(orchestratorInfo.url);
-    await page.waitForTimeout(2000);
+    // No timeout needed - gotoNetworked() already waits for connection with 15s timeout
 
     // Clear queue
     await page.evaluate(() => {
@@ -596,7 +599,7 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     // Go offline and scan
     await context.setOffline(true);
-    await page.waitForTimeout(1000);
+    await scanner.waitForOrchestratorDisconnected();
 
     await scanner.simulateScan('tac001');
 
@@ -609,12 +612,30 @@ test.describe('Player Scanner Networked Scanning', () => {
       route.abort('failed');
     });
 
+    // Set up promise to wait for batch request (will fail due to route interception)
+    const batchRequestPromise = page.waitForRequest(
+      request => request.url().includes('/api/scan/batch') && request.method() === 'POST',
+      { timeout: 10000 }
+    );
+
     // Restore connection
     await context.setOffline(false);
-    await page.waitForTimeout(3000);
+    await scanner.waitForOrchestratorConnected();
 
-    // Wait briefly for failed batch attempt (should stay at 1)
-    await page.waitForTimeout(2000);
+    // Wait for batch attempt (condition-based: wait for actual request, not arbitrary timeout)
+    try {
+      await batchRequestPromise;
+    } catch (e) {
+      // Request may have already been made before we started waiting
+      console.log('Note: Batch request may have completed before interception');
+    }
+
+    // Give a moment for re-queue to complete after failed batch
+    // This is a small grace period for async re-queue operation (processOfflineQueue line 196)
+    await page.waitForFunction(
+      () => window.orchestrator && window.orchestrator.offlineQueue.length === 1,
+      { timeout: 2000, polling: 50 }
+    );
 
     // Queue should still have items (re-queued after failure)
     queueSize = await scanner.getOfflineQueueSize();
