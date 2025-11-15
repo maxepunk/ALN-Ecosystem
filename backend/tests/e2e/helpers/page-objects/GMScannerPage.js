@@ -78,6 +78,15 @@ class GMScannerPage {
     this.adminTab = page.locator('[data-view="admin"]');
     this.scannerTab = page.locator('[data-view="scanner"]');
 
+    // Admin panel elements (networked mode only)
+    this.scoreAdjustmentInput = page.locator('#scoreAdjustmentInput');
+    this.scoreAdjustmentReason = page.locator('#scoreAdjustmentReason');
+    this.adjustScoreBtn = page.locator('button[data-action="app.adjustTeamScore"]');
+    this.resetScoresBtn = page.locator('button[data-action="app.adminResetScores"]');
+    this.viewFullScoreboardBtn = page.locator('button[data-action="app.viewFullScoreboard"]');
+    this.viewFullHistoryBtn = page.locator('button[data-action="app.viewFullHistory"]');
+    this.adminScoreBoard = page.locator('#admin-score-board');
+
     // Error displays
     this.errorToast = page.locator('.toast.error:visible');
     this.errorMessage = page.locator('.error-message:visible');
@@ -455,6 +464,117 @@ class GMScannerPage {
       return text.trim().toLowerCase();  // Normalize whitespace and capitalization
     }
     return 'unknown';
+  }
+
+  /**
+   * Navigate to admin panel and wait for complete initialization
+   * Contract: Returns only when admin modules initialized AND data loaded
+   *
+   * Flow:
+   * 1. Click admin tab → show admin view
+   * 2. Wait for AdminController.initialized === true (DI chain complete)
+   * 3. Wait for backendScores Map exists (sync:full received and processed)
+   *
+   * MonitoringDisplay requests sync:full on init (via _requestInitialState)
+   * Backend responds with sync:full → populates backendScores Map
+   *
+   * @returns {Promise<void>}
+   */
+  async navigateToAdminPanel() {
+    await this.adminTab.click();
+    await this.adminView.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Wait for admin modules initialized (DI chain complete)
+    await this.page.waitForFunction(() => {
+      const adminController = window.__app?.networkedSession?.services?.adminController;
+      return adminController?.initialized === true;
+    }, { timeout: 5000 });
+
+    // ✅ FIX: Wait for initial data loaded
+    // MonitoringDisplay._requestInitialState() sends sync:request
+    // Backend responds with sync:full → DataManager.backendScores populated
+    // Verify Map exists (indicates sync:full received and processed)
+    await this.page.waitForFunction(() => {
+      const dataManager = window.__app?.dataManager;  // ES6: Use __app.dataManager (not window.DataManager)
+      // backendScores is a Map - check it exists and was initialized
+      // Map exists even with 0 teams after sync:full processing
+      return dataManager?.backendScores instanceof Map;
+    }, { timeout: 10000 });  // Longer timeout for network request + processing
+
+    console.log('✓ Admin panel navigation complete - data loaded');
+  }
+
+  /**
+   * Adjust team score via admin panel UI
+   * @param {number} delta - Score adjustment (+/-)
+   * @param {string} [reason] - Optional reason for adjustment
+   */
+  async adjustTeamScore(delta, reason = '') {
+    await this.scoreAdjustmentInput.fill(String(delta));
+    if (reason) {
+      await this.scoreAdjustmentReason.fill(reason);
+    }
+    await this.adjustScoreBtn.click();
+  }
+
+  /**
+   * Delete transaction via team details screen
+   * Works in both networked and standalone modes
+   * @param {string} transactionId - Transaction ID to delete
+   */
+  async deleteTransaction(transactionId) {
+    // Locate delete button by data-arg attribute
+    const deleteBtn = this.page.locator(`button[data-action="app.deleteTeamTransaction"][data-arg="${transactionId}"]`);
+
+    // Verify button exists before proceeding
+    await deleteBtn.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Setup dialog handler BEFORE clicking to accept confirmation
+    this.page.once('dialog', dialog => dialog.accept());
+
+    // Click delete button
+    await deleteBtn.click();
+
+    // ✅ Event-driven architecture: Don't wait for immediate DOM changes
+    // Test will wait for transaction:deleted broadcast
+    // Flow: broadcast → MonitoringDisplay → DataManager.removeTransaction() → event → main.js → UI render
+    // DOM updates happen asynchronously after event chain completes
+  }
+
+  /**
+   * Reset all team scores via admin panel UI
+   * Handles confirmation dialog automatically
+   */
+  async resetAllScores() {
+    // Setup dialog handler BEFORE clicking
+    this.page.once('dialog', dialog => dialog.accept());
+    await this.resetScoresBtn.click();
+  }
+
+  /**
+   * Navigate to full scoreboard from admin panel
+   */
+  async viewFullScoreboard() {
+    await this.viewFullScoreboardBtn.click();
+    await this.scoreboardScreen.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Navigate to full history from admin panel
+   */
+  async viewFullHistory() {
+    await this.viewFullHistoryBtn.click();
+    await this.historyScreen.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Click team name in admin score board
+   * @param {string} teamId - Team ID to click
+   */
+  async clickTeamInScoreBoard(teamId) {
+    // Find row with team ID and click first cell
+    const row = this.adminScoreBoard.locator(`tbody tr:has-text("${teamId}")`);
+    await row.locator('td:first-child').click();
   }
 }
 
