@@ -80,7 +80,9 @@ channels:
           - $ref: '#/components/messages/SyncFull'
           - $ref: '#/components/messages/TransactionResult'
           - $ref: '#/components/messages/TransactionNew'
+          - $ref: '#/components/messages/TransactionDeleted'
           - $ref: '#/components/messages/ScoreUpdated'
+          - $ref: '#/components/messages/ScoresReset'
           - $ref: '#/components/messages/VideoStatus'
           - $ref: '#/components/messages/SessionUpdate'
           - $ref: '#/components/messages/GmCommandAck'
@@ -791,6 +793,56 @@ components:
             description: Event timestamp
             example: "2025-10-15T20:15:30.100Z"
 
+    TransactionDeleted:
+      name: transaction:deleted
+      title: Transaction Deletion Broadcast
+      summary: Broadcast transaction deletion to all GMs in session
+      description: |
+        Broadcast transaction deletion to all GM Scanners in session for real-time UI updates.
+        Enables multi-device sync when an admin deletes a transaction from team history.
+
+        **Scope**: Session-scoped broadcast (same as transaction:new) to prevent cross-session contamination.
+        **Use Case**: Admin panel "Delete Transaction" action from team details screen.
+        **Functional Requirement**: Section 1.3 (Transaction Processing - deletion support)
+        **Decisions Applied**: #2 (wrapped envelope), #4 (tokenId, teamId fields)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: transaction:deleted
+            description: Event name
+          data:
+            type: object
+            required:
+              - transactionId
+              - teamId
+              - tokenId
+            properties:
+              transactionId:
+                type: string
+                format: uuid
+                description: Transaction ID being deleted
+                example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+              teamId:
+                type: string
+                pattern: '^[0-9]{3}$'
+                description: Team ID that owned the transaction
+                example: "001"
+              tokenId:
+                type: string
+                description: Token ID associated with deleted transaction
+                example: "534e2b03"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:16:45.000Z"
+
     ScoreUpdated:
       name: score:updated
       title: Team Score Update Broadcast
@@ -891,6 +943,54 @@ components:
             format: date-time
             description: Event timestamp
             example: "2025-10-15T20:15:30.100Z"
+
+    ScoresReset:
+      name: scores:reset
+      title: All Team Scores Reset Broadcast
+      summary: Broadcast score reset to all GMs in session
+      description: |
+        Broadcast to all GM Scanners in session when admin resets all team scores to zero.
+        Followed immediately by sync:full event with complete updated state.
+
+        **Scope**: Session-scoped broadcast (same as transaction:new/deleted) to prevent cross-session contamination.
+        **Use Case**: Admin panel "Reset All Scores" action - nuclear option for score management.
+        **Functional Requirement**: Section 1.4 (Score Management - admin controls)
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **Flow**:
+        1. Admin triggers score:reset command via GM Scanner
+        2. Backend resets all team scores in current session
+        3. Backend broadcasts scores:reset to session
+        4. Backend broadcasts sync:full with complete state
+        5. All GMs in session clear scoreboards and re-sync
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: scores:reset
+            description: Event name
+          data:
+            type: object
+            required:
+              - teamsReset
+            properties:
+              teamsReset:
+                type: array
+                items:
+                  type: string
+                  pattern: '^[0-9]{3}$'
+                description: Array of team IDs that were reset
+                example: ["001", "002", "003"]
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:20:00.000Z"
 
     # ============================================================================
     # VIDEO ORCHESTRATION (1 event)

@@ -80,7 +80,7 @@ global.InitializationSteps = {
   },
   // Phase 0: Show loading screen (added Oct 28, 2024 in ALNScanner commit 0759242)
   // Called after initializeUIManager to ensure loading screen is visible
-  // Matches ALNScanner/js/app/initializationSteps.js:203-208
+  // Matches ALNScanner/src/app/initializationSteps.js:203-208
   showLoadingScreen: async (uiManager) => {
     uiManager.showScreen('loading');
     // Ensure browser paints the loading screen before continuing (100ms delay)
@@ -242,7 +242,7 @@ global.Settings = {
 
 // Load REAL TokenManager (scanner's token database module)
 // This will be populated with real tokens.json data in test setup
-const TokenManager = require('../../../ALNScanner/js/core/tokenManager');
+const TokenManager = require('../../../ALNScanner/src/core/tokenManager');
 global.TokenManager = TokenManager;
 
 // Mock DataManager global (App.recordTransaction uses DataManager.markTokenAsScanned)
@@ -279,7 +279,7 @@ global.DataManager = {
   clearSession: () => {},
 
   // Called by OrchestratorClient when new session detected (sync:full or session:update events)
-  // Matches ALNScanner/js/core/dataManager.js:191-207
+  // Matches ALNScanner/src/core/dataManager.js:191-207
   resetForNewSession(sessionId = null) {
     this.scannedTokens.clear();
     this.transactions = [];

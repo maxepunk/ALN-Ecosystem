@@ -9,8 +9,8 @@
 // Load browser mocks first
 require('../helpers/browser-mocks');
 
-const SessionModeManager = require('../../../ALNScanner/js/app/sessionModeManager');
-const Settings = require('../../../ALNScanner/js/ui/settings');
+const SessionModeManager = require('../../../ALNScanner/src/app/sessionModeManager');
+const Settings = require('../../../ALNScanner/src/ui/settings');
 
 describe('FR Section 0: Deployment Modes', () => {
   beforeEach(() => {

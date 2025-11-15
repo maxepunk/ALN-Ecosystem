@@ -344,32 +344,48 @@ function getOrchestratorUrl() {
  * });
  */
 async function clearSessionData() {
-  const dataDir = path.join(__dirname, '../../../data');
+  // CRITICAL: Handle both file storage AND memory storage
+  // Tests use STORAGE_TYPE=memory, but this function only clears files
+  // Result: In-memory state (teamScores Map, etc) persists across tests
 
-  try {
-    await fs.access(dataDir);
-
-    // Direct file deletion to avoid race conditions with parallel workers
-    // When workers run in parallel, node-persist's async API can conflict:
-    // - Worker 1 stops orchestrator → writes session asynchronously
-    // - Worker 2 clears data → may run before Worker 1's write completes
-    // - Result: Worker 2 restores stale session from Worker 1
-    //
-    // Direct file deletion eliminates the async timing dependency
-    const files = await fs.readdir(dataDir);
-    await Promise.all(
-      files.map(file => fs.unlink(path.join(dataDir, file)).catch(err => {
-        // Ignore file not found (may have been deleted by another worker)
-        if (err.code !== 'ENOENT') throw err;
-      }))
-    );
-
-    logger.debug('Session data cleared via direct file deletion');
-  } catch (error) {
-    if (error.code !== 'ENOENT') {
-      logger.warn('Failed to clear session data', { error: error.message });
+  if (process.env.STORAGE_TYPE === 'memory') {
+    // Clear in-memory storage via persistenceService
+    try {
+      const persistenceService = require('../../../src/services/persistenceService');
+      await persistenceService.resetMemoryStorage();
+      logger.debug('Memory storage cleared for testing');
+    } catch (error) {
+      logger.warn('Failed to clear memory storage', { error: error.message });
     }
-    // Directory doesn't exist - nothing to clear
+  } else {
+    // Clear file storage (original logic)
+    const dataDir = path.join(__dirname, '../../../data');
+
+    try {
+      await fs.access(dataDir);
+
+      // Direct file deletion to avoid race conditions with parallel workers
+      // When workers run in parallel, node-persist's async API can conflict:
+      // - Worker 1 stops orchestrator → writes session asynchronously
+      // - Worker 2 clears data → may run before Worker 1's write completes
+      // - Result: Worker 2 restores stale session from Worker 1
+      //
+      // Direct file deletion eliminates the async timing dependency
+      const files = await fs.readdir(dataDir);
+      await Promise.all(
+        files.map(file => fs.unlink(path.join(dataDir, file)).catch(err => {
+          // Ignore file not found (may have been deleted by another worker)
+          if (err.code !== 'ENOENT') throw err;
+        }))
+      );
+
+      logger.debug('Session data cleared via direct file deletion');
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        logger.warn('Failed to clear session data', { error: error.message });
+      }
+      // Directory doesn't exist - nothing to clear
+    }
   }
 }
 

@@ -147,6 +147,80 @@ class StateService extends EventEmitter {
       }
     });
 
+    // Listen for score resets to update session.scores
+    listenerRegistry.addTrackedListener(transactionService, 'scores:reset', async (data) => {
+      const session = sessionService.getCurrentSession();
+      if (!session) {
+        logger.warn('No session during scores:reset');
+        return;
+      }
+
+      try {
+        // Clear session.scores array (reset to empty)
+        session.scores = [];
+
+        // Persist updated session
+        const sessionJSON = session.toJSON();
+        await persistenceService.saveSession(sessionJSON);
+        await persistenceService.save('session:current', sessionJSON);
+
+        logger.info('Session scores cleared after reset', {
+          sessionId: session.id,
+          teamsReset: data?.teamsReset?.length || 0
+        });
+      } catch (error) {
+        logger.error('Failed to update session after scores reset', { error });
+      }
+    });
+
+    // Listen for transaction deletions to persist session changes
+    listenerRegistry.addTrackedListener(transactionService, 'transaction:deleted', async (data) => {
+      const session = sessionService.getCurrentSession();
+      if (!session) {
+        logger.warn('No session during transaction:deleted');
+        return;
+      }
+
+      try {
+        // DEBUG: Log session state BEFORE persistence
+        const deviceKeys = Object.keys(session.metadata?.scannedTokensByDevice || {});
+        const scannedByDevice = {};
+        deviceKeys.forEach(deviceId => {
+          scannedByDevice[deviceId] = session.metadata.scannedTokensByDevice[deviceId].length;
+        });
+
+        logger.info('🔍 BEFORE persistence (transaction:deleted)', {
+          sessionId: session.id,
+          transactionId: data.transactionId,
+          tokenId: data.tokenId,
+          teamId: data.teamId,
+          totalTransactions: session.transactions.length,
+          devicesTracked: deviceKeys.length,
+          scannedTokensByDevice: scannedByDevice
+        });
+
+        // Session already modified by transactionService.deleteTransaction()
+        // Just persist the changes (scannedTokensByDevice + transactions array)
+        const sessionJSON = session.toJSON();
+        await persistenceService.saveSession(sessionJSON);
+        await persistenceService.save('session:current', sessionJSON);
+
+        // DEBUG: Log AFTER persistence
+        logger.info('✅ AFTER persistence (transaction:deleted)', {
+          sessionId: session.id,
+          transactionId: data.transactionId,
+          persisted: true,
+          totalTransactions: session.transactions.length
+        });
+      } catch (error) {
+        logger.error('❌ Failed to persist session after transaction deletion', {
+          error: error.message,
+          stack: error.stack,
+          transactionId: data.transactionId
+        });
+      }
+    });
+
     // Listen for transaction additions to update recent transactions
     listenerRegistry.addTrackedListener(sessionService, 'transaction:added', async (transaction) => {
       // Check if we have a session (GameState is computed from session)

@@ -9,11 +9,27 @@
  * @param {string} sessionMode - 'standalone' or 'networked'
  * @param {string} gameMode - 'detective' or 'blackmarket'
  * @param {Object} options - Optional orchestrator connection params
+ * @param {string} options.orchestratorUrl - Orchestrator URL (required for networked mode)
+ * @param {string} options.password - Admin password (required for networked mode)
+ * @param {string} options.stationName - Scanner station name (optional)
+ * @param {string} options.deviceId - Override device ID (optional, auto-generated if not provided)
+ * @param {Socket} options.testSocket - Test WebSocket client for backend confirmation (optional but recommended)
+ *                                       If provided, waits for device:connected broadcast to ensure backend
+ *                                       completed identification and room membership assignment
  * @returns {Promise<GMScannerPage>} Configured scanner
  */
 async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackmarket', options = {}) {
   const { GMScannerPage } = require('./page-objects/GMScannerPage');
+  const { waitForEvent } = require('../../helpers/websocket-helpers');
   const gmScanner = new GMScannerPage(page);
+
+  // CRITICAL: Set unique deviceId in localStorage BEFORE page loads
+  // Without this, multiple scanner instances use the same default deviceId ('001'),
+  // causing connection churn as backend kicks out duplicate connections
+  const uniqueDeviceId = options.deviceId || `Test_Scanner_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  await page.addInitScript((deviceId) => {
+    localStorage.setItem('deviceId', deviceId);
+  }, uniqueDeviceId);
 
   // Navigate to scanner using relative URL (baseURL set in browser context)
   // Browser context isolation ensures localStorage is already clean
@@ -44,6 +60,27 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
         options.password
       );
       await gmScanner.waitForConnection();
+
+      // CRITICAL: Wait for backend to complete identification and room membership
+      // waitForConnection() only checks UI state (modal closed, team entry visible)
+      // Backend may still be processing handleGmIdentify() and assigning rooms
+      // Without this, scanner may not be in session room when broadcasts arrive
+      if (options.testSocket) {
+        console.log('⏳ Waiting for backend identification confirmation...');
+
+        // Wait for backend's sync:full event sent to test socket
+        // sync:full is sent AFTER handleGmIdentify() completes (gmAuth.js:169)
+        // This proves room joins completed and scanner received full state
+        // Note: We wait for ANY sync:full on the test socket, indicating state is synchronized
+        await waitForEvent(
+          options.testSocket,
+          'sync:full',
+          null,  // Accept any sync:full (test socket receives broadcasts)
+          10000  // Longer timeout for page load + connection
+        );
+
+        console.log(`✓ Backend confirmed scanner connected and synchronized`);
+      }
     }
   } else {
     await gmScanner.selectStandaloneMode();

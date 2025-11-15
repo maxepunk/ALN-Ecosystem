@@ -1,7 +1,13 @@
-# Breaking Changes Guide
+# Breaking Changes Guide (ARCHIVED)
+
+> **⚠️ ARCHIVED DOCUMENT** - Created 2025-10-02
+> **Status**: Migration Completed
+> **Context**: This was a one-time guide for October 2025 contract alignment refactoring.
+> Migration completed around October 2025. For current contract changes, see backend/contracts/README.md.
+> Retained for historical reference.
 
 **Target**: Developers implementing contract-compliant code
-**Context**: Pre-production refactoring - no backwards compatibility needed
+**Context**: Pre-production refactoring (Oct 2025) - no backwards compatibility needed
 **Approach**: All changes applied at once (backend + scanners together)
 
 ---

@@ -16,7 +16,7 @@ const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const tokenService = require('../../src/services/tokenService');
-const SessionModeManager = require('../../../ALNScanner/js/app/sessionModeManager');
+const SessionModeManager = require('../../../ALNScanner/src/app/sessionModeManager');
 
 describe('FR Section 4: Admin Panel', () => {
   let testContext, scanner;

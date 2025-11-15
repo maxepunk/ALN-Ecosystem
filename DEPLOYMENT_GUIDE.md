@@ -334,6 +334,148 @@ ADMIN_PASSWORD=VerySecureAdminPass123!
 LOG_LEVEL=warn
 ```
 
+## HTTPS Deployment
+
+### Overview
+
+**CRITICAL**: The system requires HTTPS because the Web NFC API (used by GM Scanner) only works in secure contexts. The backend serves HTTPS on port 3000 and redirects HTTP (port 8000) to HTTPS.
+
+### SSL Certificate Setup
+
+Generate a self-signed certificate (valid 365 days):
+
+```bash
+cd backend
+mkdir -p ssl
+openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout ssl/key.pem \
+  -out ssl/cert.pem \
+  -days 365 \
+  -subj "/CN=localhost"
+```
+
+For production with domain name:
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes \
+  -keyout ssl/key.pem \
+  -out ssl/cert.pem \
+  -days 365 \
+  -subj "/CN=your-pi-hostname.local"
+```
+
+### Environment Configuration
+
+Add to `.env`:
+
+```env
+ENABLE_HTTPS=true
+SSL_KEY_PATH=./ssl/key.pem
+SSL_CERT_PATH=./ssl/cert.pem
+HTTP_REDIRECT_PORT=8000
+```
+
+**Architecture:**
+- **HTTPS Server**: Port 3000 (primary, supports NFC)
+- **HTTP Redirect**: Port 8000 (301 redirect to HTTPS:3000)
+- Discovery service advertises `protocol: "https"`
+
+### Scanner Protocol Defaults
+
+**GM Scanner:**
+- Defaults to `https://` protocol (required for Web NFC)
+- Configured in `ALNScanner/src/network/connectionManager.js:47`
+
+**Player Scanner (Web):**
+- Uses `window.location.origin` or `https://localhost:3000`
+- Auto-detects protocol from browser
+
+**ESP32 Scanner:**
+- Uses `WiFiClientSecure` for HTTPS
+- Supports both `http://` and `https://` in config.txt
+- Auto-upgrades `http://` → `https://` URLs
+- Downloads certificates from server on boot
+
+### Certificate Trust Workflow
+
+Since the certificate is self-signed, each client device requires one-time certificate trust:
+
+**Browser-Based Scanners (GM/Player):**
+1. Navigate to `https://[PI-IP]:3000/gm-scanner/` or `/player-scanner/`
+2. Browser shows "Your connection is not private" warning
+3. Click "Advanced" → "Proceed to [PI-IP] (unsafe)"
+4. Certificate is trusted for this browser/device
+5. NFC API now works (GM Scanner only)
+
+**ESP32 Scanner:**
+- No trust workflow needed
+- WiFiClientSecure accepts self-signed certificates by default
+- Validates connection but doesn't enforce CA chain
+
+### Troubleshooting HTTPS Issues
+
+**Mixed Content Errors:**
+```
+Blocked loading mixed active content "http://..."
+```
+- **Cause**: HTTPS page trying to load HTTP resources
+- **Fix**: Ensure all scanners use `https://` in connection URLs
+- **Check**: GM Scanner `connectionManager.js`, Player Scanner origin detection
+
+**Discovery Fails:**
+```
+Scanner can't find orchestrator via UDP broadcast
+```
+- **Cause**: `ENABLE_HTTPS=false` or missing in `.env`
+- **Fix**: Verify `ENABLE_HTTPS=true` in backend/.env
+- **Check**: Discovery service advertises correct protocol
+
+**Certificate Errors on Reconnect:**
+```
+NET::ERR_CERT_DATE_INVALID
+```
+- **Cause**: Certificate expired (365-day validity)
+- **Fix**: Regenerate certificate with openssl command above
+- **Note**: Clients will need to trust new certificate (clear browser cache)
+
+**NFC Not Working (GM Scanner):**
+```
+NotAllowedError: Web NFC is not allowed in insecure contexts
+```
+- **Cause**: GM Scanner loaded over HTTP instead of HTTPS
+- **Fix**: Ensure URL uses `https://` protocol
+- **Check**: Browser address bar shows padlock icon
+
+**Port Already in Use:**
+```
+Error: listen EADDRINUSE: address already in use :::3000
+```
+- **Cause**: Another process using port 3000 or 8000
+- **Fix**: `lsof -i :3000` to find process, `kill -9 <PID>`
+- **Or**: Change `PORT` in `.env` (update scanner configs too)
+
+### Network URLs (HTTPS Enabled)
+
+- **Orchestrator**: `https://[IP]:3000`
+- **GM Scanner**: `https://[IP]:3000/gm-scanner/` (HTTPS required for NFC)
+- **Player Scanner**: `https://[IP]:3000/player-scanner/`
+- **Scoreboard**: `https://[IP]:3000/scoreboard`
+- **VLC Control**: `http://[IP]:8080` (internal only, no HTTPS needed)
+
+### Verification
+
+Test HTTPS setup:
+
+```bash
+# Check HTTPS server responds
+curl -k https://localhost:3000/health
+
+# Check HTTP redirect works
+curl -I http://localhost:8000
+
+# Expected: HTTP/1.1 301 Moved Permanently
+# Location: https://localhost:3000/
+```
+
 ## Token Configuration
 
 ### CRITICAL: Token Media Path Format

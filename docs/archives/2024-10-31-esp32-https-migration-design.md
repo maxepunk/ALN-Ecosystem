@@ -1,6 +1,11 @@
 # ESP32 HTTPS Migration Design
 
-**Date:** October 31, 2025
+> **⚠️ ARCHIVED DOCUMENT** - Created 2024-10-31
+> **Status**: Implementation Complete
+> **Verification**: Config.h lines 44, 49 contain HTTPS validation and auto-upgrade logic
+> Design plan fully implemented. HTTPS migration completed successfully with URL validation accepting both protocols and auto-upgrade functionality. Retained for historical reference.
+
+**Date:** October 31, 2024 *(Note: Year corrected from 2025)*
 **Author:** Claude Code (with human partner)
 **Project:** ALN Ecosystem - ESP32 CYD Player Scanner
 **Version:** v5.0 → v5.1 (HTTPS Support)

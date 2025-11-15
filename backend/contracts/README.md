@@ -31,10 +31,10 @@ These contracts define the **target architecture** for the ALN system - what the
 
 ### Documentation References
 
-- **Alignment Decisions**: `docs/api-alignment/04-alignment-decisions.md` (15 strategic decisions)
-- **Functional Requirements**: `docs/api-alignment/08-functional-requirements.md` (component responsibilities)
-- **Essential API List**: `docs/api-alignment/09-essential-api-list.md` (minimal contract scope)
-- **Test Architecture**: `docs/api-alignment/06-test-architecture.md` (validation strategy)
+- **Alignment Decisions**: `docs/ARCHIVE/api-alignment/04-alignment-decisions.md` (15 strategic decisions)
+- **Functional Requirements**: `docs/ARCHIVE/api-alignment/08-functional-requirements.md` (component responsibilities)
+- **Essential API List**: `docs/ARCHIVE/api-alignment/09-essential-api-list.md` (minimal contract scope)
+- **Test Architecture**: `docs/ARCHIVE/api-alignment/06-test-architecture.md` (validation strategy)
 
 ---
 
@@ -428,11 +428,28 @@ Unified admin command interface (replaces 11 HTTP admin endpoints).
 **Available Actions**:
 - Session: `session:create`, `session:pause`, `session:resume`, `session:end`
 - Video: `video:play`, `video:pause`, `video:stop`, `video:skip`, `video:queue:add`, `video:queue:reorder`, `video:queue:clear`
-- Score: `score:adjust`
+- Score: `score:adjust`, `score:reset`
 - Transaction: `transaction:delete`, `transaction:create`
 - System: `system:reset`
 
 **Response**: Server sends `gm:command:ack` with success/failure, then broadcasts side effects (e.g., video:status, score:updated).
+
+#### scores:reset (Server → Clients)
+Broadcast when all team scores are reset to zero (triggered by `score:reset` command).
+
+```json
+{
+  "event": "scores:reset",
+  "data": {
+    "teamsReset": ["001", "002", "003"]
+  },
+  "timestamp": "2025-10-15T20:20:01.000Z"
+}
+```
+
+**Pattern**: Follows "bulk event + sync:full" pattern - server broadcasts `scores:reset` first, then sends `sync:full` with updated state.
+
+**Usage**: Allows clients to show immediate feedback ("Scores reset!") while waiting for complete state sync.
 
 ---
 

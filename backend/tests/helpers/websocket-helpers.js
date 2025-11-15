@@ -216,11 +216,11 @@ function testDelay(ms) {
  */
 async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = process.env.ADMIN_PASSWORD || 'admin') {
   // 1. Import ALL required scanner modules
-  const OrchestratorClient = require('../../../ALNScanner/js/network/orchestratorClient');
-  const NetworkedQueueManager = require('../../../ALNScanner/js/network/networkedQueueManager');
-  const SessionModeManager = require('../../../ALNScanner/js/app/sessionModeManager');
-  const Settings = require('../../../ALNScanner/js/ui/settings');
-  const App = require('../../../ALNScanner/js/app/app');
+  const OrchestratorClient = require('../../../ALNScanner/src/network/orchestratorClient');
+  const NetworkedQueueManager = require('../../../ALNScanner/src/network/networkedQueueManager');
+  const SessionModeManager = require('../../../ALNScanner/src/app/sessionModeManager');
+  const Settings = require('../../../ALNScanner/src/ui/settings');
+  const App = require('../../../ALNScanner/src/app/app');
 
   // 2. Authenticate via HTTP
   const fetch = require('node-fetch');

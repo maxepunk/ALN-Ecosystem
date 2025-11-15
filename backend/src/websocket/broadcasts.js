@@ -220,12 +220,25 @@ function setupBroadcastListeners(io, services) {
         tokenId: data.tokenId
       };
 
-      emitToRoom(io, 'gm', 'transaction:deleted', payload);
-      logger.info('Broadcasted transaction:deleted to GM stations', {
-        transactionId: data.transactionId,
-        teamId: data.teamId,
-        tokenId: data.tokenId
-      });
+      // CRITICAL: Use session-scoped broadcast like transaction:new
+      // This prevents cross-session event contamination in tests and production
+      const session = sessionService.getCurrentSession();
+      if (session) {
+        emitToRoom(io, `session:${session.id}`, 'transaction:deleted', payload);
+        logger.info('Broadcasted transaction:deleted to session', {
+          transactionId: data.transactionId,
+          teamId: data.teamId,
+          tokenId: data.tokenId,
+          sessionId: session.id
+        });
+      } else {
+        // Fallback: if no session, broadcast globally (shouldn't happen in normal flow)
+        emitToRoom(io, 'gm', 'transaction:deleted', payload);
+        logger.warn('Broadcasted transaction:deleted globally - no session found', {
+          transactionId: data.transactionId,
+          teamId: data.teamId
+        });
+      }
     });
 
     addTrackedListener(transactionService, 'group:completed', (data) => {
@@ -251,22 +264,25 @@ function setupBroadcastListeners(io, services) {
 
     // Transaction service - scores reset (bulk operation)
     addTrackedListener(transactionService, 'scores:reset', (data) => {
-      // Notify GM stations about score reset (bulk event)
-      emitToRoom(io, 'gm', 'scores:reset', {
-        teamsReset: data?.teamsReset || []
-      });
-
-      // Provide complete updated state (follows processQueue pattern)
+      // Get session FIRST for scoped broadcast
       const session = sessionService.getCurrentSession();
       if (!session) {
         logger.warn('No active session during scores:reset');
         return;
       }
 
+      // CRITICAL: Use session-scoped broadcast like transaction:deleted
+      // This prevents cross-session event contamination in tests and production
+      emitToRoom(io, `session:${session.id}`, 'scores:reset', {
+        teamsReset: data?.teamsReset || []
+      });
+
+      // Provide complete updated state (follows processQueue pattern)
       const fullState = stateService.getCurrentState();
       emitWrapped(io, 'sync:full', fullState);
 
-      logger.info('Broadcasted scores:reset + sync:full to GM stations', {
+      logger.info('Broadcasted scores:reset + sync:full to session', {
+        sessionId: session.id,
         teamsReset: data?.teamsReset?.length || 0
       });
     });
@@ -556,6 +572,19 @@ async function initializeSessionDevices(io, session) {
       // AWAIT to ensure device is fully added before processing next device
       // This prevents race condition where broadcasts fire with incomplete device list
       await sessionService.updateDevice(deviceData);
+
+      // CRITICAL: Leave old session room before joining new one
+      // This prevents cross-session event contamination in tests and production
+      const currentRooms = Array.from(socket.rooms);
+      const oldSessionRoom = currentRooms.find(room => room.startsWith('session:'));
+      if (oldSessionRoom && oldSessionRoom !== `session:${session.id}`) {
+        socket.leave(oldSessionRoom);
+        logger.debug('Socket left old session room', {
+          deviceId: socket.deviceId,
+          oldRoom: oldSessionRoom,
+          newRoom: `session:${session.id}`
+        });
+      }
 
       // Join Socket.IO room for session-specific broadcasts (transaction:new, etc)
       socket.join(`session:${session.id}`);

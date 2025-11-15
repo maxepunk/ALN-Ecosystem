@@ -8,16 +8,28 @@ ALN (About Last Night) Ecosystem is a memory token scanning and video playback s
 
 **Key Components:**
 - **Backend Orchestrator** (`backend/`): Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs
-- **GM Scanner** (SUBMODULE: `ALNScanner/`): Web app for game masters. WebSocket-based, supports standalone and networked modes
-- **Player Scanner (Web)** (SUBMODULE: `aln-memory-scanner/`): PWA for players. HTTP-based, displays token content
-- **Player Scanner (ESP32)** (SUBMODULE: `arduino-cyd-player-scanner/`): Hardware scanner (ESP32-CYD with RFID)
+- **GM Scanner** (SUBMODULE: `ALNScanner/`): ES6 module PWA for game masters - @ALNScanner/CLAUDE.md
+- **Player Scanner (Web)** (SUBMODULE: `aln-memory-scanner/`): Vanilla JS PWA for players - @aln-memory-scanner/CLAUDE.md
+- **Player Scanner (ESP32)** (SUBMODULE: `arduino-cyd-player-scanner/`): Hardware scanner (ESP32-CYD with RFID) - @arduino-cyd-player-scanner/CLAUDE.md
 - **Token Data** (SUBMODULE: `ALN-TokenData/`): Shared JSON definitions of memory tokens and their associated media
+- **Notion Sync Scripts** (`scripts/`): Python scripts for syncing Notion Elements database to tokens.json
 
 **Contract-First Architecture:**
 - `backend/contracts/openapi.yaml` - ALL HTTP endpoints (validates with contract tests)
 - `backend/contracts/asyncapi.yaml` - ALL WebSocket events (validates with contract tests)
 - **CRITICAL**: Update contracts FIRST before changing APIs or events
 - Breaking changes require coordinated updates across backend + all 3 scanner submodules
+
+**Scanner Protocol Comparison:**
+
+| Aspect | GM Scanner | Player Scanner (Web) | ESP32 Scanner |
+|--------|-----------|---------------------|---------------|
+| Language | ES6 modules (Vite) | Vanilla JS (monolithic HTML) | C++ (Arduino/ESP-IDF) |
+| Backend Protocol | WebSocket (Socket.io) | HTTP (fetch) | HTTP/HTTPS (WiFiClient) |
+| Authentication | JWT token (24h expiry) | Device ID (auto-generated) | Device ID (config.txt) |
+| Real-time Updates | Yes (broadcasts) | No (stateless) | No (stateless) |
+| Offline Support | Queue + localStorage | Dual-mode (GitHub Pages OR queue) | SD card queue (JSONL) |
+| Admin Functions | Session/Video/System control | None | None |
 
 ## Submodule Architecture
 
@@ -33,15 +45,31 @@ ALN-Ecosystem/                     # Parent repo
 ```
 
 **Token Data Flow:**
-- Backend: Loads from `ALN-TokenData/tokens.json` directly (path: `../../../ALN-TokenData/tokens.json` from services/)
-- Web Scanners: Have nested `data/` submodule for standalone mode (GitHub Pages deployment)
-- ESP32 Scanner: Downloads tokens from orchestrator `/api/tokens` on boot, caches to SD card
+- **Backend**: Loads from `ALN-TokenData/tokens.json` (path: `../../../ALN-TokenData/tokens.json` from services/)
+- **GM Scanner**: Nested `data/` submodule for standalone mode, TokenManager with fuzzy matching
+- **Player Scanner (Web)**: Nested `data/` submodule, dual-mode detection (GitHub Pages vs orchestrator)
+- **ESP32 Scanner**: Downloads from orchestrator `/api/tokens`, caches to SD card
+- **Notion**: Source of truth (SF_RFID, SF_ValueRating, SF_MemoryType, SF_Group fields)
 
-**Syncing Submodules:**
+**Submodule Commands:**
 ```bash
-git submodule update --init --recursive    # Initialize
+git submodule update --init --recursive    # Initialize all (including nested)
 git submodule update --remote --merge      # Update to latest
-git submodule status --recursive           # Check sync status
+git submodule status --recursive           # Check sync status (detect detached HEAD)
+```
+
+**Token Sync Workflow (Notion → Git → Scanners):**
+```bash
+# 1. Update token data in Notion Elements database
+# 2. Sync Notion to tokens.json
+export NOTION_TOKEN="your_token_here"
+python3 scripts/sync_notion_to_tokens.py
+
+# 3. Commit to ALN-TokenData submodule
+cd ALN-TokenData && git add tokens.json && git commit -m "sync: update tokens from Notion" && git push
+
+# 4. Update parent repo submodule reference
+cd .. && git submodule update --remote --merge ALN-TokenData && git add ALN-TokenData && git commit -m "chore: update token data submodule" && git push
 ```
 
 ## Key Commands
@@ -126,24 +154,82 @@ const state = stateService.getCurrentState();
 const cachedState = stateService.getCurrentState(); // Don't do this
 ```
 
-### Event-Driven Service Coordination
-Services use Node.js EventEmitter for internal coordination (separate from WebSocket events):
+### Event-Driven Service Coordination (Three-Layer Architecture)
+
+**CRITICAL**: The system uses THREE DISTINCT event layers. Understanding this is essential for debugging.
+
+#### Layer 1: Backend Internal (Node.js EventEmitter)
+**Purpose**: Service-to-service communication within orchestrator backend
+**Pattern**: Domain events → Listener aggregation → State updates → WebSocket broadcast
 
 ```
 Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broadcasts.js)
 ```
 
-**Example Flow:**
-1. `transactionService.emit('transaction:new', data)` - Domain event
-2. `stateService.on('transaction:new', ...)` - Listener recomputes state
-3. `stateService.emit('state:updated', state)` - State change event
-4. `broadcasts.js` wraps for WebSocket - `io.emit('sync:full', {event, data, timestamp})`
+**Key Services & Events:**
+- `sessionService`: `session:created`, `session:updated`, `transaction:added`, `device:updated/removed`
+- `transactionService`: `transaction:accepted`, `group:completed`, `score:updated`, `scores:reset`
+- `stateService`: `state:updated`, `state:sync`, `sync:full`
+- `videoQueueService`: `video:*`, `queue:*`
+- `vlcService`: `degraded`, `connected`, `disconnected`
 
-**Key Files:**
-- `backend/src/services/sessionService.js:69` - Session event emission
-- `backend/src/services/stateService.js:79` - Event listener setup
-- `backend/src/websocket/broadcasts.js` - WebSocket broadcast wrapping
-- `backend/src/websocket/listenerRegistry.js` - Prevents duplicate listeners
+**Key Files:** `backend/src/services/stateService.js:79-112`, `backend/src/websocket/broadcasts.js`
+
+#### Layer 2: WebSocket AsyncAPI Events (Backend ↔ GM Scanner)
+**Purpose**: Real-time communication between orchestrator and GM Scanner
+**Contract**: `backend/contracts/asyncapi.yaml`
+
+**Envelope Pattern:**
+```javascript
+{
+  event: "transaction:new",
+  data: { /* payload */ },
+  timestamp: "2025-11-15T10:30:00.000Z"
+}
+```
+
+**Server → Client:** `sync:full`, `transaction:new`, `transaction:deleted`, `session:update`, `video:status`, `score:updated`, `scores:reset`, `gm:command:ack`, `device:connected/disconnected`, `group:completed`, `offline:queue:processed`, `batch:ack`, `player:scan`, `error`
+
+**Client → Server:** `transaction:submit`, `gm:command`
+
+**Key Files:** `backend/contracts/asyncapi.yaml`, `backend/src/websocket/eventWrapper.js`
+
+#### Layer 3: Frontend Client-Side Events (Browser EventTarget)
+**Purpose**: Internal pub/sub within GM Scanner ES6 modules
+**Type**: Browser `EventTarget` with `CustomEvent` (NOT Node.js EventEmitter)
+
+**Pattern:** WebSocket receives → Forward as CustomEvent → Consumers update state → Emit to UI
+
+**EventTarget Classes (8 in GM Scanner):**
+1. **OrchestratorClient** - Forwards WebSocket as `message:received` events
+2. **ConnectionManager** - `connected`, `disconnected`, `auth:required`
+3. **NetworkedSession** - `session:ready`, `session:error`
+4. **DataManager** - `transaction:added`, `transaction:deleted`, `scores:cleared`, `data:cleared`
+5. **StandaloneDataManager** - `standalone:transaction-added`, `standalone:scores-updated`
+6. **AdminController**, **Settings** - Lifecycle events
+
+**Example Flow:**
+```
+Backend broadcasts 'transaction:new' (Layer 2)
+  → OrchestratorClient receives
+  → Dispatches CustomEvent 'message:received' (Layer 3)
+  → DataManager.addTransaction()
+  → Dispatches 'transaction:added'
+  → UIManager.renderTransactions() (if active screen)
+```
+
+**Critical Pattern:**
+```javascript
+// ✅ CORRECT: Register listener BEFORE action
+DataManager.addEventListener('transaction:added', handler);
+DataManager.addTransaction(tx);
+
+// ❌ WRONG: Race condition
+DataManager.addTransaction(tx);
+DataManager.addEventListener('transaction:added', handler);
+```
+
+**Key Files:** `ALNScanner/src/network/orchestratorClient.js`, `ALNScanner/src/core/dataManager.js`, `ALNScanner/src/main.js:68-164`
 
 ### Service Singleton Pattern
 All services in `backend/src/services/` use singleton with `getInstance()`:
@@ -160,17 +246,18 @@ All services in `backend/src/services/` use singleton with `getInstance()`:
 ### WebSocket Authentication Flow
 1. HTTP POST `/api/admin/auth` → Returns JWT token
 2. Socket.io connection with `handshake.auth.token`
-3. Middleware validates JWT BEFORE accepting connection (`backend/src/middleware/socketAuth.js`)
-4. On success: Auto-send `sync:full` event (`backend/src/websocket/gmAuth.js:122`)
+3. Middleware validates JWT BEFORE accepting connection
+4. On success: Auto-send `sync:full` event
 5. Broadcast `device:connected` to other clients
 
 **Failure Handling:**
 - Invalid JWT → Connection rejected at handshake (transport-level error)
 - Client receives `connect_error` event (NOT `error` event)
-- No `sync:full` sent on auth failure
+
+**Key Files:** `backend/src/websocket/gmAuth.js:122`, `backend/src/middleware/socketAuth.js`
 
 ### Connection Monitoring
-- **WebSocket Clients** (GM Scanner, Scoreboard): Socket.io built-in ping/pong (25s interval, 60s timeout)
+- **WebSocket Clients** (GM Scanner, Scoreboard): Socket.io ping/pong (25s interval, 60s timeout)
 - **HTTP Clients** (Player Scanner): Poll `/health?deviceId=X&type=player` every 10 seconds
 - Both converge at `sessionService.updateDevice()` for tracking
 
@@ -192,21 +279,10 @@ HTTP_REDIRECT_PORT=8000
 - Self-signed certificate (365-day validity)
 - Discovery service advertises `protocol: "https"`
 
-**Scanner Protocol Defaults:**
-- GM Scanner: Defaults to `https://` (connectionManager.js:47)
-- Player Scanner: Uses `window.location.origin` or `https://localhost:3000`
-- ESP32 Scanner: Uses WiFiClientSecure, auto-detects protocol from config.txt URL (supports both http:// and https://)
-
 **Certificate Trust (One-Time Per Device):**
 1. Navigate to `https://[IP]:3000/gm-scanner/`
-2. Browser shows "not private" warning
-3. "Advanced" → "Proceed to [IP] (unsafe)"
-4. Certificate trusted, NFC now works
-
-**Debugging HTTPS Issues:**
-- Mixed content errors → Check scanner defaults to HTTPS not HTTP
-- Discovery fails → Verify `ENABLE_HTTPS=true` in backend/.env
-- Cert errors → Expected with self-signed, requires one-time trust
+2. Browser shows "not private" warning → "Advanced" → "Proceed to [IP] (unsafe)"
+3. Certificate trusted, NFC now works
 
 ## Environment Variables
 
@@ -256,10 +332,60 @@ ffmpeg -i INPUT.mp4 \
 - Scoreboard: `https://[IP]:3000/scoreboard`
 - VLC Control: `http://[IP]:8080` (password: vlc, internal only)
 
+## Notion Sync Scripts
+
+**Purpose**: Sync Notion Elements database (source of truth) to `ALN-TokenData/tokens.json`
+
+### Key Scripts
+
+**1. `sync_notion_to_tokens.py`:**
+- Queries Notion for Memory Token elements (filters by Basic Type: Image, Audio, Video, Audio+Image)
+- Parses SF_ fields from Description/Text property (regex pattern matching)
+- Extracts display text (everything BEFORE first SF_ field) for NeurAI display generation
+- **Generates NeurAI-styled BMP** if display text exists (240x320, red branding, ASCII logo)
+- Checks filesystem for existing image/audio/video assets
+- Handles video tokens specially (`image: null`, `processingImage: {path}`)
+- Writes sorted tokens.json to `ALN-TokenData/tokens.json`
+
+**2. `compare_rfid_with_files.py`:**
+- Identifies mismatches between Notion SF_RFID values and actual filenames
+- Generates detailed mismatch report
+
+**Notion Description/Text Format:**
+```
+Display text goes here (will be shown on scanners)
+
+SF_RFID: [jaw001]
+SF_ValueRating: [5]
+SF_MemoryType: [Personal]
+SF_Group: [Black Market Ransom (x2)]
+SF_Summary: [Optional summary for backend scoring display]
+```
+
+**tokens.json Schema:**
+```json
+{
+  "tokenId": {
+    "image": "assets/images/{tokenId}.bmp" | null,
+    "audio": "assets/audio/{tokenId}.wav" | null,
+    "video": "{tokenId}.mp4" | null,
+    "processingImage": "assets/images/{tokenId}.bmp" | null,
+    "SF_RFID": "tokenId",
+    "SF_ValueRating": 1-5,
+    "SF_MemoryType": "Personal" | "Business" | "Technical",
+    "SF_Group": "Group Name (xN)" | "",
+    "summary": "Optional summary text"
+  }
+}
+```
+
+**Key Files:** `scripts/sync_notion_to_tokens.py`, `scripts/compare_rfid_with_files.py`
+
 ## Cross-Module Debugging
 
 ### Token Data Sync Issues
 **Symptoms:** Backend reports token not found, scanners show different data
+
 **Debug:**
 1. `git submodule status --recursive` - Check for detached HEAD
 2. `git submodule update --remote --merge` - Sync all submodules
@@ -270,27 +396,29 @@ ffmpeg -i INPUT.mp4 \
 
 ### GM Scanner WebSocket Issues
 **Symptoms:** Connects but no state updates
+
 **Debug:**
 1. `curl -k -X POST https://[IP]:3000/api/admin/auth -d '{"password":"..."}'` - Get JWT
 2. Check browser console for `handshake.auth.token` presence
 3. Verify `sync:full` event received after connection
 4. Check server logs for "GM already authenticated"
 
-**Key Files:** `backend/src/websocket/gmAuth.js:21-164`, `backend/src/middleware/socketAuth.js`
+**Key Files:** `backend/src/websocket/gmAuth.js`, `backend/src/middleware/socketAuth.js`
 
 ### Player Scanner Connectivity Issues
 **Symptoms:** Can't reach orchestrator, scans not logged
+
 **Debug:**
 1. `curl -k https://[IP]:3000/health` - Verify orchestrator running
 2. Check scanner using correct IP (not localhost)
 3. Test endpoint: `curl -k -X POST https://[IP]:3000/api/scan -d '{"tokenId":"test","deviceId":"s1"}'`
 4. `npm run prod:logs` - Check backend logs
-5. `sudo ufw status` - Verify firewall
 
-**Key Files:** `backend/src/routes/scanRoutes.js`, `backend/contracts/openapi.yaml:280-488`
+**Key Files:** `backend/src/routes/scanRoutes.js`, `backend/contracts/openapi.yaml`
 
 ### State Sync After Restart
 **Symptoms:** GM scanner shows stale state after orchestrator restart
+
 **Debug:**
 1. `grep "Session restored from storage" logs/combined.log`
 2. `ls -lh backend/data/session-*.json` - Check persistence file
@@ -302,6 +430,7 @@ ffmpeg -i INPUT.mp4 \
 
 ### Video Playback Issues
 **Symptoms:** Videos queue but don't play, idle loop doesn't resume
+
 **Debug:**
 1. `curl http://localhost:8080/requests/status.json -u :vlc` - VLC connection
 2. `ls -lh backend/public/videos/[filename].mp4` - File exists
@@ -310,11 +439,36 @@ ffmpeg -i INPUT.mp4 \
 
 **Key Files:** `backend/src/services/videoQueueService.js`, `backend/src/services/vlcService.js`
 
+### GM Scanner Admin Panel DataManager Issues
+**Symptoms:** Admin panel history doesn't auto-update, transaction displays show empty data
+**Root Cause:** MonitoringDisplay accessing `window.DataManager` (undefined in ES6 modules)
+
+**Debug:**
+1. Check browser console for "Cannot read property 'transactions' of undefined"
+2. Verify DataManager passed through DI chain: App → NetworkedSession → AdminController → MonitoringDisplay
+3. Check AdminController passes dataManager to MonitoringDisplay constructor
+4. Verify E2E test selectors match actual DOM (`#historyContainer .transaction-card`)
+
+**DI Pattern:**
+```javascript
+// ✅ CORRECT: Use injected dependency
+constructor(client, dataManager) {
+  this.dataManager = dataManager;  // From DI chain
+}
+
+// ❌ WRONG: Undefined in ES6 modules
+constructor(client) {
+  this.dataManager = window.DataManager;  // ALWAYS undefined
+}
+```
+
+**Key Files:** `ALNScanner/src/utils/adminModule.js:427`, `ALNScanner/src/app/adminController.js:52`, `ALNScanner/src/main.js:68-86`
+
 ## Code Style
 
 - ES6 modules with async/await
 - Singleton services with `getInstance()`
 - JSDoc comments for public methods
-- Event-driven architecture with EventEmitter
+- Event-driven architecture (EventEmitter backend, EventTarget frontend)
 - Winston logger (no console.log)
 - Error codes for API responses

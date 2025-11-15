@@ -49,12 +49,15 @@ class TransactionService extends EventEmitter {
   registerSessionListener() {
     // Listen for new session (initialize team scores)
     sessionService.on('session:created', (sessionData) => {
+      // CRITICAL: Clear map FIRST to prevent state leakage from previous sessions
+      // Prevents race condition where session:updated(ended) listener might execute
+      // after teams are added, clearing them immediately
+      this.teamScores.clear();
+
       if (sessionData.teams) {
         // New session created - initialize team scores
         sessionData.teams.forEach(teamId => {
-          if (!this.teamScores.has(teamId)) {
-            this.teamScores.set(teamId, TeamScore.createInitial(teamId));
-          }
+          this.teamScores.set(teamId, TeamScore.createInitial(teamId));
         });
         logger.info('Team scores initialized for new session', {
           teams: sessionData.teams
@@ -642,6 +645,44 @@ class TransactionService extends EventEmitter {
 
     const deletedTx = session.transactions[txIndex];
     const affectedTeamId = deletedTx.teamId;
+
+    // CRITICAL: Remove from duplicate detection registry to allow re-scanning
+    const deviceId = deletedTx.deviceId;
+    const tokenId = deletedTx.tokenId;
+
+    // DEBUG: Log state BEFORE removal
+    const deviceTokensBefore = session.metadata.scannedTokensByDevice?.[deviceId] || [];
+    logger.info('🔍 BEFORE removing from duplicate detection', {
+      deviceId,
+      tokenId,
+      tokensForDevice: deviceTokensBefore.length,
+      tokenExists: deviceTokensBefore.includes(tokenId)
+    });
+
+    // Remove from device-specific tracking (source of truth for duplicate detection)
+    if (session.metadata.scannedTokensByDevice && session.metadata.scannedTokensByDevice[deviceId]) {
+      const index = session.metadata.scannedTokensByDevice[deviceId].indexOf(tokenId);
+      if (index > -1) {
+        session.metadata.scannedTokensByDevice[deviceId].splice(index, 1);
+
+        // DEBUG: Log state AFTER removal
+        logger.info('✅ AFTER removing from duplicate detection', {
+          deviceId,
+          tokenId,
+          tokensForDevice: session.metadata.scannedTokensByDevice[deviceId].length,
+          removedFromIndex: index,
+          canRescan: true
+        });
+      } else {
+        logger.warn('⚠️ Token not found in device registry (already removed?)', {
+          deviceId,
+          tokenId,
+          tokensForDevice: session.metadata.scannedTokensByDevice[deviceId].length
+        });
+      }
+    } else {
+      logger.warn('⚠️ No scannedTokensByDevice registry for device', { deviceId, tokenId });
+    }
 
     // Remove from session
     session.transactions.splice(txIndex, 1);

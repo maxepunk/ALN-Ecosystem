@@ -361,6 +361,25 @@ class PersistenceService {
     this.initialized = false;
     this.storage = null;
   }
+
+  /**
+   * Reset memory storage (for testing with memory storage backend)
+   * CRITICAL: clearSessionData() in tests deletes files, but memory storage
+   * keeps data in RAM. This method clears in-memory state between tests.
+   * @returns {Promise<void>}
+   */
+  async resetMemoryStorage() {
+    await this.ensureInitialized();
+
+    if (this.storage && typeof this.storage.clear === 'function') {
+      await this.storage.clear();
+      logger.debug('Memory storage cleared for testing');
+    } else {
+      logger.warn('Storage backend does not support clear() method', {
+        storageType: this.storage?.constructor.name
+      });
+    }
+  }
 }
 
 // Export singleton instance

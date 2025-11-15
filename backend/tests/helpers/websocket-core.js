@@ -120,6 +120,8 @@ function setupEventCaching(socket) {
   socket.lastGroupCompletion = null;
   socket.lastSessionUpdate = null;
   socket.lastVideoStatus = null;
+  socket.lastScoresReset = null;
+  socket.lastTransactionDeleted = null;
 
   // Persistent listeners
   socket.on('score:updated', (data) => { socket.lastScoreUpdate = data; });
@@ -127,6 +129,8 @@ function setupEventCaching(socket) {
   socket.on('group:completed', (data) => { socket.lastGroupCompletion = data; });
   socket.on('session:update', (data) => { socket.lastSessionUpdate = data; });
   socket.on('video:status', (data) => { socket.lastVideoStatus = data; });
+  socket.on('scores:reset', (data) => { socket.lastScoresReset = data; });
+  socket.on('transaction:deleted', (data) => { socket.lastTransactionDeleted = data; });
 }
 
 /**
@@ -160,13 +164,16 @@ async function waitForEvent(socket, eventOrEvents, predicate = null, timeout = 5
 
     events.forEach(event => {
       const handler = (data) => {
-        if (predicate && !predicate(data)) return;
+        if (predicate && !predicate(data)) return; // Keep listening if predicate fails
 
         clearTimeout(timer);
         handlers.forEach(({ event: e, handler: h }) => socket.off(e, h));
         resolve(data);
       };
-      socket.once(event, handler);
+      // CRITICAL FIX: Use .on() not .once() when predicate filter exists
+      // .once() would consume listener on first event even if predicate fails
+      // Cleanup at line 170 ensures listener removed after match
+      socket.on(event, handler);
       handlers.push({ event, handler });
     });
   });
@@ -185,7 +192,9 @@ function getCachedEvent(socket, eventName) {
     'transaction:new': socket.lastTransactionNew,
     'group:completed': socket.lastGroupCompletion,
     'session:update': socket.lastSessionUpdate,
-    'video:status': socket.lastVideoStatus
+    'video:status': socket.lastVideoStatus,
+    'scores:reset': socket.lastScoresReset,
+    'transaction:deleted': socket.lastTransactionDeleted
   };
   return cacheMap[eventName] || null;
 }
@@ -201,6 +210,8 @@ function clearEventCache(socket) {
   socket.lastGroupCompletion = null;
   socket.lastSessionUpdate = null;
   socket.lastVideoStatus = null;
+  socket.lastScoresReset = null;
+  socket.lastTransactionDeleted = null;
 }
 
 /**

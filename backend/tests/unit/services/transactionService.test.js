@@ -1289,4 +1289,188 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(transactionService.teamScores.size).toBe(0);
     });
   });
+
+  describe('deleteTransaction', () => {
+    it('should remove transaction from duplicate registry', async () => {
+      // Setup: Create session and submit transaction
+      const session = await sessionService.createSession({
+        name: 'Delete Test Session',
+        teams: ['001']
+      });
+
+      const Token = require('../../../src/models/token');
+      const testToken = new Token({
+        id: 'test_delete_token',
+        name: 'Delete Test Token',
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: {
+          image: null,
+          audio: null,
+          video: null,
+          processingImage: null
+        },
+        metadata: {
+          rating: 3
+        }
+      });
+
+      // Initialize token in transactionService
+      transactionService.tokens.set('test_delete_token', testToken);
+
+      const scanRequest = {
+        tokenId: 'test_delete_token',
+        teamId: '001',
+        deviceId: 'GM_DELETE_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      const scanResult = await transactionService.processScan(scanRequest, session, testToken);
+      const transactionId = scanResult.transaction.id;
+
+      // Verify token is in duplicate registry (device-specific tracking)
+      expect(session.metadata.scannedTokensByDevice['GM_DELETE_TEST']).toContain('test_delete_token');
+
+      // Listen for transaction:deleted event
+      const eventPromise = new Promise((resolve) => {
+        transactionService.once('transaction:deleted', resolve);
+      });
+
+      // Execute: Delete transaction
+      const deleteResult = transactionService.deleteTransaction(transactionId, session);
+
+      // Wait for event
+      await eventPromise;
+
+      // Verify: Transaction removed from session
+      expect(session.transactions).toHaveLength(0);
+
+      // CRITICAL: Verify token removed from duplicate registry (allows re-scanning)
+      expect(session.metadata.scannedTokensByDevice['GM_DELETE_TEST']).not.toContain('test_delete_token');
+
+      // Verify: Result structure
+      expect(deleteResult.deletedTransaction).toBeDefined();
+      expect(deleteResult.deletedTransaction.id).toBe(transactionId);
+      expect(deleteResult.deletedTransaction.tokenId).toBe('test_delete_token');
+      expect(deleteResult.updatedScore).toBeDefined();
+    });
+
+    it('should allow re-scanning token after deletion', async () => {
+      // Setup: Create session and submit transaction
+      const session = await sessionService.createSession({
+        name: 'Re-scan Test Session',
+        teams: ['001']
+      });
+
+      const Token = require('../../../src/models/token');
+      const testToken = new Token({
+        id: 'test_rescan_token',
+        name: 'Re-scan Test Token',
+        value: 200,
+        memoryType: 'Personal',
+        mediaAssets: {
+          image: null,
+          audio: null,
+          video: null,
+          processingImage: null
+        },
+        metadata: {
+          rating: 2
+        }
+      });
+
+      // Initialize token in transactionService
+      transactionService.tokens.set('test_rescan_token', testToken);
+
+      const scanRequest = {
+        tokenId: 'test_rescan_token',
+        teamId: '001',
+        deviceId: 'GM_RESCAN_TEST',
+        deviceType: 'gm',
+        mode: 'detective',
+        timestamp: new Date().toISOString()
+      };
+
+      // First scan
+      const firstScan = await transactionService.processScan(scanRequest, session, testToken);
+      expect(firstScan.transaction.status).toBe('accepted');
+
+      const transactionId = firstScan.transaction.id;
+
+      // Attempt second scan (should be duplicate)
+      const duplicateScan = await transactionService.processScan(scanRequest, session, testToken);
+      expect(duplicateScan.transaction.status).toBe('duplicate');
+
+      // Delete the transaction
+      transactionService.deleteTransaction(transactionId, session);
+
+      // Attempt third scan (should be accepted now)
+      const rescan = await transactionService.processScan(scanRequest, session, testToken);
+      expect(rescan.transaction.status).toBe('accepted');
+      expect(rescan.transaction.id).not.toBe(transactionId); // New transaction ID
+    });
+
+    it('should recalculate team scores after deletion', async () => {
+      // Setup: Create session with multiple transactions
+      const session = await sessionService.createSession({
+        name: 'Score Recalc Test Session',
+        teams: ['001']
+      });
+
+      const Token = require('../../../src/models/token');
+      const token1 = new Token({
+        id: 'token_recalc_1',
+        name: 'Token 1',
+        value: 300,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      });
+
+      const token2 = new Token({
+        id: 'token_recalc_2',
+        name: 'Token 2',
+        value: 500,
+        memoryType: 'Business',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 5 }
+      });
+
+      // Initialize tokens in transactionService
+      transactionService.tokens.set('token_recalc_1', token1);
+      transactionService.tokens.set('token_recalc_2', token2);
+
+      // Submit two transactions
+      const scan1 = await transactionService.processScan({
+        tokenId: 'token_recalc_1',
+        teamId: '001',
+        deviceId: 'GM_RECALC_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      }, session, token1);
+
+      const scan2 = await transactionService.processScan({
+        tokenId: 'token_recalc_2',
+        teamId: '001',
+        deviceId: 'GM_RECALC_TEST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      }, session, token2);
+
+      // Get initial score (should be sum of both tokens)
+      const initialScore = transactionService.teamScores.get('001').currentScore;
+
+      // Delete first transaction
+      const deleteResult = transactionService.deleteTransaction(scan1.transaction.id, session);
+
+      // Verify score recalculated (should only include token2 now)
+      const newScore = transactionService.teamScores.get('001').currentScore;
+      expect(newScore).toBeLessThan(initialScore);
+      expect(deleteResult.updatedScore.currentScore).toBe(newScore);
+    });
+  });
 });
