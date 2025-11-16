@@ -188,10 +188,17 @@ class Session {
 
   /**
    * Get recent transactions
-   * @param {number} count - Number of recent transactions to return
+   * @param {number|null} count - Number of recent transactions to return (null = all)
    * @returns {Array} Recent transactions
    */
-  getRecentTransactions(count = 10) {
+  getRecentTransactions(count = null) {
+    // Return all transactions by default (null = all)
+    // CRITICAL: sync:full needs complete transaction history for frontend team details
+    if (count === null) {
+      return this.transactions;
+    }
+
+    // If count specified, return last N transactions (backward compatible)
     const start = Math.max(0, this.transactions.length - count);
     return this.transactions.slice(start);
   }

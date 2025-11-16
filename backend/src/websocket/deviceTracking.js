@@ -85,8 +85,10 @@ function handleSyncRequest(socket) {
     // Get VLC connection status
     const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
 
-    // Enrich recent transactions with token data (for admin panel display)
-    const recentTransactions = (session?.transactions?.slice(-100) || []).map(transaction => {
+    // Enrich ALL transactions with token data (for full state restoration)
+    // CRITICAL: Send ALL transactions, not just recent 100, to support team details screen
+    // after page refresh. Frontend DataManager needs complete transaction history.
+    const recentTransactions = (session?.transactions || []).map(transaction => {
       const token = transactionService.getToken(transaction.tokenId);
       return {
         id: transaction.id,

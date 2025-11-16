@@ -250,17 +250,19 @@ class StateService extends EventEmitter {
           points: transaction.points
         });
 
-        // Keep only last 10 transactions
-        const trimmed = updatedTransactions.slice(-10);
+        // Keep ALL transactions for complete state restoration
+        // CRITICAL: Frontend needs full transaction history for team details after refresh
+        const allTransactions = updatedTransactions;
 
-        logger.info('Updating state with recent transactions', {
-          transactionCount: trimmed.length,
-          tokenIds: trimmed.map(t => t.tokenId)
+        logger.info('Updating state with transactions', {
+          transactionCount: allTransactions.length,
+          // Log only last 3 tokenIds to avoid log spam with 500+ transactions
+          latestTokens: allTransactions.slice(-3).map(t => t.tokenId)
         });
 
         // Update state (debounced for rapid transaction additions)
         // NOTE: This will trigger re-computation and broadcast
-        await this.updateState({ recentTransactions: trimmed });
+        await this.updateState({ recentTransactions: allTransactions });
       } catch (error) {
         logger.error('Failed to update recent transactions', { error });
       }
