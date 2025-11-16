@@ -37,8 +37,8 @@ if not NOTION_TOKEN:
 
 ELEMENTS_DATABASE_ID = "18c2f33d-583f-8020-91bc-d84c7dd94306"
 
-# File paths (relative to ALN-Ecosystem root)
-ECOSYSTEM_ROOT = Path("/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem")
+# File paths (auto-detected from script location)
+ECOSYSTEM_ROOT = Path(__file__).parent.parent  # ALN-Ecosystem root (parent of scripts/)
 ASSETS_IMAGES = ECOSYSTEM_ROOT / "aln-memory-scanner/assets/images"
 ASSETS_AUDIO = ECOSYSTEM_ROOT / "aln-memory-scanner/assets/audio"
 VIDEOS_DIR = ECOSYSTEM_ROOT / "backend/public/videos"

@@ -20,16 +20,23 @@ import os
 from notion_client import Client
 from notion_client.helpers import iterate_paginated_api
 
-# Pre-configured token for About Last Night... databases
-NOTION_TOKEN = "YOUR_NOTION_TOKEN_HERE"
+# Load token from environment variable (REQUIRED)
+NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
 
-# Or use environment variable if you prefer
-# NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "YOUR_NOTION_TOKEN_HERE")
+if not NOTION_TOKEN:
+    raise ValueError(
+        "NOTION_TOKEN environment variable not set.\n"
+        "Set it with: export NOTION_TOKEN='your_token_here'\n"
+        "See SECURITY_NOTICE.md for setup instructions."
+    )
 
-# Initialize client
-notion = Client(auth=NOTION_TOKEN)
+# Initialize client with Notion API version 2022-06-28 (recommended)
+notion = Client(
+    auth=NOTION_TOKEN,
+    notion_version="2022-06-28"  # Use stable API version
+)
 
-# Database IDs
+# About Last Night... Database IDs
 ELEMENTS_DB = "18c2f33d-583f-8020-91bc-d84c7dd94306"
 CHARACTERS_DB = "18c2f33d-583f-8060-a6ab-de32ff06bca2"
 PUZZLES_DB = "1b62f33d-583f-80cc-87cf-d7d6c4b0b265"
@@ -40,14 +47,24 @@ TIMELINE_DB = "1b52f33d-583f-80de-ae5a-d20020c120dd"
 ```javascript
 const { Client } = require("@notionhq/client");
 
-// Pre-configured token for About Last Night... databases
-const NOTION_TOKEN = "YOUR_NOTION_TOKEN_HERE";
+// Load token from environment variable (REQUIRED)
+const NOTION_TOKEN = process.env.NOTION_TOKEN;
 
-// Or use environment variable if you prefer
-// const NOTION_TOKEN = process.env.NOTION_TOKEN || "YOUR_NOTION_TOKEN_HERE";
+if (!NOTION_TOKEN) {
+    throw new Error(
+        "NOTION_TOKEN environment variable not set.\n" +
+        "Set it with: export NOTION_TOKEN='your_token_here'\n" +
+        "See SECURITY_NOTICE.md for setup instructions."
+    );
+}
 
-const notion = new Client({ auth: NOTION_TOKEN });
+// Initialize client with Notion API version 2022-06-28 (recommended)
+const notion = new Client({
+    auth: NOTION_TOKEN,
+    notionVersion: "2022-06-28"  // Use stable API version
+});
 
+// About Last Night... Database IDs
 const ELEMENTS_DB = "18c2f33d-583f-8020-91bc-d84c7dd94306";
 const CHARACTERS_DB = "18c2f33d-583f-8060-a6ab-de32ff06bca2";
 const PUZZLES_DB = "1b62f33d-583f-80cc-87cf-d7d6c4b0b265";

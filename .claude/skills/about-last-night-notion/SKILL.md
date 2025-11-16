@@ -33,47 +33,58 @@ Puzzles ←→ Timeline (implicitly through Elements)
 
 ### Authentication Setup
 
-**⚠️ SECURITY NOTICE:** This skill includes a pre-configured integration token for the About Last Night... databases. This token grants full access to the shared databases. Keep this skill private and do not share it with untrusted parties. See [SECURITY_NOTICE.md](SECURITY_NOTICE.md) for complete security guidance.
+**⚠️ IMPORTANT:** This is a private project skill. You MUST provide your own Notion integration token via environment variable.
 
-**Pre-configured Integration Token:**
-```python
-NOTION_TOKEN = "YOUR_NOTION_TOKEN_HERE"
-```
+**Setting Up Notion Token:**
 
-This token is already configured and ready to use. The integration has been granted access to all four About Last Night... databases.
+1. **Create Integration** at https://www.notion.so/my-integrations
+2. **Grant Access** to all four About Last Night... databases via "..." → "Add connections"
+3. **Set Environment Variable:**
+   ```bash
+   export NOTION_TOKEN="your_notion_integration_token_here"
+   ```
+4. **Or use .env file** in project root:
+   ```
+   NOTION_TOKEN=your_notion_integration_token_here
+   ```
 
-**For Production Use:**
-For production applications or when sharing code, use environment variables instead:
+**Python Usage:**
 ```python
 import os
-NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "YOUR_NOTION_TOKEN_HERE")
+NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
+
+if not NOTION_TOKEN:
+    print("Error: NOTION_TOKEN environment variable not set")
+    exit(1)
 ```
 
-**Creating Your Own Integration (Optional):**
-If you need to create a new integration:
-1. Go to https://www.notion.so/my-integrations
-2. Click "+ New integration"
-3. Give it a name (e.g., "About Last Night Automation")
-4. Select the workspace containing the About Last Night... databases
-5. Copy the Internal Integration Token
-6. Share each database with the integration via "..." → "Add connections"
+### API Version Guidance
 
-### API Version Note
+**⚠️ BREAKING CHANGES in Notion API 2025-09-03:**
 
-**Current Notion API Version:** The latest version is `2025-09-03`, which introduced significant changes:
-- Databases and data sources are now separate concepts
-- Use `/v1/data_sources/{data_source_id}/query` instead of `/v1/databases/{database_id}/query`
-- Properties and schemas are now associated with data sources, not databases directly
+Notion released API version `2025-09-03` with **BREAKING CHANGES** that separate databases and data sources:
+- Databases became containers for multiple data sources
+- `/v1/databases/{id}/query` → `/v1/data_sources/{id}/query`
+- Requires data source ID discovery step before queries
+- Not backwards-compatible with existing code
 
-**For compatibility:** This skill uses the older `2022-06-28` API version in examples, which is more stable and widely documented. Specify the API version in your requests:
+**RECOMMENDATION: Use `2022-06-28` API version** for stability:
+- All examples in this skill use `2022-06-28`
+- The sync script (`scripts/sync_notion_to_tokens.py`) uses `2022-06-28`
+- More stable and widely documented
+- Works with existing About Last Night... integration
 
+**API Version Header:**
 ```python
 headers = {
     "Authorization": f"Bearer {NOTION_TOKEN}",
-    "Notion-Version": "2022-06-28",  # or "2025-09-03" for latest
+    "Notion-Version": "2022-06-28",  # Recommended for this project
     "Content-Type": "application/json"
 }
 ```
+
+**Upgrading to 2025-09-03:**
+If upgrading is required later, see [Notion's Upgrade Guide](https://developers.notion.com/docs/upgrade-guide-2025-09-03) for migration steps. This requires significant code changes across all scripts.
 
 ### Installing SDKs
 
@@ -99,30 +110,57 @@ For detailed schema information including all properties, types, and relationshi
 
 ### 1. Syncing Elements to tokens.json
 
-A common workflow is synchronizing the Elements database to a `tokens.json` file for use in external applications. See [scripts/sync_to_tokens.py](scripts/sync_to_tokens.py) for a complete implementation.
+The primary workflow is synchronizing the Notion Elements database to `ALN-TokenData/tokens.json` for use by the memory token scanners.
 
-**Key considerations:**
-- Filter Elements by "Basic Type" property (Memory Token Image, Memory Token Audio, Memory Token Video)
-- Map Notion properties to JSON structure
-- Handle file attachments and media URLs
-- Use custom "SF_RFID" identifier from Element names or properties
+**Complete Documentation:**
+See [references/sync-workflow.md](references/sync-workflow.md) for comprehensive documentation including:
+- SF_ field format specification (CRITICAL for structuring Notion data)
+- Display text extraction (text shown on scanner screens)
+- NeurAI BMP generation process
+- Asset file matching patterns
+- Complete tokens.json schema with examples
+- Troubleshooting guide
 
-**Example mapping:**
-```python
-# Notion Element → tokens.json entry
+**Implementation:**
+The complete sync script is at `scripts/sync_notion_to_tokens.py` in the project root.
+
+**Quick Start:**
+```bash
+export NOTION_TOKEN="your_token_here"
+python3 scripts/sync_notion_to_tokens.py
+```
+
+**SF_ Field Format in Notion (Brief):**
+Memory Token elements use this format in the Description/Text property:
+
+```
+Display text for scanners (shown on NeurAI screens)
+
+SF_RFID: [tokenId]
+SF_ValueRating: [1-5]
+SF_MemoryType: [Personal|Business|Technical]
+SF_Group: [Group Name (xN)]
+SF_Summary: [Optional backend summary]
+```
+
+**Example tokens.json Entry:**
+```json
 {
-    "534e2b02": {  # SF_RFID from Element
-        "image": "assets/images/534e2b02.jpg",  # From Files & media
-        "audio": "assets/audio/534e2b02.mp3",    # From Files & media
-        "video": None,
-        "processingImage": None,
-        "SF_RFID": "534e2b02",
-        "SF_ValueRating": 3,          # Custom property
-        "SF_MemoryType": "Technical", # Derived from properties
-        "SF_Group": ""                # From Element grouping
-    }
+  "jaw001": {
+    "image": "assets/images/jaw001.bmp",
+    "audio": "assets/audio/jaw001.wav",
+    "video": null,
+    "processingImage": null,
+    "SF_RFID": "jaw001",
+    "SF_ValueRating": 5,
+    "SF_MemoryType": "Personal",
+    "SF_Group": "Evidence Collection (x4)",
+    "summary": "Critical evidence linking suspects"
+  }
 }
 ```
+
+For video tokens, the structure is different (see [references/sync-workflow.md](references/sync-workflow.md) for details).
 
 ### 2. Querying Related Data
 
@@ -373,20 +411,36 @@ For real-time updates, Notion Enterprise supports webhooks, but they're not avai
 
 ## Additional Resources
 
+**Official Notion Resources:**
 - [Notion API Documentation](https://developers.notion.com/)
 - [Notion SDK for Python](https://github.com/ramnes/notion-sdk-py)
 - [Notion SDK for JavaScript](https://github.com/makenotion/notion-sdk-js)
+- [Notion API 2025-09-03 Upgrade Guide](https://developers.notion.com/docs/upgrade-guide-2025-09-03)
+
+**Skill Reference Files:**
+- [references/sync-workflow.md](references/sync-workflow.md) - Complete token sync workflow and SF_ field documentation
 - [references/api-patterns.md](references/api-patterns.md) - Common API patterns and examples
-- [scripts/sync_to_tokens.py](scripts/sync_to_tokens.py) - Complete token sync implementation
+- [references/elements-schema.md](references/elements-schema.md) - Elements database complete schema
+- [references/characters-schema.md](references/characters-schema.md) - Characters database schema
+- [references/puzzles-schema.md](references/puzzles-schema.md) - Puzzles database schema
+- [references/timeline-schema.md](references/timeline-schema.md) - Timeline database schema
+
+**Project Implementation:**
+- `scripts/sync_notion_to_tokens.py` - Complete token sync implementation
+- `scripts/compare_rfid_with_files.py` - Asset mismatch detection tool
 
 ## Quick Reference
 
 ```python
 # Initialize client
+import os
 from notion_client import Client
 
-# Pre-configured token for About Last Night... databases
-NOTION_TOKEN = "YOUR_NOTION_TOKEN_HERE"
+# Get token from environment
+NOTION_TOKEN = os.environ.get("NOTION_TOKEN")
+if not NOTION_TOKEN:
+    raise ValueError("NOTION_TOKEN environment variable required")
+
 notion = Client(auth=NOTION_TOKEN)
 
 # Query database
