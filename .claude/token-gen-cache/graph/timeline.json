@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "id": "evt_001",
+      "date": "2042-01-15",
+      "title": "Board Meeting - NeurAI Demo",
+      "has_tokens": true
+    },
+    {
+      "id": "evt_023",
+      "date": "2042-03-20",
+      "title": "Marcus and Victoria's Final Argument",
+      "has_tokens": false
+    }
+  ]
+}

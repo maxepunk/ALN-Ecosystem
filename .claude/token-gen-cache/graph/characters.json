@@ -1,0 +1,18 @@
+{
+  "characters": [
+    {
+      "id": "char_marcus",
+      "name": "Dr. Marcus Chen",
+      "background": {
+        "overview": "PhD Neuroscience from MIT. Co-founded NeuraCorp with Victoria. Obsessed with being first to market with memory extraction tech."
+      }
+    },
+    {
+      "id": "char_victoria",
+      "name": "Victoria Zhao",
+      "background": {
+        "overview": "Business school at Wharton. Married to Marcus (estranged). Facing intense pressure from investors."
+      }
+    }
+  ]
+}

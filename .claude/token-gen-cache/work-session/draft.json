@@ -1,0 +1,24 @@
+{
+  "session_id": "session-2025-11-16-test",
+  "tokens": [
+    {
+      "status": "in_progress",
+      "token": {
+        "id": "victoria-lawyer-call",
+        "notion_element_name": "Victoria's Lawyer Call - Sale Decision",
+        "timeline_event": "evt_023",
+        "character_pov": "victoria-zhao",
+        "narrative_threads": [
+          "Marriage Troubles",
+          "Funding & Espionage"
+        ],
+        "display_text": "I know what this means for us...",
+        "SF_RFID": "victoria-lawyer-call",
+        "SF_ValueRating": 4,
+        "SF_MemoryType": "Business",
+        "SF_Group": "Marriage Dissolution (x2)",
+        "summary": "Victoria's call to lawyer explaining rationale for company sale"
+      }
+    }
+  ]
+}
