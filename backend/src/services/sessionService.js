@@ -315,15 +315,28 @@ class SessionService extends EventEmitter {
 
   /**
    * Start session timeout timer
+   * Emits a warning when session exceeds expected duration (does NOT auto-end)
    * @private
    */
   startSessionTimeout() {
     this.stopSessionTimeout();
 
     const timeoutMs = config.session.sessionTimeout * 60 * 1000;
-    this.sessionTimeoutTimer = setTimeout(async () => {
-      logger.warn('Session timeout reached', { sessionId: this.currentSession?.id });
-      await this.endSession();
+    this.sessionTimeoutTimer = setTimeout(() => {
+      logger.warn('Session overtime - exceeded expected duration', {
+        sessionId: this.currentSession?.id,
+        expectedDuration: config.session.sessionTimeout,
+        startTime: this.currentSession?.startTime
+      });
+
+      // Emit warning event for GM notification (does NOT end session)
+      this.emit('session:overtime', {
+        sessionId: this.currentSession?.id,
+        sessionName: this.currentSession?.name,
+        startTime: this.currentSession?.startTime,
+        expectedDuration: config.session.sessionTimeout,
+        overtimeDuration: 0 // Will be calculated by listener
+      });
     }, timeoutMs);
   }
 

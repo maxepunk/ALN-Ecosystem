@@ -92,6 +92,30 @@ function setupBroadcastListeners(io, services) {
     logger.info('Broadcasted session:update', { sessionId: session.id, status: session.status });
   });
 
+  // Session overtime warning (does NOT end session, only notifies GMs)
+  addTrackedListener(sessionService, 'session:overtime', (data) => {
+    const now = new Date();
+    const startTime = new Date(data.startTime);
+    const actualDuration = Math.floor((now - startTime) / 1000 / 60); // minutes
+
+    const payload = {
+      sessionId: data.sessionId,
+      sessionName: data.sessionName,
+      startTime: data.startTime,
+      expectedDuration: data.expectedDuration, // minutes
+      actualDuration: actualDuration,
+      overtimeDuration: actualDuration - data.expectedDuration,
+      timestamp: now.toISOString()
+    };
+
+    // Broadcast warning to GM stations only
+    emitToRoom(io, 'gm', 'session:overtime', payload);
+    logger.warn('Broadcasted session:overtime warning to GM stations', {
+      sessionId: data.sessionId,
+      overtimeDuration: payload.overtimeDuration
+    });
+  });
+
   // Device events - broadcast device connections (centralized)
   // Handles BOTH WebSocket (GM) and HTTP (Player) device registrations
   // Replaces manual broadcast from gmAuth.js for consistency
@@ -462,11 +486,12 @@ function setupBroadcastListeners(io, services) {
         scores.push(teamScore.toJSON());
       }
 
+      // Enrich ALL transactions with token data (for full state restoration)
+      // CRITICAL: Send ALL transactions, not just recent 10, to support team details screen
+      // after page refresh. Frontend DataManager needs complete transaction history.
       const recentTransactions = [];
       if (session && session.transactions) {
-        const limit = 10;
-        const start = Math.max(0, session.transactions.length - limit);
-        for (let i = start; i < session.transactions.length; i++) {
+        for (let i = 0; i < session.transactions.length; i++) {
           const transaction = session.transactions[i];
           // Enrich with token data (same as transaction:new broadcast)
           const token = transactionService.getToken(transaction.tokenId);

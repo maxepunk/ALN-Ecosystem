@@ -85,6 +85,7 @@ channels:
           - $ref: '#/components/messages/ScoresReset'
           - $ref: '#/components/messages/VideoStatus'
           - $ref: '#/components/messages/SessionUpdate'
+          - $ref: '#/components/messages/SessionOvertime'
           - $ref: '#/components/messages/GmCommandAck'
           - $ref: '#/components/messages/OfflineQueueProcessed'
           - $ref: '#/components/messages/GroupCompleted'
@@ -1079,7 +1080,7 @@ components:
             example: "2025-10-15T20:15:45.000Z"
 
     # ============================================================================
-    # SESSION MANAGEMENT (1 event)
+    # SESSION MANAGEMENT (2 events)
     # ============================================================================
 
     SessionUpdate:
@@ -1170,6 +1171,72 @@ components:
             format: date-time
             description: Event timestamp
             example: "2025-10-15T19:00:00.100Z"
+
+    SessionOvertime:
+      name: session:overtime
+      title: Session Overtime Warning
+      summary: Notify GMs when session exceeds expected duration
+      description: |
+        Broadcast warning to GM stations when session runs longer than expected duration.
+        **Does NOT automatically end the session** - only provides notification.
+
+        **Functional Requirement**: Session length tracking and GM notification
+        **Decisions Applied**: #2 (wrapped envelope)
+
+        **Trigger**: Fires once when session duration exceeds SESSION_TIMEOUT config (default: 120 minutes)
+        **Action**: GM stations can choose to end session manually via admin panel
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: session:overtime
+            description: Event name
+          data:
+            type: object
+            required:
+              - sessionId
+              - sessionName
+              - startTime
+              - expectedDuration
+              - actualDuration
+              - overtimeDuration
+            properties:
+              sessionId:
+                type: string
+                format: uuid
+                description: Session ID
+                example: "2a2f9d45-5d2d-441d-b32c-52c939f3c103"
+              sessionName:
+                type: string
+                description: Session name
+                example: "About Last Night - Oct 15 2025"
+              startTime:
+                type: string
+                format: date-time
+                description: Session start time
+                example: "2025-10-15T19:00:00.000Z"
+              expectedDuration:
+                type: integer
+                description: Expected session duration in minutes
+                example: 120
+              actualDuration:
+                type: integer
+                description: Actual session duration in minutes when warning triggered
+                example: 120
+              overtimeDuration:
+                type: integer
+                description: Minutes over expected duration
+                example: 0
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T21:00:00.000Z"
 
     # ============================================================================
     # ADMIN COMMANDS (2 events)
