@@ -1,8 +1,58 @@
 {
-  "generated_at": "2025-11-16T19:06:52.471613Z",
+  "generated_at": "2025-11-16T19:11:39.595096Z",
   "summary": {
-    "total_characters": 2,
-    "total_timeline_events": 2,
-    "unmapped_timeline_events": 1
+    "total_characters": 0,
+    "total_narrative_threads": 0,
+    "total_timeline_events": 0,
+    "total_existing_tokens": 0,
+    "unmapped_timeline_events": 0,
+    "orphaned_tokens": 0
+  },
+  "navigation": {
+    "characters": {
+      "path": "graph/characters.json",
+      "index": {}
+    },
+    "narrative_threads": {
+      "path": "graph/narrative-threads.json",
+      "index": {}
+    },
+    "timeline": {
+      "path": "graph/timeline.json",
+      "total_events": 0,
+      "events_with_tokens": 0,
+      "events_without_tokens": 0
+    }
+  },
+  "quick_stats": {
+    "scoring": {
+      "total_points_available": 0,
+      "by_type": {},
+      "by_rating": {}
+    },
+    "groups": {
+      "total_groups": 0,
+      "total_bonus_available": 0
+    }
+  },
+  "files": {
+    "graph": {
+      "characters": "graph/characters.json",
+      "timeline": "graph/timeline.json",
+      "narrative_threads": "graph/narrative-threads.json",
+      "correspondences": "graph/correspondences.json"
+    },
+    "current_state": {
+      "all_tokens": "current-state/all-tokens.json",
+      "tokens_by_timeline": "current-state/tokens-by-timeline.json",
+      "tokens_by_character": "current-state/tokens-by-character.json",
+      "tokens_by_thread": "current-state/tokens-by-thread.json"
+    },
+    "analysis": {
+      "timeline_gaps": "analysis/timeline-gaps.json",
+      "orphaned_tokens": "analysis/orphaned-tokens.json",
+      "narrative_value": "analysis/narrative-value.json",
+      "scoring_distribution": "analysis/scoring-distribution.json"
+    }
   }
 }

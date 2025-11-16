@@ -1,0 +1,20 @@
+{
+  "narrative_critical_tokens": {
+    "total": 0,
+    "distribution_by_value": {
+      "high_4_5": 0,
+      "mid_2_3": 0,
+      "low_1": 0
+    }
+  },
+  "narrative_dead_ends": {
+    "total": 0,
+    "distribution_by_value": {
+      "high_4_5": 0,
+      "mid_2_3": 0,
+      "low_1": 0
+    }
+  },
+  "tokens_with_summaries": 0,
+  "tokens_without_summaries": 0
+}
