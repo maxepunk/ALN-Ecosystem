@@ -210,20 +210,39 @@
            ============================================ */
         .detective-log {
             max-height: 600px;
-            overflow-y: auto;
+            overflow: hidden;
+            position: relative;
         }
 
-        .log-entry {
+        .team-log-group {
             background: rgba(20, 20, 20, 0.6);
             border-radius: 10px;
             padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .team-log-header {
+            font-size: clamp(1.25rem, 2vw, 1.5rem);
+            font-weight: 700;
             margin-bottom: 0.75rem;
+            color: #4ade80;
+        }
+
+        .log-entry {
+            background: rgba(40, 40, 40, 0.6);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
             font-family: 'Courier New', monospace;
             font-size: clamp(0.875rem, 1.5vw, 1rem);
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             gap: 1rem;
+        }
+
+        .log-entry:last-child {
+            margin-bottom: 0;
         }
 
         .log-content {
@@ -238,7 +257,7 @@
             margin-top: 0.5rem;
             font-size: clamp(0.75rem, 1.25vw, 0.875rem);
             font-style: italic;
-            color: #b0b0b0;  /* WCAG AA compliant contrast against dark background */
+            color: #b0b0b0;
             line-height: 1.4;
         }
 
@@ -246,6 +265,30 @@
             opacity: 0.7;
             font-size: clamp(0.75rem, 1.25vw, 0.875rem);
             white-space: nowrap;
+        }
+
+        .pagination-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 0;
+            font-size: clamp(0.875rem, 1.5vw, 1rem);
+            opacity: 0.7;
+        }
+
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .page-dot.active {
+            width: 24px;
+            border-radius: 4px;
+            background: #4ade80;
         }
 
         /* ============================================
@@ -468,6 +511,9 @@
             isConnected: false,
             teamScores: new Map(),
             detectiveScans: [],
+            currentPage: 0,
+            teamsPerPage: 2,
+            pageRotationInterval: null,
         };
 
         // ============================================
@@ -746,24 +792,60 @@
         }
 
         function addDetectiveLogEntry(transaction) {
-            // Prevent duplicates (check by tokenId, not transaction id)
-            if (state.detectiveScans.some(s => s.tokenId === transaction.tokenId)) {
+            // Prevent duplicates (check by tokenId and teamId combination)
+            if (state.detectiveScans.some(s => s.tokenId === transaction.tokenId && s.teamId === transaction.teamId)) {
                 return;
             }
 
             state.detectiveScans.unshift({
                 id: transaction.id,
                 tokenId: transaction.tokenId,
+                teamId: transaction.teamId,
                 timestamp: transaction.timestamp,
                 summary: transaction.summary || null
             });
 
-            // Keep only last 50 entries
-            if (state.detectiveScans.length > 50) {
-                state.detectiveScans = state.detectiveScans.slice(0, 50);
+            // Keep only last 100 entries total
+            if (state.detectiveScans.length > 100) {
+                state.detectiveScans = state.detectiveScans.slice(0, 100);
             }
 
             renderDetectiveLog();
+        }
+
+        function groupScansByTeam() {
+            const teamGroups = new Map();
+
+            state.detectiveScans.forEach(scan => {
+                const teamId = scan.teamId || 'Unknown';
+                if (!teamGroups.has(teamId)) {
+                    teamGroups.set(teamId, []);
+                }
+                teamGroups.get(teamId).push(scan);
+            });
+
+            // Sort teams by ID
+            return Array.from(teamGroups.entries())
+                .sort((a, b) => a[0].localeCompare(b[0]))
+                .map(([teamId, scans]) => ({ teamId, scans }));
+        }
+
+        function startPageRotation() {
+            // Clear any existing interval
+            if (state.pageRotationInterval) {
+                clearInterval(state.pageRotationInterval);
+            }
+
+            // Rotate every 15 seconds
+            state.pageRotationInterval = setInterval(() => {
+                const teamGroups = groupScansByTeam();
+                const totalPages = Math.ceil(teamGroups.length / state.teamsPerPage);
+
+                if (totalPages > 1) {
+                    state.currentPage = (state.currentPage + 1) % totalPages;
+                    renderDetectiveLog();
+                }
+            }, 15000);
         }
 
         function renderDetectiveLog() {
@@ -777,21 +859,61 @@
                 return;
             }
 
-            const html = state.detectiveScans.map(scan => {
-                const time = new Date(scan.timestamp).toLocaleTimeString();
-                const summaryHtml = scan.summary ? `<p class="log-summary">${escapeHtml(scan.summary)}</p>` : '';
-                return `
-                    <div class="log-entry">
-                        <div class="log-content">
-                            <strong>${escapeHtml(scan.tokenId)}</strong>
-                            ${summaryHtml}
+            const teamGroups = groupScansByTeam();
+            const totalPages = Math.ceil(teamGroups.length / state.teamsPerPage);
+
+            // Ensure current page is valid
+            if (state.currentPage >= totalPages) {
+                state.currentPage = 0;
+            }
+
+            // Get teams for current page
+            const startIdx = state.currentPage * state.teamsPerPage;
+            const endIdx = Math.min(startIdx + state.teamsPerPage, teamGroups.length);
+            const pageTeams = teamGroups.slice(startIdx, endIdx);
+
+            // Render team groups
+            const teamsHtml = pageTeams.map(({ teamId, scans }) => {
+                const scansHtml = scans.map(scan => {
+                    const time = new Date(scan.timestamp).toLocaleTimeString();
+                    const summaryHtml = scan.summary ? `<p class="log-summary">${escapeHtml(scan.summary)}</p>` : '';
+                    return `
+                        <div class="log-entry">
+                            <div class="log-content">
+                                <strong>${escapeHtml(scan.tokenId)}</strong>
+                                ${summaryHtml}
+                            </div>
+                            <span class="log-time">${time}</span>
                         </div>
-                        <span class="log-time">${time}</span>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="team-log-group">
+                        <div class="team-log-header">Team ${escapeHtml(teamId)}</div>
+                        ${scansHtml}
                     </div>
                 `;
             }).join('');
 
-            elements.detectiveLog.innerHTML = html;
+            // Render pagination indicator (only if multiple pages)
+            const paginationHtml = totalPages > 1 ? `
+                <div class="pagination-indicator">
+                    <span>Page ${state.currentPage + 1} of ${totalPages}</span>
+                    <div style="display: flex; gap: 0.5rem;">
+                        ${Array.from({ length: totalPages }, (_, i) =>
+                            `<div class="page-dot ${i === state.currentPage ? 'active' : ''}"></div>`
+                        ).join('')}
+                    </div>
+                </div>
+            ` : '';
+
+            elements.detectiveLog.innerHTML = teamsHtml + paginationHtml;
+
+            // Start rotation if we have multiple pages and rotation isn't running
+            if (totalPages > 1 && !state.pageRotationInterval) {
+                startPageRotation();
+            }
         }
 
         function showGroupCompletionNotification(data) {
