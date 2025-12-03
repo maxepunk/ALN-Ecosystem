@@ -68,6 +68,27 @@ function createSocketServer(httpServer) {
         return next(new Error('AUTH_INVALID: Invalid or expired token'));
       }
 
+      // Check for device ID collision (only check CONNECTED devices, allow reconnection)
+      const sessionService = require('../services/sessionService');
+      const currentSession = sessionService.getCurrentSession();
+      if (currentSession) {
+        const connectedDevices = (currentSession.toJSON().connectedDevices || [])
+          .filter(d => d.connectionStatus === 'connected');
+
+        const existingDevice = connectedDevices.find(d =>
+          d.id === deviceId && d.type === 'gm'
+        );
+
+        if (existingDevice) {
+          logger.warn('GM connection rejected: device ID already in use', {
+            socketId: socket.id,
+            deviceId,
+            existingIp: existingDevice.ipAddress
+          });
+          return next(new Error('DEVICE_ID_COLLISION: This device ID is already connected from another location'));
+        }
+      }
+
       // Pre-authenticate socket - store auth data for connection handler
       socket.isAuthenticated = true;
       socket.authRole = decoded.role;

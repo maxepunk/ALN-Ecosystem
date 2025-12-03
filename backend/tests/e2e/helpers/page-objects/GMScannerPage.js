@@ -349,10 +349,17 @@ class GMScannerPage {
     // Wait for connection modal to appear
     await this.connectionModal.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Fill connection form using actual input IDs from index.html (line 1519-1529)
-    // IDs: serverUrl, stationName, gmPassword (NOT name attributes)
+    // Fill server URL (triggers auto-assignment of station name)
     await this.page.fill('#serverUrl', url);
-    await this.page.fill('#stationName', stationName);
+
+    // Wait for station name to be auto-assigned (display updates with GM_Station_N format)
+    // NOTE: stationName parameter is now ignored - station names are auto-assigned
+    await this.page.waitForFunction(() => {
+      const display = document.getElementById('stationNameDisplay');
+      return display && display.dataset.deviceId && display.dataset.deviceId.length > 0;
+    }, { timeout: 5000 });
+
+    // Fill password
     await this.page.fill('#gmPassword', password);
 
     // Submit connection form (triggers handleConnectionSubmit via event listener)

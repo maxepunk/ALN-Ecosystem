@@ -1737,6 +1737,8 @@ components:
                 description: Error code
                 enum:
                   - AUTH_REQUIRED
+                  - AUTH_INVALID
+                  - DEVICE_ID_COLLISION
                   - PERMISSION_DENIED
                   - VALIDATION_ERROR
                   - SESSION_NOT_FOUND
