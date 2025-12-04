@@ -575,7 +575,7 @@ paths:
               batchId: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
               transactions:
                 - tokenId: "534e2b02"
-                  teamId: "001"
+                  teamId: "Team Alpha"
                   deviceId: "PLAYER_SCANNER_01"
                   deviceType: "player"
                   timestamp: "2025-09-30T14:25:00.000Z"
@@ -584,7 +584,7 @@ paths:
                   deviceType: "player"
                   timestamp: "2025-09-30T14:26:30.000Z"
                 - tokenId: "534e2b03"
-                  teamId: "002"
+                  teamId: "Detectives"
                   deviceId: "PLAYER_SCANNER_01"
                   deviceType: "player"
                   timestamp: "2025-09-30T14:27:15.000Z"
@@ -800,14 +800,14 @@ paths:
                     playerDevices: 3
                     totalScans: 47
                 scores:
-                  - teamId: "001"
+                  - teamId: "Team Alpha"
                     currentScore: 11500
                     baseScore: 11000
                     bonusPoints: 500
                     tokensScanned: 8
                     completedGroups: ["jaw_group"]
                     lastUpdate: "2025-10-15T20:15:30.000Z"
-                  - teamId: "002"
+                  - teamId: "Detectives"
                     currentScore: 9200
                     baseScore: 9200
                     bonusPoints: 0
@@ -817,7 +817,7 @@ paths:
                 recentTransactions:
                   - id: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
                     tokenId: "534e2b03"
-                    teamId: "001"
+                    teamId: "Team Alpha"
                     deviceId: "GM_Station_1"
                     mode: "blackmarket"
                     points: 3000
@@ -827,7 +827,7 @@ paths:
                     group: "jaw_group"
                   - id: "419d5341-25e9-4ef4-a0a5-9c3a3ec19b2a"
                     tokenId: "tac001"
-                    teamId: "002"
+                    teamId: "Detectives"
                     deviceId: "GM_Station_2"
                     mode: "detective"
                     points: 100

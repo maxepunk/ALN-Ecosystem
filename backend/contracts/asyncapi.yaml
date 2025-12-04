@@ -606,8 +606,8 @@ components:
               teamId:
                 type: string
                 pattern: '^[A-Za-z0-9 ]{1,30}$'
-                description: Team ID (3-digit zero-padded)
-                example: "001"
+                description: Team ID (alphanumeric, 1-30 characters)
+                example: "Team Alpha"
               deviceId:
                 type: string
                 description: GM Scanner device ID (per Decision 4)
@@ -680,7 +680,7 @@ components:
                 type: string
                 pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
-                example: "001"
+                example: "Team Alpha"
               points:
                 type: integer
                 description: Points awarded (0 if duplicate/error)
@@ -884,7 +884,7 @@ components:
                 type: string
                 pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
-                example: "001"
+                example: "Team Alpha"
               currentScore:
                 type: integer
                 description: Total score (base + bonus)
@@ -1487,7 +1487,7 @@ components:
             data:
               action: score:adjust
               payload:
-                teamId: "001"
+                teamId: "Team Alpha"
                 delta: -500
                 reason: "Penalty for rule violation"
             timestamp: "2025-10-15T20:25:00.000Z"
@@ -1752,7 +1752,7 @@ components:
                 type: string
                 pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
-                example: "001"
+                example: "Team Alpha"
               group:
                 type: string
                 description: Group name/ID
