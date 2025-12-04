@@ -78,6 +78,23 @@ async function handleGmCommand(socket, data, io) {
         logger.info('Session ended by GM', { gmStation: socket.deviceId });
         break;
 
+      case 'session:addTeam': {
+        const { teamId } = payload;
+        if (!teamId) {
+          throw new Error('teamId is required');
+        }
+
+        const session = sessionService.getCurrentSession();
+        if (!session) {
+          throw new Error('No active session');
+        }
+
+        await sessionService.addTeamToSession(teamId);
+        resultMessage = `Team "${teamId}" added to session`;
+        logger.info('Team added to session by GM', { gmStation: socket.deviceId, teamId });
+        break;
+      }
+
       case 'video:play':
         // Resume/play current video (FR 4.2.2 line 898)
         if (config.features.videoPlayback) {

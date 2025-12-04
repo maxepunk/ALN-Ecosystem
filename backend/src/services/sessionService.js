@@ -314,6 +314,36 @@ class SessionService extends EventEmitter {
   }
 
   /**
+   * Add a new team to the current session mid-game
+   * @param {string} teamId - The team identifier (alphanumeric, 1-30 chars)
+   * @returns {Promise<Object>} The created TeamScore object
+   */
+  async addTeamToSession(teamId) {
+    if (!this.currentSession) {
+      throw new Error('No active session');
+    }
+
+    // Check for duplicate team
+    const existingTeam = this.currentSession.scores.find(s => s.teamId === teamId);
+    if (existingTeam) {
+      throw new Error(`Team "${teamId}" already exists in session`);
+    }
+
+    // Create new team score using the TeamScore model
+    const TeamScore = require('../models/teamScore');
+    const newTeamScore = TeamScore.createInitial(teamId);
+
+    // Add to session
+    this.currentSession.scores.push(newTeamScore.toJSON());
+
+    // Persist and broadcast
+    await this.saveCurrentSession();
+    this.emit('session:updated', this.getCurrentSession());
+
+    return newTeamScore;
+  }
+
+  /**
    * Start session timeout timer
    * Emits a warning when session exceeds expected duration (does NOT auto-end)
    * @private
