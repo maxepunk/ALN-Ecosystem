@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git submodule:*)"
+      "Bash(git submodule:*)",
+      "Skill(about-last-night-notion)",
+      "Bash(npm test:*)",
+      "Bash(find:*)",
+      "Skill(superpowers:using-git-worktrees)",
+      "Bash(npx jest:*)",
+      "Bash(npm run build:*)",
+      "Skill(webapp-testing)",
+      "Bash(npx playwright test:*)",
+      "Bash(wc:*)",
+      "Bash(npm run test:contract:*)",
+      "Skill(superpowers:testing-anti-patterns)",
+      "Bash(npm run test:e2e:*)",
+      "Bash(npm run test:integration:*)",
+      "Skill(frontend-design)",
+      "Skill(superpowers:systematic-debugging)",
+      "Bash(npm run test:unit:*)",
+      "Skill(superpowers:finishing-a-development-branch)"
     ],
     "deny": [],
     "ask": []

@@ -197,6 +197,7 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 #### Layer 3: Frontend Client-Side Events (Browser EventTarget)
 **Purpose**: Internal pub/sub within GM Scanner ES6 modules
 **Type**: Browser `EventTarget` with `CustomEvent` (NOT Node.js EventEmitter)
+**Detailed Docs**: See `@ALNScanner/CLAUDE.md` for comprehensive frontend event architecture
 
 **Pattern:** WebSocket receives → Forward as CustomEvent → Consumers update state → Emit to UI
 
@@ -207,15 +208,18 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 4. **DataManager** - `transaction:added`, `transaction:deleted`, `scores:cleared`, `data:cleared`
 5. **StandaloneDataManager** - `standalone:transaction-added`, `standalone:scores-updated`
 6. **AdminController**, **Settings** - Lifecycle events
+7. **ScreenUpdateManager** - Centralized event-to-screen routing (Phase 3)
 
-**Example Flow:**
+**Example Flow (with ScreenUpdateManager):**
 ```
 Backend broadcasts 'transaction:new' (Layer 2)
   → OrchestratorClient receives
   → Dispatches CustomEvent 'message:received' (Layer 3)
   → DataManager.addTransaction()
   → Dispatches 'transaction:added'
-  → UIManager.renderTransactions() (if active screen)
+  → ScreenUpdateManager.onDataUpdate()
+    → Global handlers run (badge, stats)
+    → Screen-specific handler runs IF that screen is active
 ```
 
 **Critical Pattern:**
@@ -229,7 +233,7 @@ DataManager.addTransaction(tx);
 DataManager.addEventListener('transaction:added', handler);
 ```
 
-**Key Files:** `ALNScanner/src/network/orchestratorClient.js`, `ALNScanner/src/core/dataManager.js`, `ALNScanner/src/main.js:68-164`
+**Key Files:** `ALNScanner/src/network/orchestratorClient.js`, `ALNScanner/src/core/dataManager.js`, `ALNScanner/src/ui/ScreenUpdateManager.js`, `ALNScanner/src/main.js`
 
 ### Service Singleton Pattern
 All services in `backend/src/services/` use singleton with `getInstance()`:
@@ -242,6 +246,33 @@ All services in `backend/src/services/` use singleton with `getInstance()`:
 - **discoveryService**: UDP broadcast (port 8888)
 - **offlineQueueService**: Offline scan management
 - **persistenceService**: Disk persistence
+- **displayControlService**: HDMI display mode state machine
+
+### Display Control Architecture
+Manages the HDMI output display modes (idle loop video, scoreboard browser, triggered videos).
+
+**Display Modes:**
+- `IDLE_LOOP`: VLC plays idle-loop.mp4 on continuous loop
+- `SCOREBOARD`: Chromium kiosk displays scoreboard.html
+- `VIDEO`: VLC plays triggered video, returns to previous mode after
+
+**Architecture Layers:**
+```
+displayControlService (State Machine)
+  ├── vlcService (Video playback)
+  └── displayDriver (Browser control)
+```
+
+- **displayControlService**: Orchestrates mode transitions, emits `display:mode:changed` events
+- **vlcService**: Controls VLC via HTTP interface for video playback
+- **displayDriver**: Manages Chromium kiosk process for scoreboard display
+
+**Key Implementation Details:**
+- Chromium requires `--password-store=basic` flag to prevent keyring dialog blocking
+- Scoreboard URL uses auto-detected local IP (not localhost) for CDN resource loading
+- Browser process killed before VLC starts; VLC stopped before browser launches
+
+**Key Files:** `backend/src/services/displayControlService.js`, `backend/src/utils/displayDriver.js`, `backend/src/services/vlcService.js`
 
 ### WebSocket Authentication Flow
 1. HTTP POST `/api/admin/auth` → Returns JWT token
@@ -254,7 +285,7 @@ All services in `backend/src/services/` use singleton with `getInstance()`:
 - Invalid JWT → Connection rejected at handshake (transport-level error)
 - Client receives `connect_error` event (NOT `error` event)
 
-**Key Files:** `backend/src/websocket/gmAuth.js:122`, `backend/src/middleware/socketAuth.js`
+**Key Files:** `backend/src/websocket/gmAuth.js`, `backend/src/middleware/auth.js`
 
 ### Connection Monitoring
 - **WebSocket Clients** (GM Scanner, Scoreboard): Socket.io ping/pong (25s interval, 60s timeout)
@@ -403,7 +434,7 @@ SF_Summary: [Optional summary for backend scoring display]
 3. Verify `sync:full` event received after connection
 4. Check server logs for "GM already authenticated"
 
-**Key Files:** `backend/src/websocket/gmAuth.js`, `backend/src/middleware/socketAuth.js`
+**Key Files:** `backend/src/websocket/gmAuth.js`, `backend/src/middleware/auth.js`
 
 ### Player Scanner Connectivity Issues
 **Symptoms:** Can't reach orchestrator, scans not logged
@@ -462,7 +493,7 @@ constructor(client) {
 }
 ```
 
-**Key Files:** `ALNScanner/src/utils/adminModule.js:427`, `ALNScanner/src/app/adminController.js:52`, `ALNScanner/src/main.js:68-86`
+**Key Files:** `ALNScanner/src/admin/MonitoringDisplay.js`, `ALNScanner/src/app/adminController.js`, `ALNScanner/src/main.js`
 
 ## Code Style
 
