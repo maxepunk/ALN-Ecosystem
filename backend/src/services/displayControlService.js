@@ -14,6 +14,7 @@
 
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
+const displayDriver = require('../utils/displayDriver');
 
 // Display mode constants
 const DisplayMode = {
@@ -98,6 +99,9 @@ class DisplayControlService extends EventEmitter {
     this.pendingVideo = null;
 
     try {
+      // Hide scoreboard browser if it was showing
+      await displayDriver.hideScoreboard();
+
       // Start idle loop via VLC
       if (this.vlcService && this.vlcService.isConnected()) {
         await this.vlcService.returnToIdleLoop();
@@ -121,8 +125,7 @@ class DisplayControlService extends EventEmitter {
   /**
    * Switch to Scoreboard mode
    * Browser fullscreen on scoreboard.html
-   * Note: This signals the mode change - actual browser control
-   * is handled client-side via the display:mode:changed event
+   * Launches Chromium in kiosk mode via displayDriver
    * @returns {Promise<Object>} Result of mode switch
    */
   async setScoreboard() {
@@ -138,6 +141,9 @@ class DisplayControlService extends EventEmitter {
       if (this.vlcService && this.vlcService.isConnected()) {
         await this.vlcService.stop();
       }
+
+      // Launch scoreboard in kiosk browser
+      await displayDriver.showScoreboard();
 
       this.emit('display:mode:changed', {
         mode: DisplayMode.SCOREBOARD,
@@ -166,6 +172,11 @@ class DisplayControlService extends EventEmitter {
     // Store current mode to return to after video
     if (this.currentMode !== DisplayMode.VIDEO) {
       this.previousMode = this.currentMode;
+    }
+
+    // Hide scoreboard if it was showing (video takes priority)
+    if (this.currentMode === DisplayMode.SCOREBOARD) {
+      await displayDriver.hideScoreboard();
     }
 
     this.currentMode = DisplayMode.VIDEO;
