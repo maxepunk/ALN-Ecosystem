@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="google-cast-sdk" content="enabled">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Black Market Scoreboard - About Last Night</title>
     <style>
         /* ============================================
@@ -438,6 +441,99 @@
                 max-width: none;
             }
         }
+
+        /* ============================================
+           KIOSK MODE STYLES (Phase 4.2)
+           Activated via ?kiosk=true URL parameter
+           Optimized for Chromecast and HDMI display
+           ============================================ */
+        body.kiosk-mode {
+            overflow: hidden;
+            cursor: none;
+        }
+
+        body.kiosk-mode .header {
+            padding: 1rem 2rem;
+        }
+
+        body.kiosk-mode .connection-status {
+            display: none;
+        }
+
+        body.kiosk-mode h1 {
+            font-size: clamp(2.5rem, 6vw, 5rem);
+        }
+
+        body.kiosk-mode .subtitle {
+            font-size: clamp(1.25rem, 2.5vw, 2rem);
+        }
+
+        body.kiosk-mode .container {
+            padding: 0.5rem 2rem 1rem;
+        }
+
+        body.kiosk-mode .grid {
+            grid-template-columns: 1fr;
+        }
+
+        /* Hide detective log in kiosk mode - focus on scoreboard */
+        body.kiosk-mode .card:nth-child(2) {
+            display: none;
+        }
+
+        body.kiosk-mode .scoreboard-entry {
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        body.kiosk-mode .scoreboard-rank {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            min-width: 5rem;
+        }
+
+        body.kiosk-mode .team-name {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+        }
+
+        body.kiosk-mode .team-stats {
+            font-size: clamp(1rem, 2vw, 1.5rem);
+        }
+
+        body.kiosk-mode .scoreboard-score {
+            font-size: clamp(2rem, 4vw, 3.5rem);
+        }
+
+        body.kiosk-mode .notification-container {
+            display: none;
+        }
+
+        /* Display mode overlay - shown when display mode is VIDEO */
+        body.display-hidden {
+            display: none !important;
+        }
+
+        .display-mode-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #000;
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .display-mode-overlay.active {
+            display: flex;
+        }
+
+        .display-mode-overlay-text {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 2rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -484,6 +580,11 @@
     <!-- Notification Container -->
     <div class="notification-container" id="notificationContainer"></div>
 
+    <!-- Display Mode Overlay (Phase 4.2 - shown when VLC is playing video) -->
+    <div class="display-mode-overlay" id="displayModeOverlay">
+        <span class="display-mode-overlay-text">Video Playing...</span>
+    </div>
+
     <!-- Socket.io Client Library -->
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 
@@ -514,7 +615,56 @@
             currentPage: 0,
             teamsPerPage: 2,
             pageRotationInterval: null,
+            kioskMode: false,
+            displayMode: 'SCOREBOARD', // IDLE_LOOP, SCOREBOARD, VIDEO
         };
+
+        // ============================================
+        // KIOSK MODE INITIALIZATION (Phase 4.2)
+        // ============================================
+        function initKioskMode() {
+            const urlParams = new URLSearchParams(window.location.search);
+            state.kioskMode = urlParams.get('kiosk') === 'true';
+
+            if (state.kioskMode) {
+                document.body.classList.add('kiosk-mode');
+                console.log('[Scoreboard] Kiosk mode enabled');
+
+                // Auto fullscreen on click (browser requires user gesture)
+                document.body.addEventListener('click', () => {
+                    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.warn('[Scoreboard] Fullscreen request denied:', err);
+                        });
+                    }
+                }, { once: true });
+            }
+        }
+
+        // ============================================
+        // DISPLAY MODE HANDLING (Phase 4.2)
+        // ============================================
+        function handleDisplayMode(data) {
+            const { mode } = data;
+            state.displayMode = mode;
+            const overlay = document.getElementById('displayModeOverlay');
+
+            console.log('[Scoreboard] Display mode changed:', mode);
+
+            switch (mode) {
+                case 'IDLE_LOOP':
+                case 'VIDEO':
+                    // Show overlay when VLC is active (idle loop or video playing)
+                    if (state.kioskMode) {
+                        overlay.classList.add('active');
+                    }
+                    break;
+                case 'SCOREBOARD':
+                    // Hide overlay, show scoreboard
+                    overlay.classList.remove('active');
+                    break;
+            }
+        }
 
         // ============================================
         // DOM ELEMENTS
@@ -525,6 +675,7 @@
             scoreboardContent: document.getElementById('scoreboardContent'),
             detectiveLog: document.getElementById('detectiveLog'),
             notificationContainer: document.getElementById('notificationContainer'),
+            displayModeOverlay: document.getElementById('displayModeOverlay'),
         };
 
         // ============================================
@@ -737,6 +888,13 @@
                         .forEach(addDetectiveLogEntry);
                 }
             });
+
+            // Display mode changes (Phase 4.2 - kiosk mode support)
+            state.socket.on('display:mode', (eventData) => {
+                const data = eventData.data;
+                console.log('📺 Display mode event:', data);
+                handleDisplayMode(data);
+            });
         }
 
         // ============================================
@@ -943,6 +1101,9 @@
         // ============================================
         async function initialize() {
             console.log('🚀 Initializing scoreboard display...');
+
+            // Initialize kiosk mode first (Phase 4.2)
+            initKioskMode();
 
             // Authenticate first
             const authenticated = await authenticate();

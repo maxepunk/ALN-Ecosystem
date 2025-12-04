@@ -348,6 +348,9 @@ function setupBroadcastListeners(io, services) {
 
     emitToRoom(io, 'gm', 'video:status', payload);
     logger.info('Broadcasted video:completed to GM stations', { tokenId: queueItem.tokenId });
+
+    // Also update queue display (queue length changes after video completes)
+    broadcastQueueUpdate();
   });
 
   addTrackedListener(videoQueueService, 'video:failed', (queueItem) => {
@@ -441,9 +444,8 @@ function setupBroadcastListeners(io, services) {
     broadcastQueueUpdate();
   });
 
-  addTrackedListener(videoQueueService, 'video:completed', () => {
-    broadcastQueueUpdate();
-  });
+  // NOTE: video:completed queue update moved to main video:completed handler at line 341
+  // to avoid duplicate listener registration (causes listener accumulation in tests)
 
   addTrackedListener(videoQueueService, 'video:started', () => {
     broadcastQueueUpdate(); // Update queue display with real duration from VLC

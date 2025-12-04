@@ -110,8 +110,9 @@ async function handleGmIdentify(socket, data, io) {
       });
     }
 
-    // Store rooms for tracking
-    socket.rooms = Array.from(socket.rooms);
+    // Store rooms for tracking (converted to array for logging/debugging if needed)
+    // socket.rooms is a Set in Socket.io v4 and is read-only/getter
+    const currentRooms = Array.from(socket.rooms);
 
     // Get current state
     const state = stateService.getCurrentState();
@@ -206,7 +207,11 @@ async function handleGmIdentify(socket, data, io) {
       deviceType: device.type,
     });
   } catch (error) {
-    logger.error('Device identification failed', { error, socketId: socket.id });
+    logger.error('Device identification failed', {
+      message: error.message,
+      stack: error.stack,
+      socketId: socket.id
+    });
     // Pass through the actual validation error message which includes field names
     emitWrapped(socket, 'error', {
       code: 'INVALID_DATA',

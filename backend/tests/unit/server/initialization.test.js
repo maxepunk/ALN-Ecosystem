@@ -28,6 +28,17 @@ describe('Server Initialization Order (Phase 1.3)', () => {
 
     it('should transition to SERVICES_READY after initializeServices', async () => {
       jest.resetModules();
+
+      // Mock app.js to prevent real service initialization
+      jest.doMock('../../../src/app', () => {
+        const mockApp = function () { };
+        mockApp.use = jest.fn();
+        mockApp.locals = {};
+        mockApp.app = mockApp;
+        mockApp.initializeServices = jest.fn().mockResolvedValue();
+        return mockApp;
+      });
+
       const { getServerState, initializeForTest } = require('../../../src/server');
 
       // Simulate service initialization
@@ -51,6 +62,17 @@ describe('Server Initialization Order (Phase 1.3)', () => {
 
     it('should allow setupWebSocketHandlers when services are ready', async () => {
       jest.resetModules();
+
+      // Mock app.js
+      jest.doMock('../../../src/app', () => {
+        const mockApp = function () { };
+        mockApp.use = jest.fn();
+        mockApp.locals = {};
+        mockApp.app = mockApp;
+        mockApp.initializeServices = jest.fn().mockResolvedValue();
+        return mockApp;
+      });
+
       const { setupWebSocketHandlersForTest, initializeForTest } = require('../../../src/server');
 
       // Initialize services first
@@ -67,6 +89,17 @@ describe('Server Initialization Order (Phase 1.3)', () => {
 
     it('should transition to HANDLERS_READY after setupWebSocketHandlers', async () => {
       jest.resetModules();
+
+      // Mock app.js
+      jest.doMock('../../../src/app', () => {
+        const mockApp = function () { };
+        mockApp.use = jest.fn();
+        mockApp.locals = {};
+        mockApp.app = mockApp;
+        mockApp.initializeServices = jest.fn().mockResolvedValue();
+        return mockApp;
+      });
+
       const { getServerState, setupWebSocketHandlersForTest, initializeForTest } = require('../../../src/server');
 
       // Initialize services first
@@ -86,12 +119,31 @@ describe('Server Initialization Order (Phase 1.3)', () => {
 
       const callOrder = [];
 
+      // Mock app.js
+      jest.doMock('../../../src/app', () => {
+        const mockApp = function () { };
+        mockApp.use = jest.fn();
+        mockApp.locals = {};
+        mockApp.app = mockApp;
+        mockApp.initializeServices = jest.fn().mockResolvedValue();
+        return mockApp;
+      });
+
       // Mock functions to track call order
       jest.doMock('../../../src/websocket/broadcasts', () => ({
         setupBroadcastListeners: jest.fn(() => {
           callOrder.push('setupServiceListeners');
         }),
         cleanupBroadcastListeners: jest.fn()
+      }));
+
+      // Mock socket server to avoid binding ports
+      jest.doMock('../../../src/websocket/socketServer', () => ({
+        createSocketServer: jest.fn(() => ({
+          on: jest.fn(),
+          close: jest.fn(cb => cb && cb()),
+          fetchSockets: jest.fn().mockResolvedValue([])
+        }))
       }));
 
       const { startServerForTest } = require('../../../src/server');

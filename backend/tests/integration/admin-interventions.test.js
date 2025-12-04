@@ -57,9 +57,10 @@ describe('Admin Intervention Integration', () => {
       teams: ['001', '002']
     });
 
-    // Connect admin GM and observer GM
-    gmAdmin = await createAuthenticatedScanner(testContext.url, 'GM_ADMIN', 'blackmarket');
-    gmObserver = await createAuthenticatedScanner(testContext.url, 'GM_OBSERVER', 'blackmarket');
+    // Connect admin GM and observer GM with unique IDs to prevent collisions
+    const timestamp = Date.now();
+    gmAdmin = await createAuthenticatedScanner(testContext.url, `GM_ADMIN_${timestamp}`, 'blackmarket');
+    gmObserver = await createAuthenticatedScanner(testContext.url, `GM_OBSERVER_${timestamp}`, 'blackmarket');
   });
 
   afterEach(async () => {
@@ -75,7 +76,7 @@ describe('Admin Intervention Integration', () => {
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'SETUP',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 
@@ -131,7 +132,7 @@ describe('Admin Intervention Integration', () => {
       expect(scoreEvent.data.adminAdjustments).toHaveLength(1);
       expect(scoreEvent.data.adminAdjustments[0].delta).toBe(-500);
       expect(scoreEvent.data.adminAdjustments[0].reason).toBe('Rule violation penalty');
-      expect(scoreEvent.data.adminAdjustments[0].gmStation).toBe('GM_ADMIN');
+      expect(scoreEvent.data.adminAdjustments[0].gmStation).toContain('GM_ADMIN');
 
       // Validate: Service state matches broadcast
       teamScores = transactionService.getTeamScores();
@@ -146,7 +147,7 @@ describe('Admin Intervention Integration', () => {
         tokenId: 'asm001',
         teamId: '002',
         deviceId: 'SETUP',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 
@@ -350,7 +351,7 @@ describe('Admin Intervention Integration', () => {
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'SETUP',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 
@@ -517,7 +518,7 @@ describe('Admin Intervention Integration', () => {
         // First, add videos to the queue to have something to reorder
         const videoQueueService = require('../../src/services/videoQueueService');
         const transactionService = require('../../src/services/transactionService');
-const TestTokens = require('../fixtures/test-tokens');
+        const TestTokens = require('../fixtures/test-tokens');
         const token = transactionService.tokens.get('534e2b03');
         videoQueueService.addToQueue(token, 'GM_ADMIN');
         videoQueueService.addToQueue(token, 'GM_ADMIN');
@@ -632,7 +633,7 @@ const TestTokens = require('../fixtures/test-tokens');
               tokenId: 'asm001',
               teamId: '002',
               deviceId: 'ADMIN_MANUAL',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+              deviceType: 'gm',  // Required by Phase 3 P0.1
               mode: 'blackmarket'
             }
           },
@@ -776,7 +777,7 @@ const TestTokens = require('../fixtures/test-tokens');
         tokenId: 'rat001',
         teamId: '001',
         deviceId: 'SETUP',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 

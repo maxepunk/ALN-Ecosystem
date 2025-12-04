@@ -89,6 +89,8 @@ channels:
           - $ref: '#/components/messages/GmCommandAck'
           - $ref: '#/components/messages/OfflineQueueProcessed'
           - $ref: '#/components/messages/GroupCompleted'
+          - $ref: '#/components/messages/DisplayMode'
+          - $ref: '#/components/messages/DisplayStatus'
           - $ref: '#/components/messages/Error'
     publish:
       summary: Send events to orchestrator
@@ -1080,6 +1082,153 @@ components:
             example: "2025-10-15T20:15:45.000Z"
 
     # ============================================================================
+    # DISPLAY CONTROL (2 events)
+    # Phase 4.2: HDMI Display Control state machine
+    # ============================================================================
+
+    DisplayMode:
+      name: display:mode
+      title: Display Mode Change Broadcast
+      summary: Broadcast when display mode changes
+      description: |
+        Broadcast display mode changes to all GM Scanners and admin clients.
+
+        **Phase 4.2**: HDMI Display Control state machine
+
+        **Display Modes**:
+        - IDLE_LOOP: VLC plays idle-loop.mp4 on continuous loop
+        - SCOREBOARD: Browser displays scoreboard.html in kiosk mode
+        - VIDEO: VLC plays triggered video, returns to previous mode after
+
+        **When Sent**:
+        - GM sends display:idle-loop command → broadcast IDLE_LOOP
+        - GM sends display:scoreboard command → broadcast SCOREBOARD
+        - GM sends display:toggle command → broadcast new mode
+        - Video starts playing → broadcast VIDEO
+        - Video completes → broadcast return to previous mode
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: display:mode
+            description: Event name
+          data:
+            type: object
+            required:
+              - mode
+            properties:
+              mode:
+                type: string
+                enum: [IDLE_LOOP, SCOREBOARD, VIDEO]
+                description: Current display mode
+                example: "SCOREBOARD"
+              changedBy:
+                type: string
+                nullable: true
+                description: Device ID that triggered the change
+                example: "GM_STATION_1"
+              video:
+                type: string
+                nullable: true
+                description: Video filename if mode is VIDEO
+                example: "intro.mp4"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:45.000Z"
+      examples:
+        - name: Switch to Scoreboard
+          payload:
+            event: display:mode
+            data:
+              mode: SCOREBOARD
+              changedBy: GM_STATION_1
+            timestamp: "2025-10-15T20:15:45.000Z"
+        - name: Video Playing
+          payload:
+            event: display:mode
+            data:
+              mode: VIDEO
+              changedBy: GM_STATION_1
+              video: "intro.mp4"
+            timestamp: "2025-10-15T20:16:00.000Z"
+
+    DisplayStatus:
+      name: display:status
+      title: Display Status Response
+      summary: Response to display:status command
+      description: |
+        Response sent to requesting client with current display status.
+
+        **Phase 4.2**: HDMI Display Control state machine
+
+        **Note**: This is a point-to-point response to the requesting socket,
+        NOT a broadcast to all clients.
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: display:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - currentMode
+              - previousMode
+              - timestamp
+            properties:
+              currentMode:
+                type: string
+                enum: [IDLE_LOOP, SCOREBOARD, VIDEO]
+                description: Current display mode
+                example: "IDLE_LOOP"
+              previousMode:
+                type: string
+                enum: [IDLE_LOOP, SCOREBOARD, VIDEO]
+                description: Previous display mode (returned to after VIDEO)
+                example: "IDLE_LOOP"
+              pendingVideo:
+                type: string
+                nullable: true
+                description: Currently playing video filename
+                example: null
+              timestamp:
+                type: string
+                format: date-time
+                description: Status timestamp
+                example: "2025-10-15T20:15:45.000Z"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:45.000Z"
+      examples:
+        - name: Idle Loop Status
+          payload:
+            event: display:status
+            data:
+              currentMode: IDLE_LOOP
+              previousMode: IDLE_LOOP
+              pendingVideo: null
+              timestamp: "2025-10-15T20:15:45.000Z"
+            timestamp: "2025-10-15T20:15:45.000Z"
+
+    # ============================================================================
     # SESSION MANAGEMENT (2 events)
     # ============================================================================
 
@@ -1257,6 +1406,7 @@ components:
         **Command Actions**:
         - Session: create, pause, resume, end
         - Video: play, pause, stop, skip, queue:add, queue:reorder, queue:clear
+        - Display: idle-loop, scoreboard, toggle, status
         - Score: adjust
         - Transaction: delete, create
         - System: reset
@@ -1294,6 +1444,10 @@ components:
                   - video:queue:add
                   - video:queue:reorder
                   - video:queue:clear
+                  - display:idle-loop
+                  - display:scoreboard
+                  - display:toggle
+                  - display:status
                   - score:adjust
                   - score:reset
                   - transaction:delete

@@ -9,6 +9,11 @@ module.exports = {
   // Test environment
   testEnvironment: 'node',
 
+  // Transformation
+  transform: {
+    '^.+\\.js$': 'babel-jest',
+  },
+
   // Setup and teardown
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   globalTeardown: '<rootDir>/jest.globalTeardown.js',
@@ -26,7 +31,10 @@ module.exports = {
   resetModules: false,
 
   // Ignore patterns
-  testPathIgnorePatterns: ['/node_modules/'],
+  // CRITICAL: Allow transformation of ALNScanner (which is outside root but imported)
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@ALNScanner|ALNScanner)/)',
+  ],
 
   // Coverage configuration
   collectCoverageFrom: [

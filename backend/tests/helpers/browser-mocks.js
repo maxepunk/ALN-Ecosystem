@@ -29,47 +29,65 @@ global.window = {
   connectionManager: null,  // Scanner checks this
   sessionModeManager: null, // GM Scanner checks this (line 138)
   queueManager: null,       // GM Scanner checks this (line 143)
-  dispatchEvent: () => {},  // Player Scanner dispatches custom events (orchestratorIntegration.js:204)
-  CustomEvent: class CustomEvent {},  // Player Scanner creates custom events
+  dispatchEvent: () => { },  // Player Scanner dispatches custom events (orchestratorIntegration.js:204)
+  addEventListener: () => { }, // App.js uses this for session:ready events
+  removeEventListener: () => { },
+  CustomEvent: global.CustomEvent || class CustomEvent { },  // Use native CustomEvent if available
   DataManager: null  // Will be set to global.DataManager after it's defined (see below)
 };
 
 // Mock document (minimal - only what scanner uses)
+// Create a reusable mock element factory
+const createMockElement = () => ({
+  // Return mock element with all properties scanner code might set
+  disabled: false,
+  textContent: '',
+  value: '',
+  checked: false,
+  style: {},
+  classList: {
+    contains: () => false,
+    add: () => { },
+    remove: () => { },
+    toggle: () => { }
+  },
+  // Phase 4.1: ConnectionManager._updateGlobalConnectionStatus uses querySelector
+  querySelector: () => createMockElement(),
+  querySelectorAll: () => [],
+  // Event handling
+  addEventListener: () => { },
+  removeEventListener: () => { },
+  dispatchEvent: () => true,
+  // DOM manipulation - MonitoringDisplay uses remove() to remove transaction elements
+  remove: () => { }
+});
+
 global.document = {
   readyState: 'complete',
-  getElementById: () => ({
-    // Return mock element with all properties scanner code might set
-    disabled: false,
-    textContent: '',
-    value: '',
-    checked: false,
-    style: {},
-    classList: {
-      contains: () => false,
-      add: () => {},
-      remove: () => {},
-      toggle: () => {}
-    }
-  }),
+  getElementById: () => createMockElement(),
+  querySelector: () => createMockElement(),
+  querySelectorAll: () => [],
   createElement: (_tag) => ({
     href: '',
     download: '',
-    click: () => {},
-    remove: () => {}
+    click: () => { },
+    remove: () => { },
+    ...createMockElement()
   }),
   body: {
-    appendChild: () => {},
-    removeChild: () => {}
+    appendChild: () => { },
+    removeChild: () => { },
+    ...createMockElement()
   }
 };
 
 // Mock App global (GM Scanner uses App.viewController, App.updateAdminPanel)
 global.App = {
   viewController: {
-    init: () => {},  // App.init() calls this.viewController.init()
-    initAdminModules: () => {}  // OrchestratorClient calls this on connection
+    init: () => { },  // App.init() calls this.viewController.init()
+    initAdminModules: () => { }  // OrchestratorClient calls this on connection
   },
-  updateAdminPanel: () => {}
+  updateAdminPanel: () => { }
 };
 
 // Mock InitializationSteps (Complete refactoring - Phases 1A-1J)
@@ -89,8 +107,15 @@ global.InitializationSteps = {
   },
   // Phase 1E: Session mode manager creation
   createSessionModeManager: (SessionModeManagerClass, windowObj) => {
-    windowObj.sessionModeManager = new SessionModeManagerClass();
+    const instance = new SessionModeManagerClass();
+    if (windowObj) {
+      windowObj.sessionModeManager = instance;
+    } else if (typeof window !== 'undefined') {
+      // Fallback to global window if not passed (legacy support)
+      window.sessionModeManager = instance;
+    }
     global.Debug.log('SessionModeManager initialized');
+    return instance;
   },
   // Phase 1F: View controller initialization
   initializeViewController: (viewController) => {
@@ -162,7 +187,7 @@ global.InitializationSteps = {
     }
     return false;
   },
-  // Phase 1C: Connection restoration decision logic
+  // Phase 1C: Connection restoration decision logic (legacy - non-validating)
   determineInitialScreen: (sessionModeManager) => {
     const savedMode = sessionModeManager.restoreMode();
     if (!savedMode) {
@@ -176,13 +201,83 @@ global.InitializationSteps = {
     }
     return { screen: 'teamEntry', action: null };
   },
-  // Phase 1C: Connection restoration side effects
-  applyInitialScreenDecision: (decision, sessionModeManager, uiManager, showWizardFn) => {
+  // Phase 4.1: Connection restoration with full validation
+  // In test environment, skip HTTP validation - return autoConnect for networked mode
+  validateAndDetermineInitialScreen: async (sessionModeManager) => {
+    const savedMode = sessionModeManager.restoreMode();
+
+    // No saved mode - show game mode selection
+    if (!savedMode) {
+      return { screen: 'gameModeScreen', action: null, savedMode: null, validationResult: null };
+    }
+
+    // Standalone mode - no validation needed
+    if (savedMode === 'standalone') {
+      return { screen: 'teamEntry', action: 'initStandalone', savedMode, validationResult: null };
+    }
+
+    // Networked mode - skip HTTP validation in tests, assume valid
+    // Tests set up localStorage with valid token and orchestrator URL
+    const token = global.localStorage.getItem('aln_auth_token');
+    const orchestratorUrl = global.localStorage.getItem('aln_orchestrator_url');
+
+    if (token && orchestratorUrl) {
+      // In test environment, skip HTTP validation and return valid
+      // The test server is running and session is created in beforeEach
+      global.Debug.log('[Mock InitSteps] Skipping HTTP validation in test environment');
+      return {
+        screen: 'loading',
+        action: 'autoConnect',
+        savedMode,
+        validationResult: { valid: true, reason: null, details: { tokenValid: true, orchestratorReachable: true, sessionExists: true } }
+      };
+    }
+
+    // Missing token or URL - show wizard
+    return {
+      screen: 'gameModeScreen',
+      action: 'clearModeAndShowWizard',
+      savedMode,
+      validationResult: { valid: false, reason: 'Missing token or orchestrator URL' }
+    };
+  },
+  // Phase 4.1: Connection restoration side effects (updated signature)
+  applyInitialScreenDecision: async (decision, sessionModeManager, uiManager, showWizardFn, initNetworkedModeFn = null) => {
+    console.log('DEBUG [Mock applyInitialScreenDecision]: decision.action =', decision.action);
+    console.log('DEBUG [Mock applyInitialScreenDecision]: initNetworkedModeFn is', initNetworkedModeFn ? 'PROVIDED' : 'NULL');
     if (decision.action === 'clearModeAndShowWizard') {
       global.Debug.warn('Networked mode restored but connection lost - showing wizard');
       sessionModeManager.clearMode();
       uiManager.showScreen(decision.screen);
       showWizardFn();
+    } else if (decision.action === 'initStandalone') {
+      global.Debug.log('Restoring standalone mode');
+      sessionModeManager.setMode('standalone');
+      uiManager.showScreen(decision.screen);
+    } else if (decision.action === 'autoConnect') {
+      global.Debug.log('Valid token found - attempting auto-connect');
+      console.log('DEBUG [Mock applyInitialScreenDecision]: Entering autoConnect branch');
+      uiManager.showScreen(decision.screen);
+
+      try {
+        sessionModeManager.setMode('networked');
+        console.log('DEBUG [Mock applyInitialScreenDecision]: Mode set to networked');
+        if (initNetworkedModeFn) {
+          console.log('DEBUG [Mock applyInitialScreenDecision]: Calling initNetworkedModeFn...');
+          await initNetworkedModeFn();
+          console.log('DEBUG [Mock applyInitialScreenDecision]: initNetworkedModeFn completed successfully');
+          global.Debug.log('Auto-connect successful - showing team entry');
+          uiManager.showScreen('teamEntry');
+        } else {
+          throw new Error('initNetworkedModeFn not provided for auto-connect');
+        }
+      } catch (error) {
+        global.Debug.log('Auto-connect failed - showing wizard');
+        console.error('DEBUG [Mock applyInitialScreenDecision]: Auto-connect error:', error);
+        sessionModeManager.clearMode();
+        uiManager.showScreen('gameModeScreen');
+        showWizardFn();
+      }
     } else {
       global.Debug.log(`Showing initial screen: ${decision.screen}`);
       uiManager.showScreen(decision.screen);
@@ -194,9 +289,9 @@ global.InitializationSteps = {
 // Preserve existing jest mocks if they exist (for Debug logging verification tests)
 if (!global.Debug) {
   global.Debug = {
-    log: () => {},
-    warn: () => {},
-    error: () => {}
+    log: () => { },
+    warn: () => { },
+    error: () => { }
   };
 }
 
@@ -226,7 +321,7 @@ global.Settings = {
     global.localStorage.setItem('mode', value);
   },
 
-  load: function() {
+  load: function () {
     // Load from localStorage if available
     const storedMode = global.localStorage.getItem('mode');
     if (storedMode) {
@@ -234,15 +329,44 @@ global.Settings = {
     }
   },
 
-  save: function() {
+  save: function () {
     global.localStorage.setItem('mode', this._mode);
     global.localStorage.setItem('deviceId', this.deviceId);
   }
 };
 
 // Load REAL TokenManager (scanner's token database module)
+// CRITICAL: Mock DataManager BEFORE requiring TokenManager (which likely imports it)
+// This ensures App and TokenManager use our mock with isTokenScanned/calculateTokenValue methods
+if (typeof jest !== 'undefined') {
+  console.log('DEBUG: jest is defined in browser-mocks.js, applying DataManager mock');
+  jest.doMock('../../../ALNScanner/src/core/dataManager', () => {
+    console.log('DEBUG: DataManager mock factory called');
+    return {
+      DataManager: class MockDataManager {
+        constructor() {
+          console.log('DEBUG: MockDataManager constructor called');
+          // Return the global mock object (proxy) defined below
+          // This allows us to control state and methods from tests
+          return global.DataManager;
+        }
+      }
+    };
+  });
+} else {
+  console.log('DEBUG: jest is NOT defined in browser-mocks.js');
+}
+
 // This will be populated with real tokens.json data in test setup
-const TokenManager = require('../../../ALNScanner/src/core/tokenManager');
+// This will be populated with real tokens.json data in test setup
+const TokenManagerModule = require('../../../ALNScanner/src/core/tokenManager');
+// Handle ES6 default export
+const TokenManager = TokenManagerModule.default || TokenManagerModule;
+
+// Mock buildGroupInventory if it doesn't exist (it might depend on DOM/other things)
+if (!TokenManager.buildGroupInventory) {
+  TokenManager.buildGroupInventory = () => ({});
+}
 global.TokenManager = TokenManager;
 
 // Mock DataManager global (App.recordTransaction uses DataManager.markTokenAsScanned)
@@ -272,11 +396,23 @@ global.DataManager = {
     this.backendScores.clear();
   },
 
-  addTransaction: () => {},
-  loadTransactions: () => {},  // App.init() loads transaction history
-  loadScannedTokens: () => {},  // App.init() loads scanned tokens
-  saveScannedTokens: () => {},  // Called by orchestratorClient.js:305 on transaction:deleted
-  clearSession: () => {},
+  addTransaction: () => { },
+  loadTransactions: () => { },  // App.init() loads transaction history
+  loadScannedTokens: () => { },  // App.init() loads scanned tokens
+  saveScannedTokens: () => { },  // Called by orchestratorClient.js:305 on transaction:deleted
+  clearSession: () => { },
+
+  // Called by MonitoringDisplay when transaction:deleted event received
+  removeTransaction(transactionId) {
+    const index = this.transactions.findIndex(t => t.id === transactionId);
+    if (index !== -1) {
+      const removed = this.transactions.splice(index, 1)[0];
+      // Also remove from scannedTokens if present
+      if (removed?.tokenId) {
+        this.scannedTokens.delete(removed.tokenId);
+      }
+    }
+  },
 
   // Called by OrchestratorClient when new session detected (sync:full or session:update events)
   // Matches ALNScanner/src/core/dataManager.js:191-207
@@ -298,6 +434,11 @@ global.DataManager = {
 
   calculateTokenValue: () => 0,
   backendScores: new Map(),
+
+  // Called by MonitoringDisplay when scores:reset event received
+  clearBackendScores() {
+    this.backendScores.clear();
+  },
 
   // Called by OrchestratorClient when score:updated event received
   updateTeamScoreFromBackend(scoreData) {
@@ -338,19 +479,21 @@ global.window.DataManager = global.DataManager;
 // Mock UIManager global (App.recordTransaction uses UIManager.updateSessionStats, etc.)
 // In browser, loaded via separate <script> tag
 global.UIManager = {
-  updateSessionStats: () => {},
-  showTokenResult: () => {},
-  updateHistoryBadge: () => {},
-  showError: () => {},
-  showWarning: () => {},
-  showInfo: () => {},
-  showScreen: () => {},
-  updateModeDisplay: () => {},
-  updateTeamDisplay: () => {},
-  updateHistoryStats: () => {},
-  renderTransactions: () => {},
-  showGroupCompletionNotification: () => {},
-  init: () => {}
+  updateSessionStats: () => { },
+  showTokenResult: () => { },
+  updateHistoryBadge: () => { },
+  showError: () => { },
+  showWarning: () => { },
+  showInfo: () => { },
+  showScreen: () => { },
+  updateModeDisplay: () => { },
+  updateTeamDisplay: () => { },
+  updateHistoryStats: () => { },
+  renderTransactions: () => { },
+  showGroupCompletionNotification: () => { },
+  showToast: () => { },  // Phase 4.1: Used by _initializeNetworkedMode for connection status
+  hideToast: () => { },  // Phase 4.1: Used to hide connection toast
+  init: () => { }
 };
 
 // Ensure console exists (Player Scanner uses console)

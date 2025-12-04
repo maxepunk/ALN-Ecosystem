@@ -29,13 +29,18 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
 
   beforeEach(async () => {
     await resetAllServices();
-    await sessionService.createSession({
+    const session = await sessionService.createSession({
       name: 'App Flow Test',
       teams: ['001', '002']
     });
 
     // Clear DataManager scanned tokens between tests
     global.DataManager.clearScannedTokens();
+
+    // CRITICAL FIX: Pre-set currentSessionId to match the session
+    // This prevents MonitoringDisplay.updateAllDisplays from calling resetForNewSession
+    // when it receives sync:full with the session ID (which would clear scannedTokens)
+    global.DataManager.currentSessionId = session.id;
 
     scanner = await createAuthenticatedScanner(testContext.url, 'GM_APP_TEST', 'blackmarket');
 
@@ -172,8 +177,10 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
     it('should queue transaction when connection lost', async () => {
       scanner.App.currentTeamId = '001';
 
-      // Simulate connection loss
+      // Simulate connection loss (set BOTH socket.connected AND client.isConnected)
+      // NetworkedQueueManager checks client.isConnected first
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
 

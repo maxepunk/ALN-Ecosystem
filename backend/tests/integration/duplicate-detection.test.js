@@ -393,8 +393,12 @@ describe('Duplicate Detection Integration', () => {
       expect(new1gm2.data.transaction.status).toBe('accepted');
 
       // Set up listeners for second transaction
-      const gm1NewPromise2 = waitForEvent(gm1, 'transaction:new');
-      const gm2NewPromise2 = waitForEvent(gm2, 'transaction:new');
+      // CRITICAL: Use predicate to filter for the SPECIFIC transaction (teamId '002')
+      // Without predicate, cache returns stale first transaction (teamId '001')
+      // This is condition-based waiting - the correct pattern per testing anti-patterns
+      const isTeam002Transaction = (data) => data?.data?.transaction?.teamId === '002';
+      const gm1NewPromise2 = waitForEvent(gm1, 'transaction:new', isTeam002Transaction);
+      const gm2NewPromise2 = waitForEvent(gm2, 'transaction:new', isTeam002Transaction);
 
       // Second scan (duplicate)
       gm2.emit('transaction:submit', {

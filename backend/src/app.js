@@ -19,6 +19,7 @@ const transactionService = require('./services/transactionService');
 const videoQueueService = require('./services/videoQueueService');
 const vlcService = require('./services/vlcService');
 const offlineQueueService = require('./services/offlineQueueService');
+const displayControlService = require('./services/displayControlService');
 
 // Import routes (6 files after health extraction)
 const scanRoutes = require('./routes/scanRoutes');
@@ -175,6 +176,10 @@ async function initializeServices() {
         await vlcService.init();
         // Initialize idle loop after VLC is connected
         await vlcService.initializeIdleLoop();
+
+        // Initialize display control service with VLC and video queue dependencies
+        displayControlService.init({ vlcService, videoQueueService });
+        logger.info('Display control service initialized');
       } catch (error) {
         logger.warn('VLC service initialization failed - continuing without video playback', error);
         // Don't throw - allow system to run without VLC

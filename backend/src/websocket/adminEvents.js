@@ -11,6 +11,7 @@ const offlineQueueService = require('../services/offlineQueueService');
 const stateService = require('../services/stateService');
 const videoQueueService = require('../services/videoQueueService');
 const vlcService = require('../services/vlcService');
+const displayControlService = require('../services/displayControlService');
 const { emitWrapped } = require('./eventWrapper');
 
 // Mutex flag to prevent concurrent system resets
@@ -31,7 +32,7 @@ async function handleGmCommand(socket, data, io) {
       });
       return;
     }
-    
+
     // Unwrap envelope (data.data contains actual command data per AsyncAPI contract)
     const commandData = data.data || data;
     const action = commandData.action;
@@ -142,6 +143,73 @@ async function handleGmCommand(socket, data, io) {
         logger.info('Video queue cleared by GM', { gmStation: socket.deviceId });
         break;
 
+      case 'display:idle-loop': {
+        // Switch display to idle loop mode (Phase 4.2)
+        const idleResult = await displayControlService.setIdleLoop();
+        if (idleResult.success) {
+          // Broadcast mode change to all clients
+          const eventData = {
+            mode: 'IDLE_LOOP',
+            changedBy: socket.deviceId
+          };
+          emitWrapped(socket, 'display:mode', eventData);
+          emitWrapped(socket.broadcast, 'display:mode', eventData);
+          resultMessage = 'Display switched to idle loop';
+        } else {
+          throw new Error(idleResult.error || 'Failed to switch to idle loop');
+        }
+        logger.info('Display set to idle loop by GM', { gmStation: socket.deviceId });
+        break;
+      }
+
+      case 'display:scoreboard': {
+        // Switch display to scoreboard mode (Phase 4.2)
+        const scoreboardResult = await displayControlService.setScoreboard();
+        if (scoreboardResult.success) {
+          // Broadcast mode change to all clients
+          const eventData = {
+            mode: 'SCOREBOARD',
+            changedBy: socket.deviceId
+          };
+
+          emitWrapped(socket, 'display:mode', eventData);
+          emitWrapped(socket.broadcast, 'display:mode', eventData);
+          resultMessage = 'Display switched to scoreboard';
+        } else {
+          throw new Error(scoreboardResult.error || 'Failed to switch to scoreboard');
+        }
+        logger.info('Display set to scoreboard by GM', { gmStation: socket.deviceId });
+        break;
+      }
+
+      case 'display:toggle': {
+        // Toggle between idle loop and scoreboard modes (Phase 4.2)
+        const toggleResult = await displayControlService.toggleMode();
+        if (toggleResult.success) {
+          // Broadcast mode change to all clients
+          const eventData = {
+            mode: toggleResult.mode,
+            changedBy: socket.deviceId
+          };
+          emitWrapped(socket, 'display:mode', eventData);
+          emitWrapped(socket.broadcast, 'display:mode', eventData);
+          resultMessage = `Display toggled to ${toggleResult.mode.toLowerCase()}`;
+        } else {
+          throw new Error(toggleResult.error || 'Failed to toggle display mode');
+        }
+        logger.info('Display toggled by GM', { gmStation: socket.deviceId, newMode: toggleResult.mode });
+        break;
+      }
+
+      case 'display:status': {
+        // Get current display mode status (Phase 4.2)
+        const displayStatus = displayControlService.getStatus();
+        emitWrapped(socket, 'display:status', displayStatus);
+        resultMessage = `Display mode: ${displayStatus.currentMode}`;
+        logger.info('Display status requested by GM', { gmStation: socket.deviceId, status: displayStatus });
+        break;
+      }
+
       case 'score:adjust':
         // Adjust team score by delta (service will emit score:updated → broadcasts.js wraps it)
         const { teamId, delta, reason } = payload;
@@ -233,7 +301,9 @@ async function handleGmCommand(socket, data, io) {
             stateService,
             transactionService,
             videoQueueService,
-            offlineQueueService
+            offlineQueueService,
+            displayControlService,
+            vlcService
           });
 
           resultMessage = 'System reset complete - ready for new session';

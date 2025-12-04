@@ -271,7 +271,15 @@ async function resetAllServicesForTesting(io, services, options = {}) {
 
   // Use production performSystemReset() for consistency
   const { performSystemReset } = require('../../src/services/systemReset');
-  await performSystemReset(io, services);
+
+  // Ensure we have all services
+  const fullServices = {
+    ...services,
+    displayControlService: services.displayControlService || require('../../src/services/displayControlService'),
+    vlcService: services.vlcService || require('../../src/services/vlcService')
+  };
+
+  await performSystemReset(io, fullServices);
 
   // Capture AFTER state for diagnostics
   if (enableDiagnostics) {

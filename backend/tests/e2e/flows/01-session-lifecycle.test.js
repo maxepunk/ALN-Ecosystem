@@ -355,8 +355,10 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     await waitForEvent(socket, 'session:update', null, 5000);
 
-    // Now pause it
-    const pauseUpdatePromise = waitForEvent(socket, 'session:update', null, 5000);
+    // Now pause it - use predicate to wait for 'paused' status specifically
+    // This avoids getting stale 'active' events from cache
+    const isPaused = (data) => data?.data?.status === 'paused';
+    const pauseUpdatePromise = waitForEvent(socket, 'session:update', isPaused, 5000);
 
     socket.emit('gm:command', {
       event: 'gm:command',
@@ -459,9 +461,12 @@ test.describe('Session Lifecycle E2E Tests', () => {
     });
 
     await waitForEvent(socket, 'gm:command:ack', null, 5000);
+    // Consume the session:update from creation to clear cache
+    await waitForEvent(socket, 'session:update', null, 5000);
 
-    // Wait for session:update when session ends
-    const endUpdatePromise = waitForEvent(socket, 'session:update', null, 5000);
+    // Wait for session:update when session ends - use predicate for 'ended' status
+    const isEnded = (data) => data?.data?.status === 'ended';
+    const endUpdatePromise = waitForEvent(socket, 'session:update', isEnded, 5000);
 
     // End session
     socket.emit('gm:command', {
@@ -690,7 +695,8 @@ test.describe('Session Lifecycle E2E Tests', () => {
       const response = await axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
         tokenId: 'sof002',
         teamId: '001',
-        deviceId: 'TEST_DEVICE'
+        deviceId: 'TEST_DEVICE',
+        deviceType: 'player'  // Required by playerScanRequestSchema
       });
 
       // Transaction might be queued or rejected
@@ -761,7 +767,8 @@ test.describe('Session Lifecycle E2E Tests', () => {
       const response = await axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
         tokenId: 'sof002',
         teamId: '001',
-        deviceId: 'TEST_DEVICE'
+        deviceId: 'TEST_DEVICE',
+        deviceType: 'player'  // Required by playerScanRequestSchema
       });
 
       // Should be rejected or error
@@ -821,13 +828,15 @@ test.describe('Session Lifecycle E2E Tests', () => {
     });
 
     const scanPromises = [];
-    const realTokens = ['sof002', 'rat002', 'mab002', 'hos001', 'tac001'];
+    // Use tokens from test-tokens.json (E2E fixtures)
+    const realTokens = ['sof002', 'rat002', 'mab002', 'asm031', 'fli031'];
     for (let i = 0; i < 5; i++) {
       scanPromises.push(
         axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
           tokenId: realTokens[i],
           teamId: '001',
-          deviceId: 'TEST_DEVICE'
+          deviceId: 'TEST_DEVICE',
+          deviceType: 'player'  // Required by playerScanRequestSchema
         })
       );
       // Small delay between scans
@@ -839,8 +848,9 @@ test.describe('Session Lifecycle E2E Tests', () => {
     // Wait for transactions to process
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // End session
-    const endUpdatePromise = waitForEvent(socket, 'session:update', null, 5000);
+    // End session - use predicate to wait for 'ended' status specifically
+    const isEnded = (data) => data?.data?.status === 'ended';
+    const endUpdatePromise = waitForEvent(socket, 'session:update', isEnded, 5000);
 
     socket.emit('gm:command', {
       event: 'gm:command',
@@ -928,7 +938,8 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const response = await axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
       tokenId: 'sof002',
       teamId: '001',
-      deviceId: 'TEST_DEVICE'
+      deviceId: 'TEST_DEVICE',
+      deviceType: 'player'  // Required by playerScanRequestSchema
     });
 
     expect(response.status).toBe(200);

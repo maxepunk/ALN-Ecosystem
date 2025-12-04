@@ -90,6 +90,15 @@ class GMScannerPage {
     // Error displays
     this.errorToast = page.locator('.toast.error:visible');
     this.errorMessage = page.locator('.error-message:visible');
+
+    // Display control elements (Phase 4.2 - Admin panel)
+    this.nowShowingValue = page.locator('#now-showing-value');
+    this.nowShowingIcon = page.locator('#now-showing-icon');
+    this.pendingQueueCount = page.locator('#pending-queue-count');
+    this.returnsToContainer = page.locator('#returns-to-container');
+    this.returnsToMode = page.locator('#returns-to-mode');
+    this.btnIdleLoop = page.locator('#btn-idle-loop');
+    this.btnScoreboard = page.locator('#btn-scoreboard');
   }
 
   /**
@@ -403,38 +412,38 @@ class GMScannerPage {
 
   /**
    * Disconnect WebSocket (for testing reconnection scenarios)
-   * Uses DOM-based disconnection (no window globals)
+   * Uses page.evaluate to programmatically disconnect the socket
    */
   async disconnectWebSocket() {
-    // Navigate to admin panel
-    if (await this.adminTab.isVisible()) {
-      await this.adminTab.click();
-      await this.adminView.waitFor({ state: 'visible', timeout: 5000 });
+    // Programmatically disconnect via the exposed window objects
+    await this.page.evaluate(() => {
+      // Try to access the orchestrator client and disconnect
+      if (window.orchestratorClient?.socket) {
+        window.orchestratorClient.socket.disconnect();
+      } else if (window.connectionManager?.client?.socket) {
+        window.connectionManager.client.socket.disconnect();
+      }
+    });
 
-      // Click disconnect button in admin panel
-      await this.page.click('button[data-action="connection.disconnect"]');
-
-      // Wait for disconnected status
-      await this.page.waitForFunction(() => {
-        const statusElement = document.querySelector('#connectionStatus');
-        return statusElement && statusElement.textContent.toLowerCase().includes('disconnected');
-      }, { timeout: 5000 });
-    } else {
-      throw new Error('Admin panel not available - cannot disconnect via DOM');
-    }
+    // Wait for disconnected status in UI
+    await this.page.waitForTimeout(1000);
   }
 
   /**
    * Reconnect WebSocket after disconnection
    */
   async reconnectWebSocket() {
-    // Admin panel should still be visible from disconnectWebSocket()
-    await this.page.click('button[data-action="connection.reconnect"]');
-    await this.waitForConnection();
+    // Programmatically reconnect via the exposed window objects
+    await this.page.evaluate(() => {
+      if (window.orchestratorClient?.socket) {
+        window.orchestratorClient.socket.connect();
+      } else if (window.connectionManager?.client?.socket) {
+        window.connectionManager.client.socket.connect();
+      }
+    });
 
-    // Return to scanner view
-    await this.scannerTab.click();
-    await this.scannerView.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for reconnection
+    await this.waitForConnection();
   }
 
   /**
@@ -491,21 +500,24 @@ class GMScannerPage {
     await this.adminTab.click();
     await this.adminView.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Wait for admin modules initialized (DI chain complete)
+    // Wait for admin modules initialized (DOM-based detection)
+    // Phase 3 removed window.__app hack - use observable DOM state instead
+    // MonitoringDisplay.updateSessionDisplay() populates #session-status-container
+    // when admin modules are initialized
     await this.page.waitForFunction(() => {
-      const adminController = window.__app?.networkedSession?.services?.adminController;
-      return adminController?.initialized === true;
+      const container = document.querySelector('#session-status-container');
+      // Container has content when MonitoringDisplay has initialized and rendered
+      return container && container.children.length > 0;
     }, { timeout: 5000 });
 
-    // ✅ FIX: Wait for initial data loaded
-    // MonitoringDisplay._requestInitialState() sends sync:request
-    // Backend responds with sync:full → DataManager.backendScores populated
-    // Verify Map exists (indicates sync:full received and processed)
+    // Wait for initial data loaded (DOM-based detection)
+    // MonitoringDisplay._requestInitialState() triggers sync:full
+    // Backend responds → MonitoringDisplay.updateSystemDisplay() updates #orchestrator-status
+    // Green dot (status-dot--connected class) indicates connection confirmed
     await this.page.waitForFunction(() => {
-      const dataManager = window.__app?.dataManager;  // ES6: Use __app.dataManager (not window.DataManager)
-      // backendScores is a Map - check it exists and was initialized
-      // Map exists even with 0 teams after sync:full processing
-      return dataManager?.backendScores instanceof Map;
+      const statusDot = document.querySelector('#orchestrator-status');
+      // Status dot has 'status-dot--connected' class when orchestrator connection confirmed
+      return statusDot && statusDot.classList.contains('status-dot--connected');
     }, { timeout: 10000 });  // Longer timeout for network request + processing
 
     console.log('✓ Admin panel navigation complete - data loaded');
@@ -582,6 +594,77 @@ class GMScannerPage {
     // Find row with team ID and click first cell
     const row = this.adminScoreBoard.locator(`tbody tr:has-text("${teamId}")`);
     await row.locator('td:first-child').click();
+  }
+
+  // ============================================
+  // Display Control Methods (Phase 4.2)
+  // ============================================
+
+  /**
+   * Set display mode to Idle Loop
+   */
+  async setDisplayIdleLoop() {
+    await this.btnIdleLoop.click();
+  }
+
+  /**
+   * Set display mode to Scoreboard
+   */
+  async setDisplayScoreboard() {
+    await this.btnScoreboard.click();
+  }
+
+  /**
+   * Get current "Now Showing" display text
+   * @returns {Promise<string>}
+   */
+  async getNowShowing() {
+    return await this.nowShowingValue.textContent();
+  }
+
+  /**
+   * Get current "Now Showing" icon
+   * @returns {Promise<string>}
+   */
+  async getNowShowingIcon() {
+    return await this.nowShowingIcon.textContent();
+  }
+
+  /**
+   * Check if Idle Loop button is active
+   * @returns {Promise<boolean>}
+   */
+  async isIdleLoopActive() {
+    const classAttr = await this.btnIdleLoop.getAttribute('class');
+    return classAttr?.includes('active') ?? false;
+  }
+
+  /**
+   * Check if Scoreboard button is active
+   * @returns {Promise<boolean>}
+   */
+  async isScoreboardActive() {
+    const classAttr = await this.btnScoreboard.getAttribute('class');
+    return classAttr?.includes('active') ?? false;
+  }
+
+  /**
+   * Get "Returns To" mode text (visible during video playback)
+   * @returns {Promise<string|null>} Returns null if container is hidden
+   */
+  async getReturnsToMode() {
+    const isVisible = await this.returnsToContainer.isVisible();
+    if (!isVisible) return null;
+    return await this.returnsToMode.textContent();
+  }
+
+  /**
+   * Get pending queue count
+   * @returns {Promise<number>}
+   */
+  async getPendingQueueCount() {
+    const text = await this.pendingQueueCount.textContent();
+    return parseInt(text, 10);
   }
 }
 

@@ -37,14 +37,40 @@ function createTrackedSocket(url, options = {}) {
 
 /**
  * Wait for a socket event with timeout
+ * Supports optional predicate for condition-based waiting (avoids testing anti-patterns)
+ *
  * @param {Socket} socket - Socket instance
  * @param {string|Array<string>} eventOrEvents - Event name or array of event names
- * @param {number} timeout - Timeout in ms
+ * @param {Function|number} [predicateOrTimeout] - Optional predicate function OR timeout (backward compat)
+ * @param {number} [timeout=5000] - Timeout in ms (only if 3rd arg is predicate)
  * @returns {Promise} Resolves with event data or rejects on timeout
+ *
+ * @example
+ * // Simple wait (backward compatible)
+ * await waitForEvent(socket, 'transaction:new');
+ * await waitForEvent(socket, 'transaction:new', 3000);
+ *
+ * // Condition-based wait (avoids cache returning stale data)
+ * const isTeam002 = (data) => data?.data?.transaction?.teamId === '002';
+ * await waitForEvent(socket, 'transaction:new', isTeam002);
+ * await waitForEvent(socket, 'transaction:new', isTeam002, 5000);
  */
-function waitForEvent(socket, eventOrEvents, timeout = 5000) {
-  // Delegate to shared core implementation (checks cache first)
-  return coreWaitForEvent(socket, eventOrEvents, null, timeout);
+function waitForEvent(socket, eventOrEvents, predicateOrTimeout, timeout = 5000) {
+  // Detect if 3rd arg is predicate (function) or timeout (number) for backward compatibility
+  let predicate = null;
+  let actualTimeout = timeout;
+
+  if (typeof predicateOrTimeout === 'function') {
+    predicate = predicateOrTimeout;
+    // timeout uses 4th arg or default
+  } else if (typeof predicateOrTimeout === 'number') {
+    actualTimeout = predicateOrTimeout;
+    // predicate stays null (backward compat: 3rd arg was timeout)
+  }
+  // else: predicateOrTimeout is undefined, use defaults
+
+  // Delegate to shared core implementation (checks cache first, respects predicate)
+  return coreWaitForEvent(socket, eventOrEvents, predicate, actualTimeout);
 }
 
 /**
@@ -64,31 +90,67 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
 
   const socket = typeof socketOrUrl === 'string'
     ? createTrackedSocket(socketOrUrl, {
-        auth: {
-          token,
-          deviceId: deviceId,
-          deviceType: deviceType,
-          version: '1.0.0'
-        }
-      })
+      auth: {
+        token,
+        deviceId: deviceId,
+        deviceType: deviceType,
+        version: '1.0.0'
+      }
+    })
     : socketOrUrl;
 
   try {
     // Setup event caching using shared core (prevents race conditions)
     setupEventCaching(socket);
 
-    // Wait for connection (handshake auth + device registration happens automatically)
-    if (!socket.connected) {
-      await waitForEvent(socket, 'connect', timeout);
-    }
-
-    // For GM devices, verify we received sync:full
+    // For GM devices, use condition-based waiting for BOTH connect AND sync:full
+    // This mirrors the reliable pattern from connectWithAuth() in websocket-core.js
     if (deviceType === 'gm') {
-      // Give sync:full a moment to arrive after connect (server emits during connection)
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Create promise that resolves when BOTH connect and sync:full received
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error('Timeout waiting for sync:full event after GM connection'));
+        }, timeout);
 
-      if (!socket.lastSyncFull) {
-        throw new Error('Failed to receive sync:full event after GM connection');
+        let syncData = null;
+        let connectReceived = socket.connected;
+
+        const checkComplete = () => {
+          if (connectReceived && syncData) {
+            clearTimeout(timer);
+            socket.lastSyncFull = syncData;
+            resolve();
+          }
+        };
+
+        // Register sync:full listener BEFORE connection completes
+        socket.once('sync:full', (data) => {
+          syncData = data;
+          checkComplete();
+        });
+
+        if (!socket.connected) {
+          socket.once('connect', () => {
+            connectReceived = true;
+            checkComplete();
+          });
+        } else {
+          // Already connected, check if sync:full already cached
+          if (socket.lastSyncFull) {
+            clearTimeout(timer);
+            resolve();
+          }
+        }
+
+        socket.once('connect_error', (error) => {
+          clearTimeout(timer);
+          reject(new Error(`Connection failed: ${error.message}`));
+        });
+      });
+    } else {
+      // Non-GM devices: just wait for connection
+      if (!socket.connected) {
+        await waitForEvent(socket, 'connect', timeout);
       }
     }
 
@@ -214,15 +276,45 @@ function testDelay(ms) {
  * @param {string} password - Admin password
  * @returns {Promise<Object>} Fully initialized scanner with App API exposed
  */
-async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = process.env.ADMIN_PASSWORD || 'admin') {
-  // 1. Import ALL required scanner modules
-  const OrchestratorClient = require('../../../ALNScanner/src/network/orchestratorClient');
-  const NetworkedQueueManager = require('../../../ALNScanner/src/network/networkedQueueManager');
-  const SessionModeManager = require('../../../ALNScanner/src/app/sessionModeManager');
-  const Settings = require('../../../ALNScanner/src/ui/settings');
-  const App = require('../../../ALNScanner/src/app/app');
+// Track how many scanners have been created (for debugging multi-scanner tests)
+let scannerCreationCount = 0;
 
-  // 2. Authenticate via HTTP
+async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', password = process.env.ADMIN_PASSWORD || 'admin') {
+  scannerCreationCount++;
+  console.log(`\n========== CREATING SCANNER #${scannerCreationCount}: ${deviceId} ==========`);
+
+  // 1. Import ALL required scanner modules
+  const { OrchestratorClient } = require('../../../ALNScanner/src/network/orchestratorClient');
+  const { NetworkedQueueManager } = require('../../../ALNScanner/src/network/networkedQueueManager');
+  const { SessionModeManager } = require('../../../ALNScanner/src/app/sessionModeManager');
+  const Settings = require('../../../ALNScanner/src/ui/settings').default;
+
+  // CRITICAL: Import App CLASS (not default singleton) to inject dependencies
+  // This allows us to inject our mock DataManager without module mocking hacks
+  const { App: AppClass } = require('../../../ALNScanner/src/app/app');
+
+  // 2. Initialize browser mocks (if not already done)
+  // (No explicit browser mock initialization code here, assuming it's done elsewhere or not needed for this specific change)
+
+  // 3. Create App instance with INJECTED dependencies
+  // We inject the global.DataManager mock which has the required test methods
+  const App = new AppClass({
+    dataManager: global.DataManager,
+    // Inject other globals to ensure consistency
+    settings: Settings,
+    uiManager: global.UIManager,
+    // CRITICAL: Inject StandaloneDataManager (App.init expects it to exist)
+    standaloneDataManager: new global.StandaloneDataManager(),
+    // CRITICAL: Inject TokenManager (we populated global.TokenManager.database)
+    tokenManager: global.TokenManager,
+    // CRITICAL: Inject showConnectionWizard (App expects it for fallback)
+    showConnectionWizard: global.showConnectionWizard || (() => console.log('Mock Wizard Shown')),
+    // CRITICAL: Inject InitializationSteps to use mock (Phase 4.1)
+    // This allows validateAndDetermineInitialScreen to skip HTTP validation in tests
+    initializationSteps: global.InitializationSteps
+  });
+
+  // 4. Authenticate via HTTP FIRST (to get valid token for App auto-connect)
   const fetch = require('node-fetch');
   const authResponse = await fetch(`${url}/api/admin/auth`, {
     method: 'POST',
@@ -236,37 +328,40 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
 
   const { token } = await authResponse.json();
 
-  // 3. Create and configure OrchestratorClient
-  const client = new OrchestratorClient({
-    url,
-    deviceId,
-    version: '1.0.0'
-  });
-  client.token = token;
+  // Spy on console.error to catch swallowed errors
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    process.stdout.write(`[CONSOLE ERROR] ${args.join(' ')}\n`);
+    originalConsoleError(...args);
+  };
 
-  // 4. Connect WebSocket and wait for connection
-  client.connect();
+  // Set token in localStorage so App finds it
+  global.localStorage.setItem('aln_auth_token', token);
+  // ... (remove throw)
 
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error('WebSocket connection timeout'));
-    }, 5000);
+  // 5. Initialize Settings
+  // CRITICAL: Set deviceId in localStorage BEFORE Settings.load()
+  // Settings.load() reads from localStorage.getItem('deviceId') and App.init()
+  // calls loadSettings() which calls Settings.load() again.
+  // If we only set Settings.deviceId after load(), App.init() will overwrite it.
+  global.localStorage.setItem('deviceId', deviceId);
+  global.localStorage.setItem('mode', mode);
 
-    client.socket.once('connect', () => {
-      clearTimeout(timeout);
-      resolve();
-    });
+  Settings.load();  // Now reads our unique deviceId from localStorage
 
-    client.socket.once('connect_error', (error) => {
-      clearTimeout(timeout);
-      reject(new Error(`WebSocket connection failed: ${error.message}`));
-    });
-  });
+  console.log(`DEBUG: Settings after load - deviceId: ${Settings.deviceId}, mode: ${Settings.mode}`);
 
-  // 5. Load RAW tokens directly from ALN-TokenData (same as production scanner does)
+  // CRITICAL: Set session mode to 'networked' so App auto-connects
+  // This aligns with SessionModeManager.restoreMode() logic
+  global.localStorage.setItem('gameSessionMode', 'networked');
+
+  // CRITICAL: Set orchestrator URL for Phase 4.1 state validation
+  // validateAndDetermineInitialScreen() uses this to validate connectivity
+  global.localStorage.setItem('aln_orchestrator_url', url);
+
+  // 6. Load RAW tokens directly from ALN-TokenData (same as production scanner does)
+  // CRITICAL: Must be loaded BEFORE App.init() because App.init() calls loadTokenDatabase
   // Scanner expects raw format (SF_Group, SF_MemoryType, SF_ValueRating)
-  // Server uses transformed format (group, memoryType, valueRating)
-  // Production: Scanner fetches raw tokens.json, Server transforms separately
   const fs = require('fs');
   const path = require('path');
   const rawTokensPath = path.join(__dirname, '../../../ALN-TokenData/tokens.json');
@@ -277,57 +372,67 @@ async function createAuthenticatedScanner(url, deviceId, mode = 'blackmarket', p
   // Build group inventory for bonus calculations (scanner does this on load)
   global.TokenManager.groupInventory = global.TokenManager.buildGroupInventory();
 
-  // 6. Initialize SessionModeManager (CRITICAL - scanner checks this)
-  global.window.sessionModeManager = new SessionModeManager();
-  global.window.sessionModeManager.mode = 'networked';
-  global.window.sessionModeManager.locked = true;
-
-  // 7. Configure Settings (CRITICAL - used in recordTransaction)
-  Settings.deviceId = deviceId;
-  Settings.mode = mode;
-
-  // Make Settings globally available (App module expects it)
-  global.Settings = Settings;
-
-  // 8. Create NetworkedQueueManager (CRITICAL - recordTransaction calls this)
-  global.window.queueManager = new NetworkedQueueManager(client);
-
-  // 9. Set ConnectionManager reference (scanner checks this at line 503)
-  global.window.connectionManager = {
-    client: client,
-    isConnected: true,
-    deviceId: deviceId,
-    mode: mode
+  // CRITICAL: Mock loadDatabase to prevent overwriting our pre-loaded data
+  // The real loadDatabase tries to fetch() which fails in Node environment
+  // We already loaded the data above, so we just return true
+  global.TokenManager.loadDatabase = async () => {
+    console.log('DEBUG: Mock loadDatabase called - returning true (data pre-loaded)');
+    return true;
   };
 
-  // 10. Return fully wired scanner with App API exposed + cleanup
+  // 7. Initialize App (CRITICAL: Creates SessionModeManager and verifies TokenManager)
+  // App.init() calls loadTokenDatabase, which will now use our mock
+  // App.init() -> initializationSteps -> applyInitialScreenDecision -> _initializeNetworkedMode
+  // This sequence creates App.networkedSession and connects the socket
+  console.log('DEBUG: About to call App.init()');
+  console.log('DEBUG: App.initializationSteps is:', App.initializationSteps === global.InitializationSteps ? 'MOCK' : 'REAL');
+  console.log('DEBUG: localStorage gameSessionMode:', global.localStorage.getItem('gameSessionMode'));
+  console.log('DEBUG: localStorage aln_orchestrator_url:', global.localStorage.getItem('aln_orchestrator_url'));
+  console.log('DEBUG: localStorage aln_auth_token:', global.localStorage.getItem('aln_auth_token') ? 'SET' : 'NOT SET');
+  await App.init();
+  console.log('DEBUG: After App.init(), networkedSession:', App.networkedSession ? 'CREATED' : 'NULL');
+
+  // 8. Extract Client from App
+  if (!App.networkedSession) {
+    // If App didn't connect, maybe verify why.
+    // For now, assume it worked or throw.
+    throw new Error('App.networkedSession not initialized. Auto-connect failed?');
+  }
+
+  const client = App.networkedSession.getService('client');
+
+  // Wait for client to be connected (App.init awaits _initializeNetworkedMode which awaits connection)
+  if (!client.socket || !client.socket.connected) {
+    // It might be connecting. Wait for it?
+    // _initializeNetworkedMode awaits networkedSession.initialize() which awaits connectionManager.connect()
+    // So it should be connected.
+  }
+
+  // 10. Make Settings globally available (App module expects it)
+  // Note: Settings.deviceId and Settings.mode are now set before App.init()
+  global.Settings = Settings;
+
+  // 11. Get connectionManager for tests to access token
+  const connectionManager = App.networkedSession.getService('connectionManager');
+
+  // 12. Return fully wired scanner with App API exposed + cleanup
   return {
-    client,                       // OrchestratorClient instance
-    socket: client.socket,        // Direct socket access (for event listeners)
-    App,                          // REAL scanner App module (call App.recordTransaction)
-    Settings,                     // Settings reference (for assertions)
-    sessionModeManager: global.window.sessionModeManager,
-    queueManager: global.window.queueManager,
-    DataManager: global.DataManager,  // For test spies (App.recordTransaction uses DataManager)
+    client,                       // REAL OrchestratorClient used by App
+    connectionManager,            // ConnectionManager (has token property)
+    socket: client.socket,        // REAL socket used by App
+    App,                          // REAL scanner App module
+    Settings,                     // Settings reference
+    sessionModeManager: App.sessionModeManager, // Get from App
+    queueManager: App.networkedSession.getService('queueManager'), // Get from Session
+    DataManager: global.DataManager,
 
-    // CRITICAL: Provide cleanup for resources we created
-    // Following first principles: creator provides lifecycle management
     cleanup: async () => {
-      // Disconnect client (calls socket.disconnect() + clears timers + clears token)
-      if (client) {
-        client.disconnect();
+      // Destroy App session (cleans up services, disconnects socket)
+      if (App.networkedSession) {
+        await App.networkedSession.destroy();
       }
-
-      // Clean up global state we modified
-      if (global.window.queueManager) {
-        global.window.queueManager = null;
-      }
-      if (global.window.sessionModeManager) {
-        global.window.sessionModeManager = null;
-      }
-      if (global.window.connectionManager) {
-        global.window.connectionManager = null;
-      }
+      // Clean up globals
+      if (global.window.queueManager) global.window.queueManager = null; // Just in case
     }
   };
 }
@@ -358,6 +463,23 @@ function createPlayerScanner(url, deviceId) {
   return client;
 }
 
+/**
+ * Send a gm:command event using wrapped envelope pattern (AsyncAPI Decision #2)
+ * @param {Socket} socket - Socket instance
+ * @param {string} action - Command action (e.g., 'display:idle-loop', 'session:create')
+ * @param {Object} payload - Command payload
+ */
+function sendGmCommand(socket, action, payload = {}) {
+  socket.emit('gm:command', {
+    event: 'gm:command',
+    data: {
+      action,
+      payload
+    },
+    timestamp: new Date().toISOString()
+  });
+}
+
 module.exports = {
   createTrackedSocket,
   waitForEvent,
@@ -366,6 +488,7 @@ module.exports = {
   cleanupSockets,
   disconnectAndWait,
   testDelay,
+  sendGmCommand,              // Send gm:command with wrapped envelope
   createAuthenticatedScanner, // GM Scanner - uses real scanner code
   createPlayerScanner,        // Player Scanner - uses real scanner code
 };

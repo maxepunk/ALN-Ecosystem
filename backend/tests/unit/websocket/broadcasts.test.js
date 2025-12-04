@@ -384,8 +384,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       // Emit scores:reset from transactionService
       mockTransactionService.emit('scores:reset', { teamsReset: ['001', '002'] });
 
-      // Verify scores:reset broadcast to GM room
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      // Verify scores:reset broadcast to session-scoped room (prevents cross-session contamination)
+      // CRITICAL: Uses session-scoped room like transaction:deleted, NOT 'gm' room
+      expect(mockIo.to).toHaveBeenCalledWith('session:test-session');
       expect(mockIo.emit).toHaveBeenCalledWith(
         'scores:reset',
         expect.objectContaining({

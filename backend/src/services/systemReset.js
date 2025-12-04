@@ -38,7 +38,9 @@ async function performSystemReset(io, services) {
     stateService,
     transactionService,
     videoQueueService,
-    offlineQueueService
+    offlineQueueService,
+    displayControlService, // Optional (may be undefined in some contexts)
+    vlcService           // Optional
   } = services;
 
   logger.info('Starting system reset');
@@ -74,8 +76,13 @@ async function performSystemReset(io, services) {
   await sessionService.reset();
   await stateService.reset();
   transactionService.reset();
-  videoQueueService.clearQueue();
+  videoQueueService.reset();
   await offlineQueueService.reset();
+
+  if (displayControlService) {
+    displayControlService.reset();
+  }
+
   logger.debug('All services reset');
 
   // Step 5: Re-initialize infrastructure
@@ -87,6 +94,16 @@ async function performSystemReset(io, services) {
     offlineQueueService,
     transactionService
   });
+  logger.debug('Broadcast listeners re-initialized');
+
+  // Re-initialize display control service (needs to re-attach listeners)
+  if (displayControlService && vlcService) {
+    displayControlService.init({
+      vlcService,
+      videoQueueService
+    });
+    logger.debug('Display control service re-initialized');
+  }
   logger.debug('Broadcast listeners re-initialized');
 
   // Re-initialize cross-service listeners

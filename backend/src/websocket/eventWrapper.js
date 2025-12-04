@@ -25,6 +25,7 @@ function wrapEvent(eventName, data) {
  */
 function emitWrapped(emitter, eventName, data) {
   const wrappedEvent = wrapEvent(eventName, data);
+
   emitter.emit(eventName, wrappedEvent);
 }
 

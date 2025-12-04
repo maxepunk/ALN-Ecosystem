@@ -12,17 +12,14 @@ const logger = require('../utils/logger');
 const sessionService = require('./sessionService');
 const videoQueueService = require('./videoQueueService');  // Phase 1.1.6: moved from lazy require
 
+const listenerRegistry = require('../websocket/listenerRegistry');
+
 class TransactionService extends EventEmitter {
   constructor() {
     super();
     this.recentTransactions = [];
     this.tokens = new Map();  // Expose for testing
     this.teamScores = new Map();
-    this.sessionListenerRegistered = false;
-
-    // Register session event listener immediately
-    this.registerSessionListener();
-    this.sessionListenerRegistered = true;
   }
 
   /**
@@ -40,6 +37,9 @@ class TransactionService extends EventEmitter {
       tokenCount: this.tokens.size,
       teamCount: this.teamScores.size
     });
+
+    // Register session listener (moved from constructor to support reset lifecycle)
+    this.registerSessionListener();
   }
 
   /**
@@ -60,7 +60,8 @@ class TransactionService extends EventEmitter {
           this.teamScores.set(teamId, TeamScore.createInitial(teamId));
         });
         logger.info('Team scores initialized for new session', {
-          teams: sessionData.teams
+          teams: sessionData.teams,
+          count: this.teamScores.size
         });
       }
     });
@@ -75,6 +76,39 @@ class TransactionService extends EventEmitter {
     });
 
     logger.info('Session event listener registered');
+  }
+
+  // ... (skip to adjustTeamScore)
+
+  /**
+   * Adjust team score by delta (for admin interventions)
+   * @param {string} teamId - Team ID to adjust
+   * @param {number} delta - Amount to adjust (can be positive or negative)
+   * @param {string} reason - Reason for adjustment
+   * @param {string} gmStation - GM station making the adjustment
+   * @returns {TeamScore} Updated team score
+   */
+  adjustTeamScore(teamId, delta, reason = '', gmStation = 'unknown') {
+    const teamScore = this.teamScores.get(teamId);
+    if (!teamScore) {
+      throw new Error(`Team ${teamId} not found`);
+    }
+
+    teamScore.adjustScore(delta, gmStation, reason);
+
+    logger.info('Team score adjusted', {
+      teamId,
+      delta,
+      gmStation,
+      reason,
+      newScore: teamScore.currentScore,
+      adjustmentCount: teamScore.adminAdjustments.length
+    });
+
+    // Emit unwrapped domain event (broadcasts.js will wrap it)
+    this.emitScoreUpdate(teamScore);
+
+    return teamScore;
   }
 
   /**
@@ -240,8 +274,8 @@ class TransactionService extends EventEmitter {
     // Check if this token was already claimed by ANY team (GM scanners only)
     for (const existing of session.transactions || []) {
       if (existing.tokenId === transaction.tokenId &&
-          existing.status === 'accepted' &&
-          existing.sessionId === session.id) {
+        existing.status === 'accepted' &&
+        existing.sessionId === session.id) {
         // Token already claimed - reject it (first-come-first-served)
         logger.info('Duplicate scan detected (first-come-first-served)', {
           tokenId: transaction.tokenId,
@@ -266,8 +300,8 @@ class TransactionService extends EventEmitter {
     // First-come-first-served - find which team claimed this token first
     for (const existing of session.transactions || []) {
       if (existing.tokenId === transaction.tokenId &&
-          existing.status === 'accepted' &&
-          existing.sessionId === session.id) {
+        existing.status === 'accepted' &&
+        existing.sessionId === session.id) {
         return existing; // Return the first team's claim
       }
     }
@@ -420,7 +454,7 @@ class TransactionService extends EventEmitter {
    */
   addRecentTransaction(transaction) {
     this.recentTransactions.unshift(transaction);
-    
+
     // Keep only recent transactions
     const limit = config.game.recentTransactionsCount;
     if (this.recentTransactions.length > limit) {
@@ -452,7 +486,7 @@ class TransactionService extends EventEmitter {
     if (transaction.isAccepted()) {
       response.points = transaction.points;
     }
-    
+
     // Add original transaction ID if this is a duplicate
     if (transaction.isDuplicate()) {
       response.originalTransactionId = transaction.originalTransactionId;
@@ -615,14 +649,6 @@ class TransactionService extends EventEmitter {
     this.recentTransactions = [];
 
     // Clear team scores completely
-    this.teamScores.clear();
-
-    // Reset listener flag so it can be re-registered
-    this.sessionListenerRegistered = false;
-
-    // Note: We don't clear tokens as they're loaded from config
-    // and should persist across resets
-
     logger.info('Transaction service reset');
   }
 
@@ -820,7 +846,7 @@ class TransactionService extends EventEmitter {
 
         // If all tokens in group were scanned, mark as complete
         if (groupTokens.length > 1 &&
-            groupTokens.every(token => scannedTokens.has(token.id))) {
+          groupTokens.every(token => scannedTokens.has(token.id))) {
           teamScore.completedGroups.push(groupId);
 
           // Calculate and add bonus

@@ -162,7 +162,8 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       validateWebSocketEvent(loadingEvent, 'video:status');
 
       // Wait: For video:playing event (VLC starts playback)
-      const playingPromise = waitForEvent(gmSocket, 'video:status');
+      // Use predicate to filter for status='playing' (not cached 'loading' event)
+      const playingPromise = waitForEvent(gmSocket, 'video:status', (data) => data.data?.status === 'playing');
       const playingEvent = await playingPromise;
 
       // Validate: video:status with status=playing

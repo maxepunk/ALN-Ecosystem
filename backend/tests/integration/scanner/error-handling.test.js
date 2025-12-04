@@ -35,13 +35,18 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
   beforeEach(async () => {
     await resetAllServices();
-    await sessionService.createSession({
+    const session = await sessionService.createSession({
       name: 'Error Handling Test',
       teams: ['001', '002']
     });
 
     // Clear DataManager between tests
     global.DataManager.clearScannedTokens();
+
+    // CRITICAL FIX: Pre-set currentSessionId to match the session
+    // This prevents MonitoringDisplay.updateAllDisplays from calling resetForNewSession
+    // when it receives sync:full with the session ID (which would clear scannedTokens)
+    global.DataManager.currentSessionId = session.id;
 
     // Clear localStorage queue between tests
     global.localStorage.removeItem('networkedTempQueue');
@@ -120,8 +125,11 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
 
       // Simulate connection loss BEFORE submitting
-      // We need to manually set connected to false since we can't trigger real disconnect
+      // We need to manually set BOTH socket.connected AND client.isConnected
+      // NetworkedQueueManager checks client.isConnected first (line 87)
+      // OrchestratorClient.send checks socket.connected (line 111)
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       // ACT: Submit transaction while offline
       scanner.App.processNFCRead({ id: 'tac001' });
@@ -214,6 +222,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
       // Disconnect to trigger offline queue (which uses localStorage)
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       // ACT: Try to queue transaction (will hit quota error)
       scanner.App.processNFCRead({ id: 'hos001' });
@@ -242,8 +251,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
 
-      // Simulate offline state
+      // Simulate offline state (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       // ACT: Submit transaction while offline
       scanner.App.processNFCRead({ id: 'fli001' });
@@ -259,8 +269,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     it('should queue transactions when offline', async () => {
       scanner.App.currentTeamId = '002';
 
-      // Simulate offline
+      // Simulate offline (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       // Queue transaction while offline
       scanner.App.processNFCRead({ id: 'tac001' });
@@ -315,9 +326,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       // VERIFY: Scanner is connected (proves auth succeeded)
       expect(scanner.socket.connected).toBe(true);
 
-      // VERIFY: Scanner has token
-      expect(scanner.client.token).toBeDefined();
-      expect(scanner.client.token).not.toBe('INVALID_JWT_TOKEN');
+      // VERIFY: Scanner has token (stored on ConnectionManager, not OrchestratorClient)
+      expect(scanner.connectionManager.token).toBeDefined();
+      expect(scanner.connectionManager.token).not.toBe('INVALID_JWT_TOKEN');
 
       // Note: Testing invalid auth requires creating a new connection
       // which is outside the scope of this scanner-focused test
@@ -360,8 +371,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       const result1 = await waitForEvent(scanner.socket, 'transaction:result');
       expect(result1.data.status).toBe('accepted');
 
-      // Go offline
+      // Go offline (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       // Queue transaction while offline
       scanner.App.processNFCRead({ id: 'tac001' });
@@ -381,8 +393,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     it('should handle offline mode gracefully', async () => {
       scanner.App.currentTeamId = '002';
 
-      // Go offline
+      // Go offline (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = false;
+      scanner.client.isConnected = false;
 
       // Submit multiple transactions offline
       scanner.App.processNFCRead({ id: 'hos001' });
@@ -396,8 +409,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       const savedQueue = JSON.parse(global.localStorage.getItem('networkedTempQueue') || '[]');
       expect(savedQueue.length).toBe(3);
 
-      // Go back online
+      // Go back online (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = true;
+      scanner.client.isConnected = true;
 
       // Note: Actual sync happens via OrchestratorClient reconnection logic
       // which is tested in connection-manager.test.js

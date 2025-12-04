@@ -618,7 +618,7 @@ class VideoQueueService extends EventEmitter {
    */
   clearCompleted() {
     const before = this.queue.length;
-    this.queue = this.queue.filter(item => 
+    this.queue = this.queue.filter(item =>
       !item.isCompleted() && !item.hasFailed()
     );
     const cleared = before - this.queue.length;
@@ -813,7 +813,7 @@ class VideoQueueService extends EventEmitter {
 
     const pendingCount = this.queue.filter(item => item.isPending()).length;
     const currentRemaining = this.getRemainingTime();
-    
+
     // Estimate based on current video and queue
     return currentRemaining + (pendingCount * 30); // Assume 30s average
   }
@@ -850,7 +850,7 @@ class VideoQueueService extends EventEmitter {
     // Check for old pending items
     const maxPendingAge = 5 * 60 * 1000; // 5 minutes
     const now = Date.now();
-    
+
     this.queue.forEach(item => {
       if (item.isPending()) {
         const age = now - new Date(item.requestTime).getTime();
@@ -903,6 +903,29 @@ class VideoQueueService extends EventEmitter {
     this.currentItem = null;
 
     // 3. Log completion
+    logger.info('Video queue service reset');
+  }
+  /**
+   * Reset service state (for testing)
+   */
+  reset() {
+    // Stop any active playback/monitoring
+    if (this.playbackTimer) {
+      clearTimeout(this.playbackTimer);
+      this.playbackTimer = null;
+    }
+    if (this.progressTimer) {
+      clearInterval(this.progressTimer);
+      this.progressTimer = null;
+    }
+
+    // Clear queue and state
+    this.queue = [];
+    this.currentItem = null;
+
+    // Remove all listeners
+    this.removeAllListeners();
+
     logger.info('Video queue service reset');
   }
 }

@@ -183,6 +183,7 @@ class Session {
       } else {
         this.metadata.playerDevices = Math.max(0, this.metadata.playerDevices - 1);
       }
+      // console.log(`[Session] Removed device ${deviceId}. Remaining GMs: ${this.metadata.gmStations}`);
     }
   }
 

@@ -10,8 +10,12 @@ const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-helpers');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const { resetAllServices } = require('../../helpers/service-reset');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
 const sessionService = require('../../../src/services/sessionService');
+const transactionService = require('../../../src/services/transactionService');
+const stateService = require('../../../src/services/stateService');
 const videoQueueService = require('../../../src/services/videoQueueService');
+const offlineQueueService = require('../../../src/services/offlineQueueService');
 
 describe('Video Events - Contract Validation', () => {
   let testContext;
@@ -26,7 +30,21 @@ describe('Video Events - Contract Validation', () => {
   });
 
   beforeEach(async () => {
+    // Clean up any existing broadcast listeners first (prevents duplicates)
+    cleanupBroadcastListeners();
+
     await resetAllServices();
+
+    // CRITICAL: Re-register broadcast listeners after resetAllServices
+    // resetAllServices() calls videoQueueService.reset() which removes all listeners
+    // We need the broadcast listeners to translate video:* events → video:status broadcasts
+    setupBroadcastListeners(testContext.io, {
+      sessionService,
+      stateService,
+      videoQueueService,
+      offlineQueueService,
+      transactionService
+    });
 
     // Create session (not strictly needed for direct emission, but good practice)
     await sessionService.createSession({
@@ -42,9 +60,13 @@ describe('Video Events - Contract Validation', () => {
     if (socket && socket.connected) {
       socket.disconnect();
     }
+
+    // Clean up broadcast listeners before resetAllServices to prevent leaks
+    cleanupBroadcastListeners();
+
     await resetAllServices();
 
-    // Clean up timers without destroying broadcast listeners
+    // Clean up timers
     if (videoQueueService.playbackTimer) {
       clearTimeout(videoQueueService.playbackTimer);
       videoQueueService.playbackTimer = null;
