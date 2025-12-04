@@ -8,7 +8,11 @@ const Joi = require('joi');
 // Custom validators
 const isoDate = Joi.string().isoDate();
 const uuid = Joi.string().uuid({ version: 'uuidv4' });
-const teamId = Joi.string().pattern(/^[0-9]{3}$/);  // 3-digit zero-padded team ID per AsyncAPI contract
+const teamId = Joi.string()
+  .pattern(/^[A-Za-z0-9 ]{1,30}$/)
+  .min(1)
+  .max(30)
+  .trim();  // Alphanumeric team names (1-30 chars)
 
 // Token validation schema
 const tokenSchema = Joi.object({
