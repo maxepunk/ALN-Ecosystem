@@ -318,8 +318,8 @@ components:
                         type: array
                         items:
                           type: string
-                          pattern: '^[0-9]{3}$'
-                        example: ["001", "002", "003"]
+                          pattern: '^[A-Za-z0-9 ]{1,30}$'
+                        example: ["Team Alpha", "Detectives", "Blue Squad"]
                       metadata:
                         type: object
                         properties:
@@ -369,8 +369,8 @@ components:
                   properties:
                     teamId:
                       type: string
-                      pattern: '^[0-9]{3}$'
-                      example: "001"
+                      pattern: '^[A-Za-z0-9 ]{1,30}$'
+                      example: "Team Alpha"
                     currentScore:
                       type: integer
                       example: 11500
@@ -444,8 +444,8 @@ components:
                       example: "534e2b03"
                     teamId:
                       type: string
-                      pattern: '^[0-9]{3}$'
-                      example: "001"
+                      pattern: '^[A-Za-z0-9 ]{1,30}$'
+                      example: "Team Alpha"
                     deviceId:
                       type: string
                       example: "GM_Station_1"
@@ -605,7 +605,7 @@ components:
                 example: "534e2b03"
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID (3-digit zero-padded)
                 example: "001"
               deviceId:
@@ -678,7 +678,7 @@ components:
                 example: "534e2b03"
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
                 example: "001"
               points:
@@ -749,9 +749,9 @@ components:
                     example: "534e2b03"
                   teamId:
                     type: string
-                    pattern: '^[0-9]{3}$'
+                    pattern: '^[A-Za-z0-9 ]{1,30}$'
                     description: Team ID
-                    example: "001"
+                    example: "Team Alpha"
                   deviceId:
                     type: string
                     description: GM Scanner that created transaction (per Decision 4)
@@ -833,7 +833,7 @@ components:
                 example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID that owned the transaction
                 example: "001"
               tokenId:
@@ -882,7 +882,7 @@ components:
             properties:
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
                 example: "001"
               currentScore:
@@ -986,9 +986,9 @@ components:
                 type: array
                 items:
                   type: string
-                  pattern: '^[0-9]{3}$'
+                  pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Array of team IDs that were reset
-                example: ["001", "002", "003"]
+                example: ["Team Alpha", "Detectives", "Blue Squad"]
           timestamp:
             type: string
             format: date-time
@@ -1305,9 +1305,9 @@ components:
                 type: array
                 items:
                   type: string
-                  pattern: '^[0-9]{3}$'
+                  pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Array of team IDs
-                example: ["001", "002", "003"]
+                example: ["Team Alpha", "Detectives", "Blue Squad"]
               metadata:
                 type: object
                 description: Session metadata
@@ -1434,6 +1434,7 @@ components:
                 description: Command action type
                 enum:
                   - session:create
+                  - session:addTeam
                   - session:pause
                   - session:resume
                   - session:end
@@ -1471,7 +1472,7 @@ components:
               action: session:create
               payload:
                 name: "About Last Night - Oct 15 2025"
-                teams: ["001", "002", "003"]
+                teams: ["Team Alpha", "Detectives", "Blue Squad"]
             timestamp: "2025-10-15T19:00:00.000Z"
         - name: Video Skip
           payload:
@@ -1749,7 +1750,7 @@ components:
             properties:
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
                 example: "001"
               group:

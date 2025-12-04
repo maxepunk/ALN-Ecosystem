@@ -342,8 +342,8 @@ paths:
                     Team ID (OPTIONAL - players haven't committed to team yet).
                     Used for logging only, NOT game logic.
                     Team commitment happens at GM Scanner.
-                  pattern: '^[0-9]{3}$'
-                  example: "001"
+                  pattern: '^[A-Za-z0-9 ]{1,30}$'
+                  example: "Team Alpha"
                 deviceId:
                   type: string
                   description: Player Scanner device identifier
@@ -555,8 +555,8 @@ paths:
                       teamId:
                         type: string
                         description: Team ID (optional, for logging)
-                        pattern: '^[0-9]{3}$'
-                        example: "001"
+                        pattern: '^[A-Za-z0-9 ]{1,30}$'
+                        example: "Team Alpha"
                       deviceId:
                         type: string
                         description: Player Scanner device ID
@@ -709,7 +709,7 @@ paths:
                 startTime: "2025-10-15T19:00:00.000Z"
                 endTime: null
                 status: "active"
-                teams: ["001", "002", "003"]
+                teams: ["Team Alpha", "Detectives", "Blue Squad"]
                 metadata:
                   gmStations: 2
                   playerDevices: 3
@@ -794,7 +794,7 @@ paths:
                   startTime: "2025-10-15T19:00:00.000Z"
                   endTime: null
                   status: "active"
-                  teams: ["001", "002", "003"]
+                  teams: ["Team Alpha", "Detectives", "Blue Squad"]
                   metadata:
                     gmStations: 2
                     playerDevices: 3
@@ -1088,10 +1088,10 @@ components:
           type: array
           items:
             type: string
-            pattern: '^[0-9]{3}$'
-            description: Team ID (3-digit zero-padded string)
+            pattern: '^[A-Za-z0-9 ]{1,30}$'
+            description: Team ID (alphanumeric, 1-30 characters)
           description: Array of team IDs participating in session
-          example: ["001", "002", "003"]
+          example: ["Team Alpha", "Detectives", "Blue Squad"]
         metadata:
           type: object
           description: Session metadata (statistics, device counts)
@@ -1146,9 +1146,9 @@ components:
             properties:
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
-                example: "001"
+                example: "Team Alpha"
               currentScore:
                 type: integer
                 description: Total score (base + bonus)
@@ -1201,9 +1201,9 @@ components:
                 example: "534e2b03"
               teamId:
                 type: string
-                pattern: '^[0-9]{3}$'
+                pattern: '^[A-Za-z0-9 ]{1,30}$'
                 description: Team ID
-                example: "001"
+                example: "Team Alpha"
               deviceId:
                 type: string
                 description: GM Scanner device ID (per Decision 4)
