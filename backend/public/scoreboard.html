@@ -1061,6 +1061,12 @@
         }
 
         function addEvidence(transaction) {
+            // Only show detective mode scans in evidence section
+            if (transaction.mode !== 'detective') {
+                console.log('[Scoreboard] Skipping non-detective transaction:', transaction.tokenId, 'mode:', transaction.mode);
+                return;
+            }
+
             // Create evidence entry
             const evidence = {
                 id: transaction.id || `${transaction.tokenId}-${transaction.teamId}-${Date.now()}`,
@@ -1308,14 +1314,19 @@
                 }
                 renderScoreboard();
 
-                // Load recent transactions for evidence log
+                // Load recent transactions for evidence log (DETECTIVE MODE ONLY)
                 if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
-                    // Sort by timestamp descending
-                    const sorted = [...data.recentTransactions].sort((a, b) =>
+                    // Filter to detective mode only, then sort by timestamp descending
+                    const detectiveTransactions = data.recentTransactions
+                        .filter(tx => tx.mode === 'detective');
+
+                    const sorted = [...detectiveTransactions].sort((a, b) =>
                         new Date(b.timestamp) - new Date(a.timestamp)
                     );
 
-                    // Set most recent as hero
+                    console.log('[Scoreboard] Detective transactions:', sorted.length, 'of', data.recentTransactions.length, 'total');
+
+                    // Set most recent detective transaction as hero
                     if (sorted.length > 0) {
                         state.heroEvidence = {
                             id: sorted[0].id || `${sorted[0].tokenId}-${sorted[0].teamId}`,
