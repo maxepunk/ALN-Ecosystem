@@ -6,521 +6,695 @@
     <meta name="google-cast-sdk" content="enabled">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Black Market Scoreboard - About Last Night</title>
+    <title>Case File: About Last Night</title>
+
+    <!-- Google Fonts - Distinctive Typography Stack -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@600;700;800;900&family=Special+Elite&display=swap" rel="stylesheet">
+
     <style>
+        /* ============================================
+           CSS CUSTOM PROPERTIES - "CLASSIFIED EVIDENCE TERMINAL"
+           Color palette: surveillance-era investigation aesthetic
+           ============================================ */
+        :root {
+            /* Core Palette */
+            --void-black: #0a0908;
+            --paper-cream: #f5f0e6;
+            --paper-shadow: #d4cfc4;
+            --paper-dark: #ebe6dc;
+            --evidence-red: #c41e3a;
+            --evidence-red-dark: #8b0000;
+            --terminal-green: #00ff41;
+            --terminal-amber: #ffb000;
+            --ink-black: #1a1a1a;
+            --redaction-black: #0d0d0d;
+
+            /* Typography */
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-typewriter: 'Special Elite', 'Courier New', monospace;
+            --font-body: 'Libre Baskerville', Georgia, serif;
+            --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
+
+            /* Layout */
+            --header-height: 80px;
+            --ticker-height: 100px;
+            --content-padding: 2rem;
+            --card-gap: 1.5rem;
+
+            /* Animation Timings */
+            --load-vignette: 0ms;
+            --load-scanlines: 200ms;
+            --load-header: 400ms;
+            --load-hero: 800ms;
+            --load-cards: 1200ms;
+            --load-ticker: 2000ms;
+        }
+
         /* ============================================
            RESET & BASE STYLES
            ============================================ */
-        * {
+        *, *::before, *::after {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #000000 0%, #2d2d2d 100%);
-            min-height: 100vh;
-            color: white;
-            overflow-x: hidden;
-        }
-
-        /* ============================================
-           HEADER
-           ============================================ */
-        .header {
-            padding: 2rem;
-            text-align: center;
-            position: relative;
-        }
-
-        h1 {
-            font-size: clamp(2rem, 5vw, 4rem);
-            font-weight: 800;
-            text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            font-size: clamp(1rem, 2vw, 1.5rem);
-            opacity: 0.9;
-            font-weight: 300;
-        }
-
-        /* Connection Status */
-        .connection-status {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: rgba(30, 30, 30, 0.7);
-            backdrop-filter: blur(10px);
-            border-radius: 2rem;
-            font-size: clamp(0.875rem, 1.5vw, 1.125rem);
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .status-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4ade80;
-            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .connection-status.offline .status-dot {
-            background: #f87171;
-            box-shadow: 0 0 10px rgba(248, 113, 113, 0.5);
-            animation: none;
-        }
-
-        .connection-status.connecting .status-dot {
-            background: #fbbf24;
-            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.1); }
-        }
-
-        /* ============================================
-           MAIN CONTAINER
-           ============================================ */
-        .container {
-            max-width: 1800px;
-            margin: 0 auto;
-            padding: 1rem 2rem 2rem;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 2rem;
-        }
-
-        @media (max-width: 1200px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* ============================================
-           CARD STYLES
-           ============================================ */
-        .card {
-            background: rgba(30, 30, 30, 0.8);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-        }
-
-        .card-title {
-            font-size: clamp(1.5rem, 3vw, 2rem);
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        /* ============================================
-           SCOREBOARD
-           ============================================ */
-        .scoreboard-entry {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            color: #333;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .scoreboard-entry:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        .scoreboard-entry.rank-1 {
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-            box-shadow: 0 6px 25px rgba(255, 215, 0, 0.3);
-        }
-
-        .scoreboard-entry.rank-2 {
-            background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
-        }
-
-        .scoreboard-entry.rank-3 {
-            background: linear-gradient(135deg, #cd7f32 0%, #e5a572 100%);
-        }
-
-        .scoreboard-rank {
-            font-size: clamp(2rem, 4vw, 3rem);
-            font-weight: 800;
-            min-width: 4rem;
-            text-align: center;
-        }
-
-        .scoreboard-team {
-            flex: 1;
-        }
-
-        .team-name {
-            font-size: clamp(1.25rem, 2.5vw, 2rem);
-            font-weight: 700;
-            margin-bottom: 0.25rem;
-        }
-
-        .team-stats {
-            font-size: clamp(0.875rem, 1.5vw, 1.125rem);
-            opacity: 0.7;
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .scoreboard-score {
-            font-size: clamp(1.75rem, 3.5vw, 2.5rem);
-            font-weight: 800;
-            color: #e0e0e0;
-            text-align: right;
-        }
-
-        .rank-1 .scoreboard-score {
-            color: #b8860b;
-        }
-
-        .rank-2 .scoreboard-score {
-            color: #696969;
-        }
-
-        .rank-3 .scoreboard-score {
-            color: #8b4513;
-        }
-
-        /* ============================================
-           DETECTIVE LOG
-           ============================================ */
-        .detective-log {
-            max-height: 600px;
+        html, body {
+            height: 100%;
             overflow: hidden;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--void-black);
+            color: var(--paper-cream);
             position: relative;
         }
 
-        .team-log-group {
-            background: rgba(20, 20, 20, 0.6);
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+        /* ============================================
+           ATMOSPHERIC OVERLAYS
+           Film grain, vignette, scan lines
+           ============================================ */
+
+        /* Film Grain Overlay - SVG noise texture */
+        .grain-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9000;
+            opacity: 0.04;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
-        .team-log-header {
-            font-size: clamp(1.25rem, 2vw, 1.5rem);
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: #4ade80;
+        /* Vignette Effect - surveillance camera aesthetic */
+        .vignette-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 8999;
+            background: radial-gradient(
+                ellipse at center,
+                transparent 40%,
+                rgba(0, 0, 0, 0.3) 70%,
+                rgba(0, 0, 0, 0.6) 100%
+            );
+            opacity: 0;
+            animation: fadeIn 1s ease-out forwards;
+            animation-delay: var(--load-vignette);
         }
 
-        .log-entry {
-            background: rgba(40, 40, 40, 0.6);
-            border-radius: 8px;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            font-family: 'Courier New', monospace;
-            font-size: clamp(0.875rem, 1.5vw, 1rem);
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
+        /* Scan Lines - CRT monitor effect */
+        .scanline-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 8998;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            opacity: 0;
+            animation: fadeIn 0.5s ease-out forwards;
+            animation-delay: var(--load-scanlines);
         }
 
-        .log-entry:last-child {
-            margin-bottom: 0;
+        /* Scan Line Sweep Animation - periodic effect */
+        .scanline-overlay::after {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.02) 50%,
+                transparent 100%
+            );
+            animation: scanlineSweep 8s linear infinite;
+            animation-delay: 3s;
         }
 
-        .log-content {
-            flex: 1;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scanlineSweep {
+            0% { top: -50%; }
+            100% { top: 150%; }
+        }
+
+        /* ============================================
+           MAIN LAYOUT STRUCTURE
+           Header | Content (Hero + Feed) | Ticker
+           ============================================ */
+        .evidence-board {
             display: flex;
             flex-direction: column;
-            gap: 0.25rem;
-        }
-
-        .log-summary {
-            margin: 0;
-            margin-top: 0.5rem;
-            font-size: clamp(0.75rem, 1.25vw, 0.875rem);
-            font-style: italic;
-            color: #b0b0b0;
-            line-height: 1.4;
-        }
-
-        .log-time {
-            opacity: 0.7;
-            font-size: clamp(0.75rem, 1.25vw, 0.875rem);
-            white-space: nowrap;
-        }
-
-        .pagination-indicator {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 1rem 0;
-            font-size: clamp(0.875rem, 1.5vw, 1rem);
-            opacity: 0.7;
-        }
-
-        .page-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-        }
-
-        .page-dot.active {
-            width: 24px;
-            border-radius: 4px;
-            background: #4ade80;
+            height: 100vh;
+            position: relative;
         }
 
         /* ============================================
-           NOTIFICATIONS
+           HEADER - "Case File Header"
            ============================================ */
-        .notification-container {
-            position: fixed;
-            top: 6rem;
-            right: 2rem;
-            z-index: 1000;
-            max-width: 400px;
-        }
-
-        .notification {
-            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
-            color: white;
-            padding: 1.5rem 2rem;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            margin-bottom: 1rem;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .notification.group-complete {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .notification-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
+        .case-header {
+            height: var(--header-height);
+            background: linear-gradient(180deg, var(--ink-black) 0%, var(--void-black) 100%);
+            border-bottom: 2px solid var(--evidence-red);
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: space-between;
+            padding: 0 var(--content-padding);
+            font-family: var(--font-mono);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            position: relative;
+            z-index: 100;
+            opacity: 0;
+            animation: slideDown 0.6s ease-out forwards;
+            animation-delay: var(--load-header);
         }
 
-        .notification-body {
-            font-size: 1rem;
-            opacity: 0.95;
-        }
-
-        @keyframes slideIn {
+        @keyframes slideDown {
             from {
                 opacity: 0;
-                transform: translateX(100%);
+                transform: translateY(-100%);
             }
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateY(0);
             }
         }
 
-        @keyframes fadeOut {
-            to {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-        }
-
-        /* ============================================
-           EMPTY STATE
-           ============================================ */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            opacity: 0.7;
-        }
-
-        .empty-state h3 {
-            font-size: clamp(1.25rem, 2.5vw, 1.75rem);
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-state p {
-            font-size: clamp(1rem, 2vw, 1.25rem);
-        }
-
-        /* ============================================
-           LOADING STATE
-           ============================================ */
-        .loading {
+        .case-title {
+            font-size: clamp(1rem, 2.5vw, 1.5rem);
+            font-weight: 700;
+            color: var(--paper-cream);
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 2rem;
+            gap: 1rem;
         }
 
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
+        .case-title::before {
+            content: '';
+            display: inline-block;
+            width: 1.5em;
+            height: 1.5em;
+            background: var(--evidence-red);
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            font-size: clamp(0.75rem, 1.5vw, 1rem);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
+            background: var(--terminal-green);
+            box-shadow: 0 0 10px var(--terminal-green);
+            animation: pulse 2s ease-in-out infinite;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        .status-indicator.offline .status-dot {
+            background: var(--evidence-red);
+            box-shadow: 0 0 10px var(--evidence-red);
+            animation: none;
         }
 
-        /* ============================================
-           SCROLLBAR
-           ============================================ */
-        ::-webkit-scrollbar {
-            width: 8px;
+        .status-indicator.connecting .status-dot {
+            background: var(--terminal-amber);
+            box-shadow: 0 0 10px var(--terminal-amber);
         }
 
-        ::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        ::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
+        .rec-indicator {
+            color: var(--evidence-red);
+            font-weight: 700;
+            animation: recBlink 1.5s step-end infinite;
         }
 
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
+        @keyframes recBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
-        /* ============================================
-           RESPONSIVE ADJUSTMENTS
-           ============================================ */
-        @media (max-width: 768px) {
-            .header {
-                padding: 1rem;
-            }
+        .timestamp {
+            color: var(--terminal-green);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.1em;
+        }
 
-            .container {
-                padding: 0.5rem 1rem 1rem;
-            }
+        .timestamp .colon {
+            animation: colonBlink 1s step-end infinite;
+        }
 
-            .card {
-                padding: 1rem;
-            }
-
-            .connection-status {
-                position: static;
-                margin: 1rem auto 0;
-                width: fit-content;
-            }
-
-            .notification-container {
-                right: 1rem;
-                left: 1rem;
-                max-width: none;
-            }
+        @keyframes colonBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
 
         /* ============================================
-           KIOSK MODE STYLES (Phase 4.2)
-           Activated via ?kiosk=true URL parameter
-           Optimized for Chromecast and HDMI display
+           MAIN CONTENT AREA
+           Hero Evidence + Feed Grid
            ============================================ */
-        body.kiosk-mode {
+        .evidence-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--content-padding);
+            padding-bottom: 0;
             overflow: hidden;
-            cursor: none;
+            gap: var(--card-gap);
         }
 
-        body.kiosk-mode .header {
-            padding: 1rem 2rem;
+        /* ============================================
+           HERO EVIDENCE CARD - "Latest Discovery"
+           ============================================ */
+        .hero-evidence {
+            background:
+                url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.03'/%3E%3C/svg%3E"),
+                linear-gradient(to bottom, var(--paper-cream) 0%, var(--paper-dark) 100%);
+            border: 1px solid var(--paper-shadow);
+            box-shadow:
+                4px 4px 0 var(--ink-black),
+                0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: rotate(-0.3deg);
+            position: relative;
+            padding: 2rem 2.5rem;
+            min-height: 200px;
+            opacity: 0;
+            animation: evidenceIncoming 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            animation-delay: var(--load-hero);
         }
 
-        body.kiosk-mode .connection-status {
+        @keyframes evidenceIncoming {
+            0% {
+                opacity: 0;
+                transform: translateY(-50px) rotate(-5deg);
+            }
+            60% {
+                transform: translateY(10px) rotate(1deg);
+            }
+            80% {
+                transform: translateY(-5px) rotate(-0.5deg);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) rotate(-0.3deg);
+            }
+        }
+
+        /* Red tape label */
+        .hero-evidence::before {
+            content: 'LATEST EVIDENCE';
+            position: absolute;
+            top: -12px;
+            left: 30px;
+            background: var(--evidence-red);
+            color: white;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 6px 16px;
+            letter-spacing: 0.15em;
+            transform: rotate(-2deg);
+            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Pushpin decoration */
+        .hero-evidence::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            right: 40px;
+            width: 16px;
+            height: 16px;
+            background: radial-gradient(circle at 30% 30%, #dc3545 0%, var(--evidence-red-dark) 100%);
+            border-radius: 50%;
+            box-shadow:
+                0 3px 6px rgba(0, 0, 0, 0.4),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hero-evidence__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .hero-evidence__team {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            color: var(--evidence-red);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .hero-evidence__time {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: rgba(26, 26, 26, 0.6);
+        }
+
+        .hero-evidence__summary {
+            font-family: var(--font-typewriter);
+            font-size: clamp(1.5rem, 3vw, 2.25rem);
+            color: var(--ink-black);
+            line-height: 1.5;
+            overflow: hidden;
+        }
+
+        .hero-evidence__summary .typewriter-text {
+            display: inline-block;
+            overflow: hidden;
+            white-space: nowrap;
+            animation: typewriter 2s steps(60) forwards;
+            animation-delay: calc(var(--load-hero) + 400ms);
+            width: 0;
+        }
+
+        @keyframes typewriter {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        /* Empty state for hero */
+        .hero-evidence.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 180px;
+        }
+
+        .hero-evidence.empty .empty-message {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: rgba(26, 26, 26, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        /* ============================================
+           EVIDENCE FEED - Accumulated Cards
+           ============================================ */
+        .evidence-feed {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--card-gap);
+            overflow: hidden;
+            align-content: start;
+        }
+
+        @media (max-width: 1400px) {
+            .evidence-feed {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .evidence-feed {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .evidence-card {
+            background: var(--paper-cream);
+            border-left: 4px solid var(--evidence-red);
+            padding: 1.25rem;
+            position: relative;
+            transform: rotate(var(--rotation, 0deg));
+            box-shadow:
+                2px 2px 0 var(--ink-black),
+                0 8px 20px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            animation: cardCascade 0.5s ease-out forwards;
+        }
+
+        @keyframes cardCascade {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) rotate(var(--rotation, 0deg));
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) rotate(var(--rotation, 0deg));
+            }
+        }
+
+        /* Pushpin on each card */
+        .evidence-card::after {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 12px;
+            height: 12px;
+            background: radial-gradient(circle at 30% 30%, #dc3545 0%, var(--evidence-red-dark) 100%);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .evidence-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .evidence-card__team {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--evidence-red);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .evidence-card__time {
+            font-family: var(--font-mono);
+            font-size: 0.625rem;
+            color: rgba(26, 26, 26, 0.5);
+        }
+
+        .evidence-card__text {
+            font-family: var(--font-body);
+            font-size: clamp(0.875rem, 1.5vw, 1.1rem);
+            color: var(--ink-black);
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* New evidence flash effect */
+        .evidence-card.new-evidence {
+            animation: cardCascade 0.5s ease-out forwards, evidenceFlash 0.3s ease-out;
+        }
+
+        @keyframes evidenceFlash {
+            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8); }
+            100% { box-shadow: 2px 2px 0 var(--ink-black), 0 8px 20px rgba(0, 0, 0, 0.2); }
+        }
+
+        /* Screen flash for new evidence */
+        .flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            pointer-events: none;
+            z-index: 9500;
+            opacity: 0;
+        }
+
+        .flash-overlay.active {
+            animation: screenFlash 0.4s ease-out;
+        }
+
+        @keyframes screenFlash {
+            0% { opacity: 0; }
+            10% { opacity: 0.3; }
+            100% { opacity: 0; }
+        }
+
+        /* Empty feed state */
+        .evidence-feed-empty {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        /* ============================================
+           SCORE TICKER - "Terminal Readout"
+           ============================================ */
+        .score-ticker {
+            height: var(--ticker-height);
+            background: var(--redaction-black);
+            border-top: 1px solid var(--terminal-green);
+            font-family: var(--font-mono);
+            color: var(--terminal-green);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--content-padding);
+            gap: 3rem;
+            overflow: hidden;
+            position: relative;
+            z-index: 100;
+            opacity: 0;
+            animation: tickerSlideUp 0.6s ease-out forwards;
+            animation-delay: var(--load-ticker);
+        }
+
+        @keyframes tickerSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .score-ticker.hidden {
             display: none;
         }
 
-        body.kiosk-mode h1 {
-            font-size: clamp(2.5rem, 6vw, 5rem);
+        .ticker-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(0, 255, 65, 0.6);
+            white-space: nowrap;
         }
 
-        body.kiosk-mode .subtitle {
-            font-size: clamp(1.25rem, 2.5vw, 2rem);
+        .ticker-entries {
+            display: flex;
+            flex: 1;
+            gap: 3rem;
+            overflow: hidden;
         }
 
-        body.kiosk-mode .container {
-            padding: 0.5rem 2rem 1rem;
+        .score-entry {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
         }
 
-        body.kiosk-mode .grid {
-            grid-template-columns: 1fr;
+        .score-entry__rank {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--terminal-amber);
+            min-width: 2rem;
         }
 
-        /* Hide detective log in kiosk mode - focus on scoreboard */
-        body.kiosk-mode .card:nth-child(2) {
-            display: none;
+        .score-entry__team {
+            font-size: 0.875rem;
+            color: var(--terminal-green);
+            min-width: 80px;
         }
 
-        body.kiosk-mode .scoreboard-entry {
-            padding: 2rem;
-            margin-bottom: 1.5rem;
+        .score-entry__amount {
+            font-size: 1.25rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0.05em;
+            min-width: 100px;
         }
 
-        body.kiosk-mode .scoreboard-rank {
-            font-size: clamp(2.5rem, 5vw, 4rem);
-            min-width: 5rem;
+        .score-entry__amount.updating {
+            animation: scoreFlash 0.5s ease-out;
         }
 
-        body.kiosk-mode .team-name {
-            font-size: clamp(1.5rem, 3vw, 2.5rem);
+        @keyframes scoreFlash {
+            0%, 100% { color: var(--terminal-green); }
+            50% { color: var(--terminal-amber); }
         }
 
-        body.kiosk-mode .team-stats {
-            font-size: clamp(1rem, 2vw, 1.5rem);
+        .score-entry__bar {
+            width: 120px;
+            height: 8px;
+            background: rgba(0, 255, 65, 0.2);
+            position: relative;
+            overflow: hidden;
         }
 
-        body.kiosk-mode .scoreboard-score {
-            font-size: clamp(2rem, 4vw, 3.5rem);
+        .score-entry__bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--terminal-green) 0%, var(--terminal-amber) 100%);
+            transition: width 0.5s ease-out;
         }
 
-        body.kiosk-mode .notification-container {
-            display: none;
+        /* Empty ticker state */
+        .ticker-empty {
+            font-size: 0.875rem;
+            color: rgba(0, 255, 65, 0.4);
+            letter-spacing: 0.1em;
         }
 
-        /* Display mode overlay - shown when display mode is VIDEO */
-        body.display-hidden {
-            display: none !important;
-        }
-
+        /* ============================================
+           DISPLAY MODE OVERLAY
+           Shown when VLC is playing video
+           ============================================ */
         .display-mode-overlay {
-            display: none;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
             background: #000;
-            z-index: 9999;
+            z-index: 10000;
+            display: none;
             justify-content: center;
             align-items: center;
         }
@@ -530,59 +704,135 @@
         }
 
         .display-mode-overlay-text {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 2rem;
-            text-align: center;
+            color: rgba(255, 255, 255, 0.3);
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
         }
+
+        /* ============================================
+           KIOSK MODE OVERRIDES
+           Activated via ?kiosk=true URL parameter
+           ============================================ */
+        body.kiosk-mode {
+            cursor: none;
+        }
+
+        body.kiosk-mode ::-webkit-scrollbar {
+            display: none;
+        }
+
+        body.kiosk-mode .case-header .status-indicator:first-child {
+            display: none;
+        }
+
+        /* Detective mode - hide score ticker */
+        body.mode-detective .score-ticker {
+            display: none;
+        }
+
+        body.mode-detective .evidence-content {
+            padding-bottom: var(--content-padding);
+        }
+
+        /* ============================================
+           LOADING STATE
+           ============================================ */
+        .loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            color: var(--terminal-green);
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            z-index: 200;
+        }
+
+        .loading-indicator.hidden {
+            display: none;
+        }
+
+        .loading-indicator::after {
+            content: '';
+            animation: loadingDots 1.5s infinite;
+        }
+
+        @keyframes loadingDots {
+            0% { content: ''; }
+            25% { content: '.'; }
+            50% { content: '..'; }
+            75% { content: '...'; }
+        }
+
+        /* ============================================
+           UTILITY CLASSES
+           ============================================ */
+        .hidden { display: none !important; }
+        .invisible { visibility: hidden; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="connection-status" id="connectionStatus">
-            <span class="status-dot"></span>
-            <span id="statusText">Connecting...</span>
-        </div>
-        <h1>🏆 Black Market Scoreboard</h1>
-        <p class="subtitle">About Last Night</p>
-    </div>
+    <!-- Atmospheric Overlays -->
+    <div class="grain-overlay"></div>
+    <div class="vignette-overlay"></div>
+    <div class="scanline-overlay"></div>
+    <div class="flash-overlay" id="flashOverlay"></div>
 
-    <div class="container">
-        <div class="grid">
-            <!-- Scoreboard -->
-            <div class="card">
-                <h2 class="card-title">
-                    <span>📊</span>
-                    Team Rankings
-                </h2>
-                <div id="scoreboardContent">
-                    <div class="loading">
-                        <div class="spinner"></div>
-                    </div>
+    <!-- Main Evidence Board -->
+    <div class="evidence-board">
+        <!-- Case File Header -->
+        <header class="case-header">
+            <div class="case-title">
+                <span>CASE FILE: ABOUT LAST NIGHT</span>
+            </div>
+            <div class="header-status">
+                <div class="status-indicator" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span id="statusText">CONNECTING</span>
+                </div>
+                <span class="rec-indicator">REC</span>
+                <span class="timestamp" id="timestamp">
+                    <span class="hours">00</span><span class="colon">:</span><span class="minutes">00</span><span class="colon">:</span><span class="seconds">00</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Evidence Content Area -->
+        <main class="evidence-content">
+            <!-- Hero Evidence Card -->
+            <article class="hero-evidence empty" id="heroEvidence">
+                <span class="empty-message">Awaiting evidence...</span>
+            </article>
+
+            <!-- Evidence Feed Grid -->
+            <div class="evidence-feed" id="evidenceFeed">
+                <div class="evidence-feed-empty">
+                    Investigation in progress...
                 </div>
             </div>
+        </main>
 
-            <!-- Detective Log -->
-            <div class="card">
-                <h2 class="card-title">
-                    <span>🔍</span>
-                    Detective Log
-                </h2>
-                <div class="detective-log" id="detectiveLog">
-                    <div class="empty-state">
-                        <h3>No Detective Scans Yet</h3>
-                        <p>Detective mode scans will appear here</p>
-                    </div>
-                </div>
+        <!-- Score Ticker -->
+        <footer class="score-ticker" id="scoreTicker">
+            <span class="ticker-label">STANDINGS</span>
+            <div class="ticker-entries" id="tickerEntries">
+                <span class="ticker-empty">No scores recorded</span>
             </div>
-        </div>
+        </footer>
     </div>
 
-    <!-- Notification Container -->
-    <div class="notification-container" id="notificationContainer"></div>
-
-    <!-- Display Mode Overlay (Phase 4.2 - shown when VLC is playing video) -->
+    <!-- Display Mode Overlay -->
     <div class="display-mode-overlay" id="displayModeOverlay">
         <span class="display-mode-overlay-text">Video Playing...</span>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="loading-indicator" id="loadingIndicator">
+        INITIALIZING
     </div>
 
     <!-- Socket.io Client Library -->
@@ -593,14 +843,13 @@
         // CONFIGURATION
         // ============================================
         const CONFIG = {
-            // SECURITY NOTE: This password is hardcoded for read-only scoreboard display
-            // The scoreboard has no ability to send commands, only receive score updates
-            // Change this to match your ADMIN_PASSWORD in .env
             adminPassword: '@LN-c0nn3ct',
             deviceId: 'SCOREBOARD_DISPLAY',
             apiUrl: window.location.origin,
             reconnectDelay: 2000,
-            tokenRefreshInterval: 23 * 60 * 60 * 1000, // 23 hours
+            tokenRefreshInterval: 23 * 60 * 60 * 1000,
+            maxFeedCards: 8,
+            heroDisplayDuration: 15000, // Time before hero moves to feed
         };
 
         // ============================================
@@ -611,60 +860,13 @@
             token: null,
             isConnected: false,
             teamScores: new Map(),
-            detectiveScans: [],
-            currentPage: 0,
-            teamsPerPage: 2,
-            pageRotationInterval: null,
+            evidenceLog: [],        // All evidence entries (accumulating)
+            heroEvidence: null,     // Current hero card
+            heroTimeout: null,      // Timer for hero rotation
+            displayMode: 'SCOREBOARD',
             kioskMode: false,
-            displayMode: 'SCOREBOARD', // IDLE_LOOP, SCOREBOARD, VIDEO
+            viewMode: 'blackmarket', // 'blackmarket' or 'detective'
         };
-
-        // ============================================
-        // KIOSK MODE INITIALIZATION (Phase 4.2)
-        // ============================================
-        function initKioskMode() {
-            const urlParams = new URLSearchParams(window.location.search);
-            state.kioskMode = urlParams.get('kiosk') === 'true';
-
-            if (state.kioskMode) {
-                document.body.classList.add('kiosk-mode');
-                console.log('[Scoreboard] Kiosk mode enabled');
-
-                // Auto fullscreen on click (browser requires user gesture)
-                document.body.addEventListener('click', () => {
-                    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-                        document.documentElement.requestFullscreen().catch(err => {
-                            console.warn('[Scoreboard] Fullscreen request denied:', err);
-                        });
-                    }
-                }, { once: true });
-            }
-        }
-
-        // ============================================
-        // DISPLAY MODE HANDLING (Phase 4.2)
-        // ============================================
-        function handleDisplayMode(data) {
-            const { mode } = data;
-            state.displayMode = mode;
-            const overlay = document.getElementById('displayModeOverlay');
-
-            console.log('[Scoreboard] Display mode changed:', mode);
-
-            switch (mode) {
-                case 'IDLE_LOOP':
-                case 'VIDEO':
-                    // Show overlay when VLC is active (idle loop or video playing)
-                    if (state.kioskMode) {
-                        overlay.classList.add('active');
-                    }
-                    break;
-                case 'SCOREBOARD':
-                    // Hide overlay, show scoreboard
-                    overlay.classList.remove('active');
-                    break;
-            }
-        }
 
         // ============================================
         // DOM ELEMENTS
@@ -672,20 +874,19 @@
         const elements = {
             connectionStatus: document.getElementById('connectionStatus'),
             statusText: document.getElementById('statusText'),
-            scoreboardContent: document.getElementById('scoreboardContent'),
-            detectiveLog: document.getElementById('detectiveLog'),
-            notificationContainer: document.getElementById('notificationContainer'),
+            heroEvidence: document.getElementById('heroEvidence'),
+            evidenceFeed: document.getElementById('evidenceFeed'),
+            scoreTicker: document.getElementById('scoreTicker'),
+            tickerEntries: document.getElementById('tickerEntries'),
+            flashOverlay: document.getElementById('flashOverlay'),
             displayModeOverlay: document.getElementById('displayModeOverlay'),
+            loadingIndicator: document.getElementById('loadingIndicator'),
+            timestamp: document.getElementById('timestamp'),
         };
 
         // ============================================
         // UTILITY FUNCTIONS
         // ============================================
-        /**
-         * Escapes HTML special characters to prevent XSS attacks
-         * @param {string} unsafe - The string to escape
-         * @returns {string} The escaped string safe for HTML insertion
-         */
         function escapeHtml(unsafe) {
             if (!unsafe) return '';
             return unsafe
@@ -696,6 +897,260 @@
                 .replace(/'/g, "&#039;");
         }
 
+        function formatTime(date) {
+            return new Date(date).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
+
+        function getRandomRotation() {
+            const rotations = [-1.5, -1, -0.5, 0.5, 1, 1.5];
+            return rotations[Math.floor(Math.random() * rotations.length)];
+        }
+
+        // ============================================
+        // TIMESTAMP CLOCK
+        // ============================================
+        function updateTimestamp() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+
+            elements.timestamp.querySelector('.hours').textContent = hours;
+            elements.timestamp.querySelector('.minutes').textContent = minutes;
+            elements.timestamp.querySelector('.seconds').textContent = seconds;
+        }
+
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+
+        // ============================================
+        // MODE INITIALIZATION
+        // ============================================
+        function initModes() {
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Kiosk mode
+            state.kioskMode = urlParams.get('kiosk') === 'true';
+            if (state.kioskMode) {
+                document.body.classList.add('kiosk-mode');
+                console.log('[Scoreboard] Kiosk mode enabled');
+
+                document.body.addEventListener('click', () => {
+                    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(err => {
+                            console.warn('[Scoreboard] Fullscreen request denied:', err);
+                        });
+                    }
+                }, { once: true });
+            }
+
+            // View mode (detective hides ticker)
+            const modeParam = urlParams.get('mode');
+            if (modeParam === 'detective') {
+                state.viewMode = 'detective';
+                document.body.classList.add('mode-detective');
+                console.log('[Scoreboard] Detective mode - ticker hidden');
+            }
+        }
+
+        // ============================================
+        // DISPLAY MODE HANDLING
+        // ============================================
+        function handleDisplayMode(data) {
+            const { mode } = data;
+            state.displayMode = mode;
+            const overlay = elements.displayModeOverlay;
+
+            console.log('[Scoreboard] Display mode changed:', mode);
+
+            switch (mode) {
+                case 'IDLE_LOOP':
+                case 'VIDEO':
+                    if (state.kioskMode) {
+                        overlay.classList.add('active');
+                    }
+                    break;
+                case 'SCOREBOARD':
+                    overlay.classList.remove('active');
+                    break;
+            }
+        }
+
+        // ============================================
+        // CONNECTION STATUS
+        // ============================================
+        function updateConnectionStatus(status, text) {
+            elements.connectionStatus.className = `status-indicator ${status}`;
+            elements.statusText.textContent = text.toUpperCase();
+        }
+
+        // ============================================
+        // EVIDENCE RENDERING
+        // ============================================
+        function triggerFlash() {
+            elements.flashOverlay.classList.add('active');
+            setTimeout(() => {
+                elements.flashOverlay.classList.remove('active');
+            }, 400);
+        }
+
+        function renderHeroEvidence() {
+            const hero = elements.heroEvidence;
+
+            if (!state.heroEvidence) {
+                hero.classList.add('empty');
+                hero.innerHTML = '<span class="empty-message">Awaiting evidence...</span>';
+                return;
+            }
+
+            const evidence = state.heroEvidence;
+            hero.classList.remove('empty');
+            hero.innerHTML = `
+                <div class="hero-evidence__header">
+                    <span class="hero-evidence__team">TEAM ${escapeHtml(evidence.teamId)}</span>
+                    <span class="hero-evidence__time">${formatTime(evidence.timestamp)}</span>
+                </div>
+                <div class="hero-evidence__summary">
+                    ${escapeHtml(evidence.summary || evidence.tokenId)}
+                </div>
+            `;
+
+            // Reset animation
+            hero.style.animation = 'none';
+            hero.offsetHeight; // Trigger reflow
+            hero.style.animation = '';
+        }
+
+        function renderEvidenceFeed() {
+            const feed = elements.evidenceFeed;
+
+            // Get evidence excluding current hero
+            const feedEvidence = state.evidenceLog
+                .filter(e => !state.heroEvidence || e.id !== state.heroEvidence.id)
+                .slice(0, CONFIG.maxFeedCards);
+
+            if (feedEvidence.length === 0) {
+                feed.innerHTML = '<div class="evidence-feed-empty">Investigation in progress...</div>';
+                return;
+            }
+
+            const cardsHtml = feedEvidence.map((evidence, index) => {
+                const rotation = getRandomRotation();
+                const delay = index * 100;
+
+                return `
+                    <article class="evidence-card"
+                             style="--rotation: ${rotation}deg; animation-delay: ${delay}ms;"
+                             data-id="${evidence.id}">
+                        <div class="evidence-card__header">
+                            <span class="evidence-card__team">TEAM ${escapeHtml(evidence.teamId)}</span>
+                            <span class="evidence-card__time">${formatTime(evidence.timestamp)}</span>
+                        </div>
+                        <div class="evidence-card__text">
+                            ${escapeHtml(evidence.summary || evidence.tokenId)}
+                        </div>
+                    </article>
+                `;
+            }).join('');
+
+            feed.innerHTML = cardsHtml;
+        }
+
+        function addEvidence(transaction) {
+            // Create evidence entry
+            const evidence = {
+                id: transaction.id || `${transaction.tokenId}-${transaction.teamId}-${Date.now()}`,
+                tokenId: transaction.tokenId,
+                teamId: transaction.teamId,
+                timestamp: transaction.timestamp || new Date().toISOString(),
+                summary: transaction.summary || null,
+            };
+
+            // Check for duplicates
+            if (state.evidenceLog.some(e => e.id === evidence.id)) {
+                return;
+            }
+
+            // Flash effect for new evidence
+            triggerFlash();
+
+            // Move current hero to feed if exists
+            if (state.heroEvidence) {
+                // Add old hero to front of feed
+                state.evidenceLog.unshift(state.heroEvidence);
+            }
+
+            // Set new evidence as hero
+            state.heroEvidence = evidence;
+
+            // Render updates
+            renderHeroEvidence();
+            renderEvidenceFeed();
+
+            // Trim evidence log to prevent memory issues
+            if (state.evidenceLog.length > 100) {
+                state.evidenceLog = state.evidenceLog.slice(0, 100);
+            }
+
+            console.log('[Scoreboard] Evidence added:', evidence.tokenId, 'for team', evidence.teamId);
+        }
+
+        // ============================================
+        // SCORE RENDERING
+        // ============================================
+        function renderScoreboard() {
+            const scores = Array.from(state.teamScores.values())
+                .filter(team => team.tokensScanned > 0)
+                .sort((a, b) => b.currentScore - a.currentScore);
+
+            if (scores.length === 0) {
+                elements.tickerEntries.innerHTML = '<span class="ticker-empty">No scores recorded</span>';
+                return;
+            }
+
+            const maxScore = scores[0]?.currentScore || 1;
+
+            const entriesHtml = scores.slice(0, 6).map((team, index) => {
+                const rank = index + 1;
+                const barWidth = (team.currentScore / maxScore) * 100;
+
+                return `
+                    <div class="score-entry" data-team="${team.teamId}">
+                        <span class="score-entry__rank">${rank}</span>
+                        <span class="score-entry__team">TEAM ${escapeHtml(team.teamId)}</span>
+                        <span class="score-entry__amount">$${team.currentScore.toLocaleString()}</span>
+                        <div class="score-entry__bar">
+                            <div class="score-entry__bar-fill" style="width: ${barWidth}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            elements.tickerEntries.innerHTML = entriesHtml;
+        }
+
+        function updateTeamScore(scoreData) {
+            const existingScore = state.teamScores.get(scoreData.teamId);
+            state.teamScores.set(scoreData.teamId, scoreData);
+
+            // Animate score change
+            if (existingScore && existingScore.currentScore !== scoreData.currentScore) {
+                setTimeout(() => {
+                    const entry = document.querySelector(`.score-entry[data-team="${scoreData.teamId}"] .score-entry__amount`);
+                    if (entry) {
+                        entry.classList.add('updating');
+                        setTimeout(() => entry.classList.remove('updating'), 500);
+                    }
+                }, 100);
+            }
+
+            renderScoreboard();
+        }
+
         // ============================================
         // AUTHENTICATION
         // ============================================
@@ -703,12 +1158,8 @@
             try {
                 const response = await fetch(`${CONFIG.apiUrl}/api/admin/auth`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        password: CONFIG.adminPassword,
-                    }),
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: CONFIG.adminPassword }),
                 });
 
                 if (!response.ok) {
@@ -718,13 +1169,11 @@
                 const data = await response.json();
                 state.token = data.token;
 
-                console.log('✅ Authentication successful');
+                console.log('[Scoreboard] Authentication successful');
                 return true;
             } catch (error) {
-                console.error('❌ Authentication failed:', error);
-                updateConnectionStatus('error', 'Auth Failed');
-
-                // Retry authentication after delay
+                console.error('[Scoreboard] Authentication failed:', error);
+                updateConnectionStatus('offline', 'AUTH FAILED');
                 setTimeout(authenticate, CONFIG.reconnectDelay);
                 return false;
             }
@@ -733,33 +1182,26 @@
         // ============================================
         // WEBSOCKET CONNECTION
         // ============================================
-        /**
-         * Clean up existing socket connection before creating new one
-         * Prevents listener accumulation and memory leaks during token refresh
-         */
         function cleanupSocket() {
             if (state.socket) {
-                console.log('🧹 Cleaning up old socket connection');
-                state.socket.removeAllListeners();  // Remove all event handlers
+                console.log('[Scoreboard] Cleaning up socket');
+                state.socket.removeAllListeners();
                 if (state.socket.connected) {
-                    state.socket.disconnect();      // Disconnect if still connected
+                    state.socket.disconnect();
                 }
-                state.socket = null;                // Clear reference for GC
+                state.socket = null;
             }
             state.isConnected = false;
         }
 
         async function connectWebSocket() {
             if (!state.token) {
-                console.error('❌ Cannot connect without token');
+                console.error('[Scoreboard] No token available');
                 return;
             }
 
-            // Clean up any existing socket before creating new one
-            // Critical for token refresh cycle (line 773-779) which creates new socket
             cleanupSocket();
-
-            updateConnectionStatus('connecting', 'Connecting...');
+            updateConnectionStatus('connecting', 'CONNECTING');
 
             try {
                 state.socket = io(CONFIG.apiUrl, {
@@ -774,8 +1216,8 @@
 
                 setupSocketHandlers();
             } catch (error) {
-                console.error('❌ WebSocket connection failed:', error);
-                updateConnectionStatus('error', 'Connection Failed');
+                console.error('[Scoreboard] WebSocket connection failed:', error);
+                updateConnectionStatus('offline', 'CONN FAILED');
                 setTimeout(connectWebSocket, CONFIG.reconnectDelay);
             }
         }
@@ -784,51 +1226,38 @@
             let lastActivityTime = Date.now();
             let zombieCheckInterval = null;
 
-            // Monitor ALL socket activity (including internal ping/pong) to detect zombie connections
-            // Uses Socket.io's onAny() to catch internal transport events, not just game broadcasts
             state.socket.onAny(() => {
                 lastActivityTime = Date.now();
             });
 
             state.socket.on('connect', () => {
-                console.log('✅ WebSocket connected');
+                console.log('[Scoreboard] WebSocket connected');
                 state.isConnected = true;
-                updateConnectionStatus('connected', 'Live');
+                updateConnectionStatus('connected', 'LIVE');
+                elements.loadingIndicator.classList.add('hidden');
 
-                // Request full sync
                 state.socket.emit('sync:request');
 
-                // Start zombie connection detection
-                // Only checks if we're supposedly "connected" but not receiving ANY events (including ping/pong)
-                // 5-minute timeout chosen to avoid false positives during quiet periods
-                if (zombieCheckInterval) {
-                    clearInterval(zombieCheckInterval);
-                }
+                if (zombieCheckInterval) clearInterval(zombieCheckInterval);
                 zombieCheckInterval = setInterval(() => {
                     const timeSinceActivity = Date.now() - lastActivityTime;
-
-                    // 5 minutes with NO activity (including Socket.io ping/pong) = zombie
                     if (timeSinceActivity > 5 * 60 * 1000 && state.isConnected) {
-                        console.warn('⚠️ Zombie connection detected - no activity for 5 minutes, reconnecting...');
+                        console.warn('[Scoreboard] Zombie connection detected, reconnecting...');
                         clearInterval(zombieCheckInterval);
                         zombieCheckInterval = null;
                         cleanupSocket();
-                        // Re-authenticate and reconnect (don't call initialize() - would create duplicate intervals)
                         authenticate().then(authenticated => {
-                            if (authenticated) {
-                                connectWebSocket();
-                            }
+                            if (authenticated) connectWebSocket();
                         });
                     }
-                }, 60 * 1000);  // Check every 60 seconds
+                }, 60 * 1000);
             });
 
             state.socket.on('disconnect', (reason) => {
-                console.log('⚠️ WebSocket disconnected:', reason);
+                console.log('[Scoreboard] WebSocket disconnected:', reason);
                 state.isConnected = false;
-                updateConnectionStatus('offline', 'Offline');
+                updateConnectionStatus('offline', 'OFFLINE');
 
-                // Stop zombie detection when disconnected
                 if (zombieCheckInterval) {
                     clearInterval(zombieCheckInterval);
                     zombieCheckInterval = null;
@@ -836,287 +1265,112 @@
             });
 
             state.socket.on('connect_error', (error) => {
-                console.error('❌ Connection error:', error);
-                updateConnectionStatus('error', 'Connection Error');
+                console.error('[Scoreboard] Connection error:', error);
+                updateConnectionStatus('offline', 'CONN ERROR');
             });
 
             state.socket.on('reconnect', () => {
-                console.log('✅ WebSocket reconnected');
+                console.log('[Scoreboard] WebSocket reconnected');
                 state.socket.emit('sync:request');
             });
 
             // Score updates
             state.socket.on('score:updated', (eventData) => {
                 const scoreData = eventData.data;
-                console.log('📊 Score updated:', scoreData);
+                console.log('[Scoreboard] Score updated:', scoreData);
                 updateTeamScore(scoreData);
             });
 
             // Group completions
             state.socket.on('group:completed', (eventData) => {
                 const data = eventData.data;
-                console.log('🏆 Group completed:', data);
-                showGroupCompletionNotification(data);
+                console.log('[Scoreboard] Group completed:', data);
+                // Could add special visual effect here
             });
 
-            // Transaction events (for detective log)
+            // Transaction events (for evidence log)
             state.socket.on('transaction:new', (eventData) => {
                 const transaction = eventData.data?.transaction;
-                if (transaction && transaction.mode === 'detective') {
-                    console.log('🔍 Detective scan:', transaction);
-                    addDetectiveLogEntry(transaction);
+                if (transaction) {
+                    console.log('[Scoreboard] New transaction:', transaction);
+                    addEvidence(transaction);
                 }
             });
 
             // Full sync
             state.socket.on('sync:full', (eventData) => {
                 const data = eventData.data;
-                console.log('🔄 Full sync received:', data);
+                console.log('[Scoreboard] Full sync received:', data);
 
-                // Update scores from sync
+                // Update scores
                 if (data.scores && Array.isArray(data.scores)) {
                     data.scores.forEach(updateTeamScore);
                 }
-                // Always render scoreboard after sync to replace loading spinner
-                // (even if scores array is empty - will show "No Teams Yet" message)
                 renderScoreboard();
 
-                // Load recent transactions for detective log
+                // Load recent transactions for evidence log
                 if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
-                    data.recentTransactions
-                        .filter(tx => tx.mode === 'detective')
-                        .forEach(addDetectiveLogEntry);
+                    // Sort by timestamp descending
+                    const sorted = [...data.recentTransactions].sort((a, b) =>
+                        new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+
+                    // Set most recent as hero
+                    if (sorted.length > 0) {
+                        state.heroEvidence = {
+                            id: sorted[0].id || `${sorted[0].tokenId}-${sorted[0].teamId}`,
+                            tokenId: sorted[0].tokenId,
+                            teamId: sorted[0].teamId,
+                            timestamp: sorted[0].timestamp,
+                            summary: sorted[0].summary || null,
+                        };
+                    }
+
+                    // Add rest to feed
+                    sorted.slice(1).forEach(tx => {
+                        const evidence = {
+                            id: tx.id || `${tx.tokenId}-${tx.teamId}`,
+                            tokenId: tx.tokenId,
+                            teamId: tx.teamId,
+                            timestamp: tx.timestamp,
+                            summary: tx.summary || null,
+                        };
+                        if (!state.evidenceLog.some(e => e.id === evidence.id)) {
+                            state.evidenceLog.push(evidence);
+                        }
+                    });
+
+                    renderHeroEvidence();
+                    renderEvidenceFeed();
                 }
             });
 
-            // Display mode changes (Phase 4.2 - kiosk mode support)
+            // Display mode changes
             state.socket.on('display:mode', (eventData) => {
                 const data = eventData.data;
-                console.log('📺 Display mode event:', data);
+                console.log('[Scoreboard] Display mode event:', data);
                 handleDisplayMode(data);
             });
-        }
-
-        // ============================================
-        // UI UPDATES
-        // ============================================
-        function updateConnectionStatus(status, text) {
-            elements.connectionStatus.className = `connection-status ${status}`;
-            elements.statusText.textContent = text;
-        }
-
-        function updateTeamScore(scoreData) {
-            state.teamScores.set(scoreData.teamId, scoreData);
-            renderScoreboard();
-        }
-
-        function renderScoreboard() {
-            const scores = Array.from(state.teamScores.values())
-                .filter(team => team.tokensScanned > 0)  // Only show teams with activity
-                .sort((a, b) => b.currentScore - a.currentScore);
-
-            if (scores.length === 0) {
-                elements.scoreboardContent.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No Teams Yet</h3>
-                        <p>Teams will appear after scanning tokens</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const html = scores.map((team, index) => {
-                const rank = index + 1;
-                const rankClass = rank <= 3 ? `rank-${rank}` : '';
-                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
-                const completedGroups = team.completedGroups?.length || 0;
-
-                return `
-                    <div class="scoreboard-entry ${rankClass}">
-                        <div class="scoreboard-rank">${medal}</div>
-                        <div class="scoreboard-team">
-                            <div class="team-name">Team ${team.teamId}</div>
-                            <div class="team-stats">
-                                <span>🎯 ${team.tokensScanned || 0} tokens</span>
-                                ${completedGroups > 0 ? `<span>🏆 ${completedGroups} groups</span>` : ''}
-                            </div>
-                        </div>
-                        <div class="scoreboard-score">$${team.currentScore.toLocaleString()}</div>
-                    </div>
-                `;
-            }).join('');
-
-            elements.scoreboardContent.innerHTML = html;
-        }
-
-        function addDetectiveLogEntry(transaction) {
-            // Prevent duplicates (check by tokenId and teamId combination)
-            if (state.detectiveScans.some(s => s.tokenId === transaction.tokenId && s.teamId === transaction.teamId)) {
-                return;
-            }
-
-            state.detectiveScans.unshift({
-                id: transaction.id,
-                tokenId: transaction.tokenId,
-                teamId: transaction.teamId,
-                timestamp: transaction.timestamp,
-                summary: transaction.summary || null
-            });
-
-            // Keep only last 100 entries total
-            if (state.detectiveScans.length > 100) {
-                state.detectiveScans = state.detectiveScans.slice(0, 100);
-            }
-
-            renderDetectiveLog();
-        }
-
-        function groupScansByTeam() {
-            const teamGroups = new Map();
-
-            state.detectiveScans.forEach(scan => {
-                const teamId = scan.teamId || 'Unknown';
-                if (!teamGroups.has(teamId)) {
-                    teamGroups.set(teamId, []);
-                }
-                teamGroups.get(teamId).push(scan);
-            });
-
-            // Sort teams by ID
-            return Array.from(teamGroups.entries())
-                .sort((a, b) => a[0].localeCompare(b[0]))
-                .map(([teamId, scans]) => ({ teamId, scans }));
-        }
-
-        function startPageRotation() {
-            // Clear any existing interval
-            if (state.pageRotationInterval) {
-                clearInterval(state.pageRotationInterval);
-            }
-
-            // Rotate every 15 seconds
-            state.pageRotationInterval = setInterval(() => {
-                const teamGroups = groupScansByTeam();
-                const totalPages = Math.ceil(teamGroups.length / state.teamsPerPage);
-
-                if (totalPages > 1) {
-                    state.currentPage = (state.currentPage + 1) % totalPages;
-                    renderDetectiveLog();
-                }
-            }, 15000);
-        }
-
-        function renderDetectiveLog() {
-            if (state.detectiveScans.length === 0) {
-                elements.detectiveLog.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No Detective Scans Yet</h3>
-                        <p>Detective mode scans will appear here</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const teamGroups = groupScansByTeam();
-            const totalPages = Math.ceil(teamGroups.length / state.teamsPerPage);
-
-            // Ensure current page is valid
-            if (state.currentPage >= totalPages) {
-                state.currentPage = 0;
-            }
-
-            // Get teams for current page
-            const startIdx = state.currentPage * state.teamsPerPage;
-            const endIdx = Math.min(startIdx + state.teamsPerPage, teamGroups.length);
-            const pageTeams = teamGroups.slice(startIdx, endIdx);
-
-            // Render team groups
-            const teamsHtml = pageTeams.map(({ teamId, scans }) => {
-                const scansHtml = scans.map(scan => {
-                    const time = new Date(scan.timestamp).toLocaleTimeString();
-                    const summaryHtml = scan.summary ? `<p class="log-summary">${escapeHtml(scan.summary)}</p>` : '';
-                    return `
-                        <div class="log-entry">
-                            <div class="log-content">
-                                <strong>${escapeHtml(scan.tokenId)}</strong>
-                                ${summaryHtml}
-                            </div>
-                            <span class="log-time">${time}</span>
-                        </div>
-                    `;
-                }).join('');
-
-                return `
-                    <div class="team-log-group">
-                        <div class="team-log-header">Team ${escapeHtml(teamId)}</div>
-                        ${scansHtml}
-                    </div>
-                `;
-            }).join('');
-
-            // Render pagination indicator (only if multiple pages)
-            const paginationHtml = totalPages > 1 ? `
-                <div class="pagination-indicator">
-                    <span>Page ${state.currentPage + 1} of ${totalPages}</span>
-                    <div style="display: flex; gap: 0.5rem;">
-                        ${Array.from({ length: totalPages }, (_, i) =>
-                            `<div class="page-dot ${i === state.currentPage ? 'active' : ''}"></div>`
-                        ).join('')}
-                    </div>
-                </div>
-            ` : '';
-
-            elements.detectiveLog.innerHTML = teamsHtml + paginationHtml;
-
-            // Start rotation if we have multiple pages and rotation isn't running
-            if (totalPages > 1 && !state.pageRotationInterval) {
-                startPageRotation();
-            }
-        }
-
-        function showGroupCompletionNotification(data) {
-            const notification = document.createElement('div');
-            notification.className = 'notification group-complete';
-            notification.innerHTML = `
-                <div class="notification-title">
-                    🏆 Group Completed!
-                </div>
-                <div class="notification-body">
-                    Team ${data.teamId} completed ${data.group}<br>
-                    Bonus: +$${data.bonusPoints.toLocaleString()}
-                </div>
-            `;
-
-            elements.notificationContainer.appendChild(notification);
-
-            // Auto-remove after 8 seconds
-            setTimeout(() => {
-                notification.style.animation = 'fadeOut 0.3s ease-out forwards';
-                setTimeout(() => notification.remove(), 300);
-            }, 8000);
         }
 
         // ============================================
         // INITIALIZATION
         // ============================================
         async function initialize() {
-            console.log('🚀 Initializing scoreboard display...');
+            console.log('[Scoreboard] Initializing Evidence Board...');
 
-            // Initialize kiosk mode first (Phase 4.2)
-            initKioskMode();
+            initModes();
 
-            // Authenticate first
             const authenticated = await authenticate();
             if (!authenticated) {
-                return; // Will retry automatically
+                return;
             }
 
-            // Connect WebSocket
             await connectWebSocket();
 
-            // Refresh token periodically (before it expires)
+            // Token refresh cycle
             setInterval(async () => {
-                console.log('🔄 Refreshing authentication token...');
+                console.log('[Scoreboard] Refreshing token...');
                 await authenticate();
                 if (state.socket && state.socket.connected) {
                     state.socket.disconnect();
@@ -1125,7 +1379,7 @@
             }, CONFIG.tokenRefreshInterval);
         }
 
-        // Start when page loads
+        // Start
         initialize();
     </script>
 </body>
