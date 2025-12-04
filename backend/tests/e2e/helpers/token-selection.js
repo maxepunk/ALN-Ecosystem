@@ -97,6 +97,9 @@ async function selectTestTokens(orchestratorUrl) {
   const businessTokens = availableTokens.filter(t => t.SF_MemoryType === 'Business');
   const technicalTokens = availableTokens.filter(t => t.SF_MemoryType === 'Technical');
 
+  // Find video tokens (have non-null video field)
+  const videoTokens = availableTokens.filter(t => t.video && t.video !== '');
+
   // Validation: Ensure minimum required tokens exist
   if (personalTokens.length === 0) {
     throw new Error('No Personal tokens found in database. Cannot run E2E tests.');
@@ -145,6 +148,14 @@ async function selectTestTokens(orchestratorUrl) {
     availableTechnical.find(t => t.SF_ValueRating === 5) || availableTechnical[0]
   );
 
+  // Video token (for video alert testing) - exclude already used tokens
+  const availableVideo = videoTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+  if (availableVideo.length > 0) {
+    selected.videoToken = allocateToken(availableVideo[0]);
+  } else {
+    selected.videoToken = null;
+  }
+
   // 3. ALLOCATE UNIQUE TOKENS for duplicate detection (from remaining pool)
   selected.uniqueTokens = availableTokens.slice(0, 5);
 
@@ -156,6 +167,7 @@ async function selectTestTokens(orchestratorUrl) {
   console.log(`  → Personal token: ${selected.personalToken.SF_RFID} (${selected.personalToken.SF_ValueRating}⭐)`);
   console.log(`  → Business token: ${selected.businessToken.SF_RFID} (${selected.businessToken.SF_ValueRating}⭐)`);
   console.log(`  → Technical token: ${selected.technicalToken.SF_RFID} (${selected.technicalToken.SF_ValueRating}⭐)`);
+  console.log(`  → Video token: ${selected.videoToken ? selected.videoToken.SF_RFID : 'NONE FOUND'}`);
   console.log(`  → Group tokens: ${selected.groupTokens.length > 0 ? selected.groupTokens.map(t => t.SF_RFID).join(', ') : 'NONE FOUND'}`);
   console.log(`  → Unique tokens: ${selected.uniqueTokens.slice(0, 3).map(t => t.SF_RFID).join(', ')}... (${selected.uniqueTokens.length} total)`);
 
@@ -164,11 +176,17 @@ async function selectTestTokens(orchestratorUrl) {
     console.warn('⚠️  Warning: No group with 2+ tokens found. Group completion bonus tests will be skipped.');
   }
 
+  // Validation: Warn if video tokens not found
+  if (!selected.videoToken) {
+    console.warn('⚠️  Warning: No video token found. Video alert tests will be skipped.');
+  }
+
   // Validation: Check for overlap (should never happen with exclusive allocation)
   const allSelections = [
     selected.personalToken.SF_RFID,
     selected.businessToken.SF_RFID,
     selected.technicalToken.SF_RFID,
+    ...(selected.videoToken ? [selected.videoToken.SF_RFID] : []),
     ...selected.groupTokens.map(t => t.SF_RFID),
     ...selected.uniqueTokens.map(t => t.SF_RFID)
   ];

@@ -286,6 +286,83 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   // ========================================
+  // TEST: Video Alert Feature (NeurAI Branding)
+  // ========================================
+
+  test('video token triggers video alert with NeurAI branding', async () => {
+    // Skip if no video token available
+    if (!testTokens.videoToken) {
+      console.log('⚠️ Skipping video alert test - no video token in database');
+      return;
+    }
+
+    const context = await createBrowserContext(browser, 'mobile');
+    const page = await createPage(context);
+    const scanner = new PlayerScannerPage(page);
+
+    await scanner.gotoNetworked(orchestratorInfo.url);
+
+    const videoTokenId = testTokens.videoToken.SF_RFID;
+    console.log(`Testing video token (${videoTokenId})...`);
+
+    // Scan video token
+    await scanner.simulateScan(videoTokenId);
+
+    // Video alert should appear
+    await scanner.waitForVideoAlert();
+    expect(await scanner.isVideoAlertVisible()).toBe(true);
+
+    // Verify NeurAI branding elements
+    const alertContent = await scanner.getVideoAlertContent();
+    expect(alertContent.title).toContain('VIDEO MEMORY');
+    expect(alertContent.subtitle).toContain('TRIGGERED');
+    expect(alertContent.hint).toContain('Rendering on video screen');
+
+    console.log('✓ Video alert displayed with NeurAI branding');
+    console.log(`  Title: "${alertContent.title}"`);
+    console.log(`  Subtitle: "${alertContent.subtitle}"`);
+    console.log(`  Hint: "${alertContent.hint}"`);
+  });
+
+  test('video alert displays for minimum 5 seconds', async () => {
+    // Skip if no video token available
+    if (!testTokens.videoToken) {
+      console.log('⚠️ Skipping video alert duration test - no video token in database');
+      return;
+    }
+
+    const context = await createBrowserContext(browser, 'mobile');
+    const page = await createPage(context);
+    const scanner = new PlayerScannerPage(page);
+
+    await scanner.gotoNetworked(orchestratorInfo.url);
+
+    const videoTokenId = testTokens.videoToken.SF_RFID;
+
+    // Scan video token
+    await scanner.simulateScan(videoTokenId);
+
+    // Wait for alert to appear
+    await scanner.waitForVideoAlert();
+    const alertStartTime = Date.now();
+
+    // Wait 4 seconds - should still be visible
+    await page.waitForTimeout(4000);
+    expect(await scanner.isVideoAlertVisible()).toBe(true);
+    console.log('✓ Video alert still visible after 4 seconds');
+
+    // Wait for alert to auto-dismiss (5s display + 300ms animation)
+    await scanner.waitForVideoAlertHidden(4000);
+    const alertEndTime = Date.now();
+
+    expect(await scanner.isVideoAlertVisible()).toBe(false);
+
+    const displayDuration = alertEndTime - alertStartTime;
+    expect(displayDuration).toBeGreaterThanOrEqual(5000);
+    console.log(`✓ Video alert displayed for ${displayDuration}ms (minimum 5000ms)`);
+  });
+
+  // ========================================
   // TEST 4: Local Media Display
   // ========================================
 
@@ -694,10 +771,12 @@ test.describe('Player Scanner Networked Scanning', () => {
 /**
  * TEST COMPLETION CRITERIA:
  *
- * All 11 tests passing indicates:
+ * All 13 tests passing indicates:
  * ✓ Online scanning sends POST /api/scan
  * ✓ Request includes required fields (tokenId, deviceId, timestamp)
  * ✓ Response status logged correctly
+ * ✓ Video alert displays with NeurAI branding (if video token available)
+ * ✓ Video alert displays for minimum 5 seconds (if video token available)
  * ✓ Local media displays in networked mode (image/audio)
  * ✓ Offline scans queued correctly
  * ✓ Queue persisted to localStorage
@@ -709,4 +788,7 @@ test.describe('Player Scanner Networked Scanning', () => {
  *
  * CRITICAL: This validates player scanner's offline-first architecture.
  * Failures indicate mobile network resilience issues or API contract violations.
+ *
+ * NOTE: Video alert tests require a video token in the database.
+ * Tests will be skipped (not failed) if no video token exists.
  */

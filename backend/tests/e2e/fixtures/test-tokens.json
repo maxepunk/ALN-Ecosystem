@@ -1,4 +1,14 @@
 {
+  "video_test_01": {
+    "image": null,
+    "audio": null,
+    "video": "test_video.mp4",
+    "processingImage": null,
+    "SF_RFID": "video_test_01",
+    "SF_ValueRating": 4,
+    "SF_MemoryType": "Technical",
+    "SF_Group": ""
+  },
   "sof002": {
     "image": null,
     "audio": null,
