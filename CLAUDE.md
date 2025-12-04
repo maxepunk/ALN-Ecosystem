@@ -14,6 +14,22 @@ ALN (About Last Night) Ecosystem is a memory token scanning and video playback s
 - **Token Data** (SUBMODULE: `ALN-TokenData/`): Shared JSON definitions of memory tokens and their associated media
 - **Notion Sync Scripts** (`scripts/`): Python scripts for syncing Notion Elements database to tokens.json
 
+## Game Modes
+
+The system supports two distinct game modes that affect scoring and display:
+
+**Detective Mode (`mode: 'detective'`):**
+- Star ratings (1-5) for token value
+- Evidence-based scoring with summary text display
+- Scoreboard shows "Classified Evidence Terminal" with cycling evidence grid
+- Evidence cards cycle through all discoveries (not just most recent 8)
+
+**Black Market Mode (`mode: 'blackmarket'`):**
+- Currency-based scoring ($100 - $10,000 base values)
+- Type multipliers: Personal 1x, Business 3x, Technical 5x
+- Group completion bonuses (2x - 20x multipliers)
+- Scoreboard shows team rankings with score ticker
+
 **Contract-First Architecture:**
 - `backend/contracts/openapi.yaml` - ALL HTTP endpoints (validates with contract tests)
 - `backend/contracts/asyncapi.yaml` - ALL WebSocket events (validates with contract tests)
@@ -30,6 +46,13 @@ ALN (About Last Night) Ecosystem is a memory token scanning and video playback s
 | Real-time Updates | Yes (broadcasts) | No (stateless) | No (stateless) |
 | Offline Support | Queue + localStorage | Dual-mode (GitHub Pages OR queue) | SD card queue (JSONL) |
 | Admin Functions | Session/Video/System control | None | None |
+| deviceType field | `gm` | `player` | `esp32` |
+
+**CRITICAL - deviceType Field:**
+All scan requests MUST include `deviceType` field for duplicate detection logic:
+- GM Scanner: `deviceType: 'gm'`
+- Player Scanner (Web): `deviceType: 'player'`
+- ESP32 Scanner: `deviceType: 'esp32'`
 
 ## Submodule Architecture
 
@@ -273,6 +296,24 @@ displayControlService (State Machine)
 - Browser process killed before VLC starts; VLC stopped before browser launches
 
 **Key Files:** `backend/src/services/displayControlService.js`, `backend/src/utils/displayDriver.js`, `backend/src/services/vlcService.js`
+
+### Scoreboard Architecture (Phase 7)
+The scoreboard (`backend/public/scoreboard.html`) displays differently based on game mode:
+
+**Detective Mode - "Classified Evidence Terminal":**
+- Dynamic evidence grid with responsive slot calculation based on viewport
+- Cycling evidence cards showing ALL discoveries (not just recent 8)
+- Adaptive cycling intervals: 18s (few items), 15s (moderate), 12s (many items)
+- Staggered card animations (600ms offset between slots)
+- Hero evidence card highlighting latest discovery
+- Evidence counter in header
+- Black Market ticker at bottom showing team scores
+
+**Black Market Mode:**
+- Team rankings by score
+- Score updates via WebSocket broadcasts
+
+**Key Pattern:** Evidence cards filter to detective mode only (`cf8c8fe5`) - cards only display when `mode === 'detective'`.
 
 ### WebSocket Authentication Flow
 1. HTTP POST `/api/admin/auth` → Returns JWT token
