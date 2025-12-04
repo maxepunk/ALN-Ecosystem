@@ -74,7 +74,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Group Completion Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect REAL GM scanner
@@ -98,7 +98,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       const firstScorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Set team for scanner
-      gmScanner.App.currentTeamId = '001';
+      gmScanner.App.currentTeamId = 'Team Alpha';
 
       // Use REAL scanner API - scan rat001
       gmScanner.App.processNFCRead({ id: 'rat001' });
@@ -108,7 +108,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Verify: First token scored, NO group completion yet
       let scores = transactionService.getTeamScores();
-      let team001Score = scores.find(s => s.teamId === '001');
+      let team001Score = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(40); // Only base score (rat001)
       expect(team001Score.baseScore).toBe(40);
       expect(team001Score.bonusPoints).toBe(0); // NO bonus yet
@@ -136,7 +136,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Validate: group:completed event structure
       expect(groupEvent.event).toBe('group:completed');
-      expect(groupEvent.data.teamId).toBe('001');
+      expect(groupEvent.data.teamId).toBe('Team Alpha');
       expect(groupEvent.data.group).toBe('Marcus Sucks'); // groupId without "(x2)"
       expect(groupEvent.data.bonusPoints).toBe(70); // (2-1) × (40 + 30)
       expect(groupEvent.data.completedAt).toBeDefined();
@@ -145,7 +145,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       validateWebSocketEvent(groupEvent, 'group:completed');
 
       // Validate: score:updated includes bonus
-      expect(scoreEvent.data.teamId).toBe('001');
+      expect(scoreEvent.data.teamId).toBe('Team Alpha');
       expect(scoreEvent.data.currentScore).toBe(140); // 40 + 30 + 70
       expect(scoreEvent.data.baseScore).toBe(70); // 40 + 30
       expect(scoreEvent.data.bonusPoints).toBe(70); // Group bonus
@@ -153,7 +153,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Validate: Service state matches broadcasts
       scores = transactionService.getTeamScores();
-      team001Score = scores.find(s => s.teamId === '001');
+      team001Score = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(140);
       expect(team001Score.bonusPoints).toBe(70);
       expect(team001Score.completedGroups).toContain('Marcus Sucks');
@@ -165,7 +165,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       const scorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Set team
-      gmScanner.App.currentTeamId = '001';
+      gmScanner.App.currentTeamId = 'Team Alpha';
 
       // Scan only ONE token from the group (rat001) - Use REAL scanner
       gmScanner.App.processNFCRead({ id: 'rat001' });
@@ -175,7 +175,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Verify: NO group completion (only 1 of 2 tokens)
       const scores = transactionService.getTeamScores();
-      const team001Score = scores.find(s => s.teamId === '001');
+      const team001Score = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(40); // Only token value
       expect(team001Score.bonusPoints).toBe(0); // NO bonus
       expect(team001Score.completedGroups).toEqual([]); // NOT complete
@@ -190,7 +190,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       const score1Promise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Set team
-      gmScanner.App.currentTeamId = '001';
+      gmScanner.App.currentTeamId = 'Team Alpha';
 
       // First: asm001 (Personal, rating 3, value 3000) - Use REAL scanner
       gmScanner.App.processNFCRead({ id: 'asm001' });
@@ -209,7 +209,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Validate: Final score same as forward order
       const scores = transactionService.getTeamScores();
-      const team001Score = scores.find(s => s.teamId === '001');
+      const team001Score = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(140); // 30 + 40 + 70
     });
   });

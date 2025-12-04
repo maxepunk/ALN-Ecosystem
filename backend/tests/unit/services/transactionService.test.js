@@ -34,7 +34,7 @@ describe('TransactionService - Event Emission', () => {
       // Setup: Create session and initialize transaction service
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -61,7 +61,7 @@ describe('TransactionService - Event Emission', () => {
       const eventPromise = new Promise((resolve) => {
         transactionService.once('score:updated', (teamScore) => {
           // Validate UNWRAPPED structure (raw TeamScore object, no {event, data, timestamp} wrapper)
-          expect(teamScore).toHaveProperty('teamId', '001');
+          expect(teamScore).toHaveProperty('teamId', 'Team Alpha');
           expect(teamScore).toHaveProperty('currentScore');
           expect(teamScore).toHaveProperty('baseScore');
           expect(teamScore).toHaveProperty('bonusPoints');
@@ -117,7 +117,7 @@ describe('TransactionService - Event Emission', () => {
 
       // Verify: transactionService should NOT have modified sessionService.scores directly
       const session = sessionService.getCurrentSession();
-      const teamInSessionScores = session.scores.find(s => s.teamId === '002');
+      const teamInSessionScores = session.scores.find(s => s.teamId === 'Detectives');
 
       // Session should NOT have team 002 (transactionService shouldn't modify it directly)
       expect(teamInSessionScores).toBeUndefined();
@@ -129,7 +129,7 @@ describe('TransactionService - Event Emission', () => {
       // Setup session with tokens
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -165,7 +165,7 @@ describe('TransactionService - Event Emission', () => {
       // Setup session
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -192,7 +192,7 @@ describe('TransactionService - Event Emission', () => {
       const session = sessionService.getCurrentSession();
       const scanRequest = {
         tokenId: 'test_video',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -313,7 +313,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should detect duplicate token scan', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       const session = sessionService.getCurrentSession();
@@ -322,7 +322,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // First transaction (accepted)
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token123',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -334,7 +334,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Second transaction (same token, different team)
       const tx2 = Transaction.fromScanRequest({
         tokenId: 'token123',
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'GM_02',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -348,7 +348,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Session 1
       await sessionService.createSession({
         name: 'Session 1',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session1 = sessionService.getCurrentSession();
@@ -356,7 +356,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token123',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -375,7 +375,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const session2 = sessionService.getCurrentSession();
       const tx2 = Transaction.fromScanRequest({
         tokenId: 'token123',
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'GM_02',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -388,7 +388,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should find original transaction for duplicate', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       const session = sessionService.getCurrentSession();
@@ -397,7 +397,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Team 001 claims first
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token123',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -409,7 +409,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Team 002 tries to claim (duplicate)
       const tx2 = Transaction.fromScanRequest({
         tokenId: 'token123',
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'GM_02',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -417,14 +417,14 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const original = transactionService.findOriginalTransaction(tx2, session);
       expect(original).toBeDefined();
-      expect(original.teamId).toBe('001');
+      expect(original.teamId).toBe('Team Alpha');
       expect(original.tokenId).toBe('token123');
     });
 
     it('should return null when no original transaction found', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
@@ -432,7 +432,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx = Transaction.fromScanRequest({
         tokenId: 'new_token',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -447,22 +447,22 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should initialize team scores from session creation', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002', '003']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
 
       // Wait for session:created event to propagate
       await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(transactionService.teamScores.size).toBe(3);
-      expect(transactionService.teamScores.has('001')).toBe(true);
-      expect(transactionService.teamScores.has('002')).toBe(true);
-      expect(transactionService.teamScores.has('003')).toBe(true);
+      expect(transactionService.teamScores.has('Team Alpha')).toBe(true);
+      expect(transactionService.teamScores.has('Detectives')).toBe(true);
+      expect(transactionService.teamScores.has('Blue Squad')).toBe(true);
     });
 
     it('should reset scores when session ends', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -479,7 +479,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should get all team scores', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -492,7 +492,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should reset scores manually', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -509,7 +509,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should detect incomplete group', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -546,7 +546,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should detect completed group', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
@@ -581,7 +581,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Team scans both tokens
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token1',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -590,7 +590,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx2 = Transaction.fromScanRequest({
         tokenId: 'token2',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -607,7 +607,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should return false for single-token groups', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -668,14 +668,14 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should track recent transactions', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token1',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -691,7 +691,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should limit recent transactions to specified count', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
@@ -701,7 +701,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       for (let i = 0; i < 15; i++) {
         const tx = Transaction.fromScanRequest({
           tokenId: `token${i}`,
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
           timestamp: new Date().toISOString()
@@ -716,7 +716,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should return most recent transactions first', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
@@ -724,7 +724,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token1',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date('2025-01-01').toISOString()
@@ -732,7 +732,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx2 = Transaction.fromScanRequest({
         tokenId: 'token2',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date('2025-01-02').toISOString()
@@ -751,7 +751,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should rebuild scores from transactions', async () => {
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       const session = sessionService.getCurrentSession();
@@ -771,7 +771,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token1',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -783,7 +783,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.rebuildScoresFromTransactions([tx1]);
 
       // Verify score was rebuilt
-      const teamScore = transactionService.teamScores.get('001');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
       expect(teamScore).toBeDefined();
       expect(teamScore.tokensScanned).toBe(1);
     });
@@ -812,7 +812,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const tx1 = Transaction.fromScanRequest({
         tokenId: 'token1',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString()
@@ -825,7 +825,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       // Verify detective mode transactions don't create scores
       // (session didn't initialize team 001, and detective mode shouldn't add it)
-      const teamScore = transactionService.teamScores.get('001');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
       expect(teamScore).not.toBeDefined();
     });
   });
@@ -839,7 +839,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Create session
       session = await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       // Initialize token
@@ -870,7 +870,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -882,7 +882,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -895,7 +895,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -912,7 +912,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -927,7 +927,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_002',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '002',
+        teamId: 'Detectives',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -941,7 +941,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -956,7 +956,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -982,7 +982,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -993,7 +993,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa002',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -1010,7 +1010,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -1029,7 +1029,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, session);
 
@@ -1046,7 +1046,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         tokenId: 'kaa001',
         deviceId: 'GM_001',
         deviceType: 'gm',  // Required by Phase 3 P0.1
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       }, restoredSession);
 
@@ -1062,7 +1062,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Create session for all enrichment tests
       session = await sessionService.createSession({
         name: 'Enrichment Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
     });
 
@@ -1089,7 +1089,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Scan request WITHOUT summary
       const scanRequest = {
         tokenId: 'det001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_GM',
         deviceType: 'gm',
         mode: 'detective',
@@ -1131,7 +1131,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Scan request WITH custom summary
       const scanRequest = {
         tokenId: 'det001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_GM',
         deviceType: 'gm',
         mode: 'detective',
@@ -1172,7 +1172,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const scanRequest = {
         tokenId: 'alr001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_GM',
         deviceType: 'gm',
         mode: 'detective',
@@ -1208,7 +1208,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const scanRequest = {
         tokenId: 'test001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_GM',
         deviceType: 'gm',
         mode: 'blackmarket',
@@ -1246,7 +1246,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Test blackmarket mode
       const blackmarketRequest = {
         tokenId: 'det002',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_GM',
         deviceType: 'gm',
         mode: 'blackmarket',
@@ -1277,7 +1277,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       // Verify
       return eventPromise.then((eventData) => {
-        expect(eventData.teamsReset).toEqual(expect.arrayContaining(['001', '002']));
+        expect(eventData.teamsReset).toEqual(expect.arrayContaining(['Team Alpha', 'Detectives']));
         expect(eventData.teamsReset.length).toBe(2);
       });
     });
@@ -1295,7 +1295,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Setup: Create session and submit transaction
       const session = await sessionService.createSession({
         name: 'Delete Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -1320,7 +1320,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const scanRequest = {
         tokenId: 'test_delete_token',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_DELETE_TEST',
         deviceType: 'gm',
         mode: 'blackmarket',
@@ -1361,7 +1361,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Setup: Create session and submit transaction
       const session = await sessionService.createSession({
         name: 'Re-scan Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -1386,7 +1386,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const scanRequest = {
         tokenId: 'test_rescan_token',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_RESCAN_TEST',
         deviceType: 'gm',
         mode: 'detective',
@@ -1416,7 +1416,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Setup: Create session with multiple transactions
       const session = await sessionService.createSession({
         name: 'Score Recalc Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const Token = require('../../../src/models/token');
@@ -1445,7 +1445,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Submit two transactions
       const scan1 = await transactionService.processScan({
         tokenId: 'token_recalc_1',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_RECALC_TEST',
         deviceType: 'gm',
         mode: 'blackmarket',
@@ -1454,7 +1454,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const scan2 = await transactionService.processScan({
         tokenId: 'token_recalc_2',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_RECALC_TEST',
         deviceType: 'gm',
         mode: 'blackmarket',
@@ -1462,13 +1462,13 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       }, session, token2);
 
       // Get initial score (should be sum of both tokens)
-      const initialScore = transactionService.teamScores.get('001').currentScore;
+      const initialScore = transactionService.teamScores.get('Team Alpha').currentScore;
 
       // Delete first transaction
       const deleteResult = transactionService.deleteTransaction(scan1.transaction.id, session);
 
       // Verify score recalculated (should only include token2 now)
-      const newScore = transactionService.teamScores.get('001').currentScore;
+      const newScore = transactionService.teamScores.get('Team Alpha').currentScore;
       expect(newScore).toBeLessThan(initialScore);
       expect(deleteResult.updatedScore.currentScore).toBe(newScore);
     });

@@ -61,7 +61,7 @@ describe('Player Scanner - ESP32 Simplicity Constraints', () => {
       const orchestrator = new OrchestratorIntegration();
 
       // Verify basic localStorage operations work
-      orchestrator.queueOffline('test_token', '001');
+      orchestrator.queueOffline('test_token', 'Team Alpha');
 
       const saved = localStorage.getItem('offline_queue');
       expect(saved).toBeTruthy();

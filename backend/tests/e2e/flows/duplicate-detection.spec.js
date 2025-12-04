@@ -140,7 +140,7 @@ test.describe('Duplicate Detection', () => {
     });
 
     // Enter team
-    await scanner.enterTeam('001');
+    await scanner.enterTeamName('Team Alpha');
     await scanner.confirmTeam();
 
     // Wait for scan screen
@@ -242,7 +242,7 @@ test.describe('Duplicate Detection', () => {
     });
 
     // Enter team
-    await scanner.enterTeam('002');
+    await scanner.enterTeamName('Detectives');
     await scanner.confirmTeam();
 
     // Wait for scan screen
@@ -309,7 +309,7 @@ test.describe('Duplicate Detection', () => {
     const scanner = await initializeGMScannerWithMode(page, 'standalone', 'blackmarket');
 
     // Enter team
-    await scanner.enterTeam('003');
+    await scanner.enterTeamName('Blue Squad');
     await scanner.confirmTeam();
 
     // Wait for scan screen

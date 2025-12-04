@@ -31,7 +31,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
     await resetAllServices();
     const session = await sessionService.createSession({
       name: 'App Flow Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Clear DataManager scanned tokens between tests
@@ -62,7 +62,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
 
       // Set team
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // ACT: Trigger NFC read (production entry point)
       scanner.App.processNFCRead({ id: '534e2b03' });
@@ -79,7 +79,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
       // ASSERT: Transaction has all required fields (AsyncAPI contract)
       expect(submittedTransaction).toMatchObject({
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_APP_TEST',
         mode: 'blackmarket'
       });
@@ -95,7 +95,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
 
   describe('TEST 2: Unknown Token Handling', () => {
     it('should handle unknown token gracefully without crashing', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // SPY: Watch for error handling
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
@@ -123,7 +123,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
 
   describe('TEST 3: Duplicate Detection', () => {
     it('should detect duplicate and not submit transaction', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Create spy BEFORE any scans
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
@@ -175,7 +175,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
 
   describe('TEST 5: Offline Queue Fallback', () => {
     it('should queue transaction when connection lost', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Simulate connection loss (set BOTH socket.connected AND client.isConnected)
       // NetworkedQueueManager checks client.isConnected first
@@ -197,7 +197,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
 
   describe('TEST 6: Transaction Data Completeness', () => {
     it('should include all required AsyncAPI fields', () => {
-      scanner.App.currentTeamId = '002';
+      scanner.App.currentTeamId = 'Detectives';
 
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
 

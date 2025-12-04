@@ -46,7 +46,7 @@ describe('Player Scan Event - Contract Validation', () => {
     // Create session (player scans work with or without session)
     await sessionService.createSession({
       name: 'Player Scan Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect admin socket (will receive player:scan events)
@@ -91,7 +91,7 @@ describe('Player Scan Event - Contract Validation', () => {
           tokenId: 'jaw001',  // Only video token in ALN-TokenData
           deviceId: 'PLAYER_8a7b9c1d',
           deviceType: 'player',  // P0.1: Required for device-type-specific behavior
-          teamId: '001',
+          teamId: 'Team Alpha',
           timestamp: new Date().toISOString()
         })
         .expect(200);
@@ -108,7 +108,7 @@ describe('Player Scan Event - Contract Validation', () => {
       // Validate: Payload content (per AsyncAPI PlayerScan schema)
       expect(event.data).toHaveProperty('tokenId', 'jaw001');
       expect(event.data).toHaveProperty('deviceId', 'PLAYER_8a7b9c1d');
-      expect(event.data).toHaveProperty('teamId', '001');
+      expect(event.data).toHaveProperty('teamId', 'Team Alpha');
       expect(event.data).toHaveProperty('videoQueued', true);  // Video token queues video
       expect(event.data).toHaveProperty('memoryType', 'Personal');  // From tokens.json
       expect(event.data).toHaveProperty('timestamp');

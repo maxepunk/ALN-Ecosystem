@@ -145,7 +145,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockSessionService.emit('transaction:added', {
         id: 'tx-123',
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         mode: 'blackmarket',
         status: 'accepted',
@@ -165,7 +165,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
             transaction: expect.objectContaining({
               id: 'tx-123',
               tokenId: '534e2b03',
-              teamId: '001',
+              teamId: 'Team Alpha',
               deviceId: 'GM_01'
             })
           }),
@@ -300,7 +300,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       });
 
       mockTransactionService.emit('score:updated', {
-        teamId: '001',
+        teamId: 'Team Alpha',
         currentScore: 100,
         baseScore: 80,  // currentScore - bonusPoints
         bonusPoints: 20,
@@ -315,7 +315,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect.objectContaining({
           event: 'score:updated',
           data: expect.objectContaining({
-            teamId: '001',
+            teamId: 'Team Alpha',
             currentScore: 100,
             baseScore: 80, // currentScore - bonusPoints
             bonusPoints: 20
@@ -335,7 +335,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       });
 
       mockTransactionService.emit('group:completed', {
-        teamId: '001',
+        teamId: 'Team Alpha',
         groupId: 'GROUP_A',
         bonus: 50,
         multiplier: 1.5
@@ -347,7 +347,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect.objectContaining({
           event: 'group:completed',
           data: expect.objectContaining({
-            teamId: '001',
+            teamId: 'Team Alpha',
             group: 'GROUP_A',           // AsyncAPI contract field name
             bonusPoints: 50,             // AsyncAPI contract field name
             completedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)  // AsyncAPI required field
@@ -382,7 +382,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       });
 
       // Emit scores:reset from transactionService
-      mockTransactionService.emit('scores:reset', { teamsReset: ['001', '002'] });
+      mockTransactionService.emit('scores:reset', { teamsReset: ['Team Alpha', 'Detectives'] });
 
       // Verify scores:reset broadcast to session-scoped room (prevents cross-session contamination)
       // CRITICAL: Uses session-scoped room like transaction:deleted, NOT 'gm' room
@@ -391,7 +391,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         'scores:reset',
         expect.objectContaining({
           event: 'scores:reset',
-          data: { teamsReset: ['001', '002'] },
+          data: { teamsReset: ['Team Alpha', 'Detectives'] },
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
       );

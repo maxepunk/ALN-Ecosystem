@@ -46,7 +46,7 @@ describe('Transaction Events - Contract Validation', () => {
     // Create session for transaction tests
     await sessionService.createSession({
       name: 'Transaction Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect WebSocket (GM Scanner simulation) using helper
@@ -70,7 +70,7 @@ describe('Transaction Events - Contract Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Real token: Technical, rating=3
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_CONTRACT_TEST',
           deviceType: 'gm',  // P0.1: Required for device-type-specific behavior
           mode: 'blackmarket'
@@ -102,7 +102,7 @@ describe('Transaction Events - Contract Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'tac001',  // Real token: Personal, rating=1
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_CONTRACT_TEST',
           deviceType: 'gm',  // P0.1: Required for device-type-specific behavior
           mode: 'blackmarket'
@@ -132,7 +132,7 @@ describe('Transaction Events - Contract Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'det001',  // Detective token with summary field
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_CONTRACT_TEST',
           deviceType: 'gm',
           mode: 'detective'  // Detective mode
@@ -160,7 +160,7 @@ describe('Transaction Events - Contract Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'alr001',  // Token without summary field
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_CONTRACT_TEST',
           deviceType: 'gm',
           mode: 'detective'
@@ -187,7 +187,7 @@ describe('Transaction Events - Contract Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'det999',  // Token with HTML/special characters in summary
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_CONTRACT_TEST',
           deviceType: 'gm',
           mode: 'detective'

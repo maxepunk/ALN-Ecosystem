@@ -42,7 +42,7 @@ describe('FileStorage Persistence', () => {
     const session = {
       id: 'test-session-123',
       name: 'Persistence Test',
-      teams: ['001'],
+      teams: ['Team Alpha'],
       status: 'active',
       startTime: new Date().toISOString()
     };
@@ -93,7 +93,7 @@ describe('FileStorage Persistence', () => {
     const session = {
       id: 'test-session-789',
       name: 'Update Test',
-      teams: ['001'],
+      teams: ['Team Alpha'],
       status: 'active',
       startTime: new Date().toISOString()
     };
@@ -137,7 +137,7 @@ describe('FileStorage Persistence', () => {
     const session1 = {
       id: 'session-1',
       name: 'Session 1',
-      teams: ['001', '002'],
+      teams: ['Team Alpha', 'Detectives'],
       status: 'active',
       startTime: new Date().toISOString()
     };
@@ -177,7 +177,7 @@ describe('FileStorage Persistence', () => {
     const session = {
       id: 'test-session-delete',
       name: 'Delete Test',
-      teams: ['001']
+      teams: ['Team Alpha']
     };
 
     // Save session

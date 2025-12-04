@@ -22,7 +22,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_Station_1',
           mode: 'blackmarket'
         },
@@ -40,7 +40,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'test_token',
-          teamId: '002',
+          teamId: 'Detectives',
           deviceId: 'GM_Station_2',
           mode: 'detective'
         },
@@ -64,7 +64,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'token123',
-          teamId: '001', // Must match ^[0-9]{3}$
+          teamId: 'Team Alpha', // Must match ^[0-9]{3}$
           deviceId: 'GM_Station_1',
           mode: 'blackmarket'
         },
@@ -88,7 +88,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
           event: 'transaction:submit',
           data: {
             tokenId: 'token_test',
-            teamId: '003',
+            teamId: 'Blue Squad',
             deviceId: 'GM_Station_1',
             mode: mode
           },
@@ -133,7 +133,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'token_test',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_Station_1',
           mode: 'invalid_mode' // Not in enum
         },
@@ -151,7 +151,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'token_test',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_Station_1',
           mode: 'blackmarket'
         },
@@ -200,7 +200,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
           data: {
             action: action,
             payload: action === 'session:create'
-              ? { name: 'Test Session', teams: ['001'] }
+              ? { name: 'Test Session', teams: ['Team Alpha'] }
               : {}
           },
           timestamp: new Date().toISOString()
@@ -243,9 +243,9 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
 
     it('should support score and transaction actions', () => {
       const dataActions = [
-        { action: 'score:adjust', payload: { teamId: '001', delta: -500, reason: 'Test' } },
+        { action: 'score:adjust', payload: { teamId: 'Team Alpha', delta: -500, reason: 'Test' } },
         { action: 'transaction:delete', payload: { transactionId: 'uuid-here' } },
-        { action: 'transaction:create', payload: { tokenId: 'test', teamId: '001' } }
+        { action: 'transaction:create', payload: { tokenId: 'test', teamId: 'Team Alpha' } }
       ];
 
       dataActions.forEach(({ action, payload }) => {
@@ -329,7 +329,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         {
           event: 'transaction:submit',
           data: {
-            tokenId: 'test', teamId: '001',
+            tokenId: 'test', teamId: 'Team Alpha',
             deviceId: 'GM_1', mode: 'blackmarket'
           },
           timestamp: new Date().toISOString()
@@ -358,7 +358,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
       // Unwrapped payload (old pattern)
       const unwrappedEvent = {
         tokenId: 'test',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_1',
         mode: 'blackmarket'
       };
@@ -372,7 +372,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
       const event = {
         event: 'transaction:submit',
         data: {
-          tokenId: 'test', teamId: '001',
+          tokenId: 'test', teamId: 'Team Alpha',
           deviceId: 'GM_1', mode: 'blackmarket'
         }
         // missing timestamp
@@ -391,7 +391,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Correct field name
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_Station_1',
           mode: 'blackmarket'
         },
@@ -408,7 +408,7 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'test',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_Station_1',  // Correct field name
           mode: 'blackmarket'
         },

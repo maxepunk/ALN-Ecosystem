@@ -31,7 +31,7 @@ describe('SessionService - Event Emission', () => {
           expect(eventData.name).toBe('Test Session');
           expect(eventData.status).toBe('active');
           expect(eventData.startTime).toBeDefined();
-          expect(eventData.teams).toEqual(['001', '002']);
+          expect(eventData.teams).toEqual(['Team Alpha', 'Detectives']);
 
           done();
         } catch (error) {
@@ -39,12 +39,12 @@ describe('SessionService - Event Emission', () => {
         }
       });
 
-      sessionService.createSession({ name: 'Test Session', teams: ['001', '002'] });
+      sessionService.createSession({ name: 'Test Session', teams: ['Team Alpha', 'Detectives'] });
     });
 
     it('should emit session:updated domain event when session ended', async () => {
       // Create session first
-      await sessionService.createSession({ name: 'Test Session', teams: ['001'] });
+      await sessionService.createSession({ name: 'Test Session', teams: ['Team Alpha'] });
 
       // Listen for end event
       const endEventPromise = new Promise((resolve, reject) => {
@@ -75,7 +75,7 @@ describe('SessionService - Event Emission', () => {
         sessionService.once('session:created', resolve);
       });
 
-      await sessionService.createSession({ name: 'Full Resource Test', teams: ['001'] });
+      await sessionService.createSession({ name: 'Full Resource Test', teams: ['Team Alpha'] });
 
       const eventData = await eventPromise;
 
@@ -94,7 +94,7 @@ describe('SessionService - Event Emission', () => {
       // This test verifies the pattern, actual verification is manual code inspection
       // The test ensures no runtime errors occur without lazy requires
       expect(async () => {
-        await sessionService.createSession({ name: 'No Lazy Requires', teams: ['001'] });
+        await sessionService.createSession({ name: 'No Lazy Requires', teams: ['Team Alpha'] });
       }).not.toThrow();
     });
   });
@@ -116,7 +116,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should create a new session with teams', async () => {
       const session = await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002', '003']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
 
       expect(session).toBeDefined();
@@ -142,7 +142,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       // Create first session
       const session1 = await sessionService.createSession({
         name: 'First Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
       expect(session1.status).toBe('active');
 
@@ -161,14 +161,14 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should initialize team scores from teams array', async () => {
       const session = await sessionService.createSession({
         name: 'Score Init Test',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       expect(session.scores).toBeDefined();
       expect(session.scores.length).toBe(2);
-      expect(session.scores[0].teamId).toBe('001');
+      expect(session.scores[0].teamId).toBe('Team Alpha');
       expect(session.scores[0].currentScore).toBe(0);
-      expect(session.scores[1].teamId).toBe('002');
+      expect(session.scores[1].teamId).toBe('Detectives');
       expect(session.scores[1].currentScore).toBe(0);
     });
   });
@@ -177,7 +177,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should get current session', async () => {
       const session = await sessionService.createSession({
         name: 'Current Session Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const currentSession = sessionService.getCurrentSession();
@@ -193,7 +193,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should update session status', async () => {
       await sessionService.createSession({
         name: 'Status Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       sessionService.updateSessionStatus('paused');
@@ -206,7 +206,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should end session and clear currentSession', async () => {
       await sessionService.createSession({
         name: 'End Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       await sessionService.endSession();
@@ -224,7 +224,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should reset service state', async () => {
       await sessionService.createSession({
         name: 'Reset Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       await resetAllServices();
@@ -238,7 +238,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should update session name', async () => {
       await sessionService.createSession({
         name: 'Original Name',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       await sessionService.updateSession({ name: 'Updated Name' });
@@ -257,7 +257,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should add transaction to session', async () => {
       await sessionService.createSession({
         name: 'Transaction Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
@@ -265,7 +265,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       const transaction = {
         id: uuidv4(),
         tokenId: 'token-123',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'test-device-1',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         sessionId: session.id,
@@ -294,7 +294,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should add device to session', async () => {
       await sessionService.createSession({
         name: 'Device Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const device = {
@@ -312,7 +312,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should update existing device', async () => {
       await sessionService.createSession({
         name: 'Device Update Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const device1 = {
@@ -339,7 +339,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should remove device from session', async () => {
       await sessionService.createSession({
         name: 'Device Remove Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const device = {
@@ -374,11 +374,11 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
 
     it('should initialize scores for multiple teams', () => {
-      const scores = sessionService.initializeTeamScores(['001', '002', '003']);
+      const scores = sessionService.initializeTeamScores(['Team Alpha', 'Detectives', 'Blue Squad']);
 
       expect(scores.length).toBe(3);
       expect(scores[0]).toEqual({
-        teamId: '001',
+        teamId: 'Team Alpha',
         adminAdjustments: [],  // Admin score adjustment audit trail
         currentScore: 0,
         baseScore: 0,
@@ -400,7 +400,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should start session timeout timer', async () => {
       await sessionService.createSession({
         name: 'Timeout Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       expect(sessionService.sessionTimeoutTimer).not.toBeNull();
@@ -409,7 +409,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should stop session timeout timer', async () => {
       await sessionService.createSession({
         name: 'Stop Timeout Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       sessionService.stopSessionTimeout();
@@ -426,7 +426,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     it('should validate GM station capacity', async () => {
       await sessionService.createSession({
         name: 'Capacity Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Add devices up to capacity

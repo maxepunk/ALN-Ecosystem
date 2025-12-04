@@ -47,7 +47,7 @@ describe('Socket Room Joining (Phase 2.2 P1.2)', () => {
       // Create session with teams
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002', '003']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
 
       await handleGmIdentify(mockSocket, {
@@ -150,7 +150,7 @@ describe('Socket Room Joining (Phase 2.2 P1.2)', () => {
       // PHASE 2.2 P1.2: Track which rooms socket has joined
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       await handleGmIdentify(mockSocket, {
@@ -171,7 +171,7 @@ describe('Socket Room Joining (Phase 2.2 P1.2)', () => {
       // PHASE 2.2 P1.2: Continue joining session room for compatibility
       const session = await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       await handleGmIdentify(mockSocket, {

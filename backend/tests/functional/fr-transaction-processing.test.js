@@ -57,7 +57,7 @@ describe('FR Section 3: Transaction Processing', () => {
     // Create test session
     await sessionService.createSession({
       name: 'FR Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Create scanner (AFTER session created)
@@ -80,7 +80,7 @@ describe('FR Section 3: Transaction Processing', () => {
       const scorePromise = waitForEvent(scanner.socket, 'score:updated');
 
       scanner.Settings.mode = 'blackmarket';
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Use production entry point
       scanner.App.processNFCRead({ id: '534e2b03' });
@@ -92,7 +92,7 @@ describe('FR Section 3: Transaction Processing', () => {
       expect(result.data.points).toBeGreaterThan(0);
 
       // Score update broadcast
-      expect(scoreUpdate.data.teamId).toBe('001');
+      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
       expect(scoreUpdate.data.currentScore).toBeGreaterThan(0);
     });
 
@@ -100,13 +100,13 @@ describe('FR Section 3: Transaction Processing', () => {
       const scorePromise = waitForEvent(scanner.socket, 'score:updated');
 
       scanner.Settings.mode = 'blackmarket';
-      scanner.App.currentTeamId = '002'; // Team 002
+      scanner.App.currentTeamId = 'Detectives'; // Team 002
 
       scanner.App.processNFCRead({ id: 'tac001' });
 
       const scoreUpdate = await scorePromise;
 
-      expect(scoreUpdate.data.teamId).toBe('002');
+      expect(scoreUpdate.data.teamId).toBe('Detectives');
     });
   });
 
@@ -115,7 +115,7 @@ describe('FR Section 3: Transaction Processing', () => {
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
 
       scanner.Settings.mode = 'detective';
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       scanner.App.processNFCRead({ id: '534e2b03' });
 
@@ -130,7 +130,7 @@ describe('FR Section 3: Transaction Processing', () => {
   describe('FR 3.3: Duplicate Detection', () => {
     it('should detect duplicate scans by same team', async () => {
       scanner.Settings.mode = 'blackmarket';
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // First scan
       const result1Promise = waitForEvent(scanner.socket, 'transaction:result');
@@ -150,14 +150,14 @@ describe('FR Section 3: Transaction Processing', () => {
       scanner.Settings.mode = 'blackmarket';
 
       // Team 001 scans first - claims the token
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       const result1Promise = waitForEvent(scanner.socket, 'transaction:result');
       scanner.App.processNFCRead({ id: 'rat001' });
       const result1 = await result1Promise;
       expect(result1.data.status).toBe('accepted');
 
       // Team 002 tries to scan same token - should be rejected (first-come-first-served)
-      scanner.App.currentTeamId = '002';
+      scanner.App.currentTeamId = 'Detectives';
       const result2Promise = waitForEvent(scanner.socket, 'transaction:result');
       scanner.App.processNFCRead({ id: 'rat001' });
       const result2 = await result2Promise;
@@ -183,7 +183,7 @@ describe('FR Section 3: Transaction Processing', () => {
       }
 
       scanner.Settings.mode = 'blackmarket';
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Scan first token (rat001)
       scanner.App.processNFCRead({ id: groupTokens[0].id });
@@ -198,7 +198,7 @@ describe('FR Section 3: Transaction Processing', () => {
       // FR 3.4: Group completion bonus calculated
       expect(groupEvent.data.group).toBeDefined(); // Note: 'group' not 'groupName'
       expect(groupEvent.data.bonusPoints).toBeGreaterThan(0);
-      expect(groupEvent.data.teamId).toBe('001');
+      expect(groupEvent.data.teamId).toBe('Team Alpha');
     });
   });
 
@@ -218,7 +218,7 @@ describe('FR Section 3: Transaction Processing', () => {
 
       // Attempt transaction while paused
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       scanner.App.processNFCRead({ id: '534e2b03' });
 
       const result = await resultPromise;
@@ -235,7 +235,7 @@ describe('FR Section 3: Transaction Processing', () => {
 
       // Submit transaction
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       scanner.App.processNFCRead({ id: 'kaa001' });
 
       const result = await resultPromise;
@@ -263,7 +263,7 @@ describe('FR Section 3: Transaction Processing', () => {
 
       // Submit transaction
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       scanner.App.processNFCRead({ id: 'jaw001' });
 
       const result = await resultPromise;

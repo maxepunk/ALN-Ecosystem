@@ -130,7 +130,7 @@ test.describe('Session Persistence E2E Test', () => {
         action: 'session:create',
         payload: {
           name: 'Persistent Session',
-          teams: ['001', '002']
+          teams: ['Team Alpha', 'Detectives']
         }
       },
       timestamp: new Date().toISOString()
@@ -162,7 +162,7 @@ test.describe('Session Persistence E2E Test', () => {
     expect(socket.initialSync.data.session).not.toBeNull();
     expect(socket.initialSync.data.session.id).toBe(originalSessionId);
     expect(socket.initialSync.data.session.name).toBe('Persistent Session');
-    expect(socket.initialSync.data.session.teams).toEqual(['001', '002']);
+    expect(socket.initialSync.data.session.teams).toEqual(['Team Alpha', 'Detectives']);
     expect(socket.initialSync.data.session.startTime).toBe(originalStartTime);
 
     console.log('✓ Session persisted across restart');

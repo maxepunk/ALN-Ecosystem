@@ -29,7 +29,7 @@ async function example1_singleDevice() {
     // Use page object
     const scanner = new GMScannerPage(page);
     await scanner.goto();
-    await scanner.enterTeam('001');
+    await scanner.enterTeamName('Team Alpha');
     await scanner.confirmTeam();
     await scanner.manualEntry('sof002');
 
@@ -59,9 +59,9 @@ async function example2_multipleGMScanners() {
     await Promise.all(scanners.map(scanner => scanner.goto()));
 
     // Each scanner selects different team
-    await scanners[0].enterTeam('001');
-    await scanners[1].enterTeam('002');
-    await scanners[2].enterTeam('003');
+    await scanners[0].enterTeamName('Team Alpha');
+    await scanners[1].enterTeamName('Detectives');
+    await scanners[2].enterTeamName('Blue Squad');
 
     await Promise.all(scanners.map(scanner => scanner.confirmTeam()));
 
@@ -98,7 +98,7 @@ async function example3_gmScannerAndAdmin() {
     // Setup GM Scanner
     const gmScanner = new GMScannerPage(gmPage);
     await gmScanner.goto();
-    await gmScanner.enterTeam('001');
+    await gmScanner.enterTeamName('Team Alpha');
     await gmScanner.confirmTeam();
 
     // Setup Admin Panel (navigate and authenticate)
@@ -152,8 +152,8 @@ async function example4_fullSystemTest() {
     ]);
 
     // Setup GM scanners
-    await gmScanners[0].enterTeam('001');
-    await gmScanners[1].enterTeam('002');
+    await gmScanners[0].enterTeamName('Team Alpha');
+    await gmScanners[1].enterTeamName('Detectives');
     await Promise.all(gmScanners.map(scanner => scanner.confirmTeam()));
 
     // Perform scans
@@ -190,8 +190,8 @@ async function example5_offlineModeTest() {
     await Promise.all(scanners.map(scanner => scanner.goto()));
 
     // Setup teams
-    await scanners[0].enterTeam('001');
-    await scanners[1].enterTeam('002');
+    await scanners[0].enterTeamName('Team Alpha');
+    await scanners[1].enterTeamName('Detectives');
     await Promise.all(scanners.map(scanner => scanner.confirmTeam()));
 
     // Simulate offline mode (disconnect from orchestrator)
@@ -308,8 +308,8 @@ describe('Multi-Device E2E Test', () => {
     await scanner2.goto();
 
     // Each scanner has independent state
-    await scanner1.enterTeam('001');
-    await scanner2.enterTeam('002');
+    await scanner1.enterTeamName('Team Alpha');
+    await scanner2.enterTeamName('Detectives');
 
     await scanner1.confirmTeam();
     await scanner2.confirmTeam();

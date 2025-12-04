@@ -378,7 +378,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     // Send a test command and wait for acknowledgment
     socket.emit('gm:command', {
       event: 'gm:command',
-      data: { action: 'session:create', payload: { name: 'Test', teams: ['001'] } },
+      data: { action: 'session:create', payload: { name: 'Test', teams: ['Team Alpha'] } },
       timestamp: new Date().toISOString()
     });
 

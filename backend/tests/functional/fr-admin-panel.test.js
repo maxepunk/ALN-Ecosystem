@@ -56,7 +56,7 @@ describe('FR Section 4: Admin Panel', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Admin Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Create scanner (AFTER session created, networked mode for admin panel)
@@ -142,7 +142,7 @@ describe('FR Section 4: Admin Panel', () => {
           action: 'session:create',
           payload: {
             name: 'New Session',
-            teams: ['001', '002', '003']
+            teams: ['Team Alpha', 'Detectives', 'Blue Squad']
           }
         },
         timestamp: new Date().toISOString()
@@ -314,7 +314,7 @@ describe('FR Section 4: Admin Panel', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             delta: 1000,
             reason: 'Bonus points'
           }
@@ -325,7 +325,7 @@ describe('FR Section 4: Admin Panel', () => {
       const [ack, scoreUpdate] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreUpdate.data.teamId).toBe('001');
+      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
       expect(scoreUpdate.data.currentScore).toBeGreaterThanOrEqual(1000);
     });
 
@@ -338,7 +338,7 @@ describe('FR Section 4: Admin Panel', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '002',
+            teamId: 'Detectives',
             delta: -500,
             reason: 'Penalty for rule violation'
           }
@@ -349,7 +349,7 @@ describe('FR Section 4: Admin Panel', () => {
       const [ack, scoreUpdate] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreUpdate.data.teamId).toBe('002');
+      expect(scoreUpdate.data.teamId).toBe('Detectives');
     });
   });
 

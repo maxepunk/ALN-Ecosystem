@@ -36,7 +36,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
     // Create session
     await sessionService.createSession({
       name: 'Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Initialize tokens
@@ -77,7 +77,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           // Missing batchId
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -92,7 +92,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'test-batch-123',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -108,8 +108,8 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-001',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001', timestamp: new Date().toISOString() },
-            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: '001', timestamp: new Date().toISOString() }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha', timestamp: new Date().toISOString() },
+            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: 'Team Alpha', timestamp: new Date().toISOString() }
           ]
         });
 
@@ -127,7 +127,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-with-id',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -145,9 +145,9 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-002',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'invalid-token', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'invalid-token', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -165,7 +165,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-ack-test',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -194,9 +194,9 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-with-failures',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'bad-token', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'bad-token', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -225,7 +225,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
       const batchData = {
         batchId: 'idempotent-batch',
         transactions: [
-          { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+          { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
         ]
       };
 
@@ -256,8 +256,8 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
       const batchData = {
         batchId: 'no-reprocess',
         transactions: [
-          { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' },
-          { tokenId: 'kaa002', deviceId: 'GM_001', teamId: '001' }
+          { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' },
+          { tokenId: 'kaa002', deviceId: 'GM_001', teamId: 'Team Alpha' }
         ]
       };
 
@@ -294,7 +294,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-A',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -307,7 +307,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-B',
           transactions: [
-            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -327,7 +327,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-invalid-token',
           transactions: [
-            { tokenId: 'nonexistent-token', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'nonexistent-token', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -344,10 +344,10 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'batch-mixed',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'bad', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: '001' },
-            { tokenId: 'also-bad', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'bad', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'kaa002', deviceId: 'GM_001', teamId: 'Team Alpha' },
+            { tokenId: 'also-bad', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 
@@ -378,7 +378,7 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         .send({
           batchId: 'complete-response',
           transactions: [
-            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: '001' }
+            { tokenId: 'kaa001', deviceId: 'GM_001', teamId: 'Team Alpha' }
           ]
         });
 

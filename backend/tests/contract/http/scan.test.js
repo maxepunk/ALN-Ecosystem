@@ -32,7 +32,7 @@ describe('POST /api/scan', () => {
     // Create test session (required for scan endpoint)
     await sessionService.createSession({
       name: 'Contract Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -46,7 +46,7 @@ describe('POST /api/scan', () => {
       .post('/api/scan')
       .send({
         tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required for device-type-specific behavior
         timestamp: new Date().toISOString()
@@ -61,7 +61,7 @@ describe('POST /api/scan', () => {
       .post('/api/scan')
       .send({
         tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
-        teamId: '001',  // TODO Phase 2: Make optional per contract
+        teamId: 'Team Alpha',  // TODO Phase 2: Make optional per contract
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required for device-type-specific behavior
         timestamp: new Date().toISOString()
@@ -80,7 +80,7 @@ describe('POST /api/scan', () => {
         tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required for device-type-specific behavior
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       })
       .expect(200);
@@ -166,7 +166,7 @@ describe('POST /api/scan/batch', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Batch Contract Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -189,7 +189,7 @@ describe('POST /api/scan/batch', () => {
           {
             tokenId: 'tac001',  // Valid non-video token
             deviceId: 'PLAYER_SCANNER_01',
-            teamId: '001',
+            teamId: 'Team Alpha',
             timestamp: new Date().toISOString()
           }
         ]

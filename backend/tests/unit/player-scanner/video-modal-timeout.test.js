@@ -156,7 +156,7 @@ describe('Player Scanner - Video Modal Timeout (Bug #5)', () => {
       document.getElementById('video-processing').classList.add('active');
 
       // Start scan (promise resolves successfully)
-      const scanPromise = orchestrator.scanToken(token.SF_RFID, '001');
+      const scanPromise = orchestrator.scanToken(token.SF_RFID, 'Team Alpha');
 
       // INTENDED: Timeout runs independently of promise
       setTimeout(() => {
@@ -190,7 +190,7 @@ describe('Player Scanner - Video Modal Timeout (Bug #5)', () => {
       mockFetchNetworkError('Network error');
 
       // Start scan (returns error status, doesn't throw)
-      const response = await orchestrator.scanToken(token.SF_RFID, '001');
+      const response = await orchestrator.scanToken(token.SF_RFID, 'Team Alpha');
 
       // INTENDED: Check for error status and hide modal immediately
       if (response.status === 'error') {

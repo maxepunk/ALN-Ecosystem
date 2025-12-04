@@ -61,7 +61,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Device Type Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM scanner via WebSocket
@@ -80,7 +80,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
     it('should ALLOW Player Scanner to scan same token multiple times', async () => {
       const scanRequest = {
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'PLAYER_INTEGRATION_TEST',
           deviceType: 'player',
         timestamp: new Date().toISOString()
@@ -126,7 +126,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
     it('should ALLOW ESP32 Scanner to scan same token multiple times', async () => {
       const scanRequest = {
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'ESP32_INTEGRATION_TEST',
           deviceType: 'esp32',
         timestamp: new Date().toISOString()
@@ -157,14 +157,14 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         transactions: [
           {
             tokenId: 'rat001',
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'ESP32_BATCH_TEST',
             deviceType: 'esp32',
             timestamp: new Date().toISOString()
           },
           {
             tokenId: 'rat001',  // DUPLICATE token in batch
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'ESP32_BATCH_TEST',
             deviceType: 'esp32',
             timestamp: new Date().toISOString()
@@ -194,7 +194,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: TOKEN_ID,
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_MIXED_TEST',
           deviceType: 'gm',
           mode: 'blackmarket'
@@ -209,7 +209,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       // Step 2: Player Scanner scans token A → ALLOWED (not rejected)
       const playerResponse = await httpClient.post('/api/scan', {
         tokenId: TOKEN_ID,
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'PLAYER_MIXED_TEST',
           deviceType: 'player',
         timestamp: new Date().toISOString()
@@ -221,7 +221,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       // Step 3: ESP32 Scanner scans token A → ALLOWED (not rejected)
       const esp32Response = await httpClient.post('/api/scan', {
         tokenId: TOKEN_ID,
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'ESP32_MIXED_TEST',
           deviceType: 'esp32',
         timestamp: new Date().toISOString()
@@ -236,7 +236,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: TOKEN_ID,
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_MIXED_TEST',
           deviceType: 'gm',
           mode: 'blackmarket'
@@ -258,7 +258,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: TOKEN_ID,
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_CLAIM_TEST',
           deviceType: 'gm',
           mode: 'blackmarket'
@@ -271,7 +271,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       // Player Scanner scans same token (different team) → ALLOWED
       const playerResponse = await httpClient.post('/api/scan', {
         tokenId: TOKEN_ID,
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'PLAYER_CLAIM_TEST',
           deviceType: 'player',
         timestamp: new Date().toISOString()
@@ -283,7 +283,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       // Player Scanner scans AGAIN → STILL ALLOWED
       const playerResponse2 = await httpClient.post('/api/scan', {
         tokenId: TOKEN_ID,
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'PLAYER_CLAIM_TEST',
           deviceType: 'player',
         timestamp: new Date().toISOString()
@@ -307,7 +307,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,
         deviceId: 'PLAYER_OFFLINE_1',
           deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       });
 
@@ -315,7 +315,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,  // DUPLICATE for player (should be allowed)
         deviceId: 'PLAYER_OFFLINE_1',
           deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       });
 
@@ -323,7 +323,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,
         deviceId: 'GM_OFFLINE_1',
           deviceType: 'gm',
-        teamId: '002',
+        teamId: 'Detectives',
         mode: 'blackmarket',
         timestamp: new Date().toISOString()
       });
@@ -332,7 +332,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
         tokenId: TOKEN_ID,  // DUPLICATE for GM (should be rejected)
         deviceId: 'GM_OFFLINE_1',
           deviceType: 'gm',
-        teamId: '002',
+        teamId: 'Detectives',
         mode: 'blackmarket',
         timestamp: new Date().toISOString()
       });
@@ -376,7 +376,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
     it('should reject scans without deviceType field', async () => {
       const response = await httpClient.post('/api/scan', {
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'NO_TYPE_DEVICE',
         // deviceType missing!
         timestamp: new Date().toISOString()
@@ -389,7 +389,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
     it('should reject scans with invalid deviceType', async () => {
       const response = await httpClient.post('/api/scan', {
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'INVALID_TYPE_DEVICE',
           deviceType: 'invalid',  // Not 'gm', 'player', or 'esp32'
         timestamp: new Date().toISOString()

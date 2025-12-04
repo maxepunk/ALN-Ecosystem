@@ -45,7 +45,7 @@ describe('System Reset Regression Tests', () => {
     // Create initial session
     await sessionService.createSession({
       name: 'Reset Test Session',
-      teams: ['001']
+      teams: ['Team Alpha']
     });
   });
 
@@ -101,7 +101,7 @@ describe('System Reset Regression Tests', () => {
         // Create new session for next iteration
         await sessionService.createSession({
           name: `Reset Test Session ${i + 1}`,
-          teams: ['001']
+          teams: ['Team Alpha']
         });
       }
 
@@ -138,7 +138,7 @@ describe('System Reset Regression Tests', () => {
 
       await sessionService.createSession({
         name: 'Duplicate Broadcast Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Wait for broadcasts to arrive
@@ -173,7 +173,7 @@ describe('System Reset Regression Tests', () => {
       // If the system isn't ready, this will fail (no arbitrary timeout needed)
       await sessionService.createSession({
         name: 'Post-Rapid-Reset Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
@@ -191,7 +191,7 @@ describe('System Reset Regression Tests', () => {
       const session = sessionService.getCurrentSession();
       await transactionService.processScan({
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_RESET_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -224,7 +224,7 @@ describe('System Reset Regression Tests', () => {
       const newSession = sessionService.getCurrentSession();
       expect(newSession.transactions.length).toBe(0);
       expect(newSession.scores.length).toBe(1);
-      expect(newSession.scores[0].teamId).toBe('002');
+      expect(newSession.scores[0].teamId).toBe('Detectives');
     });
   });
 });

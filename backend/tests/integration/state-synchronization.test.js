@@ -42,14 +42,14 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     // Setup: Create session with prior state (via service calls - fast, clear intent)
     await sessionService.createSession({
       name: 'Sync Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Create prior transaction for team 001 (before late-joiner connects)
     const session = sessionService.getCurrentSession();
     const result = await transactionService.processScan({
       tokenId: '534e2b03',
-      teamId: '001',
+      teamId: 'Team Alpha',
       deviceId: 'SETUP_GM',
           deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket'
@@ -79,11 +79,11 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     const sessionData = syncEvent.data.session;
     expect(sessionData.name).toBe('Sync Test Session');
     expect(sessionData.status).toBe('active');
-    expect(sessionData.teams).toEqual(['001', '002']);
+    expect(sessionData.teams).toEqual(['Team Alpha', 'Detectives']);
 
     // Validate: Scores include both teams
     expect(syncEvent.data.scores).toHaveLength(2);
-    const team001Score = syncEvent.data.scores.find(s => s.teamId === '001');
+    const team001Score = syncEvent.data.scores.find(s => s.teamId === 'Team Alpha');
     expect(team001Score.currentScore).toBe(30); // Token 534e2b03: value = 30 points (from test fixtures)
 
     // Validate: Recent transactions include our prior transaction
@@ -94,7 +94,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
   it('should include video status in sync:full', async () => {
     await sessionService.createSession({
       name: 'Video Sync Test',
-      teams: ['001']
+      teams: ['Team Alpha']
     });
 
     // Connect GM using REAL scanner
@@ -118,7 +118,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
   it('should include systemStatus in sync:full', async () => {
     await sessionService.createSession({
       name: 'System Status Test',
-      teams: ['001']
+      teams: ['Team Alpha']
     });
 
     // Connect GM using REAL scanner

@@ -99,13 +99,13 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       // Create session with teams
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Team Click Test', teams: ['001', '002'] } },
+        data: { action: 'session:create', payload: { name: 'Team Click Test', teams: ['Team Alpha', 'Detectives'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket, 'gm:command:ack', null, 5000);
 
       // Perform scans to generate scores (so teams appear in admin score board)
-      await gmScanner.enterTeam('001');
+      await gmScanner.enterTeamName('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
@@ -122,7 +122,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       expect(rowCount).toBeGreaterThanOrEqual(1);
 
       // Click first team name (pure frontend - no WebSocket events)
-      await gmScanner.clickTeamInScoreBoard('001');
+      await gmScanner.clickTeamInScoreBoard('Team Alpha');
 
       // Verify team details screen appears (not modal - screen navigation)
       await expect(page.locator('#teamDetailsScreen')).toBeVisible({ timeout: 3000 });
@@ -150,7 +150,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
 
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Score Display Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Score Display Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket, 'gm:command:ack', null, 5000);
@@ -162,7 +162,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       });
 
       // Perform scan to generate score
-      await gmScanner.enterTeam('001');
+      await gmScanner.enterTeamName('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
       await gmScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -192,7 +192,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       // Note: Session may have multiple teams, so check for at least 1 row
       const rowCount = await page.locator('#admin-score-board tbody tr').count();
       expect(rowCount).toBeGreaterThanOrEqual(1);
-      await expect(page.locator('#admin-score-board')).toContainText('001');
+      await expect(page.locator('#admin-score-board')).toContainText('Team Alpha');
 
       // Verify score is numeric and visible
       const scoreBoardText = await page.locator('#admin-score-board').textContent();
@@ -218,7 +218,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       // Create session
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Delete Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Delete Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket, 'session:update', null, 5000);
@@ -230,7 +230,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       });
 
       // Perform initial scan
-      await gmScanner.enterTeam('001');
+      await gmScanner.enterTeamName('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -254,7 +254,7 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
 
       // Navigate to admin panel and then to team details
       await gmScanner.navigateToAdminPanel();
-      await gmScanner.clickTeamInScoreBoard('001');
+      await gmScanner.clickTeamInScoreBoard('Team Alpha');
       await gmScanner.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       console.log('Team details screen visible, preparing to delete transaction...');
@@ -268,13 +268,13 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       // Verify deletion broadcast
       const deleteEvent = await deletePromise;
       expect(deleteEvent.data.transactionId).toBe(transactionId);
-      expect(deleteEvent.data.teamId).toBe('001');
+      expect(deleteEvent.data.teamId).toBe('Team Alpha');
 
       console.log('Transaction deleted successfully, broadcast received');
 
       // Verify score recalculated (should be back to 0)
       const scoreUpdateEvent = await waitForEvent(socket, 'score:updated', null, 5000);
-      expect(scoreUpdateEvent.data.teamId).toBe('001');
+      expect(scoreUpdateEvent.data.teamId).toBe('Team Alpha');
       expect(scoreUpdateEvent.data.currentScore).toBe(0); // Score should be 0 after deleting only transaction
 
       console.log('Score recalculated to 0 after deletion');

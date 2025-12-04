@@ -109,8 +109,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
 
     it('should load offline queue from localStorage on init', () => {
       const savedQueue = [
-        { tokenId: 'token1', teamId: '001', timestamp: Date.now(), retryCount: 0 },
-        { tokenId: 'token2', teamId: '002', timestamp: Date.now(), retryCount: 1 }
+        { tokenId: 'token1', teamId: 'Team Alpha', timestamp: Date.now(), retryCount: 0 },
+        { tokenId: 'token2', teamId: 'Detectives', timestamp: Date.now(), retryCount: 1 }
       ];
       localStorage.setItem('offline_queue', JSON.stringify(savedQueue));
 
@@ -142,19 +142,19 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
     });
 
     it('should add items to offline queue with queueOffline()', () => {
-      orchestrator.queueOffline('test_token', '001');
+      orchestrator.queueOffline('test_token', 'Team Alpha');
 
       expect(orchestrator.offlineQueue).toHaveLength(1);
       expect(orchestrator.offlineQueue[0]).toMatchObject({
         tokenId: 'test_token',
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: expect.any(Number),
         retryCount: 0
       });
     });
 
     it('should persist queue to localStorage when items added', () => {
-      orchestrator.queueOffline('test_token', '001');
+      orchestrator.queueOffline('test_token', 'Team Alpha');
 
       const saved = localStorage.getItem('offline_queue');
       expect(saved).toBeTruthy();
@@ -168,10 +168,10 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
       orchestrator.maxQueueSize = 3;
 
       // Add 4 items (exceeds max)
-      orchestrator.queueOffline('token1', '001');
-      orchestrator.queueOffline('token2', '001');
-      orchestrator.queueOffline('token3', '001');
-      orchestrator.queueOffline('token4', '001'); // Should evict token1
+      orchestrator.queueOffline('token1', 'Team Alpha');
+      orchestrator.queueOffline('token2', 'Team Alpha');
+      orchestrator.queueOffline('token3', 'Team Alpha');
+      orchestrator.queueOffline('token4', 'Team Alpha'); // Should evict token1
 
       // Should only keep last 3
       expect(orchestrator.offlineQueue).toHaveLength(3);
@@ -184,8 +184,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
 
     it('should provide queue status via getQueueStatus()', () => {
       orchestrator.connected = true;
-      orchestrator.queueOffline('token1', '001');
-      orchestrator.queueOffline('token2', '001');
+      orchestrator.queueOffline('token1', 'Team Alpha');
+      orchestrator.queueOffline('token2', 'Team Alpha');
 
       const status = orchestrator.getQueueStatus();
 
@@ -198,8 +198,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
     });
 
     it('should clear queue and localStorage with clearQueue()', () => {
-      orchestrator.queueOffline('token1', '001');
-      orchestrator.queueOffline('token2', '001');
+      orchestrator.queueOffline('token1', 'Team Alpha');
+      orchestrator.queueOffline('token2', 'Team Alpha');
 
       orchestrator.clearQueue();
 
@@ -267,7 +267,7 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
 
       // Should NOT crash when queueing offline
       expect(() => {
-        orchestrator.queueOffline('test_token', '001');
+        orchestrator.queueOffline('test_token', 'Team Alpha');
       }).not.toThrow();
 
       // Queue should still be in memory (just not persisted)

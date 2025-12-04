@@ -51,7 +51,7 @@ describe('Duplicate Detection Integration', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Duplicate Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect 2 GM scanners
@@ -74,7 +74,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -99,7 +99,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Same token
-          teamId: '001',        // Same team
+          teamId: 'Team Alpha',        // Same team
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -113,14 +113,14 @@ describe('Duplicate Detection Integration', () => {
       expect(result2.data.status).toBe('duplicate');
       expect(result2.data.points).toBe(0);
       expect(result2.data.message).toContain('already claimed');
-      expect(result2.data.claimedBy).toBe('001'); // Original claiming team
+      expect(result2.data.claimedBy).toBe('Team Alpha'); // Original claiming team
 
       // Validate: Contract compliance
       validateWebSocketEvent(result2, 'transaction:result');
 
       // Verify: Score only counted once
       const teamScores = transactionService.getTeamScores();
-      const team001Score = teamScores.find(s => s.teamId === '001');
+      const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(30); // Test fixture value for 534e2b03 (not doubled)
       expect(team001Score.tokensScanned).toBe(1); // Only one token counted
     });
@@ -132,7 +132,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'tac001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -148,7 +148,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'tac001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -172,7 +172,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -184,7 +184,7 @@ describe('Duplicate Detection Integration', () => {
 
       // Validate: Team 001 claim accepted
       expect(result1.data.status).toBe('accepted');
-      expect(result1.data.teamId).toBe('001');
+      expect(result1.data.teamId).toBe('Team Alpha');
       expect(result1.data.points).toBe(30); // Test fixture value for 534e2b03
 
       // Team 002 tries to scan same token
@@ -194,7 +194,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Same token
-          teamId: '002',        // Different team
+          teamId: 'Detectives',        // Different team
           deviceId: 'GM_DUP_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -208,12 +208,12 @@ describe('Duplicate Detection Integration', () => {
       expect(result2.data.status).toBe('duplicate');
       expect(result2.data.points).toBe(0);
       expect(result2.data.message).toContain('already claimed');
-      expect(result2.data.claimedBy).toBe('001'); // Team 001 claimed first
+      expect(result2.data.claimedBy).toBe('Team Alpha'); // Team 001 claimed first
 
       // Verify: Only team 001 got points
       const teamScores = transactionService.getTeamScores();
-      const team001Score = teamScores.find(s => s.teamId === '001');
-      const team002Score = teamScores.find(s => s.teamId === '002');
+      const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
+      const team002Score = teamScores.find(s => s.teamId === 'Detectives');
 
       expect(team001Score.currentScore).toBe(30); // Test fixture value for 534e2b03
       expect(team002Score.currentScore).toBe(0);
@@ -231,7 +231,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -243,7 +243,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',  // Same token
-          teamId: '002',
+          teamId: 'Detectives',
           deviceId: 'GM_DUP_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -283,7 +283,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -302,7 +302,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Same token
-          teamId: '002',
+          teamId: 'Detectives',
           deviceId: 'GM_DUP_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'detective'     // Detective mode
@@ -315,7 +315,7 @@ describe('Duplicate Detection Integration', () => {
       // Validate: Detective mode scan rejected as duplicate
       expect(detectiveResult.data.status).toBe('duplicate');
       expect(detectiveResult.data.points).toBe(0);
-      expect(detectiveResult.data.claimedBy).toBe('001');
+      expect(detectiveResult.data.claimedBy).toBe('Team Alpha');
       expect(detectiveResult.data.message).toContain('already claimed');
     });
 
@@ -328,7 +328,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'tac001',  // Unclaimed token
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'detective'
@@ -349,7 +349,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'tac001',  // Same token
-          teamId: '002',
+          teamId: 'Detectives',
           deviceId: 'GM_DUP_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -361,7 +361,7 @@ describe('Duplicate Detection Integration', () => {
 
       // Validate: Blackmarket scan rejected (detective claimed it first)
       expect(blackmarketResult.data.status).toBe('duplicate');
-      expect(blackmarketResult.data.claimedBy).toBe('001');
+      expect(blackmarketResult.data.claimedBy).toBe('Team Alpha');
     });
   });
 
@@ -378,7 +378,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -393,10 +393,10 @@ describe('Duplicate Detection Integration', () => {
       expect(new1gm2.data.transaction.status).toBe('accepted');
 
       // Set up listeners for second transaction
-      // CRITICAL: Use predicate to filter for the SPECIFIC transaction (teamId '002')
-      // Without predicate, cache returns stale first transaction (teamId '001')
+      // CRITICAL: Use predicate to filter for the SPECIFIC transaction (teamId 'Detectives')
+      // Without predicate, cache returns stale first transaction (teamId 'Team Alpha')
       // This is condition-based waiting - the correct pattern per testing anti-patterns
-      const isTeam002Transaction = (data) => data?.data?.transaction?.teamId === '002';
+      const isTeam002Transaction = (data) => data?.data?.transaction?.teamId === 'Detectives';
       const gm1NewPromise2 = waitForEvent(gm1, 'transaction:new', isTeam002Transaction);
       const gm2NewPromise2 = waitForEvent(gm2, 'transaction:new', isTeam002Transaction);
 
@@ -405,7 +405,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Same token
-          teamId: '002',
+          teamId: 'Detectives',
           deviceId: 'GM_DUP_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -434,7 +434,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -451,7 +451,7 @@ describe('Duplicate Detection Integration', () => {
 
       await sessionService.createSession({
         name: 'New Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       await new Promise(resolve => setTimeout(resolve, 100)); // Wait for initialization
@@ -463,7 +463,7 @@ describe('Duplicate Detection Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Same token as first session
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'

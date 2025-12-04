@@ -93,7 +93,7 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
     const scanner = await initializeGMScannerWithMode(page, 'standalone', 'blackmarket');
 
     // Ensure we're on scan screen after entering team
-    await scanner.enterTeam('001');
+    await scanner.enterTeamName('Team Alpha');
     await scanner.confirmTeam();
 
     // Wait for scan screen to be fully visible
@@ -112,7 +112,7 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
     await scanner.waitForResult(5000);
 
     // Verify standalone mode calculated score correctly
-    const score = await getTeamScore(page, '001', 'standalone');
+    const score = await getTeamScore(page, 'Team Alpha', 'standalone');
     expect(score).toBe(expectedScore);
 
     console.log(`✓ Standalone mode: Personal token scored $${expectedScore.toLocaleString()}`);

@@ -24,7 +24,7 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
   const gmScanner = new GMScannerPage(page);
 
   // CRITICAL: Set unique deviceId in localStorage BEFORE page loads
-  // Without this, multiple scanner instances use the same default deviceId ('001'),
+  // Without this, multiple scanner instances use the same default deviceId ('Team Alpha'),
   // causing connection churn as backend kicks out duplicate connections
   const uniqueDeviceId = options.deviceId || `Test_Scanner_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   await page.addInitScript((deviceId) => {

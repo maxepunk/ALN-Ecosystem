@@ -97,7 +97,7 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Video Orchestration Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Create REAL Player Scanner

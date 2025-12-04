@@ -42,7 +42,7 @@ describe('Admin Command Events - Contract Validation', () => {
       // Setup: Create session first
       await sessionService.createSession({
         name: 'Test Session for Pause',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       // Setup: Listen for ack
@@ -75,7 +75,7 @@ describe('Admin Command Events - Contract Validation', () => {
       // Setup: Create and pause session
       await sessionService.createSession({
         name: 'Test Session for Resume',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
       await sessionService.updateSession({ status: 'paused' });
 
@@ -134,7 +134,7 @@ describe('Admin Command Events - Contract Validation', () => {
       // Setup: Create session
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       // Setup: Listen for ack

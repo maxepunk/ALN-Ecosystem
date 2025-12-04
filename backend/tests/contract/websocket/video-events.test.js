@@ -49,7 +49,7 @@ describe('Video Events - Contract Validation', () => {
     // Create session (not strictly needed for direct emission, but good practice)
     await sessionService.createSession({
       name: 'Video Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM socket

@@ -23,7 +23,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           currentScore: 150,
           baseScore: 100,
           bonusPoints: 50,
@@ -45,7 +45,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '002',
+          teamId: 'Detectives',
           currentScore: 200,
           baseScore: 150,
           bonusPoints: 50,
@@ -77,7 +77,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001', // Must match ^[0-9]{3}$
+          teamId: 'Team Alpha', // Must match ^[0-9]{3}$
           currentScore: 100,
           baseScore: 100,
           bonusPoints: 0,
@@ -102,7 +102,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '003',
+          teamId: 'Blue Squad',
           currentScore: 250,
           baseScore: 200,
           bonusPoints: 0,
@@ -131,7 +131,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           currentScore: 100,
           baseScore: 100,
           bonusPoints: 0,
@@ -153,7 +153,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           currentScore: 1100,
           baseScore: 600,
           bonusPoints: 500,
@@ -207,7 +207,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           currentScore: 100,
           baseScore: 100,
           bonusPoints: 0,
@@ -236,7 +236,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           group: 'jaw_group',
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -254,7 +254,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '002',
+          teamId: 'Detectives',
           group: 'rat_group',
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -278,7 +278,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '003', // Must match ^[0-9]{3}$
+          teamId: 'Blue Squad', // Must match ^[0-9]{3}$
           group: 'mab_group',
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -299,7 +299,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           group: 'jaw_group',  // Correct field name per AsyncAPI
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -321,7 +321,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           group: 'jaw_group',
           bonusPoints: 500,  // Correct field name per AsyncAPI
           completedAt: new Date().toISOString()
@@ -371,7 +371,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           group: 'jaw_group',
           bonusPoints: 500,
           completedAt: timestamp
@@ -396,7 +396,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         {
           event: 'score:updated',
           data: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             currentScore: 150,
             baseScore: 100,
             bonusPoints: 50,
@@ -410,7 +410,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         {
           event: 'group:completed',
           data: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             group: 'jaw_group',
             bonusPoints: 500,
             completedAt: new Date().toISOString()
@@ -435,7 +435,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
     it('should reject events without wrapped envelope', () => {
       // Unwrapped payload (old pattern)
       const unwrappedEvent = {
-        teamId: '001',
+        teamId: 'Team Alpha',
         currentScore: 150,
         baseScore: 100,
         bonusPoints: 50
@@ -450,7 +450,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           currentScore: 100,
           baseScore: 100,
           bonusPoints: 0,

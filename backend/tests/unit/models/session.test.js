@@ -11,7 +11,7 @@ describe('Session Model - Per-Device Duplicate Detection (P0.1)', () => {
   beforeEach(() => {
     session = new Session({
       name: 'Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -183,7 +183,7 @@ describe('Session Model - Per-Device Duplicate Detection (P0.1)', () => {
         id: 'tx-001',
         tokenId: 'kaa001',
         deviceId: 'GM_001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         timestamp: new Date().toISOString()
       };
 

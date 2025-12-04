@@ -124,7 +124,7 @@ function setupEventListener(socket, eventName, handler) {
  * const scoreEvent = await waitForEvent(
  *   socket,
  *   'score:updated',
- *   (data) => data.teamId === '001',
+ *   (data) => data.teamId === 'Team Alpha',
  *   5000
  * );
  */

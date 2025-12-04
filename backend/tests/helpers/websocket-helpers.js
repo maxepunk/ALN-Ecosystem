@@ -51,7 +51,7 @@ function createTrackedSocket(url, options = {}) {
  * await waitForEvent(socket, 'transaction:new', 3000);
  *
  * // Condition-based wait (avoids cache returning stale data)
- * const isTeam002 = (data) => data?.data?.transaction?.teamId === '002';
+ * const isTeam002 = (data) => data?.data?.transaction?.teamId === 'Detectives';
  * await waitForEvent(socket, 'transaction:new', isTeam002);
  * await waitForEvent(socket, 'transaction:new', isTeam002, 5000);
  */

@@ -62,7 +62,7 @@ describe('Display Events - Contract Validation', () => {
     // Create session (needed for GM authentication)
     await sessionService.createSession({
       name: 'Display Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM socket

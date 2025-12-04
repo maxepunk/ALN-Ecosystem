@@ -34,7 +34,7 @@ describe('Scanner Helper Verification', () => {
     await resetAllServices();
     await sessionService.createSession({
       name: 'Helper Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -92,7 +92,7 @@ describe('Scanner Helper Verification', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_TX_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -142,7 +142,7 @@ describe('Scanner Helper Verification', () => {
       const TestTokens = require('../fixtures/test-tokens');
       const token = TestTokens.STANDALONE_TOKENS[0]; // 534e2b02
 
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       scanner.Settings.mode = 'blackmarket';
 
       // Spy on queueManager to verify transaction queued for orchestrator
@@ -157,7 +157,7 @@ describe('Scanner Helper Verification', () => {
       expect(queueSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           tokenId: token.id,
-          teamId: '001',
+          teamId: 'Team Alpha',
           mode: 'blackmarket'
         })
       );
@@ -193,7 +193,7 @@ describe('Scanner Helper Verification', () => {
       playerScanner.connected = true;
 
       // Use REAL Player Scanner scanToken method
-      const result = await playerScanner.scanToken('534e2b03', '001');
+      const result = await playerScanner.scanToken('534e2b03', 'Team Alpha');
 
       expect(result).toBeDefined();
       // Result shape depends on server response
@@ -207,7 +207,7 @@ describe('Scanner Helper Verification', () => {
       playerScanner.connected = false;
 
       // Scan should queue instead of sending
-      const result = await playerScanner.scanToken('hos001', '002');
+      const result = await playerScanner.scanToken('hos001', 'Detectives');
 
       expect(result.status).toBe('offline');
       expect(result.queued).toBe(true);

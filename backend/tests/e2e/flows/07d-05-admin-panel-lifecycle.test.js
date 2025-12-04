@@ -165,7 +165,7 @@ test.describe('GM Scanner Admin Panel - Lifecycle', () => {
 
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Session 1', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Session 1', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
 
@@ -182,7 +182,7 @@ test.describe('GM Scanner Admin Panel - Lifecycle', () => {
       await gmScanner.scannerView.waitFor({ state: 'visible', timeout: 5000 });
 
       // Perform scan to generate transaction
-      await gmScanner.enterTeam('001');
+      await gmScanner.enterTeamName('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 

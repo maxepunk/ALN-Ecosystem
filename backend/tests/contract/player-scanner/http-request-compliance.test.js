@@ -49,7 +49,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Contract requires: tokenId, deviceId, deviceType, timestamp
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('test_token_001', '001');
+      await orchestrator.scanToken('test_token_001', 'Team Alpha');
 
       const request = getLastFetchCall();
 
@@ -71,7 +71,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Contract: tokenId must match pattern ^[A-Za-z_0-9]+$ (1-100 chars)
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('valid_token_123', '001');
+      await orchestrator.scanToken('valid_token_123', 'Team Alpha');
 
       const request = getLastFetchCall();
 
@@ -89,7 +89,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
     it('should format timestamp as ISO8601 date-time string', async () => {
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('test_token', '001');
+      await orchestrator.scanToken('test_token', 'Team Alpha');
 
       const request = getLastFetchCall();
 
@@ -107,7 +107,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Contract: deviceId string (1-100 chars)
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('test_token', '001');
+      await orchestrator.scanToken('test_token', 'Team Alpha');
 
       const request = getLastFetchCall();
 
@@ -123,7 +123,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Contract: deviceType must be 'player' or 'esp32' (Phase 3 P0.1)
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('test_token', '001');
+      await orchestrator.scanToken('test_token', 'Team Alpha');
 
       const request = getLastFetchCall();
 
@@ -144,7 +144,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Contract: teamId optional, but if provided must match pattern ^[0-9]{3}$
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('test_token', '001');
+      await orchestrator.scanToken('test_token', 'Team Alpha');
 
       const request = getLastFetchCall();
 
@@ -179,8 +179,8 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
     beforeEach(() => {
       // Setup offline queue with test data
       orchestrator.offlineQueue = [
-        { tokenId: 'token1', teamId: '001', timestamp: Date.now() },
-        { tokenId: 'token2', teamId: '002', timestamp: Date.now() - 1000 }
+        { tokenId: 'token1', teamId: 'Team Alpha', timestamp: Date.now() },
+        { tokenId: 'token2', teamId: 'Detectives', timestamp: Date.now() - 1000 }
       ];
       orchestrator.connected = true;
     });
@@ -241,7 +241,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       for (let i = 0; i < 25; i++) {
         orchestrator.offlineQueue.push({
           tokenId: `token${i}`,
-          teamId: '001',
+          teamId: 'Team Alpha',
           timestamp: Date.now()
         });
       }
@@ -267,7 +267,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       mockFetchResponse(500, { error: 'Internal server error' }, false);
 
       // Scanner should not crash
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // Should queue offline instead
       expect(result.status).toBe('error');
@@ -286,7 +286,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       }, false);
 
       // Scanner should not crash
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // Should queue offline (fire-and-forget simplicity)
       expect(result.status).toBe('error');
@@ -301,7 +301,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       mockFetchNetworkError('Network timeout');
 
       // Scanner should not crash
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // Should queue offline
       expect(result.status).toBe('error');
@@ -321,7 +321,7 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       });
 
       // Scanner should not crash (fire-and-forget)
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // Should return error but not throw
       expect(result.status).toBe('error');

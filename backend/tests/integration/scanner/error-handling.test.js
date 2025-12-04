@@ -37,7 +37,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     await resetAllServices();
     const session = await sessionService.createSession({
       name: 'Error Handling Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Clear DataManager between tests
@@ -69,7 +69,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       // CRITICAL: Scanner must check status field and display error to user (Decision #10)
       // Current scanner bug: logs result but doesn't check status (TEST-IMPROVEMENT-PLAN line 578)
 
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // SPY: Check if scanner handles error status
       const consoleSpy = jest.spyOn(console, 'log');
@@ -93,7 +93,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     });
 
     it('should handle session paused error gracefully', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Pause the session (server will reject transactions)
       await sessionService.updateSessionStatus('paused');
@@ -116,7 +116,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
   describe('TEST 2: Network Failure During Transaction', () => {
     it('should queue transaction when connection lost mid-submit', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Start connected
       expect(scanner.socket.connected).toBe(true);
@@ -145,7 +145,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     });
 
     it('should handle disconnect during active transaction', async () => {
-      scanner.App.currentTeamId = '002';
+      scanner.App.currentTeamId = 'Detectives';
 
       // SPY: Watch for disconnect handling
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
@@ -164,7 +164,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
   describe('TEST 3: Invalid Token Data from Server', () => {
     it('should handle malformed token data gracefully', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Mock TokenManager returning invalid data (missing required fields)
       jest.spyOn(global.TokenManager, 'findToken').mockReturnValue({
@@ -182,7 +182,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     });
 
     it('should handle server returning invalid transaction result', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Set up listener for result
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
@@ -207,7 +207,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     it('should handle quota exceeded when saving transaction', async () => {
       // EXPECTED BUG: Transactions might be lost if localStorage full (TEST-IMPROVEMENT-PLAN line 668)
 
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Mock localStorage.setItem to throw QuotaExceededError
       const originalSetItem = global.localStorage.setItem;
@@ -247,7 +247,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
   describe('TEST 5: WebSocket Disconnect Events', () => {
     it('should handle offline state during transaction submission', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       const queueSpy = jest.spyOn(scanner.queueManager, 'queueTransaction');
 
@@ -267,7 +267,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     });
 
     it('should queue transactions when offline', async () => {
-      scanner.App.currentTeamId = '002';
+      scanner.App.currentTeamId = 'Detectives';
 
       // Simulate offline (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = false;
@@ -341,7 +341,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       // CRITICAL - Decision #10: User-facing errors (TEST-IMPROVEMENT-PLAN line 1282)
       // Scanner MUST display error messages to users, not just log to console
 
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // SPY: Check UI updates (if UIManager.showError exists)
       // Note: This requires scanner to expose UIManager or error display methods
@@ -364,7 +364,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
 
   describe('TEST 8: Network Resilience Patterns', () => {
     it('should maintain correct state across offline-online cycle', async () => {
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
 
       // Submit transaction while connected
       scanner.App.processNFCRead({ id: 'rat001' });
@@ -391,7 +391,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
     });
 
     it('should handle offline mode gracefully', async () => {
-      scanner.App.currentTeamId = '002';
+      scanner.App.currentTeamId = 'Detectives';
 
       // Go offline (set BOTH socket.connected AND client.isConnected)
       scanner.socket.connected = false;

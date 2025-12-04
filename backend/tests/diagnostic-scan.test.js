@@ -11,7 +11,7 @@ describe('Diagnostic: POST /api/scan error', () => {
       .post('/api/scan')
       .send({
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'PLAYER_SCANNER_01',
         timestamp: new Date().toISOString()
       });

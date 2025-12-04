@@ -52,7 +52,7 @@ describe('Device Events - Contract Validation', () => {
     // Create session
     await sessionService.createSession({
       name: 'Device Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 

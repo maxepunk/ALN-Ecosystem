@@ -134,29 +134,27 @@ class GMScannerPage {
   }
 
   /**
-   * Enter team ID using numpad
-   * @param {string} teamId - Team ID (e.g., "123")
+   * Enter team name in standalone mode
+   * @param {string} name - Team name
    */
-  async enterTeam(teamId) {
-    for (const digit of teamId) {
-      const button = this.page.locator(`button[data-action="app.appendNumber"][data-arg="${digit}"]`);
-      await button.click();
-    }
+  async enterTeamName(name) {
+    await this.page.locator('#standaloneTeamName').fill(name);
   }
 
   /**
-   * Confirm team ID and proceed to scan screen
+   * Select team from dropdown in networked mode
+   * @param {string} name - Team name to select
+   */
+  async selectTeam(name) {
+    await this.page.locator('#teamSelect').selectOption(name);
+  }
+
+  /**
+   * Confirm team selection
    */
   async confirmTeam() {
     await this.confirmTeamBtn.click();
     await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
-  }
-
-  /**
-   * Clear team ID
-   */
-  async clearTeam() {
-    await this.clearTeamBtn.click();
   }
 
   /**

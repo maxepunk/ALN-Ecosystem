@@ -59,7 +59,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       // Trigger state update (should broadcast to 'gm' room)
       await sessionService.createSession({
         name: 'Broadcast Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // All GMs should receive the event
@@ -92,7 +92,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       // Trigger GM-only broadcast
       await sessionService.createSession({
         name: 'GM Only Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // GM should receive
@@ -117,7 +117,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       // Create session
       await sessionService.createSession({
         name: 'Batch ACK Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Listen for batch:ack on both GMs
@@ -142,7 +142,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
             tokenId: 'jaw001',
             deviceId: 'GM_001',
           deviceType: 'gm',  // Required by Phase 3 P0.1
-            teamId: '001',
+            teamId: 'Team Alpha',
             mode: 'networked'
           }]
         })
@@ -166,7 +166,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       // Create session with teams
       await sessionService.createSession({
         name: 'Team Test',
-        teams: ['001', '002', '003']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
 
       // Connect GM
@@ -195,7 +195,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
 
       await sessionService.createSession({
         name: 'Future Team Broadcast',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -225,7 +225,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
 
       const session = await sessionService.createSession({
         name: 'Session Room Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');

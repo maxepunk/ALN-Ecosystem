@@ -7,7 +7,7 @@ describe('validators.js - deviceId field validation', () => {
       const transaction = {
         id: uuidv4(),  // UUID required
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_SCANNER_01',  // deviceId (not scannerId)
         deviceType: 'gm',  // Required by Phase 3 P0.1
         timestamp: new Date().toISOString(),
@@ -26,7 +26,7 @@ describe('validators.js - deviceId field validation', () => {
       const transaction = {
         id: 'test-id',
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         // Missing deviceId
         timestamp: new Date().toISOString(),
         sessionId: 'session-id',
@@ -42,7 +42,7 @@ describe('validators.js - deviceId field validation', () => {
     it('should accept deviceId field', () => {
       const scanRequest = {
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_SCANNER_01',  // deviceId (not scannerId)
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket',  // Required field per AsyncAPI contract
@@ -58,7 +58,7 @@ describe('validators.js - deviceId field validation', () => {
     it('should reject scan request without deviceId', () => {
       const scanRequest = {
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket',
         // Missing deviceId
         timestamp: new Date().toISOString()
@@ -78,7 +78,7 @@ describe('validators.js - deviceId field validation', () => {
       validDeviceIds.forEach(deviceId => {
         const scanRequest = {
           tokenId: '534e2b03',
-          teamId: '001',  // Required field
+          teamId: 'Team Alpha',  // Required field
           deviceId,
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket',  // Required field per AsyncAPI contract

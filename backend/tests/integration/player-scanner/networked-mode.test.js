@@ -140,7 +140,7 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
         video: 'test_video.mp4'
       });
 
-      await orchestrator.scanToken(tokenWithVideo.SF_RFID, '001');
+      await orchestrator.scanToken(tokenWithVideo.SF_RFID, 'Team Alpha');
 
       // Verify scan request sent
       const request = getLastFetchCall();
@@ -175,7 +175,7 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
         waitTime: 30
       }, false);
 
-      const result = await orchestrator.scanToken('video_token', '001');
+      const result = await orchestrator.scanToken('video_token', 'Team Alpha');
 
       // Fire-and-forget: should queue offline instead of showing specific error
       expect(result.status).toBe('error');
@@ -188,7 +188,7 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
     it('should queue scans when orchestrator disconnected', async () => {
       orchestrator.connected = false;
 
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // Should queue offline
       expect(result.status).toBe('offline');
@@ -198,15 +198,15 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
       // Verify queued transaction
       const queuedTxn = orchestrator.offlineQueue[0];
       expect(queuedTxn.tokenId).toBe('test_token');
-      expect(queuedTxn.teamId).toBe('001');
+      expect(queuedTxn.teamId).toBe('Team Alpha');
       expect(queuedTxn.timestamp).toBeDefined();
     });
 
     it('should retry queued scans when connection restored', async () => {
       // Setup offline queue
       orchestrator.offlineQueue = [
-        { tokenId: 'token1', teamId: '001', timestamp: Date.now() },
-        { tokenId: 'token2', teamId: '001', timestamp: Date.now() }
+        { tokenId: 'token1', teamId: 'Team Alpha', timestamp: Date.now() },
+        { tokenId: 'token2', teamId: 'Team Alpha', timestamp: Date.now() }
       ];
 
       orchestrator.connected = true;
@@ -233,8 +233,8 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
     it('should persist offline queue to localStorage', async () => {
       orchestrator.connected = false;
 
-      await orchestrator.scanToken('token1', '001');
-      await orchestrator.scanToken('token2', '001');
+      await orchestrator.scanToken('token1', 'Team Alpha');
+      await orchestrator.scanToken('token2', 'Team Alpha');
 
       // Verify localStorage persistence
       const saved = localStorage.getItem('offline_queue');
@@ -249,7 +249,7 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
     it('should load offline queue from localStorage on init', () => {
       // Simulate saved queue
       const savedQueue = [
-        { tokenId: 'saved_token', teamId: '001', timestamp: Date.now() }
+        { tokenId: 'saved_token', teamId: 'Team Alpha', timestamp: Date.now() }
       ];
       localStorage.setItem('offline_queue', JSON.stringify(savedQueue));
 
@@ -270,7 +270,7 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
 
       // Fill queue beyond limit
       for (let i = 0; i < 105; i++) {
-        await orchestrator.scanToken(`token${i}`, '001');
+        await orchestrator.scanToken(`token${i}`, 'Team Alpha');
       }
 
       // Should only keep last 100

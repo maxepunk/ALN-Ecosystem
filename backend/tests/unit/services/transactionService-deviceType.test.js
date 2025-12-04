@@ -69,7 +69,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
     // Create test session using sessionService
     await sessionService.createSession({
       name: 'Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -91,7 +91,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -106,7 +106,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -124,7 +124,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -136,7 +136,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_2',
         deviceType: 'gm',
-        teamId: '002',
+        teamId: 'Detectives',
         mode: 'blackmarket'
       };
 
@@ -155,7 +155,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -167,7 +167,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'rat001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -187,7 +187,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'PLAYER_001',
         deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -201,7 +201,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'PLAYER_001',
         deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -220,7 +220,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'PLAYER_001',
         deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -232,7 +232,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'PLAYER_002',
         deviceType: 'player',
-        teamId: '002',
+        teamId: 'Detectives',
         mode: 'blackmarket'
       };
 
@@ -250,7 +250,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
           tokenId: 'kaa001',
           deviceId: 'PLAYER_001',
           deviceType: 'player',
-          teamId: '001',
+          teamId: 'Team Alpha',
           mode: 'blackmarket'
         };
 
@@ -267,7 +267,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'PLAYER_001',
         deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -284,7 +284,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'ESP32_001',
         deviceType: 'esp32',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -298,7 +298,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'ESP32_001',
         deviceType: 'esp32',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -317,7 +317,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'ESP32_001',
         deviceType: 'esp32',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -329,7 +329,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'ESP32_002',
         deviceType: 'esp32',
-        teamId: '002',
+        teamId: 'Detectives',
         mode: 'blackmarket'
       };
 
@@ -348,7 +348,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -360,7 +360,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'PLAYER_001',
         deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -372,7 +372,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'ESP32_001',
         deviceType: 'esp32',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -384,7 +384,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -398,7 +398,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'SOME_DEVICE',
         // deviceType missing!
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -414,7 +414,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'SOME_DEVICE',
         deviceType: 'invalid',  // Not 'gm', 'player', or 'esp32'
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       };
 
@@ -433,7 +433,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'GM_STATION_1',
         deviceType: 'gm',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       }, session);
 
@@ -442,7 +442,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'rat001',
         deviceId: 'PLAYER_001',
         deviceType: 'player',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       }, session);
 
@@ -451,7 +451,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
         tokenId: 'kaa001',
         deviceId: 'ESP32_001',
         deviceType: 'esp32',
-        teamId: '002',
+        teamId: 'Detectives',
         mode: 'blackmarket'
       }, session);
 

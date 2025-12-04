@@ -51,7 +51,7 @@ describe('Transaction Flow Integration', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Transaction Flow Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -74,7 +74,7 @@ describe('Transaction Flow Integration', () => {
       const scorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Set team (how real scanner does it)
-      gmScanner.App.currentTeamId = '001';
+      gmScanner.App.currentTeamId = 'Team Alpha';
 
       // Use REAL scanner entry point (production code path)
       // This triggers: NFC read → TokenManager.findToken() → App.recordTransaction() → NetworkedQueueManager
@@ -91,7 +91,7 @@ describe('Transaction Flow Integration', () => {
       expect(resultEvent.event).toBe('transaction:result');
       expect(resultEvent.data.status).toBe('accepted');
       expect(resultEvent.data.tokenId).toBe('534e2b03');
-      expect(resultEvent.data.teamId).toBe('001');
+      expect(resultEvent.data.teamId).toBe('Team Alpha');
       expect(resultEvent.data.points).toBe(30);  // CRITICAL: Fixture value for 534e2b03
       expect(resultEvent.data.transactionId).toBeDefined();
       expect(resultEvent.data.message).toBeDefined();
@@ -103,7 +103,7 @@ describe('Transaction Flow Integration', () => {
       expect(newEvent.event).toBe('transaction:new');
       expect(newEvent.data.transaction.id).toBeDefined();
       expect(newEvent.data.transaction.tokenId).toBe('534e2b03');
-      expect(newEvent.data.transaction.teamId).toBe('001');
+      expect(newEvent.data.transaction.teamId).toBe('Team Alpha');
       expect(newEvent.data.transaction.deviceId).toBe('GM_BLACKMARKET');
       expect(newEvent.data.transaction.mode).toBe('blackmarket');
       expect(newEvent.data.transaction.points).toBe(30);
@@ -116,7 +116,7 @@ describe('Transaction Flow Integration', () => {
 
       // Validate: score:updated (broadcast to all GMs)
       expect(scoreEvent.event).toBe('score:updated');
-      expect(scoreEvent.data.teamId).toBe('001');
+      expect(scoreEvent.data.teamId).toBe('Team Alpha');
       expect(scoreEvent.data.currentScore).toBe(30);
       expect(scoreEvent.data.baseScore).toBe(30);
       expect(scoreEvent.data.bonusPoints).toBe(0);
@@ -128,7 +128,7 @@ describe('Transaction Flow Integration', () => {
       validateWebSocketEvent(scoreEvent, 'score:updated');
 
       // Validate: Service state consistency
-      const teamScore = transactionService.teamScores.get('001');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
       expect(teamScore.currentScore).toBe(30);
       expect(teamScore.tokensScanned).toBe(1);
     });
@@ -150,7 +150,7 @@ describe('Transaction Flow Integration', () => {
       });
 
       // Set team
-      gmScanner.App.currentTeamId = '002';
+      gmScanner.App.currentTeamId = 'Detectives';
 
       // Use REAL scanner entry point (production code path)
       gmScanner.App.processNFCRead({id: '534e2b03'});
@@ -168,7 +168,7 @@ describe('Transaction Flow Integration', () => {
       expect(resultEvent.event).toBe('transaction:result');
       expect(resultEvent.data.status).toBe('accepted');
       expect(resultEvent.data.tokenId).toBe('534e2b03');
-      expect(resultEvent.data.teamId).toBe('002');
+      expect(resultEvent.data.teamId).toBe('Detectives');
 
       // CRITICAL: Test reveals actual behavior for detective mode points
       // Contract says "Points awarded (0 if duplicate/error)" but silent on detective mode
@@ -191,7 +191,7 @@ describe('Transaction Flow Integration', () => {
       expect(scoreEventReceived).toBe(false);
 
       // Validate: Team score UNCHANGED (detective mode doesn't score)
-      const teamScore = transactionService.teamScores.get('002');
+      const teamScore = transactionService.teamScores.get('Detectives');
       expect(teamScore.currentScore).toBe(0);
       expect(teamScore.tokensScanned).toBe(0);  // Detective mode doesn't increment counter
     });
@@ -208,7 +208,7 @@ describe('Transaction Flow Integration', () => {
       const detNewPromise = waitForEvent(gmDetective.socket, 'transaction:new');
 
       // Trigger: Blackmarket GM submits transaction using REAL scanner entry point
-      gmBlackmarket.App.currentTeamId = '001';
+      gmBlackmarket.App.currentTeamId = 'Team Alpha';
       gmBlackmarket.App.processNFCRead({id: '534e2b03'});
 
       // Wait: For broadcasts to both GMs
@@ -243,7 +243,7 @@ describe('Transaction Flow Integration', () => {
       // Setup: 1 GM using REAL scanner code
       gmScanner = await createAuthenticatedScanner(testContext.url, 'GM_SAME_TEAM', 'blackmarket');
 
-      gmScanner.App.currentTeamId = '001';
+      gmScanner.App.currentTeamId = 'Team Alpha';
 
       // First scan - accepted
       const result1Promise = waitForEvent(gmScanner.socket, 'transaction:result');
@@ -267,7 +267,7 @@ describe('Transaction Flow Integration', () => {
       expect(result2.data.points).toBe(0);
 
       // Validate: Score unchanged (only 30 from first scan)
-      const teamScore = transactionService.teamScores.get('001');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
       expect(teamScore.currentScore).toBe(30);
       expect(teamScore.tokensScanned).toBe(1);  // Only 1 token scanned
     });

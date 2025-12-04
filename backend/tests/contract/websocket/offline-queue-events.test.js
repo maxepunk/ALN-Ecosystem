@@ -47,7 +47,7 @@ describe('Offline Queue Events - Contract Validation', () => {
     // Create session
     await sessionService.createSession({
       name: 'Offline Queue Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM socket

@@ -59,7 +59,7 @@ describe('Multi-Client Broadcast Validation', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Multi-Client Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect 3 GM scanners
@@ -89,7 +89,7 @@ describe('Multi-Client Broadcast Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Technical rating 3 = 30 points (value field in test fixtures)
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_MULTI_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -117,7 +117,7 @@ describe('Multi-Client Broadcast Validation', () => {
 
       // Validate: Transaction content
       expect(event1.data.transaction.tokenId).toBe('534e2b03');
-      expect(event1.data.transaction.teamId).toBe('001');
+      expect(event1.data.transaction.teamId).toBe('Team Alpha');
     });
 
     it('should broadcast score:updated to all clients after transaction', async () => {
@@ -133,7 +133,7 @@ describe('Multi-Client Broadcast Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Technical rating 3 = 30 points (value field in test fixtures)
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_MULTI_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -148,7 +148,7 @@ describe('Multi-Client Broadcast Validation', () => {
       expect(score2.data).toEqual(score3.data);
 
       // Validate: Score data is correct
-      expect(score1.data.teamId).toBe('001');
+      expect(score1.data.teamId).toBe('Team Alpha');
       expect(score1.data.currentScore).toBe(30);  // Token value from test fixtures
 
       // Validate: Contract compliance
@@ -258,7 +258,7 @@ describe('Multi-Client Broadcast Validation', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_MULTI_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'

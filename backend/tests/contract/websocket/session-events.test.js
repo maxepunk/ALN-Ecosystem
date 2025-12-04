@@ -63,7 +63,7 @@ describe('Session Events - Contract Validation', () => {
       // Trigger: Create session (emits session:update with status='active')
       const session = await sessionService.createSession({
         name: 'Wrap Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       // Assert: Wait for WebSocket event
@@ -80,7 +80,7 @@ describe('Session Events - Contract Validation', () => {
       expect(eventData.data).toHaveProperty('name', 'Wrap Test Session');
       expect(eventData.data).toHaveProperty('status', 'active'); // New session = active
       expect(eventData.data).toHaveProperty('teams');
-      expect(eventData.data.teams).toEqual(['001', '002']); // 3-digit zero-padded
+      expect(eventData.data.teams).toEqual(['Team Alpha', 'Detectives']); // 3-digit zero-padded
 
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(eventData, 'session:update');
@@ -92,7 +92,7 @@ describe('Session Events - Contract Validation', () => {
       // Setup: Create session with teams for complete state
       await sessionService.createSession({
         name: 'Sync Full Test Session',
-        teams: ['001', '002', '003']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
 
       // Setup: Disconnect existing socket

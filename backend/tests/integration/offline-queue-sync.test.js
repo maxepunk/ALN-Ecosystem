@@ -42,7 +42,7 @@ describe('Offline Queue Synchronization Integration', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Offline Queue Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM scanner
@@ -90,7 +90,7 @@ describe('Offline Queue Synchronization Integration', () => {
     expect(result1.tokenId).toBe('534e2b03');
 
     // Validate: Team scores NOT affected (player scans don't score)
-    const team001Score = transactionService.teamScores.get('001');
+    const team001Score = transactionService.teamScores.get('Team Alpha');
     expect(team001Score.currentScore).toBe(0); // Player scans don't add points
   });
 
@@ -98,7 +98,7 @@ describe('Offline Queue Synchronization Integration', () => {
     // Setup: Enqueue GM transactions (WITH teamId and mode)
     offlineQueueService.enqueueGmTransaction({
       tokenId: '534e2b03',
-      teamId: '001',
+      teamId: 'Team Alpha',
       deviceId: 'GM_OFFLINE_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket',
@@ -107,7 +107,7 @@ describe('Offline Queue Synchronization Integration', () => {
 
     offlineQueueService.enqueueGmTransaction({
       tokenId: 'jaw001',
-      teamId: '002',
+      teamId: 'Detectives',
       deviceId: 'GM_OFFLINE_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket',
@@ -136,8 +136,8 @@ describe('Offline Queue Synchronization Integration', () => {
     expect(result1.points).toBeGreaterThan(0);
 
     // Validate: Team scores updated
-    const team001Score = transactionService.teamScores.get('001');
-    const team002Score = transactionService.teamScores.get('002');
+    const team001Score = transactionService.teamScores.get('Team Alpha');
+    const team002Score = transactionService.teamScores.get('Detectives');
     expect(team001Score.currentScore).toBeGreaterThan(0); // GM transaction scored
     expect(team002Score.currentScore).toBeGreaterThan(0);
   });
@@ -146,7 +146,7 @@ describe('Offline Queue Synchronization Integration', () => {
     // Setup: Enqueue GM transaction (need scoring for sync:full to have data)
     offlineQueueService.enqueueGmTransaction({
       tokenId: '534e2b03',
-      teamId: '001',
+      teamId: 'Team Alpha',
       deviceId: 'GM_OFFLINE',
           deviceType: 'gm',  // Required by Phase 3 P0.1
       mode: 'blackmarket',

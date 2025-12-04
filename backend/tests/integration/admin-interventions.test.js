@@ -54,7 +54,7 @@ describe('Admin Intervention Integration', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Admin Intervention Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect admin GM and observer GM with unique IDs to prevent collisions
@@ -74,7 +74,7 @@ describe('Admin Intervention Integration', () => {
       // Setup: Create initial score by processing a transaction
       await transactionService.processScan({
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -82,7 +82,7 @@ describe('Admin Intervention Integration', () => {
 
       // Verify initial score
       let teamScores = transactionService.getTeamScores();
-      let teamScore = teamScores.find(s => s.teamId === '001');
+      let teamScore = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(teamScore.currentScore).toBe(40); // rat001 = 40
 
       // CRITICAL: Set up listeners BEFORE command to avoid race condition
@@ -103,7 +103,7 @@ describe('Admin Intervention Integration', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             delta: -500,
             reason: 'Rule violation penalty'
           }
@@ -124,7 +124,7 @@ describe('Admin Intervention Integration', () => {
       validateWebSocketEvent(ack, 'gm:command:ack');
 
       // Validate: Score updated broadcast reached observer
-      expect(scoreEvent.data.teamId).toBe('001');
+      expect(scoreEvent.data.teamId).toBe('Team Alpha');
       expect(scoreEvent.data.currentScore).toBe(-460); // 40 - 500
 
       // Validate: Admin adjustments array populated
@@ -136,7 +136,7 @@ describe('Admin Intervention Integration', () => {
 
       // Validate: Service state matches broadcast
       teamScores = transactionService.getTeamScores();
-      teamScore = teamScores.find(s => s.teamId === '001');
+      teamScore = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(teamScore.currentScore).toBe(-460);
       expect(teamScore.adminAdjustments).toHaveLength(1);
     });
@@ -145,7 +145,7 @@ describe('Admin Intervention Integration', () => {
       // Create initial score
       await transactionService.processScan({
         tokenId: 'asm001',
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -168,7 +168,7 @@ describe('Admin Intervention Integration', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '002',
+            teamId: 'Detectives',
             delta: 2000,
             reason: 'Exceptional gameplay bonus'
           }
@@ -182,7 +182,7 @@ describe('Admin Intervention Integration', () => {
       expect(scoreEvent.data.currentScore).toBe(2030); // 30 + 2000
 
       const teamScores = transactionService.getTeamScores();
-      const teamScore = teamScores.find(s => s.teamId === '002');
+      const teamScore = teamScores.find(s => s.teamId === 'Detectives');
       expect(teamScore.currentScore).toBe(2030);
     });
 
@@ -233,7 +233,7 @@ describe('Admin Intervention Integration', () => {
           action: 'session:create',
           payload: {
             name: 'Admin Created Session',
-            teams: ['001', '002', '003']
+            teams: ['Team Alpha', 'Detectives', 'Blue Squad']
           }
         },
         timestamp: new Date().toISOString()
@@ -244,7 +244,7 @@ describe('Admin Intervention Integration', () => {
       expect(ack.data.success).toBe(true);
       expect(ack.data.action).toBe('session:create');
       expect(sessionUpdate.data.name).toBe('Admin Created Session');
-      expect(sessionUpdate.data.teams).toEqual(['001', '002', '003']);
+      expect(sessionUpdate.data.teams).toEqual(['Team Alpha', 'Detectives', 'Blue Squad']);
       expect(sessionUpdate.data.status).toBe('active');
     });
 
@@ -279,7 +279,7 @@ describe('Admin Intervention Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_OBSERVER',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -331,7 +331,7 @@ describe('Admin Intervention Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_OBSERVER',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -349,14 +349,14 @@ describe('Admin Intervention Integration', () => {
       // Create some transactions first
       await transactionService.processScan({
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
       }, sessionService.getCurrentSession());
 
       let teamScores = transactionService.getTeamScores();
-      const scoreBefore = teamScores.find(s => s.teamId === '001');
+      const scoreBefore = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(scoreBefore.currentScore).toBe(40);
 
       const sessionUpdatePromise = waitForEvent(gmObserver.socket, 'session:update');
@@ -584,7 +584,7 @@ describe('Admin Intervention Integration', () => {
         // Setup: Create a transaction first
         await transactionService.processScan({
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -631,7 +631,7 @@ describe('Admin Intervention Integration', () => {
             action: 'transaction:create',
             payload: {
               tokenId: 'asm001',
-              teamId: '002',
+              teamId: 'Detectives',
               deviceId: 'ADMIN_MANUAL',
               deviceType: 'gm',  // Required by Phase 3 P0.1
               mode: 'blackmarket'
@@ -658,7 +658,7 @@ describe('Admin Intervention Integration', () => {
         // Setup: Create some data first
         await transactionService.processScan({
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -715,7 +715,7 @@ describe('Admin Intervention Integration', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             delta: 100
           }
         },
@@ -775,7 +775,7 @@ describe('Admin Intervention Integration', () => {
       // Create initial score
       await transactionService.processScan({
         tokenId: 'rat001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -799,7 +799,7 @@ describe('Admin Intervention Integration', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             delta: -1000
           }
         },

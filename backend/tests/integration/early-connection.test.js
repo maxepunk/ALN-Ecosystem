@@ -38,7 +38,7 @@ describe('Early Connection Integration (Phase 1.3)', () => {
     // Create test session BEFORE connecting
     await sessionService.createSession({
       name: 'Early Connection Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM scanner (represents early connection scenario)

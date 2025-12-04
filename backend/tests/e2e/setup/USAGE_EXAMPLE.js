@@ -171,7 +171,7 @@ describe('Example 3: Session Persistence Testing', () => {
     socket.emit('gm:command', {
       command: 'create_session',
       sessionName: 'Test Persistence Session',
-      teams: ['001', '002', '003']
+      teams: ['Team Alpha', 'Detectives', 'Blue Squad']
     });
 
     const session = await sessionCreated;

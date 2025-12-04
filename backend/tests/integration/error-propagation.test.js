@@ -51,7 +51,7 @@ describe('Error Propagation Integration', () => {
     // Create test session
     await sessionService.createSession({
       name: 'Error Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM scanner
@@ -72,7 +72,7 @@ describe('Error Propagation Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'invalid_token',  // Explicitly invalid (see transactionService.js line 118-121)
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -95,7 +95,7 @@ describe('Error Propagation Integration', () => {
 
       // Verify: Service state unchanged (no score added)
       const teamScores = transactionService.getTeamScores();
-      const team001Score = teamScores.find(s => s.teamId === '001');
+      const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(0);
     });
 
@@ -106,7 +106,7 @@ describe('Error Propagation Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'NONEXISTENT_FAKE_TOKEN_12345',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -162,7 +162,7 @@ describe('Error Propagation Integration', () => {
         data: {
           // Malformed data - tokenId is object instead of string
           tokenId: { invalid: 'structure' },
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_ERROR_TEST'
         },
         timestamp: new Date().toISOString()
@@ -186,7 +186,7 @@ describe('Error Propagation Integration', () => {
           event: 'transaction:submit',
           data: {
             tokenId: `INVALID_${i}`,
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
@@ -214,7 +214,7 @@ describe('Error Propagation Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Valid token
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -242,7 +242,7 @@ describe('Error Propagation Integration', () => {
           event: 'transaction:submit',
           data: {
             tokenId: 'invalid_token',
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
@@ -254,7 +254,7 @@ describe('Error Propagation Integration', () => {
           event: 'transaction:submit',
           data: {
             tokenId: 'ANOTHER_INVALID_TOKEN',
-            teamId: '002',
+            teamId: 'Detectives',
             deviceId: 'GM_ERROR_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
@@ -274,7 +274,7 @@ describe('Error Propagation Integration', () => {
           event: 'transaction:submit',
           data: {
             tokenId: '534e2b03',
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
@@ -357,7 +357,7 @@ describe('Error Propagation Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'invalid_token',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -373,7 +373,7 @@ describe('Error Propagation Integration', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -388,7 +388,7 @@ describe('Error Propagation Integration', () => {
 
       // Verify: Score updated correctly
       const teamScores = transactionService.getTeamScores();
-      const team001Score = teamScores.find(s => s.teamId === '001');
+      const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(30);
     });
 
@@ -411,7 +411,7 @@ describe('Error Propagation Integration', () => {
           event: 'transaction:submit',
           data: {
             tokenId: tx.tokenId,
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'GM_ERROR_TEST',
           deviceType: 'gm',  // Required by Phase 3 P0.1
             mode: 'blackmarket'
@@ -433,7 +433,7 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Final score reflects only valid transactions
       const teamScores = transactionService.getTeamScores();
-      const team001Score = teamScores.find(s => s.teamId === '001');
+      const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.currentScore).toBe(expectedScore); // 30 + 10 + 40 = 80
     });
   });

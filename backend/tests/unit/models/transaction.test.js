@@ -7,7 +7,7 @@ describe('Transaction model - deviceId field', () => {
       const tx = new Transaction({
         id: uuidv4(),  // UUID required
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',  // deviceId (not scannerId)
         deviceType: 'gm',  // P0.1: Required
         timestamp: new Date().toISOString(),
@@ -25,7 +25,7 @@ describe('Transaction model - deviceId field', () => {
       const tx = new Transaction({
         id: uuidv4(),  // UUID required
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // P0.1: Required
         timestamp: new Date().toISOString(),
@@ -45,7 +45,7 @@ describe('Transaction model - deviceId field', () => {
       const tx = new Transaction({
         id: uuidv4(),  // UUID required
         tokenId: 'tac001',
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required
         timestamp: new Date().toISOString(),
@@ -67,7 +67,7 @@ describe('Transaction model - deviceId field', () => {
       const json = {
         id: uuidv4(),  // UUID required
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'GM_01',
         deviceType: 'gm',  // P0.1: Required
         timestamp: new Date().toISOString(),

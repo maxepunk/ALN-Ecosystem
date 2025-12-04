@@ -151,12 +151,12 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             startTime: new Date().toISOString(),
             endTime: null,
             status: 'active',
-            teams: ['001', '002'],
+            teams: ['Team Alpha', 'Detectives'],
             metadata: { totalScans: 10 }
           },
           scores: [
             {
-              teamId: '001',
+              teamId: 'Team Alpha',
               currentScore: 5000,
               baseScore: 4500,
               bonusPoints: 500,
@@ -223,7 +223,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               startTime: new Date().toISOString(),
               endTime: status === 'ended' ? new Date().toISOString() : null,
               status: status,
-              teams: ['001'],
+              teams: ['Team Alpha'],
               metadata: {}
             },
             scores: [],
@@ -282,7 +282,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           status: 'accepted',
           transactionId: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           points: 3000,
           message: 'Transaction accepted - 3000 points awarded',
           error: null
@@ -302,7 +302,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           status: 'duplicate',
           transactionId: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           points: 0,
           message: 'Token already scanned',
           error: null
@@ -322,7 +322,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           status: 'error',
           transactionId: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
           tokenId: 'unknown',
-          teamId: '001',
+          teamId: 'Team Alpha',
           points: 0,
           message: 'Token not found',
           error: 'TOKEN_NOT_FOUND'
@@ -345,7 +345,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           transaction: {
             id: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
             tokenId: '534e2b03',
-            teamId: '001',
+            teamId: 'Team Alpha',
             deviceId: 'GM_Station_1',
             mode: 'blackmarket',
             points: 3000,
@@ -373,7 +373,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             transaction: {
               id: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
               tokenId: 'test',
-              teamId: '001',
+              teamId: 'Team Alpha',
               deviceId: 'GM_1',
               mode: 'blackmarket',
               points: 1000,
@@ -400,7 +400,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             transaction: {
               id: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
               tokenId: 'test',
-              teamId: '001',
+              teamId: 'Team Alpha',
               deviceId: 'GM_1',
               mode: 'detective',
               points: rating * 100,
@@ -426,7 +426,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           currentScore: 11500,
           baseScore: 11000,
           bonusPoints: 500,
@@ -457,7 +457,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: '002',
+          teamId: 'Detectives',
           currentScore: 1000,
           baseScore: 1000,
           bonusPoints: 0,
@@ -533,7 +533,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           startTime: new Date().toISOString(),
           endTime: null,
           status: 'active',
-          teams: ['001', '002', '003'],
+          teams: ['Team Alpha', 'Detectives', 'Blue Squad'],
           metadata: {
             gmStations: 2,
             playerDevices: 3,
@@ -557,7 +557,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           startTime: new Date().toISOString(),
           endTime: null,
           status: 'active',
-          teams: ['001'],
+          teams: ['Team Alpha'],
           metadata: {}
         },
         timestamp: new Date().toISOString()
@@ -647,7 +647,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: '001',
+          teamId: 'Team Alpha',
           group: 'jaw_group',
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -737,7 +737,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               status: 'accepted',
               transactionId: '7b8b1d85-b234-4be9-bde5-4c8522a1f15e',
               tokenId: 'test',
-              teamId: '001',
+              teamId: 'Team Alpha',
               points: 1000,
               message: 'OK',
               error: null
@@ -750,7 +750,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           event: {
             event: 'score:updated',
             data: {
-              teamId: '001',
+              teamId: 'Team Alpha',
               currentScore: 1000,
               baseScore: 1000,
               bonusPoints: 0,

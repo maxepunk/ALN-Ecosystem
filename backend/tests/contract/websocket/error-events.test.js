@@ -46,7 +46,7 @@ describe('Error Events - Contract Validation', () => {
     // Create session
     await sessionService.createSession({
       name: 'Error Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
 
     // Connect GM socket

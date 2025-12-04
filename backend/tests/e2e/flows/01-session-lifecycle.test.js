@@ -168,7 +168,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session Alpha',
-          teams: ['001', '002', '003']
+          teams: ['Team Alpha', 'Detectives', 'Blue Squad']
         }
       },
       timestamp: new Date().toISOString()
@@ -190,7 +190,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     // Validate specific fields
     expect(session.name).toBe('Test Session Alpha');
-    expect(session.teams).toEqual(['001', '002', '003']);
+    expect(session.teams).toEqual(['Team Alpha', 'Detectives', 'Blue Squad']);
     expect(session.status).toBe('active');
     expect(session.id).toBeDefined();
     expect(session.startTime).toBeDefined();
@@ -238,7 +238,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Broadcast Test Session',
-          teams: ['001', '002']
+          teams: ['Team Alpha', 'Detectives']
         }
       },
       timestamp: new Date().toISOString()
@@ -282,7 +282,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Duplicate Session Name',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -299,7 +299,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const response1 = await axiosInstance.get(`${orchestratorInfo.url}/api/session`);
     const session1Id = response1.data.id;
     expect(response1.data.name).toBe('Duplicate Session Name');
-    expect(response1.data.teams).toEqual(['001']);
+    expect(response1.data.teams).toEqual(['Team Alpha']);
 
     // Create second session with same name
     socket.emit('gm:command', {
@@ -347,7 +347,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Session To Pause',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -396,7 +396,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Session To Resume',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -454,7 +454,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Session To End',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -514,7 +514,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Session A',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -619,7 +619,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Timestamp Test Session',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -665,7 +665,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Paused Transaction Test',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -694,7 +694,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     try {
       const response = await axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
         tokenId: 'sof002',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_DEVICE',
         deviceType: 'player'  // Required by playerScanRequestSchema
       });
@@ -737,7 +737,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Ended Transaction Test',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -766,7 +766,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     try {
       const response = await axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
         tokenId: 'sof002',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'TEST_DEVICE',
         deviceType: 'player'  // Required by playerScanRequestSchema
       });
@@ -812,7 +812,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Stats Test Session',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -834,7 +834,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
       scanPromises.push(
         axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
           tokenId: realTokens[i],
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'TEST_DEVICE',
           deviceType: 'player'  // Required by playerScanRequestSchema
         })
@@ -897,7 +897,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
         action: 'session:create',
         payload: {
           name: 'Resume Transaction Test',
-          teams: ['001']
+          teams: ['Team Alpha']
         }
       },
       timestamp: new Date().toISOString()
@@ -937,7 +937,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
 
     const response = await axiosInstance.post(`${orchestratorInfo.url}/api/scan`, {
       tokenId: 'sof002',
-      teamId: '001',
+      teamId: 'Team Alpha',
       deviceId: 'TEST_DEVICE',
       deviceType: 'player'  // Required by playerScanRequestSchema
     });

@@ -48,7 +48,7 @@ describe('Multi-GM Coordination', () => {
     // Create session with multiple teams
     await sessionService.createSession({
       name: 'Multi-GM Coordination Test',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 
@@ -72,7 +72,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_TEAM_001',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -84,7 +84,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'tac001',
-          teamId: '002',
+          teamId: 'Detectives',
           deviceId: 'GM_TEAM_002',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -97,14 +97,14 @@ describe('Multi-GM Coordination', () => {
 
       // Validate: Both transactions succeed independently
       expect(result1.data.status).toBe('accepted');
-      expect(result1.data.teamId).toBe('001');
+      expect(result1.data.teamId).toBe('Team Alpha');
 
       expect(result2.data.status).toBe('accepted');
-      expect(result2.data.teamId).toBe('002');
+      expect(result2.data.teamId).toBe('Detectives');
 
       // Validate: Scores updated independently
-      const team001Score = transactionService.teamScores.get('001');
-      const team002Score = transactionService.teamScores.get('002');
+      const team001Score = transactionService.teamScores.get('Team Alpha');
+      const team002Score = transactionService.teamScores.get('Detectives');
       expect(team001Score.currentScore).toBe(30);
       expect(team002Score.currentScore).toBeGreaterThan(0);  // tac001 value
 
@@ -126,7 +126,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -144,7 +144,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // SAME token
-          teamId: '002',        // Different team
+          teamId: 'Detectives',        // Different team
           deviceId: 'GM_DUP_2',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -158,11 +158,11 @@ describe('Multi-GM Coordination', () => {
       expect(result2.data.status).toBe('duplicate');
       expect(result2.data.points).toBe(0);
       expect(result2.data.message).toContain('claimed');
-      expect(result2.data.message).toContain('001');  // Claiming team
+      expect(result2.data.message).toContain('Team Alpha');  // Claiming team
 
       // Validate: Only first team got points
-      const team001Score = transactionService.teamScores.get('001');
-      const team002Score = transactionService.teamScores.get('002');
+      const team001Score = transactionService.teamScores.get('Team Alpha');
+      const team002Score = transactionService.teamScores.get('Detectives');
       expect(team001Score.currentScore).toBe(30);
       expect(team002Score.currentScore).toBe(0);
 
@@ -182,7 +182,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_TEAM_001',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -199,7 +199,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'asm001',
-          teamId: '002', // Different team
+          teamId: 'Detectives', // Different team
           deviceId: 'GM_TEAM_002',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -210,8 +210,8 @@ describe('Multi-GM Coordination', () => {
 
       // Verify: Team 001 did NOT complete group (asm001 claimed by team 002)
       const scores = transactionService.getTeamScores();
-      const team001Score = scores.find(s => s.teamId === '001');
-      const team002Score = scores.find(s => s.teamId === '002');
+      const team001Score = scores.find(s => s.teamId === 'Team Alpha');
+      const team002Score = scores.find(s => s.teamId === 'Detectives');
 
       expect(team001Score.completedGroups).toEqual([]); // NOT complete
       expect(team001Score.bonusPoints).toBe(0); // NO bonus
@@ -246,7 +246,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_GROUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -261,7 +261,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'asm001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_GROUP_1',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -296,7 +296,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'rat001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_TEAM_001',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'blackmarket'
@@ -311,7 +311,7 @@ describe('Multi-GM Coordination', () => {
         event: 'transaction:submit',
         data: {
           tokenId: 'asm001',
-          teamId: '001',
+          teamId: 'Team Alpha',
           deviceId: 'GM_TEAM_001',
           deviceType: 'gm',  // Required by Phase 3 P0.1
           mode: 'detective' // Detective mode
@@ -325,7 +325,7 @@ describe('Multi-GM Coordination', () => {
 
       // Verify: Group NOT completed (detective mode doesn't count toward groups)
       const scores = transactionService.getTeamScores();
-      const team001Score = scores.find(s => s.teamId === '001');
+      const team001Score = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score.completedGroups).toEqual([]); // NOT complete
       expect(team001Score.bonusPoints).toBe(0); // NO bonus
       expect(team001Score.currentScore).toBe(40); // Only rat001 (blackmarket scan)

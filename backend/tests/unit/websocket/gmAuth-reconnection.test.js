@@ -42,7 +42,7 @@ describe('GM Auth - Reconnection State Restoration (Phase 2.1 P1.1)', () => {
     // Create session with teams
     session = await sessionService.createSession({
       name: 'Reconnection Test Session',
-      teams: ['001', '002']
+      teams: ['Team Alpha', 'Detectives']
     });
   });
 

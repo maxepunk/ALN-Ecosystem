@@ -34,7 +34,7 @@ describe('StateService - Aggregator Pattern', () => {
       // Setup: Create session first (stateService creates state from session)
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Sync stateService from session (creates state)
@@ -90,7 +90,7 @@ describe('StateService - Aggregator Pattern', () => {
       // Setup
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Get initial listener count

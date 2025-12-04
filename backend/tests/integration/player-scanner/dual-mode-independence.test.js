@@ -120,7 +120,7 @@ describe('Player Scanner - Dual-Mode Independence', () => {
 
       // INTENDED BEHAVIOR (FR:219): "No queue (transactions processed immediately)"
       // Standalone mode processes locally, doesn't queue for sync
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // Should process locally and return success
       expect(result.status).toBe('standalone');
@@ -134,7 +134,7 @@ describe('Player Scanner - Dual-Mode Independence', () => {
       const orchestrator = new OrchestratorIntegration();
 
       // Scan a token
-      await orchestrator.scanToken('test_token', '001');
+      await orchestrator.scanToken('test_token', 'Team Alpha');
 
       // INTENDED BEHAVIOR: Standalone never attempts HTTP requests
       expect(global.fetch).not.toHaveBeenCalled();
@@ -167,7 +167,7 @@ describe('Player Scanner - Dual-Mode Independence', () => {
       expect(orchestrator.connected).toBe(false);
 
       // Should queue scans offline (standalone behavior)
-      const result = await orchestrator.scanToken('test_token', '001');
+      const result = await orchestrator.scanToken('test_token', 'Team Alpha');
       expect(result.status).toBe('offline');
       expect(result.queued).toBe(true);
 
@@ -186,7 +186,7 @@ describe('Player Scanner - Dual-Mode Independence', () => {
 
       // Scan should attempt network request
       mockFetchResponse(200, { status: 'accepted', videoQueued: true });
-      const result1 = await orchestrator.scanToken('token1', '001');
+      const result1 = await orchestrator.scanToken('token1', 'Team Alpha');
       expect(result1.status).toBe('accepted');
 
       // Connection lost
@@ -197,7 +197,7 @@ describe('Player Scanner - Dual-Mode Independence', () => {
       expect(orchestrator.connected).toBe(false);
 
       // Next scan should queue offline
-      const result2 = await orchestrator.scanToken('token2', '001');
+      const result2 = await orchestrator.scanToken('token2', 'Team Alpha');
       expect(result2.status).toBe('offline');
       expect(result2.queued).toBe(true);
 
@@ -219,8 +219,8 @@ describe('Player Scanner - Dual-Mode Independence', () => {
       await orchestrator.checkConnection();
 
       // Queue some scans offline
-      await orchestrator.scanToken('token1', '001');
-      await orchestrator.scanToken('token2', '001');
+      await orchestrator.scanToken('token1', 'Team Alpha');
+      await orchestrator.scanToken('token2', 'Team Alpha');
 
       expect(orchestrator.offlineQueue).toHaveLength(2);
 
@@ -279,7 +279,7 @@ describe('Player Scanner - Dual-Mode Independence', () => {
       const instance2 = new OrchestratorIntegration();
 
       // Queue items in instance1
-      instance1.queueOffline('token1', '001');
+      instance1.queueOffline('token1', 'Team Alpha');
 
       // instance2 should not see instance1's in-memory queue
       // (until localStorage syncs on page load)

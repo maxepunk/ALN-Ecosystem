@@ -131,7 +131,7 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
 
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Diagnostic Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Diagnostic Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
 
@@ -190,7 +190,7 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
         password: ADMIN_PASSWORD
       });
 
-      await gmScanner2.enterTeam('001');
+      await gmScanner2.enterTeamName('Team Alpha');
       await gmScanner2.confirmTeam();
 
       await gmScanner2.scanScreen.waitFor({ state: 'visible', timeout: 5000 });

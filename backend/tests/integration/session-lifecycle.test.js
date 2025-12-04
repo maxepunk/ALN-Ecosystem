@@ -88,7 +88,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
           action: 'session:create',  // Contract-specified action
           payload: {
             name: 'Lifecycle Test Session',
-            teams: ['001', '002', '003']
+            teams: ['Team Alpha', 'Detectives', 'Blue Squad']
           }
         },
         timestamp: new Date().toISOString()
@@ -108,16 +108,16 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       expect(sessionUpdate.event).toBe('session:update');
       expect(sessionUpdate.data.status).toBe('active');
       expect(sessionUpdate.data.name).toBe('Lifecycle Test Session');
-      expect(sessionUpdate.data.teams).toEqual(['001', '002', '003']);
+      expect(sessionUpdate.data.teams).toEqual(['Team Alpha', 'Detectives', 'Blue Squad']);
       expect(sessionUpdate.data.id).toBeDefined(); // Decision #4: 'id' within resource
       validateWebSocketEvent(sessionUpdate, 'session:update');
 
       // Validate: transactionService initialized team scores
       const scores = transactionService.getTeamScores();
-      const team001Score = scores.find(s => s.teamId === '001');
+      const team001Score = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001Score).toBeDefined();
       expect(team001Score.currentScore).toBe(0);
-      expect(team001Score.teamId).toBe('001');
+      expect(team001Score.teamId).toBe('Team Alpha');
     });
   });
 
@@ -126,7 +126,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Setup: Create session first
       await sessionService.createSession({
         name: 'Pause Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_PAUSE_TEST', 'blackmarket');
@@ -162,7 +162,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Setup: Create session
       await sessionService.createSession({
         name: 'Pause Block Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_PAUSE_BLOCK_TEST', 'blackmarket');
@@ -182,7 +182,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Try to scan while paused using REAL scanner API (should be REJECTED per FR 1.2)
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
 
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       scanner.App.processNFCRead({ id: '534e2b03' });
 
       const result = await resultPromise;
@@ -194,7 +194,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       // Validate: Team score unchanged (transaction was blocked)
       const scores = transactionService.getTeamScores();
-      const teamScore = scores.find(s => s.teamId === '001');
+      const teamScore = scores.find(s => s.teamId === 'Team Alpha');
       expect(teamScore.currentScore).toBe(0);
     });
   });
@@ -204,7 +204,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Setup: Create and pause session
       await sessionService.createSession({
         name: 'Resume Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
       await sessionService.updateSession({ status: 'paused' });
 
@@ -239,7 +239,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Validate: Transactions now allowed - use REAL scanner API
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
 
-      scanner.App.currentTeamId = '001';
+      scanner.App.currentTeamId = 'Team Alpha';
       scanner.App.processNFCRead({ id: '534e2b03' });
 
       const result = await resultPromise;
@@ -253,14 +253,14 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Setup: Create session with transactions
       await sessionService.createSession({
         name: 'End Test Session',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Add a transaction
       const session = sessionService.getCurrentSession();
       const txResult = await transactionService.processScan({
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -303,14 +303,14 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Setup: Create session with existing score
       await sessionService.createSession({
         name: 'Score Adjust Test',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       // Add transactions to create initial scores
       const session = sessionService.getCurrentSession();
       const tx1 = await transactionService.processScan({
         tokenId: '534e2b03',  // 5000 points
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -319,7 +319,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       const tx2 = await transactionService.processScan({
         tokenId: 'tac001',  // 100 points (rating 1, Personal type)
-        teamId: '002',
+        teamId: 'Detectives',
         deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -328,8 +328,8 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       // Verify initial scores
       let scores = transactionService.getTeamScores();
-      let team001 = scores.find(s => s.teamId === '001');
-      let team002 = scores.find(s => s.teamId === '002');
+      let team001 = scores.find(s => s.teamId === 'Team Alpha');
+      let team002 = scores.find(s => s.teamId === 'Detectives');
       expect(team001.currentScore).toBe(30);
       expect(team002.currentScore).toBe(10);  // Corrected: rating 1 Personal = 10
 
@@ -345,7 +345,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             delta: -500,  // ADJUST by delta, not RESET
             reason: 'Penalty for rule violation'
           }
@@ -362,17 +362,17 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       // Validate: Score ADJUSTED by delta (30 - 500 = -470), NOT reset to 0
       expect(scoreUpdate.event).toBe('score:updated');
-      expect(scoreUpdate.data.teamId).toBe('001');
+      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
       expect(scoreUpdate.data.currentScore).toBe(-470); // 30 - 500
       validateWebSocketEvent(scoreUpdate, 'score:updated');
 
       // Validate: Team 002 score UNCHANGED
       scores = transactionService.getTeamScores();
-      team002 = scores.find(s => s.teamId === '002');
+      team002 = scores.find(s => s.teamId === 'Detectives');
       expect(team002.currentScore).toBe(10); // No change (still 10)
 
       // Validate: Service state matches broadcast
-      team001 = scores.find(s => s.teamId === '001');
+      team001 = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001.currentScore).toBe(-470);
     });
 
@@ -380,13 +380,13 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       // Setup: Create session
       await sessionService.createSession({
         name: 'Score Bonus Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       const session = sessionService.getCurrentSession();
       const tx = await transactionService.processScan({
         tokenId: '534e2b03',
-        teamId: '001',
+        teamId: 'Team Alpha',
         deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
@@ -394,7 +394,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       await sessionService.addTransaction(tx.transaction);
 
       let scores = transactionService.getTeamScores();
-      let team001 = scores.find(s => s.teamId === '001');
+      let team001 = scores.find(s => s.teamId === 'Team Alpha');
       expect(team001.currentScore).toBe(30);
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_BONUS_TEST', 'blackmarket');
@@ -407,7 +407,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         data: {
           action: 'score:adjust',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             delta: 1000,  // Positive delta = bonus
             reason: 'Bonus for excellent teamwork'
           }
@@ -418,7 +418,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       const scoreUpdate = await scoreUpdatedPromise;
 
       // Validate: Score increased by delta
-      expect(scoreUpdate.data.teamId).toBe('001');
+      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
       expect(scoreUpdate.data.currentScore).toBe(1030); // 30 + 1000
     });
   });

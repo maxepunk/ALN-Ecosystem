@@ -35,22 +35,22 @@ describe('Service Event Communication', () => {
       // Setup: Create session
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002']
+        teams: ['Team Alpha', 'Detectives']
       });
 
       // Manually create some team scores
       const TeamScore = require('../../src/models/teamScore');
-      transactionService.teamScores.set('001', TeamScore.createInitial('001'));
-      transactionService.teamScores.set('002', TeamScore.createInitial('002'));
+      transactionService.teamScores.set('001', TeamScore.createInitial('Team Alpha'));
+      transactionService.teamScores.set('002', TeamScore.createInitial('Detectives'));
 
       // Add points
-      transactionService.teamScores.get('001').currentScore = 100;
-      transactionService.teamScores.get('002').currentScore = 50;
+      transactionService.teamScores.get('Team Alpha').currentScore = 100;
+      transactionService.teamScores.get('Detectives').currentScore = 50;
 
       // Verify scores exist
       const scoresBefore = transactionService.getTeamScores();
-      expect(scoresBefore.find(s => s.teamId === '001').currentScore).toBe(100);
-      expect(scoresBefore.find(s => s.teamId === '002').currentScore).toBe(50);
+      expect(scoresBefore.find(s => s.teamId === 'Team Alpha').currentScore).toBe(100);
+      expect(scoresBefore.find(s => s.teamId === 'Detectives').currentScore).toBe(50);
 
       // Trigger: End session (emits session:updated with status='ended')
       await sessionService.endSession();
@@ -71,7 +71,7 @@ describe('Service Event Communication', () => {
       // Create session with teams (should trigger score initialization)
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002', '003']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
 
       // Give event time to propagate
@@ -80,9 +80,9 @@ describe('Service Event Communication', () => {
       // Verify: Scores initialized for all teams
       const scoresAfter = transactionService.getTeamScores();
       expect(scoresAfter.length).toBe(3);
-      expect(scoresAfter.find(s => s.teamId === '001')).toBeDefined();
-      expect(scoresAfter.find(s => s.teamId === '002')).toBeDefined();
-      expect(scoresAfter.find(s => s.teamId === '003')).toBeDefined();
+      expect(scoresAfter.find(s => s.teamId === 'Team Alpha')).toBeDefined();
+      expect(scoresAfter.find(s => s.teamId === 'Detectives')).toBeDefined();
+      expect(scoresAfter.find(s => s.teamId === 'Blue Squad')).toBeDefined();
     });
   });
 });

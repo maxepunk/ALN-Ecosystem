@@ -100,7 +100,7 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
 
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'History Update Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'History Update Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(
@@ -140,7 +140,7 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
         password: ADMIN_PASSWORD
       });
 
-      await gmScanner2.enterTeam('001');
+      await gmScanner2.enterTeamName('Team Alpha');
       await gmScanner2.confirmTeam();
 
       // Wait for scan screen to be ready
@@ -230,7 +230,7 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
       // Create session
       socket1.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Multi-Device Delete Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Multi-Device Delete Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket1, 'session:update', null, 5000);
@@ -251,7 +251,7 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
       });
 
       // Scanner 2: Perform scan to generate transaction
-      await gmScanner2.enterTeam('001');
+      await gmScanner2.enterTeamName('Team Alpha');
       await gmScanner2.confirmTeam();
       await gmScanner2.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 
@@ -282,7 +282,7 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
 
       // Scanner 1: Navigate to team details to monitor
       await gmScanner1.navigateToAdminPanel();
-      await gmScanner1.clickTeamInScoreBoard('001');
+      await gmScanner1.clickTeamInScoreBoard('Team Alpha');
       await gmScanner1.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       console.log('Scanner 1 monitoring team details...');
@@ -301,7 +301,7 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
 
       // Scanner 2: Navigate to team details to delete
       await gmScanner2.navigateToAdminPanel();
-      await gmScanner2.clickTeamInScoreBoard('001');
+      await gmScanner2.clickTeamInScoreBoard('Team Alpha');
       await gmScanner2.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       console.log('Scanner 2 in team details, preparing to delete...');

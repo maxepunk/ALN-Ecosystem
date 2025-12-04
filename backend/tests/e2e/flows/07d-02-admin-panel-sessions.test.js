@@ -104,7 +104,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
           action: 'session:create',
           payload: {
             name: 'Admin Panel Test Session',
-            teams: ['001', '002']
+            teams: ['Team Alpha', 'Detectives']
           }
         },
         timestamp: new Date().toISOString()
@@ -155,7 +155,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Create session with teams
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Reset Test', teams: ['001', '002'] } },
+        data: { action: 'session:create', payload: { name: 'Reset Test', teams: ['Team Alpha', 'Detectives'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket, 'session:update', null, 5000);
@@ -182,7 +182,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
 
       // Verify broadcasts
       const scoresReset = await scoresResetPromise;
-      expect(scoresReset.data.teamsReset).toEqual(expect.arrayContaining(['001', '002']));
+      expect(scoresReset.data.teamsReset).toEqual(expect.arrayContaining(['Team Alpha', 'Detectives']));
 
       const syncFull = await syncFullPromise;
       // After reset, teams still exist but with 0 scores
@@ -217,7 +217,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Create session and WAIT for state sync
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Adjust Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Adjust Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
 
@@ -237,7 +237,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
         data: {
           action: 'transaction:create',
           payload: {
-            teamId: '001',
+            teamId: 'Team Alpha',
             tokenId: testTokens.personalToken.SF_RFID,
             mode: 'blackmarket',  // Required by transaction:create
             deviceId: 'Test_Device',
@@ -251,7 +251,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await waitForEvent(socket, 'score:updated', (event) => event.data.currentScore === 500, 5000);
 
       // Now click team to see details
-      await gmScanner.clickTeamInScoreBoard('001');
+      await gmScanner.clickTeamInScoreBoard('Team Alpha');
       await gmScanner.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       // Verify score adjustment controls are visible
@@ -273,7 +273,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
 
       // Verify broadcast
       const scoreUpdate = await scoreUpdatePromise;
-      expect(scoreUpdate.data.teamId).toBe('001');
+      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
       // Team has $500 from transaction, +500 adjustment = $1000 total
       expect(scoreUpdate.data.currentScore).toBe(1000);
 
@@ -302,7 +302,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Create session and wait for broadcast
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Persist Test', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Persist Test', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(
@@ -314,14 +314,14 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
 
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'score:adjust', payload: { teamId: '001', delta: 750, reason: 'Test' } },
+        data: { action: 'score:adjust', payload: { teamId: 'Team Alpha', delta: 750, reason: 'Test' } },
         timestamp: new Date().toISOString()
       });
       // Wait for score:updated broadcast (UI sync guaranteed)
       await waitForEvent(
         socket,
         'score:updated',
-        (event) => event.data.teamId === '001' && event.data.currentScore === 750,
+        (event) => event.data.teamId === 'Team Alpha' && event.data.currentScore === 750,
         5000
       );
 
@@ -381,7 +381,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Create session with teams
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Nav Test Scoreboard', teams: ['001', '002'] } },
+        data: { action: 'session:create', payload: { name: 'Nav Test Scoreboard', teams: ['Team Alpha', 'Detectives'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket, 'gm:command:ack', null, 5000);
@@ -421,7 +421,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Create session with teams
       socket.emit('gm:command', {
         event: 'gm:command',
-        data: { action: 'session:create', payload: { name: 'Nav Test History', teams: ['001'] } },
+        data: { action: 'session:create', payload: { name: 'Nav Test History', teams: ['Team Alpha'] } },
         timestamp: new Date().toISOString()
       });
       await waitForEvent(socket, 'gm:command:ack', null, 5000);

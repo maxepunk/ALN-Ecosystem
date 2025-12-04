@@ -36,7 +36,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 1: Create session
       await sessionService.createSession({
         name: 'Reconnection Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Step 2: Connect GM
@@ -58,13 +58,13 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await submitTransaction(gm1, {
         tokenId: 'jaw001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
       await submitTransaction(gm1, {
         tokenId: 'tac001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
@@ -104,7 +104,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 1: Create session
       await sessionService.createSession({
         name: 'Duplicate Prevention Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Step 2: Connect and scan via WebSocket
@@ -112,7 +112,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       const result1 = await submitTransaction(gm1, {
         tokenId: 'jaw001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
@@ -129,7 +129,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 4: Try to scan same token (should be rejected as duplicate)
       const result2 = await submitTransaction(gm1, {
         tokenId: 'jaw001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
@@ -154,7 +154,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       // Step 1: Create session
       await sessionService.createSession({
         name: 'Multi-Device Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Step 2: GM_001 scans jaw011
@@ -162,7 +162,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await submitTransaction(gm1, {
         tokenId: 'jaw001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
@@ -171,7 +171,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await submitTransaction(gm2, {
         tokenId: 'tac001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
@@ -197,7 +197,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await sessionService.createSession({
         name: 'Reconnection Flag Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // First connection
@@ -225,7 +225,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await sessionService.createSession({
         name: 'Empty State Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Connect without scanning
@@ -260,7 +260,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await sessionService.createSession({
         name: 'Multiple Reconnection Test',
-        teams: ['001']
+        teams: ['Team Alpha']
       });
 
       // Initial connection and scan
@@ -268,7 +268,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       await submitTransaction(gm1, {
         tokenId: 'jaw001',
-        teamId: '001',
+        teamId: 'Team Alpha',
         mode: 'blackmarket'
       });
 
