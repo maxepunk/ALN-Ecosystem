@@ -69,6 +69,12 @@ let testTokens = null;  // Dynamically selected tokens
 
 test.describe('Player Scanner Networked Scanning', () => {
 
+  // Video alert timing constants
+  const VIDEO_ALERT_DISPLAY_DURATION = 5000;  // Alert displays for 5 seconds
+  const VIDEO_ALERT_EXIT_ANIMATION = 300;      // Exit animation duration
+  const VIDEO_ALERT_EARLY_CHECK = 4000;        // Check visibility before dismiss
+  const VIDEO_ALERT_TIMING_BUFFER = 1500;      // Buffer for test timing variance
+
   test.beforeAll(async () => {
     // 1. Clear session data
     await clearSessionData();
@@ -346,20 +352,24 @@ test.describe('Player Scanner Networked Scanning', () => {
     await scanner.waitForVideoAlert();
     const alertStartTime = Date.now();
 
-    // Wait 4 seconds - should still be visible
-    await page.waitForTimeout(4000);
+    // Wait before expected dismiss - should still be visible
+    await page.waitForTimeout(VIDEO_ALERT_EARLY_CHECK);
     expect(await scanner.isVideoAlertVisible()).toBe(true);
-    console.log('✓ Video alert still visible after 4 seconds');
+    console.log(`✓ Video alert still visible after ${VIDEO_ALERT_EARLY_CHECK}ms`);
 
-    // Wait for alert to auto-dismiss (5s display + 300ms animation)
-    await scanner.waitForVideoAlertHidden(4000);
+    // Wait for alert to auto-dismiss
+    await scanner.waitForVideoAlertHidden(VIDEO_ALERT_EARLY_CHECK);
     const alertEndTime = Date.now();
 
     expect(await scanner.isVideoAlertVisible()).toBe(false);
 
+    // Validate timing: should be at least 5s, but not excessively long
     const displayDuration = alertEndTime - alertStartTime;
-    expect(displayDuration).toBeGreaterThanOrEqual(5000);
-    console.log(`✓ Video alert displayed for ${displayDuration}ms (minimum 5000ms)`);
+    const expectedUpperBound = VIDEO_ALERT_DISPLAY_DURATION + VIDEO_ALERT_EXIT_ANIMATION + VIDEO_ALERT_TIMING_BUFFER;
+
+    expect(displayDuration).toBeGreaterThanOrEqual(VIDEO_ALERT_DISPLAY_DURATION);
+    expect(displayDuration).toBeLessThan(expectedUpperBound);
+    console.log(`✓ Video alert displayed for ${displayDuration}ms (expected: ${VIDEO_ALERT_DISPLAY_DURATION}-${expectedUpperBound}ms)`);
   });
 
   // ========================================

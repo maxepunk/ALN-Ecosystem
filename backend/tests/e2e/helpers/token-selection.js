@@ -12,7 +12,12 @@
  */
 
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
 const { calculateScore } = require('./scoring');
+
+// Path to video files directory
+const VIDEOS_DIR = path.join(__dirname, '../../../public/videos');
 
 /**
  * Query backend for available tokens
@@ -148,10 +153,20 @@ async function selectTestTokens(orchestratorUrl) {
     availableTechnical.find(t => t.SF_ValueRating === 5) || availableTechnical[0]
   );
 
-  // Video token (for video alert testing) - exclude already used tokens
-  const availableVideo = videoTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+  // Video token (for video alert testing) - exclude already used tokens AND verify video file exists
+  const availableVideo = videoTokens.filter(t => {
+    if (usedTokenIds.has(t.SF_RFID)) return false;
+    // Verify video file actually exists on disk
+    const videoPath = path.join(VIDEOS_DIR, t.video);
+    const exists = fs.existsSync(videoPath);
+    if (!exists) {
+      console.log(`  → Skipping video token ${t.SF_RFID}: video file "${t.video}" not found`);
+    }
+    return exists;
+  });
   if (availableVideo.length > 0) {
     selected.videoToken = allocateToken(availableVideo[0]);
+    console.log(`  → Video token verified: ${selected.videoToken.video} exists at ${VIDEOS_DIR}`);
   } else {
     selected.videoToken = null;
   }
