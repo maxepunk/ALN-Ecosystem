@@ -840,11 +840,42 @@
 
     <script>
         // ============================================
+        // DEVICE ID GENERATION
+        // ============================================
+        function generateDeviceId() {
+            const baseId = 'SCOREBOARD_DISPLAY';
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Allow explicit override via URL param
+            const explicitId = urlParams.get('deviceId');
+            if (explicitId) {
+                return explicitId;
+            }
+
+            // For kiosk mode, use the base ID (primary HDMI display)
+            if (urlParams.get('kiosk') === 'true') {
+                return baseId;
+            }
+
+            // For networked browsers, generate unique suffix
+            // Use sessionStorage to maintain consistency within a browser tab
+            let storedId = sessionStorage.getItem('scoreboard_device_id');
+            if (storedId) {
+                return storedId;
+            }
+
+            // Generate new unique ID with timestamp suffix
+            const uniqueId = `${baseId}_${Date.now().toString(36).toUpperCase()}`;
+            sessionStorage.setItem('scoreboard_device_id', uniqueId);
+            return uniqueId;
+        }
+
+        // ============================================
         // CONFIGURATION
         // ============================================
         const CONFIG = {
             adminPassword: '@LN-c0nn3ct',
-            deviceId: 'SCOREBOARD_DISPLAY',
+            deviceId: generateDeviceId(),
             apiUrl: window.location.origin,
             reconnectDelay: 2000,
             tokenRefreshInterval: 23 * 60 * 60 * 1000,

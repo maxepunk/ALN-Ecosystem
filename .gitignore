@@ -39,3 +39,5 @@ test-results/
 __pycache__/
 *.pyc
 *.pyo
+backend/test_output.log
+backend/test_output.log

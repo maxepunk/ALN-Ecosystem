@@ -18,7 +18,14 @@
       "Skill(frontend-design)",
       "Skill(superpowers:systematic-debugging)",
       "Bash(npm run test:unit:*)",
-      "Skill(superpowers:finishing-a-development-branch)"
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Skill(superpowers:condition-based-waiting)",
+      "Skill(superpowers:requesting-code-review)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(sort:*)"
     ],
     "deny": [],
     "ask": []
