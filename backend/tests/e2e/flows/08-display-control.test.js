@@ -31,10 +31,6 @@ const {
 } = require('../setup/browser-contexts');
 
 const {
-  cleanupAllSockets,
-} = require('../setup/websocket-client');
-
-const {
   initializeGMScannerWithMode,
 } = require('../helpers/scanner-init');
 
@@ -68,7 +64,6 @@ test.describe('Display Control - Admin Panel', () => {
 
   test.afterAll(async () => {
     await closeAllContexts();
-    await cleanupAllSockets();
     if (browser) await browser.close();
     await stopOrchestrator();
     await cleanupVLC();
