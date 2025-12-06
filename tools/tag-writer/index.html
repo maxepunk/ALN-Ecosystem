@@ -399,7 +399,7 @@
         <header class="header">
             <div class="header-icon">🏷️</div>
             <h1>ALN Tag Writer</h1>
-            <div class="env-badge" id="envBadge">DEV</div>
+            <div class="env-badge" id="envBadge">GITHUB</div>
         </header>
 
         <!-- NFC Warning (shown if not supported) -->
@@ -414,6 +414,7 @@
                 <div class="form-row">
                     <label class="form-label">Environment</label>
                     <select id="environment">
+                        <option value="github">GitHub — ALN-TokenData (default)</option>
                         <option value="dev">Dev — raspberrypi.local</option>
                         <option value="prod">Prod — aln-orchestrator.local</option>
                     </select>
@@ -517,6 +518,11 @@
         };
 
         const config = {
+            github: {
+                name: 'GITHUB',
+                baseUrl: 'https://raspberrypi.local:3000/player-scanner/',  // Default to dev for tag URLs
+                tokensUrl: 'https://raw.githubusercontent.com/maxepunk/ALN-TokenData/main/tokens.json'
+            },
             dev: {
                 name: 'DEV',
                 baseUrl: 'https://raspberrypi.local:3000/player-scanner/',

@@ -22,7 +22,7 @@ Programs NFC tags with two NDEF records:
 ## Usage
 
 1. Open `index.html` on an Android device with Chrome (Web NFC required)
-2. Select environment (Dev or Prod)
+2. Select environment (GitHub is default, use Dev/Prod for unpushed token data)
 3. Click "Load Tokens" to fetch token database
 4. Select tokens to program (default: all)
 5. Click "Start Writing"
@@ -41,12 +41,13 @@ Each tag goes through a **Write → Verify → Confirm** cycle:
 3. **Result Phase**: Shows verification breakdown (text, URL, order)
 4. **Next Phase**: Remove tag, advance to next token
 
-## Environment URLs
+## Environment Options
 
-| Environment | mDNS Hostname | Tag URL Base |
-|-------------|---------------|--------------|
-| **Dev (Pi 5)** | `raspberrypi` | `https://raspberrypi.local:3000/player-scanner/` |
-| **Prod (Pi 4)** | `aln-orchestrator` | `https://aln-orchestrator.local:3000/player-scanner/` |
+| Environment | Token Source | Tag URL Base | Use Case |
+|-------------|--------------|--------------|----------|
+| **GitHub (default)** | `raw.githubusercontent.com` | Dev URL | No orchestrator needed |
+| **Dev (Pi 5)** | `raspberrypi.local:3000` | `https://raspberrypi.local:3000/player-scanner/` | Unpushed token data |
+| **Prod (Pi 4)** | `aln-orchestrator.local:3000` | `https://aln-orchestrator.local:3000/player-scanner/` | Production deployment |
 
 ## Requirements
 
