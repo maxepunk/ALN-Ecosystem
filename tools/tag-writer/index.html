@@ -754,6 +754,8 @@
             const url = `${getEnv().baseUrl}?token=${tokenId}`;
             console.log('Writing tag:', { tokenId, url });
 
+            // CRITICAL: Text record MUST be first for ESP32/MFRC522 compatibility.
+            // Hardware scanners extract first text record only; URL record is for Android auto-open.
             const writer = new NDEFReader();
             await writer.write({
                 records: [
