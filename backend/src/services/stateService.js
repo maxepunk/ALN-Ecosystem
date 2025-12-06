@@ -147,31 +147,8 @@ class StateService extends EventEmitter {
       }
     });
 
-    // Listen for score resets to update session.scores
-    listenerRegistry.addTrackedListener(transactionService, 'scores:reset', async (data) => {
-      const session = sessionService.getCurrentSession();
-      if (!session) {
-        logger.warn('No session during scores:reset');
-        return;
-      }
-
-      try {
-        // Clear session.scores array (reset to empty)
-        session.scores = [];
-
-        // Persist updated session
-        const sessionJSON = session.toJSON();
-        await persistenceService.saveSession(sessionJSON);
-        await persistenceService.save('session:current', sessionJSON);
-
-        logger.info('Session scores cleared after reset', {
-          sessionId: session.id,
-          teamsReset: data?.teamsReset?.length || 0
-        });
-      } catch (error) {
-        logger.error('Failed to update session after scores reset', { error });
-      }
-    });
+    // NOTE: scores:reset handling moved to sessionService.setupScoreListeners()
+    // sessionService owns session.scores (Single Responsibility Principle)
 
     // Listen for transaction deletions to persist session changes
     listenerRegistry.addTrackedListener(transactionService, 'transaction:deleted', async (data) => {

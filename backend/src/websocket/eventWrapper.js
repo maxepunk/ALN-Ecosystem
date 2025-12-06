@@ -3,6 +3,8 @@
  * Ensures all WebSocket events follow the contract format
  */
 
+const logger = require('../utils/logger');
+
 /**
  * Wrap event data in contract-compliant format
  * @param {string} eventName - The event name
@@ -24,9 +26,20 @@ function wrapEvent(eventName, data) {
  * @param {Object} data - The event data
  */
 function emitWrapped(emitter, eventName, data) {
-  const wrappedEvent = wrapEvent(eventName, data);
+  // DIAGNOSTIC: Log every emit with full context
+  logger.info('[DIAG-EMIT] emitWrapped called', {
+    emitterType: emitter?.constructor?.name || 'unknown',
+    eventName,
+    dataKeys: Object.keys(data || {}),
+    hasEmitMethod: typeof emitter?.emit === 'function',
+    socketsCount: emitter?.sockets?.sockets?.size || 'N/A'
+  });
 
+  const wrappedEvent = wrapEvent(eventName, data);
   emitter.emit(eventName, wrappedEvent);
+
+  // DIAGNOSTIC: Confirm emit completed
+  logger.info('[DIAG-EMIT-DONE] emit completed', { eventName });
 }
 
 /**

@@ -60,6 +60,20 @@ function setupBroadcastListeners(io, services) {
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
   addTrackedListener(sessionService, 'session:created', async (session) => {
+    // DIAGNOSTIC 1: Confirm listener is triggered
+    logger.info('[DIAG-1] session:created listener TRIGGERED', {
+      sessionId: session.id,
+      timestamp: new Date().toISOString()
+    });
+
+    // DIAGNOSTIC 2: Verify io object state BEFORE emitWrapped
+    logger.info('[DIAG-2] io object state', {
+      ioExists: !!io,
+      ioType: io?.constructor?.name,
+      engineExists: !!io?.engine,
+      socketsMapSize: io?.sockets?.sockets?.size || 'N/A'
+    });
+
     // Broadcast session update to all clients
     emitWrapped(io, 'session:update', {
       id: session.id,              // Decision #4: 'id' field within resource
@@ -67,9 +81,12 @@ function setupBroadcastListeners(io, services) {
       startTime: session.startTime,
       endTime: session.endTime,
       status: session.status,      // 'active' for new session
-      teams: session.teams || [],
+      teams: session.teams,  // session:created receives plain object with teams already computed
       metadata: session.metadata || {}
     });
+
+    // DIAGNOSTIC 3: emitWrapped completed (sync portion)
+    logger.info('[DIAG-3] emitWrapped completed synchronously');
 
     // Initialize all currently connected devices into the new session
     // This handles devices that connected before session existed
@@ -86,7 +103,7 @@ function setupBroadcastListeners(io, services) {
       startTime: session.startTime,
       endTime: session.endTime,
       status: session.status,      // 'paused', 'active', or 'ended'
-      teams: session.teams || [],
+      teams: session.toJSON().teams,
       metadata: session.metadata || {}
     });
     logger.info('Broadcasted session:update', { sessionId: session.id, status: session.status });

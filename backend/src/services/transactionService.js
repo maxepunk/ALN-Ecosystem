@@ -561,19 +561,26 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Reset scores
+   * Reset scores - resets all team scores to zero while preserving team membership
+   * Per AsyncAPI contract: teams should still exist after reset with zero scores
    */
   resetScores() {
-    // Capture teams before clearing
+    // Capture team IDs for broadcast
     const teams = Array.from(this.teamScores.keys());
 
-    this.teamScores.clear();
+    // Reset each team's score to zero using TeamScore.reset() method
+    // This preserves team membership but clears: currentScore, tokensScanned, bonusPoints, completedGroups
+    for (const teamScore of this.teamScores.values()) {
+      teamScore.reset();
+    }
+
+    // Clear recent transactions (these are historical, not team membership)
     this.recentTransactions = [];
 
     // Emit with team list for broadcast handler
     this.emit('scores:reset', { teamsReset: teams });
 
-    logger.info('Scores reset', { teamsReset: teams.length });
+    logger.info('Scores reset to zero', { teamsReset: teams.length });
   }
 
   /**

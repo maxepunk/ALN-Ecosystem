@@ -84,14 +84,23 @@ async function handleGmCommand(socket, data, io) {
           throw new Error('teamId is required');
         }
 
+        // Validate teamId pattern (alphanumeric with spaces/underscores/hyphens, 1-30 chars)
+        const trimmedTeamId = teamId.trim();
+        if (!trimmedTeamId || trimmedTeamId.length > 30) {
+          throw new Error('Team name must be 1-30 characters');
+        }
+        if (!/^[A-Za-z0-9 _-]+$/.test(trimmedTeamId)) {
+          throw new Error('Team name must contain only letters, numbers, spaces, underscores, and hyphens');
+        }
+
         const session = sessionService.getCurrentSession();
         if (!session) {
           throw new Error('No active session');
         }
 
-        await sessionService.addTeamToSession(teamId);
-        resultMessage = `Team "${teamId}" added to session`;
-        logger.info('Team added to session by GM', { gmStation: socket.deviceId, teamId });
+        await sessionService.addTeamToSession(trimmedTeamId);
+        resultMessage = `Team "${trimmedTeamId}" added to session`;
+        logger.info('Team added to session by GM', { gmStation: socket.deviceId, teamId: trimmedTeamId });
         break;
       }
 

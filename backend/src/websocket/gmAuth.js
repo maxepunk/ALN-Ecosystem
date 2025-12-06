@@ -169,9 +169,15 @@ async function handleGmIdentify(socket, data, io) {
     // Send full state sync per AsyncAPI contract (sync:full event)
     // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
     // PHASE 2.1 (P1.1): Added deviceScannedTokens and reconnection flag
+    const scoresForSync = transactionService.getTeamScores();
+    logger.info('[DEBUG:SYNC-FULL] Scores being sent in sync:full', {
+      scoresCount: scoresForSync.length,
+      teamIds: scoresForSync.map(s => s.teamId),
+      scores: scoresForSync.map(s => ({ teamId: s.teamId, currentScore: s.currentScore }))
+    });
     emitWrapped(socket, 'sync:full', {
       session: session ? session.toJSON() : null,
-      scores: transactionService.getTeamScores(),
+      scores: scoresForSync,
       recentTransactions,
       videoStatus: videoStatus,
       devices: (session?.connectedDevices || []).map(device => ({

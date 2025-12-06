@@ -342,7 +342,7 @@ paths:
                     Team ID (OPTIONAL - players haven't committed to team yet).
                     Used for logging only, NOT game logic.
                     Team commitment happens at GM Scanner.
-                  pattern: '^[A-Za-z0-9 ]{1,30}$'
+                  pattern: '^[A-Za-z0-9 _-]{1,30}$'
                   example: "Team Alpha"
                 deviceId:
                   type: string
@@ -555,7 +555,7 @@ paths:
                       teamId:
                         type: string
                         description: Team ID (optional, for logging)
-                        pattern: '^[A-Za-z0-9 ]{1,30}$'
+                        pattern: '^[A-Za-z0-9 _-]{1,30}$'
                         example: "Team Alpha"
                       deviceId:
                         type: string
@@ -1088,8 +1088,8 @@ components:
           type: array
           items:
             type: string
-            pattern: '^[A-Za-z0-9 ]{1,30}$'
-            description: Team ID (alphanumeric, 1-30 characters)
+            pattern: '^[A-Za-z0-9 _-]{1,30}$'
+            description: Team ID (alphanumeric with spaces/underscores/hyphens, 1-30 characters)
           description: Array of team IDs participating in session
           example: ["Team Alpha", "Detectives", "Blue Squad"]
         metadata:
@@ -1146,7 +1146,7 @@ components:
             properties:
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 ]{1,30}$'
+                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID
                 example: "Team Alpha"
               currentScore:
@@ -1201,7 +1201,7 @@ components:
                 example: "534e2b03"
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 ]{1,30}$'
+                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID
                 example: "Team Alpha"
               deviceId:

@@ -8,6 +8,7 @@ const Session = require('../models/session');
 const persistenceService = require('./persistenceService');
 const config = require('../config');
 const logger = require('../utils/logger');
+const listenerRegistry = require('../websocket/listenerRegistry');
 
 class SessionService extends EventEmitter {
   constructor() {
@@ -19,6 +20,77 @@ class SessionService extends EventEmitter {
   initState() {
     this.currentSession = null;
     this.sessionTimeoutTimer = null;
+  }
+
+  /**
+   * Set up listeners for score events from transactionService
+   * SessionService owns session.scores (source of truth), so it must handle score sync
+   * Uses listenerRegistry for proper test cleanup
+   */
+  setupScoreListeners() {
+    // Lazy import to avoid circular dependency at module load time
+    const transactionService = require('./transactionService');
+
+    // Listen for score:updated to sync transactionService.teamScores → session.scores
+    listenerRegistry.addTrackedListener(transactionService, 'score:updated', async (teamScore) => {
+      if (!this.currentSession) {
+        return;
+      }
+
+      try {
+        const existingIndex = this.currentSession.scores.findIndex(
+          s => s.teamId === teamScore.teamId
+        );
+
+        const scoreData = teamScore.toJSON ? teamScore.toJSON() : teamScore;
+
+        if (existingIndex >= 0) {
+          this.currentSession.scores[existingIndex] = scoreData;
+        } else {
+          this.currentSession.scores.push(scoreData);
+        }
+
+        await this.saveCurrentSession();
+        this.emit('session:updated', this.currentSession);
+
+        logger.debug('Session score synced from transactionService', {
+          teamId: teamScore.teamId,
+          currentScore: scoreData.currentScore
+        });
+      } catch (error) {
+        logger.error('Failed to sync score to session', { error: error.message, teamId: teamScore.teamId });
+      }
+    }, 'sessionService->transactionService:score:updated');
+
+    // Listen for scores:reset to reset session.scores to zero
+    // Per AsyncAPI contract: teams should still exist after reset with zero scores
+    listenerRegistry.addTrackedListener(transactionService, 'scores:reset', async () => {
+      if (!this.currentSession) {
+        logger.warn('No session during scores:reset');
+        return;
+      }
+
+      try {
+        // Reset each team's score to zero (preserve team membership)
+        this.currentSession.scores.forEach(score => {
+          score.currentScore = 0;
+          score.transactionCount = 0;
+          score.lastUpdated = new Date().toISOString();
+        });
+
+        await this.saveCurrentSession();
+        this.emit('session:updated', this.currentSession);
+
+        logger.info('Session scores reset to zero', {
+          sessionId: this.currentSession.id,
+          teamsReset: this.currentSession.scores.map(s => s.teamId)
+        });
+      } catch (error) {
+        logger.error('Failed to reset session scores', { error: error.message });
+      }
+    }, 'sessionService->transactionService:scores:reset');
+
+    logger.debug('SessionService: score listeners bound to transactionService');
   }
 
   /**
@@ -34,6 +106,9 @@ class SessionService extends EventEmitter {
         this.currentSession = Session.fromJSON(sessionData);
         logger.info('Session restored from storage', { sessionId: this.currentSession.id });
       }
+
+      // Set up cross-service event listeners for score sync
+      this.setupScoreListeners();
     } catch (error) {
       logger.error('Failed to initialize session service', error);
     }
@@ -323,15 +398,18 @@ class SessionService extends EventEmitter {
       throw new Error('No active session');
     }
 
+    // Trim and normalize team ID
+    const normalizedTeamId = teamId.trim();
+
     // Check for duplicate team
-    const existingTeam = this.currentSession.scores.find(s => s.teamId === teamId);
+    const existingTeam = this.currentSession.scores.find(s => s.teamId === normalizedTeamId);
     if (existingTeam) {
       throw new Error(`Team "${teamId}" already exists in session`);
     }
 
     // Create new team score using the TeamScore model
     const TeamScore = require('../models/teamScore');
-    const newTeamScore = TeamScore.createInitial(teamId);
+    const newTeamScore = TeamScore.createInitial(normalizedTeamId);
 
     // Add to session
     this.currentSession.scores.push(newTeamScore.toJSON());
@@ -474,6 +552,9 @@ class SessionService extends EventEmitter {
     // Clear persistence
     await persistenceService.delete('session:current');
     await persistenceService.delete('gameState:current');
+
+    // Re-setup cross-service listeners (listenerRegistry handles cleanup via cleanup())
+    this.setupScoreListeners();
 
     logger.info('Session service reset');
   }
