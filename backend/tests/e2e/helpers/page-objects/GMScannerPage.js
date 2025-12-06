@@ -36,10 +36,10 @@ class GMScannerPage {
     this.standaloneBtn = page.locator('button[data-action="app.selectGameMode"][data-arg="standalone"]');
     this.networkedBtn = page.locator('button[data-action="app.selectGameMode"][data-arg="networked"]');
 
-    // Team entry elements
-    this.teamDisplay = page.locator('#teamDisplay');
+    // Team entry elements (text input + dropdown, replaces old numpad)
+    this.standaloneTeamInput = page.locator('#standaloneTeamName');
+    this.teamSelect = page.locator('#teamSelect');
     this.confirmTeamBtn = page.locator('button[data-action="app.confirmTeamId"]');
-    this.clearTeamBtn = page.locator('button[data-action="app.clearTeamId"]');
 
     // Scan screen elements
     this.currentTeam = page.locator('#currentTeam');
@@ -86,6 +86,50 @@ class GMScannerPage {
     this.viewFullScoreboardBtn = page.locator('button[data-action="app.viewFullScoreboard"]');
     this.viewFullHistoryBtn = page.locator('button[data-action="app.viewFullHistory"]');
     this.adminScoreBoard = page.locator('#admin-score-board');
+
+    // Session status locators (dynamically rendered by MonitoringDisplay)
+    this.sessionContainer = page.locator('#session-status-container');
+    this.sessionEmpty = page.locator('#session-status-container .session-status--empty');
+    this.sessionActive = page.locator('#session-status-container .session-status--active');
+    this.sessionPaused = page.locator('#session-status-container .session-status--paused');
+    this.sessionEnded = page.locator('#session-status-container .session-status--ended');
+
+    // Session action buttons (visibility depends on session state)
+    this.createSessionBtn = page.locator('button[data-action="app.adminCreateSession"]');
+    this.pauseSessionBtn = page.locator('button[data-action="app.adminPauseSession"]');
+    this.resumeSessionBtn = page.locator('button[data-action="app.adminResumeSession"]');
+    this.endSessionBtn = page.locator('button[data-action="app.adminEndSession"]');
+    this.resetAndCreateNewBtn = page.locator('button[data-action="app.adminResetAndCreateNew"]');
+
+    // Video playback controls
+    this.videoPlayBtn = page.locator('button[data-action="app.adminPlayVideo"]');
+    this.videoPauseBtn = page.locator('button[data-action="app.adminPauseVideo"]');
+    this.videoStopBtn = page.locator('button[data-action="app.adminStopVideo"]');
+    this.videoSkipBtn = page.locator('button[data-action="app.adminSkipVideo"]');
+
+    // Video queue management
+    this.manualVideoInput = page.locator('#manual-video-input');
+    this.addVideoToQueueBtn = page.locator('button[data-action="app.adminAddVideoToQueue"]');
+    this.clearQueueBtn = page.locator('button[data-action="app.adminClearQueue"]');
+
+    // Video status displays
+    this.videoQueueContainer = page.locator('#video-queue-container');
+    this.videoQueueList = page.locator('#video-queue-list');
+    this.videoQueueCount = page.locator('#queue-count');
+    this.videoProgressContainer = page.locator('#video-progress-container');
+    this.videoProgressFill = page.locator('#video-progress-fill');
+    this.videoProgressTime = page.locator('#video-progress-time');
+
+    // Connection status indicators (system status)
+    this.orchestratorStatus = page.locator('#orchestrator-status');
+    this.vlcStatus = page.locator('#vlc-status');
+    this.deviceCount = page.locator('#device-count');
+    this.deviceList = page.locator('#device-list');
+    this.deviceItems = page.locator('#device-list .device-item');
+
+    // Admin transaction log (different from history screen)
+    this.adminTransactionLog = page.locator('#admin-transaction-log');
+    this.adminTransactionItems = page.locator('#admin-transaction-log .transaction-item');
 
     // Error displays
     this.errorToast = page.locator('.toast.error:visible');
@@ -143,10 +187,62 @@ class GMScannerPage {
 
   /**
    * Select team from dropdown in networked mode
+   * Uses condition-based waiting to ensure team is available before selecting
    * @param {string} name - Team name to select
    */
   async selectTeam(name) {
+    // Condition-based waiting: wait for actual data state, not arbitrary timeout
+    // The dropdown may not be populated immediately after connection due to:
+    // 1. sync:full WebSocket event still being processed
+    // 2. SessionManager.currentSession not yet updated
+    // 3. populateTeamDropdown() not yet called
+    await this.waitForTeamInDropdown(name);
     await this.page.locator('#teamSelect').selectOption(name);
+  }
+
+  /**
+   * Add a new team in networked mode using the "Add New Team" flow
+   * This creates the team on the backend and selects it in the dropdown
+   * @param {string} name - Team name to create
+   */
+  async addNewTeam(name) {
+    // Click "Add New Team" button to show input
+    await this.page.locator('#showAddTeamBtn').click();
+
+    // Wait for input container to be visible
+    await this.page.locator('#addTeamInputContainer').waitFor({ state: 'visible', timeout: 5000 });
+
+    // Fill team name
+    await this.page.locator('#newTeamNameInput').fill(name);
+
+    // Click "Add Team" button to create and select
+    await this.page.locator('[data-action="app.createAndSelectTeam"]').click();
+
+    // Wait for input container to hide (indicates WebSocket command was sent)
+    await this.page.locator('#addTeamInputContainer').waitFor({ state: 'hidden', timeout: 5000 });
+
+    // Wait for team to actually appear in dropdown
+    // This ensures session:update broadcast has been received and processed
+    await this.waitForTeamInDropdown(name);
+  }
+
+  /**
+   * Wait for team dropdown to contain a specific team
+   * Useful after session creation to ensure sync:full has been processed
+   * @param {string} teamName - Team name to wait for
+   * @param {number} timeout - Timeout in ms (default 10000)
+   */
+  async waitForTeamInDropdown(teamName, timeout = 10000) {
+    await this.page.locator('#teamSelect').waitFor({ state: 'visible', timeout: 5000 });
+    await this.page.waitForFunction(
+      (name) => {
+        const select = document.getElementById('teamSelect');
+        if (!select) return false;
+        return Array.from(select.options).some(opt => opt.value === name);
+      },
+      teamName,
+      { timeout }
+    );
   }
 
   /**
@@ -158,11 +254,17 @@ class GMScannerPage {
   }
 
   /**
-   * Get current team display value
+   * Get current team value from team entry screen
+   * Returns value from either standalone text input or networked dropdown
    * @returns {Promise<string>}
    */
   async getTeamDisplay() {
-    return await this.teamDisplay.textContent();
+    // Check if standalone input is visible
+    if (await this.standaloneTeamInput.isVisible()) {
+      return await this.standaloneTeamInput.inputValue();
+    }
+    // Otherwise get value from dropdown
+    return await this.teamSelect.inputValue();
   }
 
   /**
@@ -349,27 +451,45 @@ class GMScannerPage {
   /**
    * Manual connection to orchestrator (networked mode)
    * @param {string} url - Orchestrator URL (e.g., 'https://localhost:3000')
-   * @param {string} stationName - Station identifier
+   * @param {string} stationName - Station identifier (used as unique device ID for test isolation)
    * @param {string} password - Admin password
    */
   async manualConnect(url, stationName, password) {
     // Wait for connection modal to appear
     await this.connectionModal.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Fill server URL (triggers auto-assignment of station name)
+    // Fill server URL - this triggers production's assignStationName() with 500ms debounce
     await this.page.fill('#serverUrl', url);
 
-    // Wait for station name to be auto-assigned (display updates with GM_Station_N format)
-    // NOTE: stationName parameter is now ignored - station names are auto-assigned
-    await this.page.waitForFunction(() => {
-      const display = document.getElementById('stationNameDisplay');
-      return display && display.dataset.deviceId && display.dataset.deviceId.length > 0;
-    }, { timeout: 5000 });
+    // CONDITION-BASED WAITING: Wait for production's auto-assignment to complete
+    // Production flow: URL input → 500ms debounce → /api/state query → set stationNameDisplay.dataset.deviceId
+    // We must wait for the ACTUAL condition (deviceId being set) not guess at timing.
+    // This prevents race where we override early, then production overwrites our value.
+    await this.page.waitForFunction(
+      () => {
+        const display = document.getElementById('stationNameDisplay');
+        // Condition: production has finished auto-assignment (deviceId is non-empty)
+        return display && display.dataset.deviceId && display.dataset.deviceId.length > 0;
+      },
+      { timeout: 5000 }
+    );
+
+    // NOW safe to override - production's auto-assignment is complete
+    // handleConnectionSubmit() reads from stationNameDisplay.dataset.deviceId on submit
+    if (stationName) {
+      await this.page.evaluate((uniqueId) => {
+        const display = document.getElementById('stationNameDisplay');
+        if (display) {
+          display.dataset.deviceId = uniqueId;
+          display.textContent = uniqueId;
+        }
+      }, stationName);
+    }
 
     // Fill password
     await this.page.fill('#gmPassword', password);
 
-    // Submit connection form (triggers handleConnectionSubmit via event listener)
+    // Submit form - handleConnectionSubmit reads our overridden deviceId
     const form = this.page.locator('#connectionForm');
     await form.evaluate(f => f.requestSubmit());
   }
@@ -663,6 +783,407 @@ class GMScannerPage {
   async getPendingQueueCount() {
     const text = await this.pendingQueueCount.textContent();
     return parseInt(text, 10);
+  }
+
+  // ============================================
+  // Backend State Methods (Browser-Only E2E)
+  // ============================================
+
+  /**
+   * Query backend state via Playwright's built-in HTTP client
+   * Uses page.request which shares cookies/auth with browser context
+   * @param {string} baseUrl - Orchestrator URL (e.g., 'https://localhost:3000')
+   * @returns {Promise<Object>} Full game state from /api/state
+   */
+  async getStateFromBackend(baseUrl) {
+    try {
+      const response = await this.page.request.get(`${baseUrl}/api/state`);
+      if (!response.ok()) {
+        console.error(`[getStateFromBackend] HTTP ${response.status()}: ${await response.text()}`);
+        return null;
+      }
+      return response.json();
+    } catch (error) {
+      console.error(`[getStateFromBackend] Error fetching ${baseUrl}/api/state:`, error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Wait for backend state to match predicate (condition-based waiting)
+   * Polls /api/state until predicate returns true or timeout
+   * @param {string} baseUrl - Orchestrator URL
+   * @param {Function} predicate - (state) => boolean - condition to wait for
+   * @param {number} timeout - Max wait time in ms (default 5000)
+   * @returns {Promise<Object>} State that matched predicate
+   * @throws {Error} If timeout exceeded before predicate matched
+   */
+  async waitForBackendState(baseUrl, predicate, timeout = 5000) {
+    const startTime = Date.now();
+    let lastState = null;
+    let attempts = 0;
+    while (Date.now() - startTime < timeout) {
+      attempts++;
+      const state = await this.getStateFromBackend(baseUrl);
+      lastState = state;
+      if (state && predicate(state)) return state;
+      await this.page.waitForTimeout(100);
+    }
+    // Log the last state for debugging (focus on scores)
+    const stateDebug = lastState ? {
+      sessionName: lastState.session?.name,
+      sessionStatus: lastState.session?.status,
+      teams: lastState.session?.teams,
+      scoreTeams: lastState.scores?.map(s => s.teamId),
+      targetTeamScore: lastState.scores?.find(s => s.teamId === 'Team Alpha'),
+      allScoresCount: lastState.scores?.length,
+    } : null;
+    console.error(`[waitForBackendState] Timeout after ${attempts} attempts. State debug:`,
+      JSON.stringify(stateDebug, null, 2));
+    throw new Error(`Timeout waiting for backend state after ${timeout}ms`);
+  }
+
+  /**
+   * Get transaction count from history container
+   * Uses visible DOM elements, not WebSocket events
+   * @returns {Promise<number>} Number of transaction cards in history
+   */
+  async getHistoryTransactionCount() {
+    return await this.page.locator('#historyContainer .transaction-card').count();
+  }
+
+  // ============================================
+  // Session Management Methods (Pure UI Flow)
+  // ============================================
+
+  /**
+   * Create a new session via admin panel UI
+   * Uses prompt dialog for session name (Pure UI, no WebSocket)
+   * @param {string} name - Session name
+   */
+  async createSession(name) {
+    // Ensure we're on admin panel
+    await this.navigateToAdminPanel();
+
+    // Wait for "Create New Session" button (no-session state)
+    await this.createSessionBtn.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Setup dialog handler BEFORE clicking
+    this.page.once('dialog', dialog => dialog.accept(name));
+
+    // Click create button
+    await this.createSessionBtn.click();
+
+    // Wait for session active state in UI
+    await this.sessionActive.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Create a session with teams via admin panel UI
+   * Creates session, then adds teams via scanner view
+   * @param {string} name - Session name
+   * @param {string[]} teams - Array of team names to add
+   */
+  async createSessionWithTeams(name, teams) {
+    await this.createSession(name);
+
+    // Switch to scanner view to add teams
+    await this.scannerTab.click();
+    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Add each team
+    for (const team of teams) {
+      await this.addNewTeam(team);
+    }
+
+    // Return to admin panel
+    await this.navigateToAdminPanel();
+  }
+
+  /**
+   * Pause the current session
+   */
+  async pauseSession() {
+    await this.pauseSessionBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await this.pauseSessionBtn.click();
+    await this.sessionPaused.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Resume a paused session
+   */
+  async resumeSession() {
+    await this.resumeSessionBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await this.resumeSessionBtn.click();
+    await this.sessionActive.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * End the current session
+   * Handles confirmation dialog automatically
+   */
+  async endSession() {
+    await this.endSessionBtn.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Setup dialog handler BEFORE clicking
+    this.page.once('dialog', dialog => dialog.accept());
+
+    await this.endSessionBtn.click();
+    await this.sessionEnded.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Reset and create a new session after previous one ended
+   * @param {string} name - New session name
+   */
+  async resetAndCreateNew(name) {
+    await this.resetAndCreateNewBtn.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Setup dialog handlers BEFORE clicking
+    // First: confirm reset, Second: prompt for name
+    let dialogCount = 0;
+    const dialogHandler = async (dialog) => {
+      dialogCount++;
+      if (dialog.type() === 'confirm') {
+        await dialog.accept();
+      } else if (dialog.type() === 'prompt') {
+        await dialog.accept(name);
+      }
+    };
+    this.page.on('dialog', dialogHandler);
+
+    await this.resetAndCreateNewBtn.click();
+    await this.sessionActive.waitFor({ state: 'visible', timeout: 5000 });
+
+    // Remove handler
+    this.page.off('dialog', dialogHandler);
+  }
+
+  /**
+   * Get current session state from UI
+   * @returns {Promise<'none'|'active'|'paused'|'ended'>}
+   */
+  async getSessionState() {
+    if (await this.sessionActive.isVisible()) return 'active';
+    if (await this.sessionPaused.isVisible()) return 'paused';
+    if (await this.sessionEnded.isVisible()) return 'ended';
+    if (await this.sessionEmpty.isVisible()) return 'none';
+    // Check for create button as fallback for empty state
+    if (await this.createSessionBtn.isVisible()) return 'none';
+    return 'none';
+  }
+
+  /**
+   * Get current session name from UI
+   * @returns {Promise<string|null>} Session name or null if no session
+   */
+  async getSessionName() {
+    // Session name is typically in an element with class session-name or similar
+    const sessionNameEl = this.page.locator('#session-status-container .session-name');
+    if (await sessionNameEl.isVisible()) {
+      return await sessionNameEl.textContent();
+    }
+    return null;
+  }
+
+  /**
+   * Ensure no session exists (for test cleanup)
+   * Ends any existing session via UI, then verifies "Create New Session" button is visible
+   *
+   * Use this in afterEach() to ensure clean state between tests:
+   * - If session is active → end it
+   * - If session is paused → resume then end it
+   * - If session already ended or none → no action needed
+   *
+   * @param {string} baseUrl - Orchestrator URL for backend state verification
+   * @throws {Error} If cleanup fails or button not visible within timeout
+   */
+  async ensureNoSession(baseUrl) {
+    // Navigate to admin panel if not already there
+    try {
+      await this.navigateToAdminPanel();
+    } catch (e) {
+      // If navigation fails, page might be in bad state - try to recover
+      console.log('ensureNoSession: navigateToAdminPanel failed, attempting recovery');
+      await this.page.goto('/gm-scanner/');
+      await this.page.waitForLoadState('networkidle');
+      return; // Fresh page load means no session to clean up
+    }
+
+    // Check current session state via API (more reliable than UI)
+    let state;
+    try {
+      state = await this.getStateFromBackend(baseUrl);
+    } catch (e) {
+      console.log('ensureNoSession: getStateFromBackend failed, assuming no session');
+      return;
+    }
+
+    // If session exists and not ended, clean it up
+    if (state.session && state.session.status !== 'ended') {
+      console.log(`ensureNoSession: Found session in state "${state.session.status}", cleaning up`);
+
+      // If paused, resume first (endSession requires active state)
+      if (state.session.status === 'paused') {
+        await this.resumeSession();
+      }
+
+      // End the session
+      await this.endSession();
+    }
+
+    // Verify "Create New Session" button is now visible (no-session state)
+    await this.createSessionBtn.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  // ============================================
+  // Video Control Methods
+  // ============================================
+
+  /**
+   * Play video
+   */
+  async playVideo() {
+    await this.videoPlayBtn.click();
+  }
+
+  /**
+   * Pause video
+   */
+  async pauseVideo() {
+    await this.videoPauseBtn.click();
+  }
+
+  /**
+   * Stop video
+   */
+  async stopVideo() {
+    await this.videoStopBtn.click();
+  }
+
+  /**
+   * Skip to next video in queue
+   */
+  async skipVideo() {
+    await this.videoSkipBtn.click();
+  }
+
+  /**
+   * Add video to queue
+   * @param {string} filename - Video filename to add
+   */
+  async addVideoToQueue(filename) {
+    await this.manualVideoInput.fill(filename);
+    await this.addVideoToQueueBtn.click();
+  }
+
+  /**
+   * Clear video queue
+   * Handles confirmation dialog if present
+   */
+  async clearVideoQueue() {
+    // Setup dialog handler for potential confirmation
+    this.page.once('dialog', dialog => dialog.accept());
+    await this.clearQueueBtn.click();
+  }
+
+  /**
+   * Get video queue count from UI
+   * @returns {Promise<number>}
+   */
+  async getVideoQueueCount() {
+    const text = await this.videoQueueCount.textContent();
+    return parseInt(text, 10) || 0;
+  }
+
+  /**
+   * Get video progress percentage from UI
+   * @returns {Promise<number>} Progress as percentage (0-100)
+   */
+  async getVideoProgress() {
+    const style = await this.videoProgressFill.getAttribute('style');
+    const match = style?.match(/width:\s*(\d+)%/);
+    return match ? parseInt(match[1], 10) : 0;
+  }
+
+  /**
+   * Check if video is currently playing
+   * @returns {Promise<boolean>}
+   */
+  async isVideoPlaying() {
+    // Check if pause button is visible (indicates playing state)
+    return await this.videoPauseBtn.isVisible();
+  }
+
+  // ============================================
+  // System Status Methods
+  // ============================================
+
+  /**
+   * Check if orchestrator is connected
+   * @returns {Promise<boolean>}
+   */
+  async isOrchestratorConnected() {
+    const classAttr = await this.orchestratorStatus.getAttribute('class');
+    return classAttr?.includes('status-dot--connected') ?? false;
+  }
+
+  /**
+   * Check if VLC is connected
+   * @returns {Promise<boolean>}
+   */
+  async isVlcConnected() {
+    const classAttr = await this.vlcStatus.getAttribute('class');
+    return classAttr?.includes('status-dot--connected') ?? false;
+  }
+
+  /**
+   * Get connected device count from UI
+   * @returns {Promise<number>}
+   */
+  async getDeviceCount() {
+    const text = await this.deviceCount.textContent();
+    return parseInt(text, 10) || 0;
+  }
+
+  /**
+   * Get list of connected devices
+   * @returns {Promise<Array<{id: string, type: string}>>}
+   */
+  async getConnectedDevices() {
+    const devices = [];
+    const count = await this.deviceItems.count();
+    for (let i = 0; i < count; i++) {
+      const item = this.deviceItems.nth(i);
+      const id = await item.getAttribute('data-device-id') || await item.textContent();
+      const type = await item.getAttribute('data-device-type') || 'unknown';
+      devices.push({ id: id?.trim(), type });
+    }
+    return devices;
+  }
+
+  // ============================================
+  // Admin Transaction Log Methods
+  // ============================================
+
+  /**
+   * Get transaction count from admin transaction log
+   * @returns {Promise<number>}
+   */
+  async getAdminTransactionCount() {
+    return await this.adminTransactionItems.count();
+  }
+
+  /**
+   * Wait for a specific transaction to appear in admin log
+   * @param {string} tokenId - Token ID to wait for
+   * @param {number} timeout - Timeout in ms (default 5000)
+   */
+  async waitForTransactionInAdminLog(tokenId, timeout = 5000) {
+    await this.page.locator(`#admin-transaction-log .transaction-item:has-text("${tokenId}")`).waitFor({
+      state: 'visible',
+      timeout
+    });
   }
 }
 

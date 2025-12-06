@@ -45,7 +45,8 @@ const {
   waitForEvent,
   validateEventEnvelope,
   cleanupAllSockets,
-  getActiveSocketCount
+  getActiveSocketCount,
+  generateUniqueDeviceId
 } = require('../setup/websocket-client');
 
 const {
@@ -65,6 +66,8 @@ let vlcInfo = null;
 // ========================================
 
 test.describe('Session Lifecycle E2E Tests', () => {
+  // Skip on chromium to prevent parallel execution conflicts - session tests only on mobile-chrome
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
 
   test.beforeAll(async () => {
     // 1. Clear any existing session data
@@ -150,7 +153,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_SESSION_CREATE',
+      generateUniqueDeviceId('Life_SessionCreate'),
       'gm'
     );
 
@@ -209,9 +212,9 @@ test.describe('Session Lifecycle E2E Tests', () => {
   test('session creation broadcasts to all connected GM stations', async () => {
     // Connect 3 GM scanners
     const [gm1, gm2, gm3] = await Promise.all([
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_1', 'gm'),
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_2', 'gm'),
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_3', 'gm')
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Life_Multi1'), 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Life_Multi2'), 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Life_Multi3'), 'gm')
     ]);
 
     // All should have received initial sync
@@ -228,7 +231,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const admin = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_BROADCAST_TEST',
+      generateUniqueDeviceId('Life_Broadcast'),
       'gm'
     );
 
@@ -271,7 +274,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_DUPLICATE_TEST',
+      generateUniqueDeviceId('Life_Duplicate'),
       'gm'
     );
 
@@ -336,7 +339,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_PAUSE_TEST',
+      generateUniqueDeviceId('Life_Pause'),
       'gm'
     );
 
@@ -385,7 +388,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_RESUME_TEST',
+      generateUniqueDeviceId('Life_Resume'),
       'gm'
     );
 
@@ -443,7 +446,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_END_TEST',
+      generateUniqueDeviceId('Life_End'),
       'gm'
     );
 
@@ -503,7 +506,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     let socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_MULTI_SESSION_TEST',
+      generateUniqueDeviceId('Life_MultiSess1'),
       'gm'
     );
 
@@ -553,7 +556,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_MULTI_SESSION_VERIFY',
+      generateUniqueDeviceId('Life_MultiSess2'),
       'gm'
     );
 
@@ -573,7 +576,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_NO_TEAMS_TEST',
+      generateUniqueDeviceId('Life_NoTeams'),
       'gm'
     );
 
@@ -607,7 +610,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_TIMESTAMP_TEST',
+      generateUniqueDeviceId('Life_Timestamp'),
       'gm'
     );
 
@@ -654,7 +657,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_PAUSED_TXN_TEST',
+      generateUniqueDeviceId('Life_PausedTxn'),
       'gm'
     );
 
@@ -726,7 +729,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_ENDED_TXN_TEST',
+      generateUniqueDeviceId('Life_EndedTxn'),
       'gm'
     );
 
@@ -801,7 +804,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_STATS_TEST',
+      generateUniqueDeviceId('Life_Stats'),
       'gm'
     );
 
@@ -886,7 +889,7 @@ test.describe('Session Lifecycle E2E Tests', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_RESUME_TXN_TEST',
+      generateUniqueDeviceId('Life_ResumeTxn'),
       'gm'
     );
 

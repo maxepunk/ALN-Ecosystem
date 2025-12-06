@@ -46,7 +46,8 @@ const {
   waitForEvent,
   validateEventEnvelope,
   cleanupAllSockets,
-  getActiveSocketCount
+  getActiveSocketCount,
+  generateUniqueDeviceId
 } = require('../setup/websocket-client');
 
 const {
@@ -226,7 +227,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'SMOKE_TEST_GM',
+      generateUniqueDeviceId('Smoke_GM'),
       'gm'
     );
 
@@ -240,7 +241,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'SMOKE_TEST_SYNC',
+      generateUniqueDeviceId('Smoke_Sync'),
       'gm'
     );
 
@@ -338,9 +339,9 @@ test.describe('E2E Infrastructure Smoke Test', () => {
 
     // Create 3 WebSocket connections
     const sockets = await Promise.all([
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_1', 'gm'),
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_2', 'gm'),
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_3', 'gm')
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Smoke_Multi1'), 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Smoke_Multi2'), 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Smoke_Multi3'), 'gm')
     ]);
 
     // All should connect successfully
@@ -366,7 +367,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'WAIT_TEST',
+      generateUniqueDeviceId('Smoke_Wait'),
       'gm'
     );
 
@@ -397,8 +398,8 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     // Create resources
     const contexts = await createMultipleContexts(browser, 2, 'desktop');
     const sockets = await Promise.all([
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'CLEANUP_1', 'gm'),
-      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'CLEANUP_2', 'gm')
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Smoke_Cleanup1'), 'gm'),
+      connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Smoke_Cleanup2'), 'gm')
     ]);
 
     expect(getActiveContextCount()).toBe(2);
@@ -428,7 +429,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'FULL_FLOW_GM',
+      generateUniqueDeviceId('Smoke_FullFlow'),
       'gm'
     );
 

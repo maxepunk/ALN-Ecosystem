@@ -139,8 +139,10 @@ test.describe('Duplicate Detection', () => {
       stationName: 'DUPLICATE_TEST_GM'
     });
 
-    // Enter team
-    await scanner.enterTeamName('Team Alpha');
+    // Select team from dropdown (networked mode)
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown('Team Alpha');
+    await scanner.selectTeam('Team Alpha');
     await scanner.confirmTeam();
 
     // Wait for scan screen
@@ -241,8 +243,10 @@ test.describe('Duplicate Detection', () => {
       stationName: 'PERSISTENCE_TEST_GM'
     });
 
-    // Enter team
-    await scanner.enterTeamName('Detectives');
+    // Select team from dropdown (networked mode)
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown('Detectives');
+    await scanner.selectTeam('Detectives');
     await scanner.confirmTeam();
 
     // Wait for scan screen

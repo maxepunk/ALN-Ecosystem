@@ -73,11 +73,11 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
-    it('should format teamId as 3-digit string per contract pattern', () => {
+    it('should format teamId as alphanumeric string per contract pattern', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: 'Team Alpha', // Must match ^[0-9]{3}$
+          teamId: 'Team Alpha', // Must match ^[A-Za-z0-9 ]{1,30}$
           currentScore: 100,
           baseScore: 100,
           bonusPoints: 0,
@@ -89,8 +89,8 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         timestamp: new Date().toISOString()
       };
 
-      // Verify pattern
-      expect(event.data.teamId).toMatch(/^[0-9]{3}$/);
+      // Verify pattern (alphanumeric with spaces, 1-30 chars)
+      expect(event.data.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
 
       // Validate against contract
       expect(() => {
@@ -173,11 +173,11 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
 
     it('should reject invalid teamId patterns', () => {
       const invalidTeamIds = [
-        '1',      // Too short
-        '12',     // Too short
-        '1234',   // Too long
-        'ABC',    // Not numeric
-        '00A'     // Mixed alphanumeric
+        '',                          // Empty
+        'A'.repeat(31),              // Too long (> 30 chars)
+        'Team@Special',              // Invalid chars (@)
+        'Team#123',                  // Invalid chars (#)
+        'Team!Name'                  // Invalid chars (!)
       ];
 
       invalidTeamIds.forEach(teamId => {
@@ -274,11 +274,11 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
-    it('should format teamId as 3-digit string per contract pattern', () => {
+    it('should format teamId as alphanumeric string per contract pattern', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: 'Blue Squad', // Must match ^[0-9]{3}$
+          teamId: 'Blue Squad', // Must match ^[A-Za-z0-9 ]{1,30}$
           group: 'mab_group',
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -286,8 +286,8 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         timestamp: new Date().toISOString()
       };
 
-      // Verify pattern
-      expect(event.data.teamId).toMatch(/^[0-9]{3}$/);
+      // Verify pattern (alphanumeric with spaces, 1-30 chars)
+      expect(event.data.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
 
       // Validate against contract
       expect(() => {
@@ -341,11 +341,11 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
 
     it('should reject invalid teamId patterns', () => {
       const invalidTeamIds = [
-        '1',      // Too short
-        '12',     // Too short
-        '1234',   // Too long
-        'ABC',    // Not numeric
-        '00A'     // Mixed alphanumeric
+        '',                          // Empty
+        'A'.repeat(31),              // Too long (> 30 chars)
+        'Team@Special',              // Invalid chars (@)
+        'Team#123',                  // Invalid chars (#)
+        'Team!Name'                  // Invalid chars (!)
       ];
 
       invalidTeamIds.forEach(teamId => {

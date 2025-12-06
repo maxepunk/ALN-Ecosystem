@@ -43,6 +43,8 @@ const {
   connectWithAuth,
   waitForEvent,
   cleanupAllSockets,
+  generateUniqueDeviceId,
+  generateUniqueTeamName,
 } = require('../setup/websocket-client');
 
 const {
@@ -64,6 +66,19 @@ let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
 
 test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
+  // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
+  // The backend only supports ONE active session at a time. With 2 projects
+  // (chromium + mobile-chrome) running in parallel workers, both share the same
+  // orchestrator instance and create competing sessions. The later session
+  // overwrites the earlier one, causing test failures.
+  //
+  // serial mode only affects tests within a single project - it doesn't prevent
+  // parallel execution across different projects. We skip desktop since this is
+  // a mobile-first PWA and mobile-chrome better represents the target platform.
+  //
+  // NOTE: browserName === 'chromium' for BOTH projects (mobile-chrome uses Chromium engine)
+  // Use isMobile fixture to distinguish between desktop and mobile viewports.
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -110,13 +125,14 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
   test('Personal token scores identically in both modes', async () => {
     const token = testTokens.personalToken;
     const expectedScore = calculateExpectedScore(token);
+    const parityTeam = generateUniqueTeamName('ParityPersonal');
 
     // STANDALONE MODE
     const standaloneContext = await createBrowserContext(browser, 'mobile');
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName('Team Alpha');
+    await standaloneScanner.enterTeamName(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -126,13 +142,13 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await standaloneScanner.manualScan(token.SF_RFID);
     await standaloneScanner.waitForResult(5000);
 
-    const standaloneScore = await getTeamScore(standalonePage, 'Team Alpha', 'standalone');
+    const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_PARITY_PERSONAL',
+      generateUniqueDeviceId('Parity_Personal'),
       'gm'
     );
 
@@ -142,7 +158,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         action: 'session:create',
         payload: {
           name: 'Parity Test - Personal Token',
-          teams: ['002']
+          teams: [parityTeam]
         }
       },
       timestamp: new Date().toISOString()
@@ -164,7 +180,9 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       10000
     );
 
-    await networkedScanner.enterTeamName('Detectives');
+    // Wait for session sync to populate dropdown, then select team
+    await networkedScanner.waitForTeamInDropdown(parityTeam);
+    await networkedScanner.selectTeam(parityTeam);
     await networkedScanner.confirmTeam();
     await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -175,7 +193,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await networkedScanner.waitForResult(5000);
     await transactionPromise;
 
-    const networkedScore = await getTeamScore(networkedPage, 'Detectives', 'networked', adminSocket);
+    const networkedScore = await getTeamScore(networkedPage, parityTeam, 'networked', adminSocket);
 
     // PARITY CHECK
     expect(standaloneScore).toBe(expectedScore);
@@ -192,13 +210,14 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
   test('Business token scores identically in both modes', async () => {
     const token = testTokens.businessToken;
     const expectedScore = calculateExpectedScore(token);
+    const parityTeam = generateUniqueTeamName('ParityBusiness');
 
     // STANDALONE MODE
     const standaloneContext = await createBrowserContext(browser, 'mobile');
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName('Blue Squad');
+    await standaloneScanner.enterTeamName(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -207,13 +226,13 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await standaloneScanner.manualScan(token.SF_RFID);
     await standaloneScanner.waitForResult(5000);
 
-    const standaloneScore = await getTeamScore(standalonePage, 'Blue Squad', 'standalone');
+    const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_PARITY_BUSINESS',
+      generateUniqueDeviceId('Parity_Business'),
       'gm'
     );
 
@@ -223,7 +242,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         action: 'session:create',
         payload: {
           name: 'Parity Test - Business Token',
-          teams: ['004']
+          teams: [parityTeam]
         }
       },
       timestamp: new Date().toISOString()
@@ -245,7 +264,9 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       10000
     );
 
-    await networkedScanner.enterTeamName('Red Team');
+    // Wait for session sync to populate dropdown, then select team
+    await networkedScanner.waitForTeamInDropdown(parityTeam);
+    await networkedScanner.selectTeam(parityTeam);
     await networkedScanner.confirmTeam();
     await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -255,7 +276,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await networkedScanner.waitForResult(5000);
     await transactionPromise;
 
-    const networkedScore = await getTeamScore(networkedPage, '004', 'networked', adminSocket);
+    const networkedScore = await getTeamScore(networkedPage, parityTeam, 'networked', adminSocket);
 
     // PARITY CHECK
     expect(standaloneScore).toBe(expectedScore);
@@ -278,6 +299,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       return;
     }
 
+    const parityTeam = generateUniqueTeamName('ParityGroup');
+
     // Calculate expected scores using production logic
     const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
     const bonus = calculateExpectedGroupBonus(groupTokens);
@@ -294,7 +317,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName('Green Team');
+    await standaloneScanner.enterTeamName(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -311,13 +334,13 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       }
     }
 
-    const standaloneScore = await getTeamScore(standalonePage, '005', 'standalone');
+    const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_PARITY_GROUP',
+      generateUniqueDeviceId('Parity_Group'),
       'gm'
     );
 
@@ -327,7 +350,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         action: 'session:create',
         payload: {
           name: 'Parity Test - Group Completion',
-          teams: ['006']
+          teams: [parityTeam]
         }
       },
       timestamp: new Date().toISOString()
@@ -342,7 +365,9 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       password: ADMIN_PASSWORD
     });
 
-    await networkedScanner.enterTeamName('Yellow Squad');
+    // Wait for session sync to populate dropdown, then select team
+    await networkedScanner.waitForTeamInDropdown(parityTeam);
+    await networkedScanner.selectTeam(parityTeam);
     await networkedScanner.confirmTeam();
     await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -367,7 +392,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       }
     }
 
-    const networkedScore = await getTeamScore(networkedPage, '006', 'networked', adminSocket);
+    const networkedScore = await getTeamScore(networkedPage, parityTeam, 'networked', adminSocket);
 
     // PARITY CHECK
     expect(standaloneScore).toBe(expectedTotal);
@@ -389,6 +414,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       testTokens.businessToken,
       testTokens.groupTokens.length > 0 ? testTokens.groupTokens[0] : testTokens.technicalToken
     ];
+    const parityTeam = generateUniqueTeamName('ParityMixed');
 
     // Calculate expected score (sum of individual tokens, NO bonus)
     const expectedScore = mixedTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
@@ -404,7 +430,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName('Purple Crew');
+    await standaloneScanner.enterTeamName(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -420,13 +446,13 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       }
     }
 
-    const standaloneScore = await getTeamScore(standalonePage, '007', 'standalone');
+    const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_PARITY_MIXED',
+      generateUniqueDeviceId('Parity_Mixed'),
       'gm'
     );
 
@@ -436,7 +462,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         action: 'session:create',
         payload: {
           name: 'Parity Test - Mixed Sequence',
-          teams: ['008']
+          teams: [parityTeam]
         }
       },
       timestamp: new Date().toISOString()
@@ -451,7 +477,9 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       password: ADMIN_PASSWORD
     });
 
-    await networkedScanner.enterTeam('008');
+    // Wait for session sync to populate dropdown, then select team
+    await networkedScanner.waitForTeamInDropdown(parityTeam);
+    await networkedScanner.selectTeam(parityTeam);
     await networkedScanner.confirmTeam();
     await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -475,7 +503,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       }
     }
 
-    const networkedScore = await getTeamScore(networkedPage, '008', 'networked', adminSocket);
+    const networkedScore = await getTeamScore(networkedPage, parityTeam, 'networked', adminSocket);
 
     // PARITY CHECK - No group bonus should be applied
     expect(standaloneScore).toBe(expectedScore);
@@ -493,6 +521,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Use unique token for duplicate detection test
     const token = testTokens.uniqueTokens.length > 0 ? testTokens.uniqueTokens[0] : testTokens.personalToken;
     const expectedScore = calculateExpectedScore(token);
+    const parityTeam = generateUniqueTeamName('ParityDup');
 
     console.log(`Testing duplicate rejection with token ${token.SF_RFID} (expected score: $${expectedScore.toLocaleString()})`);
 
@@ -501,7 +530,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeam('009');
+    await standaloneScanner.enterTeamName(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -516,13 +545,13 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await standaloneScanner.manualScan(token.SF_RFID);
     await standaloneScanner.waitForResult(5000);
 
-    const standaloneScore = await getTeamScore(standalonePage, '009', 'standalone');
+    const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE
     const adminSocket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_PARITY_DUPLICATE',
+      generateUniqueDeviceId('Parity_Dup'),
       'gm'
     );
 
@@ -532,7 +561,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
         action: 'session:create',
         payload: {
           name: 'Parity Test - Duplicate',
-          teams: ['010']
+          teams: [parityTeam]
         }
       },
       timestamp: new Date().toISOString()
@@ -547,7 +576,9 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
       password: ADMIN_PASSWORD
     });
 
-    await networkedScanner.enterTeam('010');
+    // Wait for session sync to populate dropdown, then select team
+    await networkedScanner.waitForTeamInDropdown(parityTeam);
+    await networkedScanner.selectTeam(parityTeam);
     await networkedScanner.confirmTeam();
     await networkedScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     // Wait for manual entry button ready (replaces arbitrary timeout)
@@ -562,7 +593,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await networkedScanner.manualScan(token.SF_RFID);
     await networkedScanner.waitForResult(5000);
 
-    const networkedScore = await getTeamScore(networkedPage, '010', 'networked', adminSocket);
+    const networkedScore = await getTeamScore(networkedPage, parityTeam, 'networked', adminSocket);
 
     // PARITY CHECK - both modes should only count the token once
     expect(standaloneScore).toBe(expectedScore);

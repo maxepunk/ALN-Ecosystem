@@ -59,20 +59,20 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
       }).not.toThrow();
     });
 
-    it('should format teamId as 3-digit string per contract pattern', () => {
+    it('should format teamId as alphanumeric string per contract pattern', () => {
       const event = {
         event: 'transaction:submit',
         data: {
           tokenId: 'token123',
-          teamId: 'Team Alpha', // Must match ^[0-9]{3}$
+          teamId: 'Team Alpha', // Must match ^[A-Za-z0-9 ]{1,30}$
           deviceId: 'GM_Station_1',
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       };
 
-      // Verify pattern
-      expect(event.data.teamId).toMatch(/^[0-9]{3}$/);
+      // Verify pattern (alphanumeric with spaces, 1-30 chars)
+      expect(event.data.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
 
       // Validate against contract
       expect(() => {
@@ -103,11 +103,11 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
 
     it('should reject invalid teamId patterns', () => {
       const invalidTeamIds = [
-        '1',      // Too short
-        '12',     // Too short
-        '1234',   // Too long
-        'ABC',    // Not numeric
-        '00A'     // Mixed alphanumeric
+        '',                                  // Empty
+        'A'.repeat(31),                      // Too long (> 30 chars)
+        'Team@Special',                      // Invalid chars (@)
+        'Team#123',                          // Invalid chars (#)
+        'Team!Name'                          // Invalid chars (!)
       ];
 
       invalidTeamIds.forEach(teamId => {

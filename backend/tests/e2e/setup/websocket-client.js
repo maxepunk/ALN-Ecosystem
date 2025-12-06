@@ -47,6 +47,40 @@ const {
 } = require('../../helpers/websocket-core');
 
 /**
+ * Generate a unique device ID for test isolation
+ *
+ * Prevents DEVICE_ID_COLLISION errors when running parallel tests.
+ * Pattern: descriptive prefix + timestamp + random suffix
+ *
+ * @param {string} [prefix='Test'] - Descriptive prefix for the device
+ * @returns {string} Unique device ID
+ *
+ * @example
+ * const deviceId = generateUniqueDeviceId('GM_Smoke');
+ * // Returns: "GM_Smoke_1733347200000_a1b2c3d4e"
+ */
+function generateUniqueDeviceId(prefix = 'Test') {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Generate a unique team name for test isolation
+ *
+ * Prevents session/token collisions when running parallel tests.
+ * Pattern: descriptive prefix + timestamp suffix (shorter than deviceId for readability)
+ *
+ * @param {string} [prefix='Team'] - Descriptive prefix for the team
+ * @returns {string} Unique team name
+ *
+ * @example
+ * const team = generateUniqueTeamName('Alpha');
+ * // Returns: "Alpha_x7k2m" (short random suffix)
+ */
+function generateUniqueTeamName(prefix = 'Team') {
+  return `${prefix}_${Math.random().toString(36).substr(2, 5)}`;
+}
+
+/**
  * Connect to WebSocket with JWT authentication
  *
  * Complete authentication flow:
@@ -252,6 +286,10 @@ function getAllActiveSockets() {
 module.exports = {
   // Connection with authentication
   connectWithAuth,
+
+  // Device ID and team name generation (for test isolation)
+  generateUniqueDeviceId,
+  generateUniqueTeamName,
 
   // Event listeners
   setupEventListener,

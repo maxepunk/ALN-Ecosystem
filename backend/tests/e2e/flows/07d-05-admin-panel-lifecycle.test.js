@@ -26,7 +26,8 @@ const {
 
 const {
   connectWithAuth,
-  waitForEvent
+  waitForEvent,
+  generateUniqueDeviceId
 } = require('../setup/websocket-client');
 
 const {
@@ -43,6 +44,19 @@ let browser = null;
 let vlcInfo = null;
 
 test.describe('GM Scanner Admin Panel - Lifecycle', () => {
+  // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
+  // The backend only supports ONE active session at a time. With 2 projects
+  // (chromium + mobile-chrome) running in parallel workers, both share the same
+  // orchestrator instance and create competing sessions. The later session
+  // overwrites the earlier one, causing test failures.
+  //
+  // serial mode only affects tests within a single project - it doesn't prevent
+  // parallel execution across different projects. We skip desktop since this is
+  // a mobile-first PWA and mobile-chrome better represents the target platform.
+  //
+  // NOTE: browserName === 'chromium' for BOTH projects (mobile-chrome uses Chromium engine)
+  // Use isMobile fixture to distinguish between desktop and mobile viewports.
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
 
   test.beforeAll(async () => {
     // One-time browser and VLC setup
@@ -141,7 +155,7 @@ test.describe('GM Scanner Admin Panel - Lifecycle', () => {
 
     try {
       // Connect WebSocket client
-      const socket = await connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, 'GM_SessionClear', 'gm');
+      const socket = await connectWithAuth(orchestratorInfo.url, ADMIN_PASSWORD, generateUniqueDeviceId('Admin_SessClear'), 'gm');
 
       // Initialize scanner
       const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
@@ -182,7 +196,9 @@ test.describe('GM Scanner Admin Panel - Lifecycle', () => {
       await gmScanner.scannerView.waitFor({ state: 'visible', timeout: 5000 });
 
       // Perform scan to generate transaction
-      await gmScanner.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner.waitForTeamInDropdown('Team Alpha');
+      await gmScanner.selectTeam('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 

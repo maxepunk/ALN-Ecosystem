@@ -39,6 +39,19 @@ let browser = null;
 let vlcInfo = null;
 
 test.describe('GM Scanner Admin Panel - Transactions', () => {
+  // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
+  // The backend only supports ONE active session at a time. With 2 projects
+  // (chromium + mobile-chrome) running in parallel workers, both share the same
+  // orchestrator instance and create competing sessions. The later session
+  // overwrites the earlier one, causing test failures.
+  //
+  // serial mode only affects tests within a single project - it doesn't prevent
+  // parallel execution across different projects. We skip desktop since this is
+  // a mobile-first PWA and mobile-chrome better represents the target platform.
+  //
+  // NOTE: browserName === 'chromium' for BOTH projects (mobile-chrome uses Chromium engine)
+  // Use isMobile fixture to distinguish between desktop and mobile viewports.
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
 
   test.beforeAll(async () => {
     // One-time browser and VLC setup
@@ -105,7 +118,9 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       await waitForEvent(socket, 'gm:command:ack', null, 5000);
 
       // Perform scans to generate scores (so teams appear in admin score board)
-      await gmScanner.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner.waitForTeamInDropdown('Team Alpha');
+      await gmScanner.selectTeam('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
@@ -162,7 +177,9 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       });
 
       // Perform scan to generate score
-      await gmScanner.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner.waitForTeamInDropdown('Team Alpha');
+      await gmScanner.selectTeam('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
       await gmScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -230,7 +247,9 @@ test.describe('GM Scanner Admin Panel - Transactions', () => {
       });
 
       // Perform initial scan
-      await gmScanner.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner.waitForTeamInDropdown('Team Alpha');
+      await gmScanner.selectTeam('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 

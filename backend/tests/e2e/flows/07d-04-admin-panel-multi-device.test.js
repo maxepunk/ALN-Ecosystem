@@ -140,7 +140,9 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
         password: ADMIN_PASSWORD
       });
 
-      await gmScanner2.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner2.waitForTeamInDropdown('Team Alpha');
+      await gmScanner2.selectTeam('Team Alpha');
       await gmScanner2.confirmTeam();
 
       // Wait for scan screen to be ready
@@ -251,7 +253,9 @@ test.describe('GM Scanner Admin Panel - Multi-Device', () => {
       });
 
       // Scanner 2: Perform scan to generate transaction
-      await gmScanner2.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner2.waitForTeamInDropdown('Team Alpha');
+      await gmScanner2.selectTeam('Team Alpha');
       await gmScanner2.confirmTeam();
       await gmScanner2.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
 

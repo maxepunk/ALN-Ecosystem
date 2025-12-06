@@ -39,6 +39,8 @@ const {
   connectWithAuth,
   waitForEvent,
   cleanupAllSockets,
+  generateUniqueDeviceId,
+  generateUniqueTeamName,
 } = require('../setup/websocket-client');
 
 const {
@@ -63,6 +65,20 @@ let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
 
 test.describe('GM Scanner Networked Mode - Black Market', () => {
+  // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
+  // The backend only supports ONE active session at a time. With 2 projects
+  // (chromium + mobile-chrome) running in parallel workers, both share the same
+  // orchestrator instance and create competing sessions. The later session
+  // overwrites the earlier one, causing waitForTeamInDropdown to find the wrong team.
+  //
+  // serial mode only affects tests within a single project - it doesn't prevent
+  // parallel execution across different projects. We skip desktop since this is
+  // a mobile-first PWA and mobile-chrome better represents the target platform.
+  //
+  // NOTE: browserName === 'chromium' for BOTH projects (mobile-chrome uses Chromium engine)
+  // Use isMobile fixture to distinguish between desktop and mobile viewports.
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
+  test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -90,7 +106,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   });
 
   test.afterAll(async () => {
-    await closeAllContexts();
+    await closeAllContexts({ orchestratorUrl: orchestratorInfo?.url });
     await cleanupAllSockets();
     if (browser) await browser.close();
     await stopOrchestrator();
@@ -98,7 +114,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   });
 
   test.afterEach(async () => {
-    await closeAllContexts();
+    // Wait for server to confirm all GM devices disconnected before next test
+    // This prevents DEVICE_ID_COLLISION when connection wizard assigns GM_Station_N
+    await closeAllContexts({ orchestratorUrl: orchestratorInfo?.url });
     await cleanupAllSockets();
   });
 
@@ -107,10 +125,13 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // ========================================
 
   test('connects to orchestrator and initializes in networked mode', async () => {
+    // Generate unique team name for test isolation in parallel execution
+    const teamAlpha = generateUniqueTeamName('Alpha');
+
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_NETWORKED_CONNECTION',
+      generateUniqueDeviceId('GM_Network'),
       'gm'
     );
 
@@ -124,7 +145,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session - Connection',
-          teams: ['Team Alpha']
+          teams: [teamAlpha]
         }
       },
       timestamp: new Date().toISOString()
@@ -158,6 +179,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // ========================================
 
   test('scans Personal token and backend awards correct points', async () => {
+    // Generate unique team name for test isolation in parallel execution
+    const teamAlpha = generateUniqueTeamName('Alpha');
+
     const token = testTokens.personalToken;
     const expectedScore = calculateExpectedScore(token);
 
@@ -165,7 +189,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_SINGLE_SCAN',
+      generateUniqueDeviceId('GM_SingleScan'),
       'gm'
     );
 
@@ -176,7 +200,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session - Single Scan',
-          teams: ['Team Alpha']
+          teams: [teamAlpha]
         }
       },
       timestamp: new Date().toISOString()
@@ -192,8 +216,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
       password: ADMIN_PASSWORD
     });
 
-    // Enter team
-    await scanner.enterTeamName('Team Alpha');
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown(teamAlpha);
+    await scanner.selectTeam(teamAlpha);
     await scanner.confirmTeam();
 
     // Listen for transaction broadcast (filter by specific token to prevent race conditions)
@@ -218,10 +243,10 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(txEvent.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
-    await waitForScoreUpdate(socket, '001', 2000);
+    await waitForScoreUpdate(socket, teamAlpha, 2000);
 
     // Verify score via helper (pass socket for authoritative backend query)
-    const score = await getTeamScore(page, 'Team Alpha', 'networked', socket);
+    const score = await getTeamScore(page, teamAlpha, 'networked', socket);
     expect(score).toBe(expectedScore);
 
     console.log(`✓ Networked mode: Personal token scored $${expectedScore.toLocaleString()}`);
@@ -232,6 +257,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // ========================================
 
   test('scans Business token and backend applies 3x multiplier', async () => {
+    // Generate unique team name for test isolation in parallel execution
+    const teamAlpha = generateUniqueTeamName('Alpha');
+
     const token = testTokens.businessToken;
     const expectedScore = calculateExpectedScore(token);
 
@@ -239,7 +267,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_BUSINESS_SCAN',
+      generateUniqueDeviceId('GM_BusinessScan'),
       'gm'
     );
 
@@ -249,7 +277,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session - Business Token',
-          teams: ['Team Alpha']
+          teams: [teamAlpha]
         }
       },
       timestamp: new Date().toISOString()
@@ -265,7 +293,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
       password: ADMIN_PASSWORD
     });
 
-    await scanner.enterTeamName('Team Alpha');
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown(teamAlpha);
+    await scanner.selectTeam(teamAlpha);
     await scanner.confirmTeam();
 
     // Listen for transaction broadcast (filter by specific token to prevent race conditions)
@@ -290,10 +320,10 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(txEvent.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
-    await waitForScoreUpdate(socket, '001', 2000);
+    await waitForScoreUpdate(socket, teamAlpha, 2000);
 
     // Verify score with multiplier applied (pass socket for authoritative backend query)
-    const score = await getTeamScore(page, 'Team Alpha', 'networked', socket);
+    const score = await getTeamScore(page, teamAlpha, 'networked', socket);
     expect(score).toBe(expectedScore);
 
     console.log(`✓ Networked mode: Business token scored $${expectedScore.toLocaleString()} (3x multiplier)`);
@@ -304,6 +334,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // ========================================
 
   test('completes group and backend applies multiplier bonus', async () => {
+    // Generate unique team name for test isolation in parallel execution
+    const teamAlpha = generateUniqueTeamName('Alpha');
+
     const groupTokens = testTokens.groupTokens;
 
     if (groupTokens.length < 2) {
@@ -321,7 +354,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_GROUP_COMPLETION',
+      generateUniqueDeviceId('GM_GroupComplete'),
       'gm'
     );
 
@@ -331,7 +364,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session - Group Completion',
-          teams: ['Team Alpha']
+          teams: [teamAlpha]
         }
       },
       timestamp: new Date().toISOString()
@@ -347,7 +380,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
       password: ADMIN_PASSWORD
     });
 
-    await scanner.enterTeamName('Team Alpha');
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown(teamAlpha);
+    await scanner.selectTeam(teamAlpha);
     await scanner.confirmTeam();
 
     console.log(`Testing group completion: ${groupTokens[0].SF_Group}`);
@@ -391,15 +426,15 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Wait for group completion event
     const groupEvent = await groupCompletionPromise;
     expect(groupEvent.data).toBeDefined();
-    expect(groupEvent.data.teamId).toBe('Team Alpha');
+    expect(groupEvent.data.teamId).toBe(teamAlpha);
     expect(groupEvent.data.bonusPoints).toBe(bonus);
     expect(groupEvent.data.completedAt).toBeDefined();
 
     // Wait for score:updated event after bonus applied (event-driven, not polling)
-    await waitForScoreUpdate(socket, '001', 2000);
+    await waitForScoreUpdate(socket, teamAlpha, 2000);
 
     // Verify final score (base + bonus) (pass socket for authoritative backend query)
-    const finalScore = await getTeamScore(page, 'Team Alpha', 'networked', socket);
+    const finalScore = await getTeamScore(page, teamAlpha, 'networked', socket);
     expect(finalScore).toBe(expectedTotal);
 
     console.log(`✓ Networked mode: Group completed, bonus applied, $${expectedTotal.toLocaleString()} total`);
@@ -410,6 +445,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // ========================================
 
   test('backend rejects duplicate scan by same team', async () => {
+    // Generate unique team name for test isolation in parallel execution
+    const teamAlpha = generateUniqueTeamName('Alpha');
+
     const token1 = testTokens.personalToken;
     const token2 = testTokens.businessToken;
     const score1 = calculateExpectedScore(token1);
@@ -419,7 +457,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_SAME_TEAM_DUPLICATE',
+      generateUniqueDeviceId('GM_SameTeamDup'),
       'gm'
     );
 
@@ -429,7 +467,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session - Same Team Duplicate',
-          teams: ['Team Alpha']
+          teams: [teamAlpha]
         }
       },
       timestamp: new Date().toISOString()
@@ -445,7 +483,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
       password: ADMIN_PASSWORD
     });
 
-    await scanner.enterTeamName('Team Alpha');
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown(teamAlpha);
+    await scanner.selectTeam(teamAlpha);
     await scanner.confirmTeam();
 
     // FIRST SCAN: Token should be accepted
@@ -468,10 +508,10 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     console.log('✓ First scan accepted and broadcast received');
 
     // Wait for score:updated event (event-driven, not polling)
-    await waitForScoreUpdate(socket, '001', 2000);
+    await waitForScoreUpdate(socket, teamAlpha, 2000);
 
     // Verify score after first scan (pass socket for authoritative backend query)
-    const scoreAfterFirst = await getTeamScore(page, 'Team Alpha', 'networked', socket);
+    const scoreAfterFirst = await getTeamScore(page, teamAlpha, 'networked', socket);
     expect(scoreAfterFirst).toBe(score1);
 
     // Navigate back to scan screen for second scan
@@ -489,7 +529,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     // Wait for backend score to stabilize (polls until score === expected value)
     // Using condition-based waiting instead of arbitrary timeout (testing-anti-patterns skill)
-    const scoreAfterDuplicate = await waitForScoreValue(page, '001', socket, score1, 2000);
+    const scoreAfterDuplicate = await waitForScoreValue(page, teamAlpha, socket, score1, 2000);
     expect(scoreAfterDuplicate).toBe(score1); // Should still be score1, not doubled
 
     // Navigate back to scan screen for third scan
@@ -512,9 +552,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(tx3Event.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
-    await waitForScoreUpdate(socket, '001', 2000);
+    await waitForScoreUpdate(socket, teamAlpha, 2000);
 
-    const finalScore = await getTeamScore(page, 'Team Alpha', 'networked', socket);
+    const finalScore = await getTeamScore(page, teamAlpha, 'networked', socket);
     const expectedFinal = score1 + score2;
     expect(finalScore).toBe(expectedFinal); // First + second, duplicate didn't add
 
@@ -526,6 +566,10 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // ========================================
 
   test('backend rejects duplicate scan by different team', async () => {
+    // Generate unique team names for test isolation in parallel execution
+    const teamAlpha = generateUniqueTeamName('Alpha');
+    const teamDetectives = generateUniqueTeamName('Detectives');
+
     const token1 = testTokens.personalToken;
     const token2 = testTokens.technicalToken;
     const score1 = calculateExpectedScore(token1);
@@ -535,7 +579,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'TEST_DIFFERENT_TEAM_DUPLICATE',
+      generateUniqueDeviceId('GM_DiffTeamDup'),
       'gm'
     );
 
@@ -545,7 +589,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         action: 'session:create',
         payload: {
           name: 'Test Session - Different Team Duplicate',
-          teams: ['Team Alpha', 'Detectives']  // Both teams for cross-team test
+          teams: [teamAlpha, teamDetectives]  // Both teams for cross-team test
         }
       },
       timestamp: new Date().toISOString()
@@ -562,7 +606,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     });
 
     // TEAM 001: Scan first (should be ACCEPTED)
-    await scanner.enterTeamName('Team Alpha');
+    // Wait for session sync to populate dropdown, then select team
+    await scanner.waitForTeamInDropdown(teamAlpha);
+    await scanner.selectTeam(teamAlpha);
     await scanner.confirmTeam();
 
     const tx1Promise = waitForEvent(
@@ -578,22 +624,24 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     const tx1Event = await tx1Promise;
     expect(tx1Event.data.transaction.tokenId).toBe(token1.SF_RFID);
-    expect(tx1Event.data.transaction.teamId).toBe('Team Alpha');
+    expect(tx1Event.data.transaction.teamId).toBe(teamAlpha);
     expect(tx1Event.data.transaction.status).toBe('accepted');
 
     console.log(`✓ Team 001 scan accepted: $${score1.toLocaleString()}`);
 
     // Wait for score:updated event (event-driven, not polling)
-    await waitForScoreUpdate(socket, '001', 2000);
+    await waitForScoreUpdate(socket, teamAlpha, 2000);
 
     // Verify Team 001 scored (pass socket for authoritative backend query)
-    const score001After1 = await getTeamScore(page, 'Team Alpha', 'networked', socket);
+    const score001After1 = await getTeamScore(page, teamAlpha, 'networked', socket);
     expect(score001After1).toBe(score1);
 
     // SWITCH TO TEAM 002
     // finishTeam() works from result screen, returns to team entry
     await scanner.finishTeam();
-    await scanner.enterTeamName('Detectives');
+    // Wait for team to appear in dropdown after returning to team entry
+    await scanner.waitForTeamInDropdown(teamDetectives);
+    await scanner.selectTeam(teamDetectives);
     await scanner.confirmTeam();
 
     console.log('✓ Switched to Team 002');
@@ -607,9 +655,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     console.log('✓ Team 002 duplicate scan processed');
 
     // Wait for backend scores to stabilize (condition-based waiting)
-    // Team 002 should get 0 (rejected), Team 001 should remain score1 (unchanged)
-    const score002After2 = await waitForScoreValue(page, '002', socket, 0, 2000);
-    const score001After2 = await waitForScoreValue(page, '001', socket, score1, 2000);
+    // Detectives should get 0 (rejected), Team Alpha should remain score1 (unchanged)
+    const score002After2 = await waitForScoreValue(page, teamDetectives, socket, 0, 2000);
+    const score001After2 = await waitForScoreValue(page, teamAlpha, socket, score1, 2000);
 
     expect(score001After2).toBe(score1);  // Team 001 unchanged
     expect(score002After2).toBe(0);    // Team 002 got nothing (rejected)
@@ -633,13 +681,13 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     const tx3Event = await tx3Promise;
     expect(tx3Event.data.transaction.tokenId).toBe(token2.SF_RFID);
-    expect(tx3Event.data.transaction.teamId).toBe('Detectives');
+    expect(tx3Event.data.transaction.teamId).toBe(teamDetectives);
     expect(tx3Event.data.transaction.status).toBe('accepted');
 
     // Wait for score:updated event (event-driven, not polling)
-    await waitForScoreUpdate(socket, '002', 2000);
+    await waitForScoreUpdate(socket, teamDetectives, 2000);
 
-    const finalScore002 = await getTeamScore(page, 'Detectives', 'networked', socket);
+    const finalScore002 = await getTeamScore(page, teamDetectives, 'networked', socket);
     expect(finalScore002).toBe(score2);  // Team 002 can score with different token
 
     console.log(`✓ Team 002 still functional after rejection: $${score2.toLocaleString()} from different token`);

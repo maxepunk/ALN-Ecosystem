@@ -61,25 +61,25 @@ describe('Socket Room Joining (Phase 2.2 P1.2)', () => {
       // Get all join calls in order
       const joinCalls = mockSocket.join.mock.calls.map(call => call[0]);
 
-      // Find indices
+      // Find indices (teams now have alphanumeric names)
       const deviceRoomIndex = joinCalls.findIndex(room => room === 'device:GM_001');
       const gmRoomIndex = joinCalls.findIndex(room => room === 'gm');
-      const team001Index = joinCalls.findIndex(room => room === 'team:001');
-      const team002Index = joinCalls.findIndex(room => room === 'team:002');
-      const team003Index = joinCalls.findIndex(room => room === 'team:003');
+      const teamAlphaIndex = joinCalls.findIndex(room => room === 'team:Team Alpha');
+      const teamDetectivesIndex = joinCalls.findIndex(room => room === 'team:Detectives');
+      const teamBlueSquadIndex = joinCalls.findIndex(room => room === 'team:Blue Squad');
 
       // CRITICAL: Verify order
       expect(deviceRoomIndex).toBeGreaterThanOrEqual(0); // Device room exists
       expect(gmRoomIndex).toBeGreaterThanOrEqual(0);     // GM room exists
-      expect(team001Index).toBeGreaterThanOrEqual(0);   // Team rooms exist
-      expect(team002Index).toBeGreaterThanOrEqual(0);
-      expect(team003Index).toBeGreaterThanOrEqual(0);
+      expect(teamAlphaIndex).toBeGreaterThanOrEqual(0);   // Team rooms exist
+      expect(teamDetectivesIndex).toBeGreaterThanOrEqual(0);
+      expect(teamBlueSquadIndex).toBeGreaterThanOrEqual(0);
 
       // Verify ORDER: device < gm < teams
       expect(deviceRoomIndex).toBeLessThan(gmRoomIndex);
-      expect(gmRoomIndex).toBeLessThan(team001Index);
-      expect(gmRoomIndex).toBeLessThan(team002Index);
-      expect(gmRoomIndex).toBeLessThan(team003Index);
+      expect(gmRoomIndex).toBeLessThan(teamAlphaIndex);
+      expect(gmRoomIndex).toBeLessThan(teamDetectivesIndex);
+      expect(gmRoomIndex).toBeLessThan(teamBlueSquadIndex);
     });
 
     it('should join device-specific room', async () => {
@@ -110,7 +110,7 @@ describe('Socket Room Joining (Phase 2.2 P1.2)', () => {
       // PHASE 2.2 P1.2: Join all team rooms for team-specific broadcasts
       await sessionService.createSession({
         name: 'Test Session',
-        teams: ['001', '002', '003', '004']
+        teams: ['Team Alpha', 'Detectives', 'Blue Squad', 'Red Team']
       });
 
       await handleGmIdentify(mockSocket, {
@@ -118,11 +118,11 @@ describe('Socket Room Joining (Phase 2.2 P1.2)', () => {
         version: '2.1.0'
       }, mockIo);
 
-      // Verify all team rooms joined
-      expect(mockSocket.join).toHaveBeenCalledWith('team:001');
-      expect(mockSocket.join).toHaveBeenCalledWith('team:002');
-      expect(mockSocket.join).toHaveBeenCalledWith('team:003');
-      expect(mockSocket.join).toHaveBeenCalledWith('team:004');
+      // Verify all team rooms joined (alphanumeric team names)
+      expect(mockSocket.join).toHaveBeenCalledWith('team:Team Alpha');
+      expect(mockSocket.join).toHaveBeenCalledWith('team:Detectives');
+      expect(mockSocket.join).toHaveBeenCalledWith('team:Blue Squad');
+      expect(mockSocket.join).toHaveBeenCalledWith('team:Red Team');
     });
 
     it('should not join team rooms when no session', async () => {

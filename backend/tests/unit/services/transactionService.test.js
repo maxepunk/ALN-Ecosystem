@@ -80,7 +80,7 @@ describe('TransactionService - Event Emission', () => {
       });
 
       // Trigger: Update team score (should emit unwrapped score:updated)
-      transactionService.updateTeamScore('001', testToken);
+      transactionService.updateTeamScore('Team Alpha', testToken);
 
       // Wait for event
       await eventPromise;
@@ -113,7 +113,7 @@ describe('TransactionService - Event Emission', () => {
       transactionService.tokens.set('test123', testToken);
 
       // Trigger: Update score for new team
-      transactionService.updateTeamScore('002', testToken);
+      transactionService.updateTeamScore('Detectives', testToken);
 
       // Verify: transactionService should NOT have modified sessionService.scores directly
       const session = sessionService.getCurrentSession();
@@ -600,7 +600,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       session.transactions = [tx1, tx2];
 
       // Group complete - team scanned all tokens
-      const isComplete = transactionService.isGroupComplete('001', 'alpha-group');
+      const isComplete = transactionService.isGroupComplete('Team Alpha', 'alpha-group');
       expect(isComplete).toBe(true);
     });
 
@@ -625,12 +625,12 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.tokens.set('token1', token1);
 
       // Single token groups cannot be completed
-      const isComplete = transactionService.isGroupComplete('001', 'solo-group');
+      const isComplete = transactionService.isGroupComplete('Team Alpha', 'solo-group');
       expect(isComplete).toBe(false);
     });
 
     it('should return false for null groupId', () => {
-      const isComplete = transactionService.isGroupComplete('001', null);
+      const isComplete = transactionService.isGroupComplete('Team Alpha', null);
       expect(isComplete).toBe(false);
     });
 
@@ -1264,8 +1264,8 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
   describe('resetScores', () => {
     it('should emit scores:reset event with teamsReset array', () => {
       // Setup: Add some team scores
-      transactionService.teamScores.set('001', { currentScore: 500 });
-      transactionService.teamScores.set('002', { currentScore: 300 });
+      transactionService.teamScores.set('Team Alpha', { currentScore: 500 });
+      transactionService.teamScores.set('Detectives', { currentScore: 300 });
 
       // Listen for event using Promise pattern
       const eventPromise = new Promise((resolve) => {
@@ -1283,7 +1283,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
 
     it('should clear teamScores Map', () => {
-      transactionService.teamScores.set('001', { currentScore: 500 });
+      transactionService.teamScores.set('Team Alpha', { currentScore: 500 });
       transactionService.resetScores();
 
       expect(transactionService.teamScores.size).toBe(0);

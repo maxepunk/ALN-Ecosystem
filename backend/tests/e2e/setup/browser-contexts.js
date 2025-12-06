@@ -211,25 +211,100 @@ async function closeBrowserContext(context) {
 }
 
 /**
- * Close all tracked browser contexts
+ * Close all tracked browser contexts and wait for server-side cleanup
  *
- * Use in afterAll hooks to ensure clean test teardown
- * Prevents memory leaks from unclosed contexts
+ * CRITICAL: Browser context closure triggers WebSocket disconnect, but the server
+ * needs time to process the disconnect and mark devices as disconnected.
+ * Without waiting, the next test may start before cleanup completes, causing
+ * DEVICE_ID_COLLISION errors when the connection wizard assigns GM_Station_N.
  *
+ * Uses condition-based waiting to poll /api/state until no GM devices are connected.
+ *
+ * @param {Object} [options={}] - Cleanup options
+ * @param {string} [options.orchestratorUrl] - URL to poll for state (default: https://localhost:3000)
+ * @param {number} [options.timeoutMs=5000] - Max time to wait for disconnects
+ * @param {number} [options.pollIntervalMs=100] - Polling interval
  * @returns {Promise<void>}
  *
  * @example
- * afterAll(async () => {
- *   await closeAllContexts();
- *   await browser.close();
+ * afterEach(async () => {
+ *   await closeAllContexts({ orchestratorUrl: orchestratorInfo.url });
  * });
  */
-async function closeAllContexts() {
+async function closeAllContexts(options = {}) {
+  const {
+    orchestratorUrl = process.env.ORCHESTRATOR_URL || 'https://localhost:3000',
+    timeoutMs = 5000,
+    pollIntervalMs = 100
+  } = options;
+
+  const contextCount = activeContexts.length;
+
   // Close all contexts in parallel
   await Promise.all(activeContexts.map(context => context.close()));
 
   // Clear tracking array
   activeContexts.length = 0;
+
+  // If no contexts were open, no need to wait for disconnects
+  if (contextCount === 0) {
+    return;
+  }
+
+  // Wait for server to process WebSocket disconnects
+  // Condition: no GM devices with connectionStatus === 'connected'
+  const startTime = Date.now();
+
+  while (true) {
+    try {
+      // Query server state - use dynamic import to avoid circular dependencies
+      const https = require('https');
+      const state = await new Promise((resolve, reject) => {
+        const url = new URL('/api/state', orchestratorUrl);
+        const req = https.get(url, { rejectUnauthorized: false }, (res) => {
+          let data = '';
+          res.on('data', chunk => data += chunk);
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        req.on('error', reject);
+        req.setTimeout(1000, () => {
+          req.destroy();
+          reject(new Error('Request timeout'));
+        });
+      });
+
+      // Check condition: no connected GM devices
+      const connectedGMs = (state.devices || []).filter(
+        d => d.type === 'gm' && d.connectionStatus === 'connected'
+      );
+
+      if (connectedGMs.length === 0) {
+        // Condition met - all GM devices disconnected
+        return;
+      }
+    } catch (error) {
+      // Server might be shutting down or not available - that's OK for cleanup
+      if (Date.now() - startTime > timeoutMs) {
+        console.warn(`closeAllContexts: Could not verify device cleanup: ${error.message}`);
+        return;
+      }
+    }
+
+    // Check timeout
+    if (Date.now() - startTime > timeoutMs) {
+      console.warn(`closeAllContexts: Timeout waiting for GM devices to disconnect`);
+      return;
+    }
+
+    // Poll interval
+    await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+  }
 }
 
 /**

@@ -122,6 +122,7 @@ function setupEventCaching(socket) {
   socket.lastVideoStatus = null;
   socket.lastScoresReset = null;
   socket.lastTransactionDeleted = null;
+  socket.lastGmCommandAck = null;
 
   // Persistent listeners
   socket.on('score:updated', (data) => { socket.lastScoreUpdate = data; });
@@ -131,6 +132,7 @@ function setupEventCaching(socket) {
   socket.on('video:status', (data) => { socket.lastVideoStatus = data; });
   socket.on('scores:reset', (data) => { socket.lastScoresReset = data; });
   socket.on('transaction:deleted', (data) => { socket.lastTransactionDeleted = data; });
+  socket.on('gm:command:ack', (data) => { socket.lastGmCommandAck = data; });
 }
 
 /**
@@ -194,7 +196,8 @@ function getCachedEvent(socket, eventName) {
     'session:update': socket.lastSessionUpdate,
     'video:status': socket.lastVideoStatus,
     'scores:reset': socket.lastScoresReset,
-    'transaction:deleted': socket.lastTransactionDeleted
+    'transaction:deleted': socket.lastTransactionDeleted,
+    'gm:command:ack': socket.lastGmCommandAck
   };
   return cacheMap[eventName] || null;
 }
@@ -212,6 +215,7 @@ function clearEventCache(socket) {
   socket.lastVideoStatus = null;
   socket.lastScoresReset = null;
   socket.lastTransactionDeleted = null;
+  socket.lastGmCommandAck = null;
 }
 
 /**

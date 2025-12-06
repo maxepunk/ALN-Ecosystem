@@ -63,6 +63,19 @@ let vlcInfo = null;
 let testTokens = null;
 
 test.describe('DIAGNOSTIC: History Auto-Update', () => {
+  // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
+  // The backend only supports ONE active session at a time. With 2 projects
+  // (chromium + mobile-chrome) running in parallel workers, both share the same
+  // orchestrator instance and create competing sessions. The later session
+  // overwrites the earlier one, causing test failures.
+  //
+  // serial mode only affects tests within a single project - it doesn't prevent
+  // parallel execution across different projects. We skip desktop since this is
+  // a mobile-first PWA and mobile-chrome better represents the target platform.
+  //
+  // NOTE: browserName === 'chromium' for BOTH projects (mobile-chrome uses Chromium engine)
+  // Use isMobile fixture to distinguish between desktop and mobile viewports.
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -190,7 +203,9 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
         password: ADMIN_PASSWORD
       });
 
-      await gmScanner2.enterTeamName('Team Alpha');
+      // Wait for session sync to populate dropdown, then select team
+      await gmScanner2.waitForTeamInDropdown('Team Alpha');
+      await gmScanner2.selectTeam('Team Alpha');
       await gmScanner2.confirmTeam();
 
       await gmScanner2.scanScreen.waitFor({ state: 'visible', timeout: 5000 });

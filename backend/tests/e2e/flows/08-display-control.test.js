@@ -96,17 +96,10 @@ test.describe('Display Control - Admin Panel', () => {
       await expect(gmScanner.btnScoreboard).toBeVisible();
 
       // Verify initial state shows Idle Loop (default)
-      const nowShowing = await gmScanner.getNowShowing();
-      expect(nowShowing).toBe('Idle Loop');
-
-      const icon = await gmScanner.getNowShowingIcon();
-      expect(icon).toBe('🔄');
-
-      const isIdleActive = await gmScanner.isIdleLoopActive();
-      expect(isIdleActive).toBe(true);
-
-      const isScoreboardActive = await gmScanner.isScoreboardActive();
-      expect(isScoreboardActive).toBe(false);
+      await expect(gmScanner.nowShowingValue).toHaveText('Idle Loop');
+      await expect(gmScanner.nowShowingIcon).toHaveText('🔄');
+      await expect(gmScanner.btnIdleLoop).toHaveClass(/active/);
+      await expect(gmScanner.btnScoreboard).not.toHaveClass(/active/);
 
       console.log('✓ Display control UI elements verified');
 
@@ -130,31 +123,28 @@ test.describe('Display Control - Admin Panel', () => {
       await gmScanner.navigateToAdminPanel();
 
       // Verify initial state: Idle Loop is active
-      expect(await gmScanner.isIdleLoopActive()).toBe(true);
-      expect(await gmScanner.getNowShowing()).toBe('Idle Loop');
+      await expect(gmScanner.btnIdleLoop).toHaveClass(/active/);
+      await expect(gmScanner.nowShowingValue).toHaveText('Idle Loop');
 
       // Click Scoreboard button
       await gmScanner.setDisplayScoreboard();
 
-      // Wait for UI to update (display:mode event processed)
-      await page.waitForTimeout(500);
-
-      // Verify state changed to Scoreboard
-      expect(await gmScanner.isScoreboardActive()).toBe(true);
-      expect(await gmScanner.isIdleLoopActive()).toBe(false);
-      expect(await gmScanner.getNowShowing()).toBe('Scoreboard');
-      expect(await gmScanner.getNowShowingIcon()).toBe('🏆');
+      // Verify state changed to Scoreboard (auto-retrying assertions)
+      await expect(gmScanner.btnScoreboard).toHaveClass(/active/);
+      await expect(gmScanner.btnIdleLoop).not.toHaveClass(/active/);
+      await expect(gmScanner.nowShowingValue).toHaveText('Scoreboard');
+      await expect(gmScanner.nowShowingIcon).toHaveText('🏆');
 
       console.log('✓ Toggled to Scoreboard mode');
 
       // Toggle back to Idle Loop
       await gmScanner.setDisplayIdleLoop();
-      await page.waitForTimeout(500);
 
-      expect(await gmScanner.isIdleLoopActive()).toBe(true);
-      expect(await gmScanner.isScoreboardActive()).toBe(false);
-      expect(await gmScanner.getNowShowing()).toBe('Idle Loop');
-      expect(await gmScanner.getNowShowingIcon()).toBe('🔄');
+      // Verify state changed back (auto-retrying assertions)
+      await expect(gmScanner.btnIdleLoop).toHaveClass(/active/);
+      await expect(gmScanner.btnScoreboard).not.toHaveClass(/active/);
+      await expect(gmScanner.nowShowingValue).toHaveText('Idle Loop');
+      await expect(gmScanner.nowShowingIcon).toHaveText('🔄');
 
       console.log('✓ Toggled back to Idle Loop mode');
 
@@ -188,21 +178,15 @@ test.describe('Display Control - Admin Panel', () => {
       await gmScanner2.navigateToAdminPanel();
 
       // Verify both start with same initial state (Idle Loop)
-      expect(await gmScanner1.getNowShowing()).toBe('Idle Loop');
-      expect(await gmScanner2.getNowShowing()).toBe('Idle Loop');
+      await expect(gmScanner1.nowShowingValue).toHaveText('Idle Loop');
+      await expect(gmScanner2.nowShowingValue).toHaveText('Idle Loop');
 
       // Scanner 1 changes to Scoreboard
       await gmScanner1.setDisplayScoreboard();
 
-      // Wait for broadcast to propagate to Scanner 2
-      await page2.waitForFunction(() => {
-        const nowShowing = document.getElementById('now-showing-value');
-        return nowShowing && nowShowing.textContent === 'Scoreboard';
-      }, { timeout: 5000 });
-
-      // Verify Scanner 2 received the broadcast and updated
-      expect(await gmScanner2.getNowShowing()).toBe('Scoreboard');
-      expect(await gmScanner2.isScoreboardActive()).toBe(true);
+      // Verify Scanner 2 received the broadcast and updated (auto-retrying assertion)
+      await expect(gmScanner2.nowShowingValue).toHaveText('Scoreboard');
+      await expect(gmScanner2.btnScoreboard).toHaveClass(/active/);
 
       console.log('✓ Display mode synced across multiple scanners');
 
@@ -228,12 +212,12 @@ test.describe('Display Control - Admin Panel', () => {
 
       // First, set mode to Scoreboard so we can verify "Returns to" shows correctly
       await gmScanner.setDisplayScoreboard();
-      await page.waitForTimeout(500);
-      expect(await gmScanner.getNowShowing()).toBe('Scoreboard');
+
+      // Verify mode changed
+      await expect(gmScanner.nowShowingValue).toHaveText('Scoreboard');
 
       // Returns To should be hidden when no video is playing
-      const returnsTo = await gmScanner.getReturnsToMode();
-      expect(returnsTo).toBeNull();
+      await expect(gmScanner.returnsToContainer).toBeHidden();
 
       console.log('✓ Returns To indicator is hidden when no video playing');
 
@@ -269,7 +253,9 @@ test.describe('Display Control - Admin Panel', () => {
 
       // Toggle display mode
       await gmScanner.setDisplayScoreboard();
-      await page.waitForTimeout(300);
+
+      // Verify mode changed
+      await expect(gmScanner.nowShowingValue).toHaveText('Scoreboard');
 
       // Switch back to scanner view
       await gmScanner.scannerTab.click();
@@ -279,7 +265,7 @@ test.describe('Display Control - Admin Panel', () => {
       await gmScanner.navigateToAdminPanel();
 
       // Verify display mode persisted (still Scoreboard)
-      expect(await gmScanner.getNowShowing()).toBe('Scoreboard');
+      await expect(gmScanner.nowShowingValue).toHaveText('Scoreboard');
 
       // No errors should have occurred
       expect(pageErrors).toHaveLength(0);

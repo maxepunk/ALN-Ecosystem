@@ -13,29 +13,68 @@
  * @param {string} options.password - Admin password (required for networked mode)
  * @param {string} options.stationName - Scanner station name (optional)
  * @param {string} options.deviceId - Override device ID (optional, auto-generated if not provided)
- * @param {Socket} options.testSocket - Test WebSocket client for backend confirmation (optional but recommended)
- *                                       If provided, waits for device:connected broadcast to ensure backend
- *                                       completed identification and room membership assignment
  * @returns {Promise<GMScannerPage>} Configured scanner
  */
 async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackmarket', options = {}) {
   const { GMScannerPage } = require('./page-objects/GMScannerPage');
-  const { waitForEvent } = require('../../helpers/websocket-helpers');
   const gmScanner = new GMScannerPage(page);
 
-  // CRITICAL: Set unique deviceId in localStorage BEFORE page loads
-  // Without this, multiple scanner instances use the same default deviceId ('Team Alpha'),
-  // causing connection churn as backend kicks out duplicate connections
+  // CRITICAL: Clear stale localStorage and set unique identifiers BEFORE page loads
+  // This prevents:
+  // 1. DEVICE_ID_COLLISION when parallel browser projects run same tests
+  // 2. Session mode restoration causing app to skip #gameModeScreen
   const uniqueDeviceId = options.deviceId || `Test_Scanner_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  await page.addInitScript((deviceId) => {
+  const uniqueStationName = options.stationName || `Test_Station_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+  await page.addInitScript(({ deviceId, stationName }) => {
+    // CONDITION-BASED FIX: Clear ALL scanner state before setting fresh values
+    // Without this, gameSessionMode persists and app skips #gameModeScreen
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('aln_') || key === 'gameSessionMode' || key === 'transactions' || key === 'scannedTokens')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    // Now set fresh unique identifiers
     localStorage.setItem('deviceId', deviceId);
-  }, uniqueDeviceId);
+    // Pre-set station name so connectionWizard uses our unique ID instead of auto-assigning
+    localStorage.setItem('aln_station_name', stationName);
+  }, { deviceId: uniqueDeviceId, stationName: uniqueStationName });
+
+  // CONDITION-BASED WAIT: Ensure orchestrator is healthy before navigating
+  // This prevents flaky failures when orchestrator is still starting up
+  if (options.orchestratorUrl) {
+    const healthUrl = `${options.orchestratorUrl}/health`;
+    const maxWaitMs = 30000;
+    const startTime = Date.now();
+    let healthy = false;
+
+    while (!healthy && (Date.now() - startTime) < maxWaitMs) {
+      try {
+        const response = await page.request.get(healthUrl);
+        if (response.ok()) {
+          healthy = true;
+        }
+      } catch (e) {
+        // Orchestrator not ready yet, keep polling
+      }
+      if (!healthy) {
+        await new Promise(r => setTimeout(r, 100)); // Poll every 100ms
+      }
+    }
+
+    if (!healthy) {
+      throw new Error(`Orchestrator not healthy at ${healthUrl} after ${maxWaitMs}ms`);
+    }
+  }
 
   // Navigate to scanner using relative URL (baseURL set in browser context)
   // Browser context isolation ensures localStorage is already clean
   await page.goto('/gm-scanner/', {
     waitUntil: 'networkidle',
-    timeout: 10000
+    timeout: 30000  // Increased from 10s - Vite dev server can be slow on Pi
   });
 
   // Wait for app initialization to complete (loading screen may not always appear)
@@ -54,33 +93,15 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
 
     // Connect to orchestrator if provided
     if (options.orchestratorUrl && options.password) {
+      // Generate unique stationName if not provided - prevents DEVICE_ID_COLLISION
+      // when parallel browser projects (chromium + mobile-chrome) run same tests
+      const uniqueStationName = options.stationName || `Test_Station_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
       await gmScanner.manualConnect(
         options.orchestratorUrl,
-        options.stationName || 'Test_Station',
+        uniqueStationName,
         options.password
       );
       await gmScanner.waitForConnection();
-
-      // CRITICAL: Wait for backend to complete identification and room membership
-      // waitForConnection() only checks UI state (modal closed, team entry visible)
-      // Backend may still be processing handleGmIdentify() and assigning rooms
-      // Without this, scanner may not be in session room when broadcasts arrive
-      if (options.testSocket) {
-        console.log('⏳ Waiting for backend identification confirmation...');
-
-        // Wait for backend's sync:full event sent to test socket
-        // sync:full is sent AFTER handleGmIdentify() completes (gmAuth.js:169)
-        // This proves room joins completed and scanner received full state
-        // Note: We wait for ANY sync:full on the test socket, indicating state is synchronized
-        await waitForEvent(
-          options.testSocket,
-          'sync:full',
-          null,  // Accept any sync:full (test socket receives broadcasts)
-          10000  // Longer timeout for page load + connection
-        );
-
-        console.log(`✓ Backend confirmed scanner connected and synchronized`);
-      }
     }
   } else {
     await gmScanner.selectStandaloneMode();
@@ -100,17 +121,16 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
 /**
  * Get team score from scanner (works in both modes)
  *
- * IMPORTANT: This function reads production's calculated scores.
- * It does NOT recalculate scores (that would be testing test logic, not production).
- * If this returns 0 when it shouldn't, it indicates a production bug that must be fixed.
+ * BROWSER-ONLY E2E PATTERN: Reads score from visible UI or backend API.
+ * Does NOT use WebSocket connections - tests should only use browser interactions.
  *
  * @param {Page} page - Playwright page
  * @param {string} teamId - Team ID to get score for
  * @param {string} sessionMode - 'standalone' or 'networked'
- * @param {Socket} socket - Socket.io client (optional, required for accurate networked mode score)
+ * @param {string} orchestratorUrl - Orchestrator URL (required for networked mode)
  * @returns {Promise<number>} Team score
  */
-async function getTeamScore(page, teamId, sessionMode, socket = null) {
+async function getTeamScore(page, teamId, sessionMode, orchestratorUrl = null) {
   if (sessionMode === 'standalone') {
     // Standalone: read production's calculated score from localStorage
     // StandaloneDataManager should have calculated and saved this
@@ -123,47 +143,24 @@ async function getTeamScore(page, teamId, sessionMode, socket = null) {
       return team?.score || 0;
     }, teamId);
   } else {
-    // Networked: read from backend session via WebSocket (authoritative source)
-    if (socket) {
-      // WebSocket method: query backend session directly (most accurate)
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('Timeout waiting for session state sync from backend'));
-        }, 10000);
-
-        // Listen for sync:full event (contains full session state)
-        socket.once('sync:full', (event) => {
-          clearTimeout(timeout);
-
-          // Per AsyncAPI contract: scores[] contains TeamScore objects with currentScore
-          // session.teams[] is just array of string team IDs (e.g., ["001", "002"])
-          const scores = event.data?.scores;
-          if (!scores || !Array.isArray(scores)) {
-            reject(new Error('Invalid scores data in sync:full event'));
-            return;
-          }
-
-          // Find team score in backend response (authoritative)
-          const teamScore = scores.find(s => s.teamId === teamId);
-          if (!teamScore) {
-            resolve(0);  // Team not found = 0 score
-            return;
-          }
-
-          // Return authoritative score from backend
-          resolve(teamScore.currentScore || 0);
-        });
-
-        // Request state sync from backend via sync:request event
-        // Per server.js:69, this is a simple event (no envelope wrapping)
-        // Backend responds with sync:full event containing full session state
-        socket.emit('sync:request');
-      });
-    } else {
-      // FAIL FAST: Socket required for networked mode
-      // Backward compatibility fallback removed - tests must use WebSocket for accurate scores
-      throw new Error(`Socket required for getTeamScore() in networked mode. Tests must pass socket parameter to read authoritative backend session state.`);
+    // Networked: read from backend via HTTP API (Playwright's built-in request)
+    if (!orchestratorUrl) {
+      throw new Error('orchestratorUrl required for getTeamScore() in networked mode');
     }
+
+    // Use Playwright's page.request to query backend state
+    const response = await page.request.get(`${orchestratorUrl}/api/state`);
+    const state = await response.json();
+
+    // Per AsyncAPI contract: scores[] contains TeamScore objects with currentScore
+    const scores = state?.scores;
+    if (!scores || !Array.isArray(scores)) {
+      return 0;
+    }
+
+    // Find team score in backend response (authoritative)
+    const teamScore = scores.find(s => s.teamId === teamId);
+    return teamScore?.currentScore || 0;
   }
 }
 
@@ -171,13 +168,19 @@ async function getTeamScore(page, teamId, sessionMode, socket = null) {
  * Scan a sequence of tokens
  * @param {GMScannerPage} scanner - Scanner page object
  * @param {Array<string>} tokenIds - Token IDs to scan
- * @param {string} teamId - Team ID for scanning
+ * @param {string} teamName - Team name for scanning (e.g., 'Team Alpha', 'Detectives')
+ * @param {string} sessionMode - 'standalone' or 'networked'
  */
-async function scanTokenSequence(scanner, tokenIds, teamId) {
+async function scanTokenSequence(scanner, tokenIds, teamName, sessionMode = 'standalone') {
   // Enter team if not already on scan screen
   const onScanScreen = await scanner.page.isVisible(scanner.scanScreen);
   if (!onScanScreen) {
-    await scanner.enterTeam(teamId);
+    // Use mode-appropriate team entry method
+    if (sessionMode === 'networked') {
+      await scanner.selectTeam(teamName);
+    } else {
+      await scanner.enterTeamName(teamName);
+    }
     await scanner.confirmTeam();
   }
 

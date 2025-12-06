@@ -36,7 +36,8 @@ const {
 const {
   connectWithAuth,
   waitForEvent,
-  cleanupAllSockets
+  cleanupAllSockets,
+  generateUniqueDeviceId
 } = require('../setup/websocket-client');
 
 // Global test state
@@ -49,6 +50,19 @@ let vlcInfo = null;
 // ========================================
 
 test.describe('Session Persistence E2E Test', () => {
+  // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
+  // The backend only supports ONE active session at a time. With 2 projects
+  // (chromium + mobile-chrome) running in parallel workers, both share the same
+  // orchestrator instance and create competing sessions. The later session
+  // overwrites the earlier one, causing test failures.
+  //
+  // serial mode only affects tests within a single project - it doesn't prevent
+  // parallel execution across different projects. We skip desktop since this is
+  // a mobile-first PWA and mobile-chrome better represents the target platform.
+  //
+  // NOTE: browserName === 'chromium' for BOTH projects (mobile-chrome uses Chromium engine)
+  // Use isMobile fixture to distinguish between desktop and mobile viewports.
+  test.skip(({ isMobile }) => !isMobile, 'Session-based tests only run on mobile-chrome (mobile-first PWA)');
 
   test.beforeAll(async () => {
     // 1. Clear any existing session data
@@ -119,7 +133,7 @@ test.describe('Session Persistence E2E Test', () => {
     let socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_PERSISTENCE_TEST',
+      generateUniqueDeviceId('Persist_Create'),
       'gm'
     );
 
@@ -154,7 +168,7 @@ test.describe('Session Persistence E2E Test', () => {
     socket = await connectWithAuth(
       orchestratorInfo.url,
       ADMIN_PASSWORD,
-      'GM_PERSISTENCE_TEST_2',
+      generateUniqueDeviceId('Persist_Verify'),
       'gm'
     );
 

@@ -140,8 +140,8 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       expect(request.body.deviceType).toBe('player');
     });
 
-    it('should include teamId when provided and format as 3-digit string', async () => {
-      // Contract: teamId optional, but if provided must match pattern ^[0-9]{3}$
+    it('should include teamId when provided and format as alphanumeric string', async () => {
+      // Contract: teamId optional, but if provided must match pattern ^[A-Za-z0-9 ]{1,30}$
       orchestrator.connected = true;
 
       await orchestrator.scanToken('test_token', 'Team Alpha');
@@ -151,8 +151,8 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Verify teamId present
       expect(request.body).toHaveProperty('teamId');
 
-      // Verify pattern (exactly 3 digits)
-      expect(request.body.teamId).toMatch(/^[0-9]{3}$/);
+      // Verify pattern (alphanumeric with spaces, 1-30 chars)
+      expect(request.body.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
     });
 
     it('should omit teamId when not provided (not send null/undefined)', async () => {
