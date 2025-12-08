@@ -1,447 +1,100 @@
 # CLAUDE.md
 
+Last verified: 2025-12-08
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
 ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for a 2-hour immersive game. It's a **monorepo with Git submodules** for both code sharing (scanners) and data sharing (token definitions).
 
-**Key Components:**
-- **Backend Orchestrator** (`backend/`): Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs
-- **GM Scanner** (SUBMODULE: `ALNScanner/`): ES6 module PWA for game masters - @ALNScanner/CLAUDE.md
-- **Player Scanner (Web)** (SUBMODULE: `aln-memory-scanner/`): Vanilla JS PWA for players - @aln-memory-scanner/CLAUDE.md
-- **Player Scanner (ESP32)** (SUBMODULE: `arduino-cyd-player-scanner/`): Hardware scanner (ESP32-CYD with RFID) - @arduino-cyd-player-scanner/CLAUDE.md
-- **Token Data** (SUBMODULE: `ALN-TokenData/`): Shared JSON definitions of memory tokens and their associated media
-- **Notion Sync Scripts** (`scripts/`): Python scripts for syncing Notion Elements database to tokens.json
+**Components:**
+- **Backend Orchestrator** (`backend/`): Node.js server - @backend/CLAUDE.md
+- **GM Scanner** (`ALNScanner/`): ES6 module PWA for game masters - @ALNScanner/CLAUDE.md
+- **Player Scanner (Web)** (`aln-memory-scanner/`): Vanilla JS PWA - @aln-memory-scanner/CLAUDE.md
+- **Player Scanner (ESP32)** (`arduino-cyd-player-scanner/`): Hardware scanner - @arduino-cyd-player-scanner/CLAUDE.md
+- **Token Data** (`ALN-TokenData/`): Shared JSON token definitions
+- **Notion Sync Scripts** (`scripts/`): Python scripts for Notion → tokens.json
 
-## Game Modes
+## Operation Modes (Cross-Cutting)
 
-The system supports two distinct game modes that affect scoring and display:
+Components support two operation modes:
+
+| Mode | Backend Required | Data Authority | Scoring |
+|------|-----------------|----------------|---------|
+| **Networked** | Yes | Backend | Backend calculates |
+| **Standalone** | No | Local | Local calculation |
+
+**Component Support:**
+
+| Component | Networked | Standalone | Mode Detection |
+|-----------|-----------|------------|----------------|
+| Backend | N/A | N/A | Always runs |
+| GM Scanner | Yes | Yes | User selection (locked once chosen) |
+| Player Scanner (Web) | Yes | Yes | Path-based (`/player-scanner/` = networked) |
+| ESP32 Scanner | Yes | No | Always networked (offline queue for resilience) |
+
+**Mode Detection (Player Scanner Web):**
+```javascript
+const pathname = window.location.pathname;
+this.isStandalone = !pathname.startsWith('/player-scanner/');
+```
+
+**CRITICAL - Scoring Authority:**
+- **Networked mode**: Backend is authoritative (`transactionService.js`)
+- **Standalone mode**: Local calculation (`dataManager.js`)
+- See @docs/SCORING_LOGIC.md for parity risks
+
+## Game Modes (Cross-Cutting)
+
+Two distinct game modes affect scoring, display, and behavior:
 
 **Detective Mode (`mode: 'detective'`):**
 - Star ratings (1-5) for token value
-- Evidence-based scoring with summary text display
-- Scoreboard shows "Classified Evidence Terminal" with cycling evidence grid
-- Evidence cards cycle through all discoveries (not just most recent 8)
+- Evidence-based UI with summary text
+- Scoreboard shows "Classified Evidence Terminal"
 
 **Black Market Mode (`mode: 'blackmarket'`):**
-- Currency-based scoring ($100 - $10,000 base values)
-- Type multipliers: Personal 1x, Business 3x, Technical 5x
-- Group completion bonuses (2x - 20x multipliers)
-- Scoreboard shows team rankings with score ticker
+- Currency-based scoring ($100 - $10,000)
+- Type multipliers + group completion bonuses
+- Scoreboard shows team rankings
 
-**Contract-First Architecture:**
-- `backend/contracts/openapi.yaml` - ALL HTTP endpoints (validates with contract tests)
-- `backend/contracts/asyncapi.yaml` - ALL WebSocket events (validates with contract tests)
-- **CRITICAL**: Update contracts FIRST before changing APIs or events
-- Breaking changes require coordinated updates across backend + all 3 scanner submodules
+**Affected Components:**
+- Backend scoring logic
+- GM Scanner UI and scoring
+- Scoreboard display modes
+- Result screen rendering
 
-**Scanner Protocol Comparison:**
+## Scoring Business Logic (Cross-Cutting)
 
-| Aspect | GM Scanner | Player Scanner (Web) | ESP32 Scanner |
-|--------|-----------|---------------------|---------------|
-| Language | ES6 modules (Vite) | Vanilla JS (monolithic HTML) | C++ (Arduino/ESP-IDF) |
-| Backend Protocol | WebSocket (Socket.io) | HTTP (fetch) | HTTP/HTTPS (WiFiClient) |
-| Authentication | JWT token (24h expiry) | Device ID (auto-generated) | Device ID (config.txt) |
-| Real-time Updates | Yes (broadcasts) | No (stateless) | No (stateless) |
-| Offline Support | Queue + localStorage | Dual-mode (GitHub Pages OR queue) | SD card queue (JSONL) |
-| Admin Functions | Session/Video/System control | None | None |
-| deviceType field | `gm` | `player` | `esp32` |
+**Single Source of Truth:** @docs/SCORING_LOGIC.md
 
-**CRITICAL - deviceType Field:**
-All scan requests MUST include `deviceType` field for duplicate detection logic:
-- GM Scanner: `deviceType: 'gm'`
-- Player Scanner (Web): `deviceType: 'player'`
-- ESP32 Scanner: `deviceType: 'esp32'`
-
-## Submodule Architecture
-
+**Quick Reference (Black Market Mode):**
 ```
-ALN-Ecosystem/                     # Parent repo
-├── backend/                       # [DIRECT] Orchestrator server
-├── ALN-TokenData/                 # [SUBMODULE] Token definitions (backend loads from here)
-├── aln-memory-scanner/            # [SUBMODULE] Player scanner web app
-│   └── data/                      # [NESTED SUBMODULE → ALN-TokenData]
-├── ALNScanner/                    # [SUBMODULE] GM scanner web app
-│   └── data/                      # [NESTED SUBMODULE → ALN-TokenData]
-└── arduino-cyd-player-scanner/    # [SUBMODULE] ESP32 scanner (no nested submodule)
+tokenScore = BASE_VALUES[rating] × TYPE_MULTIPLIERS[type]
+
+BASE_VALUES: {1: $100, 2: $500, 3: $1000, 4: $5000, 5: $10000}
+TYPE_MULTIPLIERS: {Personal: 1x, Business: 3x, Technical: 5x, UNKNOWN: 0x}
 ```
 
-**Token Data Flow:**
-- **Backend**: Loads from `ALN-TokenData/tokens.json` (path: `../../../ALN-TokenData/tokens.json` from services/)
-- **GM Scanner**: Nested `data/` submodule for standalone mode, TokenManager with fuzzy matching
-- **Player Scanner (Web)**: Nested `data/` submodule, dual-mode detection (GitHub Pages vs orchestrator)
-- **ESP32 Scanner**: Downloads from orchestrator `/api/tokens`, caches to SD card
-- **Notion**: Source of truth (SF_RFID, SF_ValueRating, SF_MemoryType, SF_Group fields)
+**CRITICAL - Dual Implementation Warning:**
 
-**Submodule Commands:**
-```bash
-git submodule update --init --recursive    # Initialize all (including nested)
-git submodule update --remote --merge      # Update to latest
-git submodule status --recursive           # Check sync status (detect detached HEAD)
-```
+| Component | File | Lines |
+|-----------|------|-------|
+| Backend | `backend/src/services/transactionService.js` | 318-448 |
+| GM Scanner | `ALNScanner/src/core/dataManager.js` | 29-43, 469-571 |
 
-**Token Sync Workflow (Notion → Git → Scanners):**
-```bash
-# 1. Update token data in Notion Elements database
-# 2. Sync Notion to tokens.json
-export NOTION_TOKEN="your_token_here"
-python3 scripts/sync_notion_to_tokens.py
+Values are IDENTICAL but timing differs for group completion detection. When updating scoring, ALWAYS update both files.
 
-# 3. Commit to ALN-TokenData submodule
-cd ALN-TokenData && git add tokens.json && git commit -m "sync: update tokens from Notion" && git push
+## Token Data Schema (Cross-Cutting)
 
-# 4. Update parent repo submodule reference
-cd .. && git submodule update --remote --merge ALN-TokenData && git add ALN-TokenData && git commit -m "chore: update token data submodule" && git push
-```
-
-## Key Commands
-
-### Development
-```bash
-cd backend
-npm run dev                # Interactive mode selector
-npm run dev:full          # VLC + orchestrator (hot reload)
-npm run dev:no-video      # Orchestrator only
-npm test                  # Unit + contract tests (~15-30s)
-npm run lint              # ESLint
-```
-
-### Testing (Raspberry Pi 4 8GB optimized)
-```bash
-cd backend
-
-# Fast feedback (default)
-npm test                              # Unit + contract (parallel, ~15-30s)
-
-# Individual suites
-npm run test:unit                     # Unit tests (parallel, 4 workers)
-npm run test:contract                 # Contract tests (parallel, 4 workers)
-npm run test:integration              # Integration (MUST be sequential, ~5 min)
-npm run test:e2e                      # Playwright E2E (2 workers, ~4-5 min)
-
-# Comprehensive
-npm run test:all                      # Unit + contract + integration (~5-6 min)
-npm run test:full                     # All tests including E2E (~10-15 min)
-
-# Playwright specific
-npx playwright test flows/00-smoke    # Specific suite
-npx playwright test --debug           # Step-through debugger
-npx playwright test --ui              # Interactive UI mode
-npx playwright show-report            # View HTML report
-
-# Run individual tests
-npm test -- persistenceService        # Pattern matching
-```
-
-**Critical Testing Notes:**
-- Integration tests MUST run sequentially (`--runInBand`) to prevent state contamination
-- Use `resetAllServicesForTesting()` helper in integration tests to prevent listener leaks
-- E2E tests require orchestrator running: `npm run dev:full`
-- E2E uses lightweight fixtures (`backend/tests/e2e/fixtures/`) not production token data
-
-### Production
-```bash
-cd backend
-npm start                 # Start with PM2
-npm run prod:status       # Check PM2 processes
-npm run prod:logs         # View logs
-npm run prod:restart      # Restart all services
-```
-
-### Utilities
-```bash
-cd backend
-node start-session.js     # CLI to create test session
-npm run health            # Full system health check
-npm run health:api        # Check orchestrator only
-npm run health:vlc        # Check VLC only
-```
-
-## Critical Architecture Patterns
-
-### Session and State (Source of Truth Pattern)
-**CRITICAL**: Session is source of truth (persisted), GameState is computed on-demand.
-
-- **Session** (`sessionService`): Persisted to disk, survives restarts
-- **GameState** (`stateService`): Computed property derived from Session + live system status
-  - Always call `getCurrentState()` - NEVER store state
-  - Automatically includes: session data, VLC status, video queue, offline queue
-  - Eliminates sync bugs on orchestrator restart
-
-```javascript
-// CORRECT: Compute state on-demand
-const state = stateService.getCurrentState();
-
-// WRONG: Storing state leads to stale data
-const cachedState = stateService.getCurrentState(); // Don't do this
-```
-
-### Event-Driven Service Coordination (Three-Layer Architecture)
-
-**CRITICAL**: The system uses THREE DISTINCT event layers. Understanding this is essential for debugging.
-
-#### Layer 1: Backend Internal (Node.js EventEmitter)
-**Purpose**: Service-to-service communication within orchestrator backend
-**Pattern**: Domain events → Listener aggregation → State updates → WebSocket broadcast
-
-```
-Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broadcasts.js)
-```
-
-**Key Services & Events:**
-- `sessionService`: `session:created`, `session:updated`, `transaction:added`, `device:updated/removed`
-- `transactionService`: `transaction:accepted`, `group:completed`, `score:updated`, `scores:reset`
-- `stateService`: `state:updated`, `state:sync`, `sync:full`
-- `videoQueueService`: `video:*`, `queue:*`
-- `vlcService`: `degraded`, `connected`, `disconnected`
-
-**Key Files:** `backend/src/services/stateService.js:79-112`, `backend/src/websocket/broadcasts.js`
-
-#### Layer 2: WebSocket AsyncAPI Events (Backend ↔ GM Scanner)
-**Purpose**: Real-time communication between orchestrator and GM Scanner
-**Contract**: `backend/contracts/asyncapi.yaml`
-
-**Envelope Pattern:**
-```javascript
-{
-  event: "transaction:new",
-  data: { /* payload */ },
-  timestamp: "2025-11-15T10:30:00.000Z"
-}
-```
-
-**Server → Client:** `sync:full`, `transaction:new`, `transaction:deleted`, `session:update`, `video:status`, `score:updated`, `scores:reset`, `gm:command:ack`, `device:connected/disconnected`, `group:completed`, `offline:queue:processed`, `batch:ack`, `player:scan`, `error`
-
-**Client → Server:** `transaction:submit`, `gm:command`
-
-**Key Files:** `backend/contracts/asyncapi.yaml`, `backend/src/websocket/eventWrapper.js`
-
-#### Layer 3: Frontend Client-Side Events (Browser EventTarget)
-**Purpose**: Internal pub/sub within GM Scanner ES6 modules
-**Type**: Browser `EventTarget` with `CustomEvent` (NOT Node.js EventEmitter)
-**Detailed Docs**: See `@ALNScanner/CLAUDE.md` for comprehensive frontend event architecture
-
-**Pattern:** WebSocket receives → Forward as CustomEvent → Consumers update state → Emit to UI
-
-**EventTarget Classes (8 in GM Scanner):**
-1. **OrchestratorClient** - Forwards WebSocket as `message:received` events
-2. **ConnectionManager** - `connected`, `disconnected`, `auth:required`
-3. **NetworkedSession** - `session:ready`, `session:error`
-4. **DataManager** - `transaction:added`, `transaction:deleted`, `scores:cleared`, `data:cleared`
-5. **StandaloneDataManager** - `standalone:transaction-added`, `standalone:scores-updated`
-6. **AdminController**, **Settings** - Lifecycle events
-7. **ScreenUpdateManager** - Centralized event-to-screen routing (Phase 3)
-
-**Example Flow (with ScreenUpdateManager):**
-```
-Backend broadcasts 'transaction:new' (Layer 2)
-  → OrchestratorClient receives
-  → Dispatches CustomEvent 'message:received' (Layer 3)
-  → DataManager.addTransaction()
-  → Dispatches 'transaction:added'
-  → ScreenUpdateManager.onDataUpdate()
-    → Global handlers run (badge, stats)
-    → Screen-specific handler runs IF that screen is active
-```
-
-**Critical Pattern:**
-```javascript
-// ✅ CORRECT: Register listener BEFORE action
-DataManager.addEventListener('transaction:added', handler);
-DataManager.addTransaction(tx);
-
-// ❌ WRONG: Race condition
-DataManager.addTransaction(tx);
-DataManager.addEventListener('transaction:added', handler);
-```
-
-**Key Files:** `ALNScanner/src/network/orchestratorClient.js`, `ALNScanner/src/core/dataManager.js`, `ALNScanner/src/ui/ScreenUpdateManager.js`, `ALNScanner/src/main.js`
-
-### Service Singleton Pattern
-All services in `backend/src/services/` use singleton with `getInstance()`:
-- **sessionService**: Active session (source of truth)
-- **stateService**: Global state (computed from session)
-- **transactionService**: Token scan processing and scoring
-- **videoQueueService**: Video playback queue
-- **vlcService**: VLC HTTP interface control
-- **tokenService**: Token data loading
-- **discoveryService**: UDP broadcast (port 8888)
-- **offlineQueueService**: Offline scan management
-- **persistenceService**: Disk persistence
-- **displayControlService**: HDMI display mode state machine
-
-### Display Control Architecture
-Manages the HDMI output display modes (idle loop video, scoreboard browser, triggered videos).
-
-**Display Modes:**
-- `IDLE_LOOP`: VLC plays idle-loop.mp4 on continuous loop
-- `SCOREBOARD`: Chromium kiosk displays scoreboard.html
-- `VIDEO`: VLC plays triggered video, returns to previous mode after
-
-**Architecture Layers:**
-```
-displayControlService (State Machine)
-  ├── vlcService (Video playback)
-  └── displayDriver (Browser control)
-```
-
-- **displayControlService**: Orchestrates mode transitions, emits `display:mode:changed` events
-- **vlcService**: Controls VLC via HTTP interface for video playback
-- **displayDriver**: Manages Chromium kiosk process for scoreboard display
-
-**Key Implementation Details:**
-- Chromium requires `--password-store=basic` flag to prevent keyring dialog blocking
-- Scoreboard URL uses auto-detected local IP (not localhost) for CDN resource loading
-- Browser process killed before VLC starts; VLC stopped before browser launches
-
-**Key Files:** `backend/src/services/displayControlService.js`, `backend/src/utils/displayDriver.js`, `backend/src/services/vlcService.js`
-
-### Scoreboard Architecture (Phase 7)
-The scoreboard (`backend/public/scoreboard.html`) displays differently based on game mode:
-
-**Detective Mode - "Classified Evidence Terminal":**
-- Dynamic evidence grid with responsive slot calculation based on viewport
-- Cycling evidence cards showing ALL discoveries (not just recent 8)
-- Adaptive cycling intervals: 18s (few items), 15s (moderate), 12s (many items)
-- Staggered card animations (600ms offset between slots)
-- Hero evidence card highlighting latest discovery
-- Evidence counter in header
-- Black Market ticker at bottom showing team scores
-
-**Black Market Mode:**
-- Team rankings by score
-- Score updates via WebSocket broadcasts
-
-**Key Pattern:** Evidence cards filter to detective mode only (`cf8c8fe5`) - cards only display when `mode === 'detective'`.
-
-### WebSocket Authentication Flow
-1. HTTP POST `/api/admin/auth` → Returns JWT token
-2. Socket.io connection with `handshake.auth.token`
-3. Middleware validates JWT BEFORE accepting connection
-4. On success: Auto-send `sync:full` event
-5. Broadcast `device:connected` to other clients
-
-**Failure Handling:**
-- Invalid JWT → Connection rejected at handshake (transport-level error)
-- Client receives `connect_error` event (NOT `error` event)
-
-**Key Files:** `backend/src/websocket/gmAuth.js`, `backend/src/middleware/auth.js`
-
-### Connection Monitoring
-- **WebSocket Clients** (GM Scanner, Scoreboard): Socket.io ping/pong (25s interval, 60s timeout)
-- **HTTP Clients** (Player Scanner): Poll `/health?deviceId=X&type=player` every 10 seconds
-- Both converge at `sessionService.updateDevice()` for tracking
-
-## HTTPS Architecture
-
-**CRITICAL**: System uses HTTPS because Web NFC API (used by GM Scanner) requires secure context.
-
-**Configuration:**
-```env
-ENABLE_HTTPS=true
-SSL_KEY_PATH=./ssl/key.pem
-SSL_CERT_PATH=./ssl/cert.pem
-HTTP_REDIRECT_PORT=8000
-```
-
-**Architecture:**
-- HTTPS Server: Port 3000 (primary)
-- HTTP Redirect: Port 8000 (301 → HTTPS:3000)
-- Self-signed certificate (365-day validity)
-- Discovery service advertises `protocol: "https"`
-
-**Certificate Trust (One-Time Per Device):**
-1. Navigate to `https://[IP]:3000/gm-scanner/`
-2. Browser shows "not private" warning → "Advanced" → "Proceed to [IP] (unsafe)"
-3. Certificate trusted, NFC now works
-
-## Environment Variables
-
-### Required
-```env
-NODE_ENV=development|production
-PORT=3000
-VLC_PASSWORD=vlc              # MUST be exactly "vlc"
-FEATURE_VIDEO_PLAYBACK=true
-HOST=0.0.0.0                  # For network access
-DISCOVERY_PORT=8888           # UDP broadcast
-ENABLE_HTTPS=true             # Required for NFC
-```
-
-### Critical Gotchas
-- `VLC_PASSWORD` must be exactly `vlc`, not `vlc-password`
-- `ADMIN_PASSWORD` must match hardcoded value in `backend/public/scoreboard.html`
-
-## Deployment (Raspberry Pi 4 8GB)
-
-**Hardware Requirements:**
-- RAM: 8GB (Node.js uses 2GB max via `--max-old-space-size=2048`)
-- GPU Memory: 256MB minimum for VLC hardware-accelerated decoding
-  - Check: `vcgencmd get_mem gpu`
-  - Configure: `/boot/firmware/config.txt` with `gpu_mem=256` (requires reboot)
-
-**Video Optimization:**
-Pi 4 hardware decoder requires H.264 videos <5Mbps bitrate. Re-encode if needed:
-```bash
-ffmpeg -i INPUT.mp4 \
-  -c:v h264 -preset fast -profile:v main -level 4.0 \
-  -b:v 2M -maxrate 2.5M -bufsize 5M \
-  -pix_fmt yuv420p \
-  -c:a aac -b:a 128k -ac 2 -ar 44100 \
-  -movflags +faststart \
-  OUTPUT.mp4 -y
-```
-
-**PM2 Ecosystem:**
-- `aln-orchestrator`: Node.js server (2GB restart threshold)
-- `vlc-http`: VLC with HTTP interface
-
-**Network URLs:**
-- Orchestrator: `https://[IP]:3000`
-- GM Scanner: `https://[IP]:3000/gm-scanner/` (HTTPS required for NFC)
-- Player Scanner: `https://[IP]:3000/player-scanner/`
-- Scoreboard: `https://[IP]:3000/scoreboard`
-- VLC Control: `http://[IP]:8080` (password: vlc, internal only)
-
-## Notion Sync Scripts
-
-**Purpose**: Sync Notion Elements database (source of truth) to `ALN-TokenData/tokens.json`
-
-### Key Scripts
-
-**1. `sync_notion_to_tokens.py`:**
-- Queries Notion for Memory Token elements (filters by Basic Type: Image, Audio, Video, Audio+Image)
-- Parses SF_ fields from Description/Text property (regex pattern matching)
-- Extracts display text (everything BEFORE first SF_ field) for NeurAI display generation
-- **Generates NeurAI-styled BMP** if display text exists (240x320, red branding, ASCII logo)
-- Checks filesystem for existing image/audio/video assets
-- Handles video tokens specially (`image: null`, `processingImage: {path}`)
-- Writes sorted tokens.json to `ALN-TokenData/tokens.json`
-
-**2. `compare_rfid_with_files.py`:**
-- Identifies mismatches between Notion SF_RFID values and actual filenames
-- Generates detailed mismatch report
-
-**Notion Description/Text Format:**
-```
-Display text goes here (will be shown on scanners)
-
-SF_RFID: [jaw001]
-SF_ValueRating: [5]
-SF_MemoryType: [Personal]
-SF_Group: [Black Market Ransom (x2)]
-SF_Summary: [Optional summary for backend scoring display]
-```
-
-**tokens.json Schema:**
+**Structure:**
 ```json
 {
   "tokenId": {
     "image": "assets/images/{tokenId}.bmp" | null,
     "audio": "assets/audio/{tokenId}.wav" | null,
     "video": "{tokenId}.mp4" | null,
-    "processingImage": "assets/images/{tokenId}.bmp" | null,
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
     "SF_MemoryType": "Personal" | "Business" | "Technical",
@@ -451,7 +104,108 @@ SF_Summary: [Optional summary for backend scoring display]
 }
 ```
 
-**Key Files:** `scripts/sync_notion_to_tokens.py`, `scripts/compare_rfid_with_files.py`
+**Data Flow:**
+```
+Notion Elements DB → sync_notion_to_tokens.py → ALN-TokenData/tokens.json
+                                                      ↓
+                  ┌───────────────────────────────────┴───────────────────────────┐
+                  ↓                     ↓                     ↓                   ↓
+              Backend              GM Scanner           Player Scanner       ESP32 Scanner
+        (loads directly)     (nested submodule)    (nested submodule)    (downloads via API)
+```
+
+**SF_* Fields (Notion Source of Truth):**
+- `SF_RFID`: Token identifier (matches filename)
+- `SF_ValueRating`: 1-5 star rating
+- `SF_MemoryType`: Personal, Business, or Technical
+- `SF_Group`: Group name with multiplier, e.g., "Server Logs (x5)"
+
+## deviceType Duplicate Detection (Cross-Cutting)
+
+All scan requests MUST include `deviceType` field:
+
+| Scanner | deviceType | Duplicate Logic |
+|---------|------------|-----------------|
+| GM Scanner | `gm` | Global dedup (any duplicate rejected) |
+| Player Scanner (Web) | `player` | Per-team dedup |
+| ESP32 Scanner | `esp32` | Per-team dedup |
+
+**Scan Request Format:**
+```javascript
+{
+  tokenId: 'abc123',
+  teamId: '001',          // Optional for GM
+  deviceId: 'device-uuid',
+  deviceType: 'gm',       // REQUIRED
+  timestamp: '2025-12-08T10:30:00Z'
+}
+```
+
+## Scanner Protocol Comparison
+
+| Aspect | GM Scanner | Player Scanner (Web) | ESP32 Scanner |
+|--------|-----------|---------------------|---------------|
+| Language | ES6 modules (Vite) | Vanilla JS | C++ (Arduino) |
+| Protocol | WebSocket (Socket.io) | HTTP (fetch) | HTTP/HTTPS |
+| Auth | JWT token (24h) | Device ID | Device ID |
+| Real-time | Yes (broadcasts) | No | No |
+| Offline | Queue + localStorage | Dual-mode | SD card queue |
+| Admin | Session/Video/System | None | None |
+
+## Contract-First Architecture
+
+**CRITICAL**: Update contracts FIRST before changing APIs or events.
+
+| Contract | Purpose | Location |
+|----------|---------|----------|
+| OpenAPI | HTTP endpoints | `backend/contracts/openapi.yaml` |
+| AsyncAPI | WebSocket events | `backend/contracts/asyncapi.yaml` |
+
+See @backend/contracts/README.md for full documentation.
+
+Breaking changes require coordinated updates across backend + all 3 scanner submodules.
+
+## Submodule Architecture
+
+```
+ALN-Ecosystem/                     # Parent repo
+├── backend/                       # [DIRECT] Orchestrator server
+├── ALN-TokenData/                 # [SUBMODULE] Token definitions
+├── aln-memory-scanner/            # [SUBMODULE] Player scanner
+│   └── data/                      # [NESTED → ALN-TokenData]
+├── ALNScanner/                    # [SUBMODULE] GM scanner
+│   └── data/                      # [NESTED → ALN-TokenData]
+└── arduino-cyd-player-scanner/    # [SUBMODULE] ESP32 scanner
+```
+
+For submodule management procedures, see @SUBMODULE_MANAGEMENT.md.
+
+**Quick Commands:**
+```bash
+git submodule update --init --recursive    # Initialize all
+git submodule update --remote --merge      # Update to latest
+git submodule status --recursive           # Check sync status
+```
+
+## Key Commands
+
+**Backend:** See @backend/CLAUDE.md for full command reference.
+```bash
+cd backend
+npm run dev        # Development
+npm test           # Unit + contract tests
+npm run test:e2e   # Playwright E2E
+npm start          # Production (PM2)
+```
+
+**GM Scanner:** See @ALNScanner/CLAUDE.md for full command reference.
+```bash
+cd ALNScanner
+npm run dev        # Vite dev server (HTTPS:8443)
+npm test           # Jest unit tests
+npm run test:e2e   # Playwright E2E
+npm run build      # Production build
+```
 
 ## Cross-Module Debugging
 
@@ -461,86 +215,58 @@ SF_Summary: [Optional summary for backend scoring display]
 **Debug:**
 1. `git submodule status --recursive` - Check for detached HEAD
 2. `git submodule update --remote --merge` - Sync all submodules
-3. `grep "Loaded tokens from" logs/combined.log` - Verify backend path
-4. `npm run prod:restart` - Reload token data
+3. Restart backend to reload token data
 
 **Key Files:** `backend/src/services/tokenService.js:49-66`, `.gitmodules`
 
-### GM Scanner WebSocket Issues
-**Symptoms:** Connects but no state updates
+### Scoring Mismatch (Networked vs Standalone)
+**Symptoms:** Different scores for same tokens in different modes
 
 **Debug:**
-1. `curl -k -X POST https://[IP]:3000/api/admin/auth -d '{"password":"..."}'` - Get JWT
-2. Check browser console for `handshake.auth.token` presence
-3. Verify `sync:full` event received after connection
-4. Check server logs for "GM already authenticated"
+1. Verify both implementations match @docs/SCORING_LOGIC.md
+2. Check group completion timing differences
+3. Compare `transactionService.js` vs `dataManager.js`
 
-**Key Files:** `backend/src/websocket/gmAuth.js`, `backend/src/middleware/auth.js`
-
-### Player Scanner Connectivity Issues
-**Symptoms:** Can't reach orchestrator, scans not logged
+### Cross-Scanner Communication Issues
+**Symptoms:** Scans from one scanner type not appearing in another
 
 **Debug:**
-1. `curl -k https://[IP]:3000/health` - Verify orchestrator running
-2. Check scanner using correct IP (not localhost)
-3. Test endpoint: `curl -k -X POST https://[IP]:3000/api/scan -d '{"tokenId":"test","deviceId":"s1"}'`
-4. `npm run prod:logs` - Check backend logs
+1. Verify `deviceType` field included in scan request
+2. Check backend logs for duplicate detection
+3. Verify WebSocket `sync:full` event sent after reconnect
 
-**Key Files:** `backend/src/routes/scanRoutes.js`, `backend/contracts/openapi.yaml`
+### Post-Session Analysis
+**Tool:** `npm run session:validate latest` (from backend/)
+**Purpose:** Detect scoring discrepancies, video issues, duplicate handling bugs after a game session.
+**Details:** See @backend/CLAUDE.md "Post-Session Analysis" section
 
-### State Sync After Restart
-**Symptoms:** GM scanner shows stale state after orchestrator restart
+## Notion Sync Scripts
 
-**Debug:**
-1. `grep "Session restored from storage" logs/combined.log`
-2. `ls -lh backend/data/session-*.json` - Check persistence file
-3. Verify `sessionService.getCurrentSession()` not null
-4. Verify clients receive `sync:full` on reconnect
-5. Check for "duplicate listener" warnings
+**Purpose:** Sync Notion Elements database to `ALN-TokenData/tokens.json`
 
-**Key Files:** `backend/src/services/sessionService.js:28-42`, `backend/src/services/persistenceService.js`
+**Scripts:**
+- `scripts/sync_notion_to_tokens.py` - Main sync (generates NeurAI BMPs)
+- `scripts/compare_rfid_with_files.py` - Mismatch detection
 
-### Video Playback Issues
-**Symptoms:** Videos queue but don't play, idle loop doesn't resume
+**Notion Description/Text Format:**
+```
+Display text goes here
 
-**Debug:**
-1. `curl http://localhost:8080/requests/status.json -u :vlc` - VLC connection
-2. `ls -lh backend/public/videos/[filename].mp4` - File exists
-3. Monitor `video:status` events in GM scanner
-4. Check VLC logs: `npm run prod:logs | grep vlc`
-
-**Key Files:** `backend/src/services/videoQueueService.js`, `backend/src/services/vlcService.js`
-
-### GM Scanner Admin Panel DataManager Issues
-**Symptoms:** Admin panel history doesn't auto-update, transaction displays show empty data
-**Root Cause:** MonitoringDisplay accessing `window.DataManager` (undefined in ES6 modules)
-
-**Debug:**
-1. Check browser console for "Cannot read property 'transactions' of undefined"
-2. Verify DataManager passed through DI chain: App → NetworkedSession → AdminController → MonitoringDisplay
-3. Check AdminController passes dataManager to MonitoringDisplay constructor
-4. Verify E2E test selectors match actual DOM (`#historyContainer .transaction-card`)
-
-**DI Pattern:**
-```javascript
-// ✅ CORRECT: Use injected dependency
-constructor(client, dataManager) {
-  this.dataManager = dataManager;  // From DI chain
-}
-
-// ❌ WRONG: Undefined in ES6 modules
-constructor(client) {
-  this.dataManager = window.DataManager;  // ALWAYS undefined
-}
+SF_RFID: [tokenId]
+SF_ValueRating: [1-5]
+SF_MemoryType: [Personal|Business|Technical]
+SF_Group: [Group Name (xN)]
+SF_Summary: [Optional summary]
 ```
 
-**Key Files:** `ALNScanner/src/admin/MonitoringDisplay.js`, `ALNScanner/src/app/adminController.js`, `ALNScanner/src/main.js`
+## Component References
 
-## Code Style
-
-- ES6 modules with async/await
-- Singleton services with `getInstance()`
-- JSDoc comments for public methods
-- Event-driven architecture (EventEmitter backend, EventTarget frontend)
-- Winston logger (no console.log)
-- Error codes for API responses
+- @backend/CLAUDE.md - Backend Orchestrator
+- @ALNScanner/CLAUDE.md - GM Scanner
+- @aln-memory-scanner/CLAUDE.md - Player Scanner (Web)
+- @arduino-cyd-player-scanner/CLAUDE.md - ESP32 Scanner
+- @docs/SCORING_LOGIC.md - Scoring single source of truth
+- @DEPLOYMENT_GUIDE.md - Deployment procedures
+- @SUBMODULE_MANAGEMENT.md - Git submodule workflows
+- @backend/contracts/README.md - API contracts
+- @logs/README_LOG_ARCHIVAL.md - Log maintenance procedures
