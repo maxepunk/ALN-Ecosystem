@@ -149,13 +149,19 @@ class Session {
   /**
    * Add or update a device connection
    * @param {Object} device - Device connection to add/update
-   * @returns {boolean} True if device was newly added, false if updated
+   * @returns {Object} { isNew: boolean, isReconnection: boolean }
    */
   updateDevice(device) {
     const index = this.connectedDevices.findIndex(d => d.id === device.id);
     const isNew = index === -1;
+    let isReconnection = false;
 
     if (index >= 0) {
+      // Check if this is a reconnection (status changing from disconnected to connected)
+      const previousDevice = this.connectedDevices[index];
+      if (previousDevice.connectionStatus === 'disconnected' && device.connectionStatus === 'connected') {
+        isReconnection = true;
+      }
       this.connectedDevices[index] = device;
     } else {
       this.connectedDevices.push(device);
@@ -166,7 +172,7 @@ class Session {
       }
     }
 
-    return isNew;
+    return { isNew, isReconnection };
   }
 
   /**

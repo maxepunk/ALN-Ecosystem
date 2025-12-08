@@ -175,18 +175,30 @@ async function handleGmIdentify(socket, data, io) {
       teamIds: scoresForSync.map(s => s.teamId),
       scores: scoresForSync.map(s => ({ teamId: s.teamId, currentScore: s.currentScore }))
     });
-    emitWrapped(socket, 'sync:full', {
-      session: session ? session.toJSON() : null,
-      scores: scoresForSync,
-      recentTransactions,
-      videoStatus: videoStatus,
-      devices: (session?.connectedDevices || []).map(device => ({
+
+    // Filter to only include currently connected devices (not historical disconnected ones)
+    const devicesForSync = (session?.connectedDevices || [])
+      .filter(device => device.connectionStatus === 'connected')
+      .map(device => ({
         deviceId: device.id,
         type: device.type,
         name: device.name,
         connectionTime: device.connectionTime,
         ipAddress: device.ipAddress
-      })),
+      }));
+    logger.info('[DEBUG:SYNC-FULL] Devices being sent in sync:full', {
+      deviceCount: devicesForSync.length,
+      deviceIds: devicesForSync.map(d => d.deviceId),
+      totalDevicesInSession: session?.connectedDevices?.length || 0,
+      connectedCount: devicesForSync.length
+    });
+
+    emitWrapped(socket, 'sync:full', {
+      session: session ? session.toJSON() : null,
+      scores: scoresForSync,
+      recentTransactions,
+      videoStatus: videoStatus,
+      devices: devicesForSync,
       systemStatus: {
         orchestrator: 'online',
         vlc: vlcConnected ? 'connected' : 'disconnected'

@@ -136,10 +136,12 @@ function setupBroadcastListeners(io, services) {
   // Device events - broadcast device connections (centralized)
   // Handles BOTH WebSocket (GM) and HTTP (Player) device registrations
   // Replaces manual broadcast from gmAuth.js for consistency
-  addTrackedListener(sessionService, 'device:updated', ({ device, isNew }) => {
-    // Only broadcast device:connected for NEW devices that are CONNECTED
-    // Skip: heartbeat updates (isNew=false), disconnect status changes (connectionStatus!='connected')
-    if (isNew && device.connectionStatus === 'connected') {
+  addTrackedListener(sessionService, 'device:updated', ({ device, isNew, isReconnection }) => {
+    // Broadcast device:connected for:
+    // 1. NEW devices that are CONNECTED (first connection)
+    // 2. Existing devices that RECONNECTED (status changed from disconnected to connected)
+    // Skip: heartbeat updates, disconnect status changes
+    if ((isNew || isReconnection) && device.connectionStatus === 'connected') {
       // Broadcast per AsyncAPI contract
       emitWrapped(io, 'device:connected', {
         deviceId: device.id,
@@ -152,7 +154,8 @@ function setupBroadcastListeners(io, services) {
       logger.info('Broadcasted device:connected', {
         deviceId: device.id,
         type: device.type,
-        source: 'centralized'
+        source: 'centralized',
+        isReconnection: isReconnection || false
       });
     }
   });
