@@ -52,7 +52,7 @@ class GMScannerPage {
 
     // Result screen elements
     this.resultStatus = page.locator('#resultStatus');
-    this.resultTitle = page.locator('#resultTitle');
+    this.resultTitle = page.locator('#resultStatus h2');
     this.resultValue = page.locator('#resultValue');
     this.continueScanBtn = page.locator('button[data-action="app.continueScan"]');
     this.finishTeamBtn = page.locator('button[data-action="app.finishTeam"]');
@@ -206,24 +206,36 @@ class GMScannerPage {
    * @param {string} name - Team name to create
    */
   async addNewTeam(name) {
+    console.log(`[GMScannerPage] addNewTeam START: ${name}`);
+
     // Click "Add New Team" button to show input
     await this.page.locator('#showAddTeamBtn').click();
+    console.log(`[GMScannerPage] addNewTeam: showAddTeamBtn clicked`);
 
     // Wait for input container to be visible
     await this.page.locator('#addTeamInputContainer').waitFor({ state: 'visible', timeout: 5000 });
+    console.log(`[GMScannerPage] addNewTeam: addTeamInputContainer visible`);
 
     // Fill team name
     await this.page.locator('#newTeamNameInput').fill(name);
+    console.log(`[GMScannerPage] addNewTeam: filled team name`);
 
     // Click "Add Team" button to create and select
     await this.page.locator('[data-action="app.createAndSelectTeam"]').click();
+    console.log(`[GMScannerPage] addNewTeam: createAndSelectTeam clicked`);
 
     // Wait for input container to hide (indicates WebSocket command was sent)
     await this.page.locator('#addTeamInputContainer').waitFor({ state: 'hidden', timeout: 5000 });
+    console.log(`[GMScannerPage] addNewTeam: addTeamInputContainer hidden`);
+
+    // Check dropdown options BEFORE waitForTeamInDropdown
+    const options = await this.page.locator('#teamSelect option').allTextContents();
+    console.log(`[GMScannerPage] addNewTeam: dropdown options before wait: ${JSON.stringify(options)}`);
 
     // Wait for team to actually appear in dropdown
     // This ensures session:update broadcast has been received and processed
     await this.waitForTeamInDropdown(name);
+    console.log(`[GMScannerPage] addNewTeam END: ${name}`);
   }
 
   /**
