@@ -97,13 +97,18 @@ function setupBroadcastListeners(io, services) {
   });
 
   addTrackedListener(sessionService, 'session:updated', (session) => {
+    // Handle both Session objects (with toJSON) and plain objects (from endSession)
+    const teams = typeof session.toJSON === 'function'
+      ? session.toJSON().teams
+      : (session.teams || []);
+
     emitWrapped(io, 'session:update', {
       id: session.id,              // Decision #4: 'id' field within resource
       name: session.name,
       startTime: session.startTime,
       endTime: session.endTime,
       status: session.status,      // 'paused', 'active', or 'ended'
-      teams: session.toJSON().teams,
+      teams,
       metadata: session.metadata || {}
     });
     logger.info('Broadcasted session:update', { sessionId: session.id, status: session.status });
