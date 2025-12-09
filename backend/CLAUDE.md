@@ -89,6 +89,7 @@ All services use singleton with `getInstance()`:
 | `offlineQueueService` | Offline scan management |
 | `persistenceService` | Disk persistence |
 | `displayControlService` | HDMI display mode state machine |
+| `heartbeatMonitorService` | HTTP device timeout monitoring |
 
 ### Session and State (Source of Truth Pattern)
 
@@ -185,11 +186,45 @@ The scoreboard (`public/scoreboard.html`) displays differently based on game mod
 
 **Key Files:** `src/websocket/gmAuth.js`, `src/middleware/auth.js`
 
+### Admin Commands (gm:command)
+
+WebSocket command interface for session management:
+
+| Action | Payload | Description |
+|--------|---------|-------------|
+| `session:create` | `{name, teams}` | Create new session with initial teams |
+| `session:addTeam` | `{teamId}` | Add team mid-game (alphanumeric, 1-30 chars) |
+| `session:pause` | `{}` | Pause active session |
+| `session:resume` | `{}` | Resume paused session |
+| `session:end` | `{}` | End active session |
+
+**session:addTeam Flow:**
+1. Validate teamId format (alphanumeric, 1-30 chars)
+2. Check team doesn't already exist
+3. Create TeamScore with initial values
+4. Persist to session
+5. Broadcast `session:updated` to all clients
+
+**Key Files:** `src/websocket/adminEvents.js`, `src/services/sessionService.js`
+
 ### Connection Monitoring
 
-- **WebSocket Clients** (GM Scanner, Scoreboard): Socket.io ping/pong (25s interval, 60s timeout)
-- **HTTP Clients** (Player Scanner): Poll `/health?deviceId=X&type=player` every 10 seconds
-- Both converge at `sessionService.updateDevice()` for tracking
+**Two Mechanisms:**
+
+| Device Type | Protocol | Timeout Detection |
+|-------------|----------|-------------------|
+| GM Scanner, Scoreboard | WebSocket | Socket.io ping/pong (25s interval, 60s timeout) |
+| Player Scanner, ESP32 | HTTP | HeartbeatMonitorService (30s timeout) |
+
+**HTTP Heartbeat Monitoring:**
+- Player scanners poll `/health?deviceId=X&type=player` every 10 seconds
+- `heartbeatMonitorService` checks every 15 seconds for 30s timeout
+- Uses shared `disconnectDevice()` helper for consistency
+- Broadcasts `device:disconnected` on timeout
+
+**Key Files:** `src/services/heartbeatMonitorService.js`, `src/websocket/deviceHelpers.js`
+
+Both mechanisms converge at `sessionService.updateDevice()` for tracking.
 
 ## Configuration
 

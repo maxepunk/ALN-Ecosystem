@@ -40,8 +40,8 @@ describe('Service Event Communication', () => {
 
       // Manually create some team scores
       const TeamScore = require('../../src/models/teamScore');
-      transactionService.teamScores.set('001', TeamScore.createInitial('Team Alpha'));
-      transactionService.teamScores.set('002', TeamScore.createInitial('Detectives'));
+      transactionService.teamScores.set('Team Alpha', TeamScore.createInitial('Team Alpha'));
+      transactionService.teamScores.set('Detectives', TeamScore.createInitial('Detectives'));
 
       // Add points
       transactionService.teamScores.get('Team Alpha').currentScore = 100;

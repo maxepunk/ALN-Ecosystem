@@ -184,9 +184,9 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       // Verify rooms (socket.rooms is a Set)
       const rooms = Array.from(gmSocket.rooms);
 
-      expect(rooms).toContain('team:001');
-      expect(rooms).toContain('team:002');
-      expect(rooms).toContain('team:003');
+      expect(rooms).toContain('team:Team Alpha');
+      expect(rooms).toContain('team:Detectives');
+      expect(rooms).toContain('team:Blue Squad');
     });
 
     it('should allow team-specific broadcasts in the future', async () => {
@@ -206,15 +206,15 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         receivedTeamMessage = true;
       });
 
-      // Emit to team:001 room
+      // Emit to team:Team Alpha room
       const { emitWrapped } = require('../../src/websocket/eventWrapper');
-      emitWrapped(testContext.io.to('team:001'), 'team:message', {
-        message: 'Team 001 only'
+      emitWrapped(testContext.io.to('team:Team Alpha'), 'team:message', {
+        message: 'Team Alpha only'
       });
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // GM should receive (it's in team:001)
+      // GM should receive (it's in team:Team Alpha)
       expect(receivedTeamMessage).toBe(true);
     });
   });

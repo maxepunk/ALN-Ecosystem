@@ -134,12 +134,34 @@ All scan requests MUST include `deviceType` field:
 ```javascript
 {
   tokenId: 'abc123',
-  teamId: '001',          // Optional for GM
+  teamId: 'Team Alpha',   // Optional for GM (alphanumeric, 1-30 chars)
   deviceId: 'device-uuid',
   deviceType: 'gm',       // REQUIRED
   timestamp: '2025-12-08T10:30:00Z'
 }
 ```
+
+## Team ID Format (Cross-Cutting)
+
+Team IDs support flexible alphanumeric naming for improved player experience:
+
+**Pattern:** `^[A-Za-z0-9 _-]{1,30}$`
+
+| Character Type | Examples |
+|----------------|----------|
+| Letters | `TeamAlpha`, `Detectives` |
+| Numbers | `Team1`, `Squad42` |
+| Spaces | `Team Alpha`, `Blue Squad` |
+| Underscores/Hyphens | `Team_Alpha`, `Team-Alpha` |
+
+**Validation Rules:**
+- 1-30 characters
+- Whitespace trimmed from ends
+- Empty strings rejected
+
+**Mid-Game Team Addition:**
+Teams can be added during active sessions via `session:addTeam` WebSocket command.
+See @backend/CLAUDE.md for implementation details.
 
 ## Scanner Protocol Comparison
 

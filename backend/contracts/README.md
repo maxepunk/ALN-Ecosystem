@@ -142,7 +142,7 @@ Single token scan (fire-and-forget).
 ```json
 {
   "tokenId": "534e2b03",
-  "teamId": "001",         // Optional (players haven't committed yet)
+  "teamId": "Team Alpha",  // Optional (players haven't committed yet)
   "deviceId": "PLAYER_SCANNER_01",
   "timestamp": "2025-10-15T14:30:00.000Z"
 }
@@ -174,7 +174,7 @@ Offline queue batch upload.
   "transactions": [
     {
       "tokenId": "534e2b02",
-      "teamId": "001",
+      "teamId": "Team Alpha",
       "deviceId": "PLAYER_SCANNER_01",
       "timestamp": "2025-10-15T14:25:00.000Z"
     },
@@ -220,7 +220,7 @@ Get current active session (lightweight).
   "startTime": "2025-10-15T19:00:00.000Z",
   "endTime": null,
   "status": "active",
-  "teams": ["001", "002", "003"],
+  "teams": ["Team Alpha", "Detectives", "Blue Squad"],
   "metadata": {
     "gmStations": 2,
     "playerDevices": 3,
@@ -374,7 +374,7 @@ GM Scanner submits token scan for scoring.
   "event": "transaction:submit",
   "data": {
     "tokenId": "534e2b03",
-    "teamId": "001",
+    "teamId": "Team Alpha",
     "deviceId": "GM_Station_1",
     "mode": "blackmarket"
   },
@@ -441,7 +441,7 @@ Broadcast when all team scores are reset to zero (triggered by `score:reset` com
 {
   "event": "scores:reset",
   "data": {
-    "teamsReset": ["001", "002", "003"]
+    "teamsReset": ["Team Alpha", "Detectives", "Blue Squad"]
   },
   "timestamp": "2025-10-15T20:20:01.000Z"
 }
@@ -578,7 +578,7 @@ See `MIGRATION-GUIDE.md` for comprehensive migration documentation.
 
 - Reference functional requirements (section numbers)
 - Reference decisions (decision numbers)
-- Use realistic examples (actual token IDs, team formats)
+- Use realistic examples (actual token IDs, alphanumeric team names)
 - Document breaking changes inline
 - Specify target structure (what SHOULD exist)
 - Include validation rules (patterns, enums, min/max)
@@ -586,7 +586,7 @@ See `MIGRATION-GUIDE.md` for comprehensive migration documentation.
 ### ❌ DON'T
 
 - Make up fields not grounded in requirements
-- Use fake examples (TEAM_A instead of "001")
+- Use fake examples (TEAM_A instead of "Team Alpha")
 - Omit required fields
 - Document current broken behavior
 - Create duplicate patterns
