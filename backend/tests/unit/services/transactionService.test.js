@@ -7,6 +7,7 @@
 const transactionService = require('../../../src/services/transactionService');
 const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
+const TeamScore = require('../../../src/models/teamScore');
 
 describe('TransactionService - Event Emission', () => {
   beforeEach(async () => {
@@ -459,7 +460,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(transactionService.teamScores.has('Blue Squad')).toBe(true);
     });
 
-    it('should reset scores when session ends', async () => {
+    it('should reset scores to zero when session ends (preserving team membership)', async () => {
       await sessionService.createSession({
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
@@ -469,11 +470,18 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       expect(transactionService.teamScores.size).toBe(2);
 
+      // Add some points to verify they get reset
+      const teamAlpha = transactionService.teamScores.get('Team Alpha');
+      if (teamAlpha) teamAlpha.addPoints(500);
+
       await sessionService.endSession();
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      expect(transactionService.teamScores.size).toBe(0);
+      // Per AsyncAPI contract: teams should still exist after reset with zero scores
+      expect(transactionService.teamScores.size).toBe(2);
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
+      expect(transactionService.teamScores.get('Detectives').currentScore).toBe(0);
     });
 
     it('should get all team scores', async () => {
@@ -489,7 +497,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(scores.length).toBe(2);
     });
 
-    it('should reset scores manually', async () => {
+    it('should reset scores to zero manually (preserving team membership)', async () => {
       await sessionService.createSession({
         name: 'Test Session',
         teams: ['Team Alpha']
@@ -499,9 +507,16 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       expect(transactionService.teamScores.size).toBe(1);
 
+      // Add some points to verify they get reset
+      const teamAlpha = transactionService.teamScores.get('Team Alpha');
+      if (teamAlpha) teamAlpha.addPoints(500);
+      expect(teamAlpha.currentScore).toBe(500);
+
       transactionService.resetScores();
 
-      expect(transactionService.teamScores.size).toBe(0);
+      // Per AsyncAPI contract: teams should still exist after reset with zero scores
+      expect(transactionService.teamScores.size).toBe(1);
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
     });
   });
 
@@ -1263,9 +1278,16 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
   describe('resetScores', () => {
     it('should emit scores:reset event with teamsReset array', () => {
-      // Setup: Add some team scores
-      transactionService.teamScores.set('Team Alpha', { currentScore: 500 });
-      transactionService.teamScores.set('Detectives', { currentScore: 300 });
+      // Clear any existing teams and set up fresh state
+      transactionService.teamScores.clear();
+
+      // Setup: Add some team scores using proper TeamScore instances
+      const teamAlpha = TeamScore.createInitial('Team Alpha');
+      teamAlpha.addPoints(500);
+      const detectives = TeamScore.createInitial('Detectives');
+      detectives.addPoints(300);
+      transactionService.teamScores.set('Team Alpha', teamAlpha);
+      transactionService.teamScores.set('Detectives', detectives);
 
       // Listen for event using Promise pattern
       const eventPromise = new Promise((resolve) => {
@@ -1282,11 +1304,24 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       });
     });
 
-    it('should clear teamScores Map', () => {
-      transactionService.teamScores.set('Team Alpha', { currentScore: 500 });
+    it('should reset scores to zero while preserving team membership', () => {
+      // Clear any existing teams and set up fresh state
+      transactionService.teamScores.clear();
+
+      // Setup: Add team score using proper TeamScore instance
+      const teamAlpha = TeamScore.createInitial('Team Alpha');
+      teamAlpha.addPoints(500);
+      transactionService.teamScores.set('Team Alpha', teamAlpha);
+
+      expect(transactionService.teamScores.size).toBe(1);
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(500);
+
+      // Execute
       transactionService.resetScores();
 
-      expect(transactionService.teamScores.size).toBe(0);
+      // Verify: Team still exists but score is zero
+      expect(transactionService.teamScores.size).toBe(1);
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
     });
   });
 
