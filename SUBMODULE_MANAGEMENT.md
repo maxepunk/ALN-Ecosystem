@@ -227,6 +227,103 @@ cd ..
 git config -f .gitmodules submodule.ALN-TokenData.branch v1.0.0
 ```
 
+## Making Code Changes to Submodules (PR Workflow)
+
+When making **code changes** (not just token data updates) to a submodule like `aln-memory-scanner` or `ALNScanner`, use a feature branch workflow:
+
+### Step 1: Create Feature Branch in Submodule
+
+```bash
+cd aln-memory-scanner  # or ALNScanner
+
+# Create and checkout feature branch
+git checkout -b feature/my-feature-name
+
+# Make your changes
+# ... edit files ...
+
+# Commit changes
+git add .
+git commit -m "feat: Description of changes"
+```
+
+### Step 2: Push Feature Branch and Create PR
+
+```bash
+# Push feature branch to submodule's remote
+git push -u origin feature/my-feature-name
+
+# Create PR via GitHub CLI or web UI
+# PR: feature/my-feature-name → main
+```
+
+### Step 3: Update Parent Repository Reference
+
+```bash
+cd ..  # Back to ALN-Ecosystem
+
+# The parent now references the feature branch commit
+git add aln-memory-scanner
+git commit -m "chore: Update submodule to feature branch for testing"
+git push
+```
+
+### Step 4: After Submodule PR is Merged
+
+```bash
+cd aln-memory-scanner
+git checkout main
+git pull origin main
+
+cd ..
+git add aln-memory-scanner
+git commit -m "chore: Update submodule to merged main"
+git push
+```
+
+### Example: Full Workflow
+
+```bash
+# 1. Feature branch in submodule
+cd aln-memory-scanner
+git checkout -b feature/url-parameter-handling
+# ... make changes ...
+git add index.html
+git commit -m "feat: Add URL parameter handling for NFC deep linking"
+git push -u origin feature/url-parameter-handling
+
+# 2. Create PR for submodule (GitHub web or API)
+# https://github.com/maxepunk/ALNPlayerScan/compare/main...feature/url-parameter-handling
+
+# 3. Update parent to reference feature branch (for testing)
+cd ..
+git add aln-memory-scanner
+git commit -m "chore: Test submodule feature branch"
+git push
+
+# 4. After submodule PR merged, update parent to main
+cd aln-memory-scanner
+git checkout main && git pull
+cd ..
+git add aln-memory-scanner
+git commit -m "chore: Update submodule after PR merge"
+git push
+```
+
+### Why Use Feature Branches for Code Changes?
+
+| Direct Push to Main | Feature Branch + PR |
+|---------------------|---------------------|
+| No code review | Code review before merge |
+| No CI checks | CI runs on PR |
+| Hard to revert | Easy to revert PR |
+| No discussion thread | PR provides discussion |
+| Risk of breaking changes | Protected main branch |
+
+**Rule of thumb:**
+- **Token data updates** → Direct push to main is OK
+- **Code changes** → Always use feature branch + PR
+
 ## Best Practices
 
 ### DO:
@@ -235,6 +332,8 @@ git config -f .gitmodules submodule.ALN-TokenData.branch v1.0.0
 - ✅ Commit submodule updates with descriptive messages
 - ✅ Test after syncing
 - ✅ Use tags for production releases
+- ✅ Use feature branches for code changes to submodules
+- ✅ Create PRs for submodule code changes
 
 ### DON'T:
 - ❌ Make changes directly in nested submodules
@@ -242,6 +341,7 @@ git config -f .gitmodules submodule.ALN-TokenData.branch v1.0.0
 - ❌ Ignore merge conflicts
 - ❌ Mix branch tracking and commit tracking
 - ❌ Forget to push submodule changes
+- ❌ Push code changes directly to main in submodules (use PRs)
 
 ## Architecture Benefits
 

@@ -56,10 +56,13 @@ class PlayerScannerPage {
       manualEntryModal: '#manualEntryModal',
       manualTokenId: '#manualTokenId',
 
-      // Video Processing Modal
-      videoProcessing: '#video-processing',
-      processingContent: '.processing-content',
-      processingSpinner: '.processing-spinner',
+      // Video Alert (NeurAI branded full-screen notification)
+      videoAlert: '#video-alert',
+      videoAlertContent: '.video-alert__content',
+      videoAlertTitle: '.video-alert__title',
+      videoAlertSubtitle: '.video-alert__subtitle',
+      videoAlertHint: '.video-alert__hint',
+      videoAlertIcon: '.video-alert__icon',
 
       // NFC Indicator
       nfcIndicator: '#nfcIndicator',
@@ -577,34 +580,53 @@ class PlayerScannerPage {
   // ==================== STATE VERIFICATION ====================
 
   /**
-   * Check if video processing modal is visible
+   * Check if video alert is visible (NeurAI branded full-screen notification)
    * @returns {Promise<boolean>}
    */
-  async isVideoProcessingModalVisible() {
-    return await this.page.isVisible(`${this.selectors.videoProcessing}.active`);
+  async isVideoAlertVisible() {
+    return await this.page.isVisible(`${this.selectors.videoAlert}.active`);
   }
 
   /**
-   * Wait for video processing modal to appear
-   * @param {number} timeout - Timeout in milliseconds (default: 3000)
+   * Wait for video alert to appear
+   * Video alert displays for 5+ seconds, so increased timeout to 6s
+   * @param {number} timeout - Timeout in milliseconds (default: 6000)
    * @returns {Promise<void>}
    */
-  async waitForVideoProcessingModal(timeout = 3000) {
-    await this.page.waitForSelector(`${this.selectors.videoProcessing}.active`, {
+  async waitForVideoAlert(timeout = 6000) {
+    await this.page.waitForSelector(`${this.selectors.videoAlert}.active`, {
+      state: 'visible',
       timeout
     });
   }
 
   /**
-   * Wait for video processing modal to disappear
-   * @param {number} timeout - Timeout in milliseconds (default: 5000)
+   * Wait for video alert to disappear (auto-dismisses after 5 seconds)
+   * Video alert has 5s display + 300ms exit animation
+   * @param {number} timeout - Timeout in milliseconds (default: 8000)
    * @returns {Promise<void>}
    */
-  async waitForVideoProcessingModalHidden(timeout = 5000) {
-    await this.page.waitForSelector(this.selectors.videoProcessing, {
+  async waitForVideoAlertHidden(timeout = 8000) {
+    await this.page.waitForSelector(`${this.selectors.videoAlert}.active`, {
       state: 'hidden',
       timeout
     });
+  }
+
+  /**
+   * Get video alert content for verification
+   * @returns {Promise<{title: string, subtitle: string, hint: string}>}
+   */
+  async getVideoAlertContent() {
+    const title = await this.page.textContent(this.selectors.videoAlertTitle);
+    const subtitle = await this.page.textContent(this.selectors.videoAlertSubtitle);
+    const hint = await this.page.textContent(this.selectors.videoAlertHint);
+
+    return {
+      title: title?.trim() || '',
+      subtitle: subtitle?.trim() || '',
+      hint: hint?.trim() || ''
+    };
   }
 
   /**
