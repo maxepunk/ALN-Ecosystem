@@ -27,6 +27,7 @@ const stateService = require('./services/stateService');
 const videoQueueService = require('./services/videoQueueService');
 const offlineQueueService = require('./services/offlineQueueService');
 const transactionService = require('./services/transactionService');
+const heartbeatMonitorService = require('./services/heartbeatMonitorService');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order
 const ServerState = {
@@ -106,6 +107,10 @@ function setupServiceListeners(ioInstance) {
     transactionService,
   });
 
+  // Initialize and start heartbeat monitoring for HTTP-based devices
+  heartbeatMonitorService.init(ioInstance);
+  heartbeatMonitorService.start();
+
   // Note: transaction:added is already handled by stateService.js which properly
   // manages recentTransactions updates. We don't need a duplicate listener here.
   // Scores are updated via transactionService's score:updated event.
@@ -114,8 +119,11 @@ function setupServiceListeners(ioInstance) {
 // Graceful shutdown handling
 async function shutdown(signal) {
   logger.info(`${signal} received, starting graceful shutdown`);
-  
+
   try {
+    // Stop heartbeat monitoring
+    heartbeatMonitorService.stop();
+
     // Stop discovery service
     if (discoveryService) {
       discoveryService.stop();
@@ -275,6 +283,9 @@ async function startServer() {
 
 // Cleanup function for tests
 async function cleanup() {
+  // Stop heartbeat monitoring
+  heartbeatMonitorService.reset();
+
   if (discoveryService) {
     discoveryService.stop();
     discoveryService = null;

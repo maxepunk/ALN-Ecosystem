@@ -9,6 +9,7 @@ const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
 const vlcService = require('../services/vlcService');
 const { emitWrapped } = require('./eventWrapper');
+const { disconnectDevice } = require('./deviceHelpers');
 
 /**
  * Handle device disconnection
@@ -24,16 +25,7 @@ async function handleDisconnect(socket, io) {
       if (session) {
         const device = session.connectedDevices.find(d => d.id === socket.deviceId);
         if (device) {
-          device.connectionStatus = 'disconnected';
-          await sessionService.updateDevice(device);
-
-          // Broadcast disconnection to other clients
-          emitWrapped(io, 'device:disconnected', {
-            deviceId: socket.deviceId,
-            type: socket.deviceType,
-            disconnectionTime: new Date().toISOString(),
-            reason: 'manual',
-          });
+          await disconnectDevice(io, device, 'manual');
         }
       }
 
