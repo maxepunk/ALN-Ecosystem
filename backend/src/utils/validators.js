@@ -8,16 +8,12 @@ const Joi = require('joi');
 // Custom validators
 const isoDate = Joi.string().isoDate();
 const uuid = Joi.string().uuid({ version: 'uuidv4' });
-const teamId = Joi.string()
-  .pattern(/^[A-Za-z0-9 _-]{1,30}$/)
-  .min(1)
-  .max(30)
-  .trim();  // Team names: alphanumeric, spaces, underscores, hyphens (1-30 chars)
+// Team names: any non-empty string. GM types it, we store it.
+const teamId = Joi.string().trim();
 
 // Token validation schema
 const tokenSchema = Joi.object({
-  id: Joi.string().required().min(1).max(100)
-    .pattern(/^[A-Za-z_0-9]+$/),  // Allow alphanumeric token IDs
+  id: Joi.string().required().min(1).max(100),  // Database lookup validates token existence
   name: Joi.string().required().min(1).max(200),
   value: Joi.number().integer().min(0).required(),
   memoryType: Joi.string().valid('Technical', 'Business', 'Personal').required(),  // AsyncAPI contract values (Decision #4)
@@ -162,8 +158,7 @@ const adminConfigSchema = Joi.object({
 // Player Scanner HTTP scan (POST /api/scan) - OpenAPI contract
 // NO mode field - Player Scanner doesn't do game transactions
 const playerScanRequestSchema = Joi.object({
-  tokenId: Joi.string().required().min(1).max(100)
-    .pattern(/^[A-Za-z_0-9]+$/),
+  tokenId: Joi.string().required().min(1).max(100),  // Database lookup validates token existence
   teamId: teamId.optional(),  // OPTIONAL - players haven't committed to teams yet
   deviceId: Joi.string().required().min(1).max(100),
   deviceType: Joi.string().valid('player', 'esp32').required(),  // P0.1 Correction: Required for duplicate detection logic
@@ -173,8 +168,7 @@ const playerScanRequestSchema = Joi.object({
 // GM Scanner WebSocket transaction (transaction:submit) - AsyncAPI contract
 // REQUIRES mode field - GM Scanner does game transactions
 const gmTransactionSchema = Joi.object({
-  tokenId: Joi.string().required().min(1).max(100)
-    .pattern(/^[A-Za-z_0-9]+$/),
+  tokenId: Joi.string().required().min(1).max(100),  // Database lookup validates token existence
   teamId: teamId.required(),  // REQUIRED for GM transactions
   deviceId: Joi.string().required().min(1).max(100),
   deviceType: Joi.string().valid('gm').required(),  // P0.1 Correction: Required, must be 'gm'

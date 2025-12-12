@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2025-12-08
+Last verified: 2025-12-10
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -16,9 +16,54 @@ ALN (About Last Night) Ecosystem is a memory token scanning and video playback s
 - **Token Data** (`ALN-TokenData/`): Shared JSON token definitions
 - **Notion Sync Scripts** (`scripts/`): Python scripts for Notion → tokens.json
 
-## Operation Modes (Cross-Cutting)
+## How the Game Works
 
-Components support two operation modes:
+**CRITICAL**: Player scanners and GM scanners serve DIFFERENT purposes:
+
+| Scanner Type | Purpose | Scoring |
+|--------------|---------|---------|
+| **Player Scanner** (Web/ESP32) | Intel gathering - view memory content | No (fire-and-forget) |
+| **GM Scanner** | Game command center + token processing | Yes (Black Market earns $) |
+
+### Gameplay Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              GAMEPLAY FLOW                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│   INTEL GATHERING              DECISION                PROCESSING           │
+│   (Player Scanner)                                     (GM Scanner)         │
+│                                                                              │
+│   ┌──────────────┐        ┌───────────────┐       ┌───────────────────┐    │
+│   │ Scan Token   │        │ What to do    │       │ GM Scans Token    │    │
+│   │ (NFC/QR)     │───────▶│ with this     │──────▶│ for Team          │    │
+│   │              │        │ memory?       │       │                   │    │
+│   │ See: Image   │        │               │       │ Black Market:     │    │
+│   │ Hear: Audio  │        │ • Sell it?    │       │  → Team earns $$  │    │
+│   │ (Video token │        │ • Expose it?  │       │                   │    │
+│   │  triggers TV │        │               │       │ Detective:        │    │
+│   │  playback)   │        │               │       │  → Token exposed  │    │
+│   └──────────────┘        └───────────────┘       │    on scoreboard  │    │
+│                                                    └───────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Transaction Types (Player Choices)
+
+When a team brings a token to a GM, they CHOOSE how to process it:
+
+| Choice | What Happens | Points |
+|--------|--------------|--------|
+| **Black Market** (Sell) | Team earns currency based on token rating × type | $100 - $50,000 |
+| **Detective** (Expose) | Token summary appears publicly on scoreboard | 0 (evidence only) |
+
+**CRITICAL**: These are NOT mutually exclusive modes. A single game session can have BOTH Black Market and Detective transactions. Teams decide per-token.
+
+## Deployment Modes (Networked vs Standalone)
+
+Deployment modes determine WHERE data lives and WHETHER a backend orchestrator is present. This is a deployment/infrastructure choice, NOT a gameplay choice.
+
+**CRITICAL**: Do not confuse with Transaction Types (Black Market/Detective) which are player choices during gameplay.
 
 | Mode | Backend Required | Data Authority | Scoring |
 |------|-----------------|----------------|---------|
@@ -44,26 +89,6 @@ this.isStandalone = !pathname.startsWith('/player-scanner/');
 - **Networked mode**: Backend is authoritative (`transactionService.js`)
 - **Standalone mode**: Local calculation (`dataManager.js`)
 - See @docs/SCORING_LOGIC.md for parity risks
-
-## Game Modes (Cross-Cutting)
-
-Two distinct game modes affect scoring, display, and behavior:
-
-**Detective Mode (`mode: 'detective'`):**
-- Star ratings (1-5) for token value
-- Evidence-based UI with summary text
-- Scoreboard shows "Classified Evidence Terminal"
-
-**Black Market Mode (`mode: 'blackmarket'`):**
-- Currency-based scoring ($100 - $10,000)
-- Type multipliers + group completion bonuses
-- Scoreboard shows team rankings
-
-**Affected Components:**
-- Backend scoring logic
-- GM Scanner UI and scoring
-- Scoreboard display modes
-- Result screen rendering
 
 ## Scoring Business Logic (Cross-Cutting)
 
@@ -126,9 +151,11 @@ All scan requests MUST include `deviceType` field:
 
 | Scanner | deviceType | Duplicate Logic |
 |---------|------------|-----------------|
-| GM Scanner | `gm` | Global dedup (any duplicate rejected) |
-| Player Scanner (Web) | `player` | Per-team dedup |
-| ESP32 Scanner | `esp32` | Per-team dedup |
+| GM Scanner | `gm` | **Rejected globally** (each token processed once per session) |
+| Player Scanner (Web) | `player` | **Allowed** (players can re-view same memory) |
+| ESP32 Scanner | `esp32` | **Allowed** (players can re-view same memory) |
+
+**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. See `transactionService.js:222-256` for implementation.
 
 **Scan Request Format:**
 ```javascript
@@ -141,38 +168,43 @@ All scan requests MUST include `deviceType` field:
 }
 ```
 
-## Team ID Format (Cross-Cutting)
+## Dynamic Team Creation (Cross-Cutting)
 
-Team IDs support flexible alphanumeric naming for improved player experience:
+Teams are created dynamically during sessions - no pre-defined team list required.
 
-**Pattern:** `^[A-Za-z0-9 _-]{1,30}$`
+**How it works:**
+- Sessions start with an empty teams array
+- GM Scanner creates teams via `session:addTeam` command (text input)
+- Any non-empty string is a valid team name (GM types what they want)
+- Teams appear in dropdown after creation for future selections
 
-| Character Type | Examples |
-|----------------|----------|
-| Letters | `TeamAlpha`, `Detectives` |
-| Numbers | `Team1`, `Squad42` |
-| Spaces | `Team Alpha`, `Blue Squad` |
-| Underscores/Hyphens | `Team_Alpha`, `Team-Alpha` |
-
-**Validation Rules:**
-- 1-30 characters
-- Whitespace trimmed from ends
-- Empty strings rejected
-
-**Mid-Game Team Addition:**
-Teams can be added during active sessions via `session:addTeam` WebSocket command.
-See @backend/CLAUDE.md for implementation details.
+**No validation restrictions:** Team names like "Whitemetal Inc.", "O'Brien & Co.", etc. are all valid. The GM is paid staff on their own device - there's no abuse scenario requiring validation.
 
 ## Scanner Protocol Comparison
 
 | Aspect | GM Scanner | Player Scanner (Web) | ESP32 Scanner |
 |--------|-----------|---------------------|---------------|
+| **Purpose** | **Game command center + token processing** | **Intel gathering (view memory)** | **Intel gathering (hardware)** |
+| **Scoring** | **Yes (Black Market earns $)** | **No (fire-and-forget)** | **No (fire-and-forget)** |
 | Language | ES6 modules (Vite) | Vanilla JS | C++ (Arduino) |
 | Protocol | WebSocket (Socket.io) | HTTP (fetch) | HTTP/HTTPS |
 | Auth | JWT token (24h) | Device ID | Device ID |
 | Real-time | Yes (broadcasts) | No | No |
 | Offline | Queue + localStorage | Dual-mode | SD card queue |
 | Admin | Session/Video/System | None | None |
+
+## GM Scanner Admin Capabilities
+
+The GM Scanner is NOT just for scanning tokens - it's the **game command center**. In Networked mode, the admin panel provides:
+
+| Category | Capabilities |
+|----------|--------------|
+| **Session** | Create/Pause/Resume/End sessions, Add teams mid-game |
+| **Video** | Play/Pause/Stop/Skip, Queue management, Display mode toggle |
+| **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
+| **Monitoring** | Device status, System health, Transaction history |
+
+All admin commands use WebSocket `gm:command` events. See @ALNScanner/CLAUDE.md for implementation details.
 
 ## Contract-First Architecture
 

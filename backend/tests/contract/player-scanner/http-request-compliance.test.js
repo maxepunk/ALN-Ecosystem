@@ -67,8 +67,8 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       expect(request.headers['Content-Type']).toBe('application/json');
     });
 
-    it('should format tokenId as string matching contract pattern', async () => {
-      // Contract: tokenId must match pattern ^[A-Za-z_0-9]+$ (1-100 chars)
+    it('should format tokenId as string (database lookup validates existence)', async () => {
+      // Contract: tokenId is a string, database lookup validates it exists
       orchestrator.connected = true;
 
       await orchestrator.scanToken('valid_token_123', 'Team Alpha');
@@ -77,9 +77,6 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
 
       // Verify tokenId is string
       expect(typeof request.body.tokenId).toBe('string');
-
-      // Verify pattern (alphanumeric + underscore only)
-      expect(request.body.tokenId).toMatch(/^[A-Za-z_0-9]+$/);
 
       // Verify length constraints
       expect(request.body.tokenId.length).toBeGreaterThanOrEqual(1);
@@ -140,19 +137,20 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       expect(request.body.deviceType).toBe('player');
     });
 
-    it('should include teamId when provided and format as alphanumeric string', async () => {
-      // Contract: teamId optional, but if provided must match pattern ^[A-Za-z0-9 ]{1,30}$
+    it('should include teamId when provided (no pattern restriction)', async () => {
+      // Contract: teamId optional, any string is valid - GM types what they want
       orchestrator.connected = true;
 
-      await orchestrator.scanToken('test_token', 'Team Alpha');
+      await orchestrator.scanToken('test_token', 'Whitemetal Inc.');
 
       const request = getLastFetchCall();
 
       // Verify teamId present
       expect(request.body).toHaveProperty('teamId');
 
-      // Verify pattern (alphanumeric with spaces, 1-30 chars)
-      expect(request.body.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
+      // Verify it's a string (any string is valid)
+      expect(typeof request.body.teamId).toBe('string');
+      expect(request.body.teamId).toBe('Whitemetal Inc.');
     });
 
     it('should omit teamId when not provided (not send null/undefined)', async () => {

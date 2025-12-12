@@ -73,11 +73,11 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
-    it('should format teamId as alphanumeric string per contract pattern', () => {
+    it('should accept any non-empty string for teamId (no pattern restriction)', () => {
       const event = {
         event: 'score:updated',
         data: {
-          teamId: 'Team Alpha', // Must match ^[A-Za-z0-9 ]{1,30}$
+          teamId: 'Whitemetal Inc.', // Any string is valid - GM types what they want
           currentScore: 100,
           baseScore: 100,
           bonusPoints: 0,
@@ -89,10 +89,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         timestamp: new Date().toISOString()
       };
 
-      // Verify pattern (alphanumeric with spaces, 1-30 chars)
-      expect(event.data.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
-
-      // Validate against contract
+      // Validate against contract - no pattern restriction
       expect(() => {
         validateWebSocketEvent(event, 'score:updated');
       }).not.toThrow();
@@ -171,16 +168,17 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
-    it('should reject invalid teamId patterns', () => {
-      const invalidTeamIds = [
-        '',                          // Empty
-        'A'.repeat(31),              // Too long (> 30 chars)
-        'Team@Special',              // Invalid chars (@)
-        'Team#123',                  // Invalid chars (#)
-        'Team!Name'                  // Invalid chars (!)
+    it('should accept special characters in teamId (no pattern restriction)', () => {
+      // These were previously rejected - now they're all valid
+      const validTeamIds = [
+        'Whitemetal Inc.',           // Period is valid
+        "O'Brien & Co.",             // Apostrophe and ampersand valid
+        'Team@Special',              // @ is valid
+        'Team#123',                  // # is valid
+        'Team!Name'                  // ! is valid
       ];
 
-      invalidTeamIds.forEach(teamId => {
+      validTeamIds.forEach(teamId => {
         const event = {
           event: 'score:updated',
           data: {
@@ -198,7 +196,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
 
         expect(() => {
           validateWebSocketEvent(event, 'score:updated');
-        }).toThrow(/pattern/i);
+        }).not.toThrow();
       });
     });
 
@@ -274,11 +272,11 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
-    it('should format teamId as alphanumeric string per contract pattern', () => {
+    it('should accept any non-empty string for teamId (no pattern restriction)', () => {
       const event = {
         event: 'group:completed',
         data: {
-          teamId: 'Blue Squad', // Must match ^[A-Za-z0-9 ]{1,30}$
+          teamId: 'Whitemetal Inc.', // Any string is valid - GM types what they want
           group: 'mab_group',
           bonusPoints: 500,
           completedAt: new Date().toISOString()
@@ -286,10 +284,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         timestamp: new Date().toISOString()
       };
 
-      // Verify pattern (alphanumeric with spaces, 1-30 chars)
-      expect(event.data.teamId).toMatch(/^[A-Za-z0-9 _-]{1,30}$/);
-
-      // Validate against contract
+      // Validate against contract - no pattern restriction
       expect(() => {
         validateWebSocketEvent(event, 'group:completed');
       }).not.toThrow();
@@ -339,16 +334,17 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
-    it('should reject invalid teamId patterns', () => {
-      const invalidTeamIds = [
-        '',                          // Empty
-        'A'.repeat(31),              // Too long (> 30 chars)
-        'Team@Special',              // Invalid chars (@)
-        'Team#123',                  // Invalid chars (#)
-        'Team!Name'                  // Invalid chars (!)
+    it('should accept special characters in teamId (no pattern restriction)', () => {
+      // These were previously rejected - now they're all valid
+      const validTeamIds = [
+        'Whitemetal Inc.',           // Period is valid
+        "O'Brien & Co.",             // Apostrophe and ampersand valid
+        'Team@Special',              // @ is valid
+        'Team#123',                  // # is valid
+        'Team!Name'                  // ! is valid
       ];
 
-      invalidTeamIds.forEach(teamId => {
+      validTeamIds.forEach(teamId => {
         const event = {
           event: 'group:completed',
           data: {
@@ -362,7 +358,7 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
 
         expect(() => {
           validateWebSocketEvent(event, 'group:completed');
-        }).toThrow(/pattern/i);
+        }).not.toThrow();
       });
     });
 

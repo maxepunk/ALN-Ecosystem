@@ -2,10 +2,12 @@
 
 ## System Overview
 
-The About Last Night (ALN) Ecosystem is a memory token scanning and video playback system designed for tabletop gaming. It runs in two modes:
+The About Last Night (ALN) Ecosystem is a memory token scanning and video playback system designed for a 2-hour immersive game. It supports two deployment modes:
 
-1. **Orchestrated Mode** - Full integration with local server, video playback, session management
-2. **Standalone Mode** - Scanners work independently via GitHub Pages (fallback)
+1. **Networked Mode** - Full integration with orchestrator server, video playback, session management, real-time sync
+2. **Standalone Mode** - Scanners work independently via GitHub Pages, no server infrastructure required
+
+**IMPORTANT**: These are mutually exclusive deployment choices made at game setup time, not fallback mechanisms. Networked mode has its own resilience features (offline queue, localStorage backup) for handling temporary network issues.
 
 ## Prerequisites
 
@@ -121,8 +123,8 @@ VLC_PORT=8080
 VLC_PASSWORD=vlc
 
 # Feature Flags
-FEATURE_VIDEO_PLAYBACK=true
-FEATURE_OFFLINE_MODE=true
+ENABLE_VIDEO_PLAYBACK=true
+ENABLE_OFFLINE_MODE=true
 
 # CORS Origins (optional)
 CORS_ORIGINS=http://localhost:3000,http://192.168.1.100:3000
@@ -179,17 +181,17 @@ VIDEO_TRANSITION_DELAY=1000
 
 ##### Feature Flags
 
-- **FEATURE_VIDEO_PLAYBACK** (`true` | `false`)
+- **ENABLE_VIDEO_PLAYBACK** (`true` | `false`)
   - `true`: Enable VLC integration and video playback
   - `false`: Disable video features (scanner-only mode)
   - Use `false` if VLC not available or for testing without video
   - Default: `true`
 
-- **FEATURE_OFFLINE_MODE** (`true` | `false`)
+- **ENABLE_OFFLINE_MODE** (`true` | `false`)
   - `true`: Enable offline queue and session persistence
   - `false`: Require constant connection (not recommended)
   - Allows scanners to queue scans when disconnected
-  - Default: `true`
+  - Default: `false` (must explicitly enable)
 
 ##### Network Configuration
 
@@ -217,65 +219,37 @@ VIDEO_TRANSITION_DELAY=1000
 
 ##### Session Configuration
 
-- **SESSION_TIMEOUT** (milliseconds)
+- **SESSION_TIMEOUT** (minutes)
   - How long before an inactive session expires
-  - `3600000` = 1 hour
-  - `86400000` = 24 hours
-  - `0` = Never expire (not recommended)
-  - Default: `3600000` (1 hour)
+  - `120` = 2 hours (default)
+  - `60` = 1 hour
+  - Default: `120` (2 hours)
 
-- **PERSISTENCE_DIR** (path)
+- **DATA_DIR** (path)
   - Where to store persistent data (sessions, state)
   - Relative paths are from backend directory
   - Example: `./data` or `/var/lib/aln-orchestrator`
   - Default: `./data`
 
-##### Video Queue Configuration
+##### Video Configuration
 
-- **MAX_QUEUE_SIZE** (number)
-  - Maximum videos that can be queued
-  - Prevents memory exhaustion from spam
-  - Recommended: 20-100 depending on memory
-  - Default: `50`
-
-- **VIDEO_TRANSITION_DELAY** (milliseconds)
-  - Delay between videos in queue
-  - `0` = Immediate playback
-  - `1000` = 1 second pause
-  - Useful for visual separation between memories
-  - Default: `1000`
-
-- **DEFAULT_VIDEO_DURATION** (seconds)
-  - Fallback duration when VLC can't determine length
-  - Used for scheduling next video
-  - Should match your typical video length
-  - Default: `30`
+- **VIDEO_DIR** (path)
+  - Directory containing video files
+  - Default: `./public/videos`
 
 ##### Discovery Service
 
-- **DISCOVERY_ENABLED** (`true` | `false`)
-  - Enable UDP broadcast for auto-discovery
-  - Scanners can automatically find orchestrator
-  - Default: `true`
-
-- **DISCOVERY_PORT** (number)
+- **DISCOVERY_UDP_PORT** (number)
   - UDP port for discovery broadcasts
-  - Must be different from main HTTP port
-  - Standard: `8888`
+  - Scanners can automatically find orchestrator
   - Default: `8888`
-
-- **DISCOVERY_INTERVAL** (milliseconds)
-  - How often to broadcast presence
-  - `5000` = Every 5 seconds
-  - Lower = Faster discovery, more network traffic
-  - Default: `5000`
 
 ##### Security Settings (Production)
 
 - **RATE_LIMIT_WINDOW** (milliseconds)
   - Time window for rate limiting
-  - `900000` = 15 minutes
-  - Default: `900000`
+  - `60000` = 1 minute (default)
+  - Default: `60000`
 
 - **RATE_LIMIT_MAX** (number)
   - Maximum requests per window per IP
@@ -283,10 +257,19 @@ VIDEO_TRANSITION_DELAY=1000
   - Default: `100`
 
 - **ADMIN_PASSWORD** (string)
-  - Password for admin panel access
-  - Required for `/admin` routes
+  - Password for admin panel and WebSocket authentication
+  - Required for GM Scanner connections
   - Generate strong password for production
-  - Default: none (admin disabled)
+  - Default: `admin`
+
+- **JWT_SECRET** (string)
+  - Secret key for signing JWT tokens
+  - **CRITICAL**: Change in production
+  - Default: `change-this-secret-in-production`
+
+- **JWT_EXPIRY** (string)
+  - JWT token expiration time
+  - Default: `24h`
 
 #### Example Configurations
 
@@ -297,20 +280,23 @@ PORT=3000
 HOST=0.0.0.0
 LOG_LEVEL=debug
 VLC_PASSWORD=vlc
-FEATURE_VIDEO_PLAYBACK=true
+ENABLE_VIDEO_PLAYBACK=true
+ENABLE_HTTPS=true
 ```
 
 ##### Production Raspberry Pi
 ```env
 NODE_ENV=production
-PORT=80
+PORT=3000
 HOST=0.0.0.0
 LOG_LEVEL=info
 VLC_PASSWORD=MySecurePassword123!
-FEATURE_VIDEO_PLAYBACK=true
-SESSION_TIMEOUT=86400000
-PERSISTENCE_DIR=/var/lib/aln-orchestrator
+ENABLE_VIDEO_PLAYBACK=true
+ENABLE_HTTPS=true
+SESSION_TIMEOUT=120
+DATA_DIR=/var/lib/aln-orchestrator
 ADMIN_PASSWORD=ChangeMeInProduction!
+JWT_SECRET=your-unique-secret-key-here
 ```
 
 ##### Scanner-Only Mode (No Video)
@@ -318,8 +304,9 @@ ADMIN_PASSWORD=ChangeMeInProduction!
 NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
-FEATURE_VIDEO_PLAYBACK=false
-FEATURE_OFFLINE_MODE=true
+ENABLE_VIDEO_PLAYBACK=false
+ENABLE_OFFLINE_MODE=true
+ENABLE_HTTPS=true
 ```
 
 ##### High-Security Setup
@@ -331,7 +318,9 @@ VLC_PASSWORD=ComplexPassword!@#$
 CORS_ORIGINS=https://trusted-domain.com
 RATE_LIMIT_MAX=50
 ADMIN_PASSWORD=VerySecureAdminPass123!
+JWT_SECRET=your-very-long-random-secret-key
 LOG_LEVEL=warn
+ENABLE_HTTPS=true
 ```
 
 ## HTTPS Deployment
@@ -677,9 +666,9 @@ npm start
 npm run health
 
 # 3. Trigger test scan
-curl -X POST http://localhost:3000/api/scan \
+curl -k -X POST https://localhost:3000/api/scan \
   -H "Content-Type: application/json" \
-  -d '{"tokenId": "534e2b03", "teamId": "TEAM_A", "scannerId": "test"}'
+  -d '{"tokenId": "534e2b03", "teamId": "Team Alpha", "deviceId": "test-scanner", "deviceType": "player"}'
 ```
 
 #### Switching Configurations
@@ -712,13 +701,12 @@ npm run stop && npm run clean:all && npm start
 ### Access Points
 
 Once running (any method):
-- **Orchestrator API**: `http://localhost:3000`
-- **Health Status**: `http://localhost:3000/health`
-- **Admin Panel**: `http://localhost:3000/admin/`
-- **Player Scanner**: `http://localhost:3000/player-scanner/`
-- **GM Scanner**: `http://localhost:3000/gm-scanner/`
-- **Scoreboard Display**: `http://localhost:3000/scoreboard`
-- **VLC Control**: `http://localhost:8080` (password: vlc)
+- **Orchestrator API**: `https://localhost:3000`
+- **Health Status**: `https://localhost:3000/health`
+- **Player Scanner**: `https://localhost:3000/player-scanner/`
+- **GM Scanner**: `https://localhost:3000/gm-scanner/` (HTTPS required for NFC)
+- **Scoreboard Display**: `https://localhost:3000/scoreboard`
+- **VLC Control**: `http://localhost:8080` (password: vlc, internal only)
 
 ## Raspberry Pi Deployment
 
@@ -805,22 +793,23 @@ sudo firewall-cmd --reload
 
 ## Scanner Access
 
-### When Orchestrator IS Running
+### Networked Mode (With Orchestrator)
 
 Mobile devices on same network:
 1. Connect to same WiFi
 2. Open browser to:
-   - Player: `http://[SERVER-IP]:3000/player-scanner/`
-   - GM: `http://[SERVER-IP]:3000/gm-scanner/`
-3. Scanners auto-detect orchestrator via UDP broadcast
+   - Player: `https://[SERVER-IP]:3000/player-scanner/`
+   - GM: `https://[SERVER-IP]:3000/gm-scanner/`
+3. Accept self-signed certificate warning (one-time per device)
+4. Scanners auto-detect orchestrator via UDP broadcast
 
-### When Orchestrator IS NOT Running (Fallback)
+### Standalone Mode (Without Orchestrator)
 
-Use GitHub Pages directly:
+For deployments without orchestrator infrastructure:
 - Player: `https://[username].github.io/ALNPlayerScan/`
 - GM: `https://[username].github.io/ALNScanner/`
 
-Features work in degraded mode (no video playback).
+Standalone mode provides full scanning functionality with local storage. Video playback is not available (requires orchestrator + VLC).
 
 ## Scoreboard Display
 
@@ -828,7 +817,7 @@ Features work in degraded mode (no video playback).
 
 The scoreboard is a TV-optimized display showing live Black Market rankings and Detective Log entries:
 
-**URL**: `http://[SERVER-IP]:3000/scoreboard`
+**URL**: `https://[SERVER-IP]:3000/scoreboard`
 
 - **Purpose**: Large-screen display of team scores, group completions, and detective scans
 - **Optimized for**: TV/monitor displays with responsive design
@@ -867,9 +856,10 @@ Use any spare device with a browser:
 
 Steps:
 1. Connect device to same network as orchestrator
-2. Open browser to `http://[ORCHESTRATOR-IP]:3000/scoreboard`
-3. Press F11 for fullscreen (or use device's kiosk mode)
-4. Display auto-updates as teams scan tokens
+2. Open browser to `https://[ORCHESTRATOR-IP]:3000/scoreboard`
+3. Accept self-signed certificate warning (one-time)
+4. Press F11 for fullscreen (or use device's kiosk mode)
+5. Display auto-updates as teams scan tokens
 
 #### Option 2: Chromium Kiosk Mode (Linux/Raspberry Pi)
 ```bash
@@ -881,7 +871,8 @@ cat > ~/scoreboard.sh << 'EOF'
 #!/bin/bash
 chromium-browser --kiosk --noerrdialogs --disable-infobars \
   --disable-session-crashed-bubble \
-  --app=http://[ORCHESTRATOR-IP]:3000/scoreboard
+  --ignore-certificate-errors \
+  --app=https://[ORCHESTRATOR-IP]:3000/scoreboard
 EOF
 chmod +x ~/scoreboard.sh
 
@@ -891,7 +882,7 @@ chmod +x ~/scoreboard.sh
 
 #### Option 3: Firefox Kiosk Mode
 ```bash
-firefox --kiosk http://[ORCHESTRATOR-IP]:3000/scoreboard
+firefox --kiosk https://[ORCHESTRATOR-IP]:3000/scoreboard
 ```
 
 ### Authentication Details
@@ -931,7 +922,7 @@ grep ADMIN_PASSWORD backend/.env
 grep adminPassword backend/public/scoreboard.html
 
 # Check orchestrator is running
-curl http://localhost:3000/health
+curl -k https://localhost:3000/health
 
 # Check browser console for errors (F12)
 ```
@@ -939,7 +930,7 @@ curl http://localhost:3000/health
 #### No teams showing
 - Teams only appear after scanning at least one token
 - Check WebSocket connection status (indicator in top-right)
-- Verify session is active and teams exist: `curl http://localhost:3000/api/state`
+- Verify session is active and teams exist: `curl -k https://localhost:3000/api/state`
 
 #### Connection keeps dropping
 - Check network stability between display device and orchestrator
@@ -982,12 +973,12 @@ vlc --intf qt --extraintf http --http-password vlc \
 
 ```bash
 # Health check
-curl http://localhost:3000/health | jq
+curl -k https://localhost:3000/health | jq
 
-# Simulate token scan
-curl -X POST http://localhost:3000/api/scan \
+# Simulate token scan (player scanner format)
+curl -k -X POST https://localhost:3000/api/scan \
   -H "Content-Type: application/json" \
-  -d '{"tokenId": "534e2b03", "teamId": "TEAM_A", "scannerId": "test"}' | jq
+  -d '{"tokenId": "534e2b03", "teamId": "Team Alpha", "deviceId": "test-device", "deviceType": "player"}' | jq
 ```
 
 ### 3. Test Scanner Connection
@@ -1115,10 +1106,10 @@ sudo -u alnuser pm2 start ecosystem.config.js
 ### Health Checks
 ```bash
 # Simple health check
-curl http://localhost:3000/health
+curl -k https://localhost:3000/health
 
 # Detailed status
-curl http://localhost:3000/api/state
+curl -k https://localhost:3000/api/state
 
 # PM2 monitoring
 pm2 web  # Opens web dashboard on port 9615
@@ -1146,12 +1137,12 @@ backend/logs/
 
 | URL | Purpose | Mode |
 |-----|---------|------|
-| http://[ip]:3000 | Main orchestrator | Orchestrated |
-| http://[ip]:3000/health | Health check | Orchestrated |
-| http://[ip]:3000/admin/ | Admin panel | Orchestrated |
-| http://[ip]:3000/player-scanner/ | Player scanner | Orchestrated |
-| http://[ip]:3000/gm-scanner/ | GM scanner | Orchestrated |
-| http://[ip]:3000/scoreboard | Scoreboard display | Orchestrated |
+| https://[ip]:3000 | Main orchestrator | Networked |
+| https://[ip]:3000/health | Health check | Networked |
+| https://[ip]:3000/player-scanner/ | Player scanner | Networked |
+| https://[ip]:3000/gm-scanner/ | GM scanner (NFC requires HTTPS) | Networked |
+| https://[ip]:3000/scoreboard | Scoreboard display | Networked |
+| http://[ip]:8080 | VLC HTTP interface (internal) | Networked |
 | https://[user].github.io/ALNPlayerScan/ | Player scanner | Standalone |
 | https://[user].github.io/ALNScanner/ | GM scanner | Standalone |
 
@@ -1160,14 +1151,14 @@ backend/logs/
 For issues or questions:
 1. Check logs: `pm2 logs --lines 100`
 2. Verify configuration: `pm2 show aln-orchestrator`
-3. Test health endpoint: `curl http://localhost:3000/health`
+3. Test health endpoint: `curl -k https://localhost:3000/health`
 4. Review this guide's troubleshooting section
 
 ## Summary
 
 This deployment provides:
-- **Reliability**: Automatic fallback to standalone mode
+- **Two Deployment Options**: Networked mode (full features with orchestrator) or Standalone mode (no server infrastructure)
+- **Networked Mode Resilience**: Offline queue and localStorage backup handle temporary network issues
 - **Simplicity**: Single `pm2 start` command for production
 - **Flexibility**: Works on any local network without router config
 - **Scalability**: From Raspberry Pi to cloud deployment
-- **Progressive Enhancement**: Core features always work, enhanced when orchestrator available

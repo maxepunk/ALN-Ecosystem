@@ -318,7 +318,6 @@ components:
                         type: array
                         items:
                           type: string
-                          pattern: '^[A-Za-z0-9 _-]{1,30}$'
                         example: ["Team Alpha", "Detectives", "Blue Squad"]
                       metadata:
                         type: object
@@ -369,7 +368,6 @@ components:
                   properties:
                     teamId:
                       type: string
-                      pattern: '^[A-Za-z0-9 _-]{1,30}$'
                       example: "Team Alpha"
                     currentScore:
                       type: integer
@@ -444,7 +442,6 @@ components:
                       example: "534e2b03"
                     teamId:
                       type: string
-                      pattern: '^[A-Za-z0-9 _-]{1,30}$'
                       example: "Team Alpha"
                     deviceId:
                       type: string
@@ -605,7 +602,6 @@ components:
                 example: "534e2b03"
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID (alphanumeric, 1-30 characters)
                 example: "Team Alpha"
               deviceId:
@@ -678,7 +674,6 @@ components:
                 example: "534e2b03"
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID
                 example: "Team Alpha"
               points:
@@ -749,7 +744,6 @@ components:
                     example: "534e2b03"
                   teamId:
                     type: string
-                    pattern: '^[A-Za-z0-9 _-]{1,30}$'
                     description: Team ID
                     example: "Team Alpha"
                   deviceId:
@@ -833,7 +827,6 @@ components:
                 example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID that owned the transaction
                 example: "001"
               tokenId:
@@ -882,7 +875,6 @@ components:
             properties:
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID
                 example: "Team Alpha"
               currentScore:
@@ -986,8 +978,7 @@ components:
                 type: array
                 items:
                   type: string
-                  pattern: '^[A-Za-z0-9 _-]{1,30}$'
-                description: Array of team IDs that were reset
+                  description: Array of team IDs that were reset
                 example: ["Team Alpha", "Detectives", "Blue Squad"]
           timestamp:
             type: string
@@ -1305,8 +1296,7 @@ components:
                 type: array
                 items:
                   type: string
-                  pattern: '^[A-Za-z0-9 _-]{1,30}$'
-                description: Array of team IDs
+                  description: Array of team IDs
                 example: ["Team Alpha", "Detectives", "Blue Squad"]
               metadata:
                 type: object
@@ -1750,7 +1740,6 @@ components:
             properties:
               teamId:
                 type: string
-                pattern: '^[A-Za-z0-9 _-]{1,30}$'
                 description: Team ID
                 example: "Team Alpha"
               group:

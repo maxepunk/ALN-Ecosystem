@@ -64,6 +64,21 @@ class GMScannerPage {
     this.historyContainer = page.locator('#historyContainer');
     this.closeHistoryBtn = page.locator('button[data-action="app.closeHistory"]');
 
+    // Scoreboard screen elements
+    this.scoreboardButton = page.locator('button[data-action="app.showScoreboard"]');
+    this.scoreboardContainer = page.locator('#scoreboardContainer');
+    this.scoreboardEntries = page.locator('#scoreboardContainer .scoreboard-entry');
+    this.closeScoreboardBtn = page.locator('button[data-action="app.closeScoreboard"]');
+
+    // Team details screen elements
+    this.teamDetailsContainer = page.locator('#teamDetailsContainer');
+    this.teamDetailsTitle = page.locator('#teamDetailsTitle');
+    this.teamDetailsSummary = page.locator('#teamDetailsSummary');
+    this.teamBaseScore = page.locator('#teamBaseScore');
+    this.teamBonusScore = page.locator('#teamBonusScore');
+    this.closeTeamDetailsBtn = page.locator('button[data-action="app.closeTeamDetails"]');
+    this.tokenDetailCards = page.locator('#teamDetailsContainer .token-card, #teamDetailsContainer .history-entry');
+
     // Settings elements
     this.settingsButton = page.locator('button[data-action="app.showSettings"]');
     this.deviceIdInput = page.locator('#deviceId');
@@ -386,10 +401,12 @@ class GMScannerPage {
 
   /**
    * Close history screen
+   * Note: History is an overlay that returns to previousScreen (could be scan, teamEntry, or result)
    */
   async closeHistory() {
     await this.closeHistoryBtn.click();
-    await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for history screen to become hidden (don't assume which screen we return to)
+    await this.historyScreen.waitFor({ state: 'hidden', timeout: 5000 });
   }
 
   /**
@@ -1196,6 +1213,174 @@ class GMScannerPage {
       state: 'visible',
       timeout
     });
+  }
+
+  // ============================================
+  // Scoreboard & Team Details Methods
+  // ============================================
+
+  /**
+   * Open scoreboard screen from scan screen (via scoreboard button)
+   */
+  async openScoreboard() {
+    await this.scoreboardButton.click();
+    await this.scoreboardScreen.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Close scoreboard screen
+   */
+  async closeScoreboard() {
+    await this.closeScoreboardBtn.click();
+    await this.scoreboardScreen.waitFor({ state: 'hidden', timeout: 5000 });
+  }
+
+  /**
+   * Get number of team entries in scoreboard
+   * @returns {Promise<number>}
+   */
+  async getScoreboardEntryCount() {
+    return await this.scoreboardEntries.count();
+  }
+
+  /**
+   * Get team score from scoreboard by team ID
+   * @param {string} teamId - Team identifier
+   * @returns {Promise<string|null>} - Score text (e.g., "$1,500") or null if not found
+   */
+  async getTeamScoreFromScoreboard(teamId) {
+    const entry = this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`);
+    const count = await entry.count();
+    if (count === 0) return null;
+    return await entry.locator('.scoreboard-score').textContent();
+  }
+
+  /**
+   * Get team score as numeric value from scoreboard
+   * @param {string} teamId - Team identifier
+   * @returns {Promise<number|null>} - Score as number or null if not found
+   */
+  async getTeamScoreNumericFromScoreboard(teamId) {
+    const scoreText = await this.getTeamScoreFromScoreboard(teamId);
+    if (!scoreText) return null;
+    // Parse "$1,500" -> 1500
+    return parseInt(scoreText.replace(/[$,]/g, ''), 10);
+  }
+
+  /**
+   * Check if a team appears in the scoreboard
+   * @param {string} teamId - Team identifier
+   * @returns {Promise<boolean>}
+   */
+  async hasTeamInScoreboard(teamId) {
+    const entry = this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`);
+    return await entry.isVisible();
+  }
+
+  /**
+   * Wait for a specific team to appear in scoreboard
+   * @param {string} teamId - Team identifier
+   * @param {number} timeout - Timeout in milliseconds
+   */
+  async waitForTeamInScoreboard(teamId, timeout = 10000) {
+    await this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`).waitFor({
+      state: 'visible',
+      timeout
+    });
+  }
+
+  /**
+   * Open team details screen by clicking on team in scoreboard
+   * @param {string} teamId - Team identifier
+   */
+  async openTeamDetails(teamId) {
+    const entry = this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`);
+    await entry.click();
+    await this.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  /**
+   * Close team details screen
+   */
+  async closeTeamDetails() {
+    await this.closeTeamDetailsBtn.click();
+    await this.teamDetailsScreen.waitFor({ state: 'hidden', timeout: 5000 });
+  }
+
+  /**
+   * Get team details title text
+   * @returns {Promise<string>}
+   */
+  async getTeamDetailsTitle() {
+    return await this.teamDetailsTitle.textContent();
+  }
+
+  /**
+   * Get base score from team details
+   * @returns {Promise<string>}
+   */
+  async getTeamDetailsBaseScore() {
+    return await this.teamBaseScore.textContent();
+  }
+
+  /**
+   * Get bonus score from team details
+   * @returns {Promise<string>}
+   */
+  async getTeamDetailsBonusScore() {
+    return await this.teamBonusScore.textContent();
+  }
+
+  /**
+   * Get count of token cards in team details
+   * @returns {Promise<number>}
+   */
+  async getTeamDetailsTokenCount() {
+    return await this.tokenDetailCards.count();
+  }
+
+  /**
+   * Find token card in team details by token ID
+   * @param {string} tokenId - Token ID to find
+   * @returns {Promise<boolean>} - True if found
+   */
+  async hasTokenInTeamDetails(tokenId) {
+    const card = this.page.locator(`#teamDetailsContainer .token-card:has-text("${tokenId}"), #teamDetailsContainer .history-entry:has-text("${tokenId}")`);
+    return await card.count() > 0;
+  }
+
+  /**
+   * Delete transaction from team details screen
+   * @param {string} tokenId - Token ID of the transaction to delete
+   */
+  async deleteTransactionFromTeamDetails(tokenId) {
+    // Find the token card and its delete button
+    const card = this.page.locator(`#teamDetailsContainer .token-card:has-text("${tokenId}"), #teamDetailsContainer .history-entry:has-text("${tokenId}")`);
+    const deleteBtn = card.locator('button[data-action="app.deleteTeamTransaction"]');
+
+    // Setup dialog handler BEFORE clicking
+    this.page.once('dialog', dialog => dialog.accept());
+    await deleteBtn.click();
+
+    // Wait for card to be removed
+    await card.waitFor({ state: 'hidden', timeout: 5000 });
+  }
+
+  /**
+   * Get all scoreboard entries with details
+   * @returns {Promise<Array<{rank: number, team: string, score: string}>>}
+   */
+  async getAllScoreboardEntries() {
+    const entries = await this.scoreboardEntries.all();
+    const details = [];
+    for (const entry of entries) {
+      details.push({
+        rank: parseInt(await entry.locator('.scoreboard-rank').textContent(), 10),
+        team: await entry.locator('.scoreboard-team').textContent(),
+        score: await entry.locator('.scoreboard-score').textContent()
+      });
+    }
+    return details.sort((a, b) => a.rank - b.rank);
   }
 }
 

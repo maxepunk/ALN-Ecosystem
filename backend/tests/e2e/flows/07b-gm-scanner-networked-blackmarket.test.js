@@ -52,6 +52,20 @@ let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
 
 test.describe('GM Scanner Networked Mode - Black Market', () => {
+  let orchestrator;
+  let page;
+
+  // Debug helper to capture browser console
+  const captureConsole = (p) => {
+    p.on('console', msg => {
+      const type = msg.type();
+      const text = msg.text();
+      console.log(`BROWSER [${type}]: ${text}`);
+    });
+    p.on('pageerror', err => {
+      console.log(`BROWSER [pageerror]: ${err.message}`);
+    });
+  };
   // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
   // The backend only supports ONE active session at a time. With 2 projects
   // (chromium + mobile-chrome) running in parallel workers, both share the same
@@ -517,7 +531,10 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
       password: ADMIN_PASSWORD
     });
 
-    // Create session via admin panel UI with TWO teams (browser-only pattern)
+    // Verify logging works
+    await page.evaluate(() => console.log("TEST CONSOLE LOG - IF YOU SEE THIS, LOGGING WORKS"));
+
+    // Create new session via Admin Panel
     await scanner.createSessionWithTeams('Test Session - Cross Team Duplicate', [teamAlpha, teamDetectives]);
 
     // Navigate to scanner view
@@ -577,7 +594,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
         const detectivesScore = state.scores?.find(s => s.teamId === teamDetectives);
         // Alpha unchanged at score1, Detectives got 0
         return alphaScore?.currentScore === score1 &&
-               (detectivesScore?.currentScore === 0 || !detectivesScore);
+          (detectivesScore?.currentScore === 0 || !detectivesScore);
       },
       2000
     );
