@@ -34,6 +34,7 @@ const SERVICE_EVENTS = {
     'transaction:new',
     'group:completed',
     'score:updated',
+    'score:adjusted',  // Slice 2: Admin score adjustments
     'scores:reset',
     'transaction:deleted'
   ],
@@ -192,6 +193,12 @@ async function resetAllServices(options = {}) {
   }
   if (typeof transactionService.registerSessionListener === 'function') {
     transactionService.registerSessionListener();
+  }
+
+  // Re-register sessionService persistence listeners (Slice 2)
+  // These listeners are ON transactionService and were cleared by transactionService.reset()
+  if (typeof sessionService.setupPersistenceListeners === 'function') {
+    sessionService.setupPersistenceListeners();
   }
 
   // Capture AFTER state

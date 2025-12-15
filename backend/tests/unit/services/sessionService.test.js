@@ -447,6 +447,212 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('Persistence Listeners (Slice 2)', () => {
+    const transactionService = require('../../../src/services/transactionService');
+    const TeamScore = require('../../../src/models/teamScore');
+
+    beforeEach(async () => {
+      await resetAllServices();
+    });
+
+    afterEach(async () => {
+      if (sessionService.currentSession) {
+        await sessionService.endSession();
+      }
+      sessionService.removeAllListeners();
+      transactionService.removeAllListeners();
+    });
+
+    describe('transaction:accepted listener (new format)', () => {
+      it('should persist transaction and teamScore when new format payload received', async () => {
+        await sessionService.createSession({
+          name: 'Persistence Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+        const initialTxCount = session.transactions.length;
+
+        // Emit new format transaction:accepted with teamScore
+        const teamScore = TeamScore.createInitial('Team Alpha');
+        teamScore.addPoints(100);
+
+        transactionService.emit('transaction:accepted', {
+          transaction: {
+            id: 'tx-new-format-001',
+            tokenId: 'test-token',
+            teamId: 'Team Alpha',
+            deviceId: 'GM_001',
+            deviceType: 'gm',
+            sessionId: session.id,
+            status: 'accepted',
+            points: 100,
+            timestamp: new Date().toISOString()
+          },
+          teamScore: teamScore.toJSON(),
+          deviceTracking: { deviceId: 'GM_001', tokenId: 'test-token' }
+        });
+
+        // Wait for async handler
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Verify transaction was added to session
+        const updatedSession = sessionService.getCurrentSession();
+        expect(updatedSession.transactions.length).toBe(initialTxCount + 1);
+        expect(updatedSession.transactions[initialTxCount].id).toBe('tx-new-format-001');
+
+        // Verify team score was updated in session.scores
+        const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
+        expect(updatedTeamScore.currentScore).toBe(100);
+      });
+
+      it('should not double-persist when old format payload (Transaction object only)', async () => {
+        await sessionService.createSession({
+          name: 'Old Format Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+        const initialTxCount = session.transactions.length;
+
+        // Emit old format transaction:accepted (no teamScore field)
+        transactionService.emit('transaction:accepted', {
+          id: 'tx-old-format-001',
+          tokenId: 'test-token',
+          teamId: 'Team Alpha',
+          deviceId: 'GM_001',
+          sessionId: session.id,
+          status: 'accepted',
+          points: 100
+        });
+
+        // Wait for async handler
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Verify transaction was NOT added by new listener (old callers still add it)
+        const updatedSession = sessionService.getCurrentSession();
+        expect(updatedSession.transactions.length).toBe(initialTxCount); // No change
+      });
+    });
+
+    describe('score:adjusted listener', () => {
+      it('should persist admin score adjustment', async () => {
+        await sessionService.createSession({
+          name: 'Admin Adjust Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+        const initialScore = session.scores.find(s => s.teamId === 'Team Alpha').currentScore;
+
+        // Create adjusted team score
+        const teamScore = TeamScore.createInitial('Team Alpha');
+        teamScore.addPoints(500);
+        teamScore.adjustScore(100, 'GM_001', 'Manual bonus');
+
+        // Emit score:adjusted
+        transactionService.emit('score:adjusted', {
+          teamScore: teamScore.toJSON(),
+          reason: 'Manual bonus',
+          isAdminAction: true
+        });
+
+        // Wait for async handler
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Verify score was updated
+        const updatedSession = sessionService.getCurrentSession();
+        const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
+        expect(updatedTeamScore.currentScore).toBe(teamScore.currentScore);
+      });
+    });
+
+    describe('transaction:deleted listener', () => {
+      it('should persist updated team score after deletion', async () => {
+        await sessionService.createSession({
+          name: 'Delete Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+
+        // Add a transaction first
+        session.transactions.push({
+          id: 'tx-to-delete',
+          tokenId: 'test-token',
+          teamId: 'Team Alpha',
+          status: 'accepted',
+          points: 500
+        });
+
+        // Set initial score
+        session.scores[0].currentScore = 500;
+
+        // Create updated score (after deletion, score goes back to 0)
+        const updatedTeamScore = TeamScore.createInitial('Team Alpha');
+        updatedTeamScore.addPoints(0);
+
+        // Emit transaction:deleted with updated score
+        transactionService.emit('transaction:deleted', {
+          transactionId: 'tx-to-delete',
+          tokenId: 'test-token',
+          teamId: 'Team Alpha',
+          updatedTeamScore: updatedTeamScore.toJSON()
+        });
+
+        // Wait for async handler
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Verify score was updated
+        const updatedSession = sessionService.getCurrentSession();
+        const teamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
+        expect(teamScore.currentScore).toBe(0);
+      });
+    });
+
+    describe('upsertTeamScore', () => {
+      it('should update existing team score', async () => {
+        await sessionService.createSession({
+          name: 'Upsert Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+        session.scores[0].currentScore = 100;
+
+        // Upsert with higher score
+        sessionService.upsertTeamScore({
+          teamId: 'Team Alpha',
+          currentScore: 500,
+          baseScore: 400,
+          bonusPoints: 100
+        });
+
+        expect(session.scores[0].currentScore).toBe(500);
+        expect(session.scores[0].bonusPoints).toBe(100);
+      });
+
+      it('should add new team if not exists', async () => {
+        await sessionService.createSession({
+          name: 'Upsert New Test',
+          teams: []
+        });
+
+        sessionService.upsertTeamScore({
+          teamId: 'New Team',
+          currentScore: 250,
+          baseScore: 250,
+          bonusPoints: 0
+        });
+
+        const session = sessionService.getCurrentSession();
+        expect(session.scores.length).toBe(1);
+        expect(session.scores[0].teamId).toBe('New Team');
+        expect(session.scores[0].currentScore).toBe(250);
+      });
+    });
+  });
+
   describe('Team Sync Infrastructure (Slice 1)', () => {
     const transactionService = require('../../../src/services/transactionService');
 

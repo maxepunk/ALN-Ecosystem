@@ -94,6 +94,162 @@ class SessionService extends EventEmitter {
   }
 
   /**
+   * Set up persistence listeners for the new event architecture
+   * These listeners handle persistence for transaction:accepted, score:adjusted, and transaction:deleted
+   * This is the SINGLE RESPONSIBILITY owner for session persistence
+   * Uses listenerRegistry for proper test cleanup
+   */
+  setupPersistenceListeners() {
+    // Lazy import to avoid circular dependency at module load time
+    const transactionService = require('./transactionService');
+
+    // Listen for transaction:accepted (single event per transaction, includes teamScore)
+    // This replaces the old flow where processScan + caller both modified session
+    listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted',
+      async (payload) => {
+        // Handle both old format (Transaction object) and new format (payload with teamScore)
+        // OLD: transaction object directly
+        // NEW: { transaction, teamScore, deviceTracking, groupBonus }
+        const transaction = payload.transaction || payload;
+        const teamScore = payload.teamScore;
+        const deviceTracking = payload.deviceTracking;
+
+        if (!this.currentSession) {
+          logger.warn('No session during transaction:accepted - cannot persist', {
+            transactionId: transaction.id
+          });
+          return;
+        }
+
+        try {
+          // Only add transaction if this is new format (callers no longer add directly)
+          // The new format includes teamScore, old format doesn't
+          if (payload.teamScore !== undefined) {
+            // NEW FORMAT: Full event-driven persistence
+            // Add transaction to session (idempotent - Session.addTransaction checks for duplicates)
+            const txData = transaction.toJSON ? transaction.toJSON() : transaction;
+            this.currentSession.addTransaction(txData);
+
+            // Update device tracking for duplicate detection
+            if (deviceTracking) {
+              this.currentSession.addDeviceScannedToken(deviceTracking.deviceId, deviceTracking.tokenId);
+            }
+
+            // Update team score in session.scores (source of truth)
+            if (teamScore) {
+              this.upsertTeamScore(teamScore);
+            }
+
+            await this.saveCurrentSession();
+            this.emit('session:updated', this.currentSession);
+
+            logger.debug('Persisted transaction via new event flow', {
+              transactionId: transaction.id,
+              teamId: transaction.teamId,
+              hasTeamScore: !!teamScore
+            });
+          }
+          // OLD FORMAT: transaction object only - callers still handle persistence
+          // Don't duplicate the save, just log for debugging
+        } catch (error) {
+          logger.error('Failed to persist transaction', {
+            error: error.message,
+            transactionId: transaction.id
+          });
+        }
+      }, 'sessionService->transactionService:transaction:accepted');
+
+    // Listen for score:adjusted (admin-only score changes)
+    // This handles adjustTeamScore() and other admin interventions
+    listenerRegistry.addTrackedListener(transactionService, 'score:adjusted',
+      async (payload) => {
+        if (!this.currentSession) {
+          logger.warn('No session during score:adjusted');
+          return;
+        }
+
+        const { teamScore, reason, isAdminAction } = payload;
+        if (!teamScore) {
+          logger.warn('score:adjusted received without teamScore');
+          return;
+        }
+
+        try {
+          this.upsertTeamScore(teamScore);
+          await this.saveCurrentSession();
+          this.emit('session:updated', this.currentSession);
+
+          logger.info('Persisted admin score adjustment', {
+            teamId: teamScore.teamId,
+            reason,
+            isAdminAction
+          });
+        } catch (error) {
+          logger.error('Failed to persist score adjustment', {
+            error: error.message,
+            teamId: teamScore?.teamId
+          });
+        }
+      }, 'sessionService->transactionService:score:adjusted');
+
+    // Listen for transaction:deleted (includes updatedTeamScore)
+    // This is moved from stateService to sessionService (single responsibility for persistence)
+    listenerRegistry.addTrackedListener(transactionService, 'transaction:deleted',
+      async (payload) => {
+        if (!this.currentSession) {
+          logger.warn('No session during transaction:deleted');
+          return;
+        }
+
+        const { transactionId, tokenId, teamId, updatedTeamScore } = payload;
+
+        try {
+          // Transaction already removed from session by deleteTransaction()
+          // Update team score if provided
+          if (updatedTeamScore) {
+            this.upsertTeamScore(updatedTeamScore);
+          }
+
+          await this.saveCurrentSession();
+          this.emit('session:updated', this.currentSession);
+
+          logger.info('Persisted transaction deletion', {
+            transactionId,
+            tokenId,
+            teamId,
+            hasUpdatedScore: !!updatedTeamScore
+          });
+        } catch (error) {
+          logger.error('Failed to persist transaction deletion', {
+            error: error.message,
+            transactionId
+          });
+        }
+      }, 'sessionService->transactionService:transaction:deleted');
+
+    logger.debug('SessionService: persistence listeners bound to transactionService');
+  }
+
+  /**
+   * Upsert a team score in session.scores
+   * Updates existing team or adds new team
+   * @param {Object} teamScore - TeamScore data (JSON or TeamScore instance)
+   * @private
+   */
+  upsertTeamScore(teamScore) {
+    if (!this.currentSession) return;
+
+    const scoreData = teamScore.toJSON ? teamScore.toJSON() : teamScore;
+    const idx = this.currentSession.scores.findIndex(s => s.teamId === scoreData.teamId);
+
+    if (idx >= 0) {
+      this.currentSession.scores[idx] = scoreData;
+    } else {
+      this.currentSession.scores.push(scoreData);
+    }
+  }
+
+  /**
    * Initialize the service
    * @returns {Promise<void>}
    */
@@ -112,8 +268,11 @@ class SessionService extends EventEmitter {
         transactionService.restoreFromSession(this.currentSession);
       }
 
-      // Set up cross-service event listeners for score sync
+      // Set up cross-service event listeners for score sync (legacy - will be removed in Slice 6)
       this.setupScoreListeners();
+
+      // Set up new persistence listeners (Slice 2 - single responsibility for persistence)
+      this.setupPersistenceListeners();
     } catch (error) {
       logger.error('Failed to initialize session service', error);
     }
@@ -572,6 +731,7 @@ class SessionService extends EventEmitter {
 
     // Re-setup cross-service listeners (listenerRegistry handles cleanup via cleanup())
     this.setupScoreListeners();
+    this.setupPersistenceListeners();
 
     logger.info('Session service reset');
   }
