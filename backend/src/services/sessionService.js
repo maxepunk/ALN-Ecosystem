@@ -105,6 +105,11 @@ class SessionService extends EventEmitter {
       if (sessionData) {
         this.currentSession = Session.fromJSON(sessionData);
         logger.info('Session restored from storage', { sessionId: this.currentSession.id });
+
+        // CRITICAL: Sync teams to transactionService on session restoration
+        // This ensures transactionService.teamScores Map matches session.scores after restart
+        const transactionService = require('./transactionService');
+        transactionService.restoreFromSession(this.currentSession);
       }
 
       // Set up cross-service event listeners for score sync
@@ -390,6 +395,7 @@ class SessionService extends EventEmitter {
 
   /**
    * Add a new team to the current session mid-game
+   * Single source of truth for team creation - all teams MUST be created through this method
    * @param {string} teamId - The team identifier (alphanumeric, 1-30 chars)
    * @returns {Promise<Object>} The created TeamScore object
    */
@@ -411,12 +417,23 @@ class SessionService extends EventEmitter {
     const TeamScore = require('../models/teamScore');
     const newTeamScore = TeamScore.createInitial(normalizedTeamId);
 
-    // Add to session
+    // Add to session (source of truth)
     this.currentSession.scores.push(newTeamScore.toJSON());
+
+    // CRITICAL: Sync to transactionService immediately
+    // This ensures transactionService.teamScores Map stays in sync with session.scores
+    // Single path for team creation - sessionService owns it, transactionService syncs from it
+    const transactionService = require('./transactionService');
+    transactionService.syncTeamFromSession(newTeamScore);
 
     // Persist and broadcast
     await this.saveCurrentSession();
     this.emit('session:updated', this.getCurrentSession());
+
+    logger.info('Team added to session', {
+      teamId: normalizedTeamId,
+      sessionId: this.currentSession.id
+    });
 
     return newTeamScore;
   }

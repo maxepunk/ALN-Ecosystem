@@ -644,6 +644,60 @@ class TransactionService extends EventEmitter {
   }
 
   /**
+   * Sync a team from sessionService to the local teamScores Map
+   * This ensures transactionService.teamScores stays in sync with sessionService.currentSession.scores
+   * Called by sessionService.addTeamToSession() for single source of truth on team creation
+   * @param {Object|TeamScore} teamScoreData - Team score data (JSON or TeamScore instance)
+   */
+  syncTeamFromSession(teamScoreData) {
+    // Handle null/undefined gracefully
+    if (!teamScoreData) {
+      logger.warn('syncTeamFromSession called with null/undefined data');
+      return;
+    }
+
+    // Handle both JSON objects and TeamScore instances
+    const teamId = teamScoreData.teamId;
+    if (!teamId) {
+      logger.warn('syncTeamFromSession called with invalid data (missing teamId)', { teamScoreData });
+      return;
+    }
+
+    // Only add if not already present (idempotent)
+    if (!this.teamScores.has(teamId)) {
+      // Convert to TeamScore if needed
+      const teamScore = teamScoreData instanceof TeamScore
+        ? teamScoreData
+        : TeamScore.fromJSON(teamScoreData);
+      this.teamScores.set(teamId, teamScore);
+      logger.info('Team synced from sessionService', { teamId });
+    }
+  }
+
+  /**
+   * Restore team scores from a session (for session restoration on startup)
+   * @param {Object} session - Session object with scores array
+   */
+  restoreFromSession(session) {
+    if (!session || !session.scores) {
+      return;
+    }
+
+    // Sync all teams from session.scores to teamScores Map
+    for (const scoreData of session.scores) {
+      if (scoreData.teamId && !this.teamScores.has(scoreData.teamId)) {
+        this.teamScores.set(scoreData.teamId, TeamScore.fromJSON(scoreData));
+        logger.debug('Team restored from session', { teamId: scoreData.teamId });
+      }
+    }
+
+    logger.info('Teams restored from session', {
+      teamCount: this.teamScores.size,
+      teams: Array.from(this.teamScores.keys())
+    });
+  }
+
+  /**
    * Reset entire transaction service state
    * Used primarily for testing to ensure clean state between tests
    * NOTE: Contract tests should NOT call reset() - follow auth-events.test.js pattern

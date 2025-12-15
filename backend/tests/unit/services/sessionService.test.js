@@ -446,4 +446,97 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(sessionService.canAcceptGmStation()).toBe(true);
     });
   });
+
+  describe('Team Sync Infrastructure (Slice 1)', () => {
+    const transactionService = require('../../../src/services/transactionService');
+
+    beforeEach(async () => {
+      await resetAllServices();
+    });
+
+    afterEach(async () => {
+      if (sessionService.currentSession) {
+        await sessionService.endSession();
+      }
+      sessionService.removeAllListeners();
+      transactionService.removeAllListeners();
+    });
+
+    it('should sync new team to transactionService when addTeamToSession called', async () => {
+      // Create session with no teams
+      await sessionService.createSession({
+        name: 'Team Sync Test',
+        teams: []
+      });
+
+      // Verify transactionService has no teams initially
+      expect(transactionService.teamScores.size).toBe(0);
+
+      // Add team mid-game
+      const newTeamScore = await sessionService.addTeamToSession('New Team');
+
+      // Verify team was synced to transactionService
+      expect(transactionService.teamScores.has('New Team')).toBe(true);
+      const syncedScore = transactionService.teamScores.get('New Team');
+      expect(syncedScore.teamId).toBe('New Team');
+      expect(syncedScore.currentScore).toBe(0);
+    });
+
+    it('should add team to session.scores as source of truth', async () => {
+      await sessionService.createSession({
+        name: 'Source of Truth Test',
+        teams: []
+      });
+
+      await sessionService.addTeamToSession('Team Alpha');
+
+      const session = sessionService.getCurrentSession();
+      expect(session.scores.length).toBe(1);
+      expect(session.scores[0].teamId).toBe('Team Alpha');
+    });
+
+    it('should reject duplicate team names', async () => {
+      await sessionService.createSession({
+        name: 'Duplicate Test',
+        teams: ['Team Alpha']
+      });
+
+      await expect(
+        sessionService.addTeamToSession('Team Alpha')
+      ).rejects.toThrow('already exists');
+    });
+
+    it('should trim team name when adding', async () => {
+      await sessionService.createSession({
+        name: 'Trim Test',
+        teams: []
+      });
+
+      await sessionService.addTeamToSession('  Spaced Team  ');
+
+      const session = sessionService.getCurrentSession();
+      expect(session.scores[0].teamId).toBe('Spaced Team');
+      expect(transactionService.teamScores.has('Spaced Team')).toBe(true);
+    });
+
+    it('should emit session:updated after adding team', (done) => {
+      sessionService.createSession({
+        name: 'Event Test',
+        teams: []
+      }).then(() => {
+        sessionService.once('session:updated', (eventData) => {
+          try {
+            // Verify the updated session contains the new team
+            const teams = eventData.scores ? eventData.scores.map(s => s.teamId) : [];
+            expect(teams).toContain('Broadcasted Team');
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
+
+        sessionService.addTeamToSession('Broadcasted Team');
+      });
+    });
+  });
 });

@@ -1325,6 +1325,188 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('Team Sync Infrastructure (Slice 1)', () => {
+    describe('syncTeamFromSession', () => {
+      it('should add team to teamScores Map from JSON data', () => {
+        // Ensure clean state
+        transactionService.teamScores.clear();
+
+        // Create team score JSON (as sessionService would provide)
+        const teamScoreData = {
+          teamId: 'New Team',
+          currentScore: 0,
+          baseScore: 0,
+          bonusPoints: 0,
+          tokensScanned: 0,
+          completedGroups: [],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString(),
+          lastTokenTime: null
+        };
+
+        // Sync team
+        transactionService.syncTeamFromSession(teamScoreData);
+
+        // Verify team was added
+        expect(transactionService.teamScores.has('New Team')).toBe(true);
+        const syncedScore = transactionService.teamScores.get('New Team');
+        expect(syncedScore.teamId).toBe('New Team');
+        expect(syncedScore.currentScore).toBe(0);
+      });
+
+      it('should be idempotent - not duplicate teams', () => {
+        // Ensure clean state
+        transactionService.teamScores.clear();
+
+        const teamScoreData = {
+          teamId: 'Idempotent Team',
+          currentScore: 0,
+          baseScore: 0,
+          bonusPoints: 0,
+          tokensScanned: 0,
+          completedGroups: [],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString(),
+          lastTokenTime: null
+        };
+
+        // Sync team twice
+        transactionService.syncTeamFromSession(teamScoreData);
+        transactionService.syncTeamFromSession(teamScoreData);
+
+        // Verify only one team exists
+        expect(transactionService.teamScores.size).toBe(1);
+      });
+
+      it('should accept TeamScore instance directly', () => {
+        transactionService.teamScores.clear();
+
+        const teamScore = TeamScore.createInitial('Direct Team');
+
+        transactionService.syncTeamFromSession(teamScore);
+
+        expect(transactionService.teamScores.has('Direct Team')).toBe(true);
+      });
+
+      it('should handle invalid data gracefully', () => {
+        transactionService.teamScores.clear();
+
+        // Should not throw
+        expect(() => {
+          transactionService.syncTeamFromSession({});
+        }).not.toThrow();
+
+        expect(() => {
+          transactionService.syncTeamFromSession(null);
+        }).not.toThrow();
+
+        expect(transactionService.teamScores.size).toBe(0);
+      });
+    });
+
+    describe('restoreFromSession', () => {
+      it('should restore all teams from session scores', () => {
+        transactionService.teamScores.clear();
+
+        // Create mock session with multiple teams
+        const mockSession = {
+          id: 'session-123',
+          scores: [
+            {
+              teamId: 'Restored Team 1',
+              currentScore: 100,
+              baseScore: 80,
+              bonusPoints: 20,
+              tokensScanned: 2,
+              completedGroups: [],
+              adminAdjustments: [],
+              lastUpdate: new Date().toISOString(),
+              lastTokenTime: null
+            },
+            {
+              teamId: 'Restored Team 2',
+              currentScore: 250,
+              baseScore: 200,
+              bonusPoints: 50,
+              tokensScanned: 4,
+              completedGroups: ['group-1'],
+              adminAdjustments: [],
+              lastUpdate: new Date().toISOString(),
+              lastTokenTime: null
+            }
+          ]
+        };
+
+        transactionService.restoreFromSession(mockSession);
+
+        expect(transactionService.teamScores.size).toBe(2);
+        expect(transactionService.teamScores.has('Restored Team 1')).toBe(true);
+        expect(transactionService.teamScores.has('Restored Team 2')).toBe(true);
+
+        // Verify scores were preserved
+        const team1 = transactionService.teamScores.get('Restored Team 1');
+        expect(team1.currentScore).toBe(100);
+
+        const team2 = transactionService.teamScores.get('Restored Team 2');
+        expect(team2.currentScore).toBe(250);
+        expect(team2.completedGroups).toContain('group-1');
+      });
+
+      it('should handle session with no scores gracefully', () => {
+        transactionService.teamScores.clear();
+
+        expect(() => {
+          transactionService.restoreFromSession({ id: 'empty-session' });
+        }).not.toThrow();
+
+        expect(transactionService.teamScores.size).toBe(0);
+      });
+
+      it('should handle null session gracefully', () => {
+        transactionService.teamScores.clear();
+
+        expect(() => {
+          transactionService.restoreFromSession(null);
+        }).not.toThrow();
+
+        expect(transactionService.teamScores.size).toBe(0);
+      });
+
+      it('should not overwrite existing teams', () => {
+        transactionService.teamScores.clear();
+
+        // Add team with high score
+        const existingTeam = TeamScore.createInitial('Existing Team');
+        existingTeam.addPoints(500);
+        transactionService.teamScores.set('Existing Team', existingTeam);
+
+        // Restore session with same team at lower score
+        const mockSession = {
+          id: 'session-123',
+          scores: [
+            {
+              teamId: 'Existing Team',
+              currentScore: 100,
+              baseScore: 100,
+              bonusPoints: 0,
+              tokensScanned: 1,
+              completedGroups: [],
+              adminAdjustments: [],
+              lastUpdate: new Date().toISOString(),
+              lastTokenTime: null
+            }
+          ]
+        };
+
+        transactionService.restoreFromSession(mockSession);
+
+        // Should NOT overwrite - existing team keeps high score
+        const team = transactionService.teamScores.get('Existing Team');
+        expect(team.currentScore).toBe(500);
+      });
+    });
+  });
+
   describe('deleteTransaction', () => {
     it('should remove transaction from duplicate registry', async () => {
       // Setup: Create session and submit transaction
