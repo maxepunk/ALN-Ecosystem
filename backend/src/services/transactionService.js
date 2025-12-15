@@ -105,8 +105,8 @@ class TransactionService extends EventEmitter {
       adjustmentCount: teamScore.adminAdjustments.length
     });
 
-    // Emit unwrapped domain event (broadcasts.js will wrap it)
-    this.emitScoreUpdate(teamScore);
+    // Emit score:adjusted for admin changes (sessionService persists, broadcasts.js broadcasts)
+    this.emitAdminScoreChange(teamScore, reason || 'admin adjustment');
 
     return teamScore;
   }
@@ -164,6 +164,7 @@ class TransactionService extends EventEmitter {
 
       // ATOMIC: Claim token immediately (prevents race condition)
       // Add transaction to session BEFORE accepting to ensure duplicate check sees it
+      // NOTE: sessionService persistence listener will also add via addTransaction() (idempotent)
       if (!session.transactions) {
         session.transactions = [];
       }
@@ -174,12 +175,10 @@ class TransactionService extends EventEmitter {
       const points = (transaction.mode === 'detective') ? 0 : token.value;
       transaction.accept(points)
 
-      // PHASE 1.1 (P0.1): Track scanned token for this device (server-side duplicate detection)
-      session.addDeviceScannedToken(transaction.deviceId, transaction.tokenId);
-
-      // Update team score (only for blackmarket mode)
+      // Update team score and get result (only for blackmarket mode)
+      let scoreResult = null;
       if (transaction.mode !== 'detective') {
-        this.updateTeamScore(transaction.teamId, token);
+        scoreResult = this.updateTeamScore(transaction.teamId, token);
       } else {
         logger.info('Detective mode transaction - skipping scoring', {
           transactionId: transaction.id,
@@ -192,8 +191,17 @@ class TransactionService extends EventEmitter {
       // Add to recent transactions
       this.addRecentTransaction(transaction);
 
-      // Emit event
-      this.emit('transaction:accepted', transaction);
+      // Emit transaction:accepted with NEW format (Slice 3)
+      // This is the SINGLE event for this transaction - sessionService handles persistence
+      this.emit('transaction:accepted', {
+        transaction: transaction.toJSON(),
+        teamScore: scoreResult?.teamScore?.toJSON() || null,
+        groupBonus: scoreResult?.groupBonusInfo || null,
+        deviceTracking: {
+          deviceId: transaction.deviceId,
+          tokenId: transaction.tokenId
+        }
+      });
 
       logger.info('Scan accepted', {
         transactionId: transaction.id,
@@ -310,27 +318,26 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Update team score
+   * Update team score (Slice 3: No event emissions - caller handles events)
    * @param {string} teamId - Team ID
    * @param {Token} token - Scanned token
+   * @returns {Object} Result with teamScore and optional groupBonus info
    * @private
    */
   updateTeamScore(teamId, token) {
     let teamScore = this.teamScores.get(teamId);
+    let groupBonusInfo = null;
 
+    // Team should already exist via sessionService.addTeamToSession() -> syncTeamFromSession()
+    // But handle gracefully if not (backwards compatibility during migration)
     if (!teamScore) {
       teamScore = TeamScore.createInitial(teamId);
       this.teamScores.set(teamId, teamScore);
-
-      // Emit score:updated for new team (sessionService will listen and update its own scores)
-      this.emitScoreUpdate(teamScore);
+      logger.warn('Team auto-created in updateTeamScore (should use addTeamToSession)', { teamId });
     }
 
     teamScore.addPoints(token.value);
     teamScore.incrementTokensScanned();
-
-    // Emit score:updated after points added
-    this.emitScoreUpdate(teamScore);
 
     // Check for group completion bonus
     if (token.isGrouped()) {
@@ -357,24 +364,23 @@ class TransactionService extends EventEmitter {
 
           teamScore.addBonus(totalGroupBonus);
 
-          logger.info('Group completed', {
-            teamId,
-            groupId: token.groupId,
-            multiplier,
-            totalBonus: totalGroupBonus,
-          });
-
-          this.emit('group:completed', {
+          groupBonusInfo = {
             teamId,
             groupId: token.groupId,
             bonus: totalGroupBonus,
             multiplier
-          });
+          };
+
+          logger.info('Group completed', groupBonusInfo);
+
+          // Emit group:completed for broadcasts (still needed for WebSocket broadcast)
+          this.emit('group:completed', groupBonusInfo);
         }
       }
     }
 
-    this.emit('score:updated', teamScore);
+    // Return result (caller handles event emission)
+    return { teamScore, groupBonusInfo };
   }
 
   /**
@@ -531,14 +537,21 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Emit score:updated event (Decision #3: emit unwrapped domain event)
+   * Emit score:adjusted event for admin-only score changes (Slice 3)
+   * Used by adjustTeamScore() and other admin interventions
+   * sessionService persistence listener handles persisting these changes
    * @param {TeamScore} teamScore - Team score to broadcast
+   * @param {string} reason - Reason for adjustment
    * @private
    */
-  emitScoreUpdate(teamScore) {
-    // Emit UNWRAPPED teamScore object per Decision #3
-    // broadcasts.js will wrap it with eventWrapper for WebSocket
-    this.emit('score:updated', teamScore);
+  emitAdminScoreChange(teamScore, reason = 'admin adjustment') {
+    // Emit score:adjusted for admin-only changes
+    // This triggers sessionService persistence and broadcasts.js WebSocket broadcast
+    this.emit('score:adjusted', {
+      teamScore: teamScore.toJSON ? teamScore.toJSON() : teamScore,
+      reason,
+      isAdminAction: true
+    });
   }
 
   /**
@@ -581,37 +594,6 @@ class TransactionService extends EventEmitter {
     this.emit('scores:reset', { teamsReset: teams });
 
     logger.info('Scores reset to zero', { teamsReset: teams.length });
-  }
-
-  /**
-   * Adjust team score by delta (for admin interventions)
-   * @param {string} teamId - Team ID to adjust
-   * @param {number} delta - Amount to adjust (can be positive or negative)
-   * @param {string} reason - Reason for adjustment
-   * @param {string} gmStation - GM station making the adjustment
-   * @returns {TeamScore} Updated team score
-   */
-  adjustTeamScore(teamId, delta, reason = '', gmStation = 'unknown') {
-    const teamScore = this.teamScores.get(teamId);
-    if (!teamScore) {
-      throw new Error(`Team ${teamId} not found`);
-    }
-
-    teamScore.adjustScore(delta, gmStation, reason);
-
-    logger.info('Team score adjusted', {
-      teamId,
-      delta,
-      gmStation,
-      reason,
-      newScore: teamScore.currentScore,
-      adjustmentCount: teamScore.adminAdjustments.length
-    });
-
-    // Emit unwrapped domain event (broadcasts.js will wrap it)
-    this.emitScoreUpdate(teamScore);
-
-    return teamScore;
   }
 
   /**
@@ -780,14 +762,13 @@ class TransactionService extends EventEmitter {
     // Get updated team score
     const updatedScore = this.teamScores.get(affectedTeamId) || TeamScore.createInitial(affectedTeamId);
 
-    // Emit score update
-    this.emitScoreUpdate(updatedScore);
-
-    // Emit transaction deleted event for all scanners to update their local state
+    // Emit transaction deleted event with updated score
+    // sessionService listens and persists, broadcasts.js broadcasts to clients
     this.emit('transaction:deleted', {
       transactionId,
       teamId: affectedTeamId,
-      tokenId: deletedTx.tokenId
+      tokenId: deletedTx.tokenId,
+      updatedTeamScore: updatedScore.toJSON()
     });
 
     logger.info('Transaction deleted', {

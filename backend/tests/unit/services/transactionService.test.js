@@ -30,38 +30,24 @@ describe('TransactionService - Event Emission', () => {
     transactionService.removeAllListeners();
   });
 
-  describe('score:updated event (UNWRAPPED)', () => {
-    it('should emit unwrapped score:updated when team score changes', async () => {
+  describe('score:adjusted event (admin changes)', () => {
+    it('should emit score:adjusted when admin adjusts team score', async () => {
       // Setup: Create session and initialize transaction service
       await sessionService.createSession({
         name: 'Test Session',
         teams: ['Team Alpha']
       });
 
-      const Token = require('../../../src/models/token');
-      const testToken = new Token({
-        id: 'test123',
-        name: 'Test Token',
-        value: 100,
-        memoryType: 'Technical',  // Capitalized per tokens.json
-        mediaAssets: {
-          image: null,
-          audio: null,
-          video: null,
-          processingImage: null
-        },
-        metadata: {
-          rating: 3
-        },
-      });
-
-      // Initialize tokens in transactionService
-      transactionService.tokens.set('test123', testToken);
-
-      // Listen for UNWRAPPED score:updated event (Layer 1 - service emits raw data)
+      // Listen for score:adjusted event (emitted by adjustTeamScore for admin changes)
       const eventPromise = new Promise((resolve) => {
-        transactionService.once('score:updated', (teamScore) => {
-          // Validate UNWRAPPED structure (raw TeamScore object, no {event, data, timestamp} wrapper)
+        transactionService.once('score:adjusted', (payload) => {
+          // Validate payload structure
+          expect(payload).toHaveProperty('teamScore');
+          expect(payload).toHaveProperty('reason');
+          expect(payload).toHaveProperty('isAdminAction', true);
+
+          // Validate teamScore structure
+          const { teamScore } = payload;
           expect(teamScore).toHaveProperty('teamId', 'Team Alpha');
           expect(teamScore).toHaveProperty('currentScore');
           expect(teamScore).toHaveProperty('baseScore');
@@ -70,18 +56,12 @@ describe('TransactionService - Event Emission', () => {
           expect(teamScore).toHaveProperty('completedGroups');
           expect(teamScore).toHaveProperty('lastUpdate');
 
-          // Verify it's an actual TeamScore object, not a wrapped event
-          expect(teamScore.event).toBeUndefined(); // Should NOT have wrapper fields
-          expect(teamScore.data).toBeUndefined(); // Should NOT have wrapper fields
-          // TeamScore uses lastUpdate, not timestamp (timestamp is for wrapped events)
-          expect(teamScore.lastUpdate).toBeDefined();
-
-          resolve(teamScore);
+          resolve(payload);
         });
       });
 
-      // Trigger: Update team score (should emit unwrapped score:updated)
-      transactionService.updateTeamScore('Team Alpha', testToken);
+      // Trigger: Admin adjusts team score (should emit score:adjusted)
+      transactionService.adjustTeamScore('Team Alpha', 500, 'manual adjustment', 'gm-station-1');
 
       // Wait for event
       await eventPromise;
@@ -122,6 +102,65 @@ describe('TransactionService - Event Emission', () => {
 
       // Session should NOT have team 002 (transactionService shouldn't modify it directly)
       expect(teamInSessionScores).toBeUndefined();
+    });
+  });
+
+  describe('transaction:accepted event (Slice 3)', () => {
+    it('should emit transaction:accepted with full payload from processScan', async () => {
+      // Setup: Create session with team
+      await sessionService.createSession({
+        name: 'Test Session',
+        teams: ['Team Alpha']
+      });
+
+      const Token = require('../../../src/models/token');
+      const testToken = new Token({
+        id: 'test123',
+        name: 'Test Token',
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 },
+      });
+
+      transactionService.tokens.set('test123', testToken);
+
+      // Listen for transaction:accepted event
+      const eventPromise = new Promise((resolve) => {
+        transactionService.once('transaction:accepted', (payload) => {
+          // Validate payload structure per Slice 3 architecture
+          expect(payload).toHaveProperty('transaction');
+          expect(payload).toHaveProperty('teamScore');
+          expect(payload).toHaveProperty('deviceTracking');
+
+          // Validate transaction structure
+          expect(payload.transaction).toHaveProperty('tokenId', 'test123');
+          expect(payload.transaction).toHaveProperty('teamId', 'Team Alpha');
+          expect(payload.transaction).toHaveProperty('status', 'accepted');
+
+          // Validate teamScore structure (should be serialized)
+          expect(payload.teamScore).toHaveProperty('teamId', 'Team Alpha');
+          expect(payload.teamScore).toHaveProperty('currentScore');
+          expect(payload.teamScore).toHaveProperty('tokensScanned');
+
+          // Validate deviceTracking
+          expect(payload.deviceTracking).toHaveProperty('deviceId');
+          expect(payload.deviceTracking).toHaveProperty('tokenId', 'test123');
+
+          resolve(payload);
+        });
+      });
+
+      // Trigger: processScan should emit transaction:accepted
+      await transactionService.processScan({
+        tokenId: 'test123',
+        teamId: 'Team Alpha',
+        deviceId: 'test-device',
+        deviceType: 'gm',
+        mode: 'blackmarket'
+      }, sessionService.getCurrentSession());
+
+      await eventPromise;
     });
   });
 
