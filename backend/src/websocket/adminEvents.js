@@ -293,7 +293,8 @@ async function handleGmCommand(socket, data, io) {
         // Add admin's deviceId and deviceType from authenticated socket
         txData.deviceId = socket.deviceId;
         txData.deviceType = socket.deviceType || 'gm';  // Explicit assignment
-        const createResult = await transactionService.createManualTransaction(txData, createSession);
+        // Slice 5: Session param removed - createManualTransaction gets session internally
+        const createResult = await transactionService.createManualTransaction(txData);
         resultMessage = `Manual transaction created for team ${txData.teamId}: ${createResult.points} points`;
         logger.info('Manual transaction created by GM', {
           gmStation: socket.deviceId,
@@ -459,12 +460,9 @@ async function handleTransactionSubmit(socket, data, _io) {
       return;
     }
 
-    const result = await transactionService.processScan(scanRequest, session);
-
-    // Add the existing transaction to session (don't create duplicate)
-    if (result.transaction) {
-      await sessionService.addTransaction(result.transaction);
-    }
+    // Slice 5: Session param removed - processScan gets session internally
+    // Event-driven persistence handles transaction storage via transaction:accepted
+    const result = await transactionService.processScan(scanRequest);
 
     // Transform result to match AsyncAPI contract for transaction:result
     const contractResult = {

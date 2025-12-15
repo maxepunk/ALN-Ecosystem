@@ -114,10 +114,11 @@ class TransactionService extends EventEmitter {
   /**
    * Process a scan request
    * @param {Object} scanRequest - Scan request data
-   * @param {Object} session - Current session
    * @returns {Promise<Object>} Processing result
    */
-  async processScan(scanRequest, session) {
+  async processScan(scanRequest) {
+    // Slice 5: Get session internally (read-only for duplicate checking)
+    const session = sessionService.getCurrentSession();
     if (!session) {
       throw new Error('No active session');
     }
@@ -787,16 +788,17 @@ class TransactionService extends EventEmitter {
   /**
    * Create manual transaction (FR 4.2.4 line 954)
    * @param {Object} data - Transaction data {tokenId, teamId, mode, deviceId, deviceType}
-   * @param {Object} session - Current session
    * @returns {Object} Created transaction and scan response
    */
-  async createManualTransaction(data, session) {
+  async createManualTransaction(data) {
     const { tokenId, teamId, mode, deviceId, deviceType } = data;
 
     if (!tokenId || !teamId || !mode) {
       throw new Error('tokenId, teamId, and mode are required');
     }
 
+    // Slice 5: Session retrieved internally by processScan
+    const session = sessionService.getCurrentSession();
     if (!session) {
       throw new Error('No active session');
     }
@@ -816,14 +818,14 @@ class TransactionService extends EventEmitter {
       });
     }
 
-    // Process as normal scan
+    // Process as normal scan (session now retrieved internally by processScan)
     const result = await this.processScan({
       tokenId,
       teamId,
       deviceId: deviceId || 'ADMIN_MANUAL',
       deviceType: deviceType || 'gm',  // Default to 'gm' for admin-created transactions
       mode,
-    }, session);
+    });
 
     logger.info('Manual transaction created', {
       transactionId: result.transactionId,

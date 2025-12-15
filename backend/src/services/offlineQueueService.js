@@ -188,21 +188,9 @@ class OfflineQueueService extends EventEmitter {
               id: gmTransaction.transactionId
             };
 
-            const result = await transactionService.processScan(scanWithId, session);
-
-            // Add to session for state updates
-            if (result.transaction && result.status === 'accepted') {
-              logger.info('Adding transaction to session', {
-                transactionId: result.transaction.id,
-                tokenId: result.transaction.tokenId
-              });
-              await sessionService.addTransaction(result.transaction);
-            } else {
-              logger.warn('Not adding transaction to session', {
-                hasTransaction: !!result.transaction,
-                status: result.status
-              });
-            }
+            // Slice 5: Session param removed - processScan gets session internally
+            // Event-driven persistence handles transaction storage via transaction:accepted
+            const result = await transactionService.processScan(scanWithId);
 
             // Normalize to contract: status must be 'processed' or 'failed'
             processed.push({

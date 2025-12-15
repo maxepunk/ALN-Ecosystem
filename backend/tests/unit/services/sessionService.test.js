@@ -3,6 +3,7 @@
  * Tests session:update event emission per asyncapi.yaml
  */
 
+const { v4: uuidv4 } = require('uuid');
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
@@ -476,10 +477,11 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         // Emit new format transaction:accepted with teamScore
         const teamScore = TeamScore.createInitial('Team Alpha');
         teamScore.addPoints(100);
+        const txId = uuidv4();
 
         transactionService.emit('transaction:accepted', {
           transaction: {
-            id: 'tx-new-format-001',
+            id: txId,
             tokenId: 'test-token',
             teamId: 'Team Alpha',
             deviceId: 'GM_001',
@@ -499,7 +501,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         // Verify transaction was added to session
         const updatedSession = sessionService.getCurrentSession();
         expect(updatedSession.transactions.length).toBe(initialTxCount + 1);
-        expect(updatedSession.transactions[initialTxCount].id).toBe('tx-new-format-001');
+        expect(updatedSession.transactions[initialTxCount].id).toBe(txId);
 
         // Verify team score was updated in session.scores
         const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');

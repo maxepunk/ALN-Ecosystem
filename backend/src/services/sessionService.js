@@ -141,6 +141,9 @@ class SessionService extends EventEmitter {
             }
 
             await this.saveCurrentSession();
+
+            // Emit transaction:added for broadcasts.js to broadcast transaction:new
+            this.emit('transaction:added', txData);
             this.emit('session:updated', this.currentSession);
 
             logger.debug('Persisted transaction via new event flow', {

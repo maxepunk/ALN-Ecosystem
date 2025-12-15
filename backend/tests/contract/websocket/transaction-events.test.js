@@ -35,6 +35,10 @@ describe('Transaction Events - Contract Validation', () => {
     const transactionService = require('../../../src/services/transactionService');
 
     cleanupBroadcastListeners();
+
+    // Re-register persistence listeners (Slice 5: cleanupBroadcastListeners clears registry)
+    sessionService.setupPersistenceListeners();
+
     setupBroadcastListeners(testContext.io, {
       sessionService,
       stateService,
