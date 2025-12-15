@@ -290,7 +290,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
   });
 
   describe('Score Events - Manual Wrapping → Helper Usage', () => {
-    it('should use emitToRoom for score:updated (GM stations only)', () => {
+    it('should broadcast score:updated from transaction:accepted (Slice 4)', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
@@ -299,14 +299,20 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         offlineQueueService: mockOfflineQueueService
       });
 
-      mockTransactionService.emit('score:updated', {
-        teamId: 'Team Alpha',
-        currentScore: 100,
-        baseScore: 80,  // currentScore - bonusPoints
-        bonusPoints: 20,
-        tokensScanned: 5,
-        completedGroups: ['GROUP_A'],
-        lastUpdate: new Date().toISOString()
+      // New event format from Slice 3: transaction:accepted with teamScore
+      mockTransactionService.emit('transaction:accepted', {
+        transaction: { id: 'tx1', tokenId: 'token1', teamId: 'Team Alpha', status: 'accepted' },
+        teamScore: {
+          teamId: 'Team Alpha',
+          currentScore: 100,
+          baseScore: 80,
+          bonusPoints: 20,
+          tokensScanned: 5,
+          completedGroups: ['GROUP_A'],
+          adminAdjustments: [],
+          lastUpdate: new Date().toISOString()
+        },
+        deviceTracking: { deviceId: 'gm-1', tokenId: 'token1' }
       });
 
       expect(mockIo.to).toHaveBeenCalledWith('gm');
@@ -317,8 +323,47 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
           data: expect.objectContaining({
             teamId: 'Team Alpha',
             currentScore: 100,
-            baseScore: 80, // currentScore - bonusPoints
+            baseScore: 80,
             bonusPoints: 20
+          }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast score:updated from score:adjusted (Slice 4)', () => {
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService
+      });
+
+      // Admin score adjustment event
+      mockTransactionService.emit('score:adjusted', {
+        teamScore: {
+          teamId: 'Team Beta',
+          currentScore: 500,
+          baseScore: 500,
+          bonusPoints: 0,
+          tokensScanned: 0,
+          completedGroups: [],
+          adminAdjustments: [{ delta: 500, reason: 'bonus' }],
+          lastUpdate: new Date().toISOString()
+        },
+        reason: 'bonus',
+        isAdminAction: true
+      });
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'score:updated',
+        expect.objectContaining({
+          event: 'score:updated',
+          data: expect.objectContaining({
+            teamId: 'Team Beta',
+            currentScore: 500
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
@@ -477,16 +522,18 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         offlineQueueService: mockOfflineQueueService
       });
 
-      // Verify listeners registered
+      // Verify listeners registered (Slice 4: transaction:accepted replaces score:updated)
       expect(mockSessionService.listenerCount('session:created')).toBeGreaterThan(0);
-      expect(mockTransactionService.listenerCount('score:updated')).toBeGreaterThan(0);
+      expect(mockTransactionService.listenerCount('transaction:accepted')).toBeGreaterThan(0);
+      expect(mockTransactionService.listenerCount('score:adjusted')).toBeGreaterThan(0);
 
       // Cleanup
       cleanupBroadcastListeners();
 
       // Verify listeners removed
       expect(mockSessionService.listenerCount('session:created')).toBe(0);
-      expect(mockTransactionService.listenerCount('score:updated')).toBe(0);
+      expect(mockTransactionService.listenerCount('transaction:accepted')).toBe(0);
+      expect(mockTransactionService.listenerCount('score:adjusted')).toBe(0);
     });
   });
 });

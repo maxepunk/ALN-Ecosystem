@@ -241,11 +241,37 @@ function setupBroadcastListeners(io, services) {
 
   // Transaction/Score events - broadcast to GM stations only
   if (transactionService) {
-    addTrackedListener(transactionService, 'score:updated', (teamScore) => {
-      const payload = {
+    // Slice 4: Source score:updated from transaction:accepted (new architecture)
+    addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
+      const { teamScore } = payload;
+      if (teamScore) {
+        const scorePayload = {
+          teamId: teamScore.teamId,
+          currentScore: teamScore.currentScore,
+          baseScore: teamScore.baseScore,
+          bonusPoints: teamScore.bonusPoints || 0,
+          tokensScanned: teamScore.tokensScanned,
+          completedGroups: teamScore.completedGroups || [],
+          adminAdjustments: teamScore.adminAdjustments || [],
+          lastUpdate: teamScore.lastUpdate
+        };
+
+        emitToRoom(io, 'gm', 'score:updated', scorePayload);
+        logger.info('Broadcasted score:updated from transaction:accepted', {
+          teamId: teamScore.teamId,
+          score: teamScore.currentScore,
+          bonus: teamScore.bonusPoints || 0
+        });
+      }
+    });
+
+    // Slice 4: Source score:updated from score:adjusted (admin changes)
+    addTrackedListener(transactionService, 'score:adjusted', (payload) => {
+      const { teamScore, reason } = payload;
+      const scorePayload = {
         teamId: teamScore.teamId,
         currentScore: teamScore.currentScore,
-        baseScore: teamScore.baseScore,  // Use actual baseScore field from TeamScore
+        baseScore: teamScore.baseScore,
         bonusPoints: teamScore.bonusPoints || 0,
         tokensScanned: teamScore.tokensScanned,
         completedGroups: teamScore.completedGroups || [],
@@ -253,12 +279,11 @@ function setupBroadcastListeners(io, services) {
         lastUpdate: teamScore.lastUpdate
       };
 
-      emitToRoom(io, 'gm', 'score:updated', payload);
-      logger.info('Broadcasted score:updated to GM stations', {
+      emitToRoom(io, 'gm', 'score:updated', scorePayload);
+      logger.info('Broadcasted score:updated from score:adjusted', {
         teamId: teamScore.teamId,
         score: teamScore.currentScore,
-        bonus: teamScore.bonusPoints || 0,
-        adjustments: (teamScore.adminAdjustments || []).length
+        reason
       });
     });
 
@@ -302,14 +327,8 @@ function setupBroadcastListeners(io, services) {
       logger.info('Broadcasted group:completed to GM stations', data);
     });
 
-    addTrackedListener(transactionService, 'team:created', (data) => {
-      const payload = {
-        teamId: data.teamId
-      };
-
-      emitToRoom(io, 'gm', 'team:created', payload);
-      logger.info('Broadcasted team:created to GM stations', { teamId: data.teamId });
-    });
+    // Note: team:created listener removed - teams now created via sessionService.addTeamToSession()
+    // which emits session:updated (already handled above)
 
     // Transaction service - scores reset (bulk operation)
     addTrackedListener(transactionService, 'scores:reset', (data) => {
