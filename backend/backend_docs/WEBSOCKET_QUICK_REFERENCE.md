@@ -11,8 +11,8 @@
 | `device:disconnected` | Global | Socket closes | deviceId, reason (manual/timeout/error) |
 | `session:update` | Global | Session create/pause/resume/end | id, name, status, teams |
 | `transaction:result` | Direct | Transaction processing complete | status, transactionId, points, message |
-| `transaction:new` | gm-stations + session | Transaction added to session | transaction object with enriched data |
-| `score:updated` | gm-stations | Team score recalculated | teamId, scores, bonuses, adjustments |
+| `transaction:new` | gm-stations + session | Transaction added to session | transaction, teamScore, groupBonusInfo |
+| `score:updated` | gm-stations | **DEPRECATED** - Use `transaction:new.teamScore` | teamId, scores, bonuses, adjustments |
 | `video:status` | gm-stations | Video playback state change | status, queueLength, progress |
 | `group:completed` | gm-stations | Token group bonus earned | teamId, group, bonusPoints |
 | `offline:queue:processed` | gm-stations | Offline batch processed | queueSize, results array |
@@ -76,11 +76,14 @@ Client submits: transaction:submit (tokenId, teamId, deviceId, mode)
 Server returns: transaction:result (to submitter only)
                 ↓
 Server broadcasts: transaction:new (to all GMs in session)
-                ↓
-Server broadcasts: score:updated (to all GMs in gm-stations)
+                  → Contains: {transaction, teamScore, groupBonusInfo}
+                  → teamScore: Updated team total after this transaction
+                  → groupBonusInfo: {groupName, multiplier, bonusAmount} if group completed
                 ↓
 (Optional) Server broadcasts: video:status (if token has video)
 ```
+
+**Note:** `score:updated` is deprecated. Extract score from `transaction:new.teamScore`.
 
 ### Session Creation
 ```
@@ -274,8 +277,7 @@ INTERNAL_ERROR        → Unhandled server error
 [19:00:05.000Z] Admin creates session → session:update broadcast
 [19:05:30.000Z] GM1 scans token 534e2b03
 [19:05:30.010Z] → transaction:result (GM1)
-[19:05:30.015Z] → transaction:new (all GMs)
-[19:05:30.020Z] → score:updated (all GMs)
+[19:05:30.015Z] → transaction:new (all GMs) {teamScore: 1500, groupBonusInfo: null}
 [19:05:35.000Z] Player scanner offline
 [19:06:00.000Z] Player scanner comes online, uploads batch
 [19:06:00.100Z] → offline:queue:processed (all GMs)

@@ -4,20 +4,20 @@ Last verified: 2025-12-08
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
-For cross-cutting concerns (scoring logic, operation modes, game modes, token schema), see @../CLAUDE.md.
+For cross-cutting concerns (scoring logic, operation modes, game modes, token schema), see '../CLAUDE.md'.
 
 ## Quick Reference
 
 | Resource | Location |
 |----------|----------|
-| API Contract (HTTP) | @contracts/README.md, @contracts/openapi.yaml |
-| WebSocket Events | @backend_docs/WEBSOCKET_QUICK_REFERENCE.md |
-| WebSocket Deep Dive | @backend_docs/WEBSOCKET_ANALYSIS.md |
-| E2E Testing | @backend_docs/E2E_TEST_HELPERS.md |
-| Deployment Guide | @../DEPLOYMENT_GUIDE.md |
-| Scoring Logic | @../docs/SCORING_LOGIC.md |
+| API Contract (HTTP) | 'contracts/README.md', 'contracts/openapi.yaml' |
+| WebSocket Events | 'backend_docs/WEBSOCKET_QUICK_REFERENCE.md' |
+| WebSocket Deep Dive | 'backend_docs/WEBSOCKET_ANALYSIS.md' |
+| E2E Testing | 'backend_docs/E2E_TEST_HELPERS.md' |
+| Deployment Guide | '../DEPLOYMENT_GUIDE.md' |
+| Scoring Logic | '../docs/SCORING_LOGIC.md' |
 | Session Validation | `npm run session:validate` (see Post-Session Analysis) |
-| Log Archival | @../logs/README_LOG_ARCHIVAL.md |
+| Log Archival | '../logs/README_LOG_ARCHIVAL.md' |
 
 ## Key Commands
 
@@ -70,6 +70,7 @@ npm run health:vlc        # Check VLC only
 - Use `resetAllServicesForTesting()` helper in integration tests to prevent listener leaks
 - E2E tests require orchestrator running: `npm run dev:full`
 - E2E uses lightweight fixtures (`tests/e2e/fixtures/`) not production token data
+- E2E uses single worker (`workers: 1`) - each test suite manages its own orchestrator lifecycle
 
 ## Architecture
 
@@ -90,6 +91,8 @@ All services use singleton with `getInstance()`:
 | `persistenceService` | Disk persistence |
 | `displayControlService` | HDMI display mode state machine |
 | `heartbeatMonitorService` | HTTP device timeout monitoring |
+
+**transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
 ### Session and State (Source of Truth Pattern)
 
@@ -122,16 +125,27 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 
 **Key Services & Events:**
 - `sessionService`: `session:created`, `session:updated`, `transaction:added`, `device:updated/removed`
-- `transactionService`: `transaction:accepted`, `group:completed`, `score:updated`, `scores:reset`
+- `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`
 - `stateService`: `state:updated`, `state:sync`, `sync:full`
 - `videoQueueService`: `video:*`, `queue:*`
 - `vlcService`: `degraded`, `connected`, `disconnected`
+
+**Transaction Event Flow (SRP Architecture):**
+```
+processScan()
+  → transactionService.emit('transaction:accepted', {transaction, teamScore, groupBonusInfo})
+    → sessionService listener persists to session
+      → sessionService.emit('transaction:added')
+        → broadcasts.js sends WebSocket 'transaction:new'
+```
+
+**Key Change:** `sessionService` now owns ALL transaction persistence. The `transaction:accepted` event contains the full scoring context (teamScore, groupBonusInfo) so listeners don't need to recalculate.
 
 **Key Files:** `src/services/stateService.js:79-112`, `src/websocket/broadcasts.js`
 
 **Layer 2: WebSocket (AsyncAPI)**
 
-See @backend_docs/WEBSOCKET_QUICK_REFERENCE.md for event reference.
+See 'backend_docs/WEBSOCKET_QUICK_REFERENCE.md' for event reference.
 
 ### Display Control Architecture
 
@@ -269,7 +283,7 @@ HTTP_REDIRECT_PORT=8000
 
 ## Deployment
 
-For full deployment procedures, see @../DEPLOYMENT_GUIDE.md.
+For full deployment procedures, see '../DEPLOYMENT_GUIDE.md'.
 
 ### Raspberry Pi 4 8GB Specifics
 
@@ -418,7 +432,7 @@ python logs/archive_logs.py backend/logs --days 30
 
 **Archive Location:** `logs/archive/` (organized by date)
 
-**Details:** See @../logs/README_LOG_ARCHIVAL.md for full documentation.
+**Details:** See '../logs/README_LOG_ARCHIVAL.md' for full documentation.
 
 **Log Files:**
 - `logs/combined.log` - All application logs (Winston)

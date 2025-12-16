@@ -9,10 +9,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ALN (About Last Night) Ecosystem is a memory token scanning and video playback system for a 2-hour immersive game. It's a **monorepo with Git submodules** for both code sharing (scanners) and data sharing (token definitions).
 
 **Components:**
-- **Backend Orchestrator** (`backend/`): Node.js server - @backend/CLAUDE.md
-- **GM Scanner** (`ALNScanner/`): ES6 module PWA for game masters - @ALNScanner/CLAUDE.md
-- **Player Scanner (Web)** (`aln-memory-scanner/`): Vanilla JS PWA - @aln-memory-scanner/CLAUDE.md
-- **Player Scanner (ESP32)** (`arduino-cyd-player-scanner/`): Hardware scanner - @arduino-cyd-player-scanner/CLAUDE.md
+- **Backend Orchestrator** (`backend/`): Node.js server - 'backend/CLAUDE.md'
+- **GM Scanner** (`ALNScanner/`): ES6 module PWA for game masters - 'ALNScanner/CLAUDE.md'
+- **Player Scanner (Web)** (`aln-memory-scanner/`): Vanilla JS PWA - 'aln-memory-scanner/CLAUDE.md'
+- **Player Scanner (ESP32)** (`arduino-cyd-player-scanner/`): Hardware scanner - 'arduino-cyd-player-scanner/CLAUDE.md'
 - **Token Data** (`ALN-TokenData/`): Shared JSON token definitions
 - **Notion Sync Scripts** (`scripts/`): Python scripts for Notion → tokens.json
 
@@ -88,11 +88,11 @@ this.isStandalone = !pathname.startsWith('/player-scanner/');
 **CRITICAL - Scoring Authority:**
 - **Networked mode**: Backend is authoritative (`transactionService.js`)
 - **Standalone mode**: Local calculation (`dataManager.js`)
-- See @docs/SCORING_LOGIC.md for parity risks
+- See 'docs/SCORING_LOGIC.md' for parity risks
 
 ## Scoring Business Logic (Cross-Cutting)
 
-**Single Source of Truth:** @docs/SCORING_LOGIC.md
+**Single Source of Truth:** 'docs/SCORING_LOGIC.md'
 
 **Quick Reference (Black Market Mode):**
 ```
@@ -173,10 +173,14 @@ All scan requests MUST include `deviceType` field:
 Teams are created dynamically during sessions - no pre-defined team list required.
 
 **How it works:**
-- Sessions start with an empty teams array
-- GM Scanner creates teams via `session:addTeam` command (text input)
+- Sessions start with an empty teams array (`[]`)
+- GM Scanner creates teams via `session:addTeam` command
 - Any non-empty string is a valid team name (GM types what they want)
 - Teams appear in dropdown after creation for future selections
+
+**Team Entry UI:**
+- **Standalone Mode**: Text input field (`#standaloneTeamName`)
+- **Networked Mode**: Dropdown with existing teams + "Add Team" button
 
 **No validation restrictions:** Team names like "Whitemetal Inc.", "O'Brien & Co.", etc. are all valid. The GM is paid staff on their own device - there's no abuse scenario requiring validation.
 
@@ -204,7 +208,7 @@ The GM Scanner is NOT just for scanning tokens - it's the **game command center*
 | **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
 | **Monitoring** | Device status, System health, Transaction history |
 
-All admin commands use WebSocket `gm:command` events. See @ALNScanner/CLAUDE.md for implementation details.
+All admin commands use WebSocket `gm:command` events. See 'ALNScanner/CLAUDE.md' for implementation details.
 
 ## Contract-First Architecture
 
@@ -215,9 +219,15 @@ All admin commands use WebSocket `gm:command` events. See @ALNScanner/CLAUDE.md 
 | OpenAPI | HTTP endpoints | `backend/contracts/openapi.yaml` |
 | AsyncAPI | WebSocket events | `backend/contracts/asyncapi.yaml` |
 
-See @backend/contracts/README.md for full documentation.
+See 'backend/contracts/README.md' for full documentation.
 
 Breaking changes require coordinated updates across backend + all 3 scanner submodules.
+
+**Event Architecture (SRP Refactor):**
+- Primary event is `transaction:accepted` (contains transaction, teamScore, groupBonusInfo)
+- `sessionService` owns ALL persistence (not transactionService or stateService)
+- Admin score adjustments emit `score:adjusted` (separate from transactions)
+- `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
 
 ## Submodule Architecture
 
@@ -232,7 +242,7 @@ ALN-Ecosystem/                     # Parent repo
 └── arduino-cyd-player-scanner/    # [SUBMODULE] ESP32 scanner
 ```
 
-For submodule management procedures, see @SUBMODULE_MANAGEMENT.md.
+For submodule management procedures, see 'SUBMODULE_MANAGEMENT.md'.
 
 **Quick Commands:**
 ```bash
@@ -243,7 +253,7 @@ git submodule status --recursive           # Check sync status
 
 ## Key Commands
 
-**Backend:** See @backend/CLAUDE.md for full command reference.
+**Backend:** See 'backend/CLAUDE.md' for full command reference.
 ```bash
 cd backend
 npm run dev        # Development
@@ -252,7 +262,7 @@ npm run test:e2e   # Playwright E2E
 npm start          # Production (PM2)
 ```
 
-**GM Scanner:** See @ALNScanner/CLAUDE.md for full command reference.
+**GM Scanner:** See 'ALNScanner/CLAUDE.md' for full command reference.
 ```bash
 cd ALNScanner
 npm run dev        # Vite dev server (HTTPS:8443)
@@ -277,7 +287,7 @@ npm run build      # Production build
 **Symptoms:** Different scores for same tokens in different modes
 
 **Debug:**
-1. Verify both implementations match @docs/SCORING_LOGIC.md
+1. Verify both implementations match 'docs/SCORING_LOGIC.md'
 2. Check group completion timing differences
 3. Compare `transactionService.js` vs `dataManager.js`
 
@@ -292,7 +302,7 @@ npm run build      # Production build
 ### Post-Session Analysis
 **Tool:** `npm run session:validate latest` (from backend/)
 **Purpose:** Detect scoring discrepancies, video issues, duplicate handling bugs after a game session.
-**Details:** See @backend/CLAUDE.md "Post-Session Analysis" section
+**Details:** See 'backend/CLAUDE.md' "Post-Session Analysis" section
 
 ## Notion Sync Scripts
 
@@ -315,12 +325,12 @@ SF_Summary: [Optional summary]
 
 ## Component References
 
-- @backend/CLAUDE.md - Backend Orchestrator
-- @ALNScanner/CLAUDE.md - GM Scanner
-- @aln-memory-scanner/CLAUDE.md - Player Scanner (Web)
-- @arduino-cyd-player-scanner/CLAUDE.md - ESP32 Scanner
-- @docs/SCORING_LOGIC.md - Scoring single source of truth
-- @DEPLOYMENT_GUIDE.md - Deployment procedures
-- @SUBMODULE_MANAGEMENT.md - Git submodule workflows
-- @backend/contracts/README.md - API contracts
-- @logs/README_LOG_ARCHIVAL.md - Log maintenance procedures
+- 'backend/CLAUDE.md' - Backend Orchestrator
+- 'ALNScanner/CLAUDE.md' - GM Scanner
+- 'aln-memory-scanner/CLAUDE.md' - Player Scanner (Web)
+- 'arduino-cyd-player-scanner/CLAUDE.md' - ESP32 Scanner
+- 'docs/SCORING_LOGIC.md' - Scoring single source of truth
+- 'DEPLOYMENT_GUIDE.md' - Deployment procedures
+- 'SUBMODULE_MANAGEMENT.md' - Git submodule workflows
+- 'backend/contracts/README.md' - API contracts
+- 'logs/README_LOG_ARCHIVAL.md' - Log maintenance procedures
