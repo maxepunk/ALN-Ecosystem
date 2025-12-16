@@ -31,36 +31,8 @@ class SessionService extends EventEmitter {
     // Lazy import to avoid circular dependency at module load time
     const transactionService = require('./transactionService');
 
-    // Listen for score:updated to sync transactionService.teamScores → session.scores
-    listenerRegistry.addTrackedListener(transactionService, 'score:updated', async (teamScore) => {
-      if (!this.currentSession) {
-        return;
-      }
-
-      try {
-        const existingIndex = this.currentSession.scores.findIndex(
-          s => s.teamId === teamScore.teamId
-        );
-
-        const scoreData = teamScore.toJSON ? teamScore.toJSON() : teamScore;
-
-        if (existingIndex >= 0) {
-          this.currentSession.scores[existingIndex] = scoreData;
-        } else {
-          this.currentSession.scores.push(scoreData);
-        }
-
-        await this.saveCurrentSession();
-        this.emit('session:updated', this.currentSession);
-
-        logger.debug('Session score synced from transactionService', {
-          teamId: teamScore.teamId,
-          currentScore: scoreData.currentScore
-        });
-      } catch (error) {
-        logger.error('Failed to sync score to session', { error: error.message, teamId: teamScore.teamId });
-      }
-    }, 'sessionService->transactionService:score:updated');
+    // NOTE (Slice 6): score:updated listener removed - no longer emitted by transactionService
+    // Score syncing now handled by setupPersistenceListeners() via transaction:accepted and score:adjusted
 
     // Listen for scores:reset to reset session.scores to zero
     // Per AsyncAPI contract: teams should still exist after reset with zero scores

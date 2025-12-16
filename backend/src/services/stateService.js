@@ -150,53 +150,8 @@ class StateService extends EventEmitter {
     // NOTE: scores:reset handling moved to sessionService.setupScoreListeners()
     // sessionService owns session.scores (Single Responsibility Principle)
 
-    // Listen for transaction deletions to persist session changes
-    listenerRegistry.addTrackedListener(transactionService, 'transaction:deleted', async (data) => {
-      const session = sessionService.getCurrentSession();
-      if (!session) {
-        logger.warn('No session during transaction:deleted');
-        return;
-      }
-
-      try {
-        // DEBUG: Log session state BEFORE persistence
-        const deviceKeys = Object.keys(session.metadata?.scannedTokensByDevice || {});
-        const scannedByDevice = {};
-        deviceKeys.forEach(deviceId => {
-          scannedByDevice[deviceId] = session.metadata.scannedTokensByDevice[deviceId].length;
-        });
-
-        logger.info('🔍 BEFORE persistence (transaction:deleted)', {
-          sessionId: session.id,
-          transactionId: data.transactionId,
-          tokenId: data.tokenId,
-          teamId: data.teamId,
-          totalTransactions: session.transactions.length,
-          devicesTracked: deviceKeys.length,
-          scannedTokensByDevice: scannedByDevice
-        });
-
-        // Session already modified by transactionService.deleteTransaction()
-        // Just persist the changes (scannedTokensByDevice + transactions array)
-        const sessionJSON = session.toJSON();
-        await persistenceService.saveSession(sessionJSON);
-        await persistenceService.save('session:current', sessionJSON);
-
-        // DEBUG: Log AFTER persistence
-        logger.info('✅ AFTER persistence (transaction:deleted)', {
-          sessionId: session.id,
-          transactionId: data.transactionId,
-          persisted: true,
-          totalTransactions: session.transactions.length
-        });
-      } catch (error) {
-        logger.error('❌ Failed to persist session after transaction deletion', {
-          error: error.message,
-          stack: error.stack,
-          transactionId: data.transactionId
-        });
-      }
-    });
+    // NOTE (Slice 6): transaction:deleted persistence moved to sessionService.setupPersistenceListeners()
+    // sessionService owns ALL persistence (Single Responsibility Principle)
 
     // Listen for transaction additions to update recent transactions
     listenerRegistry.addTrackedListener(sessionService, 'transaction:added', async (transaction) => {

@@ -31,12 +31,11 @@ const SERVICE_EVENTS = {
   ],
   transactionService: [
     'transaction:accepted',
-    'transaction:new',
     'group:completed',
-    'score:updated',
-    'score:adjusted',  // Slice 2: Admin score adjustments
+    'score:adjusted',  // Slice 6: Replaces score:updated for admin changes
     'scores:reset',
     'transaction:deleted'
+    // NOTE (Slice 6): score:updated and transaction:new removed - no longer emitted
   ],
   stateService: [
     'state:updated',
