@@ -1,6 +1,7 @@
 
 # Log files
-backend/logs/*.log
+logs/
+backend/logs/
 
 # Archived documentation and test files
 docs/ARCHIVE/

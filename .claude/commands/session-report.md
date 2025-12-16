@@ -36,16 +36,16 @@ Sort alphabetically by token ID.
 For all transactions where `mode: "blackmarket"`:
 - Token ID
 - Team ID
-- Points awarded
-- Scoring breakdown:
-  - Base value (from SF_ValueRating: 1=$100, 2=$500, 3=$1000, 4=$5000, 5=$10000)
-  - Type multiplier (Personal=1x, Business=3x, Technical=5x)
-  - Formula: `points = baseValue x typeMultiplier`
+- Points awarded (from transaction `points` field)
+- Scoring breakdown (look up token in tokens:all database):
+  - Base value from `metadata.rating`: 1=$100, 2=$500, 3=$1000, 4=$5000, 5=$10000
+  - Type multiplier from `memoryType`: Personal=1x, Business=3x, Technical=5x
+  - Formula: `points = baseValue × typeMultiplier`
+  - Pre-calculated `value` field can be used for verification
 - Running team totals
 - Timestamp
 
 Reference @docs/SCORING_LOGIC.md for scoring logic details.
-Reference token metadata from `backend/data/` file with key `tokens:all`.
 
 ### 3. Duplicate Scan Analysis
 For all transactions where `status: "duplicate"`:
@@ -58,6 +58,11 @@ For all transactions where `status: "duplicate"`:
 
 ### 4. Player Scan Analysis
 Parse `backend/logs/combined.log` for "Player scan received" entries during the session timeframe.
+
+**Log format**: Winston JSON (one JSON object per line):
+```json
+{"level":"info","message":"Player scan received","metadata":{"metadata":{"deviceId":"...","teamId":"...","tokenId":"..."}},"timestamp":"2025-12-03 15:12:21.442"}
+```
 
 Include:
 - Device ID patterns (PLAYER_*, SCANNER_001, etc.)
@@ -73,10 +78,26 @@ Include:
 
 ## Data Sources
 
-Session files: `backend/data/` (node-persist format, look for `session:*` keys)
-Log files: `backend/logs/combined.log`
-Token metadata: `backend/data/` file with key `tokens:all`
-Scoring reference: @docs/SCORING_LOGIC.md
+### Session Files: `backend/data/` (node-persist format)
+- Files are **hash-named** (e.g., `25724c868abc49b7fb3222bc5189309a`)
+- Each file contains JSON: `{"key":"...", "value":{...}}`
+- **To list sessions**: Grep all files for `"key":"session:` patterns
+- **Historical data**: Also check `"key":"backup:session:` for session backups
+- Session value structure includes: `id`, `name`, `startTime`, `endTime`, `status`, `teams`, `transactions[]`, `scores[]`
+
+### Token Metadata: `backend/data/`
+- Grep for `"key":"tokens:all"` to find the token database file
+- The `value` is an array of token objects with:
+  - `id`, `name`, `value` (pre-calculated points)
+  - `memoryType` (Personal/Business/Technical)
+  - `groupId`, `groupMultiplier`
+  - `metadata.rating` (1-5), `metadata.summary`, `metadata.rfid`
+
+### Log Files: `backend/logs/combined.log`
+- Winston JSON format (one JSON object per line)
+- Key fields: `level`, `message`, `metadata`, `timestamp`
+
+### Scoring Reference: @docs/SCORING_LOGIC.md
 
 ## Output Format
 
@@ -85,4 +106,4 @@ Generate a well-structured markdown report with clear sections, tables where app
 ## Session Timeframe
 
 Use the session's `startTime` and `endTime` to filter relevant log entries.
-Convert all timestamps to local timezone (Pacific) for readability.
+Convert all timestamps to the system's local timezone for readability.
