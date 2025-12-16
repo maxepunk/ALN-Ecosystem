@@ -1768,28 +1768,33 @@ components:
     PlayerScan:
       name: player:scan
       title: Player Scanner Scan Event
-      summary: Broadcast player scanner scan events to admin monitoring
+      summary: Broadcast player scanner scan events to GM scanners for game activity tracking
       description: |
-        Broadcast player scanner scan events to admin monitoring clients.
+        Broadcast player scanner scan events to GM scanner admin panels.
 
-        **Purpose**: Enable admin panel to monitor player scanner activity
-        **Audience**: admin-monitors room only (not gm-stations)
-        **Source**: HTTP POST /api/scan endpoint
+        **Purpose**: Enable GM admin panel to track token discoveries (Game Activity feature)
+        **Audience**: gm room (GM scanners ARE the admin panels)
+        **Source**: HTTP POST /api/scan endpoint → sessionService.addPlayerScan()
 
         This event is emitted for ALL player scanner token scans (video, image, audio).
-        It provides visibility into player activity without creating transaction records.
+        Player scans are now PERSISTED to session for:
+        - Game Activity tracking (tokens in play)
+        - Restart persistence (sync:full includes playerScans)
+        - Token lifecycle observability (discovered → claimed)
 
-        **Architecture Decision**: Lightweight monitoring events
-        - NOT transaction records (player scans aren't game transactions)
-        - Emitted directly from HTTP route (no service layer involvement)
-        - Minimal overhead, preserves separation of concerns
+        **Architecture Change (2025-12)**:
+        - Player scans now persist to session.playerScans[]
+        - Broadcast moved from admin-monitors to gm room
+        - Added scanId for correlation with persisted record
+        - Added tokenData for token metadata
 
         **Key Fields**:
+        - scanId: UUID of persisted scan record (for correlation)
         - tokenId: Token scanned by player
-        - deviceId: Player scanner device ID (format: PLAYER_*)
-        - teamId: Optional team ID (player scanner doesn't enforce teams)
+        - deviceId: Player scanner device ID
         - videoQueued: True if token has video property (queued for TV playback)
         - memoryType: Token type from token data (Personal, Business, etc.)
+        - tokenData: Full token metadata for display
       payload:
         type: object
         required:
@@ -1804,10 +1809,16 @@ components:
           data:
             type: object
             required:
+              - scanId
               - tokenId
               - deviceId
               - timestamp
             properties:
+              scanId:
+                type: string
+                format: uuid
+                description: UUID of persisted player scan record
+                example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
               tokenId:
                 type: string
                 description: Token ID that was scanned
@@ -1815,13 +1826,7 @@ components:
               deviceId:
                 type: string
                 description: Player scanner device ID
-                pattern: "^PLAYER_"
                 example: "PLAYER_8a7b9c1d"
-              teamId:
-                type: string
-                nullable: true
-                description: Optional team ID (player scanner doesn't enforce teams)
-                example: null
               videoQueued:
                 type: boolean
                 description: True if token has video property and was queued for TV playback
@@ -1829,12 +1834,35 @@ components:
               memoryType:
                 type: string
                 nullable: true
-                description: Token type from token data (Personal, Business, Detective, etc.)
+                description: Token type from token data (Personal, Business, Technical, etc.)
                 example: "Personal"
+              tokenData:
+                type: object
+                nullable: true
+                description: Full token metadata for display
+                properties:
+                  SF_MemoryType:
+                    type: string
+                    nullable: true
+                    example: "Personal"
+                  SF_ValueRating:
+                    type: integer
+                    nullable: true
+                    minimum: 1
+                    maximum: 5
+                    example: 3
+                  SF_Group:
+                    type: string
+                    nullable: true
+                    example: "Server Logs (x5)"
+                  summary:
+                    type: string
+                    nullable: true
+                    example: "Encrypted server logs revealing unauthorized access"
               timestamp:
                 type: string
                 format: date-time
-                description: Scan timestamp from client
+                description: Scan timestamp
                 example: "2025-10-29T10:15:30.000Z"
           timestamp:
             type: string

@@ -3,10 +3,11 @@
  * Tests player:scan event against AsyncAPI schema
  *
  * Layer 3 (Contract): Validates event structure, NOT business logic flow
- * Pattern: Admin socket monitoring player scanner activity
+ * Pattern: GM scanner receiving player scan events for Game Activity tracking
  *
- * IMPORTANT: player:scan broadcasts ONLY to admin-monitors room, not gm-stations.
- * Must use admin socket to receive this event.
+ * IMPORTANT: player:scan broadcasts to gm room (GM scanners ARE the admin panels).
+ * Must use gm socket to receive this event.
+ * Player scans are now PERSISTED to session and include scanId + tokenData.
  */
 
 const request = require('supertest');
@@ -18,7 +19,7 @@ const sessionService = require('../../../src/services/sessionService');
 
 describe('Player Scan Event - Contract Validation', () => {
   let testContext;
-  let adminSocket;
+  let gmSocket;
   let authToken;
 
   beforeAll(async () => {
@@ -43,36 +44,36 @@ describe('Player Scan Event - Contract Validation', () => {
     const videoQueueService = require('../../../src/services/videoQueueService');
     videoQueueService.reset();  // Reset video queue to clear any playing videos
 
-    // Create session (player scans work with or without session)
+    // Create session (player scans require active session for persistence)
     await sessionService.createSession({
       name: 'Player Scan Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
 
-    // Connect admin socket (will receive player:scan events)
-    // Admin socket uses handshake.auth with JWT token
-    adminSocket = createTrackedSocket(testContext.socketUrl, {
+    // Connect GM socket (will receive player:scan events in gm room)
+    // GM scanner uses handshake.auth with JWT token
+    gmSocket = createTrackedSocket(testContext.socketUrl, {
       auth: {
         token: authToken,
-        deviceId: 'TEST_ADMIN_MONITOR',
-        deviceType: 'admin',
+        deviceId: 'TEST_GM_SCANNER',
+        deviceType: 'gm',
         version: '1.0.0'
       }
     });
 
     // Wait for connection to establish
     await new Promise((resolve) => {
-      if (adminSocket.connected) {
+      if (gmSocket.connected) {
         resolve();
       } else {
-        adminSocket.once('connect', resolve);
+        gmSocket.once('connect', resolve);
       }
     });
   });
 
   afterEach(async () => {
-    if (adminSocket && adminSocket.connected) {
-      adminSocket.disconnect();
+    if (gmSocket && gmSocket.connected) {
+      gmSocket.disconnect();
     }
     await resetAllServices();
     const videoQueueService = require('../../../src/services/videoQueueService');
@@ -82,7 +83,7 @@ describe('Player Scan Event - Contract Validation', () => {
   describe('player:scan event', () => {
     it('should match AsyncAPI schema when player scans video token', async () => {
       // Setup: Listen for player:scan BEFORE triggering
-      const eventPromise = waitForEvent(adminSocket, 'player:scan');
+      const eventPromise = waitForEvent(gmSocket, 'player:scan');
 
       // Trigger: Player scanner sends scan via HTTP POST /api/scan
       await request(testContext.url)
@@ -90,13 +91,12 @@ describe('Player Scan Event - Contract Validation', () => {
         .send({
           tokenId: 'jaw001',  // Only video token in ALN-TokenData
           deviceId: 'PLAYER_8a7b9c1d',
-          deviceType: 'player',  // P0.1: Required for device-type-specific behavior
-          teamId: 'Team Alpha',
+          deviceType: 'player',
           timestamp: new Date().toISOString()
         })
         .expect(200);
 
-      // Wait: For player:scan broadcast to admin
+      // Wait: For player:scan broadcast to gm room
       const event = await eventPromise;
 
       // Validate: Wrapped envelope structure
@@ -106,13 +106,16 @@ describe('Player Scan Event - Contract Validation', () => {
       expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
       // Validate: Payload content (per AsyncAPI PlayerScan schema)
+      expect(event.data).toHaveProperty('scanId');  // UUID of persisted record
+      expect(event.data.scanId).toMatch(/^[0-9a-f-]{36}$/);
       expect(event.data).toHaveProperty('tokenId', 'jaw001');
       expect(event.data).toHaveProperty('deviceId', 'PLAYER_8a7b9c1d');
-      expect(event.data).toHaveProperty('teamId', 'Team Alpha');
       expect(event.data).toHaveProperty('videoQueued', true);  // Video token queues video
       expect(event.data).toHaveProperty('memoryType', 'Personal');  // From tokens.json
       expect(event.data).toHaveProperty('timestamp');
       expect(event.data.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(event.data).toHaveProperty('tokenData');  // Token metadata
+      expect(event.data.tokenData).toHaveProperty('SF_MemoryType', 'Personal');
 
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'player:scan');
@@ -120,7 +123,7 @@ describe('Player Scan Event - Contract Validation', () => {
 
     it('should match AsyncAPI schema when player scans non-video token', async () => {
       // Setup: Listen for player:scan
-      const eventPromise = waitForEvent(adminSocket, 'player:scan');
+      const eventPromise = waitForEvent(gmSocket, 'player:scan');
 
       // Trigger: Player scanner sends scan for image/audio token (no video)
       await request(testContext.url)
@@ -128,7 +131,7 @@ describe('Player Scan Event - Contract Validation', () => {
         .send({
           tokenId: 'tac001',  // Non-video token (image + audio only)
           deviceId: 'PLAYER_test123',
-          deviceType: 'player',  // P0.1: Required for device-type-specific behavior
+          deviceType: 'player',
           timestamp: new Date().toISOString()
         })
         .expect(200);
@@ -142,29 +145,29 @@ describe('Player Scan Event - Contract Validation', () => {
       expect(event).toHaveProperty('timestamp');
 
       // Validate: Payload content
+      expect(event.data).toHaveProperty('scanId');  // UUID of persisted record
       expect(event.data).toHaveProperty('tokenId', 'tac001');
       expect(event.data).toHaveProperty('deviceId', 'PLAYER_test123');
-      expect(event.data).toHaveProperty('teamId', null);  // No teamId provided
       expect(event.data).toHaveProperty('videoQueued', false);  // No video in token
       expect(event.data).toHaveProperty('memoryType', 'Business');  // From tokens.json
       expect(event.data).toHaveProperty('timestamp');
+      expect(event.data).toHaveProperty('tokenData');  // Token metadata
 
       // Validate: Against AsyncAPI contract
       validateWebSocketEvent(event, 'player:scan');
     });
 
-    it('should match AsyncAPI schema with optional teamId', async () => {
+    it('should persist player scan to session', async () => {
       // Setup: Listen for player:scan
-      const eventPromise = waitForEvent(adminSocket, 'player:scan');
+      const eventPromise = waitForEvent(gmSocket, 'player:scan');
 
-      // Trigger: Player scan without teamId (optional field)
+      // Trigger: Player scan
       await request(testContext.url)
         .post('/api/scan')
         .send({
-          tokenId: 'jaw001',  // Only video token in ALN-TokenData
+          tokenId: 'jaw001',
           deviceId: 'PLAYER_scanner_1',
-          deviceType: 'player',  // P0.1: Required for device-type-specific behavior
-          // teamId omitted (optional per contract)
+          deviceType: 'player',
           timestamp: new Date().toISOString()
         })
         .expect(200);
@@ -172,17 +175,16 @@ describe('Player Scan Event - Contract Validation', () => {
       // Wait: For player:scan broadcast
       const event = await eventPromise;
 
-      // Validate: Wrapped envelope
-      expect(event).toHaveProperty('event', 'player:scan');
-      expect(event).toHaveProperty('data');
-      expect(event).toHaveProperty('timestamp');
+      // Validate: scanId is returned
+      expect(event.data).toHaveProperty('scanId');
+      expect(event.data.scanId).toMatch(/^[0-9a-f-]{36}$/);
 
-      // Validate: teamId is null when not provided
-      expect(event.data).toHaveProperty('tokenId', 'jaw001');
-      expect(event.data).toHaveProperty('teamId', null);
-      expect(event.data).toHaveProperty('videoQueued', true);
-      expect(event.data).toHaveProperty('memoryType', 'Personal');
-      expect(event.data).toHaveProperty('timestamp');
+      // Validate: Scan was persisted to session
+      const session = sessionService.getCurrentSession();
+      expect(session.playerScans).toHaveLength(1);
+      expect(session.playerScans[0].id).toBe(event.data.scanId);
+      expect(session.playerScans[0].tokenId).toBe('jaw001');
+      expect(session.playerScans[0].deviceId).toBe('PLAYER_scanner_1');
 
       // Validate: Against AsyncAPI contract
       validateWebSocketEvent(event, 'player:scan');

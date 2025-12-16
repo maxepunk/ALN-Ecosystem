@@ -42,6 +42,10 @@ class Session {
       data.scores = [];
     }
 
+    if (!data.playerScans) {
+      data.playerScans = [];
+    }
+
     if (!data.metadata) {
       data.metadata = {
         gmStations: 0,
@@ -147,6 +151,33 @@ class Session {
   }
 
   /**
+   * Add a player scan to the session
+   * Player scans track token discoveries by player scanners (no scoring)
+   * @param {Object} scanData - Player scan data
+   * @returns {Object} The created player scan record
+   */
+  addPlayerScan(scanData) {
+    const playerScan = {
+      id: uuidv4(),
+      tokenId: scanData.tokenId,
+      deviceId: scanData.deviceId,
+      deviceType: scanData.deviceType || 'player',
+      timestamp: scanData.timestamp || new Date().toISOString(),
+      tokenData: scanData.tokenData || null
+    };
+
+    this.playerScans.push(playerScan);
+
+    // Track in metadata
+    if (!this.metadata.playerScanCount) {
+      this.metadata.playerScanCount = 0;
+    }
+    this.metadata.playerScanCount++;
+
+    return playerScan;
+  }
+
+  /**
    * Add or update a device connection
    * @param {Object} device - Device connection to add/update
    * @returns {Object} { isNew: boolean, isReconnection: boolean }
@@ -240,6 +271,7 @@ class Session {
       status: this.status,
       teams: this.scores.map(score => score.teamId),
       transactions: this.transactions,
+      playerScans: this.playerScans,
       connectedDevices: this.connectedDevices,
       videoQueue: this.videoQueue,
       scores: this.scores,

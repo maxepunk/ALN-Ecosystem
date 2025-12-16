@@ -84,19 +84,39 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Emit player:scan WebSocket event for admin monitoring
+    // Persist player scan to session BEFORE broadcasting
+    // This ensures scan data survives restarts and is included in sync:full
+    const tokenData = token ? {
+      SF_MemoryType: token.memoryType,
+      SF_ValueRating: token.valueRating,
+      SF_Group: token.group || null,
+      summary: token.summary || null
+    } : null;
+
+    const playerScan = await sessionService.addPlayerScan({
+      tokenId: scanRequest.tokenId,
+      deviceId: scanRequest.deviceId,
+      deviceType: scanRequest.deviceType || 'player',
+      timestamp: scanRequest.timestamp || new Date().toISOString(),
+      tokenData
+    });
+
+    // Emit player:scan WebSocket event to gm room (not admin-monitors)
+    // GM scanners ARE the admin panels - they need to see player activity
     const io = req.app.locals.io;
     if (io) {
       const { emitToRoom } = require('../websocket/eventWrapper');
-      emitToRoom(io, 'admin-monitors', 'player:scan', {
+      emitToRoom(io, 'gm', 'player:scan', {
+        scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        teamId: scanRequest.teamId || null,
         videoQueued: token && token.hasVideo(),
-        memoryType: token ? token.memoryType : null,  // Use transformed field, not SF_MemoryType
-        timestamp: scanRequest.timestamp || new Date().toISOString()
+        memoryType: token ? token.memoryType : null,
+        timestamp: playerScan.timestamp,
+        tokenData
       });
-      logger.debug('Broadcasted player:scan event', {
+      logger.debug('Broadcasted player:scan event to gm room', {
+        scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
         videoQueued: token && token.hasVideo()

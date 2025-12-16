@@ -627,6 +627,34 @@ class SessionService extends EventEmitter {
   }
 
   /**
+   * Add a player scan to current session
+   * Player scans track token discoveries (no scoring)
+   * @param {Object} scanData - Player scan data
+   * @returns {Promise<Object>} The created player scan record
+   */
+  async addPlayerScan(scanData) {
+    if (!this.currentSession) {
+      throw new Error('No active session');
+    }
+
+    const playerScan = this.currentSession.addPlayerScan(scanData);
+    await this.saveCurrentSession();
+
+    logger.info('Player scan recorded', {
+      sessionId: this.currentSession.id,
+      scanId: playerScan.id,
+      tokenId: scanData.tokenId,
+      deviceId: scanData.deviceId,
+      playerScanCount: this.currentSession.playerScans.length
+    });
+
+    // Emit event for broadcasts.js to handle WebSocket notification
+    this.emit('player-scan:added', playerScan);
+
+    return playerScan;
+  }
+
+  /**
    * Update device in current session
    * @param {Object} device - Device to update
    * @returns {Promise<void>}
