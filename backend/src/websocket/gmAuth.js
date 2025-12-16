@@ -206,7 +206,9 @@ async function handleGmIdentify(socket, data, io) {
       // PHASE 2.1 (P1.1): Include device-specific scanned tokens for state restoration
       deviceScannedTokens,
       // PHASE 2.1 (P1.1): Include reconnection flag for frontend notification
-      reconnection: isReconnection
+      reconnection: isReconnection,
+      // Game Activity: Include player scans for token lifecycle tracking
+      playerScans: session?.playerScans || []
     });
 
     // Confirm identification with contract-compliant response

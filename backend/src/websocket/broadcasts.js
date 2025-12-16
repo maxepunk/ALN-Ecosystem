@@ -579,7 +579,9 @@ function setupBroadcastListeners(io, services) {
           // Additional fields not in contract but used by implementation
           videoDisplayReady: false,  // TODO: Track actual display ready status
           offline: offlineQueueService?.isOffline || false
-        }
+        },
+        // Game Activity: Include player scans for token lifecycle tracking
+        playerScans: session?.playerScans || []
       };
 
       emitWrapped(io, 'sync:full', syncFullPayload);
