@@ -87,7 +87,6 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 
@@ -163,7 +162,6 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     console.log(`[afterEach] Starting fresh orchestrator...`);
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
     console.log(`[afterEach] ✓ Orchestrator restarted for test isolation`);
@@ -178,7 +176,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const teamAlpha = `Team Alpha ${Date.now()}`;
 
     // Initialize scanner UI - this handles connection via browser
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -214,7 +212,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const expectedScore = calculateExpectedScore(token);
 
     // Initialize scanner in networked mode
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -271,7 +269,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const expectedScore = calculateExpectedScore(token);
 
     // Initialize scanner in networked mode
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -338,7 +336,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const expectedTotal = baseScore + bonus;
 
     // Initialize scanner in networked mode
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -415,7 +413,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const expectedFinal = score1 + score2;
 
     // Initialize scanner in networked mode
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -524,7 +522,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const score2 = calculateExpectedScore(token2);
 
     // Initialize scanner in networked mode
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,

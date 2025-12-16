@@ -26,7 +26,7 @@ test.describe('Player Scanner Diagnostic', () => {
   test.beforeAll(async () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
-    orchestratorInfo = await startOrchestrator({ https: true, port: 3000, timeout: 30000 });
+    orchestratorInfo = await startOrchestrator({ https: true, timeout: 30000 });
     browser = await chromium.launch({ headless: true });
 
     // Create session
@@ -46,7 +46,7 @@ test.describe('Player Scanner Diagnostic', () => {
   });
 
   test('DIAGNOSTIC: Trace Player Scanner initialization and handleScan flow', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 

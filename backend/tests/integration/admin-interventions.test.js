@@ -347,19 +347,22 @@ describe('Admin Intervention Integration', () => {
 
     it('should end session and cleanup services', async () => {
       // Create some transactions first
+      // Slice 5: processScan gets session internally, no longer passed as param
       await transactionService.processScan({
         tokenId: 'rat001',
         teamId: 'Team Alpha',
         deviceId: 'SETUP',
         deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
-      }, sessionService.getCurrentSession());
+      });
 
       let teamScores = transactionService.getTeamScores();
       const scoreBefore = teamScores.find(s => s.teamId === 'Team Alpha');
       expect(scoreBefore.currentScore).toBe(40);
 
-      const sessionUpdatePromise = waitForEvent(gmObserver.socket, 'session:update');
+      // Use predicate to filter for 'ended' status (avoid receiving stale 'active' session:update)
+      const isEndedSession = (data) => data?.data?.status === 'ended';
+      const sessionUpdatePromise = waitForEvent(gmObserver.socket, 'session:update', isEndedSession);
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // End session

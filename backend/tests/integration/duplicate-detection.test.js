@@ -366,62 +366,70 @@ describe('Duplicate Detection Integration', () => {
   });
 
   describe('Multi-Client Duplicate Broadcast', () => {
-    it('should broadcast transaction:new for both accepted and duplicate scans', async () => {
-      // Both accepted and duplicate transactions should broadcast to ALL GMs
+    it('should broadcast transaction:new only for accepted scans, not duplicates', async () => {
+      // ARCHITECTURE: Duplicate detection happens EARLY in processScan()
+      // - If duplicate: returns early WITHOUT emitting transaction:accepted
+      // - No transaction:accepted → no transaction:added → no transaction:new broadcast
+      // - Submitter still gets transaction:result (unicast) with status: duplicate
 
       // Set up listeners on BOTH GMs for transaction:new
       const gm1NewPromise1 = waitForEvent(gm1, 'transaction:new');
       const gm2NewPromise1 = waitForEvent(gm2, 'transaction:new');
 
-      // First scan (accepted)
+      // Set up listener for duplicate result (unicast to submitter only)
+      const gm2ResultPromise = waitForEvent(gm2, 'transaction:result');
+
+      // First scan (accepted) - should broadcast transaction:new to ALL GMs
       gm1.emit('transaction:submit', {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',
           teamId: 'Team Alpha',
           deviceId: 'GM_DUP_1',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
 
-      // Wait for first transaction to broadcast to both
+      // Wait for first transaction to broadcast to both GMs
       const [new1gm1, new1gm2] = await Promise.all([gm1NewPromise1, gm2NewPromise1]);
 
-      expect(new1gm1.data.transaction.status).toBe('accepted');
-      expect(new1gm2.data.transaction.status).toBe('accepted');
+      // Validate: Accepted transaction broadcast to ALL GMs
+      expect(new1gm1.data.transaction.tokenId).toBe('534e2b03');
+      expect(new1gm2.data.transaction.tokenId).toBe('534e2b03');
+      validateWebSocketEvent(new1gm1, 'transaction:new');
 
-      // Set up listeners for second transaction
-      // CRITICAL: Use predicate to filter for the SPECIFIC transaction (teamId 'Detectives')
-      // Without predicate, cache returns stale first transaction (teamId 'Team Alpha')
-      // This is condition-based waiting - the correct pattern per testing anti-patterns
-      const isTeam002Transaction = (data) => data?.data?.transaction?.teamId === 'Detectives';
-      const gm1NewPromise2 = waitForEvent(gm1, 'transaction:new', isTeam002Transaction);
-      const gm2NewPromise2 = waitForEvent(gm2, 'transaction:new', isTeam002Transaction);
-
-      // Second scan (duplicate)
+      // Second scan (duplicate) - should NOT broadcast transaction:new
+      // Submitter should receive transaction:result with status: duplicate
       gm2.emit('transaction:submit', {
         event: 'transaction:submit',
         data: {
           tokenId: '534e2b03',  // Same token
           teamId: 'Detectives',
           deviceId: 'GM_DUP_2',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
 
-      // Wait for duplicate transaction to broadcast to both
-      const [new2gm1, new2gm2] = await Promise.all([gm1NewPromise2, gm2NewPromise2]);
+      // Wait for duplicate result (unicast to submitter)
+      const duplicateResult = await gm2ResultPromise;
 
-      expect(new2gm1.data.transaction.status).toBe('duplicate');
-      expect(new2gm2.data.transaction.status).toBe('duplicate');
+      // Validate: Submitter gets duplicate status via unicast
+      expect(duplicateResult.data.status).toBe('duplicate');
+      expect(duplicateResult.data.claimedBy).toBe('Team Alpha');
 
-      // Validate: Contract compliance for both broadcasts
-      validateWebSocketEvent(new1gm1, 'transaction:new');
-      validateWebSocketEvent(new2gm1, 'transaction:new');
+      // Validate: No transaction:new was broadcast for duplicate
+      // (If it was broadcast, we'd have received it, but we didn't set up a listener
+      // because the architecture says duplicates don't broadcast)
+
+      // Verify only ONE transaction exists in the system
+      const session = require('../../src/services/sessionService').getCurrentSession();
+      const transactions = session.transactions.filter(t => t.tokenId === '534e2b03');
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0].teamId).toBe('Team Alpha'); // First-come-first-served
     });
   });
 

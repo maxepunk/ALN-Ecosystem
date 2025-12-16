@@ -44,7 +44,6 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 
@@ -71,7 +70,7 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
 
   test('should initialize admin panel without errors after connection', async () => {
     // Create browser page
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Track console errors (CRITICAL for regression detection)
@@ -156,7 +155,7 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
 
   test('should support switching between views without errors', async () => {
     // Create browser page
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     try {

@@ -68,7 +68,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
+      // Dynamic port assignment (port=0) prevents conflicts when running parallel workers
       timeout: 30000
     });
 
@@ -121,13 +121,13 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     const teamBeta = `Team Beta ${Date.now()}`;
     const teamGamma = `Team Gamma ${Date.now()}`;
 
-    // Create 6 browser contexts
-    const gmContext1 = await createBrowserContext(browser, 'mobile');
-    const gmContext2 = await createBrowserContext(browser, 'mobile');
-    const playerContext1 = await createBrowserContext(browser, 'mobile');
-    const playerContext2 = await createBrowserContext(browser, 'mobile');
-    const playerContext3 = await createBrowserContext(browser, 'mobile');
-    const scoreboardContext = await createBrowserContext(browser, 'desktop');
+    // Create 6 browser contexts with explicit baseURL to avoid env var race conditions
+    const gmContext1 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const gmContext2 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const playerContext1 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const playerContext2 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const playerContext3 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const scoreboardContext = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
 
     // Create pages
     const gmPage1 = await createPage(gmContext1);
@@ -313,11 +313,24 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     await gmScanner1.finishTeam();
 
     await gmScanner1.addNewTeam(teamGamma);
-    console.log(`✓ Team Gamma created mid-session`);
+    console.log(`✓ Team Gamma created mid-session by GM1`);
 
-    // VERIFY: Team Gamma appears in dropdown
+    // VERIFY: Team Gamma appears in GM1's dropdown
     await gmScanner1.waitForTeamInDropdown(teamGamma);
-    console.log('✓ Team Gamma now available in team dropdown');
+    console.log('✓ Team Gamma now available in GM1 team dropdown');
+
+    // CRITICAL: Verify multi-GM team sync - GM2 should also see Team Gamma
+    // Navigate GM2 back to team entry screen (may be on result or history screen)
+    await gmScanner2.scannerTab.click();
+    // Use finishTeam to properly navigate back to team selection
+    try {
+      await gmScanner2.finishTeam();
+    } catch (e) {
+      // finishTeam may fail if already on team entry screen, that's ok
+    }
+    await gmScanner2.teamEntryScreen.waitFor({ state: 'visible', timeout: 10000 });
+    await gmScanner2.waitForTeamInDropdown(teamGamma, 10000);
+    console.log('✓ Team Gamma synced to GM2 - multi-GM team sync verified');
 
     // 9. GM1 scans 3 blackmarket tokens for Team Gamma
     await gmScanner1.selectTeam(teamGamma);
@@ -342,6 +355,48 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // VERIFY: Public scoreboard shows Team Gamma in black market rankings
     const publicScoreEntryCount = await scoreboard.getScoreEntryCount();
     console.log(`✓ Public scoreboard shows ${publicScoreEntryCount} score entries`);
+    await gmScanner1.closeScoreboard();
+
+    // ============================================
+    // PHASE 5b: Score Adjustment (Admin Feature)
+    // ============================================
+    console.log('\n=== PHASE 5b: Score Adjustment ===');
+
+    // GM1 opens scoreboard and team details to adjust Team Beta's score
+    await gmScanner1.openScoreboard();
+    await gmScanner1.waitForTeamInScoreboard(teamBeta);
+
+    // Get Team Beta's score BEFORE adjustment
+    const teamBetaScoreBefore = await gmScanner1.getTeamScoreNumericFromScoreboard(teamBeta);
+    console.log(`Team Beta score before adjustment: $${teamBetaScoreBefore}`);
+
+    // Open team details to access score adjustment UI
+    await gmScanner1.openTeamDetails(teamBeta);
+
+    // Adjust score by +5000 (admin bonus)
+    const adjustmentAmount = 5000;
+    const expectedScore = teamBetaScoreBefore + adjustmentAmount;
+    await gmScanner1.adjustTeamScore(adjustmentAmount, 'E2E test bonus');
+    console.log(`✓ GM1 adjusted Team Beta score by +$${adjustmentAmount}`);
+
+    // Close team details
+    await gmScanner1.closeTeamDetails();
+
+    // CONDITION-BASED WAITING: Wait for scoreboard DOM to show expected score
+    await gmScanner1.waitForTeamScoreInScoreboard(teamBeta, expectedScore, 10000);
+
+    // Get Team Beta's score AFTER adjustment (now guaranteed to be updated)
+    const teamBetaScoreAfter = await gmScanner1.getTeamScoreNumericFromScoreboard(teamBeta);
+    console.log(`Team Beta score after adjustment: $${teamBetaScoreAfter}`);
+
+    // VERIFY: Score increased by adjustment amount
+    expect(teamBetaScoreAfter).toBe(expectedScore);
+    console.log(`✓ Score adjustment verified: $${teamBetaScoreBefore} → $${teamBetaScoreAfter}`);
+
+    // NOTE: Skipping GM2 scoreboard verification - GM2 is in Detective mode
+    // which doesn't have a visible scoreboard button (scoreboard is Black Market only).
+    // Multi-GM sync is verified via team creation sync earlier in the test.
+
     await gmScanner1.closeScoreboard();
 
     // ============================================

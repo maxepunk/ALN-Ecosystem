@@ -7,7 +7,7 @@
  * - ES6 architecture initialized (game mode screen visible, NO window.App globals)
  */
 
-const { test, expect } = require('@playwright/test');
+const { test, expect, chromium } = require('@playwright/test');
 
 const {
   startOrchestrator,
@@ -17,8 +17,17 @@ const {
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 
+const {
+  createBrowserContext,
+  createPage,
+  closeAllContexts,
+} = require('../setup/browser-contexts');
+
+// Global state
+let browser = null;
+let orchestrator = null;
+
 test.describe('GM Scanner - App Loading', () => {
-  let orchestrator;
 
   test.beforeAll(async () => {
     // Clear any existing session data
@@ -30,19 +39,37 @@ test.describe('GM Scanner - App Loading', () => {
     console.log('Starting orchestrator for E2E tests');
     orchestrator = await startOrchestrator({
       https: true,
-      port: 3000,
       preserveSession: false
     });
+
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-gpu',
+      ]
+    });
+    console.log('Browser launched');
   });
 
   test.afterAll(async () => {
+    await closeAllContexts();
+    if (browser) await browser.close();
     if (orchestrator) {
       await stopOrchestrator(orchestrator);
     }
     await cleanupVLC();
   });
 
-  test('loads the app without 404 errors', async ({ page }) => {
+  test.afterEach(async () => {
+    await closeAllContexts();
+  });
+
+  test('loads the app without 404 errors', async () => {
+    const context = await createBrowserContext(browser, 'mobile');
+    const page = await createPage(context);
     console.log('📱 Navigating to /gm-scanner/');
 
     // Track 404 errors (but ignore expected fallback attempts like data/tokens.json)

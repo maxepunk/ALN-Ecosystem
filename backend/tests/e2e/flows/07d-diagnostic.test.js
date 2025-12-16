@@ -83,7 +83,6 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 
@@ -110,9 +109,9 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
   test('should trace event flow for history auto-update', async () => {
     const logger = createDiagnosticLogger('history-auto-update');
 
-    const context1 = await createBrowserContext(browser, 'mobile');
+    const context1 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page1 = await createPage(context1);
-    const context2 = await createBrowserContext(browser, 'mobile');
+    const context2 = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page2 = await createPage(context2);
 
     try {

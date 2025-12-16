@@ -86,7 +86,6 @@ test.describe('Player Scanner Networked Scanning', () => {
     // 3. Start orchestrator with HTTPS
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
     console.log(`Orchestrator started: ${orchestratorInfo.url}`);
@@ -156,7 +155,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   // ========================================
 
   test('scan token while online sends POST /api/scan for ALL token types', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -211,7 +210,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('request includes: tokenId, teamId, deviceId, timestamp', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -253,7 +252,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('response logged: success status', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -302,7 +301,7 @@ test.describe('Player Scanner Networked Scanning', () => {
       return;
     }
 
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -337,7 +336,7 @@ test.describe('Player Scanner Networked Scanning', () => {
       return;
     }
 
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -377,7 +376,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   // ========================================
 
   test('local media still displays (image/audio)', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -433,7 +432,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   // ========================================
 
   test('scan while offline queues transaction', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -461,7 +460,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('offline queue stored in localStorage', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -499,7 +498,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('offline queue max 100 items (FIFO)', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -550,7 +549,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   // ========================================
 
   test('connection restored triggers queue processing', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -605,7 +604,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('batch endpoint called with queued transactions', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -659,7 +658,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('queue cleared after successful sync', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 
@@ -710,7 +709,7 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('failed batch re-queued for retry', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     const scanner = new PlayerScannerPage(page);
 

@@ -63,10 +63,11 @@ describe('System Reset Regression Tests', () => {
       // Perform 3 consecutive system resets
       for (let i = 1; i <= 3; i++) {
         // Capture counts BEFORE reset
+        // NOTE (Slice 6): score:updated replaced by transaction:accepted in new event architecture
         const beforeReset = {
           session: sessionService.listenerCount('session:created') +
                    sessionService.listenerCount('session:updated'),
-          transaction: transactionService.listenerCount('score:updated'),
+          transaction: transactionService.listenerCount('transaction:accepted'),
           state: stateService.listenerCount('state:updated')
         };
 
@@ -89,10 +90,11 @@ describe('System Reset Regression Tests', () => {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         // Capture counts AFTER reset
+        // NOTE (Slice 6): score:updated replaced by transaction:accepted in new event architecture
         const afterReset = {
           session: sessionService.listenerCount('session:created') +
                    sessionService.listenerCount('session:updated'),
-          transaction: transactionService.listenerCount('score:updated'),
+          transaction: transactionService.listenerCount('transaction:accepted'),
           state: stateService.listenerCount('state:updated')
         };
 
@@ -188,14 +190,16 @@ describe('System Reset Regression Tests', () => {
       const TestTokens = require('../fixtures/test-tokens');
       await transactionService.init(TestTokens.getAllAsArray());
 
-      const session = sessionService.getCurrentSession();
+      // Slice 5: processScan gets session internally, no longer passed as param
       await transactionService.processScan({
         tokenId: '534e2b03',
         teamId: 'Team Alpha',
         deviceId: 'GM_RESET_TEST',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+        deviceType: 'gm',  // Required by Phase 3 P0.1
         mode: 'blackmarket'
-      }, session);
+      });
+
+      const session = sessionService.getCurrentSession();
 
       // Verify transaction exists
       expect(session.transactions.length).toBe(1);
@@ -218,7 +222,7 @@ describe('System Reset Regression Tests', () => {
       // Create new session - should start fresh
       await sessionService.createSession({
         name: 'Fresh Session',
-        teams: ['002']
+        teams: ['Detectives']
       });
 
       const newSession = sessionService.getCurrentSession();

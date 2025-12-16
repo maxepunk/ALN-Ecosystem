@@ -46,7 +46,6 @@ test.describe('Display Control - Admin Panel', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 
@@ -70,7 +69,7 @@ test.describe('Display Control - Admin Panel', () => {
   });
 
   test('should show display control UI elements in admin panel', async () => {
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     try {
@@ -105,7 +104,7 @@ test.describe('Display Control - Admin Panel', () => {
   });
 
   test('should toggle display mode from Idle Loop to Scoreboard', async () => {
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     page.on('console', msg => console.log(`BROWSER: ${msg.text()}`));
 
@@ -151,8 +150,8 @@ test.describe('Display Control - Admin Panel', () => {
 
   test('should sync display mode across multiple GM scanners', async () => {
     // Create two browser contexts for two separate scanners
-    const context1 = await createBrowserContext(browser);
-    const context2 = await createBrowserContext(browser);
+    const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const context2 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page1 = await createPage(context1);
     const page2 = await createPage(context2);
 
@@ -194,7 +193,7 @@ test.describe('Display Control - Admin Panel', () => {
   });
 
   test('should show "Returns To" indicator during video playback', async () => {
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     try {
@@ -228,7 +227,7 @@ test.describe('Display Control - Admin Panel', () => {
   });
 
   test('should handle display control without errors during view switching', async () => {
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Track errors

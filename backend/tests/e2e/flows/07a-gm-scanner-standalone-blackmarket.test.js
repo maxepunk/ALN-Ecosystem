@@ -50,7 +50,6 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 

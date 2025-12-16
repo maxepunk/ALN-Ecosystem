@@ -63,7 +63,6 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 
@@ -154,7 +153,6 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
     console.log(`[afterEach] Starting fresh orchestrator...`);
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
     console.log(`[afterEach] ✓ Orchestrator restarted for test isolation`);
@@ -169,7 +167,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
 
   test('should handle session state synchronization', async () => {
     // Create browser page
-    const context = await createBrowserContext(browser);
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Capture browser console logs for debugging
@@ -212,7 +210,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
   });
 
   test('should reset all team scores via admin panel', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Capture browser console logs for debugging
@@ -303,21 +301,20 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
 
       // DEBUG: Check frontend backendScores Map size via localStorage or DOM
       const frontendScoreInfo = await page.evaluate(() => {
-        // Try to get score info from the rendered table
-        const rows = document.querySelectorAll('#admin-score-board tbody tr');
+        // Try to get score info from the rendered scoreboard entries
+        const entries = document.querySelectorAll('#admin-score-board .scoreboard-entry');
         const rowData = [];
-        rows.forEach(row => {
-          const cells = row.querySelectorAll('td');
-          if (cells.length >= 2) {
-            rowData.push({ team: cells[0]?.textContent, score: cells[1]?.textContent });
-          }
+        entries.forEach(entry => {
+          const team = entry.querySelector('.scoreboard-team')?.textContent;
+          const score = entry.querySelector('.scoreboard-score')?.textContent;
+          rowData.push({ team, score });
         });
         return {
-          rowCount: rows.length,
+          rowCount: entries.length,
           rowData
         };
       });
-      console.log(`[DEBUG:7-FRONTEND-SCOREBOARD] Rendered rows: ${JSON.stringify(frontendScoreInfo)}`);
+      console.log(`[DEBUG:7-FRONTEND-SCOREBOARD] Rendered entries: ${JSON.stringify(frontendScoreInfo)}`);
 
       // Verify admin panel sections are rendered
       const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
@@ -326,8 +323,8 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Verify teams with scores appear in scoreboard
       // Note: Only teams with non-zero scores appear in scoreboard (Team Alpha, Detectives)
       // This is correct behavior - teams without scans don't clutter the scoreboard
-      const scoreboardRows = page.locator('#admin-score-board tbody tr');
-      await expect(scoreboardRows).toHaveCount(2, { timeout: 5000 });
+      const scoreboardEntries = page.locator('#admin-score-board .scoreboard-entry');
+      await expect(scoreboardEntries).toHaveCount(2, { timeout: 5000 });
 
       // Verify the two scanned teams have non-zero scores before reset
       await gmScanner.waitForBackendState(
@@ -351,20 +348,19 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await page.click('button[data-action="app.adminResetScores"]');
 
       // Wait for backend to confirm scores are reset to zero
-      // All 5 teams (001, 002, 003, Team Alpha, Detectives) remain in session with zero scores
+      // Both teams (Team Alpha, Detectives) remain in session with zero scores
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {
           const scores = state.scores || [];
-          // All teams should have zero scores after reset
-          return scores.length === 5 && scores.every(s => s.currentScore === 0);
+          // Both teams should have zero scores after reset
+          return scores.length === 2 && scores.every(s => s.currentScore === 0);
         },
         5000
       );
 
-      // After reset, all teams have zero scores so scoreboard should be empty
-      // (scoreboard only shows teams with non-zero scores)
-      await expect(scoreboardRows).toHaveCount(0, { timeout: 5000 });
+      // After reset, both teams have zero scores so scoreboard should show 2 entries with $0
+      await expect(scoreboardEntries).toHaveCount(2, { timeout: 5000 });
 
       console.log('✓ Score reset test completed successfully');
 
@@ -375,7 +371,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
   });
 
   test('should adjust team score via team details screen', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Capture browser console logs for debugging
@@ -454,7 +450,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
   });
 
   test('should persist score data across page reload', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Capture browser console logs for debugging
@@ -550,50 +546,11 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
     }
   });
 
-  test('should navigate to full scoreboard when View Full Scoreboard button clicked', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
-    const page = await createPage(context);
-
-    // Capture browser console logs for debugging
-    addConsoleCapture(page, 'Test5-ViewScoreboard');
-
-    try {
-      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
-        orchestratorUrl: orchestratorInfo.url,
-        password: ADMIN_PASSWORD
-      });
-
-      // Navigate to admin panel
-      await gmScanner.navigateToAdminPanel();
-
-      // Create session with teams via UI
-      await gmScanner.createSessionWithTeams('Nav Test Scoreboard', ['Team Alpha', 'Detectives']);
-
-      // Wait for session to be active
-      await gmScanner.waitForBackendState(
-        orchestratorInfo.url,
-        (state) => state.session?.status === 'active',
-        5000
-      );
-
-      // Click View Full Scoreboard button (pure frontend navigation)
-      await gmScanner.viewFullScoreboard();
-
-      // Verify navigation to scoreboard
-      await expect(gmScanner.scannerView).toBeVisible();
-      await expect(gmScanner.adminView).not.toBeVisible();
-      await expect(gmScanner.scoreboardScreen).toBeVisible();
-
-      console.log('✓ View Full Scoreboard navigation completed');
-
-    } finally {
-      await page.close();
-      await context.close();
-    }
-  });
+  // NOTE: 'View Full Scoreboard' test removed - button was removed as part of
+  // admin scoreboard consolidation. Admin panel now has full scoreboard inline.
 
   test('should navigate to full history when View Full History button clicked', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Capture browser console logs for debugging

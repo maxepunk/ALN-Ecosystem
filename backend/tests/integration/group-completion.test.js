@@ -116,23 +116,19 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Scan second token in group (asm001 - Personal, rating 3, value 1000)
       // This should COMPLETE the group and award bonus
-      // CRITICAL: Group completion emits TWO score:updated events:
-      //   1. After adding asm001 points (baseScore = 16000)
-      //   2. After adding group bonus (currentScore = 32000)
-      // We need to wait for BOTH (waitForMultipleEvents auto-cleans listener)
-      const scoreUpdatedPromise = waitForMultipleEvents(gmScanner.socket, 'score:updated', 2);
+      // NOTE (Slice 3): New architecture emits ONE score:updated with complete score including bonus
+      const scoreUpdatedPromise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Use REAL scanner API - scan asm001 (completes group)
       gmScanner.App.processNFCRead({ id: 'asm001' });
 
       // Wait for group completion events
-      const [groupEvent, scoreEvents] = await Promise.all([
+      const [groupEvent, scoreEvent] = await Promise.all([
         groupCompletedPromise,
         scoreUpdatedPromise
       ]);
 
-      // Extract final score event (second event has bonus applied)
-      const scoreEvent = scoreEvents[1];
+      // NOTE (Slice 3): Single event now includes complete score with bonuses
 
       // Validate: group:completed event structure
       expect(groupEvent.event).toBe('group:completed');

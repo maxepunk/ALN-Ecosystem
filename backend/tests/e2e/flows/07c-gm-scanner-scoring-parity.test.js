@@ -79,7 +79,6 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     vlcInfo = await setupVLC();
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
 
@@ -148,7 +147,6 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     console.log(`[afterEach] Starting fresh orchestrator...`);
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
     console.log(`[afterEach] ✓ Orchestrator restarted for test isolation`);
@@ -179,7 +177,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE (browser-only pattern)
-    const networkedContext = await createBrowserContext(browser, 'mobile');
+    const networkedContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -244,7 +242,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE (browser-only pattern)
-    const networkedContext = await createBrowserContext(browser, 'mobile');
+    const networkedContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -334,7 +332,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE (browser-only pattern)
-    const networkedContext = await createBrowserContext(browser, 'mobile');
+    const networkedContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -429,7 +427,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE (browser-only pattern)
-    const networkedContext = await createBrowserContext(browser, 'mobile');
+    const networkedContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,
@@ -511,7 +509,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standaloneScore = await getTeamScore(standalonePage, parityTeam, 'standalone');
 
     // NETWORKED MODE (browser-only pattern)
-    const networkedContext = await createBrowserContext(browser, 'mobile');
+    const networkedContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const networkedPage = await createPage(networkedContext);
     const networkedScanner = await initializeGMScannerWithMode(networkedPage, 'networked', 'blackmarket', {
       orchestratorUrl: orchestratorInfo.url,

@@ -92,7 +92,6 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     // 3. Start orchestrator with HTTPS
     orchestratorInfo = await startOrchestrator({
       https: true,
-      port: 3000,
       timeout: 30000
     });
     console.log(`Orchestrator started: ${orchestratorInfo.url}`);
@@ -187,7 +186,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   // ========================================
 
   test('creates desktop browser context with correct configuration', async () => {
-    const context = await createBrowserContext(browser, 'desktop');
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
 
     expect(context).toBeDefined();
     expect(getActiveContextCount()).toBe(1);
@@ -199,7 +198,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   });
 
   test('creates mobile browser context with correct configuration', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
 
     expect(context).toBeDefined();
     expect(getActiveContextCount()).toBe(1);
@@ -262,7 +261,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
   // ========================================
 
   test('GM Scanner page loads and initializes', async () => {
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // Use initializeGMScannerWithMode for proper initialization
@@ -422,7 +421,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
 
   test('full E2E flow: browser + WebSocket + page object', async () => {
     // 1. Create browser context
-    const context = await createBrowserContext(browser, 'mobile');
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
     // 2. Create WebSocket connection

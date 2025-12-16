@@ -499,7 +499,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(transactionService.teamScores.has('Blue Squad')).toBe(true);
     });
 
-    it('should reset scores to zero when session ends (preserving team membership)', async () => {
+    it('should clear teams when session ends (teams exist only within session)', async () => {
       await sessionService.createSession({
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
@@ -509,7 +509,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       expect(transactionService.teamScores.size).toBe(2);
 
-      // Add some points to verify they get reset
+      // Add some points
       const teamAlpha = transactionService.teamScores.get('Team Alpha');
       if (teamAlpha) teamAlpha.addPoints(500);
 
@@ -517,10 +517,10 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
-      // Per AsyncAPI contract: teams should still exist after reset with zero scores
-      expect(transactionService.teamScores.size).toBe(2);
-      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
-      expect(transactionService.teamScores.get('Detectives').currentScore).toBe(0);
+      // ARCHITECTURE: Teams exist only within a session
+      // When session ends, teams are cleared (no session = no teams)
+      // Teams are re-created when a new session starts
+      expect(transactionService.teamScores.size).toBe(0);
     });
 
     it('should get all team scores', async () => {
