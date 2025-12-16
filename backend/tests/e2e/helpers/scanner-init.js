@@ -70,8 +70,8 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
     }
   }
 
-  // Navigate to scanner using relative URL (baseURL set in browser context)
-  // Browser context isolation ensures localStorage is already clean
+  // Navigate to scanner using relative URL
+  // baseURL is set via process.env.ORCHESTRATOR_URL in browser-contexts.js
   await page.goto('/gm-scanner/', {
     waitUntil: 'networkidle',
     timeout: 30000  // Increased from 10s - Vite dev server can be slow on Pi

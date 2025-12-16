@@ -98,7 +98,6 @@ class GMScannerPage {
     this.scoreAdjustmentReason = page.locator('#scoreAdjustmentReason');
     this.adjustScoreBtn = page.locator('button[data-action="app.adjustTeamScore"]');
     this.resetScoresBtn = page.locator('button[data-action="app.adminResetScores"]');
-    this.viewFullScoreboardBtn = page.locator('button[data-action="app.viewFullScoreboard"]');
     this.viewFullHistoryBtn = page.locator('button[data-action="app.viewFullHistory"]');
     this.adminScoreBoard = page.locator('#admin-score-board');
 
@@ -671,16 +670,63 @@ class GMScannerPage {
   }
 
   /**
-   * Adjust team score via admin panel UI
+   * Adjust team score via team details screen
    * @param {number} delta - Score adjustment (+/-)
    * @param {string} [reason] - Optional reason for adjustment
+   * @throws {Error} If intervention controls not visible or adjustment fails
    */
   async adjustTeamScore(delta, reason = '') {
+    // PHASE 1: Wait for intervention controls to be visible
+    // These are inside #teamInterventionControls which is display:none by default
+    // and shown by renderTeamDetails() when session is active
+    const interventionControls = this.page.locator('#teamInterventionControls');
+    await interventionControls.waitFor({ state: 'visible', timeout: 5000 });
+    console.log('[GMScannerPage] Intervention controls visible');
+
+    // PHASE 2: Track any dialog/alert that appears (error conditions)
+    let alertMessage = null;
+    const dialogHandler = (dialog) => {
+      alertMessage = dialog.message();
+      console.log(`[GMScannerPage] Dialog appeared: ${alertMessage}`);
+      dialog.dismiss();
+    };
+    this.page.on('dialog', dialogHandler);
+
+    // PHASE 2b: Track console errors for silent failures
+    const consoleErrors = [];
+    const consoleHandler = (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+        console.log(`[GMScannerPage] Console error: ${msg.text()}`);
+      }
+    };
+    this.page.on('console', consoleHandler);
+
+    // PHASE 3: Fill inputs and click button
     await this.scoreAdjustmentInput.fill(String(delta));
+    console.log(`[GMScannerPage] Filled adjustment input: ${delta}`);
     if (reason) {
       await this.scoreAdjustmentReason.fill(reason);
+      console.log(`[GMScannerPage] Filled reason: ${reason}`);
     }
+
     await this.adjustScoreBtn.click();
+    console.log('[GMScannerPage] Clicked adjust button');
+
+    // PHASE 4: Wait for async response (WebSocket command + ACK)
+    await this.page.waitForTimeout(2000);
+
+    // Remove handlers
+    this.page.off('dialog', dialogHandler);
+    this.page.off('console', consoleHandler);
+
+    // PHASE 5: Check for errors
+    if (alertMessage) {
+      throw new Error(`Score adjustment failed with alert: ${alertMessage}`);
+    }
+    if (consoleErrors.length > 0) {
+      console.log(`[GMScannerPage] Console errors during adjustment: ${consoleErrors.join(', ')}`);
+    }
   }
 
   /**
@@ -717,13 +763,8 @@ class GMScannerPage {
     await this.resetScoresBtn.click();
   }
 
-  /**
-   * Navigate to full scoreboard from admin panel
-   */
-  async viewFullScoreboard() {
-    await this.viewFullScoreboardBtn.click();
-    await this.scoreboardScreen.waitFor({ state: 'visible', timeout: 5000 });
-  }
+  // NOTE: viewFullScoreboard() removed - button was removed as part of
+  // admin scoreboard consolidation. Admin panel now has full scoreboard inline.
 
   /**
    * Navigate to full history from admin panel
@@ -738,9 +779,9 @@ class GMScannerPage {
    * @param {string} teamId - Team ID to click
    */
   async clickTeamInScoreBoard(teamId) {
-    // Find row with team ID and click first cell
-    const row = this.adminScoreBoard.locator(`tbody tr:has-text("${teamId}")`);
-    await row.locator('td:first-child').click();
+    // Find scoreboard entry with team ID and click it (entry is directly clickable)
+    const entry = this.adminScoreBoard.locator(`.scoreboard-entry:has-text("${teamId}")`);
+    await entry.click();
   }
 
   // ============================================
@@ -1249,7 +1290,8 @@ class GMScannerPage {
    * @returns {Promise<string|null>} - Score text (e.g., "$1,500") or null if not found
    */
   async getTeamScoreFromScoreboard(teamId) {
-    const entry = this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`);
+    // Scope to main scoreboard screen to avoid conflict with admin panel scoreboard
+    const entry = this.page.locator(`#scoreboardScreen .scoreboard-entry[data-arg="${teamId}"]`);
     const count = await entry.count();
     if (count === 0) return null;
     return await entry.locator('.scoreboard-score').textContent();
@@ -1273,7 +1315,8 @@ class GMScannerPage {
    * @returns {Promise<boolean>}
    */
   async hasTeamInScoreboard(teamId) {
-    const entry = this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`);
+    // Scope to main scoreboard screen to avoid conflict with admin panel scoreboard
+    const entry = this.page.locator(`#scoreboardScreen .scoreboard-entry[data-arg="${teamId}"]`);
     return await entry.isVisible();
   }
 
@@ -1283,10 +1326,36 @@ class GMScannerPage {
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForTeamInScoreboard(teamId, timeout = 10000) {
-    await this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`).waitFor({
+    // Scope to main scoreboard screen to avoid conflict with admin panel scoreboard
+    await this.page.locator(`#scoreboardScreen .scoreboard-entry[data-arg="${teamId}"]`).waitFor({
       state: 'visible',
       timeout
     });
+  }
+
+  /**
+   * Wait for team score to reach expected value in scoreboard
+   * Uses Playwright's condition-based waiting (auto-retry until condition met)
+   *
+   * @param {string} teamId - Team identifier
+   * @param {number} expectedScore - Expected score value
+   * @param {number} timeout - Timeout in milliseconds
+   */
+  async waitForTeamScoreInScoreboard(teamId, expectedScore, timeout = 10000) {
+    // Format expected score as it appears in DOM (e.g., "$52,500")
+    const formattedScore = `$${expectedScore.toLocaleString()}`;
+
+    // CONDITION-BASED WAITING: Wait for DOM element to contain expected score
+    // page.waitForFunction() is Playwright's built-in condition waiter
+    // Scope to #scoreboardScreen to avoid conflict with admin panel scoreboard
+    await this.page.waitForFunction(
+      ({ teamId, formattedScore }) => {
+        const scoreEl = document.querySelector(`#scoreboardScreen .scoreboard-entry[data-arg="${teamId}"] .scoreboard-score`);
+        return scoreEl && scoreEl.textContent.includes(formattedScore);
+      },
+      { teamId, formattedScore },
+      { timeout }
+    );
   }
 
   /**
@@ -1294,7 +1363,8 @@ class GMScannerPage {
    * @param {string} teamId - Team identifier
    */
   async openTeamDetails(teamId) {
-    const entry = this.page.locator(`.scoreboard-entry[data-arg="${teamId}"]`);
+    // Scope to main scoreboard screen to avoid conflict with admin panel scoreboard
+    const entry = this.page.locator(`#scoreboardScreen .scoreboard-entry[data-arg="${teamId}"]`);
     await entry.click();
     await this.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
   }

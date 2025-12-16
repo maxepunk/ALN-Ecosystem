@@ -29,9 +29,41 @@
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
+const net = require('net');
 const axios = require('axios');
 const https = require('https');
 const logger = require('../../../src/utils/logger');
+
+/**
+ * Find an available port for the test server
+ * Uses Node's net module to bind to port 0 (OS assigns free port)
+ *
+ * @param {number} [preferredPort] - Preferred port to try first
+ * @returns {Promise<number>} Available port number
+ */
+async function findAvailablePort(preferredPort) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE' && preferredPort) {
+        // Preferred port in use, find any available port
+        logger.debug(`Port ${preferredPort} in use, finding alternative`);
+        server.listen(0, '127.0.0.1');
+      } else {
+        reject(err);
+      }
+    });
+
+    server.listen(preferredPort || 0, '127.0.0.1', () => {
+      const port = server.address().port;
+      server.close(() => {
+        logger.debug(`Found available port: ${port}`);
+        resolve(port);
+      });
+    });
+  });
+}
 
 // Server process reference
 let orchestratorProcess = null;
@@ -57,7 +89,10 @@ const TEST_ENV = {
   FEATURE_IDLE_LOOP: 'false',
   // E2E tests default to memory storage for speed and isolation
   // Tests can opt-in to file storage via startOrchestrator({ storageType: 'file' })
-  STORAGE_TYPE: process.env.TEST_STORAGE_TYPE || 'memory'
+  STORAGE_TYPE: process.env.TEST_STORAGE_TYPE || 'memory',
+  // Use dynamic port for HTTP→HTTPS redirect to avoid conflicts with parallel workers
+  // Without this, multiple orchestrators all try to bind to port 8000
+  HTTP_REDIRECT_PORT: '0'
 };
 
 /**
@@ -65,25 +100,34 @@ const TEST_ENV = {
  *
  * @param {Object} options - Configuration options
  * @param {boolean} [options.https=false] - Enable HTTPS server
- * @param {number} [options.port] - Custom port (default: 3000)
+ * @param {number|string} [options.port=0] - Port number, 0 or 'auto' for dynamic assignment
  * @param {number} [options.timeout=30000] - Startup timeout in ms
  * @param {boolean} [options.preserveSession=false] - Keep session data from previous run
  * @param {string} [options.storageType='memory'] - Storage backend ('memory' or 'file')
  * @returns {Promise<Object>} Server info { url, port, protocol, process }
  *
  * @example
+ * // Dynamic port (recommended for parallel tests)
+ * const server = await startOrchestrator({ https: true });
+ *
+ * // Specific port (may conflict in parallel execution)
  * const server = await startOrchestrator({ https: true, port: 3001 });
- * console.log(`Server running at ${server.url}`);
  */
 async function startOrchestrator(options = {}) {
   // Extract options FIRST to validate against running instance
   const {
     https: enableHttps = false,
-    port = TEST_ENV.PORT,
+    port: requestedPort = 0,  // Default to dynamic port assignment
     timeout = 30000,
     preserveSession = false,
     storageType = 'memory'
   } = options;
+
+  // Resolve dynamic port if requested (port=0 or port='auto')
+  const useDynamicPort = requestedPort === 0 || requestedPort === 'auto';
+  const port = useDynamicPort
+    ? await findAvailablePort()  // Full dynamic assignment for parallel test execution
+    : requestedPort;
 
   // Prevent multiple server instances - but verify options match
   if (orchestratorProcess) {
@@ -192,6 +236,10 @@ async function startOrchestrator(options = {}) {
   // Wait for server to be ready
   try {
     await waitForHealthy(timeout);
+
+    // CRITICAL: Set ORCHESTRATOR_URL so browser contexts use correct baseURL
+    // This enables relative URLs like '/gm-scanner/' to work with dynamic ports
+    process.env.ORCHESTRATOR_URL = getOrchestratorUrl();
 
     logger.info('Orchestrator started successfully', {
       url: getOrchestratorUrl(),
