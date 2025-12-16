@@ -110,6 +110,12 @@ async function performSystemReset(io, services) {
   // Services need to re-register listeners on sessionService (cleared by reset)
   stateService.setupTransactionListeners();
   transactionService.registerSessionListener();
+
+  // Slice 2: Re-register sessionService persistence listeners
+  // These listeners are ON transactionService and were cleared by transactionService.reset()
+  // They handle transaction:accepted → persist → emit transaction:added → broadcast transaction:new
+  sessionService.setupPersistenceListeners();
+
   logger.debug('Cross-service listeners re-initialized');
 
   logger.info('System reset complete - ready for new session');

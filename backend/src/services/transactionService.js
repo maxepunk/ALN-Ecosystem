@@ -69,9 +69,11 @@ class TransactionService extends EventEmitter {
     // Listen for session updates (handle session end)
     sessionService.on('session:updated', (sessionData) => {
       if (sessionData.status === 'ended') {
-        // Session ended - reset all scores
-        this.resetScores();
-        logger.info('Scores reset due to session end');
+        // Session ended - clear all team scores (no session = no teams)
+        // NOTE: resetScores() preserves team membership; clear() removes everything
+        this.teamScores.clear();
+        this.recentTransactions = [];
+        logger.info('Scores cleared due to session end');
       }
     });
 
@@ -693,6 +695,8 @@ class TransactionService extends EventEmitter {
     this.recentTransactions = [];
 
     // Clear team scores completely
+    this.teamScores.clear();
+
     logger.info('Transaction service reset');
   }
 

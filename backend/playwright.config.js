@@ -39,7 +39,7 @@ module.exports = defineConfig({
   fullyParallel: false, // CRITICAL: Sequential execution for session-based tests
   forbidOnly: !!process.env.CI, // Prevent .only() in CI
   retries: process.env.CI ? 2 : 1, // Retry once on failure (twice in CI)
-  workers: process.env.CI ? 1 : 2, // 8GB Pi: 2 workers for local dev, 1 for CI safety
+  workers: 1, // Sequential execution required: each test suite manages its own orchestrator lifecycle
 
   // Reporter configuration
   reporter: [
