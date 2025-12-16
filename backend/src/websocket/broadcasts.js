@@ -241,33 +241,10 @@ function setupBroadcastListeners(io, services) {
 
   // Transaction/Score events - broadcast to GM stations only
   if (transactionService) {
-    // Slice 4: Source score:updated from transaction:accepted (new architecture)
-    addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
-      const { teamScore } = payload;
-      if (teamScore) {
-        const scorePayload = {
-          teamId: teamScore.teamId,
-          currentScore: teamScore.currentScore,
-          baseScore: teamScore.baseScore,
-          bonusPoints: teamScore.bonusPoints || 0,
-          tokensScanned: teamScore.tokensScanned,
-          completedGroups: teamScore.completedGroups || [],
-          adminAdjustments: teamScore.adminAdjustments || [],
-          lastUpdate: teamScore.lastUpdate
-        };
+    // DRY helper: broadcast score:updated from any source
+    function broadcastScoreUpdate(teamScore, source) {
+      if (!teamScore) return;
 
-        emitToRoom(io, 'gm', 'score:updated', scorePayload);
-        logger.info('Broadcasted score:updated from transaction:accepted', {
-          teamId: teamScore.teamId,
-          score: teamScore.currentScore,
-          bonus: teamScore.bonusPoints || 0
-        });
-      }
-    });
-
-    // Slice 4: Source score:updated from score:adjusted (admin changes)
-    addTrackedListener(transactionService, 'score:adjusted', (payload) => {
-      const { teamScore, reason } = payload;
       const scorePayload = {
         teamId: teamScore.teamId,
         currentScore: teamScore.currentScore,
@@ -280,11 +257,20 @@ function setupBroadcastListeners(io, services) {
       };
 
       emitToRoom(io, 'gm', 'score:updated', scorePayload);
-      logger.info('Broadcasted score:updated from score:adjusted', {
+      logger.info(`Broadcasted score:updated from ${source}`, {
         teamId: teamScore.teamId,
-        score: teamScore.currentScore,
-        reason
+        score: teamScore.currentScore
       });
+    }
+
+    // Score updates from new transactions
+    addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
+      broadcastScoreUpdate(payload.teamScore, 'transaction:accepted');
+    });
+
+    // Score updates from admin adjustments
+    addTrackedListener(transactionService, 'score:adjusted', (payload) => {
+      broadcastScoreUpdate(payload.teamScore, 'score:adjusted');
     });
 
     addTrackedListener(transactionService, 'transaction:deleted', (data) => {
@@ -313,6 +299,9 @@ function setupBroadcastListeners(io, services) {
           teamId: data.teamId
         });
       }
+
+      // Broadcast updated score (for black market mode scoreboard)
+      broadcastScoreUpdate(data.updatedTeamScore, 'transaction:deleted');
     });
 
     addTrackedListener(transactionService, 'group:completed', (data) => {

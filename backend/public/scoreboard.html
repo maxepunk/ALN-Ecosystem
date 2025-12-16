@@ -1136,6 +1136,43 @@
             console.log('[Scoreboard] Evidence added:', evidence.tokenId, 'for team', evidence.teamId);
         }
 
+        function removeEvidence(transactionId, tokenId, teamId) {
+            let removed = false;
+
+            // Check if hero evidence matches
+            if (state.heroEvidence) {
+                const heroMatches = state.heroEvidence.id === transactionId ||
+                    (state.heroEvidence.tokenId === tokenId && state.heroEvidence.teamId === teamId);
+
+                if (heroMatches) {
+                    console.log('[Scoreboard] Removing hero evidence:', transactionId || tokenId);
+                    // Promote next evidence from log to hero
+                    state.heroEvidence = state.evidenceLog.shift() || null;
+                    removed = true;
+                }
+            }
+
+            // Remove from evidence log
+            const beforeLength = state.evidenceLog.length;
+            state.evidenceLog = state.evidenceLog.filter(e => {
+                const matches = e.id === transactionId ||
+                    (e.tokenId === tokenId && e.teamId === teamId);
+                return !matches;
+            });
+
+            if (state.evidenceLog.length < beforeLength) {
+                removed = true;
+            }
+
+            if (removed) {
+                console.log('[Scoreboard] Evidence removed:', transactionId || tokenId, 'for team', teamId);
+                renderHeroEvidence();
+                renderEvidenceFeed();
+            } else {
+                console.log('[Scoreboard] Evidence not found for removal:', transactionId || tokenId);
+            }
+        }
+
         // ============================================
         // SCORE RENDERING
         // ============================================
@@ -1331,6 +1368,15 @@
                 if (transaction) {
                     console.log('[Scoreboard] New transaction:', transaction);
                     addEvidence(transaction);
+                }
+            });
+
+            // Transaction deleted (remove from evidence log)
+            state.socket.on('transaction:deleted', (eventData) => {
+                const data = eventData.data;
+                if (data) {
+                    console.log('[Scoreboard] Transaction deleted:', data);
+                    removeEvidence(data.transactionId, data.tokenId, data.teamId);
                 }
             });
 
