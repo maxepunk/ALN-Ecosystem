@@ -146,10 +146,12 @@ class TeamScore {
   }
 
   /**
-   * Reset the score
+   * Reset the score to zero while preserving team identity
+   * CRITICAL: Must reset baseScore to maintain invariant (currentScore = baseScore + bonusPoints)
    */
   reset() {
     this.currentScore = 0;
+    this.baseScore = 0;
     this.tokensScanned = 0;
     this.bonusPoints = 0;
     this.completedGroups = [];

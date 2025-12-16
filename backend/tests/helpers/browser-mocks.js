@@ -389,6 +389,18 @@ global.DataManager = {
     this.scannedTokens.clear();
   },
 
+  // Restore scanned tokens from server state (handles reconnection)
+  // Called by OrchestratorClient.js when sync:full received with deviceScannedTokens
+  // Matches ALNScanner/src/core/dataManager.js:70-77
+  setScannedTokensFromServer(serverTokens) {
+    if (!Array.isArray(serverTokens)) {
+      console.log('[MockDataManager] setScannedTokensFromServer: invalid input (not array)');
+      return;
+    }
+    this.scannedTokens = new Set(serverTokens);
+    console.log(`[MockDataManager] Synced ${serverTokens.length} scanned tokens from server`);
+  },
+
   // Clear all data (for test cleanup between tests)
   clearAll() {
     this.scannedTokens.clear();

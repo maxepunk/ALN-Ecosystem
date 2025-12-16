@@ -354,11 +354,21 @@ async function handleGmCommand(socket, data, io) {
     });
   } catch (error) {
     const commandData = data.data || data;
-    logger.error('GM command error', { error, action: commandData.action, socketId: socket.id });
-    emitWrapped(socket, 'error', {
-      code: 'SERVER_ERROR',
-      message: 'Command failed',
-      details: error.message,
+    const action = commandData.action;
+    // Log with serializable error properties (Error objects don't serialize by default)
+    logger.error('GM command error', {
+      errorMessage: error.message,
+      errorStack: error.stack,
+      action,
+      socketId: socket.id,
+      payload: commandData.payload
+    });
+
+    // Send failure ack so client doesn't timeout waiting
+    emitWrapped(socket, 'gm:command:ack', {
+      action: action,
+      success: false,
+      message: error.message || 'Command failed'
     });
   }
 }

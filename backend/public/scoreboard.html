@@ -1042,7 +1042,7 @@
             hero.classList.remove('empty');
             hero.innerHTML = `
                 <div class="hero-evidence__header">
-                    <span class="hero-evidence__team">TEAM ${escapeHtml(evidence.teamId)}</span>
+                    <span class="hero-evidence__team">${escapeHtml(evidence.teamId)}</span>
                     <span class="hero-evidence__time">${formatTime(evidence.timestamp)}</span>
                 </div>
                 <div class="hero-evidence__summary">
@@ -1078,7 +1078,7 @@
                              style="--rotation: ${rotation}deg; animation-delay: ${delay}ms;"
                              data-id="${evidence.id}">
                         <div class="evidence-card__header">
-                            <span class="evidence-card__team">TEAM ${escapeHtml(evidence.teamId)}</span>
+                            <span class="evidence-card__team">${escapeHtml(evidence.teamId)}</span>
                             <span class="evidence-card__time">${formatTime(evidence.timestamp)}</span>
                         </div>
                         <div class="evidence-card__text">
@@ -1177,8 +1177,9 @@
         // SCORE RENDERING
         // ============================================
         function renderScoreboard() {
+            // Show all teams with any score activity (transactions OR adjustments)
             const scores = Array.from(state.teamScores.values())
-                .filter(team => team.tokensScanned > 0)
+                .filter(team => team.currentScore > 0 || team.tokensScanned > 0 || (team.adminAdjustments && team.adminAdjustments.length > 0))
                 .sort((a, b) => b.currentScore - a.currentScore);
 
             if (scores.length === 0) {
@@ -1195,7 +1196,7 @@
                 return `
                     <div class="score-entry" data-team="${team.teamId}">
                         <span class="score-entry__rank">${rank}</span>
-                        <span class="score-entry__team">TEAM ${escapeHtml(team.teamId)}</span>
+                        <span class="score-entry__team">${escapeHtml(team.teamId)}</span>
                         <span class="score-entry__amount">$${team.currentScore.toLocaleString()}</span>
                         <div class="score-entry__bar">
                             <div class="score-entry__bar-fill" style="width: ${barWidth}%"></div>
@@ -1378,6 +1379,59 @@
                     console.log('[Scoreboard] Transaction deleted:', data);
                     removeEvidence(data.transactionId, data.tokenId, data.teamId);
                 }
+            });
+
+            // Session updates (team additions, session lifecycle)
+            state.socket.on('session:update', (eventData) => {
+                const data = eventData.data;
+                console.log('[Scoreboard] Session update:', data);
+
+                // Initialize any new teams from session
+                if (data.teams && Array.isArray(data.teams)) {
+                    data.teams.forEach(teamId => {
+                        if (!state.teamScores.has(teamId)) {
+                            // Initialize team with zero score
+                            state.teamScores.set(teamId, {
+                                teamId: teamId,
+                                currentScore: 0,
+                                baseScore: 0,
+                                bonusPoints: 0,
+                                tokensScanned: 0,
+                                completedGroups: [],
+                                adminAdjustments: []
+                            });
+                            console.log('[Scoreboard] Initialized new team:', teamId);
+                        }
+                    });
+                    renderScoreboard();
+                }
+            });
+
+            // Scores reset (admin bulk operation)
+            state.socket.on('scores:reset', (eventData) => {
+                const data = eventData.data;
+                console.log('[Scoreboard] Scores reset:', data);
+
+                // Clear all scores but keep teams
+                state.teamScores.forEach((score, teamId) => {
+                    state.teamScores.set(teamId, {
+                        teamId: teamId,
+                        currentScore: 0,
+                        baseScore: 0,
+                        bonusPoints: 0,
+                        tokensScanned: 0,
+                        completedGroups: [],
+                        adminAdjustments: []
+                    });
+                });
+
+                // Clear evidence log
+                state.evidenceLog = [];
+                state.heroEvidence = null;
+
+                renderScoreboard();
+                renderHeroEvidence();
+                renderEvidenceFeed();
             });
 
             // Full sync

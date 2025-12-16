@@ -844,14 +844,28 @@ class TransactionService extends EventEmitter {
 
   /**
    * Rebuild team scores from transaction history
-   * Used on service initialization to restore state after restart
+   * CRITICAL: Preserves team membership from sessionService (source of truth)
+   * Uses clear-and-rebuild pattern for simplicity (KISS)
    * @param {Array} transactions - Historical transactions from session
    * @private
    */
   rebuildScoresFromTransactions(transactions) {
+    // Step 1: Get team membership from session (source of truth)
+    const session = sessionService.getCurrentSession();
+    const sessionTeamIds = new Set(
+      (session?.scores || []).map(s => s.teamId)
+    );
+
+    // Step 2: Clear and rebuild fresh (simpler than in-place mutation)
     this.teamScores.clear();
 
-    // Group accepted transactions by team (skip detective mode)
+    // Step 3: Initialize all teams from session with fresh zero-score instances
+    // This preserves teams that have no black market transactions
+    for (const teamId of sessionTeamIds) {
+      this.teamScores.set(teamId, TeamScore.createInitial(teamId));
+    }
+
+    // Step 4: Group accepted transactions by team (skip detective mode for scoring)
     const teamGroups = {};
     transactions
       .filter(tx => tx.status === 'accepted' && tx.mode !== 'detective')
@@ -862,9 +876,15 @@ class TransactionService extends EventEmitter {
         teamGroups[tx.teamId].push(tx);
       });
 
-    // Rebuild each team's score
+    // Step 5: Rebuild scores for teams that have transactions
     Object.entries(teamGroups).forEach(([teamId, txs]) => {
-      const teamScore = TeamScore.createInitial(teamId);
+      // Get or create team score (should already exist from session sync above)
+      let teamScore = this.teamScores.get(teamId);
+      if (!teamScore) {
+        teamScore = TeamScore.createInitial(teamId);
+        this.teamScores.set(teamId, teamScore);
+        logger.warn('Team created during rebuild (should exist in session)', { teamId });
+      }
 
       // Add up all points from transactions
       txs.forEach(tx => {
@@ -874,7 +894,6 @@ class TransactionService extends EventEmitter {
       });
 
       // Check for completed groups
-      // Group tokens by groupId to detect completions
       const tokenGroups = {};
       txs.forEach(tx => {
         const token = this.tokens.get(tx.tokenId);
@@ -888,16 +907,13 @@ class TransactionService extends EventEmitter {
 
       // Check each group for completion
       Object.entries(tokenGroups).forEach(([groupId, scannedTokens]) => {
-        // Get all tokens in this group
         const groupTokens = Array.from(this.tokens.values())
           .filter(t => t.groupId === groupId);
 
-        // If all tokens in group were scanned, mark as complete
         if (groupTokens.length > 1 &&
           groupTokens.every(token => scannedTokens.has(token.id))) {
           teamScore.completedGroups.push(groupId);
 
-          // Calculate and add bonus
           const multiplier = groupTokens[0].getGroupMultiplier();
           if (multiplier > 1) {
             let groupBonus = 0;
@@ -909,7 +925,6 @@ class TransactionService extends EventEmitter {
         }
       });
 
-      this.teamScores.set(teamId, teamScore);
       logger.info('Rebuilt team score from history', {
         teamId,
         score: teamScore.currentScore,
@@ -917,6 +932,12 @@ class TransactionService extends EventEmitter {
         transactions: txs.length,
         completedGroups: teamScore.completedGroups
       });
+    });
+
+    logger.info('Score rebuild complete', {
+      teamsInSession: sessionTeamIds.size,
+      teamsWithScores: this.teamScores.size,
+      teamsWithTransactions: Object.keys(teamGroups).length
     });
   }
 }
