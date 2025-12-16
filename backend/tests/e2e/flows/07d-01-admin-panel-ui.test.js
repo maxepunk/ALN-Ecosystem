@@ -132,8 +132,8 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
       const scoresSection = await page.locator('.admin-section h3:has-text("Team Scores")');
       await expect(scoresSection).toBeVisible();
 
-      const transactionsSection = await page.locator('.admin-section h3:has-text("Recent Transactions")');
-      await expect(transactionsSection).toBeVisible();
+      const gameActivitySection = await page.locator('.admin-section h3:has-text("Game Activity")');
+      await expect(gameActivitySection).toBeVisible();
 
       // Verify DOM elements that admin modules update are present
       const sessionContainer = await page.locator('#session-status-container');

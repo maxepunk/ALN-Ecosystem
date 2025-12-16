@@ -228,7 +228,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // VERIFY: GM2 history shows correct transaction count
     await gmScanner2.openHistory();
-    const gm2HistoryCount = await gmScanner2.historyContainer.locator('.transaction-card, .history-entry').count();
+    const gm2HistoryCount = await gmScanner2.historyContainer.locator('.transaction-card, .token-card, .history-entry').count();
     expect(gm2HistoryCount).toBe(detectiveTokens.length);
     console.log(`✓ GM2 history shows ${gm2HistoryCount} transactions`);
     await gmScanner2.closeHistory();
@@ -258,7 +258,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // Note: In networked mode, history shows ALL session transactions (from all GMs)
     // So GM1 should now see: 3 detective (GM2) + 3 blackmarket (GM1) = 6 total
     await gmScanner1.openHistory();
-    const gm1HistoryCount = await gmScanner1.historyContainer.locator('.transaction-card, .history-entry').count();
+    const gm1HistoryCount = await gmScanner1.historyContainer.locator('.transaction-card, .token-card, .history-entry').count();
     const expectedTotalTransactions = detectiveTokens.length + blackmarketTokens.length;
     expect(gm1HistoryCount).toBe(expectedTotalTransactions);
     console.log(`✓ GM1 history shows ${gm1HistoryCount} total session transactions (${detectiveTokens.length} detective + ${blackmarketTokens.length} blackmarket)`);
@@ -475,7 +475,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // 13. Verify GM1 history has all transactions
     await gmScanner1.openHistory();
-    const gm1FinalHistoryCount = await gmScanner1.historyContainer.locator('.transaction-card, .history-entry').count();
+    const gm1FinalHistoryCount = await gmScanner1.historyContainer.locator('.transaction-card, .token-card, .history-entry').count();
     console.log(`✓ GM1 final history count: ${gm1FinalHistoryCount} transactions`);
     expect(gm1FinalHistoryCount).toBeGreaterThanOrEqual(blackmarketTokens.length + round2Tokens.length);
     await gmScanner1.closeHistory();
@@ -483,7 +483,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // 14. Verify GM2 history has all session transactions
     // Note: In networked mode, history shows ALL session transactions (from all GMs)
     await gmScanner2.openHistory();
-    const gm2FinalHistoryCount = await gmScanner2.historyContainer.locator('.transaction-card, .history-entry').count();
+    const gm2FinalHistoryCount = await gmScanner2.historyContainer.locator('.transaction-card, .token-card, .history-entry').count();
     console.log(`✓ GM2 final history count: ${gm2FinalHistoryCount} transactions`);
     // GM2 should see all session transactions (same as GM1)
     expect(gm2FinalHistoryCount).toBeGreaterThanOrEqual(detectiveTokens.length + blackmarketTokens.length);

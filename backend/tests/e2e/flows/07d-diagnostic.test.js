@@ -191,7 +191,7 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
       }
 
       // Count initial transactions
-      const initialCount = await page1.locator('#historyContainer .transaction-card').count();
+      const initialCount = await page1.locator('#historyContainer .token-card').count();
       logger.log('TEST', 'STATE', `Initial transaction count: ${initialCount}`);
 
       // ========== PHASE 3: Second Scanner Scan ==========
@@ -240,7 +240,7 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
       await page1.waitForTimeout(1000);
 
       // Check transaction count
-      const finalCount = await page1.locator('#historyContainer .transaction-card').count();
+      const finalCount = await page1.locator('#historyContainer .token-card').count();
       logger.log('TEST', 'RESULT', `Final transaction count: ${finalCount} (expected: ${initialCount + 1})`);
 
       // DIAGNOSTIC: Check DataManager state

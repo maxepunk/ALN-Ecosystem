@@ -916,10 +916,11 @@ class GMScannerPage {
   /**
    * Get transaction count from history container
    * Uses visible DOM elements, not WebSocket events
-   * @returns {Promise<number>} Number of transaction cards in history
+   * Supports both old .transaction-card and new .token-card classes
+   * @returns {Promise<number>} Number of transaction/token cards in history
    */
   async getHistoryTransactionCount() {
-    return await this.page.locator('#historyContainer .transaction-card').count();
+    return await this.page.locator('#historyContainer .transaction-card, #historyContainer .token-card').count();
   }
 
   // ============================================
