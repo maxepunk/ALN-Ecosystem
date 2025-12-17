@@ -223,11 +223,11 @@ Keep duplicate implementations but enforce strict contract testing:
 export class ScoringEngine {
     constructor(config = {}) {
         this.BASE_VALUES = config.BASE_VALUES || {
-            1: 100,
-            2: 500,
-            3: 1000,
-            4: 5000,
-            5: 10000
+            1: 10000,
+            2: 25000,
+            3: 50000,
+            4: 75000,
+            5: 150000
         };
 
         this.TYPE_MULTIPLIERS = config.TYPE_MULTIPLIERS || {

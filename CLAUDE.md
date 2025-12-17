@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2025-12-10
+Last verified: 2025-12-16
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -20,10 +20,10 @@ ALN (About Last Night) Ecosystem is a memory token scanning and video playback s
 
 **CRITICAL**: Player scanners and GM scanners serve DIFFERENT purposes:
 
-| Scanner Type | Purpose | Scoring |
-|--------------|---------|---------|
-| **Player Scanner** (Web/ESP32) | Intel gathering - view memory content | No (fire-and-forget) |
-| **GM Scanner** | Game command center + token processing | Yes (Black Market earns $) |
+| Scanner Type | Purpose | Scoring | Tracking |
+|--------------|---------|---------|----------|
+| **Player Scanner** (Web/ESP32) | Intel gathering - view memory content | No | Yes (Game Activity) |
+| **GM Scanner** | Game command center + token processing | Yes (Black Market earns $) | Yes (Transactions) |
 
 ### Gameplay Flow
 
@@ -54,7 +54,7 @@ When a team brings a token to a GM, they CHOOSE how to process it:
 
 | Choice | What Happens | Points |
 |--------|--------------|--------|
-| **Black Market** (Sell) | Team earns currency based on token rating × type | $100 - $50,000 |
+| **Black Market** (Sell) | Team earns currency based on token rating × type | $10,000 - $750,000 |
 | **Detective** (Expose) | Token summary appears publicly on scoreboard | 0 (evidence only) |
 
 **CRITICAL**: These are NOT mutually exclusive modes. A single game session can have BOTH Black Market and Detective transactions. Teams decide per-token.
@@ -98,7 +98,7 @@ this.isStandalone = !pathname.startsWith('/player-scanner/');
 ```
 tokenScore = BASE_VALUES[rating] × TYPE_MULTIPLIERS[type]
 
-BASE_VALUES: {1: $100, 2: $500, 3: $1000, 4: $5000, 5: $10000}
+BASE_VALUES: {1: $10000, 2: $25000, 3: $50000, 4: $75000, 5: $150000}
 TYPE_MULTIPLIERS: {Personal: 1x, Business: 3x, Technical: 5x, UNKNOWN: 0x}
 ```
 
@@ -106,10 +106,12 @@ TYPE_MULTIPLIERS: {Personal: 1x, Business: 3x, Technical: 5x, UNKNOWN: 0x}
 
 | Component | File | Lines |
 |-----------|------|-------|
-| Backend | `backend/src/services/transactionService.js` | 318-448 |
-| GM Scanner | `ALNScanner/src/core/dataManager.js` | 29-43, 469-571 |
+| Backend Config | `backend/src/config/index.js` | 69-83 |
+| Backend Group Logic | `backend/src/services/transactionService.js` | 330-387 |
+| GM Scanner Config | `ALNScanner/src/core/scoring.js` | 15-29 |
+| GM Scanner Group Logic | `ALNScanner/src/core/dataManager.js` | 418-471 |
 
-Values are IDENTICAL but timing differs for group completion detection. When updating scoring, ALWAYS update both files.
+Values are IDENTICAL but timing differs for group completion detection. When updating scoring, ALWAYS update both config files.
 
 ## Token Data Schema (Cross-Cutting)
 
@@ -189,13 +191,14 @@ Teams are created dynamically during sessions - no pre-defined team list require
 | Aspect | GM Scanner | Player Scanner (Web) | ESP32 Scanner |
 |--------|-----------|---------------------|---------------|
 | **Purpose** | **Game command center + token processing** | **Intel gathering (view memory)** | **Intel gathering (hardware)** |
-| **Scoring** | **Yes (Black Market earns $)** | **No (fire-and-forget)** | **No (fire-and-forget)** |
+| **Scoring** | **Yes (Black Market earns $)** | **No (tracked only)** | **No (tracked only)** |
 | Language | ES6 modules (Vite) | Vanilla JS | C++ (Arduino) |
 | Protocol | WebSocket (Socket.io) | HTTP (fetch) | HTTP/HTTPS |
 | Auth | JWT token (24h) | Device ID | Device ID |
 | Real-time | Yes (broadcasts) | No | No |
 | Offline | Queue + localStorage | Dual-mode | SD card queue |
 | Admin | Session/Video/System | None | None |
+| **Persistence** | Transactions in session | Player scans in session | Player scans in session |
 
 ## GM Scanner Admin Capabilities
 
@@ -206,7 +209,7 @@ The GM Scanner is NOT just for scanning tokens - it's the **game command center*
 | **Session** | Create/Pause/Resume/End sessions, Add teams mid-game |
 | **Video** | Play/Pause/Stop/Skip, Queue management, Display mode toggle |
 | **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
-| **Monitoring** | Device status, System health, Transaction history |
+| **Game Activity** | Unified view of player discoveries + GM transactions, Device status |
 
 All admin commands use WebSocket `gm:command` events. See 'ALNScanner/CLAUDE.md' for implementation details.
 
@@ -228,6 +231,8 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - `sessionService` owns ALL persistence (not transactionService or stateService)
 - Admin score adjustments emit `score:adjusted` (separate from transactions)
 - `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
+- `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
+- `sync:full` includes `playerScans` array for session restoration
 
 ## Submodule Architecture
 

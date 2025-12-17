@@ -130,7 +130,9 @@ def generate_neurai_display(rfid, text):
 
     # Word wrap function
     def wrap_text(text, max_width):
-        words = text.split(' ')
+        # Normalize whitespace: replace newlines/tabs with spaces, collapse multiple spaces
+        normalized_text = ' '.join(text.split())
+        words = normalized_text.split(' ')
         lines = []
         current_line = ''
 

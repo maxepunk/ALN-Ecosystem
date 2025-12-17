@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2025-12-08
+Last verified: 2025-12-16
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -124,7 +124,7 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 ```
 
 **Key Services & Events:**
-- `sessionService`: `session:created`, `session:updated`, `transaction:added`, `device:updated/removed`
+- `sessionService`: `session:created`, `session:updated`, `transaction:added`, `player-scan:added`, `device:updated/removed`
 - `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`
 - `stateService`: `state:updated`, `state:sync`, `sync:full`
 - `videoQueueService`: `video:*`, `queue:*`
@@ -140,6 +140,16 @@ processScan()
 ```
 
 **Key Change:** `sessionService` now owns ALL transaction persistence. The `transaction:accepted` event contains the full scoring context (teamScore, groupBonusInfo) so listeners don't need to recalculate.
+
+**Player Scan Event Flow:**
+```
+POST /api/scan (player scanner)
+  → sessionService.addPlayerScan() persists to session.playerScans[]
+    → sessionService.emit('player-scan:added')
+      → broadcasts.js sends WebSocket 'player:scan' to GM room
+```
+
+Player scans are tracked for Game Activity (token lifecycle visibility) but do not affect scoring.
 
 **Key Files:** `src/services/stateService.js:79-112`, `src/websocket/broadcasts.js`
 

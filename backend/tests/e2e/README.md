@@ -217,7 +217,7 @@ const { calculateExpectedScore, calculateExpectedGroupBonus } = require('../help
 // Single token score
 const token = testTokens.personalToken;
 const expectedScore = calculateExpectedScore(token);
-// Example: 2-star Personal = $500 × 1 = $500
+// Example: 2-star Personal = $25,000 × 1 = $25,000
 
 // Group completion bonus
 const groupTokens = testTokens.groupTokens;
@@ -227,7 +227,7 @@ const bonus = calculateExpectedGroupBonus(groupTokens);
 
 **Scoring Formula:**
 ```javascript
-BASE_VALUES: { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 }
+BASE_VALUES: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 }
 TYPE_MULTIPLIERS: { 'Personal': 1, 'Business': 3, 'Technical': 5 }
 
 tokenScore = BASE_VALUES[valueRating] × TYPE_MULTIPLIERS[memoryType]

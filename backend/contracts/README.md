@@ -51,7 +51,7 @@ backend/contracts/
 ### openapi.yaml - HTTP API (8 endpoints)
 
 - **POST /api/admin/auth** - Admin authentication (JWT tokens)
-- **POST /api/scan** - Player Scanner token scan (fire-and-forget)
+- **POST /api/scan** - Player Scanner token scan (persisted to session.playerScans)
 - **POST /api/scan/batch** - Player Scanner offline queue batch
 - **GET /api/session** - Current session info (lightweight)
 - **GET /api/tokens** - Token database (tokens.json)
@@ -59,15 +59,19 @@ backend/contracts/
 - **GET /api/admin/logs** - System logs (troubleshooting)
 - **GET /health** - Health check
 
-### asyncapi.yaml - WebSocket API (16 events)
+### asyncapi.yaml - WebSocket API (21 events)
 
-**Authentication (4)**: gm:identify, gm:identified, device:connected, device:disconnected
+**Device Tracking (2)**: device:connected, device:disconnected
 **State Sync (1)**: sync:full
-**Transactions (4)**: transaction:submit, transaction:result, transaction:new, score:updated
+**Transactions (5)**: transaction:submit, transaction:result, transaction:new, transaction:deleted, score:updated
+**Scores (1)**: scores:reset
 **Video (1)**: video:status
-**Session (1)**: session:update
+**Display (2)**: display:mode, display:status
+**Session (2)**: session:update, session:overtime
 **Admin (2)**: gm:command, gm:command:ack
-**Other (3)**: offline:queue:processed, group:completed, error
+**Offline Queue (2)**: offline:queue:processed, batch:ack
+**Game Activity (2)**: group:completed, player:scan
+**Error (1)**: error
 
 ---
 
@@ -136,7 +140,7 @@ Authenticate as admin, receive JWT token.
 ### Player Scanner Operations
 
 #### POST /api/scan
-Single token scan (fire-and-forget).
+Single token scan. Persisted to `session.playerScans[]` and broadcast via `player:scan` event.
 
 **Request**:
 ```json
