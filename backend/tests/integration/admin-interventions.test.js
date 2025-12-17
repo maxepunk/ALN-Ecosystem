@@ -83,15 +83,17 @@ describe('Admin Intervention Integration', () => {
       // Verify initial score
       let teamScores = transactionService.getTeamScores();
       let teamScore = teamScores.find(s => s.teamId === 'Team Alpha');
-      expect(teamScore.currentScore).toBe(40); // rat001 = 40
+      const rat001Value = TestTokens.getExpectedPoints('rat001');
+      expect(teamScore.currentScore).toBe(rat001Value);
 
       // CRITICAL: Set up listeners BEFORE command to avoid race condition
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // CRITICAL: Wait for score:updated event with ADJUSTED score (not setup transaction score)
+      const expectedAfterAdjust = rat001Value - 500;
       const scorePromise = new Promise((resolve) => {
         gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === -460) { // Expected after adjustment: 40 - 500 = -460
+          if (event.data.currentScore === expectedAfterAdjust) {
             resolve(event);
           }
         });
@@ -125,7 +127,7 @@ describe('Admin Intervention Integration', () => {
 
       // Validate: Score updated broadcast reached observer
       expect(scoreEvent.data.teamId).toBe('Team Alpha');
-      expect(scoreEvent.data.currentScore).toBe(-460); // 40 - 500
+      expect(scoreEvent.data.currentScore).toBe(expectedAfterAdjust);
 
       // Validate: Admin adjustments array populated
       expect(scoreEvent.data.adminAdjustments).toBeDefined();
@@ -137,7 +139,7 @@ describe('Admin Intervention Integration', () => {
       // Validate: Service state matches broadcast
       teamScores = transactionService.getTeamScores();
       teamScore = teamScores.find(s => s.teamId === 'Team Alpha');
-      expect(teamScore.currentScore).toBe(-460);
+      expect(teamScore.currentScore).toBe(expectedAfterAdjust);
       expect(teamScore.adminAdjustments).toHaveLength(1);
     });
 
@@ -154,9 +156,11 @@ describe('Admin Intervention Integration', () => {
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // Wait for score event with ADJUSTED value
+      const asm001Value = TestTokens.getExpectedPoints('asm001');
+      const expectedWithBonus = asm001Value + 2000;
       const scorePromise = new Promise((resolve) => {
         gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === 2030) { // 30 + 2000
+          if (event.data.currentScore === expectedWithBonus) {
             resolve(event);
           }
         });
@@ -179,15 +183,16 @@ describe('Admin Intervention Integration', () => {
       const [ack, scoreEvent] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreEvent.data.currentScore).toBe(2030); // 30 + 2000
+      expect(scoreEvent.data.currentScore).toBe(expectedWithBonus);
 
       const teamScores = transactionService.getTeamScores();
       const teamScore = teamScores.find(s => s.teamId === 'Detectives');
-      expect(teamScore.currentScore).toBe(2030);
+      expect(teamScore.currentScore).toBe(expectedWithBonus);
     });
 
     it('should reject score adjustment for non-existent team', async () => {
-      const errorPromise = waitForEvent(gmAdmin.socket, 'error');
+      // Per AsyncAPI contract, command failures return gm:command:ack with success: false
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
@@ -202,11 +207,11 @@ describe('Admin Intervention Integration', () => {
         timestamp: new Date().toISOString()
       });
 
-      const errorEvent = await errorPromise;
+      const ackEvent = await ackPromise;
 
-      expect(errorEvent.event).toBe('error');
-      expect(errorEvent.data.code).toBe('SERVER_ERROR');
-      expect(errorEvent.data.details).toContain('Team 999 not found');
+      expect(ackEvent.event).toBe('gm:command:ack');
+      expect(ackEvent.data.success).toBe(false);
+      expect(ackEvent.data.message).toContain('Team 999 not found');
     });
   });
 
@@ -342,7 +347,7 @@ describe('Admin Intervention Integration', () => {
       const result = await resultPromise;
 
       expect(result.data.status).toBe('accepted');
-      expect(result.data.points).toBe(40);
+      expect(result.data.points).toBe(TestTokens.getExpectedPoints('rat001'));
     });
 
     it('should end session and cleanup services', async () => {
@@ -358,7 +363,7 @@ describe('Admin Intervention Integration', () => {
 
       let teamScores = transactionService.getTeamScores();
       const scoreBefore = teamScores.find(s => s.teamId === 'Team Alpha');
-      expect(scoreBefore.currentScore).toBe(40);
+      expect(scoreBefore.currentScore).toBe(TestTokens.getExpectedPoints('rat001'));
 
       // Use predicate to filter for 'ended' status (avoid receiving stale 'active' session:update)
       const isEndedSession = (data) => data?.data?.status === 'ended';
@@ -751,7 +756,8 @@ describe('Admin Intervention Integration', () => {
     });
 
     it('should handle missing required parameters', async () => {
-      const errorPromise = waitForEvent(gmAdmin.socket, 'error');
+      // Per AsyncAPI contract, command failures return gm:command:ack with success: false
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // score:adjust requires teamId and delta
       gmAdmin.socket.emit('gm:command', {
@@ -766,10 +772,10 @@ describe('Admin Intervention Integration', () => {
         timestamp: new Date().toISOString()
       });
 
-      const errorEvent = await errorPromise;
+      const ackEvent = await ackPromise;
 
-      expect(errorEvent.data.code).toBe('SERVER_ERROR');
-      expect(errorEvent.data.details).toContain('required');
+      expect(ackEvent.data.success).toBe(false);
+      expect(ackEvent.data.message).toContain('required');
     });
   });
 
@@ -788,9 +794,11 @@ describe('Admin Intervention Integration', () => {
       const adminAckPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       // Wait for score event with ADJUSTED value
+      const rat001Points = TestTokens.getExpectedPoints('rat001');
+      const expectedAdjusted = rat001Points - 1000;
       const observerScorePromise = new Promise((resolve) => {
         gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === -960) { // 40 - 1000 = -960
+          if (event.data.currentScore === expectedAdjusted) {
             resolve(event);
           }
         });
@@ -821,7 +829,7 @@ describe('Admin Intervention Integration', () => {
 
       // Validate: Observer received score update (side effect)
       expect(observerScore.event).toBe('score:updated');
-      expect(observerScore.data.currentScore).toBe(-960); // 40 - 1000
+      expect(observerScore.data.currentScore).toBe(expectedAdjusted);
 
       // Observer should NOT receive ack (ack is to sender only)
       // We can't easily test "did not receive" without waiting, so we validate timing
