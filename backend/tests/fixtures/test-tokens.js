@@ -10,8 +10,14 @@
  * - Does NOT include: SF_* scanner fields (those are in metadata for reference)
  * - Matches backend/src/models/token.js schema validation requirements
  *
+ * DRY PRINCIPLE: Token values are calculated using production scoring logic
+ * from tokenService.calculateTokenValue(). This ensures test fixtures stay
+ * in sync when scoring config changes.
+ *
  * NOTE: Uses real tokens from ALN-TokenData where possible for consistency
  */
+
+const { calculateTokenValue } = require('../../src/services/tokenService');
 
 module.exports = {
   // Real group from ALN-TokenData: "Marcus Sucks" (x2 multiplier, 2 tokens)
@@ -23,7 +29,7 @@ module.exports = {
       {
         id: 'rat001',
         name: 'Marcus Sucks',
-        value: 40,  // Calculated from SF_ValueRating: 4, SF_MemoryType: 'Business'
+        value: calculateTokenValue(4, 'Business'),  // rating 4, Business type
         memoryType: 'Business',
         groupId: 'Marcus Sucks',
         groupMultiplier: 2,
@@ -43,7 +49,7 @@ module.exports = {
       {
         id: 'asm001',
         name: 'Marcus Sucks',
-        value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Personal'
+        value: calculateTokenValue(3, 'Personal'),  // rating 3, Personal type
         memoryType: 'Personal',
         groupId: 'Marcus Sucks',
         groupMultiplier: 2,
@@ -72,7 +78,7 @@ module.exports = {
       {
         id: 'test_srv001',
         name: 'Server Logs',
-        value: 20,  // Calculated from SF_ValueRating: 2, SF_MemoryType: 'Technical'
+        value: calculateTokenValue(2, 'Technical'),  // rating 2, Technical type
         memoryType: 'Technical',
         groupId: 'Server Logs',
         groupMultiplier: 3,
@@ -92,7 +98,7 @@ module.exports = {
       {
         id: 'test_srv002',
         name: 'Server Logs',
-        value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Technical'
+        value: calculateTokenValue(3, 'Technical'),  // rating 3, Technical type
         memoryType: 'Technical',
         groupId: 'Server Logs',
         groupMultiplier: 3,
@@ -117,7 +123,7 @@ module.exports = {
     {
       id: '534e2b02',
       name: 'Memory 534e2b02',
-      value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Technical'
+      value: calculateTokenValue(3, 'Technical'),  // rating 3, Technical type
       memoryType: 'Technical',
       groupId: null,
       groupMultiplier: 1,
@@ -137,7 +143,7 @@ module.exports = {
     {
       id: '534e2b03',
       name: 'Memory 534e2b03',
-      value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Technical'
+      value: calculateTokenValue(3, 'Technical'),  // rating 3, Technical type
       memoryType: 'Technical',
       groupId: null,
       groupMultiplier: 1,
@@ -157,7 +163,7 @@ module.exports = {
     {
       id: 'hos001',
       name: 'Memory hos001',
-      value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Business'
+      value: calculateTokenValue(3, 'Business'),  // rating 3, Business type
       memoryType: 'Business',
       groupId: null,
       groupMultiplier: 1,
@@ -180,7 +186,7 @@ module.exports = {
   VIDEO_TOKEN: {
     id: 'jaw001',
     name: 'Memory jaw001',
-    value: 50,  // Calculated from SF_ValueRating: 5, SF_MemoryType: 'Personal'
+    value: calculateTokenValue(5, 'Personal'),  // rating 5, Personal type
     memoryType: 'Personal',
     groupId: null,
     groupMultiplier: 1,
@@ -201,7 +207,7 @@ module.exports = {
   AUDIO_TOKEN: {
     id: 'tac001',
     name: 'Memory tac001',
-    value: 10,  // Calculated from SF_ValueRating: 1, SF_MemoryType: 'Business'
+    value: calculateTokenValue(1, 'Business'),  // rating 1, Business type
     memoryType: 'Business',
     groupId: null,
     groupMultiplier: 1,
@@ -222,7 +228,7 @@ module.exports = {
   IMAGE_TOKEN: {
     id: 'fli001',
     name: 'Memory fli001',
-    value: 10,  // Calculated from SF_ValueRating: 1, SF_MemoryType: 'Personal'
+    value: calculateTokenValue(1, 'Personal'),  // rating 1, Personal type
     memoryType: 'Personal',
     groupId: null,
     groupMultiplier: 1,
@@ -244,7 +250,7 @@ module.exports = {
   DETECTIVE_TOKEN_WITH_SUMMARY: {
     id: 'det001',
     name: 'Memory det001',
-    value: 25,  // Calculated from SF_ValueRating: 2, SF_MemoryType: 'Technical'
+    value: calculateTokenValue(2, 'Technical'),  // rating 2, Technical type
     memoryType: 'Technical',
     groupId: null,
     groupMultiplier: 1,
@@ -266,7 +272,7 @@ module.exports = {
   DETECTIVE_TOKEN_WITHOUT_SUMMARY: {
     id: 'alr001',
     name: 'Memory alr001',
-    value: 30,  // Calculated from SF_ValueRating: 3, SF_MemoryType: 'Technical'
+    value: calculateTokenValue(3, 'Technical'),  // rating 3, Technical type
     memoryType: 'Technical',
     groupId: null,
     groupMultiplier: 1,
@@ -288,7 +294,7 @@ module.exports = {
   DETECTIVE_TOKEN_WITH_HTML: {
     id: 'det999',
     name: 'Memory det999',
-    value: 25,  // Calculated from SF_ValueRating: 2, SF_MemoryType: 'Technical'
+    value: calculateTokenValue(2, 'Technical'),  // rating 2, Technical type
     memoryType: 'Technical',
     groupId: null,
     groupMultiplier: 1,
@@ -360,5 +366,17 @@ module.exports = {
       return this.SERVER_LOGS.tokens;
     }
     return [];
+  },
+
+  /**
+   * Get expected points value for a token by ID (DRY helper for tests)
+   * Returns 0 for unknown tokens (matching production behavior)
+   * @param {string} tokenId - Token ID to look up
+   * @returns {number} Expected point value from dynamic calculation
+   */
+  getExpectedPoints(tokenId) {
+    const allTokens = this.getAllAsObject();
+    const token = allTokens[tokenId];
+    return token ? token.value : 0;
   }
 };

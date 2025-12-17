@@ -18,6 +18,7 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('..
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+const TestTokens = require('../fixtures/test-tokens');
 
 describe('State Synchronization Integration - REAL Scanner', () => {
   let testContext, scanner;
@@ -84,7 +85,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     // Validate: Scores include both teams
     expect(syncEvent.data.scores).toHaveLength(2);
     const team001Score = syncEvent.data.scores.find(s => s.teamId === 'Team Alpha');
-    expect(team001Score.currentScore).toBe(30); // Token 534e2b03: value = 30 points (from test fixtures)
+    expect(team001Score.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
 
     // Validate: Recent transactions include our prior transaction
     expect(syncEvent.data.recentTransactions).toHaveLength(1);

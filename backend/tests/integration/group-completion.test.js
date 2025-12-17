@@ -109,8 +109,9 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // Verify: First token scored, NO group completion yet
       let scores = transactionService.getTeamScores();
       let team001Score = scores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(40); // Only base score (rat001)
-      expect(team001Score.baseScore).toBe(40);
+      const rat001Points = TestTokens.getExpectedPoints('rat001');
+      expect(team001Score.currentScore).toBe(rat001Points); // Only base score (rat001)
+      expect(team001Score.baseScore).toBe(rat001Points);
       expect(team001Score.bonusPoints).toBe(0); // NO bonus yet
       expect(team001Score.completedGroups).toEqual([]); // Group NOT complete
 
@@ -134,24 +135,29 @@ describe('Group Completion Integration - REAL Scanner', () => {
       expect(groupEvent.event).toBe('group:completed');
       expect(groupEvent.data.teamId).toBe('Team Alpha');
       expect(groupEvent.data.group).toBe('Marcus Sucks'); // groupId without "(x2)"
-      expect(groupEvent.data.bonusPoints).toBe(70); // (2-1) × (40 + 30)
+      // Group bonus = sum(token values) * (multiplier - 1) per transactionService.js
+      const expectedGroupBonus = (TestTokens.getExpectedPoints('rat001') + TestTokens.getExpectedPoints('asm001')) * (TestTokens.MARCUS_SUCKS.multiplier - 1);
+      expect(groupEvent.data.bonusPoints).toBe(expectedGroupBonus);
       expect(groupEvent.data.completedAt).toBeDefined();
 
       // Validate: Contract compliance
       validateWebSocketEvent(groupEvent, 'group:completed');
 
       // Validate: score:updated includes bonus
+      const asm001Points = TestTokens.getExpectedPoints('asm001');
+      const expectedBaseScore = rat001Points + asm001Points;
+      const expectedTotalScore = expectedBaseScore + expectedGroupBonus;
       expect(scoreEvent.data.teamId).toBe('Team Alpha');
-      expect(scoreEvent.data.currentScore).toBe(140); // 40 + 30 + 70
-      expect(scoreEvent.data.baseScore).toBe(70); // 40 + 30
-      expect(scoreEvent.data.bonusPoints).toBe(70); // Group bonus
+      expect(scoreEvent.data.currentScore).toBe(expectedTotalScore);
+      expect(scoreEvent.data.baseScore).toBe(expectedBaseScore);
+      expect(scoreEvent.data.bonusPoints).toBe(expectedGroupBonus);
       expect(scoreEvent.data.completedGroups).toContain('Marcus Sucks');
 
       // Validate: Service state matches broadcasts
       scores = transactionService.getTeamScores();
       team001Score = scores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(140);
-      expect(team001Score.bonusPoints).toBe(70);
+      expect(team001Score.currentScore).toBe(expectedTotalScore);
+      expect(team001Score.bonusPoints).toBe(expectedGroupBonus);
       expect(team001Score.completedGroups).toContain('Marcus Sucks');
     });
 
@@ -172,7 +178,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // Verify: NO group completion (only 1 of 2 tokens)
       const scores = transactionService.getTeamScores();
       const team001Score = scores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(40); // Only token value
+      expect(team001Score.currentScore).toBe(TestTokens.getExpectedPoints('rat001')); // Only token value
       expect(team001Score.bonusPoints).toBe(0); // NO bonus
       expect(team001Score.completedGroups).toEqual([]); // NOT complete
     });
@@ -201,12 +207,14 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Validate: Group completed with same bonus (order doesn't matter)
       expect(groupEvent.data.group).toBe('Marcus Sucks');
-      expect(groupEvent.data.bonusPoints).toBe(70);
+      const expectedBonus = (TestTokens.getExpectedPoints('rat001') + TestTokens.getExpectedPoints('asm001')) * (TestTokens.MARCUS_SUCKS.multiplier - 1);
+      expect(groupEvent.data.bonusPoints).toBe(expectedBonus);
 
       // Validate: Final score same as forward order
       const scores = transactionService.getTeamScores();
       const team001Score = scores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(140); // 30 + 40 + 70
+      const expectedTotal = TestTokens.getExpectedPoints('rat001') + TestTokens.getExpectedPoints('asm001') + expectedBonus;
+      expect(team001Score.currentScore).toBe(expectedTotal);
     });
   });
 });

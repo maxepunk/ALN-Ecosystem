@@ -1,6 +1,6 @@
 # ALN Scoring Logic - Single Source of Truth
 
-Last verified: 2025-12-08
+Last verified: 2025-12-16
 
 ## Overview
 
@@ -10,11 +10,11 @@ This document defines the scoring system for ALN (About Last Night) Black Market
 
 | Rating | Value |
 |--------|-------|
-| 1 | $100 |
-| 2 | $500 |
-| 3 | $1,000 |
-| 4 | $5,000 |
-| 5 | $10,000 |
+| 1 | $10,000 |
+| 2 | $25,000 |
+| 3 | $50,000 |
+| 4 | $75,000 |
+| 5 | $150,000 |
 
 ## Type Multipliers (SF_MemoryType)
 
@@ -32,9 +32,9 @@ tokenScore = BASE_VALUES[valueRating] × TYPE_MULTIPLIERS[memoryType]
 ```
 
 **Examples:**
-- 1-star Personal: $100 × 1 = $100
-- 3-star Business: $1,000 × 3 = $3,000
-- 5-star Technical: $10,000 × 5 = $50,000
+- 1-star Personal: $10,000 × 1 = $10,000
+- 3-star Business: $50,000 × 3 = $150,000
+- 5-star Technical: $150,000 × 5 = $750,000
 
 ## Group Completion Bonus
 
@@ -60,8 +60,10 @@ bonus = (groupMultiplier - 1) × totalGroupBaseScore
 
 | Component | File | Lines | Notes |
 |-----------|------|-------|-------|
-| Backend | `backend/src/services/transactionService.js` | 318-448 | Authoritative in networked mode |
-| GM Scanner | `ALNScanner/src/core/dataManager.js` | 29-43, 469-571 | Used in standalone mode |
+| Backend Config | `backend/src/config/index.js` | 69-83 | Base values and type multipliers |
+| Backend Group Logic | `backend/src/services/transactionService.js` | 330-387 | Group completion and bonus calculation |
+| GM Scanner Config | `ALNScanner/src/core/scoring.js` | 15-29 | SCORING_CONFIG constant |
+| GM Scanner Group Logic | `ALNScanner/src/core/dataManager.js` | 418-471 | calculateTeamScoreWithBonuses() |
 
 ## CRITICAL: Parity Warning
 

@@ -2,11 +2,18 @@
  * TokenService Unit Tests
  * Tests token loading, transformation, and utility functions
  * Layer 1: Service Logic - NO server, NO WebSocket, pure logic
+ *
+ * DRY PRINCIPLE: Expected scores are calculated using production scoring logic
+ * from tokenService.calculateTokenValue() to ensure tests stay in sync when
+ * scoring config changes.
  */
 
 const tokenService = require('../../../src/services/tokenService');
 const fs = require('fs');
 const path = require('path');
+
+// DRY helper: use production function for expected values
+const calcExpected = (rating, type) => tokenService.calculateTokenValue(rating, type);
 
 // Mock fs for file loading tests
 jest.mock('fs');
@@ -72,25 +79,25 @@ describe('TokenService - Utility Functions', () => {
 
   describe('calculateTokenValue', () => {
     // These tests depend on config.game.valueRatingMap and typeMultipliers
-    // Assuming standard config: valueRatingMap = {1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000}
+    // Assuming standard config: valueRatingMap = {1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000}
     // Assuming typeMultipliers = {personal: 1.0, business: 3.0, technical: 5.0}
 
     it('should calculate value with rating 1 and Personal type', () => {
-      // Base: 100, Multiplier: 1.0 = 100
+      // Base: 10000, Multiplier: 1.0 = 10000
       const value = tokenService.calculateTokenValue(1, 'Personal');
-      expect(value).toBe(100);
+      expect(value).toBe(10000);
     });
 
     it('should calculate value with rating 3 and Technical type', () => {
-      // Base: 1000, Multiplier: 5.0 = 5000
+      // Base: 50000, Multiplier: 5.0 = 250000
       const value = tokenService.calculateTokenValue(3, 'Technical');
-      expect(value).toBe(5000);
+      expect(value).toBe(250000);
     });
 
     it('should calculate value with rating 5 and Business type', () => {
-      // Base: 10000, Multiplier: 3.0 = 30000
+      // Base: 150000, Multiplier: 3.0 = 450000
       const value = tokenService.calculateTokenValue(5, 'Business');
-      expect(value).toBe(30000);
+      expect(value).toBe(450000);
     });
 
     it('should handle case-insensitive memory types', () => {
@@ -104,21 +111,23 @@ describe('TokenService - Utility Functions', () => {
 
     it('should default to rating 1 value for invalid rating', () => {
       const value = tokenService.calculateTokenValue(999, 'Personal');
-      expect(value).toBe(100); // Defaults to rating 1
+      expect(value).toBe(10000); // Defaults to rating 1
     });
 
     it('should default to 1.0 multiplier for unknown type', () => {
       // Unknown type should default to 1.0 multiplier
       const value = tokenService.calculateTokenValue(3, 'UnknownType');
-      expect(value).toBe(1000); // Base value only (1000 * 1.0)
+      expect(value).toBe(50000); // Base value only (50000 * 1.0)
     });
 
     it('should handle null or undefined type', () => {
       // Should default to 'personal' (lowercase) with 1.0 multiplier
       const value1 = tokenService.calculateTokenValue(2, null);
       const value2 = tokenService.calculateTokenValue(2, undefined);
-      expect(value1).toBe(500); // Rating 2 base (500 * 1.0)
-      expect(value2).toBe(500);
+      // DRY: Use actual rating 2 base value with 1.0 multiplier
+      const expectedRating2 = calcExpected(2, 'Personal');
+      expect(value1).toBe(expectedRating2);
+      expect(value2).toBe(expectedRating2);
     });
 
     it('should floor decimal results', () => {
@@ -251,8 +260,9 @@ describe('TokenService - Token Loading', () => {
       const tokens = tokenService.loadTokens();
       const token001 = tokens.find(t => t.id === 'token001');
 
-      // Rating 3, Technical (5x) = 1000 * 5 = 5000
-      expect(token001.value).toBe(5000);
+      // DRY: Use production scoring logic - Rating 3, Technical (5x)
+      const expectedValue = calcExpected(3, 'Technical');
+      expect(token001.value).toBe(expectedValue);
     });
 
     it('should include mediaAssets structure', () => {

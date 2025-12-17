@@ -68,11 +68,11 @@ const config = {
 
     // Value rating to points mapping
     valueRatingMap: {
-      1: parseInt(process.env.VALUE_RATING_1 || '100', 10),
-      2: parseInt(process.env.VALUE_RATING_2 || '500', 10),
-      3: parseInt(process.env.VALUE_RATING_3 || '1000', 10),
-      4: parseInt(process.env.VALUE_RATING_4 || '5000', 10),
-      5: parseInt(process.env.VALUE_RATING_5 || '10000', 10),
+      1: parseInt(process.env.VALUE_RATING_1 || '10000', 10),
+      2: parseInt(process.env.VALUE_RATING_2 || '25000', 10),
+      3: parseInt(process.env.VALUE_RATING_3 || '50000', 10),
+      4: parseInt(process.env.VALUE_RATING_4 || '75000', 10),
+      5: parseInt(process.env.VALUE_RATING_5 || '150000', 10),
     },
 
     // Type multipliers (Personal 1x, Business 3x, Technical 5x)

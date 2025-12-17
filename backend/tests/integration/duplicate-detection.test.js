@@ -87,7 +87,7 @@ describe('Duplicate Detection Integration', () => {
       // Validate: First scan accepted
       expect(result1.event).toBe('transaction:result');
       expect(result1.data.status).toBe('accepted');
-      expect(result1.data.points).toBe(30); // Test fixture value for 534e2b03
+      expect(result1.data.points).toBe(TestTokens.getExpectedPoints('534e2b03'));
 
       // Validate: Contract compliance
       validateWebSocketEvent(result1, 'transaction:result');
@@ -121,7 +121,7 @@ describe('Duplicate Detection Integration', () => {
       // Verify: Score only counted once
       const teamScores = transactionService.getTeamScores();
       const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(30); // Test fixture value for 534e2b03 (not doubled)
+      expect(team001Score.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03')); // Not doubled
       expect(team001Score.tokensScanned).toBe(1); // Only one token counted
     });
 
@@ -185,7 +185,7 @@ describe('Duplicate Detection Integration', () => {
       // Validate: Team 001 claim accepted
       expect(result1.data.status).toBe('accepted');
       expect(result1.data.teamId).toBe('Team Alpha');
-      expect(result1.data.points).toBe(30); // Test fixture value for 534e2b03
+      expect(result1.data.points).toBe(TestTokens.getExpectedPoints('534e2b03'));
 
       // Team 002 tries to scan same token
       const result2Promise = waitForEvent(gm2, 'transaction:result');
@@ -215,7 +215,7 @@ describe('Duplicate Detection Integration', () => {
       const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
       const team002Score = teamScores.find(s => s.teamId === 'Detectives');
 
-      expect(team001Score.currentScore).toBe(30); // Test fixture value for 534e2b03
+      expect(team001Score.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(team002Score.currentScore).toBe(0);
     });
 
@@ -261,7 +261,7 @@ describe('Duplicate Detection Integration', () => {
       expect(duplicate).toBeDefined();
 
       // Winner gets points, loser gets 0
-      expect(accepted.data.points).toBe(40); // Test fixture value for rat001
+      expect(accepted.data.points).toBe(TestTokens.getExpectedPoints('rat001'));
       expect(duplicate.data.points).toBe(0);
 
       // Duplicate response should reference winning team
@@ -293,7 +293,7 @@ describe('Duplicate Detection Integration', () => {
 
       const blackmarketResult = await blackmarketPromise;
       expect(blackmarketResult.data.status).toBe('accepted');
-      expect(blackmarketResult.data.points).toBe(30); // Test fixture value for 534e2b03
+      expect(blackmarketResult.data.points).toBe(TestTokens.getExpectedPoints('534e2b03'));
 
       // Second: Detective mode tries to scan same token
       const detectivePromise = waitForEvent(gm2, 'transaction:result');
@@ -483,7 +483,7 @@ describe('Duplicate Detection Integration', () => {
 
       // Validate: Token available in new session (not duplicate)
       expect(result2.data.status).toBe('accepted');
-      expect(result2.data.points).toBe(30); // Test fixture value for 534e2b03
+      expect(result2.data.points).toBe(TestTokens.getExpectedPoints('534e2b03'));
     });
   });
 });

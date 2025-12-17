@@ -64,7 +64,7 @@ class TokenLoader {
     const rawTokens = this.loadRawTokens();
 
     // Scoring constants (must match config/index.js)
-    const BASE_VALUES = { 1: 100, 2: 500, 3: 1000, 4: 5000, 5: 10000 };
+    const BASE_VALUES = { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 };
     const TYPE_MULTIPLIERS = { personal: 1, business: 3, technical: 5 };
 
     this.tokens = Object.entries(rawTokens).map(([id, token]) => {

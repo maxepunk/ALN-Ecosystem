@@ -92,7 +92,7 @@ describe('Transaction Flow Integration', () => {
       expect(resultEvent.data.status).toBe('accepted');
       expect(resultEvent.data.tokenId).toBe('534e2b03');
       expect(resultEvent.data.teamId).toBe('Team Alpha');
-      expect(resultEvent.data.points).toBe(30);  // CRITICAL: Fixture value for 534e2b03
+      expect(resultEvent.data.points).toBe(TestTokens.getExpectedPoints('534e2b03'));  // DRY: Use fixture value
       expect(resultEvent.data.transactionId).toBeDefined();
       expect(resultEvent.data.message).toBeDefined();
 
@@ -106,7 +106,7 @@ describe('Transaction Flow Integration', () => {
       expect(newEvent.data.transaction.teamId).toBe('Team Alpha');
       expect(newEvent.data.transaction.deviceId).toBe('GM_BLACKMARKET');
       expect(newEvent.data.transaction.mode).toBe('blackmarket');
-      expect(newEvent.data.transaction.points).toBe(30);
+      expect(newEvent.data.transaction.points).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(newEvent.data.transaction.timestamp).toBeDefined();
       expect(newEvent.data.transaction.memoryType).toBe('Technical');
       expect(newEvent.data.transaction.valueRating).toBe(3);
@@ -117,8 +117,8 @@ describe('Transaction Flow Integration', () => {
       // Validate: score:updated (broadcast to all GMs)
       expect(scoreEvent.event).toBe('score:updated');
       expect(scoreEvent.data.teamId).toBe('Team Alpha');
-      expect(scoreEvent.data.currentScore).toBe(30);
-      expect(scoreEvent.data.baseScore).toBe(30);
+      expect(scoreEvent.data.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
+      expect(scoreEvent.data.baseScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(scoreEvent.data.bonusPoints).toBe(0);
       expect(scoreEvent.data.tokensScanned).toBe(1);
       expect(scoreEvent.data.completedGroups).toEqual([]);
@@ -129,7 +129,7 @@ describe('Transaction Flow Integration', () => {
 
       // Validate: Service state consistency
       const teamScore = transactionService.teamScores.get('Team Alpha');
-      expect(teamScore.currentScore).toBe(30);
+      expect(teamScore.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(teamScore.tokensScanned).toBe(1);
     });
   });
@@ -268,7 +268,7 @@ describe('Transaction Flow Integration', () => {
 
       // Validate: Score unchanged (only 30 from first scan)
       const teamScore = transactionService.teamScores.get('Team Alpha');
-      expect(teamScore.currentScore).toBe(30);
+      expect(teamScore.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(teamScore.tokensScanned).toBe(1);  // Only 1 token scanned
     });
   });

@@ -401,11 +401,25 @@ global.DataManager = {
     console.log(`[MockDataManager] Synced ${serverTokens.length} scanned tokens from server`);
   },
 
+  // Sync player scans from server (Game Activity feature)
+  // Called by NetworkedSession.js when sync:full received with playerScans
+  // Matches ALNScanner/src/core/dataManager.js
+  playerScans: [],
+  setPlayerScansFromServer(serverPlayerScans) {
+    if (!Array.isArray(serverPlayerScans)) {
+      console.log('[MockDataManager] setPlayerScansFromServer: invalid input (not array)');
+      return;
+    }
+    this.playerScans = serverPlayerScans;
+    console.log(`[MockDataManager] Synced ${serverPlayerScans.length} player scans from server`);
+  },
+
   // Clear all data (for test cleanup between tests)
   clearAll() {
     this.scannedTokens.clear();
     this.transactions = [];
     this.backendScores.clear();
+    this.playerScans = [];
   },
 
   addTransaction: () => { },
@@ -431,6 +445,7 @@ global.DataManager = {
   resetForNewSession(sessionId = null) {
     this.scannedTokens.clear();
     this.transactions = [];
+    this.playerScans = [];
     this.currentSessionId = sessionId;
 
     // Match scanner localStorage behavior

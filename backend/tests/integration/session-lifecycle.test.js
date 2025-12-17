@@ -31,6 +31,7 @@ const { validateWebSocketEvent } = require('../helpers/contract-validator');
 const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
+const { calculateTokenValue } = require('../../src/services/tokenService');
 const TestTokens = require('../fixtures/test-tokens');
 
 describe('Session Lifecycle Integration - REAL Scanner', () => {
@@ -244,7 +245,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       const result = await resultPromise;
       expect(result.data.status).toBe('accepted'); // Transaction succeeds after resume
-      expect(result.data.points).toBe(30);
+      expect(result.data.points).toBe(250000); // 3-star Technical = 50000 × 5
     });
   });
 
@@ -306,10 +307,16 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         teams: ['Team Alpha', 'Detectives']
       });
 
+      // Calculate expected scores using production scoring logic (DRY)
+      // Token 534e2b03: 3-star Technical
+      const expectedTeam1Score = calculateTokenValue(3, 'Technical');
+      // Token tac001: 1-star Business
+      const expectedTeam2Score = calculateTokenValue(1, 'Business');
+
       // Add transactions to create initial scores
       const session = sessionService.getCurrentSession();
       const tx1 = await transactionService.processScan({
-        tokenId: '534e2b03',  // 5000 points
+        tokenId: '534e2b03',  // 3-star Technical
         teamId: 'Team Alpha',
         deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
@@ -318,7 +325,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       await sessionService.addTransaction(tx1.transaction);
 
       const tx2 = await transactionService.processScan({
-        tokenId: 'tac001',  // 100 points (rating 1, Personal type)
+        tokenId: 'tac001',  // 1-star Business
         teamId: 'Detectives',
         deviceId: 'SETUP',
           deviceType: 'gm',  // Required by Phase 3 P0.1
@@ -330,8 +337,8 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       let scores = transactionService.getTeamScores();
       let team001 = scores.find(s => s.teamId === 'Team Alpha');
       let team002 = scores.find(s => s.teamId === 'Detectives');
-      expect(team001.currentScore).toBe(30);
-      expect(team002.currentScore).toBe(10);  // Corrected: rating 1 Personal = 10
+      expect(team001.currentScore).toBe(expectedTeam1Score);
+      expect(team002.currentScore).toBe(expectedTeam2Score);
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_ADJUST_TEST', 'blackmarket');
 
@@ -360,20 +367,21 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       expect(ack.data.success).toBe(true);
       expect(ack.data.message).toBeDefined();
 
-      // Validate: Score ADJUSTED by delta (30 - 500 = -470), NOT reset to 0
+      // Validate: Score ADJUSTED by delta, NOT reset to 0
+      const adjustmentDelta = -500;
       expect(scoreUpdate.event).toBe('score:updated');
       expect(scoreUpdate.data.teamId).toBe('Team Alpha');
-      expect(scoreUpdate.data.currentScore).toBe(-470); // 30 - 500
+      expect(scoreUpdate.data.currentScore).toBe(expectedTeam1Score + adjustmentDelta);
       validateWebSocketEvent(scoreUpdate, 'score:updated');
 
       // Validate: Team 002 score UNCHANGED
       scores = transactionService.getTeamScores();
       team002 = scores.find(s => s.teamId === 'Detectives');
-      expect(team002.currentScore).toBe(10); // No change (still 10)
+      expect(team002.currentScore).toBe(expectedTeam2Score); // No change
 
       // Validate: Service state matches broadcast
       team001 = scores.find(s => s.teamId === 'Team Alpha');
-      expect(team001.currentScore).toBe(-470);
+      expect(team001.currentScore).toBe(expectedTeam1Score + adjustmentDelta);
     });
 
     it('should handle positive delta (bonus points)', async () => {
@@ -382,6 +390,11 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'Score Bonus Test',
         teams: ['Team Alpha']
       });
+
+      // Calculate expected score using production scoring logic (DRY)
+      // Token 534e2b03: 3-star Technical
+      const expectedTokenScore = calculateTokenValue(3, 'Technical');
+      const bonusDelta = 1000;
 
       const session = sessionService.getCurrentSession();
       const tx = await transactionService.processScan({
@@ -395,7 +408,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       let scores = transactionService.getTeamScores();
       let team001 = scores.find(s => s.teamId === 'Team Alpha');
-      expect(team001.currentScore).toBe(30);
+      expect(team001.currentScore).toBe(expectedTokenScore);
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_BONUS_TEST', 'blackmarket');
 
@@ -408,7 +421,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
           action: 'score:adjust',
           payload: {
             teamId: 'Team Alpha',
-            delta: 1000,  // Positive delta = bonus
+            delta: bonusDelta,  // Positive delta = bonus
             reason: 'Bonus for excellent teamwork'
           }
         },
@@ -419,7 +432,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       // Validate: Score increased by delta
       expect(scoreUpdate.data.teamId).toBe('Team Alpha');
-      expect(scoreUpdate.data.currentScore).toBe(1030); // 30 + 1000
+      expect(scoreUpdate.data.currentScore).toBe(expectedTokenScore + bonusDelta);
     });
   });
 });

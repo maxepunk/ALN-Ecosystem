@@ -12,6 +12,9 @@
  *
  * Contract: backend/contracts/asyncapi.yaml (error event, transaction:result)
  * Functional Requirements: Section 3.2 (Error Handling)
+ *
+ * DRY PRINCIPLE: Expected scores use values from test-tokens.js fixtures which
+ * are calculated dynamically using production scoring logic.
  */
 
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
@@ -22,6 +25,13 @@ const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const TestTokens = require('../fixtures/test-tokens');
 const videoQueueService = require('../../src/services/videoQueueService');
+
+// DRY: Get expected values from test fixtures (calculated using production scoring)
+const getExpectedPoints = (tokenId) => {
+  const allTokens = TestTokens.getAllAsObject();
+  const token = allTokens[tokenId];
+  return token ? token.value : 0;
+};
 
 describe('Error Propagation Integration', () => {
   let testContext, gmSocket;
@@ -226,7 +236,8 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Valid transaction processed correctly
       expect(validResult.data.status).toBe('accepted');
-      expect(validResult.data.points).toBe(30); // Token value from test fixtures
+      // DRY: Use calculated value from test fixtures
+      expect(validResult.data.points).toBe(getExpectedPoints('534e2b03'));
     });
 
     it('should handle concurrent errors from multiple GMs', async () => {
@@ -384,22 +395,25 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Valid transaction processed successfully
       expect(validResult.data.status).toBe('accepted');
-      expect(validResult.data.points).toBe(30);
+      // DRY: Use calculated value from test fixtures
+      const expectedTokenPoints = getExpectedPoints('534e2b03');
+      expect(validResult.data.points).toBe(expectedTokenPoints);
 
       // Verify: Score updated correctly
       const teamScores = transactionService.getTeamScores();
       const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(30);
+      expect(team001Score.currentScore).toBe(expectedTokenPoints);
     });
 
     it('should maintain correct state after mixed valid/invalid transactions', async () => {
       // Sequence: Valid → Invalid → Valid → Invalid → Valid
+      // DRY: Use calculated values from test fixtures
       const transactions = [
-        { tokenId: '534e2b03', valid: true, points: 30 },   // Technical 3 = 30 points
+        { tokenId: '534e2b03', valid: true, points: getExpectedPoints('534e2b03') },
         { tokenId: 'invalid_token', valid: false, points: 0 },
-        { tokenId: 'tac001', valid: true, points: 10 },      // Business 1 = 10 points
+        { tokenId: 'tac001', valid: true, points: getExpectedPoints('tac001') },
         { tokenId: 'NONEXISTENT', valid: false, points: 0 },
-        { tokenId: 'rat001', valid: true, points: 40 }     // Business 4 = 40 points
+        { tokenId: 'rat001', valid: true, points: getExpectedPoints('rat001') }
       ];
 
       let expectedScore = 0;
@@ -434,7 +448,7 @@ describe('Error Propagation Integration', () => {
       // Validate: Final score reflects only valid transactions
       const teamScores = transactionService.getTeamScores();
       const team001Score = teamScores.find(s => s.teamId === 'Team Alpha');
-      expect(team001Score.currentScore).toBe(expectedScore); // 30 + 10 + 40 = 80
+      expect(team001Score.currentScore).toBe(expectedScore);
     });
   });
 });

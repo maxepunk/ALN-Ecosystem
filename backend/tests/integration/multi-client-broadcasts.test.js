@@ -149,7 +149,7 @@ describe('Multi-Client Broadcast Validation', () => {
 
       // Validate: Score data is correct
       expect(score1.data.teamId).toBe('Team Alpha');
-      expect(score1.data.currentScore).toBe(30);  // Token value from test fixtures
+      expect(score1.data.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
 
       // Validate: Contract compliance
       validateWebSocketEvent(score1, 'score:updated');

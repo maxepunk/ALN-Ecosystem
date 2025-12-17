@@ -34,6 +34,7 @@ const {
 
 const { selectTestTokens } = require('../helpers/token-selection');
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
+const { calculateExpectedScore } = require('../helpers/scoring');
 
 /**
  * Helper to add console capture to a page
@@ -407,12 +408,16 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
-      // Wait for score to update from transaction (personalToken has $500 value)
+      // Calculate expected score using production scoring logic (DRY)
+      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken);
+      const adjustmentAmount = 500;
+
+      // Wait for score to update from transaction
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {
           const teamScore = state.scores?.find(s => s.teamId === 'Team Alpha');
-          return teamScore?.currentScore === 500;
+          return teamScore?.currentScore === expectedTokenScore;
         },
         5000
       );
@@ -428,15 +433,15 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Verify score adjustment controls are visible
       await expect(gmScanner.scoreAdjustmentInput).toBeVisible();
 
-      // Adjust score via UI (add +500 to existing $500)
-      await gmScanner.adjustTeamScore(500, 'Test bonus');
+      // Adjust score via UI (add adjustment to existing score)
+      await gmScanner.adjustTeamScore(adjustmentAmount, 'Test bonus');
 
-      // Verify backend has updated score: $500 from transaction + $500 adjustment = $1000
+      // Verify backend has updated score: token score + adjustment
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {
           const teamScore = state.scores?.find(s => s.teamId === 'Team Alpha');
-          return teamScore?.currentScore === 1000;
+          return teamScore?.currentScore === expectedTokenScore + adjustmentAmount;
         },
         5000
       );
