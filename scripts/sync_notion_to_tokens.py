@@ -56,13 +56,150 @@ headers = {
 WIDTH = 240
 HEIGHT = 320
 
+# Font size configurations for measure-and-fit algorithm: (font_size, line_height)
+# Tries largest first, steps down until content fits
+FONT_SIZES = [(18, 24), (17, 23), (16, 21), (15, 20), (14, 19), (13, 18), (12, 16), (11, 15), (10, 14)]
+
+# Character name pattern: 2+ uppercase letters, optionally followed by 's or 's
+CHARACTER_NAME_PATTERN = re.compile(r"\b[A-Z]{2,}(?:'[sS])?\b")
+
+# Timestamp patterns - text format from Notion is: "TOKEN_CODE - TIMESTAMP - CONTENT"
+# We strip the token code first, then extract timestamp
+# Time: 1:22am, 11:32PM, 04:18PM, 03:52AM, ??:??AM (unknown), etc.
+TIME_PATTERN = re.compile(r'^((?:\d{1,2}|\?\?):(?:\d{2}|\?\?)\s*(?:am|pm|AM|PM)?)\s*[-–]?\s*')
+# Date: 05/12/2022, 03/20/2020, 11/10/20, ??/??/?? (unknown), etc.
+DATE_PATTERN = re.compile(r'^((?:\d{1,2}|\?\?)/(?:\d{1,2}|\?\?)/(?:\d{2,4}|\?\?))\s*[-–]?\s*')
+# Token code prefix pattern: "TAC001 - " or "ALR001 - " etc.
+TOKEN_PREFIX_PATTERN = re.compile(r'^[A-Za-z]{2,4}\d{2,4}\s*[-–]\s*', re.IGNORECASE)
+
+
+def load_font(size, bold=False):
+    """Load a font at the specified size."""
+    try:
+        if bold:
+            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", size)
+        return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", size)
+    except:
+        try:
+            if bold:
+                return ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf", size)
+            return ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", size)
+        except:
+            return ImageFont.load_default()
+
+
+def extract_timestamp(text):
+    """
+    Extract timestamp/date from text.
+
+    Notion format is: "TOKEN_CODE - TIMESTAMP - CONTENT"
+    We strip the token code first (since it's already shown in header),
+    then extract the timestamp.
+
+    Returns:
+        Tuple of (timestamp_str, timestamp_type, remaining_text)
+        - timestamp_str: The extracted timestamp or None
+        - timestamp_type: 'time' (night-of, bright), 'date' (backstory, dim),
+                          'unknown' (??/?? format, dim), or None
+        - remaining_text: Text with token code and timestamp stripped
+    """
+    working_text = text
+
+    # First, strip token code prefix if present (e.g., "TAC001 - ")
+    prefix_match = TOKEN_PREFIX_PATTERN.match(working_text)
+    if prefix_match:
+        working_text = working_text[prefix_match.end():]
+
+    # Try time pattern first (more specific)
+    time_match = TIME_PATTERN.match(working_text)
+    if time_match:
+        ts = time_match.group(1).strip()
+        # Check if it's unknown (contains ??)
+        ts_type = 'unknown' if '??' in ts else 'time'
+        return (ts, ts_type, working_text[time_match.end():].strip())
+
+    # Try date pattern
+    date_match = DATE_PATTERN.match(working_text)
+    if date_match:
+        ts = date_match.group(1).strip()
+        # Check if it's unknown (contains ??)
+        ts_type = 'unknown' if '??' in ts else 'date'
+        return (ts, ts_type, working_text[date_match.end():].strip())
+
+    # No timestamp found, but still return text with token code stripped
+    return (None, None, working_text)
+
+
+def wrap_text_with_font(text, max_width, font, draw):
+    """
+    Word wrap text to fit within max_width using the specified font.
+
+    Returns:
+        List of lines
+    """
+    # Normalize whitespace
+    normalized_text = ' '.join(text.split())
+    words = normalized_text.split(' ')
+    lines = []
+    current_line = ''
+
+    for word in words:
+        test_line = current_line + (' ' if current_line else '') + word
+        bbox = draw.textbbox((0, 0), test_line, font=font)
+        text_width = bbox[2] - bbox[0]
+
+        if text_width > max_width and current_line:
+            lines.append(current_line)
+            current_line = word
+        else:
+            current_line = test_line
+
+    if current_line:
+        lines.append(current_line)
+
+    return lines
+
+
+def segment_line_for_highlighting(line):
+    """
+    Split a line into segments for character name highlighting.
+
+    Returns:
+        List of (text, is_character_name) tuples
+    """
+    segments = []
+    last_end = 0
+
+    for match in CHARACTER_NAME_PATTERN.finditer(line):
+        # Add text before the match (if any)
+        if match.start() > last_end:
+            segments.append((line[last_end:match.start()], False))
+        # Add the character name
+        segments.append((match.group(), True))
+        last_end = match.end()
+
+    # Add remaining text after last match
+    if last_end < len(line):
+        segments.append((line[last_end:], False))
+
+    # If no matches, return the whole line as non-highlighted
+    if not segments:
+        segments.append((line, False))
+
+    return segments
+
+
 def generate_neurai_display(rfid, text):
     """
     Generate a NeurAI-styled 240x320 BMP display image.
-    Replicates the design from neurai-display-generator.jsx
+
+    Features:
+    - Header zone with token code and timestamp (left of N logo)
+    - Character names (ALL CAPS) highlighted in red
+    - Measure-and-fit font optimization for maximum readability
 
     Args:
-        rfid: Token RFID (used for filename)
+        rfid: Token RFID (used for filename and displayed in header)
         text: Summary text to display
 
     Returns:
@@ -72,41 +209,79 @@ def generate_neurai_display(rfid, text):
     img = Image.new('RGB', (WIDTH, HEIGHT), color='#0a0a0a')
     draw = ImageDraw.Draw(img)
 
-    # Dynamic font sizing based on text length
-    text_length = len(text)
-    if text_length > 200:
-        font_size = 10  # Smaller for long text
-        line_height = 15
-    elif text_length > 150:
-        font_size = 12
-        line_height = 16
-    else:
-        font_size = 13
-        line_height = 18
+    # Load fixed fonts for header and branding
+    logo_font = load_font(8, bold=True)
+    brand_font = load_font(12, bold=True)
+    header_code_font = load_font(14, bold=True)  # Token code font
+    header_time_font = load_font(11, bold=False)  # Timestamp font
 
-    # Try to use monospace font, fall back to default if not available
-    try:
-        # Try common monospace fonts
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf", font_size)
-        logo_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 8)  # Smaller logo
-        brand_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf", 12)  # Smaller branding
-    except:
-        try:
-            # Try alternative monospace fonts
-            font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf", font_size)
-            logo_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf", 8)
-            brand_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf", 12)
-        except:
-            # Fall back to default font
-            font = ImageFont.load_default()
-            logo_font = ImageFont.load_default()
-            brand_font = ImageFont.load_default()
+    # Colors
+    text_color = (255, 255, 255)  # White for body text
+    name_color = (204, 0, 0)  # Red for character names
+    time_color = (255, 255, 255)  # Bright white for times (night-of)
+    date_color = (180, 180, 180)  # Dimmer for dates (backstory)
+    unknown_color = (140, 140, 140)  # Even dimmer for unknown timestamps (??/??/??)
+    logo_color = (204, 0, 0, 102)  # rgba(204, 0, 0, 0.4)
+    border_color = (204, 0, 0, 77)  # rgba(204, 0, 0, 0.3)
+    brand_color = (204, 0, 0, 153)  # rgba(204, 0, 0, 0.6)
+    truncate_color = (204, 0, 0, 204)  # rgba(204, 0, 0, 0.8)
 
     # Add subtle red glow border
-    border_color = (204, 0, 0, 77)  # rgba(204, 0, 0, 0.3)
     draw.rectangle([1, 1, WIDTH - 2, HEIGHT - 2], outline=border_color, width=2)
 
-    # NeurAI ASCII Logo (top right corner, smaller)
+    # === HEADER ZONE (left of logo) ===
+    # Available space: x=3 to x=170 (logo starts at x=175), y=3 to y=52 (accent line at y=55)
+    # Center the text block (token code + timestamp) within this zone.
+
+    header_left = 3
+    header_right = 170  # Leave space before logo
+    header_top = 3
+    header_bottom = 52  # Leave space before accent line
+    header_gap = 6  # Gap between token code and timestamp
+
+    # Extract timestamp from text
+    timestamp, timestamp_type, body_text = extract_timestamp(text)
+
+    # Measure text dimensions
+    token_code = rfid.upper()
+    code_bbox = draw.textbbox((0, 0), token_code, font=header_code_font)
+    code_width = code_bbox[2] - code_bbox[0]
+    code_height = code_bbox[3] - code_bbox[1]
+
+    if timestamp:
+        ts_bbox = draw.textbbox((0, 0), timestamp, font=header_time_font)
+        ts_width = ts_bbox[2] - ts_bbox[0]
+        ts_height = ts_bbox[3] - ts_bbox[1]
+        total_height = code_height + header_gap + ts_height
+        max_width = max(code_width, ts_width)
+    else:
+        ts_width = 0
+        ts_height = 0
+        total_height = code_height
+        max_width = code_width
+
+    # Calculate centered position
+    available_width = header_right - header_left
+    available_height = header_bottom - header_top
+    header_x = header_left + (available_width - max_width) // 2
+    header_y = header_top + (available_height - total_height) // 2
+
+    # Render token code (uppercase, bold, red like the logo)
+    draw.text((header_x, header_y), token_code, fill=(204, 0, 0), font=header_code_font)
+
+    # Render timestamp below token code (if present)
+    if timestamp:
+        # Color based on type: time=bright, date=dim, unknown=dimmer
+        if timestamp_type == 'time':
+            ts_color = time_color
+        elif timestamp_type == 'unknown':
+            ts_color = unknown_color
+        else:  # date
+            ts_color = date_color
+        ts_y = header_y + code_height + header_gap
+        draw.text((header_x, ts_y), timestamp, fill=ts_color, font=header_time_font)
+
+    # === N LOGO (top right corner) ===
     logo = [
         '███╗░░██╗',
         '████╗░██║',
@@ -115,67 +290,76 @@ def generate_neurai_display(rfid, text):
         '██║░╚███║',
         '╚═╝░░╚══╝'
     ]
-    logo_color = (204, 0, 0, 102)  # rgba(204, 0, 0, 0.4)
     for i, line in enumerate(logo):
         draw.text((WIDTH - 65, 10 + i * 7), line, fill=logo_color, font=logo_font)
 
-    # Red accent line below logo (higher up now)
+    # Red accent line below header
     draw.line([(10, 55), (WIDTH - 10, 55)], fill=(204, 0, 0), width=2)
 
-    # Text rendering with word wrap
-    text_color = (255, 255, 255)
+    # === BODY TEXT with measure-and-fit optimization ===
     padding = 15
     max_width = WIDTH - (padding * 2)
-    start_y = 62  # Start higher since logo is smaller
+    start_y = 62
+    bottom_reserve = 18  # Space for branding
 
-    # Word wrap function
-    def wrap_text(text, max_width):
-        # Normalize whitespace: replace newlines/tabs with spaces, collapse multiple spaces
-        normalized_text = ' '.join(text.split())
-        words = normalized_text.split(' ')
-        lines = []
-        current_line = ''
+    # Calculate available lines for each font size
+    def max_lines_for_height(line_height):
+        return int((HEIGHT - start_y - bottom_reserve) / line_height)
 
-        for word in words:
-            test_line = current_line + (' ' if current_line else '') + word
-            bbox = draw.textbbox((0, 0), test_line, font=font)
-            text_width = bbox[2] - bbox[0]
+    # Find optimal font size using measure-and-fit
+    selected_font = None
+    selected_line_height = None
+    display_lines = None
 
-            if text_width > max_width and current_line:
-                lines.append(current_line)
-                current_line = word
-            else:
-                current_line = test_line
+    for font_size, line_height in FONT_SIZES:
+        test_font = load_font(font_size)
+        lines = wrap_text_with_font(body_text, max_width, test_font, draw)
+        max_lines = max_lines_for_height(line_height)
 
-        if current_line:
-            lines.append(current_line)
+        if len(lines) <= max_lines:
+            # This font size fits!
+            selected_font = test_font
+            selected_line_height = line_height
+            display_lines = lines
+            break
 
-        return lines
+    # Fallback: use smallest font with truncation
+    if selected_font is None:
+        selected_font = load_font(10)
+        selected_line_height = 14
+        lines = wrap_text_with_font(body_text, max_width, selected_font, draw)
+        max_lines = max_lines_for_height(selected_line_height)
+        display_lines = lines[:max_lines]
+        needs_truncation = len(lines) > max_lines
+    else:
+        needs_truncation = False
 
-    lines = wrap_text(text, max_width)
-    max_lines = int((HEIGHT - start_y - 18) / line_height)  # Reduced bottom space to 18px
-    display_lines = lines[:max_lines]
-
-    # Draw each line (clean white text, no harsh glow)
+    # === RENDER BODY TEXT with character highlighting ===
     for i, line in enumerate(display_lines):
-        y = start_y + (i * line_height)
-        draw.text((padding, y), line, fill=text_color, font=font)
+        y = start_y + (i * selected_line_height)
+        x = padding
+
+        # Segment line for character name highlighting
+        segments = segment_line_for_highlighting(line)
+
+        for segment_text, is_name in segments:
+            color = name_color if is_name else text_color
+            draw.text((x, y), segment_text, fill=color, font=selected_font)
+            # Advance x position
+            bbox = draw.textbbox((0, 0), segment_text, font=selected_font)
+            x += bbox[2] - bbox[0]
 
     # Add truncation indicator if text was cut off
-    if len(lines) > max_lines:
-        truncate_color = (204, 0, 0, 204)  # rgba(204, 0, 0, 0.8)
-        truncate_y = start_y + (max_lines * line_height) + 5
-        draw.text((padding, truncate_y), '[...]', fill=truncate_color, font=font)
+    if needs_truncation:
+        truncate_y = start_y + (len(display_lines) * selected_line_height) + 5
+        draw.text((padding, truncate_y), '[...]', fill=truncate_color, font=selected_font)
 
-    # Bottom NeurAI branding (smaller, tighter to bottom)
-    brand_color = (204, 0, 0, 153)  # rgba(204, 0, 0, 0.6)
+    # === BOTTOM BRANDING ===
     brand_text = 'N E U R A I'
     bbox = draw.textbbox((0, 0), brand_text, font=brand_font)
     brand_width = bbox[2] - bbox[0]
     brand_x = (WIDTH - brand_width) / 2
     draw.text((brand_x, HEIGHT - 16), brand_text, fill=brand_color, font=brand_font)
-
-    # Scanline effect removed - was too prominent
 
     # Save to both PWA and ESP32 locations
     pwa_path = ASSETS_IMAGES / f"{rfid}.bmp"
