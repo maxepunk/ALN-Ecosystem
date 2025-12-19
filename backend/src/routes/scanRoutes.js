@@ -86,11 +86,12 @@ router.post('/', async (req, res) => {
 
     // Persist player scan to session BEFORE broadcasting
     // This ensures scan data survives restarts and is included in sync:full
+    // Token fields come from tokenService transformation (see tokenService.js:102-135)
     const tokenData = token ? {
       SF_MemoryType: token.memoryType,
-      SF_ValueRating: token.valueRating,
-      SF_Group: token.group || null,
-      summary: token.summary || null
+      SF_ValueRating: token.metadata.rating,
+      SF_Group: token.metadata.group || null,
+      summary: token.metadata.summary || null
     } : null;
 
     const playerScan = await sessionService.addPlayerScan({
