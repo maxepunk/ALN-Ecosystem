@@ -38,7 +38,7 @@ For all transactions where `mode: "blackmarket"`:
 - Team ID
 - Points awarded (from transaction `points` field)
 - Scoring breakdown (look up token in tokens:all database):
-  - Base value from `metadata.rating`: 1=$100, 2=$500, 3=$1000, 4=$5000, 5=$10000
+  - Base value from `metadata.rating`: 1=$10000, 2=$25000, 3=$50000, 4=$75000, 5=$150000
   - Type multiplier from `memoryType`: Personal=1x, Business=3x, Technical=5x
   - Formula: `points = baseValue × typeMultiplier`
   - Pre-calculated `value` field can be used for verification
