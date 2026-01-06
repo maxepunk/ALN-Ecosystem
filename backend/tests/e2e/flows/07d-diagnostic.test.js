@@ -203,8 +203,8 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
       });
 
       // Wait for session sync to populate dropdown, then select team
-      await gmScanner2.waitForTeamInDropdown('Team Alpha');
-      await gmScanner2.selectTeam('Team Alpha');
+      await gmScanner2.waitForTeamInList('Team Alpha');
+      await gmScanner2.selectTeamFromList('Team Alpha');
       await gmScanner2.confirmTeam();
 
       await gmScanner2.scanScreen.waitFor({ state: 'visible', timeout: 5000 });

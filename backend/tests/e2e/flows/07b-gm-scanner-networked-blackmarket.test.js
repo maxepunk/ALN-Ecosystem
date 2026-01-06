@@ -70,7 +70,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   // The backend only supports ONE active session at a time. With 2 projects
   // (chromium + mobile-chrome) running in parallel workers, both share the same
   // orchestrator instance and create competing sessions. The later session
-  // overwrites the earlier one, causing waitForTeamInDropdown to find the wrong team.
+  // overwrites the earlier one, causing waitForTeamInList to find the wrong team.
   //
   // serial mode only affects tests within a single project - it doesn't prevent
   // parallel execution across different projects. We skip desktop since this is
@@ -195,7 +195,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(teamEntryVisible).toBe(true);
 
     // Verify team appears in dropdown (confirms session sync worked)
-    await scanner.waitForTeamInDropdown(teamAlpha);
+    await scanner.waitForTeamInList(teamAlpha);
 
     console.log('✓ Networked mode: Scanner connected and session created via UI');
   });
@@ -225,8 +225,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Navigate to scanner view and select team
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await scanner.waitForTeamInDropdown(teamAlpha);
-    await scanner.selectTeam(teamAlpha);
+    await scanner.waitForTeamInList(teamAlpha);
+    await scanner.selectTeamFromList(teamAlpha);
     await scanner.confirmTeam();
 
     // Simulate NFC scan (what NFC API would trigger)
@@ -282,8 +282,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Navigate to scanner view and select team
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await scanner.waitForTeamInDropdown(teamAlpha);
-    await scanner.selectTeam(teamAlpha);
+    await scanner.waitForTeamInList(teamAlpha);
+    await scanner.selectTeamFromList(teamAlpha);
     await scanner.confirmTeam();
 
     // Simulate NFC scan (what NFC API would trigger)
@@ -349,8 +349,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Navigate to scanner view and select team
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await scanner.waitForTeamInDropdown(teamAlpha);
-    await scanner.selectTeam(teamAlpha);
+    await scanner.waitForTeamInList(teamAlpha);
+    await scanner.selectTeamFromList(teamAlpha);
     await scanner.confirmTeam();
 
     console.log(`Testing group completion: ${groupTokens[0].SF_Group}`);
@@ -426,8 +426,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Navigate to scanner view and select team
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await scanner.waitForTeamInDropdown(teamAlpha);
-    await scanner.selectTeam(teamAlpha);
+    await scanner.waitForTeamInList(teamAlpha);
+    await scanner.selectTeamFromList(teamAlpha);
     await scanner.confirmTeam();
 
     // FIRST SCAN: Token should be accepted
@@ -540,8 +540,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
     // TEAM ALPHA: Scan first (should be ACCEPTED)
-    await scanner.waitForTeamInDropdown(teamAlpha);
-    await scanner.selectTeam(teamAlpha);
+    await scanner.waitForTeamInList(teamAlpha);
+    await scanner.selectTeamFromList(teamAlpha);
     await scanner.confirmTeam();
 
     await scanner.manualScan(token1.SF_RFID);
@@ -571,8 +571,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // SWITCH TO TEAM DETECTIVES
     // finishTeam() works from result screen, returns to team entry
     await scanner.finishTeam();
-    await scanner.waitForTeamInDropdown(teamDetectives);
-    await scanner.selectTeam(teamDetectives);
+    await scanner.waitForTeamInList(teamDetectives);
+    await scanner.selectTeamFromList(teamDetectives);
     await scanner.confirmTeam();
 
     console.log('✓ Switched to Team Detectives');

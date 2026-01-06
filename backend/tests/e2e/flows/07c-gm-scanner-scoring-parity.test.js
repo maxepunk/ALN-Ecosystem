@@ -166,7 +166,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName(parityTeam);
+    await standaloneScanner.enterTeam(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -190,8 +190,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Navigate to scanner view and select team
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await networkedScanner.waitForTeamInDropdown(parityTeam);
-    await networkedScanner.selectTeam(parityTeam);
+    await networkedScanner.waitForTeamInList(parityTeam);
+    await networkedScanner.selectTeamFromList(parityTeam);
     await networkedScanner.confirmTeam();
 
     await networkedScanner.manualScan(token.SF_RFID);
@@ -231,7 +231,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName(parityTeam);
+    await standaloneScanner.enterTeam(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -255,8 +255,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Navigate to scanner view and select team
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await networkedScanner.waitForTeamInDropdown(parityTeam);
-    await networkedScanner.selectTeam(parityTeam);
+    await networkedScanner.waitForTeamInList(parityTeam);
+    await networkedScanner.selectTeamFromList(parityTeam);
     await networkedScanner.confirmTeam();
 
     await networkedScanner.manualScan(token.SF_RFID);
@@ -313,7 +313,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName(parityTeam);
+    await standaloneScanner.enterTeam(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -345,8 +345,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Navigate to scanner view and select team
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await networkedScanner.waitForTeamInDropdown(parityTeam);
-    await networkedScanner.selectTeam(parityTeam);
+    await networkedScanner.waitForTeamInList(parityTeam);
+    await networkedScanner.selectTeamFromList(parityTeam);
     await networkedScanner.confirmTeam();
 
     // Scan group tokens in networked mode
@@ -409,7 +409,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName(parityTeam);
+    await standaloneScanner.enterTeam(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -440,8 +440,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Navigate to scanner view and select team
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await networkedScanner.waitForTeamInDropdown(parityTeam);
-    await networkedScanner.selectTeam(parityTeam);
+    await networkedScanner.waitForTeamInList(parityTeam);
+    await networkedScanner.selectTeamFromList(parityTeam);
     await networkedScanner.confirmTeam();
 
     for (let i = 0; i < mixedTokens.length; i++) {
@@ -492,7 +492,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const standalonePage = await createPage(standaloneContext);
     const standaloneScanner = await initializeGMScannerWithMode(standalonePage, 'standalone', 'blackmarket');
 
-    await standaloneScanner.enterTeamName(parityTeam);
+    await standaloneScanner.enterTeam(parityTeam);
     await standaloneScanner.confirmTeam();
     await standaloneScanner.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
     await standaloneScanner.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
@@ -522,8 +522,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Navigate to scanner view and select team
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-    await networkedScanner.waitForTeamInDropdown(parityTeam);
-    await networkedScanner.selectTeam(parityTeam);
+    await networkedScanner.waitForTeamInList(parityTeam);
+    await networkedScanner.selectTeamFromList(parityTeam);
     await networkedScanner.confirmTeam();
 
     // First scan - should succeed

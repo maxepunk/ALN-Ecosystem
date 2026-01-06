@@ -214,8 +214,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     }
 
     // 6. GM2 (Detective) processes 3 tokens for Team Alpha
-    await gmScanner2.waitForTeamInDropdown(teamAlpha);
-    await gmScanner2.selectTeam(teamAlpha);
+    await gmScanner2.waitForTeamInList(teamAlpha);
+    await gmScanner2.selectTeamFromList(teamAlpha);
     await gmScanner2.confirmTeam();
 
     const detectiveTokens = round1Tokens.slice(0, 3);
@@ -242,8 +242,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     console.log(`✓ Public scoreboard shows ${totalEvidence} total evidence (hero + feed)`);
 
     // 7. GM1 (Blackmarket) processes 3 tokens for Team Beta
-    await gmScanner1.waitForTeamInDropdown(teamBeta);
-    await gmScanner1.selectTeam(teamBeta);
+    await gmScanner1.waitForTeamInList(teamBeta);
+    await gmScanner1.selectTeamFromList(teamBeta);
     await gmScanner1.confirmTeam();
 
     const blackmarketTokens = round1Tokens.slice(3, 6);
@@ -312,12 +312,15 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // Use finishTeam to get back to team entry (GM1 might be on result screen)
     await gmScanner1.finishTeam();
 
-    await gmScanner1.addNewTeam(teamGamma);
-    console.log(`✓ Team Gamma created mid-session by GM1`);
+    // Create Team Gamma using unified flow: enterTeam + confirmTeam creates on backend and proceeds to scan
+    await gmScanner1.enterTeam(teamGamma);
+    await gmScanner1.confirmTeam();
+    console.log(`✓ Team Gamma created mid-session by GM1 (now on scan screen)`);
 
-    // VERIFY: Team Gamma appears in GM1's dropdown
-    await gmScanner1.waitForTeamInDropdown(teamGamma);
-    console.log('✓ Team Gamma now available in GM1 team dropdown');
+    // Go back to team entry to verify Team Gamma appears in list
+    await gmScanner1.finishTeam();
+    await gmScanner1.waitForTeamInList(teamGamma);
+    console.log('✓ Team Gamma now available in GM1 team list');
 
     // CRITICAL: Verify multi-GM team sync - GM2 should also see Team Gamma
     // Navigate GM2 back to team entry screen (may be on result or history screen)
@@ -329,12 +332,11 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       // finishTeam may fail if already on team entry screen, that's ok
     }
     await gmScanner2.teamEntryScreen.waitFor({ state: 'visible', timeout: 10000 });
-    await gmScanner2.waitForTeamInDropdown(teamGamma, 10000);
+    await gmScanner2.waitForTeamInList(teamGamma, 10000);
     console.log('✓ Team Gamma synced to GM2 - multi-GM team sync verified');
 
     // 9. GM1 scans 3 blackmarket tokens for Team Gamma
-    await gmScanner1.selectTeam(teamGamma);
-    await gmScanner1.confirmTeam();
+    await gmScanner1.selectTeamFromList(teamGamma);
 
     const round2Tokens = tokenPools.round2.slice(0, 3);
     for (const tokenId of round2Tokens) {
@@ -415,7 +417,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     expect(gm1CurrentMode.toLowerCase()).toContain('black market');
     console.log('✓ GM1 still in blackmarket mode');
 
-    await gmScanner1.selectTeam(teamBeta);
+    await gmScanner1.selectTeamFromList(teamBeta);
     await gmScanner1.confirmTeam();
 
     // Use a unique token for deletion test
@@ -459,7 +461,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       expect(gm1FinalMode.toLowerCase()).toContain('detective');
       console.log('✓ GM1 switched to detective mode for rescan');
 
-      await gmScanner1.selectTeam(teamBeta);
+      await gmScanner1.selectTeamFromList(teamBeta);
       await gmScanner1.confirmTeam();
       await gmScanner1.manualScan(deletionTestToken);
       await gmScanner1.waitForResult(5000);

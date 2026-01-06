@@ -92,7 +92,7 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
     const scanner = await initializeGMScannerWithMode(page, 'standalone', 'blackmarket');
 
     // Ensure we're on scan screen after entering team
-    await scanner.enterTeamName('Team Alpha');
+    await scanner.enterTeam('Team Alpha');
     await scanner.confirmTeam();
 
     // Wait for scan screen to be fully visible

@@ -275,7 +275,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       // Scan for Team Alpha
-      await gmScanner.selectTeam('Team Alpha');
+      await gmScanner.selectTeamFromList('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
       // Use finishTeam() to return to teamEntryScreen (not continueScan which stays on scanScreen)
@@ -285,7 +285,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await logBackendState('4-AFTER-TEAM-ALPHA-SCAN');
 
       // Scan for Detectives
-      await gmScanner.selectTeam('Detectives');
+      await gmScanner.selectTeamFromList('Detectives');
       await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.businessToken.SF_RFID);
       // Use finishTeam() since we're done scanning for this team
@@ -404,7 +404,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
       // Select Team Alpha and scan a token
-      await gmScanner.selectTeam('Team Alpha');
+      await gmScanner.selectTeamFromList('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
@@ -486,7 +486,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Wait for teamEntryScreen specifically (not just scannerView)
       // because #teamSelect is inside teamEntryScreen
       await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
-      await gmScanner.selectTeam('Team Alpha');
+      await gmScanner.selectTeamFromList('Team Alpha');
       await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
