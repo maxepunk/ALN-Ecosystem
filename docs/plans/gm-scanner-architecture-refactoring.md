@@ -1,8 +1,8 @@
 # GM Scanner Architecture Refactoring Plan
 
-**Status:** Phase 1 Complete
+**Status:** Phase 2 Complete
 **Created:** 2025-01-05
-**Last Updated:** 2025-01-06
+**Last Updated:** 2025-01-05
 
 ## Executive Summary
 
@@ -13,7 +13,7 @@ This document outlines a comprehensive refactoring plan for the ALN GM Scanner t
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **Phase 1** | Foundation (Scoring DRY, deprecated code, summary display) | ✅ **COMPLETE** |
-| Phase 2 | Unification (Strategy pattern, unified DataManager) | 🔲 Not started |
+| **Phase 2** | Unification (Strategy pattern, unified DataManager) | ✅ **COMPLETE** |
 | Phase 3 | Admin Parity (Command executor, standalone admin) | 🔲 Not started |
 | Phase 4 | Future Prep (Notion metadata, detective enhancements) | 🔲 Not started |
 
@@ -98,19 +98,22 @@ This document outlines a comprehensive refactoring plan for the ALN GM Scanner t
 
 ## Current Architecture Analysis
 
-### File Inventory (Updated)
+### File Inventory (Updated After Phase 2)
 
-| File | Lines | Purpose | Phase 1 Changes |
-|------|-------|---------|-----------------|
-| `ALNScanner/src/core/dataManager.js` | 1050 | Networked mode data manager | -4 lines (detectiveValue) |
-| `ALNScanner/src/core/standaloneDataManager.js` | 727 | Standalone mode data manager | -4 lines (detectiveValue) |
-| `ALNScanner/src/core/scoring.js` | 104 | Scoring calculations | +15 lines (shared config import) |
-| `ALNScanner/src/ui/uiManager.js` | 1038 | UI management | -84 lines (dead code removed) |
-| `backend/src/config/index.js` | 177 | Backend configuration | +15 lines (shared config loading) |
-| `backend/src/services/tokenService.js` | 157 | Token loading | ~same (UNKNOWN fix) |
-| `backend/src/services/transactionService.js` | ~450 | Transaction processing | unchanged |
+| File | Lines | Purpose | Status |
+|------|-------|---------|--------|
+| `ALNScanner/src/core/unifiedDataManager.js` | 432 | **NEW** Unified data manager | Phase 2 |
+| `ALNScanner/src/core/storage/IStorageStrategy.js` | 161 | **NEW** Interface contract | Phase 2 |
+| `ALNScanner/src/core/storage/LocalStorage.js` | 505 | **NEW** Standalone strategy | Phase 2 |
+| `ALNScanner/src/core/storage/NetworkedStorage.js` | 421 | **NEW** Networked strategy | Phase 2 |
+| `ALNScanner/src/core/dataManagerUtils.js` | ~50 | **NEW** Shared utilities | Phase 2 |
+| `ALNScanner/src/core/dataManager.js` | 1050 | Legacy (kept for reference) | Superseded |
+| `ALNScanner/src/core/standaloneDataManager.js` | 727 | Legacy (kept for tests) | Superseded |
+| `ALNScanner/src/core/scoring.js` | 104 | Scoring calculations | Phase 1 |
+| `ALNScanner/src/ui/uiManager.js` | ~950 | UI management | Phase 2 updated |
+| `backend/src/config/index.js` | 177 | Backend configuration | Phase 1 |
 
-**Total Duplicated Logic:** ~400+ lines across DataManager implementations (unchanged - Phase 2 scope)
+**Total Duplicated Logic:** ~~400+ lines~~ → **Eliminated** via strategy pattern
 
 ### Consumer Dependency Map
 
@@ -214,65 +217,85 @@ Single source of truth now at `ALN-TokenData/scoring-config.json`:
 }
 ```
 
-### 2. DataManager Method Duplication (~400 LOC) - Phase 2 Scope
+### ~~2. DataManager Method Duplication (~400 LOC)~~ ✅ RESOLVED
 
-| Method | DataManager | StandaloneDataManager | Notes |
-|--------|-------------|----------------------|-------|
-| `isTokenScanned()` | ✅ 311-327 | ✅ 271-287 | Nearly identical |
-| `markTokenAsScanned()` | ✅ 329-353 | ✅ 289-318 | Identical logic |
-| `getGlobalStats()` | ✅ 543-568 | ✅ 438-472 | Identical aggregation |
-| `getEnhancedTeamTransactions()` | ✅ 728-780 | ✅ 547-600 | Identical filtering |
-| `adjustTeamScore()` | ❌ | ✅ 504-544 | **Missing in networked** |
-| `getGameActivity()` | ✅ 788-828 | ❌ | **Missing in standalone** |
+**Status:** Fixed in Phase 2
 
-### 3. Group Completion Logic (2 Locations) - Phase 2 Scope
+Unified into single `UnifiedDataManager` with strategy pattern:
+- Common methods extracted to `DataManagerUtils.js`
+- `IStorageStrategy` interface defines contract
+- `LocalStorage` and `NetworkedStorage` implement strategies
+- All methods now available in both modes via delegation
 
-**Backend:**
+| Method | UnifiedDataManager | Notes |
+|--------|-------------------|-------|
+| `isTokenScanned()` | ✅ Delegates to DataManagerUtils | |
+| `markTokenAsScanned()` | ✅ Delegates to DataManagerUtils | |
+| `getTeamScores()` | ✅ Delegates to strategy | |
+| `getEnhancedTeamTransactions()` | ✅ Delegates to strategy | |
+| `adjustTeamScore()` | ✅ Delegates to strategy | Now in both modes |
+| `getGameActivity()` | ✅ Delegates to strategy | Now in both modes |
+
+### ~~3. Group Completion Logic (2 Locations)~~ ✅ RESOLVED
+
+**Status:** Fixed in Phase 2
+
+Group completion logic now consolidated:
+- `LocalStorage.js` implements group completion for standalone mode
+- Uses shared `scoring.js` for calculations
+- Backend still handles networked mode (authoritative)
+
+**Standalone Implementation:**
 ```javascript
-// backend/src/services/transactionService.js:330-387
-// Group bonus detection and scoring
-```
-
-**Standalone:**
-```javascript
-// ALNScanner/src/core/standaloneDataManager.js:418-471
-// Parallel implementation with same business logic
+// ALNScanner/src/core/storage/LocalStorage.js:270-330
+// Group bonus detection using shared scoring config
 ```
 
 ---
 
 ## SOLID Violations Analysis
 
-### Single Responsibility Principle (SRP)
+### Single Responsibility Principle (SRP) - ✅ IMPROVED
 
-**Violation:** DataManager handles too many concerns:
-- Data storage/retrieval
-- Event emission
-- Score calculations
-- Team management
-- Transaction filtering
-- Mode-specific logic
+**Original Violation:** DataManager handles too many concerns (1050 lines)
 
-**Impact:** 1050 lines in DataManager, 727 in StandaloneDataManager
+**Phase 2 Fix:**
+- `UnifiedDataManager` (432 LOC) - orchestration and public API
+- `IStorageStrategy` (161 LOC) - interface contract
+- `LocalStorage` (505 LOC) - standalone persistence
+- `NetworkedStorage` (421 LOC) - WebSocket communication
+- `DataManagerUtils` - shared utility methods
+- `scoring.js` - calculation logic
 
-### Open/Closed Principle (OCP)
+### Open/Closed Principle (OCP) - ✅ FIXED
 
-**Violation:** Adding standalone admin features requires modifying StandaloneDataManager directly rather than extending behavior.
+**Original Violation:** Adding standalone admin features requires modifying StandaloneDataManager directly.
 
-### Liskov Substitution Principle (LSP)
+**Phase 2 Fix:** Strategy pattern allows new storage backends without modifying UnifiedDataManager. New strategies implement `IStorageStrategy` interface.
 
-**Violation:** DataManager and StandaloneDataManager have different APIs:
-- `adjustTeamScore()` only in Standalone
-- `getGameActivity()` only in Networked
-- Different event emission patterns
+### Liskov Substitution Principle (LSP) - ✅ FIXED
 
-### Interface Segregation Principle (ISP)
+**Original Violation:** DataManager and StandaloneDataManager have different APIs.
 
-**Violation:** Consumers import entire manager when they only need specific capabilities (scoring, transactions, teams).
+**Phase 2 Fix:** Both `LocalStorage` and `NetworkedStorage` implement identical `IStorageStrategy` interface:
+- ✅ `adjustTeamScore()` - now in both
+- ✅ `getGameActivity()` - now in both
+- ✅ Consistent event emission patterns
 
-### Dependency Inversion Principle (DIP)
+### Interface Segregation Principle (ISP) - ⚠️ PARTIALLY ADDRESSED
 
-**Violation:** High-level modules (UIManager, ScanProcessor) depend on concrete DataManager implementations rather than abstractions.
+**Original Violation:** Consumers import entire manager.
+
+**Phase 2 Status:** `IStorageStrategy` defines focused interface. Future work could further segregate into `ITransactionStorage`, `ITeamStorage`, etc.
+
+### Dependency Inversion Principle (DIP) - ✅ FIXED
+
+**Original Violation:** High-level modules depend on concrete DataManager implementations.
+
+**Phase 2 Fix:**
+- `UnifiedDataManager` depends on `IStorageStrategy` abstraction
+- Consumers depend on `UnifiedDataManager` interface, not concrete strategies
+- Strategy selected at runtime based on mode
 
 ---
 
@@ -505,19 +528,34 @@ Both modes use same component structure:
    - ✅ Removed dead code (renderTransactions, filterTransactions)
    - ✅ Updated all documentation
 
-### Phase 2: Unification (Medium Risk) 🔲 NOT STARTED
+### Phase 2: Unification (Medium Risk) ✅ COMPLETE
 
-4. **Create unified DataManager**
-   - Extract common interface
-   - Implement strategy pattern
-   - Create LocalStorage strategy
-   - Migrate StandaloneDataManager → LocalStorage
-   - Comprehensive testing
+4. **Create unified DataManager** ✅
+   - ✅ Extracted common interface (`IStorageStrategy.js` - 161 LOC)
+   - ✅ Implemented strategy pattern (`UnifiedDataManager.js` - 432 LOC)
+   - ✅ Created LocalStorage strategy (`LocalStorage.js` - 505 LOC)
+   - ✅ Created NetworkedStorage strategy (`NetworkedStorage.js` - 421 LOC)
+   - ✅ Migrated consumers to UnifiedDataManager
+   - ✅ Comprehensive testing (862 tests pass)
 
-5. **Implement missing standalone methods**
-   - Add `getGameActivity()` to LocalStorage
-   - Add `adjustTeamScore()` to unified interface
-   - Add session lifecycle methods
+5. **Implement missing standalone methods** ✅
+   - ✅ Added `getGameActivity()` to LocalStorage (line 407)
+   - ✅ Added `adjustTeamScore()` to unified interface (line 367)
+   - ✅ Added session lifecycle methods (`createSession`, `endSession`)
+
+**Files Created/Modified:**
+| File | Change |
+|------|--------|
+| `src/core/storage/IStorageStrategy.js` | Created - interface contract |
+| `src/core/storage/LocalStorage.js` | Created - standalone strategy |
+| `src/core/storage/NetworkedStorage.js` | Created - networked strategy |
+| `src/core/unifiedDataManager.js` | Created - unified manager |
+| `src/core/dataManagerUtils.js` | Created - shared utilities |
+| `src/main.js` | Updated - uses UnifiedDataManager |
+| `src/app/app.js` | Updated - initializes strategies by mode |
+| `src/ui/uiManager.js` | Updated - removed `_getDataSource()` |
+| `tests/unit/core/unifiedDataManager.test.js` | Created - 20 tests |
+| `tests/integration/storage-strategies.test.js` | Created - integration tests |
 
 ### Phase 3: Admin Parity (Medium Risk) 🔲 NOT STARTED
 
@@ -555,13 +593,13 @@ Both modes use same component structure:
 | Scoring mismatch | Low | High | ✅ Mitigated with tests |
 | Missing star display breaks UI | Low | Low | ✅ Verified no UI references |
 
-### Phase 2 Risks
+### ~~Phase 2 Risks~~ ✅ MITIGATED
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| State sync issues | Medium | High | Extensive integration tests |
-| Event handler leaks | Medium | Medium | Clear lifecycle management |
-| localStorage corruption | Low | Medium | Backup before migration |
+| Risk | Likelihood | Impact | Status |
+|------|------------|--------|--------|
+| State sync issues | Medium | High | ✅ Mitigated with integration tests |
+| Event handler leaks | Medium | Medium | ✅ Fixed with `_strategyListeners` Map and `dispose()` |
+| localStorage corruption | Low | Medium | ✅ LocalStorage handles gracefully |
 
 ### Phase 3 Risks
 
@@ -574,7 +612,7 @@ Both modes use same component structure:
 
 Each phase is independently deployable:
 - ~~Phase 1: Revert scoring config, restore star logic~~ (Complete - no rollback needed)
-- Phase 2: Switch strategy back to original managers
+- ~~Phase 2: Switch strategy back to original managers~~ (Complete - no rollback needed)
 - Phase 3: Disable local admin, require networked mode
 
 ---
@@ -693,14 +731,18 @@ Properties:
 - [x] UNKNOWN type returns 0 in both frontend and backend (Phase 1.1)
 - [x] detectiveValue removal doesn't break existing data (Phase 1.2)
 - [x] Summary displays in all transaction modes (Phase 1.3)
-- [ ] Group bonus calculation identical in both modes (Phase 2)
+- [x] Group bonus calculation identical in both modes (Phase 2) ✅
+- [x] UnifiedDataManager delegates to correct strategy (Phase 2) ✅
+- [x] LocalStorage persists and loads sessions (Phase 2) ✅
 
 ### Integration Tests
 
-- [ ] Standalone session lifecycle (create → scan → end) (Phase 2)
-- [ ] Standalone score adjustment persists to localStorage (Phase 2)
-- [ ] Networked → Standalone data format compatibility (Phase 2)
-- [ ] Strategy pattern switches correctly based on mode (Phase 2)
+- [x] Standalone session lifecycle (create → scan → end) (Phase 2) ✅
+- [x] Standalone score adjustment persists to localStorage (Phase 2) ✅
+- [x] Networked → Standalone data format compatibility (Phase 2) ✅
+- [x] Strategy pattern switches correctly based on mode (Phase 2) ✅
+
+**Phase 2 Test Summary:** 862 tests passing (20 new UnifiedDataManager tests + integration tests)
 
 ### E2E Tests
 
