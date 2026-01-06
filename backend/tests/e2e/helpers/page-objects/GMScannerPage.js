@@ -44,9 +44,9 @@ class GMScannerPage {
     // Scan screen elements
     this.currentTeam = page.locator('#currentTeam');
     this.scanStatus = page.locator('#scanStatus');
-    this.scanButton = page.locator('#scanButton[data-action="app.startScan"]');
+    // Note: Start Scanning button removed - NFC auto-starts on team confirmation
     this.manualEntryBtn = page.locator('button[data-action="app.manualEntry"]');
-    this.cancelScanBtn = page.locator('button[data-action="app.cancelScan"]');
+    // Note: Cancel Scan button removed - use Finish Team instead
     this.teamTokenCount = page.locator('#teamTokenCount');
     this.teamTotalValue = page.locator('#teamTotalValue');
 
@@ -54,8 +54,9 @@ class GMScannerPage {
     this.resultStatus = page.locator('#resultStatus');
     this.resultTitle = page.locator('#resultStatus h2');
     this.resultValue = page.locator('#resultValue');
-    this.continueScanBtn = page.locator('button[data-action="app.continueScan"]');
+    // Note: Continue Scan button removed - use quick-dismiss (tap result screen)
     this.finishTeamBtn = page.locator('button[data-action="app.finishTeam"]');
+    this.quickDismissHint = page.locator('.quick-dismiss-hint');
 
     // History screen elements
     this.historyBadge = page.locator('#historyBadge');
@@ -349,27 +350,35 @@ class GMScannerPage {
   }
 
   /**
-   * Continue scanning (after result)
+   * Continue scanning (after result) via quick-dismiss
+   * Taps the result screen (not a button) to trigger quick-dismiss
    */
   async continueScan() {
-    await this.continueScanBtn.click();
+    // Quick-dismiss: tap the result screen itself (not a button)
+    // The quick-dismiss handler returns to scan screen
+    const resultScreen = this.page.locator('#resultScreen');
+    await resultScreen.click({ position: { x: 10, y: 10 } }); // Top-left corner, away from buttons
     await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Finish team (after result)
+   * Finish team (from scan or result screen)
+   * Works from either screen since both have the Finish Team button
    */
   async finishTeam() {
-    await this.finishTeamBtn.click();
+    // Click the visible Finish Team button (could be on scan or result screen)
+    const finishBtn = this.page.locator('button[data-action="app.finishTeam"]:visible');
+    await finishBtn.click({ timeout: 5000 });
     await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
    * Cancel scan and return to team entry
+   * @deprecated Use finishTeam() instead - cancelScan button was removed
    */
   async cancelScan() {
-    await this.cancelScanBtn.click();
-    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+    // Redirect to finishTeam since cancelScan button was removed
+    await this.finishTeam();
   }
 
   /**
