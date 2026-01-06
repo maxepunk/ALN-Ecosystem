@@ -36,9 +36,10 @@ class GMScannerPage {
     this.standaloneBtn = page.locator('button[data-action="app.selectGameMode"][data-arg="standalone"]');
     this.networkedBtn = page.locator('button[data-action="app.selectGameMode"][data-arg="networked"]');
 
-    // Team entry elements (text input + dropdown, replaces old numpad)
-    this.standaloneTeamInput = page.locator('#standaloneTeamName');
-    this.teamSelect = page.locator('#teamSelect');
+    // Team entry elements - UNIFIED (single input + clickable list)
+    this.teamNameInput = page.locator('#teamNameInput');
+    this.teamList = page.locator('#teamList');
+    this.teamListLabel = page.locator('#teamListLabel');
     this.confirmTeamBtn = page.locator('button[data-action="app.confirmTeamId"]');
 
     // Scan screen elements
@@ -193,87 +194,40 @@ class GMScannerPage {
   }
 
   /**
-   * Enter team name in standalone mode
-   * @param {string} name - Team name
+   * Enter team name using unified text input
+   * Works for both networked and standalone modes
+   * @param {string} name - Team name (e.g., "001" or "Team Alpha")
    */
-  async enterTeamName(name) {
-    await this.page.locator('#standaloneTeamName').fill(name);
+  async enterTeam(name) {
+    await this.teamNameInput.fill(name);
   }
 
   /**
-   * Select team from dropdown in networked mode
-   * Uses condition-based waiting to ensure team is available before selecting
+   * Select team from clickable team list
+   * Auto-proceeds to scan screen after selection
    * @param {string} name - Team name to select
    */
-  async selectTeam(name) {
-    // Condition-based waiting: wait for actual data state, not arbitrary timeout
-    // The dropdown may not be populated immediately after connection due to:
-    // 1. sync:full WebSocket event still being processed
-    // 2. SessionManager.currentSession not yet updated
-    // 3. populateTeamDropdown() not yet called
-    await this.waitForTeamInDropdown(name);
-    await this.page.locator('#teamSelect').selectOption(name);
+  async selectTeamFromList(name) {
+    await this.waitForTeamInList(name);
+    await this.teamList.locator(`.team-list-item:has-text("${name}")`).click();
+    await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
-   * Add a new team in networked mode using the "Add New Team" flow
-   * This creates the team on the backend and selects it in the dropdown
-   * @param {string} name - Team name to create
-   */
-  async addNewTeam(name) {
-    console.log(`[GMScannerPage] addNewTeam START: ${name}`);
-
-    // Click "Add New Team" button to show input
-    await this.page.locator('#showAddTeamBtn').click();
-    console.log(`[GMScannerPage] addNewTeam: showAddTeamBtn clicked`);
-
-    // Wait for input container to be visible
-    await this.page.locator('#addTeamInputContainer').waitFor({ state: 'visible', timeout: 5000 });
-    console.log(`[GMScannerPage] addNewTeam: addTeamInputContainer visible`);
-
-    // Fill team name
-    await this.page.locator('#newTeamNameInput').fill(name);
-    console.log(`[GMScannerPage] addNewTeam: filled team name`);
-
-    // Click "Add Team" button to create and select
-    await this.page.locator('[data-action="app.createAndSelectTeam"]').click();
-    console.log(`[GMScannerPage] addNewTeam: createAndSelectTeam clicked`);
-
-    // Wait for input container to hide (indicates WebSocket command was sent)
-    await this.page.locator('#addTeamInputContainer').waitFor({ state: 'hidden', timeout: 5000 });
-    console.log(`[GMScannerPage] addNewTeam: addTeamInputContainer hidden`);
-
-    // Check dropdown options BEFORE waitForTeamInDropdown
-    const options = await this.page.locator('#teamSelect option').allTextContents();
-    console.log(`[GMScannerPage] addNewTeam: dropdown options before wait: ${JSON.stringify(options)}`);
-
-    // Wait for team to actually appear in dropdown
-    // This ensures session:update broadcast has been received and processed
-    await this.waitForTeamInDropdown(name);
-    console.log(`[GMScannerPage] addNewTeam END: ${name}`);
-  }
-
-  /**
-   * Wait for team dropdown to contain a specific team
+   * Wait for team to appear in team list
    * Useful after session creation to ensure sync:full has been processed
    * @param {string} teamName - Team name to wait for
    * @param {number} timeout - Timeout in ms (default 10000)
    */
-  async waitForTeamInDropdown(teamName, timeout = 10000) {
-    await this.page.locator('#teamSelect').waitFor({ state: 'visible', timeout: 5000 });
-    await this.page.waitForFunction(
-      (name) => {
-        const select = document.getElementById('teamSelect');
-        if (!select) return false;
-        return Array.from(select.options).some(opt => opt.value === name);
-      },
-      teamName,
-      { timeout }
-    );
+  async waitForTeamInList(teamName, timeout = 10000) {
+    await this.teamList.locator(`.team-list-item:has-text("${teamName}")`).waitFor({
+      state: 'visible',
+      timeout
+    });
   }
 
   /**
-   * Confirm team selection
+   * Confirm team selection and proceed to scan screen
    */
   async confirmTeam() {
     await this.confirmTeamBtn.click();
@@ -281,17 +235,11 @@ class GMScannerPage {
   }
 
   /**
-   * Get current team value from team entry screen
-   * Returns value from either standalone text input or networked dropdown
+   * Get current team input value
    * @returns {Promise<string>}
    */
   async getTeamDisplay() {
-    // Check if standalone input is visible
-    if (await this.standaloneTeamInput.isVisible()) {
-      return await this.standaloneTeamInput.inputValue();
-    }
-    // Otherwise get value from dropdown
-    return await this.teamSelect.inputValue();
+    return await this.teamNameInput.inputValue();
   }
 
   /**
