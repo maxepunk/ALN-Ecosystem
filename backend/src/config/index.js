@@ -5,9 +5,24 @@
 
 const path = require('path');
 const dotenv = require('dotenv');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
+
+// Load shared scoring config from ALN-TokenData submodule
+const scoringConfigPath = path.join(__dirname, '../../../ALN-TokenData/scoring-config.json');
+let sharedScoringConfig;
+try {
+  sharedScoringConfig = JSON.parse(fs.readFileSync(scoringConfigPath, 'utf8'));
+  console.log('Loaded shared scoring config from:', scoringConfigPath);
+} catch (e) {
+  console.warn('Failed to load shared scoring config, using defaults:', e.message);
+  sharedScoringConfig = {
+    baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+    typeMultipliers: { Personal: 1, Business: 3, Technical: 5, UNKNOWN: 0 }
+  };
+}
 
 const config = {
   // Server Configuration
@@ -66,20 +81,21 @@ const config = {
     bonusThreshold: parseInt(process.env.BONUS_THRESHOLD || '5', 10),
     bonusMultiplier: parseFloat(process.env.BONUS_MULTIPLIER || '1.5'),
 
-    // Value rating to points mapping
+    // Value rating to points mapping (from shared config, env vars override)
     valueRatingMap: {
-      1: parseInt(process.env.VALUE_RATING_1 || '10000', 10),
-      2: parseInt(process.env.VALUE_RATING_2 || '25000', 10),
-      3: parseInt(process.env.VALUE_RATING_3 || '50000', 10),
-      4: parseInt(process.env.VALUE_RATING_4 || '75000', 10),
-      5: parseInt(process.env.VALUE_RATING_5 || '150000', 10),
+      1: parseInt(process.env.VALUE_RATING_1 || sharedScoringConfig.baseValues['1'], 10),
+      2: parseInt(process.env.VALUE_RATING_2 || sharedScoringConfig.baseValues['2'], 10),
+      3: parseInt(process.env.VALUE_RATING_3 || sharedScoringConfig.baseValues['3'], 10),
+      4: parseInt(process.env.VALUE_RATING_4 || sharedScoringConfig.baseValues['4'], 10),
+      5: parseInt(process.env.VALUE_RATING_5 || sharedScoringConfig.baseValues['5'], 10),
     },
 
-    // Type multipliers (Personal 1x, Business 3x, Technical 5x)
+    // Type multipliers (from shared config, env vars override)
     typeMultipliers: {
-      personal: parseFloat(process.env.TYPE_MULT_PERSONAL || '1.0'),
-      business: parseFloat(process.env.TYPE_MULT_BUSINESS || '3.0'),
-      technical: parseFloat(process.env.TYPE_MULT_TECHNICAL || '5.0'),
+      personal: parseFloat(process.env.TYPE_MULT_PERSONAL || sharedScoringConfig.typeMultipliers['Personal']),
+      business: parseFloat(process.env.TYPE_MULT_BUSINESS || sharedScoringConfig.typeMultipliers['Business']),
+      technical: parseFloat(process.env.TYPE_MULT_TECHNICAL || sharedScoringConfig.typeMultipliers['Technical']),
+      unknown: parseFloat(process.env.TYPE_MULT_UNKNOWN || sharedScoringConfig.typeMultipliers['UNKNOWN'] || 0),
     },
   },
 

@@ -114,10 +114,10 @@ describe('TokenService - Utility Functions', () => {
       expect(value).toBe(10000); // Defaults to rating 1
     });
 
-    it('should default to 1.0 multiplier for unknown type', () => {
-      // Unknown type should default to 1.0 multiplier
+    it('should use unknown multiplier (0) for unknown type', () => {
+      // Unknown types should use the unknown multiplier (0) to prevent exploitation
       const value = tokenService.calculateTokenValue(3, 'UnknownType');
-      expect(value).toBe(50000); // Base value only (50000 * 1.0)
+      expect(value).toBe(0); // Base value * 0 = 0 (security: unknown tokens score nothing)
     });
 
     it('should handle null or undefined type', () => {

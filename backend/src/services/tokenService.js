@@ -54,7 +54,7 @@ const calculateTokenValue = (rating, type) => {
 
   // Get type multiplier
   const typeKey = (type || 'personal').toLowerCase();
-  const multiplier = config.game.typeMultipliers[typeKey] || 1.0;
+  const multiplier = config.game.typeMultipliers[typeKey] || config.game.typeMultipliers.unknown || 0;
 
   // Return calculated value
   return Math.floor(baseValue * multiplier);
