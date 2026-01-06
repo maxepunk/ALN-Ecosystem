@@ -213,10 +213,9 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       console.warn(`⚠️ Only ${round1Tokens.length} tokens available for Round 1`);
     }
 
-    // 6. GM2 (Detective) processes 3 tokens for Team Alpha
+    // 6. GM2 (Detective) processes 3 tokens for Team Alpha (selectTeamFromList auto-confirms)
     await gmScanner2.waitForTeamInList(teamAlpha);
     await gmScanner2.selectTeamFromList(teamAlpha);
-    await gmScanner2.confirmTeam();
 
     const detectiveTokens = round1Tokens.slice(0, 3);
     for (const tokenId of detectiveTokens) {
@@ -241,10 +240,9 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     expect(totalEvidence).toBeGreaterThanOrEqual(detectiveTokens.length);
     console.log(`✓ Public scoreboard shows ${totalEvidence} total evidence (hero + feed)`);
 
-    // 7. GM1 (Blackmarket) processes 3 tokens for Team Beta
+    // 7. GM1 (Blackmarket) processes 3 tokens for Team Beta (selectTeamFromList auto-confirms)
     await gmScanner1.waitForTeamInList(teamBeta);
     await gmScanner1.selectTeamFromList(teamBeta);
-    await gmScanner1.confirmTeam();
 
     const blackmarketTokens = round1Tokens.slice(3, 6);
     for (const tokenId of blackmarketTokens) {
@@ -417,8 +415,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     expect(gm1CurrentMode.toLowerCase()).toContain('black market');
     console.log('✓ GM1 still in blackmarket mode');
 
+    // selectTeamFromList auto-confirms
     await gmScanner1.selectTeamFromList(teamBeta);
-    await gmScanner1.confirmTeam();
 
     // Use a unique token for deletion test
     const deletionTestToken = tokenPools.round2[3] || tokenPools.round1[6];
@@ -461,8 +459,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       expect(gm1FinalMode.toLowerCase()).toContain('detective');
       console.log('✓ GM1 switched to detective mode for rescan');
 
+      // selectTeamFromList auto-confirms
       await gmScanner1.selectTeamFromList(teamBeta);
-      await gmScanner1.confirmTeam();
       await gmScanner1.manualScan(deletionTestToken);
       await gmScanner1.waitForResult(5000);
       console.log(`✓ GM1 rescanned ${deletionTestToken} as detective for ${teamBeta}`);

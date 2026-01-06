@@ -202,12 +202,9 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
         password: ADMIN_PASSWORD
       });
 
-      // Wait for session sync to populate dropdown, then select team
+      // Wait for session sync to populate list, then select team (auto-confirms)
       await gmScanner2.waitForTeamInList('Team Alpha');
       await gmScanner2.selectTeamFromList('Team Alpha');
-      await gmScanner2.confirmTeam();
-
-      await gmScanner2.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
       await gmScanner2.manualEntryBtn.waitFor({ state: 'visible', timeout: 5000 });
 
       // Listen for transaction broadcast on test socket

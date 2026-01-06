@@ -222,12 +222,11 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Create session via admin panel UI (browser-only pattern)
     await scanner.createSessionWithTeams('Test Session - Single Scan', [teamAlpha]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await scanner.waitForTeamInList(teamAlpha);
     await scanner.selectTeamFromList(teamAlpha);
-    await scanner.confirmTeam();
 
     // Simulate NFC scan (what NFC API would trigger)
     await scanner.manualScan(token.SF_RFID);
@@ -279,12 +278,11 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Create session via admin panel UI (browser-only pattern)
     await scanner.createSessionWithTeams('Test Session - Business Token', [teamAlpha]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await scanner.waitForTeamInList(teamAlpha);
     await scanner.selectTeamFromList(teamAlpha);
-    await scanner.confirmTeam();
 
     // Simulate NFC scan (what NFC API would trigger)
     await scanner.manualScan(token.SF_RFID);
@@ -346,12 +344,11 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Create session via admin panel UI (browser-only pattern)
     await scanner.createSessionWithTeams('Test Session - Group Completion', [teamAlpha]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await scanner.waitForTeamInList(teamAlpha);
     await scanner.selectTeamFromList(teamAlpha);
-    await scanner.confirmTeam();
 
     console.log(`Testing group completion: ${groupTokens[0].SF_Group}`);
     console.log(`  Tokens: ${groupTokens.map(t => t.SF_RFID).join(', ')}`);
@@ -423,12 +420,11 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     // Create session via admin panel UI (browser-only pattern)
     await scanner.createSessionWithTeams('Test Session - Same Team Duplicate', [teamAlpha]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await scanner.waitForTeamInList(teamAlpha);
     await scanner.selectTeamFromList(teamAlpha);
-    await scanner.confirmTeam();
 
     // FIRST SCAN: Token should be accepted
     await scanner.manualScan(token1.SF_RFID);
@@ -539,10 +535,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     await scanner.scannerTab.click();
     await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
-    // TEAM ALPHA: Scan first (should be ACCEPTED)
+    // TEAM ALPHA: Scan first (should be ACCEPTED) - selectTeamFromList auto-confirms
     await scanner.waitForTeamInList(teamAlpha);
     await scanner.selectTeamFromList(teamAlpha);
-    await scanner.confirmTeam();
 
     await scanner.manualScan(token1.SF_RFID);
     await scanner.waitForResult(5000);
@@ -573,7 +568,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     await scanner.finishTeam();
     await scanner.waitForTeamInList(teamDetectives);
     await scanner.selectTeamFromList(teamDetectives);
-    await scanner.confirmTeam();
+    // selectTeamFromList auto-confirms
 
     console.log('✓ Switched to Team Detectives');
 

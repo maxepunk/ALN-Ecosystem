@@ -271,12 +271,11 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // (Teams only appear in scoreboard after they have scores from scans)
       await gmScanner.scannerTab.click();
       // Wait for teamEntryScreen specifically (not just scannerView)
-      // because #teamSelect is inside teamEntryScreen
+      // because #teamNameInput is inside teamEntryScreen
       await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
-      // Scan for Team Alpha
+      // Scan for Team Alpha (selectTeamFromList auto-confirms)
       await gmScanner.selectTeamFromList('Team Alpha');
-      await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
       // Use finishTeam() to return to teamEntryScreen (not continueScan which stays on scanScreen)
       await gmScanner.finishTeam();
@@ -284,9 +283,8 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // CHECKPOINT 4: After Team Alpha scan
       await logBackendState('4-AFTER-TEAM-ALPHA-SCAN');
 
-      // Scan for Detectives
+      // Scan for Detectives (selectTeamFromList auto-confirms)
       await gmScanner.selectTeamFromList('Detectives');
-      await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.businessToken.SF_RFID);
       // Use finishTeam() since we're done scanning for this team
       await gmScanner.finishTeam();
@@ -400,12 +398,11 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Return to scanner view to scan a token for Team Alpha
       await gmScanner.scannerTab.click();
       // Wait for teamEntryScreen specifically (not just scannerView)
-      // because #teamSelect is inside teamEntryScreen
+      // because #teamNameInput is inside teamEntryScreen
       await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
-      // Select Team Alpha and scan a token
+      // Select Team Alpha and scan a token (selectTeamFromList auto-confirms)
       await gmScanner.selectTeamFromList('Team Alpha');
-      await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
       // Calculate expected score using production scoring logic (DRY)
@@ -484,10 +481,10 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Return to scanner to scan a token and build up score
       await gmScanner.scannerTab.click();
       // Wait for teamEntryScreen specifically (not just scannerView)
-      // because #teamSelect is inside teamEntryScreen
+      // because #teamNameInput is inside teamEntryScreen
       await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      // selectTeamFromList auto-confirms
       await gmScanner.selectTeamFromList('Team Alpha');
-      await gmScanner.confirmTeam();
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
       // Wait for score to update from transaction

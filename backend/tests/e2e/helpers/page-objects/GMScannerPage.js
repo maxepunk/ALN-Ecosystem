@@ -919,9 +919,11 @@ class GMScannerPage {
     await this.scannerTab.click();
     await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Add each team
+    // Add each team using unified flow: enter + confirm + finish
     for (const team of teams) {
-      await this.addNewTeam(team);
+      await this.enterTeam(team);
+      await this.confirmTeam();
+      await this.finishTeam(); // Return to team entry for next team
     }
 
     // Return to admin panel

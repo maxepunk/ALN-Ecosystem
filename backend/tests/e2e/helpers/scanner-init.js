@@ -175,12 +175,8 @@ async function scanTokenSequence(scanner, tokenIds, teamName, sessionMode = 'sta
   // Enter team if not already on scan screen
   const onScanScreen = await scanner.page.isVisible(scanner.scanScreen);
   if (!onScanScreen) {
-    // Use mode-appropriate team entry method
-    if (sessionMode === 'networked') {
-      await scanner.selectTeam(teamName);
-    } else {
-      await scanner.enterTeamName(teamName);
-    }
+    // Use unified team entry (works for both modes)
+    await scanner.enterTeam(teamName);
     await scanner.confirmTeam();
   }
 

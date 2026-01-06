@@ -187,12 +187,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Create session via admin panel UI
     await networkedScanner.createSessionWithTeams('Parity Test - Personal Token', [parityTeam]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await networkedScanner.waitForTeamInList(parityTeam);
     await networkedScanner.selectTeamFromList(parityTeam);
-    await networkedScanner.confirmTeam();
 
     await networkedScanner.manualScan(token.SF_RFID);
     await networkedScanner.waitForResult(5000);
@@ -252,12 +251,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Create session via admin panel UI
     await networkedScanner.createSessionWithTeams('Parity Test - Business Token', [parityTeam]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await networkedScanner.waitForTeamInList(parityTeam);
     await networkedScanner.selectTeamFromList(parityTeam);
-    await networkedScanner.confirmTeam();
 
     await networkedScanner.manualScan(token.SF_RFID);
     await networkedScanner.waitForResult(5000);
@@ -342,12 +340,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Create session via admin panel UI
     await networkedScanner.createSessionWithTeams('Parity Test - Group Completion', [parityTeam]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await networkedScanner.waitForTeamInList(parityTeam);
     await networkedScanner.selectTeamFromList(parityTeam);
-    await networkedScanner.confirmTeam();
 
     // Scan group tokens in networked mode
     for (let i = 0; i < groupTokens.length; i++) {
@@ -437,12 +434,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Create session via admin panel UI
     await networkedScanner.createSessionWithTeams('Parity Test - Mixed Sequence', [parityTeam]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await networkedScanner.waitForTeamInList(parityTeam);
     await networkedScanner.selectTeamFromList(parityTeam);
-    await networkedScanner.confirmTeam();
 
     for (let i = 0; i < mixedTokens.length; i++) {
       const token = mixedTokens[i];
@@ -519,12 +515,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // Create session via admin panel UI
     await networkedScanner.createSessionWithTeams('Parity Test - Duplicate', [parityTeam]);
 
-    // Navigate to scanner view and select team
+    // Navigate to scanner view and select team (selectTeamFromList auto-confirms)
     await networkedScanner.scannerTab.click();
     await networkedScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
     await networkedScanner.waitForTeamInList(parityTeam);
     await networkedScanner.selectTeamFromList(parityTeam);
-    await networkedScanner.confirmTeam();
 
     // First scan - should succeed
     await networkedScanner.manualScan(token.SF_RFID);
