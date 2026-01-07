@@ -205,22 +205,22 @@ socket.on('gm:command:ack', (eventData) => {
 
 ### Listen for Broadcasts
 ```javascript
-// Score updates
-socket.on('score:updated', (eventData) => {
-  const score = eventData.data;
-  console.log(`Team ${score.teamId}: ${score.currentScore}`);
-  console.log('Admin adjustments:', score.adminAdjustments);
+// ⚠️ DEPRECATED: score:updated - Use transaction:new.teamScore instead
+// socket.on('score:updated', (eventData) => { ... });
+
+// PREFERRED: Extract score from transaction:new events
+socket.on('transaction:new', (eventData) => {
+  console.log('New transaction:', eventData.data.transaction);
+  console.log('Updated team score:', eventData.data.teamScore);
+  if (eventData.data.groupBonusInfo) {
+    console.log('Group bonus:', eventData.data.groupBonusInfo);
+  }
 });
 
 // Session changes
 socket.on('session:update', (eventData) => {
   console.log('Session status:', eventData.data.status);
   console.log('Teams:', eventData.data.teams);
-});
-
-// New transactions
-socket.on('transaction:new', (eventData) => {
-  console.log('New transaction:', eventData.data.transaction);
 });
 
 // Video status
@@ -327,9 +327,9 @@ async function adjustScore(socket, teamId, points, reason) {
     delta: points,
     reason
   });
-  
-  // Wait for score:updated broadcast
-  const scoreUpdate = await captureEvent(socket, 'score:updated');
+
+  // Wait for score:adjusted event (admin adjustments use this event)
+  const scoreUpdate = await captureEvent(socket, 'score:adjusted');
   return scoreUpdate.data;
 }
 
@@ -362,8 +362,9 @@ scoreboardSocket.on('sync:full', (data) => {
     .filter(tx => tx.mode === 'detective').length);
 });
 
-scoreboardSocket.on('score:updated', (data) => {
-  console.log(`Scoreboard updated Team ${data.data.teamId}: $${data.data.currentScore}`);
+// ⚠️ DEPRECATED: score:updated - Use transaction:new.teamScore instead
+scoreboardSocket.on('transaction:new', (data) => {
+  console.log(`Scoreboard updated Team ${data.data.transaction.teamId}: $${data.data.teamScore}`);
 });
 ```
 

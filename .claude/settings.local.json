@@ -48,7 +48,8 @@
       "Bash(curl:*)",
       "Bash(git rev-parse:*)",
       "WebSearch",
-      "Skill(superpowers:subagent-driven-development)"
+      "Skill(superpowers:subagent-driven-development)",
+      "Skill(superpowers:writing-plans)"
     ],
     "deny": [],
     "ask": []

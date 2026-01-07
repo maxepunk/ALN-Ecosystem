@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2025-12-16
+Last verified: 2026-01-06
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -129,6 +129,9 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `stateService`: `state:updated`, `state:sync`, `sync:full`
 - `videoQueueService`: `video:*`, `queue:*`
 - `vlcService`: `degraded`, `connected`, `disconnected`
+
+**DEPRECATED Event:**
+- `score:updated` - Use `transaction:new.teamScore` instead. The `transaction:accepted` event now includes full scoring context.
 
 **Transaction Event Flow (SRP Architecture):**
 ```

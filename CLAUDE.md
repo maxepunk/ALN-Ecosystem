@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2025-12-16
+Last verified: 2026-01-06
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -87,7 +87,7 @@ this.isStandalone = !pathname.startsWith('/player-scanner/');
 
 **CRITICAL - Scoring Authority:**
 - **Networked mode**: Backend is authoritative (`transactionService.js`)
-- **Standalone mode**: Local calculation (`dataManager.js`)
+- **Standalone mode**: Local calculation (`LocalStorage.js`)
 - See 'docs/SCORING_LOGIC.md' for parity risks
 
 ## Scoring Business Logic (Cross-Cutting)
@@ -109,7 +109,7 @@ TYPE_MULTIPLIERS: {Personal: 1x, Business: 3x, Technical: 5x, UNKNOWN: 0x}
 | Backend Config | `backend/src/config/index.js` | 69-83 |
 | Backend Group Logic | `backend/src/services/transactionService.js` | 330-387 |
 | GM Scanner Config | `ALNScanner/src/core/scoring.js` | 15-29 |
-| GM Scanner Group Logic | `ALNScanner/src/core/dataManager.js` | 418-471 |
+| GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` | 345-400 |
 
 Values are IDENTICAL but timing differs for group completion detection. When updating scoring, ALWAYS update both config files.
 
@@ -294,7 +294,7 @@ npm run build      # Production build
 **Debug:**
 1. Verify both implementations match 'docs/SCORING_LOGIC.md'
 2. Check group completion timing differences
-3. Compare `transactionService.js` vs `dataManager.js`
+3. Compare `transactionService.js` vs `LocalStorage.js`
 
 ### Cross-Scanner Communication Issues
 **Symptoms:** Scans from one scanner type not appearing in another
@@ -332,6 +332,7 @@ SF_Summary: [Optional summary]
 
 - 'backend/CLAUDE.md' - Backend Orchestrator
 - 'ALNScanner/CLAUDE.md' - GM Scanner
+- 'ALNScanner/DOCUMENTATION_INDEX.md' - GM Scanner documentation index
 - 'aln-memory-scanner/CLAUDE.md' - Player Scanner (Web)
 - 'arduino-cyd-player-scanner/CLAUDE.md' - ESP32 Scanner
 - 'docs/SCORING_LOGIC.md' - Scoring single source of truth
