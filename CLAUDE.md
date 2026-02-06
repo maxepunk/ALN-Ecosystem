@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2026-01-06
+Last verified: 2026-02-06
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -102,16 +102,19 @@ BASE_VALUES: {1: $10000, 2: $25000, 3: $50000, 4: $75000, 5: $150000}
 TYPE_MULTIPLIERS: {Personal: 1x, Business: 3x, Technical: 5x, UNKNOWN: 0x}
 ```
 
-**CRITICAL - Dual Implementation Warning:**
+**Shared Scoring Config:**
 
-| Component | File | Lines |
+Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loaded by both backend and GM Scanner at runtime. No manual sync needed for base values.
+
+| Component | File | Notes |
 |-----------|------|-------|
-| Backend Config | `backend/src/config/index.js` | 69-83 |
-| Backend Group Logic | `backend/src/services/transactionService.js` | 330-387 |
-| GM Scanner Config | `ALNScanner/src/core/scoring.js` | 15-29 |
-| GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` | 345-400 |
+| Shared Config | `ALN-TokenData/scoring-config.json` | Single source of truth for values |
+| Backend Config | `backend/src/config/index.js:85-99` | Loads shared config (env vars override) |
+| Backend Group Logic | `backend/src/services/transactionService.js:345-387` | Server-side group completion |
+| GM Scanner Config | `ALNScanner/src/core/scoring.js:20-25` | Loads shared config via Vite import |
+| GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js:345-386` | Client-side group completion |
 
-Values are IDENTICAL but timing differs for group completion detection. When updating scoring, ALWAYS update both config files.
+**CRITICAL**: Values are shared, but group completion detection logic is independently implemented. Timing and approach differ between backend (session-based lookup) and GM Scanner (transaction filtering). When updating group logic, verify BOTH implementations.
 
 ## Token Data Schema (Cross-Cutting)
 
@@ -120,8 +123,9 @@ Values are IDENTICAL but timing differs for group completion detection. When upd
 {
   "tokenId": {
     "image": "assets/images/{tokenId}.bmp" | null,
-    "audio": "assets/audio/{tokenId}.wav" | null,
+    "audio": "assets/audio/{tokenId}.{wav|mp3}" | null,
     "video": "{tokenId}.mp4" | null,
+    "processingImage": "assets/images/{tokenId}.bmp" | null,
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
     "SF_MemoryType": "Personal" | "Business" | "Technical",
@@ -157,7 +161,7 @@ All scan requests MUST include `deviceType` field:
 | Player Scanner (Web) | `player` | **Allowed** (players can re-view same memory) |
 | ESP32 Scanner | `esp32` | **Allowed** (players can re-view same memory) |
 
-**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. See `transactionService.js:222-256` for implementation.
+**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. See `transactionService.js:233-266` for implementation.
 
 **Scan Request Format:**
 ```javascript
@@ -227,7 +231,7 @@ See 'backend/contracts/README.md' for full documentation.
 Breaking changes require coordinated updates across backend + all 3 scanner submodules.
 
 **Event Architecture (SRP Refactor):**
-- Primary event is `transaction:accepted` (contains transaction, teamScore, groupBonusInfo)
+- Primary event is `transaction:accepted` (contains transaction, teamScore, groupBonus, deviceTracking)
 - `sessionService` owns ALL persistence (not transactionService or stateService)
 - Admin score adjustments emit `score:adjusted` (separate from transactions)
 - `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
@@ -286,7 +290,7 @@ npm run build      # Production build
 2. `git submodule update --remote --merge` - Sync all submodules
 3. Restart backend to reload token data
 
-**Key Files:** `backend/src/services/tokenService.js:49-66`, `.gitmodules`
+**Key Files:** `backend/src/services/tokenService.js:68-86` (_loadTokensFile), `.gitmodules`
 
 ### Scoring Mismatch (Networked vs Standalone)
 **Symptoms:** Different scores for same tokens in different modes

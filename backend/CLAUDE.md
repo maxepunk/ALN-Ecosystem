@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2026-01-06
+Last verified: 2026-02-06
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -70,27 +70,27 @@ npm run health:vlc        # Check VLC only
 - Use `resetAllServicesForTesting()` helper in integration tests to prevent listener leaks
 - E2E tests require orchestrator running: `npm run dev:full`
 - E2E uses lightweight fixtures (`tests/e2e/fixtures/`) not production token data
-- E2E uses single worker (`workers: 1`) - each test suite manages its own orchestrator lifecycle
+- E2E uses 2 workers (`--workers=2` in npm script overrides playwright.config.js default of 1)
 
 ## Architecture
 
 ### Service Singleton Pattern
 
-All services use singleton with `getInstance()`:
+Most services export a module-level singleton via `module.exports = new ServiceClass()`:
 
-| Service | Purpose |
-|---------|---------|
-| `sessionService` | Active session (source of truth, persisted) |
-| `stateService` | Global state (computed on-demand from session) |
-| `transactionService` | Token scan processing and scoring |
-| `videoQueueService` | Video playback queue |
-| `vlcService` | VLC HTTP interface control |
-| `tokenService` | Token data loading |
-| `discoveryService` | UDP broadcast (port 8888) |
-| `offlineQueueService` | Offline scan management |
-| `persistenceService` | Disk persistence |
-| `displayControlService` | HDMI display mode state machine |
-| `heartbeatMonitorService` | HTTP device timeout monitoring |
+| Service | Purpose | Export Style |
+|---------|---------|--------------|
+| `sessionService` | Active session (source of truth, persisted) | `new SessionService()` |
+| `stateService` | Global state (computed on-demand from session) | `new StateService()` |
+| `transactionService` | Token scan processing and scoring | `new TransactionService()` |
+| `videoQueueService` | Video playback queue | `new VideoQueueService()` |
+| `vlcService` | VLC HTTP interface control | `new VlcService()` |
+| `discoveryService` | UDP broadcast (port 8888) | Class export (instantiated by caller) |
+| `tokenService` | Token data loading | Function exports (no class) |
+| `offlineQueueService` | Offline scan management | `new OfflineQueueService()` |
+| `persistenceService` | Disk persistence | `new PersistenceService()` |
+| `displayControlService` | HDMI display mode state machine | `new DisplayControlService()` |
+| `heartbeatMonitorService` | HTTP device timeout monitoring | `new HeartbeatMonitorService()` |
 
 **transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
@@ -130,27 +130,28 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `videoQueueService`: `video:*`, `queue:*`
 - `vlcService`: `degraded`, `connected`, `disconnected`
 
-**DEPRECATED Event:**
-- `score:updated` - Use `transaction:new.teamScore` instead. The `transaction:accepted` event now includes full scoring context.
+**DEPRECATED Internal Event:**
+- `score:updated` - The internal `transaction:accepted` event now includes `teamScore`. The WebSocket broadcast `transaction:new` also carries the score. Note: `score:updated` is still broadcast via WebSocket by `broadcasts.js` for score adjustments and group bonuses.
 
 **Transaction Event Flow (SRP Architecture):**
 ```
 processScan()
-  → transactionService.emit('transaction:accepted', {transaction, teamScore, groupBonusInfo})
+  → transactionService.emit('transaction:accepted', {transaction, teamScore, groupBonus, deviceTracking})
     → sessionService listener persists to session
       → sessionService.emit('transaction:added')
         → broadcasts.js sends WebSocket 'transaction:new'
 ```
 
-**Key Change:** `sessionService` now owns ALL transaction persistence. The `transaction:accepted` event contains the full scoring context (teamScore, groupBonusInfo) so listeners don't need to recalculate.
+**Key Change:** `sessionService` now owns ALL transaction persistence. The `transaction:accepted` event contains the full scoring context (teamScore, groupBonus, deviceTracking) so listeners don't need to recalculate.
 
 **Player Scan Event Flow:**
 ```
-POST /api/scan (player scanner)
+POST /api/scan (player scanner) [scanRoutes.js]
   → sessionService.addPlayerScan() persists to session.playerScans[]
-    → sessionService.emit('player-scan:added')
-      → broadcasts.js sends WebSocket 'player:scan' to GM room
+  → scanRoutes.js emits WebSocket 'player:scan' directly to GM room via emitToRoom()
 ```
+
+Note: Player scan broadcast is handled directly in `scanRoutes.js` (not via broadcasts.js). The `player-scan:added` event is emitted by sessionService but has no listener in broadcasts.js. Player scans in `sync:full` payloads come from `session.playerScans[]`.
 
 Player scans are tracked for Game Activity (token lifecycle visibility) but do not affect scoring.
 
@@ -220,15 +221,15 @@ WebSocket command interface for session management:
 | Action | Payload | Description |
 |--------|---------|-------------|
 | `session:create` | `{name, teams}` | Create new session with initial teams |
-| `session:addTeam` | `{teamId}` | Add team mid-game (alphanumeric, 1-30 chars) |
+| `session:addTeam` | `{teamId}` | Add team mid-game (trimmed, non-empty) |
 | `session:pause` | `{}` | Pause active session |
 | `session:resume` | `{}` | Resume paused session |
 | `session:end` | `{}` | End active session |
 
 **session:addTeam Flow:**
-1. Validate teamId format (alphanumeric, 1-30 chars)
+1. Validate teamId is present and non-empty after trim
 2. Check team doesn't already exist
-3. Create TeamScore with initial values
+3. Add team to session via `sessionService.addTeamToSession()`
 4. Persist to session
 5. Broadcast `session:updated` to all clients
 
@@ -264,7 +265,7 @@ PORT=3000
 VLC_PASSWORD=vlc              # MUST be exactly "vlc"
 FEATURE_VIDEO_PLAYBACK=true
 HOST=0.0.0.0                  # For network access
-DISCOVERY_PORT=8888           # UDP broadcast
+DISCOVERY_UDP_PORT=8888       # UDP broadcast
 ENABLE_HTTPS=true             # Required for NFC
 ```
 
@@ -341,7 +342,7 @@ ffmpeg -i INPUT.mp4 \
 4. Verify clients receive `sync:full` on reconnect
 5. Check for "duplicate listener" warnings
 
-**Key Files:** `src/services/sessionService.js:28-42`, `src/services/persistenceService.js`
+**Key Files:** `src/services/sessionService.js:231-244` (init/restore), `src/services/persistenceService.js`
 
 ### Video Playback Issues
 **Symptoms:** Videos queue but don't play, idle loop doesn't resume
@@ -390,17 +391,23 @@ npm run session:validate <name>            # Match by partial name (e.g., "1207"
 npm run session:validate latest > report.md  # Save report to file
 ```
 
-**9 Holistic Validators:**
+**15 Holistic Validators:**
 
 | Check | Detects |
 |-------|---------|
 | TransactionFlow | Missing/orphaned transactions, token lookup failures |
+| TransactionIntegrity | Transaction data consistency and correctness |
 | ScoringIntegrity | Score vs broadcast discrepancies (compares log broadcasts) |
+| ScoreParity | Networked vs standalone scoring parity |
 | DetectiveMode | Detective-specific validation issues |
 | VideoPlayback | Queue failures, playback errors, missing videos |
 | DeviceConnectivity | Connection drops, reconnection patterns |
 | GroupCompletion | Bonus calculation errors, missed completions |
+| GroupBonus | Group bonus calculation correctness |
 | DuplicateHandling | False positives, ghost scoring, rejection accuracy |
+| DuplicateConsistency | Cross-device duplicate detection consistency |
+| PlayerCorrelation | Player scan to transaction correlation |
+| EventTimeline | Event ordering and timing anomalies |
 | ErrorAnalysis | Error patterns, frequency, categorization |
 | SessionLifecycle | Deletions, resets, pause/resume anomalies |
 
@@ -414,7 +421,7 @@ validate-session.js
 ├── ScoringCalculator # Independent score recalculation
 ├── LogParser         # Parses logs/combined.log for event correlation
 ├── ReportGenerator   # Markdown report output
-└── validators/       # 9 validator modules
+└── validators/       # 15 validator modules
 ```
 
 **Exit Codes:**
@@ -455,7 +462,7 @@ python logs/archive_logs.py backend/logs --days 30
 ## Code Style
 
 - ES6 modules with async/await
-- Singleton services with `getInstance()`
+- Module-level singleton services (`module.exports = new ServiceClass()`)
 - JSDoc comments for public methods
 - Event-driven architecture (Node.js EventEmitter)
 - Winston logger (no console.log)
