@@ -237,6 +237,7 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
 - `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
 - `sync:full` includes `playerScans` array for session restoration
+- `videoEvents.js` was deleted (confirmed dead code) — ALL video control goes through `gm:command` actions in `adminEvents.js`
 
 ## Submodule Architecture
 

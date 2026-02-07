@@ -128,36 +128,7 @@ function handleSyncRequest(socket) {
   }
 }
 
-/**
- * Get connected device statistics
- * @returns {Object} Device statistics
- */
-function getDeviceStats() {
-  const session = sessionService.getCurrentSession();
-  if (!session) {
-    return {
-      total: 0,
-      connected: 0,
-      gmStations: 0,
-      players: 0,
-    };
-  }
-
-  const devices = session.connectedDevices || [];
-  const connected = devices.filter(d => d.connectionStatus === 'connected');
-  const gmStations = connected.filter(d => d.type === 'gm');
-  const players = connected.filter(d => d.type === 'player');
-
-  return {
-    total: devices.length,
-    connected: connected.length,
-    gmStations: gmStations.length,
-    players: players.length,
-  };
-}
-
 module.exports = {
   handleDisconnect,
   handleSyncRequest,
-  getDeviceStats,
 };
