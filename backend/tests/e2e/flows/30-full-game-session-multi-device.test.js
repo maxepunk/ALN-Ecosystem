@@ -192,6 +192,85 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     console.log(`✓ Mode verification: GM1=${gm1Mode}, GM2=${gm2Mode}`);
 
     // ============================================
+    // PHASE 1.5: Environment Control Verification
+    // ============================================
+    console.log('\n=== PHASE 1.5: Environment Control Verification ===');
+
+    // Navigate GM1 to admin panel to verify environment control sections
+    await gmScanner1.navigateToAdminPanel();
+
+    // 1. Audio Output section should be visible in networked mode
+    const audioVisible = await gmScanner1.isAudioOutputSectionVisible();
+    expect(audioVisible).toBe(true);
+    console.log('✓ Audio Output section visible in admin panel');
+
+    // 2. HDMI should be selected by default
+    const hdmiSelected = await gmScanner1.isHdmiAudioSelected();
+    expect(hdmiSelected).toBe(true);
+    console.log('✓ HDMI audio selected by default');
+
+    // 3. Bluetooth speakers section: either shows empty state or "adapter unavailable"
+    const btUnavailable = await gmScanner1.isBtUnavailable();
+    if (btUnavailable) {
+      console.log('✓ Bluetooth adapter not available (expected in CI/headless)');
+    } else {
+      const btEmptyText = await gmScanner1.getBtEmptyStateText();
+      const btDeviceCount = await gmScanner1.getBtDeviceCount();
+      if (btDeviceCount === 0 && btEmptyText) {
+        console.log(`✓ Bluetooth section shows empty state: "${btEmptyText.trim()}"`);
+      } else {
+        console.log(`✓ Bluetooth section shows ${btDeviceCount} device(s)`);
+      }
+    }
+
+    // 4. Toggle audio route to Bluetooth, then back to HDMI
+    await gmScanner1.selectBluetoothAudio();
+    const btSelected = await gmScanner1.isBluetoothAudioSelected();
+    expect(btSelected).toBe(true);
+    console.log('✓ Audio route toggled to Bluetooth');
+
+    // BT warning may appear if no speaker connected (graceful — don't assert, just log)
+    const btWarning = await gmScanner1.isBtWarningVisible();
+    if (btWarning) {
+      console.log('✓ BT fallback warning visible (no speaker connected)');
+    }
+
+    // Toggle back to HDMI
+    await gmScanner1.selectHdmiAudio();
+    const hdmiReselected = await gmScanner1.isHdmiAudioSelected();
+    expect(hdmiReselected).toBe(true);
+    console.log('✓ Audio route toggled back to HDMI');
+
+    // 5. Lighting section: graceful degradation check
+    //    Section may be hidden if HA never connects, or visible with fallback UI
+    const lightingVisible = await gmScanner1.isLightingSectionVisible();
+    if (lightingVisible) {
+      const lightingNotConnected = await gmScanner1.isLightingNotConnected();
+      const sceneCount = await gmScanner1.getLightingSceneCount();
+
+      if (lightingNotConnected) {
+        // Verify retry button exists
+        const retryVisible = await gmScanner1.lightingRetryBtn.isVisible();
+        expect(retryVisible).toBe(true);
+        console.log('✓ Lighting section: HA not connected, retry button available');
+      } else if (sceneCount > 0) {
+        console.log(`✓ Lighting section: ${sceneCount} scene(s) available`);
+      } else {
+        console.log('✓ Lighting section visible but no scenes configured');
+      }
+    } else {
+      console.log('✓ Lighting section hidden (HA not configured — expected in CI)');
+    }
+
+    // 6. Log full environment state for debugging
+    const envState = await gmScanner1.getEnvironmentControlState();
+    console.log('Environment Control State:', JSON.stringify(envState, null, 2));
+
+    // Return to scanner view for next phase
+    await gmScanner1.scannerTab.click();
+    await gmScanner1.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+
+    // ============================================
     // PHASE 2: Player Scanners Join
     // ============================================
     console.log('\n=== PHASE 2: Player Scanners Join ===');
@@ -494,10 +573,17 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     const finalEvidenceCount = await scoreboard.getEvidenceCardCount();
     console.log(`✓ Final public scoreboard: ${finalScoreEntryCount} score entries, ${finalEvidenceCount} evidence cards`);
 
-    // 16. End session
+    // 16. Verify environment control state persists through session
+    await gmScanner1.navigateToAdminPanel();
+    const finalEnvState = await gmScanner1.getEnvironmentControlState();
+    // Audio section should still be visible and HDMI selected (we toggled back in Phase 1.5)
+    expect(finalEnvState.audioSectionVisible).toBe(true);
+    expect(finalEnvState.hdmiSelected).toBe(true);
+    console.log('✓ Environment control state persisted through session');
+    console.log('Final Environment State:', JSON.stringify(finalEnvState, null, 2));
+
+    // 17. End session (already on admin panel from step 16)
     console.log('\n=== Ending Session ===');
-    await gmScanner1.adminTab.click();
-    await gmScanner1.page.waitForTimeout(500);
     await gmScanner1.endSession();
     console.log('✓ Session ended');
 

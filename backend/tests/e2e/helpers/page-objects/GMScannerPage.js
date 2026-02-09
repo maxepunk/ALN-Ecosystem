@@ -159,6 +159,26 @@ class GMScannerPage {
     this.returnsToMode = page.locator('#returns-to-mode');
     this.btnIdleLoop = page.locator('#btn-idle-loop');
     this.btnScoreboard = page.locator('#btn-scoreboard');
+
+    // Environment control elements (Phase 0 - Admin panel)
+    this.audioOutputSection = page.locator('#audio-output-section');
+    this.audioHdmiRadio = page.locator('input[name="audioOutput"][value="hdmi"]');
+    this.audioBluetoothRadio = page.locator('input[name="audioOutput"][value="bluetooth"]');
+    this.btWarning = page.locator('#bt-warning');
+    this.btSpeakerCount = page.locator('#bt-speaker-count');
+    this.btScanBtn = page.locator('#btn-bt-scan');
+    this.btScanStatus = page.locator('#bt-scan-status');
+    this.btDeviceList = page.locator('#bt-device-list');
+    this.btDeviceItems = page.locator('#bt-device-list .bt-device-item');
+    this.btUnavailable = page.locator('#bt-unavailable');
+
+    this.lightingSection = page.locator('#lighting-section');
+    this.lightingScenes = page.locator('#lighting-scenes');
+    this.lightingSceneTiles = page.locator('#lighting-scenes .scene-tile');
+    this.lightingNoScenes = page.locator('#lighting-no-scenes');
+    this.lightingNotConnected = page.locator('#lighting-not-connected');
+    this.lightingRetryBtn = page.locator('button[data-action="admin.lightingRetry"]');
+    this.haConnectionStatus = page.locator('#ha-connection-status');
   }
 
   /**
@@ -810,6 +830,134 @@ class GMScannerPage {
   async getPendingQueueCount() {
     const text = await this.pendingQueueCount.textContent();
     return parseInt(text, 10);
+  }
+
+  // ============================================
+  // Environment Control Methods (Phase 0)
+  // ============================================
+
+  /**
+   * Check if audio output section is visible
+   * @returns {Promise<boolean>}
+   */
+  async isAudioOutputSectionVisible() {
+    return await this.audioOutputSection.isVisible();
+  }
+
+  /**
+   * Check if HDMI audio is selected
+   * @returns {Promise<boolean>}
+   */
+  async isHdmiAudioSelected() {
+    return await this.audioHdmiRadio.isChecked();
+  }
+
+  /**
+   * Check if Bluetooth audio is selected
+   * @returns {Promise<boolean>}
+   */
+  async isBluetoothAudioSelected() {
+    return await this.audioBluetoothRadio.isChecked();
+  }
+
+  /**
+   * Select HDMI audio output
+   */
+  async selectHdmiAudio() {
+    await this.audioHdmiRadio.check();
+  }
+
+  /**
+   * Select Bluetooth audio output
+   */
+  async selectBluetoothAudio() {
+    await this.audioBluetoothRadio.check();
+  }
+
+  /**
+   * Check if Bluetooth warning (no speaker connected) is visible
+   * @returns {Promise<boolean>}
+   */
+  async isBtWarningVisible() {
+    return await this.btWarning.isVisible();
+  }
+
+  /**
+   * Check if Bluetooth adapter is unavailable
+   * @returns {Promise<boolean>}
+   */
+  async isBtUnavailable() {
+    return await this.btUnavailable.isVisible();
+  }
+
+  /**
+   * Get Bluetooth device list empty state text
+   * @returns {Promise<string>}
+   */
+  async getBtEmptyStateText() {
+    const emptyState = this.btDeviceList.locator('.empty-state');
+    if (await emptyState.isVisible()) {
+      return await emptyState.textContent();
+    }
+    return '';
+  }
+
+  /**
+   * Get count of discovered Bluetooth devices
+   * @returns {Promise<number>}
+   */
+  async getBtDeviceCount() {
+    return await this.btDeviceItems.count();
+  }
+
+  /**
+   * Start Bluetooth scan
+   */
+  async startBtScan() {
+    await this.btScanBtn.click();
+  }
+
+  /**
+   * Check if lighting section is visible
+   * @returns {Promise<boolean>}
+   */
+  async isLightingSectionVisible() {
+    return await this.lightingSection.isVisible();
+  }
+
+  /**
+   * Check if lighting "not connected" fallback is shown
+   * @returns {Promise<boolean>}
+   */
+  async isLightingNotConnected() {
+    return await this.lightingNotConnected.isVisible();
+  }
+
+  /**
+   * Get count of lighting scene tiles
+   * @returns {Promise<number>}
+   */
+  async getLightingSceneCount() {
+    return await this.lightingSceneTiles.count();
+  }
+
+  /**
+   * Get environment control state summary for verification
+   * Returns a snapshot of all environment control UI state
+   * @returns {Promise<Object>}
+   */
+  async getEnvironmentControlState() {
+    return {
+      audioSectionVisible: await this.isAudioOutputSectionVisible(),
+      hdmiSelected: await this.isHdmiAudioSelected(),
+      bluetoothSelected: await this.isBluetoothAudioSelected(),
+      btWarningVisible: await this.isBtWarningVisible(),
+      btUnavailable: await this.isBtUnavailable(),
+      btDeviceCount: await this.getBtDeviceCount(),
+      lightingSectionVisible: await this.isLightingSectionVisible(),
+      lightingNotConnected: await this.isLightingNotConnected(),
+      lightingSceneCount: await this.getLightingSceneCount(),
+    };
   }
 
   // ============================================
