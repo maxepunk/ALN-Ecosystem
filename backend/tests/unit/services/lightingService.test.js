@@ -9,12 +9,24 @@
 jest.mock('axios');
 const axios = require('axios');
 
+// Mock dockerHelper for container lifecycle tests
+jest.mock('../../../src/utils/dockerHelper', () => ({
+  containerExists: jest.fn(),
+  isContainerRunning: jest.fn(),
+  startContainer: jest.fn(),
+  stopContainer: jest.fn(),
+}));
+const dockerHelper = require('../../../src/utils/dockerHelper');
+
 // Mock config to control lighting settings
 jest.mock('../../../src/config', () => ({
   lighting: {
     enabled: true,
     homeAssistantUrl: 'http://localhost:8123',
     homeAssistantToken: 'test-ha-token',
+    dockerManage: true,
+    dockerContainer: 'homeassistant',
+    dockerStopTimeout: 10,
   },
   // Provide other config sections that may be loaded transitively
   storage: { logsDir: '/tmp/test-logs', dataDir: '/tmp/test-data' },
@@ -42,6 +54,9 @@ describe('LightingService', () => {
     config.lighting.enabled = true;
     config.lighting.homeAssistantUrl = 'http://localhost:8123';
     config.lighting.homeAssistantToken = 'test-ha-token';
+    config.lighting.dockerManage = true;
+    config.lighting.dockerContainer = 'homeassistant';
+    config.lighting.dockerStopTimeout = 10;
   });
 
   // ── init() ──
@@ -553,6 +568,146 @@ describe('LightingService', () => {
       expect(axios.get).not.toHaveBeenCalled();
 
       jest.useRealTimers();
+    });
+  });
+
+  // ── Docker container management ──
+
+  describe('Docker container management', () => {
+    describe('init() — container auto-start', () => {
+      beforeEach(() => {
+        // Default: HA reachable after container start
+        axios.get.mockImplementation((url) => {
+          if (url === 'http://localhost:8123/api/') {
+            return Promise.resolve({ status: 200, data: { message: 'API running.' } });
+          }
+          if (url === 'http://localhost:8123/api/states') {
+            return Promise.resolve({ status: 200, data: [] });
+          }
+          return Promise.reject(new Error('Unexpected URL'));
+        });
+      });
+
+      it('should start container when it exists but is stopped', async () => {
+        dockerHelper.containerExists.mockResolvedValue(true);
+        dockerHelper.isContainerRunning.mockResolvedValue(false);
+        dockerHelper.startContainer.mockResolvedValue();
+
+        await lightingService.init();
+
+        expect(dockerHelper.containerExists).toHaveBeenCalledWith('homeassistant');
+        expect(dockerHelper.isContainerRunning).toHaveBeenCalledWith('homeassistant');
+        expect(dockerHelper.startContainer).toHaveBeenCalledWith('homeassistant');
+      });
+
+      it('should skip start when container is already running', async () => {
+        dockerHelper.containerExists.mockResolvedValue(true);
+        dockerHelper.isContainerRunning.mockResolvedValue(true);
+
+        await lightingService.init();
+
+        expect(dockerHelper.startContainer).not.toHaveBeenCalled();
+      });
+
+      it('should skip start when container does not exist', async () => {
+        dockerHelper.containerExists.mockResolvedValue(false);
+
+        await lightingService.init();
+
+        expect(dockerHelper.isContainerRunning).not.toHaveBeenCalled();
+        expect(dockerHelper.startContainer).not.toHaveBeenCalled();
+      });
+
+      it('should skip Docker management when dockerManage is false', async () => {
+        config.lighting.dockerManage = false;
+
+        await lightingService.init();
+
+        expect(dockerHelper.containerExists).not.toHaveBeenCalled();
+      });
+
+      it('should skip Docker management in test environment', async () => {
+        const origEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = 'test';
+
+        await lightingService.init();
+
+        expect(dockerHelper.containerExists).not.toHaveBeenCalled();
+        process.env.NODE_ENV = origEnv;
+      });
+
+      it('should not throw when Docker commands fail', async () => {
+        dockerHelper.containerExists.mockRejectedValue(new Error('Docker daemon not running'));
+
+        await lightingService.init();
+
+        // Should still attempt HA connection (graceful degradation)
+        expect(axios.get).toHaveBeenCalled();
+      });
+    });
+
+    describe('cleanup() — container auto-stop', () => {
+      it('should stop container on cleanup when we started it', async () => {
+        // Simulate: container was stopped, we started it
+        dockerHelper.containerExists.mockResolvedValue(true);
+        dockerHelper.isContainerRunning.mockResolvedValue(false);
+        dockerHelper.startContainer.mockResolvedValue();
+        dockerHelper.stopContainer.mockResolvedValue();
+
+        axios.get.mockResolvedValue({ status: 200, data: [] });
+
+        await lightingService.init();
+        await lightingService.cleanup();
+
+        expect(dockerHelper.stopContainer).toHaveBeenCalledWith('homeassistant', 10);
+      });
+
+      it('should NOT stop container when it was already running', async () => {
+        // Simulate: container was already running before init
+        dockerHelper.containerExists.mockResolvedValue(true);
+        dockerHelper.isContainerRunning.mockResolvedValue(true);
+        dockerHelper.stopContainer.mockResolvedValue();
+
+        axios.get.mockResolvedValue({ status: 200, data: [] });
+
+        await lightingService.init();
+        await lightingService.cleanup();
+
+        expect(dockerHelper.stopContainer).not.toHaveBeenCalled();
+      });
+
+      it('should not throw when container stop fails', async () => {
+        dockerHelper.containerExists.mockResolvedValue(true);
+        dockerHelper.isContainerRunning.mockResolvedValue(false);
+        dockerHelper.startContainer.mockResolvedValue();
+        dockerHelper.stopContainer.mockRejectedValue(new Error('timeout'));
+
+        axios.get.mockResolvedValue({ status: 200, data: [] });
+
+        await lightingService.init();
+
+        // Should not throw
+        await expect(lightingService.cleanup()).resolves.not.toThrow();
+      });
+    });
+
+    describe('reset()', () => {
+      it('should clear container tracking state without touching Docker', async () => {
+        dockerHelper.containerExists.mockResolvedValue(true);
+        dockerHelper.isContainerRunning.mockResolvedValue(false);
+        dockerHelper.startContainer.mockResolvedValue();
+        dockerHelper.stopContainer.mockResolvedValue();
+
+        axios.get.mockResolvedValue({ status: 200, data: [] });
+
+        await lightingService.init();
+        jest.clearAllMocks();
+
+        lightingService.reset();
+
+        // stopContainer should NOT be called during reset
+        expect(dockerHelper.stopContainer).not.toHaveBeenCalled();
+      });
     });
   });
 });
