@@ -91,16 +91,15 @@ async function setupIntegrationTestServer() {
       if (deviceType === 'admin') {
         socket.join('admin-monitors');
         logger.debug('Admin socket joined admin-monitors room', { socketId: socket.id });
-      } else if (deviceType === 'gm') {
-        // AUTO-CALL handleGmIdentify like production does (server.js line 64)
-        // This registers device and triggers device:connected + sync:full
-        await handleGmIdentify(socket, {
-          deviceId: socket.deviceId,  // Per AsyncAPI contract
-          version: socket.version,
-          token: token
-        }, io);
       }
     }
+
+    // CRITICAL: Register event handlers BEFORE handleGmIdentify (which sends sync:full).
+    // handleGmIdentify is async and sends sync:full to the client. If handlers are registered
+    // AFTER the await, there's a race condition: the client receives sync:full, resolves its
+    // connection promise, and immediately emits events (transaction:submit, gm:command) before
+    // the server finishes the async callback and registers handlers. Messages arrive with no
+    // handler → silently dropped → test timeouts.
 
     // Sync request
     socket.on('sync:request', async () => {
@@ -109,13 +108,6 @@ async function setupIntegrationTestServer() {
 
     // Transaction submit
     socket.on('transaction:submit', async (data) => {
-      logger.info('===== TRANSACTION SUBMIT DEBUG =====', {
-        socketId: socket.id,
-        deviceId: socket.deviceId,
-        isAuthenticated: socket.isAuthenticated,
-        deviceType: socket.deviceType,
-        hasDeviceId: !!socket.deviceId
-      });
       await handleTransactionSubmit(socket, data, io);
     });
 
@@ -128,6 +120,16 @@ async function setupIntegrationTestServer() {
     socket.on('disconnect', () => {
       handleDisconnect(socket, io);
     });
+
+    // NOW call handleGmIdentify (sends sync:full + gm:identified to client)
+    // Handlers are already registered, so any immediate client messages will be handled.
+    if (token && deviceId && deviceType === 'gm') {
+      await handleGmIdentify(socket, {
+        deviceId: socket.deviceId,  // Per AsyncAPI contract
+        version: socket.version,
+        token: token
+      }, io);
+    }
   });
 
   // Setup broadcast listeners (service events → WebSocket broadcasts)

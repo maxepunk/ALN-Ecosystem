@@ -45,6 +45,7 @@ const createMockElement = () => ({
   value: '',
   checked: false,
   style: {},
+  dataset: {},
   classList: {
     contains: () => false,
     add: () => { },
@@ -336,29 +337,10 @@ global.Settings = {
 };
 
 // Load REAL TokenManager (scanner's token database module)
-// CRITICAL: Mock DataManager BEFORE requiring TokenManager (which likely imports it)
-// This ensures App and TokenManager use our mock with isTokenScanned/calculateTokenValue methods
-if (typeof jest !== 'undefined') {
-  console.log('DEBUG: jest is defined in browser-mocks.js, applying DataManager mock');
-  jest.doMock('../../../ALNScanner/src/core/dataManager', () => {
-    console.log('DEBUG: DataManager mock factory called');
-    return {
-      DataManager: class MockDataManager {
-        constructor() {
-          console.log('DEBUG: MockDataManager constructor called');
-          // Return the global mock object (proxy) defined below
-          // This allows us to control state and methods from tests
-          return global.DataManager;
-        }
-      }
-    };
-  });
-} else {
-  console.log('DEBUG: jest is NOT defined in browser-mocks.js');
-}
-
-// This will be populated with real tokens.json data in test setup
-// This will be populated with real tokens.json data in test setup
+// Note: DataManager mock removed — old core/dataManager.js was renamed to
+// core/unifiedDataManager.js (DRY/SOLID cleanup 2026-02-07). TokenManager
+// doesn't import DataManager, and App receives it via constructor injection.
+// The global.DataManager mock object below still provides test methods.
 const TokenManagerModule = require('../../../ALNScanner/src/core/tokenManager');
 // Handle ES6 default export
 const TokenManager = TokenManagerModule.default || TokenManagerModule;
@@ -422,7 +404,21 @@ global.DataManager = {
     this.playerScans = [];
   },
 
+  // UnifiedDataManager mode initialization (app.js:504, app.js:434)
+  // Sets _networkedStrategy so app.js:512 can update the socket reference
+  _networkedStrategy: null,
+  async initializeNetworkedMode(socket) {
+    this._networkedStrategy = { socket, isReady: () => true };
+  },
+  async initializeStandaloneMode() {
+    this._networkedStrategy = null;
+  },
+
   addTransaction: () => { },
+  addTransactionFromBroadcast(tx) {
+    if (tx) this.transactions.push(tx);
+  },
+  handlePlayerScan: () => { },
   loadTransactions: () => { },  // App.init() loads transaction history
   loadScannedTokens: () => { },  // App.init() loads scanned tokens
   saveScannedTokens: () => { },  // Called by orchestratorClient.js:305 on transaction:deleted
