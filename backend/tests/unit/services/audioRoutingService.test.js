@@ -451,6 +451,14 @@ describe('AudioRoutingService', () => {
       }));
     });
 
+    it('should throw when no sinks are available at all', async () => {
+      mockExecFileSuccess(''); // pactl list sinks short returns empty
+
+      await expect(
+        audioRoutingService.applyRouting('video')
+      ).rejects.toThrow("No available sink for stream 'video'");
+    });
+
     it('should reject invalid stream name', async () => {
       await expect(
         audioRoutingService.applyRouting('music')
@@ -607,6 +615,46 @@ describe('AudioRoutingService', () => {
         call => call[1][0] === 'list' && call[1][1] === 'sinks'
       );
       expect(sinkListCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should emit routing:error when auto-routing fails on sink added', async () => {
+      // Set route to bluetooth
+      await audioRoutingService.setStreamRoute('video', 'bluetooth');
+      jest.clearAllMocks();
+
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      // Mock getAvailableSinks to identify BT sink, but fail on applyRouting
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sinks' && args[2] === 'short') {
+          callCount++;
+          if (callCount === 1) {
+            // First call from _onSinkAdded → getAvailableSinks — BT sink exists
+            cb(null, '89\tbluez_output.AA_BB_CC_DD_EE_FF.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE\n', '');
+          } else {
+            // Second call from applyRouting → getAvailableSinks — no sinks (trigger error)
+            cb(null, '', '');
+          }
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      const errorHandler = jest.fn();
+      audioRoutingService.on('routing:error', errorHandler);
+
+      audioRoutingService.startSinkMonitor();
+      mockProc.stdout.emit('data', Buffer.from("Event 'new' on sink #89\n"));
+
+      // Give async operations time to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      expect(errorHandler).toHaveBeenCalledWith(expect.objectContaining({
+        stream: 'video',
+        context: 'auto-routing on sink added',
+      }));
     });
 
     it('should auto-restart monitor on process exit with backoff', async () => {

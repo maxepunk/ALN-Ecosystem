@@ -13,7 +13,6 @@
 
 const EventEmitter = require('events');
 const { execFile, spawn } = require('child_process');
-const config = require('../config');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 
@@ -48,7 +47,7 @@ class AudioRoutingService extends EventEmitter {
     super();
     this._monitorProc = null;
     this._monitorRestartTimer = null;
-    this._routingData = { ...DEFAULT_ROUTING, routes: { ...DEFAULT_ROUTING.routes } };
+    this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
   }
 
   // ── Lifecycle ──
@@ -110,11 +109,8 @@ class AudioRoutingService extends EventEmitter {
     // 3. Remove all event listeners
     this.removeAllListeners();
 
-    // 4. Reset routing state to defaults
-    this._routingData = {
-      routes: { video: { sink: 'hdmi' } },
-      defaultSink: 'hdmi',
-    };
+    // 4. Reset routing state to defaults (deep copy to prevent mutation of DEFAULT_ROUTING)
+    this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
   }
 
   // ── Sink Discovery and Classification ──
@@ -550,6 +546,11 @@ class AudioRoutingService extends EventEmitter {
       logger.error('Failed to auto-apply routing on sink added', {
         sinkId,
         error: err.message,
+      });
+      this.emit('routing:error', {
+        stream: 'video',
+        error: err.message,
+        context: 'auto-routing on sink added',
       });
     }
   }
