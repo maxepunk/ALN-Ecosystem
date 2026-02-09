@@ -164,6 +164,9 @@ class GMScannerPage {
     this.audioOutputSection = page.locator('#audio-output-section');
     this.audioHdmiRadio = page.locator('input[name="audioOutput"][value="hdmi"]');
     this.audioBluetoothRadio = page.locator('input[name="audioOutput"][value="bluetooth"]');
+    // Labels are the visible click targets (inputs are hidden via CSS opacity:0)
+    this.audioHdmiLabel = page.locator('label.radio-toggle:has(input[value="hdmi"])');
+    this.audioBluetoothLabel = page.locator('label.radio-toggle:has(input[value="bluetooth"])');
     this.btWarning = page.locator('#bt-warning');
     this.btSpeakerCount = page.locator('#bt-speaker-count');
     this.btScanBtn = page.locator('#btn-bt-scan');
@@ -861,17 +864,17 @@ class GMScannerPage {
   }
 
   /**
-   * Select HDMI audio output
+   * Select HDMI audio output (clicks visible label, not hidden input)
    */
   async selectHdmiAudio() {
-    await this.audioHdmiRadio.check();
+    await this.audioHdmiLabel.click();
   }
 
   /**
-   * Select Bluetooth audio output
+   * Select Bluetooth audio output (clicks visible label, not hidden input)
    */
   async selectBluetoothAudio() {
-    await this.audioBluetoothRadio.check();
+    await this.audioBluetoothLabel.click();
   }
 
   /**
