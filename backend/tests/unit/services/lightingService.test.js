@@ -574,6 +574,18 @@ describe('LightingService', () => {
   // ── Docker container management ──
 
   describe('Docker container management', () => {
+    let origNodeEnv;
+
+    beforeEach(() => {
+      // Save NODE_ENV and set to non-test so Docker management code executes
+      origNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = origNodeEnv;
+    });
+
     describe('init() — container auto-start', () => {
       beforeEach(() => {
         // Default: HA reachable after container start
@@ -627,13 +639,11 @@ describe('LightingService', () => {
       });
 
       it('should skip Docker management in test environment', async () => {
-        const origEnv = process.env.NODE_ENV;
         process.env.NODE_ENV = 'test';
 
         await lightingService.init();
 
         expect(dockerHelper.containerExists).not.toHaveBeenCalled();
-        process.env.NODE_ENV = origEnv;
       });
 
       it('should not throw when Docker commands fail', async () => {

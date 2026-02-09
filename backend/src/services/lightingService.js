@@ -11,6 +11,7 @@ const EventEmitter = require('events');
 const axios = require('axios');
 const config = require('../config');
 const logger = require('../utils/logger');
+const dockerHelper = require('../utils/dockerHelper');
 
 class LightingService extends EventEmitter {
   constructor() {
@@ -19,6 +20,7 @@ class LightingService extends EventEmitter {
     this._scenes = [];
     this._activeScene = null;
     this._reconnectInterval = null;
+    this._containerStartedByUs = false;
   }
 
   // ── Connection management ──
@@ -38,6 +40,9 @@ class LightingService extends EventEmitter {
       logger.info('Lighting service skipped — no Home Assistant token configured');
       return;
     }
+
+    // Ensure HA Docker container is running before attempting connection
+    await this._ensureContainerRunning();
 
     try {
       await this.checkConnection();
@@ -190,10 +195,26 @@ class LightingService extends EventEmitter {
   // ── Lifecycle ──
 
   /**
-   * Clean up resources — clears reconnect interval.
+   * Clean up resources — clears reconnect interval and optionally stops
+   * the HA Docker container (only if we started it).
+   * @returns {Promise<void>}
    */
-  cleanup() {
+  async cleanup() {
     this._clearReconnect();
+
+    if (this._containerStartedByUs) {
+      const container = config.lighting.dockerContainer;
+      const timeout = config.lighting.dockerStopTimeout;
+      try {
+        logger.info('Stopping HA Docker container (we started it)', { container });
+        await dockerHelper.stopContainer(container, timeout);
+        logger.info('HA Docker container stopped', { container });
+      } catch (err) {
+        logger.warn('Failed to stop HA Docker container', { container, error: err.message });
+      }
+      this._containerStartedByUs = false;
+    }
+
     logger.info('Lighting service cleaned up');
   }
 
@@ -206,9 +227,49 @@ class LightingService extends EventEmitter {
     this._connected = false;
     this._scenes = [];
     this._activeScene = null;
+    this._containerStartedByUs = false;
   }
 
   // ── Private helpers ──
+
+  /**
+   * Ensure the HA Docker container is running.
+   * Skipped in test env or when dockerManage is disabled.
+   * Non-blocking: catches all errors, logs warnings, never throws.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _ensureContainerRunning() {
+    if (process.env.NODE_ENV === 'test' || !config.lighting.dockerManage) {
+      return;
+    }
+
+    const container = config.lighting.dockerContainer;
+
+    try {
+      const exists = await dockerHelper.containerExists(container);
+      if (!exists) {
+        logger.info('HA Docker container not found — skipping auto-start', { container });
+        return;
+      }
+
+      const running = await dockerHelper.isContainerRunning(container);
+      if (running) {
+        logger.info('HA Docker container already running', { container });
+        return;
+      }
+
+      logger.info('Starting HA Docker container', { container });
+      await dockerHelper.startContainer(container);
+      this._containerStartedByUs = true;
+      logger.info('HA Docker container started', { container });
+    } catch (err) {
+      logger.warn('Failed to manage HA Docker container — continuing without', {
+        container,
+        error: err.message,
+      });
+    }
+  }
 
   /**
    * Build the auth headers for HA API calls.
