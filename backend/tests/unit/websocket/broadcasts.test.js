@@ -818,7 +818,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         );
       });
 
-      it('should broadcast lighting:scene with type refreshed on scenes:refreshed', () => {
+      it('should broadcast lighting:status with type refreshed on scenes:refreshed', () => {
         setupWithEnvServices();
 
         const data = { scenes: ['scene.dramatic_red', 'scene.cool_blue'], count: 2 };
@@ -826,9 +826,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
         expect(mockIo.to).toHaveBeenCalledWith('gm');
         expect(mockIo.emit).toHaveBeenCalledWith(
-          'lighting:scene',
+          'lighting:status',
           expect.objectContaining({
-            event: 'lighting:scene',
+            event: 'lighting:status',
             data: expect.objectContaining({
               type: 'refreshed',
               scenes: ['scene.dramatic_red', 'scene.cool_blue'],

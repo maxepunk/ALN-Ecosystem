@@ -587,24 +587,30 @@ function setupBroadcastListeners(io, services) {
   if (bluetoothService) {
     addTrackedListener(bluetoothService, 'device:connected', (device) => {
       emitToRoom(io, 'gm', 'bluetooth:device', { type: 'connected', device });
+      logger.debug('Broadcasted bluetooth:device connected', { address: device?.address });
     });
     addTrackedListener(bluetoothService, 'device:disconnected', (device) => {
       emitToRoom(io, 'gm', 'bluetooth:device', { type: 'disconnected', device });
+      logger.debug('Broadcasted bluetooth:device disconnected', { address: device?.address });
     });
     addTrackedListener(bluetoothService, 'device:paired', (device) => {
       emitToRoom(io, 'gm', 'bluetooth:device', { type: 'paired', device });
+      logger.debug('Broadcasted bluetooth:device paired', { address: device?.address });
     });
     addTrackedListener(bluetoothService, 'device:unpaired', (device) => {
       emitToRoom(io, 'gm', 'bluetooth:device', { type: 'unpaired', device });
+      logger.debug('Broadcasted bluetooth:device unpaired', { address: device?.address });
     });
     addTrackedListener(bluetoothService, 'device:discovered', (device) => {
       emitToRoom(io, 'gm', 'bluetooth:device', { type: 'discovered', device });
     });
     addTrackedListener(bluetoothService, 'scan:started', (data) => {
       emitToRoom(io, 'gm', 'bluetooth:scan', { scanning: true, ...data });
+      logger.debug('Broadcasted bluetooth:scan started');
     });
     addTrackedListener(bluetoothService, 'scan:stopped', (data) => {
       emitToRoom(io, 'gm', 'bluetooth:scan', { scanning: false, ...data });
+      logger.debug('Broadcasted bluetooth:scan stopped');
     });
   }
 
@@ -612,12 +618,15 @@ function setupBroadcastListeners(io, services) {
   if (audioRoutingService) {
     addTrackedListener(audioRoutingService, 'routing:changed', (data) => {
       emitToRoom(io, 'gm', 'audio:routing', data);
+      logger.debug('Broadcasted audio:routing changed', { stream: data?.stream, sink: data?.sink });
     });
     addTrackedListener(audioRoutingService, 'routing:applied', (data) => {
       emitToRoom(io, 'gm', 'audio:routing', data);
+      logger.debug('Broadcasted audio:routing applied', { stream: data?.stream, sink: data?.sink });
     });
     addTrackedListener(audioRoutingService, 'routing:fallback', (data) => {
       emitToRoom(io, 'gm', 'audio:routing:fallback', data);
+      logger.info('Broadcasted audio:routing:fallback', { stream: data?.stream, actualSink: data?.actualSink });
     });
   }
 
@@ -625,12 +634,15 @@ function setupBroadcastListeners(io, services) {
   if (lightingService) {
     addTrackedListener(lightingService, 'scene:activated', (data) => {
       emitToRoom(io, 'gm', 'lighting:scene', data);
+      logger.debug('Broadcasted lighting:scene activated', { sceneId: data?.sceneId });
     });
     addTrackedListener(lightingService, 'connection:changed', (data) => {
       emitToRoom(io, 'gm', 'lighting:status', data);
+      logger.debug('Broadcasted lighting:status', { connected: data?.connected });
     });
     addTrackedListener(lightingService, 'scenes:refreshed', (data) => {
-      emitToRoom(io, 'gm', 'lighting:scene', { type: 'refreshed', ...data });
+      emitToRoom(io, 'gm', 'lighting:status', { type: 'refreshed', ...data });
+      logger.debug('Broadcasted lighting:status refreshed', { sceneCount: data?.scenes?.length });
     });
   }
 
