@@ -697,7 +697,7 @@ describe('LightingService', () => {
         await lightingService.init();
 
         // Should not throw
-        await expect(lightingService.cleanup()).resolves.not.toThrow();
+        await expect(lightingService.cleanup()).resolves.toBeUndefined();
       });
     });
 
