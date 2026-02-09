@@ -22,5 +22,6 @@ describe('Environment Control Config', () => {
     expect(config.lighting).toBeDefined();
     expect(config.lighting.enabled).toBe(true);
     expect(config.lighting.homeAssistantUrl).toBe('http://localhost:8123');
+    expect(config.lighting).toHaveProperty('homeAssistantToken');
   });
 });

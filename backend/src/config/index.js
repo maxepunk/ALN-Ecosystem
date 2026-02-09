@@ -133,8 +133,8 @@ const config = {
 
   // Bluetooth Configuration
   bluetooth: {
-    scanTimeout: parseInt(process.env.BLUETOOTH_SCAN_TIMEOUT_SEC, 10) || 15,
-    connectTimeout: parseInt(process.env.BLUETOOTH_CONNECT_TIMEOUT_SEC, 10) || 10,
+    scanTimeout: parseInt(process.env.BLUETOOTH_SCAN_TIMEOUT_SEC || '15', 10), // seconds
+    connectTimeout: parseInt(process.env.BLUETOOTH_CONNECT_TIMEOUT_SEC || '10', 10), // seconds
   },
 
   // Audio Routing Configuration
