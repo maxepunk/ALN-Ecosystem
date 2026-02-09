@@ -130,6 +130,24 @@ const config = {
     adminPanel: process.env.ENABLE_ADMIN_PANEL !== 'false', // default true
     debugging: process.env.ENABLE_DEBUGGING === 'true',
   },
+
+  // Bluetooth Configuration
+  bluetooth: {
+    scanTimeout: parseInt(process.env.BLUETOOTH_SCAN_TIMEOUT_SEC, 10) || 15,
+    connectTimeout: parseInt(process.env.BLUETOOTH_CONNECT_TIMEOUT_SEC, 10) || 10,
+  },
+
+  // Audio Routing Configuration
+  audio: {
+    defaultOutput: process.env.AUDIO_DEFAULT_OUTPUT || 'hdmi',
+  },
+
+  // Lighting Configuration (Home Assistant)
+  lighting: {
+    enabled: process.env.LIGHTING_ENABLED !== 'false',
+    homeAssistantUrl: process.env.HOME_ASSISTANT_URL || 'http://localhost:8123',
+    homeAssistantToken: process.env.HOME_ASSISTANT_TOKEN || '',
+  },
 };
 
 // Backward compatibility aliases
