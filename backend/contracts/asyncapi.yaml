@@ -1285,11 +1285,15 @@ components:
                     example: "Beats Pill"
                   connected:
                     type: boolean
-                    description: Whether device is currently connected
+                    description: >-
+                      Whether device is currently connected.
+                      Implementations SHOULD always include this field.
                     example: true
                   paired:
                     type: boolean
-                    description: Whether device is currently paired
+                    description: >-
+                      Whether device is currently paired.
+                      Implementations SHOULD always include this field.
                     example: true
           timestamp:
             type: string
@@ -1331,10 +1335,14 @@ components:
 
         **When Sent**:
         - Scan starts (scanning: true, no devices yet)
-        - Scan completes (scanning: false, full device list)
+        - Scan completes (scanning: false, with final device snapshot)
 
         **Note**: Individual device discoveries during scan are sent via
         bluetooth:device events with type=discovered for real-time UI updates.
+        The `devices` array on scan complete provides a final snapshot of all
+        discovered devices — implementations SHOULD populate it via
+        `bluetoothService.getDiscoveredDevices()` so the GM Scanner has a
+        complete list without needing to accumulate individual discoveries.
 
         **Decisions Applied**: #2 (wrapped envelope)
       payload:
@@ -1359,7 +1367,9 @@ components:
                 example: false
               devices:
                 type: array
-                description: Discovered devices (present when scan completes)
+                description: >-
+                  Final snapshot of all discovered devices. Present when
+                  scanning=false. Populated via getDiscoveredDevices().
                 items:
                   type: object
                   required:
@@ -1848,7 +1858,10 @@ components:
         - `bluetooth:unpair` — `{address: string}` (required)
         - `bluetooth:connect` — `{address: string}` (required)
         - `bluetooth:disconnect` — `{address: string}` (required)
-        - `audio:route:set` — `{stream: 'video', sink: 'hdmi'|'bluetooth'}` (Phase 0 only accepts stream='video')
+        - `audio:route:set` — `{stream: 'video', sink: 'hdmi'|'bluetooth'}` (Phase 0 only accepts stream='video').
+          The GM sends a logical alias ('hdmi'/'bluetooth'); audioRoutingService resolves
+          it to an actual PipeWire sink name. The `audio:routing` broadcast reports the
+          resolved sink name with a `sinkType` field for the UI-friendly category.
         - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
         - `lighting:scenes:refresh` — `{}`
 
