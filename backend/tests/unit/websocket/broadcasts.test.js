@@ -536,4 +536,354 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       expect(mockTransactionService.listenerCount('score:adjusted')).toBe(0);
     });
   });
+
+  // ============================================================
+  // ENVIRONMENT CONTROL BROADCASTS (Phase 0)
+  // ============================================================
+
+  describe('Environment Control Broadcasts (Phase 0)', () => {
+    let mockBluetoothService;
+    let mockAudioRoutingService;
+    let mockLightingService;
+
+    beforeEach(() => {
+      mockBluetoothService = new EventEmitter();
+      mockAudioRoutingService = new EventEmitter();
+      mockLightingService = new EventEmitter();
+    });
+
+    /**
+     * Helper to setup broadcast listeners with environment services included
+     */
+    function setupWithEnvServices() {
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        bluetoothService: mockBluetoothService,
+        audioRoutingService: mockAudioRoutingService,
+        lightingService: mockLightingService
+      });
+    }
+
+    describe('Bluetooth Events', () => {
+      it('should broadcast bluetooth:device with type connected on device:connected', () => {
+        setupWithEnvServices();
+
+        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', profile: 'a2dp_sink' };
+        mockBluetoothService.emit('device:connected', device);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:device',
+          expect.objectContaining({
+            event: 'bluetooth:device',
+            data: expect.objectContaining({
+              type: 'connected',
+              device
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast bluetooth:device with type disconnected on device:disconnected', () => {
+        setupWithEnvServices();
+
+        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker' };
+        mockBluetoothService.emit('device:disconnected', device);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:device',
+          expect.objectContaining({
+            event: 'bluetooth:device',
+            data: expect.objectContaining({
+              type: 'disconnected',
+              device
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast bluetooth:device with type paired on device:paired', () => {
+        setupWithEnvServices();
+
+        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker' };
+        mockBluetoothService.emit('device:paired', device);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:device',
+          expect.objectContaining({
+            event: 'bluetooth:device',
+            data: expect.objectContaining({
+              type: 'paired',
+              device
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast bluetooth:device with type unpaired on device:unpaired', () => {
+        setupWithEnvServices();
+
+        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker' };
+        mockBluetoothService.emit('device:unpaired', device);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:device',
+          expect.objectContaining({
+            event: 'bluetooth:device',
+            data: expect.objectContaining({
+              type: 'unpaired',
+              device
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast bluetooth:device with type discovered on device:discovered', () => {
+        setupWithEnvServices();
+
+        const device = { address: '11:22:33:44:55:66', name: 'New Speaker', rssi: -45 };
+        mockBluetoothService.emit('device:discovered', device);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:device',
+          expect.objectContaining({
+            event: 'bluetooth:device',
+            data: expect.objectContaining({
+              type: 'discovered',
+              device
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast bluetooth:scan with scanning true on scan:started', () => {
+        setupWithEnvServices();
+
+        const data = { duration: 30000 };
+        mockBluetoothService.emit('scan:started', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:scan',
+          expect.objectContaining({
+            event: 'bluetooth:scan',
+            data: expect.objectContaining({
+              scanning: true,
+              duration: 30000
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast bluetooth:scan with scanning false on scan:stopped', () => {
+        setupWithEnvServices();
+
+        const data = { reason: 'timeout' };
+        mockBluetoothService.emit('scan:stopped', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'bluetooth:scan',
+          expect.objectContaining({
+            event: 'bluetooth:scan',
+            data: expect.objectContaining({
+              scanning: false,
+              reason: 'timeout'
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+    });
+
+    describe('Audio Routing Events', () => {
+      it('should broadcast audio:routing on routing:changed', () => {
+        setupWithEnvServices();
+
+        const data = { zone: 'main', sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink', previous: 'default' };
+        mockAudioRoutingService.emit('routing:changed', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'audio:routing',
+          expect.objectContaining({
+            event: 'audio:routing',
+            data: expect.objectContaining({
+              zone: 'main',
+              sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink',
+              previous: 'default'
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast audio:routing on routing:applied', () => {
+        setupWithEnvServices();
+
+        const data = { zone: 'main', sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink', success: true };
+        mockAudioRoutingService.emit('routing:applied', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'audio:routing',
+          expect.objectContaining({
+            event: 'audio:routing',
+            data: expect.objectContaining({
+              zone: 'main',
+              sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink',
+              success: true
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast audio:routing:fallback on routing:fallback', () => {
+        setupWithEnvServices();
+
+        const data = { zone: 'main', originalSink: 'bluetooth', fallbackSink: 'default', reason: 'device_disconnected' };
+        mockAudioRoutingService.emit('routing:fallback', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'audio:routing:fallback',
+          expect.objectContaining({
+            event: 'audio:routing:fallback',
+            data: expect.objectContaining({
+              zone: 'main',
+              originalSink: 'bluetooth',
+              fallbackSink: 'default',
+              reason: 'device_disconnected'
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+    });
+
+    describe('Lighting Events', () => {
+      it('should broadcast lighting:scene on scene:activated', () => {
+        setupWithEnvServices();
+
+        const data = { sceneId: 'scene-001', sceneName: 'Dramatic Red', entityId: 'light.stage' };
+        mockLightingService.emit('scene:activated', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'lighting:scene',
+          expect.objectContaining({
+            event: 'lighting:scene',
+            data: expect.objectContaining({
+              sceneId: 'scene-001',
+              sceneName: 'Dramatic Red',
+              entityId: 'light.stage'
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast lighting:status on connection:changed', () => {
+        setupWithEnvServices();
+
+        const data = { connected: true, url: 'http://homeassistant.local:8123' };
+        mockLightingService.emit('connection:changed', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'lighting:status',
+          expect.objectContaining({
+            event: 'lighting:status',
+            data: expect.objectContaining({
+              connected: true,
+              url: 'http://homeassistant.local:8123'
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast lighting:scene with type refreshed on scenes:refreshed', () => {
+        setupWithEnvServices();
+
+        const data = { scenes: ['scene.dramatic_red', 'scene.cool_blue'], count: 2 };
+        mockLightingService.emit('scenes:refreshed', data);
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'lighting:scene',
+          expect.objectContaining({
+            event: 'lighting:scene',
+            data: expect.objectContaining({
+              type: 'refreshed',
+              scenes: ['scene.dramatic_red', 'scene.cool_blue'],
+              count: 2
+            }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+    });
+
+    describe('Graceful degradation without environment services', () => {
+      it('should work without environment services (backward compatible)', () => {
+        // Setup without any environment services - should not throw
+        expect(() => {
+          setupBroadcastListeners(mockIo, {
+            sessionService: mockSessionService,
+            transactionService: mockTransactionService,
+            stateService: mockStateService,
+            videoQueueService: mockVideoQueueService,
+            offlineQueueService: mockOfflineQueueService
+          });
+        }).not.toThrow();
+      });
+    });
+
+    describe('Cleanup includes environment service listeners', () => {
+      it('should remove all environment service listeners on cleanup', () => {
+        setupWithEnvServices();
+
+        // Verify listeners registered
+        expect(mockBluetoothService.listenerCount('device:connected')).toBeGreaterThan(0);
+        expect(mockBluetoothService.listenerCount('device:disconnected')).toBeGreaterThan(0);
+        expect(mockBluetoothService.listenerCount('scan:started')).toBeGreaterThan(0);
+        expect(mockAudioRoutingService.listenerCount('routing:changed')).toBeGreaterThan(0);
+        expect(mockAudioRoutingService.listenerCount('routing:applied')).toBeGreaterThan(0);
+        expect(mockAudioRoutingService.listenerCount('routing:fallback')).toBeGreaterThan(0);
+        expect(mockLightingService.listenerCount('scene:activated')).toBeGreaterThan(0);
+        expect(mockLightingService.listenerCount('connection:changed')).toBeGreaterThan(0);
+        expect(mockLightingService.listenerCount('scenes:refreshed')).toBeGreaterThan(0);
+
+        // Cleanup
+        cleanupBroadcastListeners();
+
+        // Verify all removed
+        expect(mockBluetoothService.listenerCount('device:connected')).toBe(0);
+        expect(mockBluetoothService.listenerCount('device:disconnected')).toBe(0);
+        expect(mockBluetoothService.listenerCount('scan:started')).toBe(0);
+        expect(mockAudioRoutingService.listenerCount('routing:changed')).toBe(0);
+        expect(mockAudioRoutingService.listenerCount('routing:applied')).toBe(0);
+        expect(mockAudioRoutingService.listenerCount('routing:fallback')).toBe(0);
+        expect(mockLightingService.listenerCount('scene:activated')).toBe(0);
+        expect(mockLightingService.listenerCount('connection:changed')).toBe(0);
+        expect(mockLightingService.listenerCount('scenes:refreshed')).toBe(0);
+      });
+    });
+  });
 });

@@ -55,7 +55,8 @@ function setupBroadcastListeners(io, services) {
   logger.info('Setting up broadcast listeners');
   broadcastListenersActive = true;
 
-  const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService } = services;
+  const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
+    bluetoothService, audioRoutingService, lightingService } = services;
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
@@ -575,6 +576,61 @@ function setupBroadcastListeners(io, services) {
 
       emitWrapped(io, 'sync:full', syncFullPayload);
       logger.info('Broadcasted sync:full after offline queue processing');
+    });
+  }
+
+  // ============================================================
+  // ENVIRONMENT CONTROL BROADCASTS (Phase 0)
+  // ============================================================
+
+  // Bluetooth events
+  if (bluetoothService) {
+    addTrackedListener(bluetoothService, 'device:connected', (device) => {
+      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'connected', device });
+    });
+    addTrackedListener(bluetoothService, 'device:disconnected', (device) => {
+      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'disconnected', device });
+    });
+    addTrackedListener(bluetoothService, 'device:paired', (device) => {
+      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'paired', device });
+    });
+    addTrackedListener(bluetoothService, 'device:unpaired', (device) => {
+      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'unpaired', device });
+    });
+    addTrackedListener(bluetoothService, 'device:discovered', (device) => {
+      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'discovered', device });
+    });
+    addTrackedListener(bluetoothService, 'scan:started', (data) => {
+      emitToRoom(io, 'gm', 'bluetooth:scan', { scanning: true, ...data });
+    });
+    addTrackedListener(bluetoothService, 'scan:stopped', (data) => {
+      emitToRoom(io, 'gm', 'bluetooth:scan', { scanning: false, ...data });
+    });
+  }
+
+  // Audio routing events
+  if (audioRoutingService) {
+    addTrackedListener(audioRoutingService, 'routing:changed', (data) => {
+      emitToRoom(io, 'gm', 'audio:routing', data);
+    });
+    addTrackedListener(audioRoutingService, 'routing:applied', (data) => {
+      emitToRoom(io, 'gm', 'audio:routing', data);
+    });
+    addTrackedListener(audioRoutingService, 'routing:fallback', (data) => {
+      emitToRoom(io, 'gm', 'audio:routing:fallback', data);
+    });
+  }
+
+  // Lighting events
+  if (lightingService) {
+    addTrackedListener(lightingService, 'scene:activated', (data) => {
+      emitToRoom(io, 'gm', 'lighting:scene', data);
+    });
+    addTrackedListener(lightingService, 'connection:changed', (data) => {
+      emitToRoom(io, 'gm', 'lighting:status', data);
+    });
+    addTrackedListener(lightingService, 'scenes:refreshed', (data) => {
+      emitToRoom(io, 'gm', 'lighting:scene', { type: 'refreshed', ...data });
     });
   }
 
