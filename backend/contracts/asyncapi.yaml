@@ -91,6 +91,12 @@ channels:
           - $ref: '#/components/messages/GroupCompleted'
           - $ref: '#/components/messages/DisplayMode'
           - $ref: '#/components/messages/DisplayStatus'
+          - $ref: '#/components/messages/BluetoothDevice'
+          - $ref: '#/components/messages/BluetoothScan'
+          - $ref: '#/components/messages/AudioRouting'
+          - $ref: '#/components/messages/AudioRoutingFallback'
+          - $ref: '#/components/messages/LightingScene'
+          - $ref: '#/components/messages/LightingStatus'
           - $ref: '#/components/messages/Error'
     publish:
       summary: Send events to orchestrator
@@ -1220,6 +1226,437 @@ components:
             timestamp: "2025-10-15T20:15:45.000Z"
 
     # ============================================================================
+    # ENVIRONMENT CONTROL (6 events)
+    # Phase 0: Bluetooth speaker management, audio routing, lighting scenes
+    # ============================================================================
+
+    BluetoothDevice:
+      name: bluetooth:device
+      title: Bluetooth Device State Change
+      summary: Broadcast Bluetooth device state changes
+      description: |
+        Broadcast Bluetooth device state changes to all GM Scanners.
+
+        **Phase 0**: Environment Control - Bluetooth speaker management
+
+        **When Sent**:
+        - Device discovered during scan (type: discovered)
+        - Device paired via bluetoothctl (type: paired)
+        - Device unpaired via bluetoothctl (type: unpaired)
+        - Device connected (type: connected)
+        - Device disconnected (type: disconnected)
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: bluetooth:device
+            description: Event name
+          data:
+            type: object
+            required:
+              - type
+              - device
+            properties:
+              type:
+                type: string
+                enum: [connected, disconnected, paired, unpaired, discovered]
+                description: Device state change type
+                example: "connected"
+              device:
+                type: object
+                required:
+                  - address
+                  - name
+                properties:
+                  address:
+                    type: string
+                    description: Bluetooth MAC address
+                    example: "AA:BB:CC:DD:EE:FF"
+                  name:
+                    type: string
+                    description: Bluetooth device name
+                    example: "Beats Pill"
+                  connected:
+                    type: boolean
+                    description: Whether device is currently connected
+                    example: true
+                  paired:
+                    type: boolean
+                    description: Whether device is currently paired
+                    example: true
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:05:00.000Z"
+      examples:
+        - name: Speaker Connected
+          payload:
+            event: bluetooth:device
+            data:
+              type: connected
+              device:
+                address: "AA:BB:CC:DD:EE:FF"
+                name: "Beats Pill"
+                connected: true
+                paired: true
+            timestamp: "2025-10-15T19:05:00.000Z"
+        - name: Device Discovered During Scan
+          payload:
+            event: bluetooth:device
+            data:
+              type: discovered
+              device:
+                address: "11:22:33:44:55:66"
+                name: "W-King X10"
+                connected: false
+                paired: false
+            timestamp: "2025-10-15T19:05:02.000Z"
+
+    BluetoothScan:
+      name: bluetooth:scan
+      title: Bluetooth Scan Status
+      summary: Broadcast Bluetooth scan state and results
+      description: |
+        Broadcast Bluetooth scan status to all GM Scanners.
+
+        **Phase 0**: Environment Control - Bluetooth device discovery
+
+        **When Sent**:
+        - Scan starts (scanning: true, no devices yet)
+        - Scan completes (scanning: false, full device list)
+
+        **Note**: Individual device discoveries during scan are sent via
+        bluetooth:device events with type=discovered for real-time UI updates.
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: bluetooth:scan
+            description: Event name
+          data:
+            type: object
+            required:
+              - scanning
+            properties:
+              scanning:
+                type: boolean
+                description: Whether a scan is currently in progress
+                example: false
+              devices:
+                type: array
+                description: Discovered devices (present when scan completes)
+                items:
+                  type: object
+                  required:
+                    - address
+                    - name
+                  properties:
+                    address:
+                      type: string
+                      description: Bluetooth MAC address
+                      example: "AA:BB:CC:DD:EE:FF"
+                    name:
+                      type: string
+                      description: Bluetooth device name
+                      example: "Beats Pill"
+                    rssi:
+                      type: integer
+                      description: Signal strength (dBm, optional)
+                      example: -45
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:05:15.000Z"
+      examples:
+        - name: Scan Started
+          payload:
+            event: bluetooth:scan
+            data:
+              scanning: true
+            timestamp: "2025-10-15T19:05:00.000Z"
+        - name: Scan Complete
+          payload:
+            event: bluetooth:scan
+            data:
+              scanning: false
+              devices:
+                - address: "AA:BB:CC:DD:EE:FF"
+                  name: "Beats Pill"
+                  rssi: -45
+                - address: "11:22:33:44:55:66"
+                  name: "W-King X10"
+                  rssi: -62
+            timestamp: "2025-10-15T19:05:15.000Z"
+
+    AudioRouting:
+      name: audio:routing
+      title: Audio Routing Change Broadcast
+      summary: Broadcast audio routing changes
+      description: |
+        Broadcast audio routing changes to all GM Scanners.
+
+        **Phase 0**: Environment Control - Audio output routing via PipeWire/pactl
+
+        **Streams-and-Sinks Model**: Audio routing uses a per-stream routing table.
+        Phase 0 only routes the `video` stream. Future phases add ambient, cue, and
+        attention streams.
+
+        **When Sent**:
+        - GM sets audio route via audio:route:set command
+        - Bluetooth speaker connects and routing auto-applies
+        - Routing restored from persistence on startup
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: audio:routing
+            description: Event name
+          data:
+            type: object
+            required:
+              - stream
+              - sink
+              - sinkType
+            properties:
+              stream:
+                type: string
+                description: Audio stream name (Phase 0 only uses 'video')
+                example: "video"
+              sink:
+                type: string
+                description: PipeWire sink name or identifier
+                example: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              sinkType:
+                type: string
+                enum: [hdmi, bluetooth, other]
+                description: Sink type category for UI display
+                example: "bluetooth"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:06:00.000Z"
+      examples:
+        - name: Route Video to Bluetooth Speaker
+          payload:
+            event: audio:routing
+            data:
+              stream: video
+              sink: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              sinkType: bluetooth
+            timestamp: "2025-10-15T19:06:00.000Z"
+        - name: Route Video to HDMI
+          payload:
+            event: audio:routing
+            data:
+              stream: video
+              sink: "alsa_output.platform-fef00700.hdmi.hdmi-stereo"
+              sinkType: hdmi
+            timestamp: "2025-10-15T19:06:00.000Z"
+
+    AudioRoutingFallback:
+      name: audio:routing:fallback
+      title: Audio Routing Fallback Notification
+      summary: Broadcast when audio routing falls back to a different sink
+      description: |
+        Broadcast audio routing fallback to all GM Scanners when the preferred
+        sink is unavailable and routing falls back to an alternative.
+
+        **Phase 0**: Environment Control - Audio routing resilience
+
+        **When Sent**:
+        - Bluetooth speaker disconnects during playback -> fallback to HDMI
+        - Preferred sink not found at routing time -> fallback to default
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: audio:routing:fallback
+            description: Event name
+          data:
+            type: object
+            required:
+              - stream
+              - reason
+              - from
+              - to
+            properties:
+              stream:
+                type: string
+                description: Audio stream that was rerouted
+                example: "video"
+              reason:
+                type: string
+                description: Reason for fallback
+                example: "Bluetooth speaker disconnected"
+              from:
+                type: string
+                description: Original sink that was unavailable
+                example: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              to:
+                type: string
+                description: Fallback sink used instead
+                example: "alsa_output.platform-fef00700.hdmi.hdmi-stereo"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:30:00.000Z"
+      examples:
+        - name: Bluetooth Speaker Lost
+          payload:
+            event: audio:routing:fallback
+            data:
+              stream: video
+              reason: "Bluetooth speaker disconnected"
+              from: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              to: "alsa_output.platform-fef00700.hdmi.hdmi-stereo"
+            timestamp: "2025-10-15T20:30:00.000Z"
+
+    LightingScene:
+      name: lighting:scene
+      title: Lighting Scene Activated Broadcast
+      summary: Broadcast when a lighting scene is activated
+      description: |
+        Broadcast lighting scene activation to all GM Scanners.
+
+        **Phase 0**: Environment Control - Home Assistant lighting scene control
+
+        **When Sent**:
+        - GM activates a scene via lighting:scene:activate command
+        - Scene activated successfully via Home Assistant REST API
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: lighting:scene
+            description: Event name
+          data:
+            type: object
+            required:
+              - sceneId
+            properties:
+              sceneId:
+                type: string
+                description: Home Assistant scene entity ID
+                example: "scene.interrogation_red"
+              sceneName:
+                type: string
+                description: Human-friendly scene name (from HA attributes)
+                example: "Interrogation Red"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:30:00.000Z"
+      examples:
+        - name: Scene Activated
+          payload:
+            event: lighting:scene
+            data:
+              sceneId: "scene.interrogation_red"
+              sceneName: "Interrogation Red"
+            timestamp: "2025-10-15T19:30:00.000Z"
+
+    LightingStatus:
+      name: lighting:status
+      title: Lighting Service Status
+      summary: Broadcast Home Assistant connection status
+      description: |
+        Broadcast Home Assistant connection status to all GM Scanners.
+
+        **Phase 0**: Environment Control - Home Assistant connectivity
+
+        **When Sent**:
+        - On initial connection to Home Assistant
+        - On Home Assistant connection loss
+        - On Home Assistant reconnection
+        - After lighting:scenes:refresh command completes
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: lighting:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - connected
+            properties:
+              connected:
+                type: boolean
+                description: Whether Home Assistant is reachable
+                example: true
+              sceneCount:
+                type: integer
+                description: Number of available scenes (present when connected)
+                minimum: 0
+                example: 6
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:05.000Z"
+      examples:
+        - name: Connected with Scenes
+          payload:
+            event: lighting:status
+            data:
+              connected: true
+              sceneCount: 6
+            timestamp: "2025-10-15T19:00:05.000Z"
+        - name: Disconnected
+          payload:
+            event: lighting:status
+            data:
+              connected: false
+            timestamp: "2025-10-15T20:45:00.000Z"
+
+    # ============================================================================
     # SESSION MANAGEMENT (2 events)
     # ============================================================================
 
@@ -1400,6 +1837,20 @@ components:
         - Score: adjust
         - Transaction: delete, create
         - System: reset
+        - Bluetooth: scan:start, scan:stop, pair, unpair, connect, disconnect
+        - Audio: route:set
+        - Lighting: scene:activate, scenes:refresh
+
+        **Environment Control Action Payloads (Phase 0)**:
+        - `bluetooth:scan:start` — `{timeout?: integer}` (default 15s)
+        - `bluetooth:scan:stop` — `{}`
+        - `bluetooth:pair` — `{address: string}` (required)
+        - `bluetooth:unpair` — `{address: string}` (required)
+        - `bluetooth:connect` — `{address: string}` (required)
+        - `bluetooth:disconnect` — `{address: string}` (required)
+        - `audio:route:set` — `{stream: 'video', sink: 'hdmi'|'bluetooth'}` (Phase 0 only accepts stream='video')
+        - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
+        - `lighting:scenes:refresh` — `{}`
 
         **Breaking Changes**: Admin commands moved from HTTP POST to WebSocket (proper transport).
       payload:
@@ -1444,6 +1895,15 @@ components:
                   - transaction:delete
                   - transaction:create
                   - system:reset
+                  - bluetooth:scan:start
+                  - bluetooth:scan:stop
+                  - bluetooth:pair
+                  - bluetooth:unpair
+                  - bluetooth:connect
+                  - bluetooth:disconnect
+                  - audio:route:set
+                  - lighting:scene:activate
+                  - lighting:scenes:refresh
                 example: "video:skip"
               payload:
                 type: object
@@ -1481,6 +1941,46 @@ components:
                 delta: -500
                 reason: "Penalty for rule violation"
             timestamp: "2025-10-15T20:25:00.000Z"
+        - name: Bluetooth Scan Start
+          payload:
+            event: gm:command
+            data:
+              action: bluetooth:scan:start
+              payload:
+                timeout: 15
+            timestamp: "2025-10-15T19:05:00.000Z"
+        - name: Bluetooth Connect
+          payload:
+            event: gm:command
+            data:
+              action: bluetooth:connect
+              payload:
+                address: "AA:BB:CC:DD:EE:FF"
+            timestamp: "2025-10-15T19:05:30.000Z"
+        - name: Audio Route Set
+          payload:
+            event: gm:command
+            data:
+              action: audio:route:set
+              payload:
+                stream: video
+                sink: bluetooth
+            timestamp: "2025-10-15T19:06:00.000Z"
+        - name: Lighting Scene Activate
+          payload:
+            event: gm:command
+            data:
+              action: lighting:scene:activate
+              payload:
+                sceneId: "scene.interrogation_red"
+            timestamp: "2025-10-15T19:30:00.000Z"
+        - name: Lighting Scenes Refresh
+          payload:
+            event: gm:command
+            data:
+              action: lighting:scenes:refresh
+              payload: {}
+            timestamp: "2025-10-15T19:00:10.000Z"
 
     GmCommandAck:
       name: gm:command:ack
