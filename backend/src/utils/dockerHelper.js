@@ -29,11 +29,24 @@ function _dockerExec(args) {
 }
 
 /**
+ * Validate container name parameter.
+ * @param {string} name - Container name to validate
+ * @throws {Error} If name is not a non-empty string
+ * @private
+ */
+function _validateName(name) {
+  if (!name || typeof name !== 'string') {
+    throw new Error('Container name must be a non-empty string');
+  }
+}
+
+/**
  * Check if a Docker container exists (any state).
  * @param {string} name - Container name
  * @returns {Promise<boolean>}
  */
 async function containerExists(name) {
+  _validateName(name);
   try {
     const stdout = await _dockerExec([
       'ps', '-a', '--filter', `name=^${name}$`, '--format', '{{.Names}}'
@@ -50,6 +63,7 @@ async function containerExists(name) {
  * @returns {Promise<boolean>}
  */
 async function isContainerRunning(name) {
+  _validateName(name);
   try {
     const stdout = await _dockerExec([
       'ps', '--filter', `name=^${name}$`, '--filter', 'status=running', '--format', '{{.Names}}'
@@ -67,6 +81,7 @@ async function isContainerRunning(name) {
  * @throws {Error} If container doesn't exist or Docker fails
  */
 async function startContainer(name) {
+  _validateName(name);
   await _dockerExec(['start', name]);
 }
 
@@ -78,6 +93,10 @@ async function startContainer(name) {
  * @throws {Error} If container doesn't exist or Docker fails
  */
 async function stopContainer(name, timeout = 10) {
+  _validateName(name);
+  if (typeof timeout !== 'number' || timeout < 0 || !Number.isFinite(timeout)) {
+    throw new Error('Timeout must be a non-negative number');
+  }
   await _dockerExec(['stop', '-t', String(timeout), name]);
 }
 

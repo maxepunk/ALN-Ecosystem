@@ -18,6 +18,77 @@ describe('dockerHelper', () => {
     jest.clearAllMocks();
   });
 
+  // ── Input Validation ──
+
+  describe('name validation', () => {
+    it.each([
+      ['containerExists', containerExists],
+      ['isContainerRunning', isContainerRunning],
+      ['startContainer', startContainer],
+      ['stopContainer', stopContainer],
+    ])('%s should reject null name', async (fnName, fn) => {
+      await expect(fn(null)).rejects.toThrow('Container name must be a non-empty string');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['containerExists', containerExists],
+      ['isContainerRunning', isContainerRunning],
+      ['startContainer', startContainer],
+      ['stopContainer', stopContainer],
+    ])('%s should reject empty string name', async (fnName, fn) => {
+      await expect(fn('')).rejects.toThrow('Container name must be a non-empty string');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['containerExists', containerExists],
+      ['isContainerRunning', isContainerRunning],
+      ['startContainer', startContainer],
+      ['stopContainer', stopContainer],
+    ])('%s should reject non-string name', async (fnName, fn) => {
+      await expect(fn(123)).rejects.toThrow('Container name must be a non-empty string');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('stopContainer timeout validation', () => {
+    it('should reject NaN timeout', async () => {
+      await expect(stopContainer('mycontainer', NaN)).rejects.toThrow('Timeout must be a non-negative number');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should reject negative timeout', async () => {
+      await expect(stopContainer('mycontainer', -5)).rejects.toThrow('Timeout must be a non-negative number');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should reject Infinity timeout', async () => {
+      await expect(stopContainer('mycontainer', Infinity)).rejects.toThrow('Timeout must be a non-negative number');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should reject string timeout', async () => {
+      await expect(stopContainer('mycontainer', '10')).rejects.toThrow('Timeout must be a non-negative number');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should accept zero timeout', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'mycontainer\n', '');
+      });
+
+      await stopContainer('mycontainer', 0);
+
+      expect(execFile).toHaveBeenCalledWith(
+        'docker',
+        ['stop', '-t', '0', 'mycontainer'],
+        expect.any(Object),
+        expect.any(Function)
+      );
+    });
+  });
+
   // ── containerExists() ──
 
   describe('containerExists()', () => {
