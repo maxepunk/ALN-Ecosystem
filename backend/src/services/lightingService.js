@@ -166,7 +166,7 @@ class LightingService extends EventEmitter {
     await axios.post(
       `${config.lighting.homeAssistantUrl}/api/services/scene/turn_on`,
       { entity_id: sceneId },
-      { headers: this._getHeaders() }
+      { headers: this._getHeaders(), timeout: 5000 }
     );
 
     this._activeScene = sceneId;
