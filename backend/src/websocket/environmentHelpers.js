@@ -49,7 +49,7 @@ async function buildEnvironmentState({ bluetoothService, audioRoutingService, li
       ]);
       bluetooth = {
         available,
-        scanning: !!bluetoothService._scanProc,
+        scanning: bluetoothService.isScanning(),
         pairedDevices,
         connectedDevices,
       };

@@ -38,7 +38,7 @@ describe('environmentHelpers - buildEnvironmentState', () => {
         getConnectedDevices: jest.fn().mockResolvedValue([
           { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true },
         ]),
-        _scanProc: null,
+        isScanning: jest.fn().mockReturnValue(false),
       };
 
       const result = await buildEnvironmentState({ bluetoothService: mockBluetooth });
@@ -51,12 +51,12 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       });
     });
 
-    it('should report scanning: true when _scanProc is set', async () => {
+    it('should report scanning: true when isScanning() returns true', async () => {
       const mockBluetooth = {
         isAvailable: jest.fn().mockResolvedValue(true),
         getPairedDevices: jest.fn().mockResolvedValue([]),
         getConnectedDevices: jest.fn().mockResolvedValue([]),
-        _scanProc: { pid: 1234 }, // Truthy value
+        isScanning: jest.fn().mockReturnValue(true),
       };
 
       const result = await buildEnvironmentState({ bluetoothService: mockBluetooth });
@@ -69,7 +69,7 @@ describe('environmentHelpers - buildEnvironmentState', () => {
         isAvailable: jest.fn().mockRejectedValue(new Error('bluetoothctl not found')),
         getPairedDevices: jest.fn().mockRejectedValue(new Error('bluetoothctl not found')),
         getConnectedDevices: jest.fn().mockRejectedValue(new Error('bluetoothctl not found')),
-        _scanProc: null,
+        isScanning: jest.fn().mockReturnValue(false),
       };
 
       const result = await buildEnvironmentState({ bluetoothService: mockBluetooth });
@@ -168,7 +168,7 @@ describe('environmentHelpers - buildEnvironmentState', () => {
         isAvailable: jest.fn().mockResolvedValue(true),
         getPairedDevices: jest.fn().mockResolvedValue([]),
         getConnectedDevices: jest.fn().mockResolvedValue([]),
-        _scanProc: null,
+        isScanning: jest.fn().mockReturnValue(false),
       };
 
       const mockAudio = {
@@ -204,7 +204,7 @@ describe('environmentHelpers - buildEnvironmentState', () => {
         isAvailable: jest.fn().mockResolvedValue(false),
         getPairedDevices: jest.fn().mockResolvedValue([]),
         getConnectedDevices: jest.fn().mockResolvedValue([]),
-        _scanProc: null,
+        isScanning: jest.fn().mockReturnValue(false),
       };
 
       const result = await buildEnvironmentState({

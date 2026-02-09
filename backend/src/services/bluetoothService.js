@@ -143,6 +143,14 @@ class BluetoothService extends EventEmitter {
   }
 
   /**
+   * Check if a scan is currently active
+   * @returns {boolean}
+   */
+  isScanning() {
+    return !!this._scanProc;
+  }
+
+  /**
    * Stop an active scan
    */
   stopScan() {
