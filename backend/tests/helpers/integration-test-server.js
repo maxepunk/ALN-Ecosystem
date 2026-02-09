@@ -131,12 +131,19 @@ async function setupIntegrationTestServer() {
   });
 
   // Setup broadcast listeners (service events → WebSocket broadcasts)
+  const bluetoothService = require('../../src/services/bluetoothService');
+  const audioRoutingService = require('../../src/services/audioRoutingService');
+  const lightingService = require('../../src/services/lightingService');
+
   setupBroadcastListeners(io, {
     sessionService,
     stateService,
     videoQueueService,
     offlineQueueService,
-    transactionService
+    transactionService,
+    bluetoothService,
+    audioRoutingService,
+    lightingService,
   });
 
   // Start server on random available port
@@ -197,11 +204,19 @@ async function cleanupIntegrationTestServer(context) {
   const transactionService = require('../../src/services/transactionService');
   const stateService = require('../../src/services/stateService');
   const videoQueueService = require('../../src/services/videoQueueService');
+  const bluetoothService = require('../../src/services/bluetoothService');
+  const audioRoutingService = require('../../src/services/audioRoutingService');
+  const lightingService = require('../../src/services/lightingService');
 
   await sessionService.reset();
   await transactionService.reset();
   await stateService.reset();
   await videoQueueService.reset();
+
+  // Reset environment control services
+  bluetoothService.reset();
+  audioRoutingService.reset();
+  lightingService.reset();
 
   // Remove remaining event listeners
   sessionService.removeAllListeners();

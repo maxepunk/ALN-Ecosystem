@@ -20,6 +20,9 @@ const videoQueueService = require('./services/videoQueueService');
 const vlcService = require('./services/vlcService');
 const offlineQueueService = require('./services/offlineQueueService');
 const displayControlService = require('./services/displayControlService');
+const bluetoothService = require('./services/bluetoothService');
+const audioRoutingService = require('./services/audioRoutingService');
+const lightingService = require('./services/lightingService');
 
 // Import routes (6 files after health extraction)
 const scanRoutes = require('./routes/scanRoutes');
@@ -155,6 +158,12 @@ async function initializeServices() {
     const offlineStatusMiddleware = require('./middleware/offlineStatus');
     offlineStatusMiddleware.initializeWithService(offlineQueueService);
     
+    // Initialize environment control services (Phase 0)
+    // Non-blocking: each service logs a warning and continues if unavailable
+    await bluetoothService.init();        // Check adapter, warn if unavailable
+    await audioRoutingService.init();     // Start sink monitor, load persisted routes
+    await lightingService.init();         // Non-blocking HA connection check
+
     // Initialize VLC service only if video playback is enabled
     if (config.features.videoPlayback) {
       // Add error handler to prevent crashes from VLC connection failures

@@ -40,7 +40,10 @@ async function performSystemReset(io, services) {
     videoQueueService,
     offlineQueueService,
     displayControlService, // Optional (may be undefined in some contexts)
-    vlcService           // Optional
+    vlcService,           // Optional
+    bluetoothService,     // Optional (Phase 0 environment control)
+    audioRoutingService,  // Optional (Phase 0 environment control)
+    lightingService       // Optional (Phase 0 environment control)
   } = services;
 
   logger.info('Starting system reset');
@@ -83,6 +86,17 @@ async function performSystemReset(io, services) {
     displayControlService.reset();
   }
 
+  // Reset environment control services (Phase 0)
+  if (bluetoothService) {
+    bluetoothService.reset();
+  }
+  if (audioRoutingService) {
+    audioRoutingService.reset();
+  }
+  if (lightingService) {
+    lightingService.reset();
+  }
+
   logger.debug('All services reset');
 
   // Step 5: Re-initialize infrastructure
@@ -92,7 +106,10 @@ async function performSystemReset(io, services) {
     stateService,
     videoQueueService,
     offlineQueueService,
-    transactionService
+    transactionService,
+    bluetoothService,
+    audioRoutingService,
+    lightingService,
   });
   logger.debug('Broadcast listeners re-initialized');
 

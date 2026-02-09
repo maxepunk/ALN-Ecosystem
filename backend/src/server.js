@@ -28,6 +28,9 @@ const videoQueueService = require('./services/videoQueueService');
 const offlineQueueService = require('./services/offlineQueueService');
 const transactionService = require('./services/transactionService');
 const heartbeatMonitorService = require('./services/heartbeatMonitorService');
+const bluetoothService = require('./services/bluetoothService');
+const audioRoutingService = require('./services/audioRoutingService');
+const lightingService = require('./services/lightingService');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order
 const ServerState = {
@@ -105,6 +108,9 @@ function setupServiceListeners(ioInstance) {
     videoQueueService,
     offlineQueueService,
     transactionService,
+    bluetoothService,
+    audioRoutingService,
+    lightingService,
   });
 
   // Initialize and start heartbeat monitoring for HTTP-based devices
@@ -140,6 +146,9 @@ async function shutdown(signal) {
     });
 
     // Cleanup services
+    bluetoothService.cleanup();
+    audioRoutingService.cleanup();
+    lightingService.cleanup();
     await stateService.cleanup();
 
     // Save current session state (preserve AS-IS, don't end it)
