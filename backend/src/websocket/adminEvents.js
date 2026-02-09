@@ -12,6 +12,9 @@ const stateService = require('../services/stateService');
 const videoQueueService = require('../services/videoQueueService');
 const vlcService = require('../services/vlcService');
 const displayControlService = require('../services/displayControlService');
+const bluetoothService = require('../services/bluetoothService');
+const audioRoutingService = require('../services/audioRoutingService');
+const lightingService = require('../services/lightingService');
 const { emitWrapped } = require('./eventWrapper');
 
 // Mutex flag to prevent concurrent system resets
@@ -335,6 +338,80 @@ async function handleGmCommand(socket, data, io) {
         } finally {
           resetInProgress = false;
         }
+        break;
+      }
+
+      // --- Environment Control (Phase 0) ---
+
+      case 'bluetooth:scan:start': {
+        const timeout = payload?.timeout || config.bluetooth.scanTimeout;
+        bluetoothService.startScan(timeout);
+        resultMessage = `Bluetooth scan started (${timeout}s timeout)`;
+        logger.info('Bluetooth scan started by GM', { gmStation: socket.deviceId, timeout });
+        break;
+      }
+
+      case 'bluetooth:scan:stop': {
+        bluetoothService.stopScan();
+        resultMessage = 'Bluetooth scan stopped';
+        logger.info('Bluetooth scan stopped by GM', { gmStation: socket.deviceId });
+        break;
+      }
+
+      case 'bluetooth:pair': {
+        if (!payload?.address) throw new Error('address is required');
+        await bluetoothService.pairDevice(payload.address);
+        resultMessage = `Device ${payload.address} paired`;
+        logger.info('Bluetooth device paired by GM', { gmStation: socket.deviceId, address: payload.address });
+        break;
+      }
+
+      case 'bluetooth:unpair': {
+        if (!payload?.address) throw new Error('address is required');
+        await bluetoothService.unpairDevice(payload.address);
+        resultMessage = `Device ${payload.address} unpaired`;
+        logger.info('Bluetooth device unpaired by GM', { gmStation: socket.deviceId, address: payload.address });
+        break;
+      }
+
+      case 'bluetooth:connect': {
+        if (!payload?.address) throw new Error('address is required');
+        await bluetoothService.connectDevice(payload.address);
+        resultMessage = `Device ${payload.address} connected`;
+        logger.info('Bluetooth device connected by GM', { gmStation: socket.deviceId, address: payload.address });
+        break;
+      }
+
+      case 'bluetooth:disconnect': {
+        if (!payload?.address) throw new Error('address is required');
+        await bluetoothService.disconnectDevice(payload.address);
+        resultMessage = `Device ${payload.address} disconnected`;
+        logger.info('Bluetooth device disconnected by GM', { gmStation: socket.deviceId, address: payload.address });
+        break;
+      }
+
+      case 'audio:route:set': {
+        const { stream = 'video', sink } = payload || {};
+        if (!sink) throw new Error('sink is required');
+        await audioRoutingService.setStreamRoute(stream, sink);
+        await audioRoutingService.applyRouting(stream);
+        resultMessage = `Audio route set: ${stream} -> ${sink}`;
+        logger.info('Audio route set by GM', { gmStation: socket.deviceId, stream, sink });
+        break;
+      }
+
+      case 'lighting:scene:activate': {
+        if (!payload?.sceneId) throw new Error('sceneId is required');
+        await lightingService.activateScene(payload.sceneId);
+        resultMessage = `Scene ${payload.sceneId} activated`;
+        logger.info('Lighting scene activated by GM', { gmStation: socket.deviceId, sceneId: payload.sceneId });
+        break;
+      }
+
+      case 'lighting:scenes:refresh': {
+        await lightingService.refreshScenes();
+        resultMessage = 'Lighting scenes refreshed';
+        logger.info('Lighting scenes refreshed by GM', { gmStation: socket.deviceId });
         break;
       }
 
