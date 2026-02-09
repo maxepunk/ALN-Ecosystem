@@ -248,7 +248,7 @@ describe('LightingService', () => {
       axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
       await lightingService.init();
 
-      lightingService.cleanup();
+      await lightingService.cleanup();
 
       // Advance time — should NOT attempt reconnect
       axios.get.mockResolvedValue({ status: 200, data: { message: 'API running.' } });
@@ -515,7 +515,7 @@ describe('LightingService', () => {
       axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
       await lightingService.init();
 
-      lightingService.cleanup();
+      await lightingService.cleanup();
 
       // Verify no further reconnect attempts
       axios.get.mockClear();
@@ -523,8 +523,8 @@ describe('LightingService', () => {
       expect(axios.get).not.toHaveBeenCalled();
     });
 
-    it('should be safe to call when no interval is active', () => {
-      expect(() => lightingService.cleanup()).not.toThrow();
+    it('should be safe to call when no interval is active', async () => {
+      await expect(lightingService.cleanup()).resolves.toBeUndefined();
     });
   });
 

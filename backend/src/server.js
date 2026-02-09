@@ -148,7 +148,7 @@ async function shutdown(signal) {
     // Cleanup services
     bluetoothService.cleanup();
     audioRoutingService.cleanup();
-    lightingService.cleanup();
+    await lightingService.cleanup();
     await stateService.cleanup();
 
     // Save current session state (preserve AS-IS, don't end it)
