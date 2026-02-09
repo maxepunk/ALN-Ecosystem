@@ -7,6 +7,7 @@ const axios = require('axios');
 const EventEmitter = require('events');
 const config = require('../config');
 const logger = require('../utils/logger');
+const audioRoutingService = require('./audioRoutingService');
 
 class VlcService extends EventEmitter {
   constructor() {
@@ -189,6 +190,11 @@ class VlcService extends EventEmitter {
 
       logger.info('Video playback started', { videoPath });
       this.emit('video:played', videoPath);
+
+      // Route video audio to selected output (Phase 0: Environment Control)
+      audioRoutingService.applyRouting('video').catch(err => {
+        logger.warn('Audio routing failed after playVideo', { error: err.message });
+      });
 
       return await this.getStatus();
     } catch (error) {

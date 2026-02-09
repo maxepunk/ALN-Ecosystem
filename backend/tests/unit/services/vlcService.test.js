@@ -5,9 +5,15 @@
 
 const vlcService = require('../../../src/services/vlcService');
 const axios = require('axios');
+const audioRoutingService = require('../../../src/services/audioRoutingService');
 
 // Mock axios HTTP calls
 jest.mock('axios');
+
+// Mock audioRoutingService to prevent real pactl calls
+jest.mock('../../../src/services/audioRoutingService', () => ({
+  applyRouting: jest.fn().mockResolvedValue(),
+}));
 
 describe('VLCService', () => {
   let mockAxiosInstance;
@@ -135,6 +141,38 @@ describe('VLCService', () => {
       });
 
       vlcService.playVideo('test.mp4');
+    });
+
+    it('should call audioRoutingService.applyRouting("video") after playback starts', async () => {
+      // ARRANGE
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'playing' }
+      });
+      audioRoutingService.applyRouting.mockClear();
+
+      // ACT
+      await vlcService.playVideo('test-video.mp4');
+
+      // ASSERT
+      expect(audioRoutingService.applyRouting).toHaveBeenCalledWith('video');
+    });
+
+    it('should not fail playback when audio routing fails', async () => {
+      // ARRANGE
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'playing' }
+      });
+      audioRoutingService.applyRouting.mockRejectedValueOnce(new Error('pactl not found'));
+
+      // ACT
+      const result = await vlcService.playVideo('test-video.mp4');
+
+      // ASSERT - playVideo should still return status successfully
+      expect(result).toBeDefined();
+      expect(result.state).toBe('playing');
+      expect(audioRoutingService.applyRouting).toHaveBeenCalledWith('video');
     });
   });
 
