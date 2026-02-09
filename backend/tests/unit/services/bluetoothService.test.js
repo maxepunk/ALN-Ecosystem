@@ -63,7 +63,7 @@ describe('BluetoothService', () => {
 
     it('should accept valid MAC addresses', async () => {
       // Mock execFile to succeed for a valid MAC
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Connecting...\nConnection successful\n', '');
       });
 
@@ -77,7 +77,7 @@ describe('BluetoothService', () => {
 
   describe('isAvailable()', () => {
     it('should return true when adapter is powered on', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -95,12 +95,13 @@ describe('BluetoothService', () => {
       expect(execFile).toHaveBeenCalledWith(
         'bluetoothctl',
         ['show'],
+        expect.any(Object),
         expect.any(Function)
       );
     });
 
     it('should return false when no adapter present', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(new Error('No default controller available'), '', '');
       });
 
@@ -109,7 +110,7 @@ describe('BluetoothService', () => {
     });
 
     it('should return false when adapter is powered off', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -130,7 +131,7 @@ describe('BluetoothService', () => {
 
   describe('getAdapterStatus()', () => {
     it('should parse bluetoothctl show output', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -157,7 +158,7 @@ describe('BluetoothService', () => {
     });
 
     it('should return null when no adapter', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(new Error('No default controller available'), '', '');
       });
 
@@ -283,12 +284,34 @@ describe('BluetoothService', () => {
     });
   });
 
+  // ── stopScan() ──
+
+  describe('stopScan()', () => {
+    it('should kill active scan process', () => {
+      const mockProc = new EventEmitter();
+      mockProc.stdout = new EventEmitter();
+      mockProc.stderr = new EventEmitter();
+      mockProc.kill = jest.fn();
+      mockProc.pid = 12345;
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService.startScan(10);
+      bluetoothService.stopScan();
+
+      expect(mockProc.kill).toHaveBeenCalled();
+    });
+
+    it('should be safe to call when no scan is active', () => {
+      expect(() => bluetoothService.stopScan()).not.toThrow();
+    });
+  });
+
   // ── getPairedDevices() ──
 
   describe('getPairedDevices()', () => {
     it('should parse bluetoothctl devices Paired output and filter by Audio Sink UUID', async () => {
       // Step 1: list paired devices
-      execFile.mockImplementationOnce((cmd, args, cb) => {
+      execFile.mockImplementationOnce((cmd, args, opts, cb) => {
         cb(
           null,
           'Device 2C:81:BF:0D:E4:C1 JBL Flip 6\nDevice AA:BB:CC:DD:EE:FF Keyboard\n',
@@ -297,7 +320,7 @@ describe('BluetoothService', () => {
       });
 
       // Step 2: info for first device (has Audio Sink UUID)
-      execFile.mockImplementationOnce((cmd, args, cb) => {
+      execFile.mockImplementationOnce((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -312,7 +335,7 @@ describe('BluetoothService', () => {
       });
 
       // Step 3: info for second device (no Audio Sink UUID)
-      execFile.mockImplementationOnce((cmd, args, cb) => {
+      execFile.mockImplementationOnce((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -338,7 +361,7 @@ describe('BluetoothService', () => {
     });
 
     it('should return empty array when no paired devices', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, '', '');
       });
 
@@ -352,12 +375,12 @@ describe('BluetoothService', () => {
   describe('getConnectedDevices()', () => {
     it('should parse bluetoothctl devices Connected and filter by Audio Sink UUID', async () => {
       // Step 1: list connected devices
-      execFile.mockImplementationOnce((cmd, args, cb) => {
+      execFile.mockImplementationOnce((cmd, args, opts, cb) => {
         cb(null, 'Device 2C:81:BF:0D:E4:C1 JBL Flip 6\n', '');
       });
 
       // Step 2: info (has Audio Sink UUID)
-      execFile.mockImplementationOnce((cmd, args, cb) => {
+      execFile.mockImplementationOnce((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -383,7 +406,7 @@ describe('BluetoothService', () => {
     });
 
     it('should return empty array when no connected devices', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, '', '');
       });
 
@@ -396,7 +419,7 @@ describe('BluetoothService', () => {
 
   describe('isAudioDevice()', () => {
     it('should return true when device has Audio Sink UUID 0000110b', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -412,7 +435,7 @@ describe('BluetoothService', () => {
     });
 
     it('should return false when device lacks Audio Sink UUID', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(
           null,
           [
@@ -439,7 +462,7 @@ describe('BluetoothService', () => {
   describe('pairDevice()', () => {
     it('should call pair and trust with NoInputNoOutput agent', async () => {
       const calls = [];
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         calls.push(args);
         cb(null, 'Success\n', '');
       });
@@ -455,6 +478,21 @@ describe('BluetoothService', () => {
       );
     });
 
+    it('should emit device:paired on successful pair', async () => {
+      const handler = jest.fn();
+      bluetoothService.on('device:paired', handler);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'Success\n', '');
+      });
+
+      await bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ address: 'AA:BB:CC:DD:EE:FF' })
+      );
+    });
+
     it('should validate MAC address before pairing', async () => {
       await expect(
         bluetoothService.pairDevice('not-valid')
@@ -466,7 +504,7 @@ describe('BluetoothService', () => {
 
   describe('connectDevice()', () => {
     it('should call bluetoothctl connect with valid MAC', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Connection successful\n', '');
       });
 
@@ -475,15 +513,16 @@ describe('BluetoothService', () => {
       expect(execFile).toHaveBeenCalledWith(
         'bluetoothctl',
         ['connect', 'AA:BB:CC:DD:EE:FF'],
+        expect.any(Object),
         expect.any(Function)
       );
     });
 
-    it('should emit connection:changed on successful connect', async () => {
+    it('should emit device:connected on successful connect', async () => {
       const handler = jest.fn();
-      bluetoothService.on('connection:changed', handler);
+      bluetoothService.on('device:connected', handler);
 
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Connection successful\n', '');
       });
 
@@ -492,13 +531,12 @@ describe('BluetoothService', () => {
       expect(handler).toHaveBeenCalledWith(
         expect.objectContaining({
           address: 'AA:BB:CC:DD:EE:FF',
-          connected: true,
         })
       );
     });
 
     it('should reject on connection failure', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(new Error('Connection failed'), '', 'Failed to connect');
       });
 
@@ -512,7 +550,7 @@ describe('BluetoothService', () => {
 
   describe('disconnectDevice()', () => {
     it('should call bluetoothctl disconnect', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Successful disconnected\n', '');
       });
 
@@ -521,15 +559,16 @@ describe('BluetoothService', () => {
       expect(execFile).toHaveBeenCalledWith(
         'bluetoothctl',
         ['disconnect', 'AA:BB:CC:DD:EE:FF'],
+        expect.any(Object),
         expect.any(Function)
       );
     });
 
-    it('should emit connection:changed on disconnect', async () => {
+    it('should emit device:disconnected on disconnect', async () => {
       const handler = jest.fn();
-      bluetoothService.on('connection:changed', handler);
+      bluetoothService.on('device:disconnected', handler);
 
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Successful disconnected\n', '');
       });
 
@@ -538,7 +577,6 @@ describe('BluetoothService', () => {
       expect(handler).toHaveBeenCalledWith(
         expect.objectContaining({
           address: 'AA:BB:CC:DD:EE:FF',
-          connected: false,
         })
       );
     });
@@ -554,7 +592,7 @@ describe('BluetoothService', () => {
 
   describe('unpairDevice()', () => {
     it('should call bluetoothctl remove', async () => {
-      execFile.mockImplementation((cmd, args, cb) => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Device has been removed\n', '');
       });
 
@@ -563,7 +601,23 @@ describe('BluetoothService', () => {
       expect(execFile).toHaveBeenCalledWith(
         'bluetoothctl',
         ['remove', 'AA:BB:CC:DD:EE:FF'],
+        expect.any(Object),
         expect.any(Function)
+      );
+    });
+
+    it('should emit device:unpaired on successful remove', async () => {
+      const handler = jest.fn();
+      bluetoothService.on('device:unpaired', handler);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'Device has been removed\n', '');
+      });
+
+      await bluetoothService.unpairDevice('AA:BB:CC:DD:EE:FF');
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ address: 'AA:BB:CC:DD:EE:FF' })
       );
     });
 

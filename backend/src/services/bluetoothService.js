@@ -196,6 +196,8 @@ class BluetoothService extends EventEmitter {
     await this._execFile('bluetoothctl', ['--agent', 'NoInputNoOutput', 'pair', address]);
     await this._execFile('bluetoothctl', ['trust', address]);
     logger.info('Device paired and trusted', { address });
+
+    this.emit('device:paired', { address });
   }
 
   /**
@@ -210,7 +212,7 @@ class BluetoothService extends EventEmitter {
     await this._execFile('bluetoothctl', ['connect', address]);
     logger.info('Device connected', { address });
 
-    this.emit('connection:changed', { address, connected: true });
+    this.emit('device:connected', { address });
   }
 
   /**
@@ -225,7 +227,7 @@ class BluetoothService extends EventEmitter {
     await this._execFile('bluetoothctl', ['disconnect', address]);
     logger.info('Device disconnected', { address });
 
-    this.emit('connection:changed', { address, connected: false });
+    this.emit('device:disconnected', { address });
   }
 
   /**
@@ -239,6 +241,8 @@ class BluetoothService extends EventEmitter {
     logger.info('Removing device', { address });
     await this._execFile('bluetoothctl', ['remove', address]);
     logger.info('Device removed', { address });
+
+    this.emit('device:unpaired', { address });
   }
 
   /**
@@ -291,8 +295,9 @@ class BluetoothService extends EventEmitter {
    * @private
    */
   _execFile(cmd, args) {
+    const timeout = config.bluetooth.connectTimeout * 1000;
     return new Promise((resolve, reject) => {
-      execFile(cmd, args, (error, stdout, stderr) => {
+      execFile(cmd, args, { timeout }, (error, stdout, stderr) => {
         if (error) {
           reject(error);
         } else {
