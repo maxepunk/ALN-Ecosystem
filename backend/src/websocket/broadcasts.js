@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
 const vlcService = require('../services/vlcService');
+const { buildEnvironmentState } = require('./environmentHelpers');
 
 // ADD: Module-level tracking
 const activeListeners = [];
@@ -487,7 +488,7 @@ function setupBroadcastListeners(io, services) {
 
   // Offline queue events
   if (offlineQueueService) {
-    addTrackedListener(offlineQueueService, 'offline:queue:processed', (eventData) => {
+    addTrackedListener(offlineQueueService, 'offline:queue:processed', async (eventData) => {
       // Extract wrapped event data (service emits wrapped envelope per AsyncAPI)
       const { queueSize, results } = eventData.data || eventData;
 
@@ -571,7 +572,13 @@ function setupBroadcastListeners(io, services) {
           offline: offlineQueueService?.isOffline || false
         },
         // Game Activity: Include player scans for token lifecycle tracking
-        playerScans: session?.playerScans || []
+        playerScans: session?.playerScans || [],
+        // Phase 0 Environment Control: bluetooth/audio/lighting state
+        environment: await buildEnvironmentState({
+          bluetoothService,
+          audioRoutingService,
+          lightingService,
+        }),
       };
 
       emitWrapped(io, 'sync:full', syncFullPayload);

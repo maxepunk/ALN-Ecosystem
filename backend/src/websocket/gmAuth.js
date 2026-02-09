@@ -10,7 +10,11 @@ const stateService = require('../services/stateService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
 const vlcService = require('../services/vlcService');
+const bluetoothService = require('../services/bluetoothService');
+const audioRoutingService = require('../services/audioRoutingService');
+const lightingService = require('../services/lightingService');
 const { emitWrapped } = require('./eventWrapper');
+const { buildEnvironmentState } = require('./environmentHelpers');
 
 /**
  * Handle GM station identification
@@ -166,6 +170,13 @@ async function handleGmIdentify(socket, data, io) {
       socketId: socket.id
     });
 
+    // Build environment state for sync:full (Phase 0 Environment Control)
+    const environment = await buildEnvironmentState({
+      bluetoothService,
+      audioRoutingService,
+      lightingService,
+    });
+
     // Send full state sync per AsyncAPI contract (sync:full event)
     // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
     // PHASE 2.1 (P1.1): Added deviceScannedTokens and reconnection flag
@@ -208,7 +219,9 @@ async function handleGmIdentify(socket, data, io) {
       // PHASE 2.1 (P1.1): Include reconnection flag for frontend notification
       reconnection: isReconnection,
       // Game Activity: Include player scans for token lifecycle tracking
-      playerScans: session?.playerScans || []
+      playerScans: session?.playerScans || [],
+      // Phase 0 Environment Control: bluetooth/audio/lighting state
+      environment,
     });
 
     // Confirm identification with contract-compliant response
