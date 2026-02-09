@@ -147,6 +147,9 @@ const config = {
     enabled: process.env.LIGHTING_ENABLED !== 'false',
     homeAssistantUrl: process.env.HOME_ASSISTANT_URL || 'http://localhost:8123',
     homeAssistantToken: process.env.HOME_ASSISTANT_TOKEN || '',
+    dockerManage: process.env.HA_DOCKER_MANAGE !== 'false',
+    dockerContainer: process.env.HA_DOCKER_CONTAINER || 'homeassistant',
+    dockerStopTimeout: parseInt(process.env.HA_DOCKER_STOP_TIMEOUT || '10', 10),
   },
 };
 
