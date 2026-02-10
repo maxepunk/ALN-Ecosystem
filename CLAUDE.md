@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2026-02-06
+Last verified: 2026-02-09
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -109,10 +109,10 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
 | Component | File | Notes |
 |-----------|------|-------|
 | Shared Config | `ALN-TokenData/scoring-config.json` | Single source of truth for values |
-| Backend Config | `backend/src/config/index.js:85-99` | Loads shared config (env vars override) |
-| Backend Group Logic | `backend/src/services/transactionService.js:345-387` | Server-side group completion |
-| GM Scanner Config | `ALNScanner/src/core/scoring.js:20-25` | Loads shared config via Vite import |
-| GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js:345-386` | Client-side group completion |
+| Backend Config | `backend/src/config/index.js` (valueRating map) | Loads shared config (env vars override) |
+| Backend Group Logic | `backend/src/services/transactionService.js` (`_checkGroupCompletion`) | Server-side group completion |
+| GM Scanner Config | `ALNScanner/src/core/scoring.js` (SCORING_CONFIG export) | Loads shared config via Vite import |
+| GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` (`_checkGroupCompletion`) | Client-side group completion |
 
 **CRITICAL**: Values are shared, but group completion detection logic is independently implemented. Timing and approach differ between backend (session-based lookup) and GM Scanner (transaction filtering). When updating group logic, verify BOTH implementations.
 
@@ -161,7 +161,7 @@ All scan requests MUST include `deviceType` field:
 | Player Scanner (Web) | `player` | **Allowed** (players can re-view same memory) |
 | ESP32 Scanner | `esp32` | **Allowed** (players can re-view same memory) |
 
-**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. See `transactionService.js:233-266` for implementation.
+**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. See `transactionService.js` `isDuplicate()` method for implementation.
 
 **Scan Request Format:**
 ```javascript
@@ -213,6 +213,7 @@ The GM Scanner is NOT just for scanning tokens - it's the **game command center*
 | **Session** | Create/Pause/Resume/End sessions, Add teams mid-game |
 | **Video** | Play/Pause/Stop/Skip, Queue management, Display mode toggle |
 | **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
+| **Environment** | Bluetooth speaker pairing, Audio routing (HDMI/BT), Lighting scenes (Home Assistant) |
 | **Game Activity** | Unified view of player discoveries + GM transactions, Device status |
 
 All admin commands use WebSocket `gm:command` events. See 'ALNScanner/CLAUDE.md' for implementation details.
@@ -238,6 +239,7 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
 - `sync:full` includes `playerScans` array for session restoration
 - `videoEvents.js` was deleted (confirmed dead code) — ALL video control goes through `gm:command` actions in `adminEvents.js`
+- Environment control broadcasts: `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `audio:routing:fallback`, `lighting:scene`, `lighting:status`
 
 ## Submodule Architecture
 
@@ -291,7 +293,7 @@ npm run build      # Production build
 2. `git submodule update --remote --merge` - Sync all submodules
 3. Restart backend to reload token data
 
-**Key Files:** `backend/src/services/tokenService.js:68-86` (_loadTokensFile), `.gitmodules`
+**Key Files:** `backend/src/services/tokenService.js` (`_loadTokensFile`), `.gitmodules`
 
 ### Scoring Mismatch (Networked vs Standalone)
 **Symptoms:** Different scores for same tokens in different modes

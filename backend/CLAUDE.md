@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2026-02-06
+Last verified: 2026-02-09
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -90,7 +90,12 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `offlineQueueService` | Offline scan management | `new OfflineQueueService()` |
 | `persistenceService` | Disk persistence | `new PersistenceService()` |
 | `displayControlService` | HDMI display mode state machine | `new DisplayControlService()` |
+| `audioRoutingService` | PipeWire audio routing (HDMI/Bluetooth) | `new AudioRoutingService()` |
+| `bluetoothService` | Bluetooth speaker pairing via bluetoothctl | `new BluetoothService()` |
+| `lightingService` | Home Assistant scene control (Docker lifecycle) | `new LightingService()` |
 | `heartbeatMonitorService` | HTTP device timeout monitoring | `new HeartbeatMonitorService()` |
+
+**System Reset:** `systemReset.js` exports `resetAllServices()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services, re-initializes infrastructure.
 
 **transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
@@ -129,6 +134,9 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `stateService`: `state:updated`, `state:sync`, `sync:full`
 - `videoQueueService`: `video:*`, `queue:*`
 - `vlcService`: `degraded`, `connected`, `disconnected`
+- `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
+- `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`
+- `lightingService`: `scene:activated`, `connection:changed`, `scenes:refreshed`
 
 **DEPRECATED Internal Event:**
 - `score:updated` - The internal `transaction:accepted` event now includes `teamScore`. The WebSocket broadcast `transaction:new` also carries the score. Note: `score:updated` is still broadcast via WebSocket by `broadcasts.js` for score adjustments and group bonuses.
@@ -155,7 +163,7 @@ Note: Player scan broadcast is handled directly in `scanRoutes.js` (not via broa
 
 Player scans are tracked for Game Activity (token lifecycle visibility) but do not affect scoring.
 
-**Key Files:** `src/services/stateService.js:79-112`, `src/websocket/broadcasts.js`
+**Key Files:** `src/services/stateService.js` (`setupTransactionListeners`), `src/websocket/broadcasts.js`
 
 **Layer 2: WebSocket (AsyncAPI)**
 
@@ -254,6 +262,49 @@ WebSocket command interface for session management:
 
 Both mechanisms converge at `sessionService.updateDevice()` for tracking.
 
+### Environment Control Architecture (Phase 0)
+
+GM Scanner admin panel controls venue environment (audio, lighting, Bluetooth) via WebSocket commands routed through `adminEvents.js`.
+
+**Services:**
+
+| Service | Backend | CLI Dependency | Purpose |
+|---------|---------|---------------|---------|
+| `bluetoothService` | `bluetoothctl` | BlueZ | BT speaker scan/pair/connect |
+| `audioRoutingService` | `pactl` | PipeWire | Route VLC audio to HDMI or BT sink |
+| `lightingService` | Home Assistant REST API | axios | Scene activation (Docker lifecycle) |
+
+**WebSocket Events (Server → Client):**
+
+| Event | Payload | Source |
+|-------|---------|--------|
+| `bluetooth:device` | `{type, device}` | pair/unpair/connect/disconnect/discovered |
+| `bluetooth:scan` | `{scanning, ...}` | scan start/stop |
+| `audio:routing` | `{stream, sink}` | route changed/applied |
+| `audio:routing:fallback` | `{stream, actualSink}` | BT unavailable, fell back to HDMI |
+| `lighting:scene` | `{sceneId}` | scene activated |
+| `lighting:status` | `{connected, scenes}` | HA connection/scene refresh |
+
+**Key Helper Files:**
+- `src/websocket/environmentHelpers.js` - Builds environment state for `sync:full` payloads
+- `src/websocket/syncHelpers.js` - Assembles full `sync:full` payload (session + environment + video)
+- `src/websocket/listenerRegistry.js` - Tracks EventEmitter listeners for cleanup (prevents leaks)
+- `src/utils/execHelper.js` - `execFileAsync` wrapper (no shell injection)
+- `src/utils/dockerHelper.js` - Docker container lifecycle (start/stop Home Assistant)
+
+**Environment Config (.env):**
+```env
+BLUETOOTH_SCAN_TIMEOUT_SEC=15
+BLUETOOTH_CONNECT_TIMEOUT_SEC=10
+AUDIO_DEFAULT_OUTPUT=hdmi
+LIGHTING_ENABLED=true
+HOME_ASSISTANT_URL=http://localhost:8123
+HOME_ASSISTANT_TOKEN=              # Long-lived HA access token
+HA_DOCKER_MANAGE=true              # Auto-start/stop HA container
+```
+
+**`sync:full` includes environment state** — on GM connect, `buildEnvironmentState()` snapshots bluetooth/audio/lighting into the sync payload. Gracefully degrades to defaults when services are unavailable.
+
 ## Configuration
 
 ### Environment Variables
@@ -342,7 +393,7 @@ ffmpeg -i INPUT.mp4 \
 4. Verify clients receive `sync:full` on reconnect
 5. Check for "duplicate listener" warnings
 
-**Key Files:** `src/services/sessionService.js:231-244` (init/restore), `src/services/persistenceService.js`
+**Key Files:** `src/services/sessionService.js` (`init` method), `src/services/persistenceService.js`
 
 ### Video Playback Issues
 **Symptoms:** Videos queue but don't play, idle loop doesn't resume
