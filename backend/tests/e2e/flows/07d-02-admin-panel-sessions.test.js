@@ -339,7 +339,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
 
       // Setup dialog handler BEFORE clicking
       page.once('dialog', async dialog => {
-        expect(dialog.message()).toContain('Are you sure you want to reset all team scores');
+        expect(dialog.message()).toContain('Reset all team scores to zero');
         await dialog.accept();
       });
 
@@ -487,36 +487,42 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.selectTeamFromList('Team Alpha');
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
+      // Calculate expected score using production scoring logic (DRY)
+      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken);
+      const adjustmentAmount = 250;
+      const expectedTotal = expectedTokenScore + adjustmentAmount;
+
       // Wait for score to update from transaction
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {
           const teamScore = state.scores?.find(s => s.teamId === 'Team Alpha');
-          return teamScore?.currentScore === 500;
+          return teamScore?.currentScore === expectedTokenScore;
         },
         5000
       );
 
-      // Navigate back to admin and adjust score by 250 more
+      // Navigate back to admin and adjust score
       await gmScanner.continueScan();
       await gmScanner.navigateToAdminPanel();
       await gmScanner.clickTeamInScoreBoard('Team Alpha');
       await gmScanner.teamDetailsScreen.waitFor({ state: 'visible', timeout: 5000 });
-      await gmScanner.adjustTeamScore(250, 'Persistence test bonus');
+      await gmScanner.adjustTeamScore(adjustmentAmount, 'Persistence test bonus');
 
-      // Wait for backend to have total score of 750
+      // Wait for backend to have total score (token score + adjustment)
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {
           const teamScore = state.scores?.find(s => s.teamId === 'Team Alpha');
-          return teamScore?.currentScore === 750;
+          return teamScore?.currentScore === expectedTotal;
         },
         5000
       );
 
-      // Navigate to admin and verify initial score shows in UI
+      // Navigate to admin and verify score shows in UI
       await gmScanner.navigateToAdminPanel();
-      await expect(page.locator('#admin-score-board')).toContainText('750', { timeout: 3000 });
+      const formattedTotal = expectedTotal.toLocaleString('en-US');
+      await expect(page.locator('#admin-score-board')).toContainText(formattedTotal, { timeout: 3000 });
 
       // Clear localStorage to prevent auto-connect (force fresh initialization)
       await page.evaluate(() => localStorage.clear());
@@ -537,8 +543,8 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
       await expect(scoresSection).toBeVisible();
 
-      // Verify score persisted
-      await expect(page.locator('#admin-score-board')).toContainText('750', { timeout: 3000 });
+      // Verify score persisted (use same formatted total from before reload)
+      await expect(page.locator('#admin-score-board')).toContainText(formattedTotal, { timeout: 3000 });
 
       console.log('✓ Score persistence test completed successfully');
 
