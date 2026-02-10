@@ -6,8 +6,7 @@
 const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
-const vlcService = require('../services/vlcService');
-const { buildEnvironmentState } = require('./environmentHelpers');
+const { buildSyncFullPayload } = require('./syncHelpers');
 
 // ADD: Module-level tracking
 const activeListeners = [];
@@ -62,20 +61,6 @@ function setupBroadcastListeners(io, services) {
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
   addTrackedListener(sessionService, 'session:created', async (session) => {
-    // DIAGNOSTIC 1: Confirm listener is triggered
-    logger.info('[DIAG-1] session:created listener TRIGGERED', {
-      sessionId: session.id,
-      timestamp: new Date().toISOString()
-    });
-
-    // DIAGNOSTIC 2: Verify io object state BEFORE emitWrapped
-    logger.info('[DIAG-2] io object state', {
-      ioExists: !!io,
-      ioType: io?.constructor?.name,
-      engineExists: !!io?.engine,
-      socketsMapSize: io?.sockets?.sockets?.size || 'N/A'
-    });
-
     // Broadcast session update to all clients
     emitWrapped(io, 'session:update', {
       id: session.id,              // Decision #4: 'id' field within resource
@@ -86,9 +71,6 @@ function setupBroadcastListeners(io, services) {
       teams: session.teams,  // session:created receives plain object with teams already computed
       metadata: session.metadata || {}
     });
-
-    // DIAGNOSTIC 3: emitWrapped completed (sync portion)
-    logger.info('[DIAG-3] emitWrapped completed synchronously');
 
     // Initialize all currently connected devices into the new session
     // This handles devices that connected before session existed
@@ -505,81 +487,15 @@ function setupBroadcastListeners(io, services) {
       });
 
       // Per AsyncAPI flow step 5: Broadcast sync:full after offline:queue:processed
-      // Build sync:full directly from services (same pattern as handleSyncRequest)
-      const session = sessionService.getCurrentSession();
-
-      const videoStatus = {
-        status: videoQueueService.currentStatus || 'idle',
-        queueLength: (videoQueueService.queue || []).length,
-        tokenId: videoQueueService.currentVideo?.tokenId || null,
-        duration: videoQueueService.currentVideo?.duration || null,
-        progress: videoQueueService.currentVideo?.progress || null,
-        expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
-        error: videoQueueService.currentVideo?.error || null
-      };
-
-      const scores = [];
-      for (const [, teamScore] of transactionService.teamScores) {
-        scores.push(teamScore.toJSON());
-      }
-
-      // Enrich ALL transactions with token data (for full state restoration)
-      // CRITICAL: Send ALL transactions, not just recent 10, to support team details screen
-      // after page refresh. Frontend DataManager needs complete transaction history.
-      const recentTransactions = [];
-      if (session && session.transactions) {
-        for (let i = 0; i < session.transactions.length; i++) {
-          const transaction = session.transactions[i];
-          // Enrich with token data (same as transaction:new broadcast)
-          const token = transactionService.getToken(transaction.tokenId);
-          recentTransactions.push({
-            id: transaction.id,
-            tokenId: transaction.tokenId,
-            teamId: transaction.teamId,
-            deviceId: transaction.deviceId,
-            mode: transaction.mode,
-            status: transaction.status,
-            points: transaction.points,
-            timestamp: transaction.timestamp,
-            memoryType: token?.memoryType || 'UNKNOWN',
-            valueRating: token?.metadata?.rating || 0,
-            summary: transaction.summary || null  // Transaction already enriched at creation (source of truth)
-          });
-        }
-      }
-
-      // Get VLC connection status
-      const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
-
-      const syncFullPayload = {
-        session: session ? session.toJSON() : null,
-        scores,
-        recentTransactions,
-        videoStatus,
-        devices: session ? (session.connectedDevices || []).map(device => ({
-          deviceId: device.id,
-          type: device.type,
-          name: device.name,
-          connectionTime: device.connectionTime,
-          ipAddress: device.ipAddress
-        })) : [],
-        systemStatus: {
-          // Contract-compliant fields
-          orchestrator: 'online',  // Per AsyncAPI contract: 'online' | 'offline'
-          vlc: vlcConnected ? 'connected' : 'disconnected',  // Per AsyncAPI contract: 'connected' | 'disconnected' | 'error'
-          // Additional fields not in contract but used by implementation
-          videoDisplayReady: false,  // TODO: Track actual display ready status
-          offline: offlineQueueService?.isOffline || false
-        },
-        // Game Activity: Include player scans for token lifecycle tracking
-        playerScans: session?.playerScans || [],
-        // Phase 0 Environment Control: bluetooth/audio/lighting state
-        environment: await buildEnvironmentState({
-          bluetoothService,
-          audioRoutingService,
-          lightingService,
-        }),
-      };
+      const syncFullPayload = await buildSyncFullPayload({
+        sessionService,
+        transactionService,
+        videoQueueService,
+        offlineQueueService,
+        bluetoothService,
+        audioRoutingService,
+        lightingService,
+      });
 
       emitWrapped(io, 'sync:full', syncFullPayload);
       logger.info('Broadcasted sync:full after offline queue processing');

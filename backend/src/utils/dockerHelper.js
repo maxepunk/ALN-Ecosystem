@@ -6,26 +6,18 @@
  * @module utils/dockerHelper
  */
 
-const { execFile } = require('child_process');
+const { execFileAsync } = require('./execHelper');
 
 const DOCKER_TIMEOUT = 30000; // 30s command timeout
 
 /**
- * Promise wrapper around child_process.execFile for Docker commands.
+ * Execute a Docker CLI command.
  * @param {string[]} args - Docker CLI arguments
  * @returns {Promise<string>} stdout
  * @private
  */
 function _dockerExec(args) {
-  return new Promise((resolve, reject) => {
-    execFile('docker', args, { timeout: DOCKER_TIMEOUT }, (error, stdout) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(stdout);
-      }
-    });
-  });
+  return execFileAsync('docker', args, DOCKER_TIMEOUT);
 }
 
 /**

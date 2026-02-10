@@ -12,9 +12,10 @@
  */
 
 const EventEmitter = require('events');
-const { execFile, spawn } = require('child_process');
+const { spawn } = require('child_process');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
+const { execFileAsync } = require('../utils/execHelper');
 
 /** Valid stream names for Phase 0 */
 const VALID_STREAMS = ['video'];
@@ -94,22 +95,8 @@ class AudioRoutingService extends EventEmitter {
    * Full reset for tests: kill processes, remove listeners, reset state.
    */
   reset() {
-    // 1. Kill monitor process
-    if (this._monitorProc) {
-      this._monitorProc.kill();
-      this._monitorProc = null;
-    }
-
-    // 2. Clear restart timer
-    if (this._monitorRestartTimer) {
-      clearTimeout(this._monitorRestartTimer);
-      this._monitorRestartTimer = null;
-    }
-
-    // 3. Remove all event listeners
+    this.cleanup();
     this.removeAllListeners();
-
-    // 4. Reset routing state to defaults (deep copy to prevent mutation of DEFAULT_ROUTING)
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
   }
 
@@ -375,15 +362,7 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   _execFile(cmd, args) {
-    return new Promise((resolve, reject) => {
-      execFile(cmd, args, { timeout: PACTL_TIMEOUT }, (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(stdout);
-        }
-      });
-    });
+    return execFileAsync(cmd, args, PACTL_TIMEOUT);
   }
 
   /**

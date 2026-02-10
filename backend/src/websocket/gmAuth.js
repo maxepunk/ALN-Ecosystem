@@ -9,12 +9,11 @@ const sessionService = require('../services/sessionService');
 const stateService = require('../services/stateService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
-const vlcService = require('../services/vlcService');
 const bluetoothService = require('../services/bluetoothService');
 const audioRoutingService = require('../services/audioRoutingService');
 const lightingService = require('../services/lightingService');
 const { emitWrapped } = require('./eventWrapper');
-const { buildEnvironmentState } = require('./environmentHelpers');
+const { buildSyncFullPayload } = require('./syncHelpers');
 
 /**
  * Handle GM station identification
@@ -121,40 +120,6 @@ async function handleGmIdentify(socket, data, io) {
     // Get current state
     const state = stateService.getCurrentState();
 
-    // Get video queue status
-    const videoStatus = {
-      status: videoQueueService.currentStatus || 'idle',
-      queueLength: (videoQueueService.queue || []).length,
-      tokenId: videoQueueService.currentVideo?.tokenId || null,
-      duration: videoQueueService.currentVideo?.duration || null,
-      progress: videoQueueService.currentVideo?.progress || null,
-      expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
-      error: videoQueueService.currentVideo?.error || null
-    };
-
-    // Get VLC connection status
-    const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
-
-    // Enrich ALL transactions with token data (for full state restoration)
-    // CRITICAL: Send ALL transactions, not just recent 100, to support team details screen
-    // after page refresh. Frontend DataManager needs complete transaction history.
-    const recentTransactions = (session?.transactions || []).map(transaction => {
-      const token = transactionService.getToken(transaction.tokenId);
-      return {
-        id: transaction.id,
-        tokenId: transaction.tokenId,
-        teamId: transaction.teamId,
-        deviceId: transaction.deviceId,
-        mode: transaction.mode,
-        status: transaction.status,
-        points: transaction.points,
-        timestamp: transaction.timestamp,
-        memoryType: token?.memoryType || 'UNKNOWN',
-        valueRating: token?.metadata?.rating || 0,
-        summary: transaction.summary || null  // Summary from transaction (complete persisted record)
-      };
-    });
-
     // PHASE 2.1 (P1.1): Get device-specific scanned tokens for state restoration
     const deviceScannedTokens = session
       ? Array.from(session.getDeviceScannedTokens(deviceId))
@@ -170,58 +135,22 @@ async function handleGmIdentify(socket, data, io) {
       socketId: socket.id
     });
 
-    // Build environment state for sync:full (Phase 0 Environment Control)
-    const environment = await buildEnvironmentState({
+    // Build shared sync:full payload (filter to connected devices only for GM connect)
+    const syncPayload = await buildSyncFullPayload({
+      sessionService,
+      transactionService,
+      videoQueueService,
       bluetoothService,
       audioRoutingService,
       lightingService,
-    });
-
-    // Send full state sync per AsyncAPI contract (sync:full event)
-    // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
-    // PHASE 2.1 (P1.1): Added deviceScannedTokens and reconnection flag
-    const scoresForSync = transactionService.getTeamScores();
-    logger.info('[DEBUG:SYNC-FULL] Scores being sent in sync:full', {
-      scoresCount: scoresForSync.length,
-      teamIds: scoresForSync.map(s => s.teamId),
-      scores: scoresForSync.map(s => ({ teamId: s.teamId, currentScore: s.currentScore }))
-    });
-
-    // Filter to only include currently connected devices (not historical disconnected ones)
-    const devicesForSync = (session?.connectedDevices || [])
-      .filter(device => device.connectionStatus === 'connected')
-      .map(device => ({
-        deviceId: device.id,
-        type: device.type,
-        name: device.name,
-        connectionTime: device.connectionTime,
-        ipAddress: device.ipAddress
-      }));
-    logger.info('[DEBUG:SYNC-FULL] Devices being sent in sync:full', {
-      deviceCount: devicesForSync.length,
-      deviceIds: devicesForSync.map(d => d.deviceId),
-      totalDevicesInSession: session?.connectedDevices?.length || 0,
-      connectedCount: devicesForSync.length
+      deviceFilter: { connectedOnly: true },
     });
 
     emitWrapped(socket, 'sync:full', {
-      session: session ? session.toJSON() : null,
-      scores: scoresForSync,
-      recentTransactions,
-      videoStatus: videoStatus,
-      devices: devicesForSync,
-      systemStatus: {
-        orchestrator: 'online',
-        vlc: vlcConnected ? 'connected' : 'disconnected'
-      },
-      // PHASE 2.1 (P1.1): Include device-specific scanned tokens for state restoration
+      ...syncPayload,
+      // PHASE 2.1 (P1.1): GM-specific fields for state restoration
       deviceScannedTokens,
-      // PHASE 2.1 (P1.1): Include reconnection flag for frontend notification
       reconnection: isReconnection,
-      // Game Activity: Include player scans for token lifecycle tracking
-      playerScans: session?.playerScans || [],
-      // Phase 0 Environment Control: bluetooth/audio/lighting state
-      environment,
     });
 
     // Confirm identification with contract-compliant response

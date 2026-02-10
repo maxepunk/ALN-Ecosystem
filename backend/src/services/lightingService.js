@@ -48,7 +48,7 @@ class LightingService extends EventEmitter {
       await this.checkConnection();
 
       if (this._connected) {
-        await this._fetchScenes();
+        await this.getScenes();
         logger.info('Lighting service initialized — connected to Home Assistant', {
           sceneCount: this._scenes.length,
         });
@@ -281,15 +281,6 @@ class LightingService extends EventEmitter {
       Authorization: `Bearer ${config.lighting.homeAssistantToken}`,
       'Content-Type': 'application/json',
     };
-  }
-
-  /**
-   * Fetch scenes and store in cache (used during init).
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _fetchScenes() {
-    await this.getScenes();
   }
 
   /**

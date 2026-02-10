@@ -9,9 +9,10 @@
  */
 
 const EventEmitter = require('events');
-const { execFile, spawn } = require('child_process');
+const { spawn } = require('child_process');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { execFileAsync } = require('../utils/execHelper');
 
 /** MAC address validation regex */
 const MAC_REGEX = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
@@ -268,16 +269,8 @@ class BluetoothService extends EventEmitter {
    * Full reset for tests: kill processes, remove listeners, reset state
    */
   reset() {
-    // 1. Kill scan process
-    if (this._scanProc) {
-      this._scanProc.kill();
-      this._scanProc = null;
-    }
-
-    // 2. Remove all event listeners
+    this.cleanup();
     this.removeAllListeners();
-
-    // 3. Reset state
     this._discoveredAddresses = new Set();
   }
 
@@ -303,16 +296,7 @@ class BluetoothService extends EventEmitter {
    * @private
    */
   _execFile(cmd, args) {
-    const timeout = config.bluetooth.connectTimeout * 1000;
-    return new Promise((resolve, reject) => {
-      execFile(cmd, args, { timeout }, (error, stdout, stderr) => {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(stdout);
-        }
-      });
-    });
+    return execFileAsync(cmd, args, config.bluetooth.connectTimeout * 1000);
   }
 
   /**

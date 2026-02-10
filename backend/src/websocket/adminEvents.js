@@ -330,7 +330,10 @@ async function handleGmCommand(socket, data, io) {
             videoQueueService,
             offlineQueueService,
             displayControlService,
-            vlcService
+            vlcService,
+            bluetoothService,
+            audioRoutingService,
+            lightingService,
           });
 
           resultMessage = 'System reset complete - ready for new session';
@@ -358,35 +361,21 @@ async function handleGmCommand(socket, data, io) {
         break;
       }
 
-      case 'bluetooth:pair': {
-        if (!payload?.address) throw new Error('address is required');
-        await bluetoothService.pairDevice(payload.address);
-        resultMessage = `Device ${payload.address} paired`;
-        logger.info('Bluetooth device paired by GM', { gmStation: socket.deviceId, address: payload.address });
-        break;
-      }
-
-      case 'bluetooth:unpair': {
-        if (!payload?.address) throw new Error('address is required');
-        await bluetoothService.unpairDevice(payload.address);
-        resultMessage = `Device ${payload.address} unpaired`;
-        logger.info('Bluetooth device unpaired by GM', { gmStation: socket.deviceId, address: payload.address });
-        break;
-      }
-
-      case 'bluetooth:connect': {
-        if (!payload?.address) throw new Error('address is required');
-        await bluetoothService.connectDevice(payload.address);
-        resultMessage = `Device ${payload.address} connected`;
-        logger.info('Bluetooth device connected by GM', { gmStation: socket.deviceId, address: payload.address });
-        break;
-      }
-
+      case 'bluetooth:pair':
+      case 'bluetooth:unpair':
+      case 'bluetooth:connect':
       case 'bluetooth:disconnect': {
+        const BT_COMMANDS = {
+          'bluetooth:pair':       { method: 'pairDevice',       verb: 'paired' },
+          'bluetooth:unpair':     { method: 'unpairDevice',     verb: 'unpaired' },
+          'bluetooth:connect':    { method: 'connectDevice',    verb: 'connected' },
+          'bluetooth:disconnect': { method: 'disconnectDevice', verb: 'disconnected' },
+        };
         if (!payload?.address) throw new Error('address is required');
-        await bluetoothService.disconnectDevice(payload.address);
-        resultMessage = `Device ${payload.address} disconnected`;
-        logger.info('Bluetooth device disconnected by GM', { gmStation: socket.deviceId, address: payload.address });
+        const { method, verb } = BT_COMMANDS[action];
+        await bluetoothService[method](payload.address);
+        resultMessage = `Device ${payload.address} ${verb}`;
+        logger.info(`Bluetooth device ${verb} by GM`, { gmStation: socket.deviceId, address: payload.address });
         break;
       }
 

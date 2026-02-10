@@ -71,7 +71,7 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     // Methods needed by broadcast handlers
     mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
     mockTransactionService.getToken = jest.fn().mockReturnValue(null);
-    mockTransactionService.teamScores = new Map();
+    mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
     mockSessionService.getCurrentSession = jest.fn().mockReturnValue({
       id: 'session-123',
       toJSON: () => ({ id: 'session-123', status: 'active' }),

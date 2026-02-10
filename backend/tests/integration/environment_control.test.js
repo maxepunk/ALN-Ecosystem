@@ -28,6 +28,13 @@ const bluetoothService = require('../../src/services/bluetoothService');
 const audioRoutingService = require('../../src/services/audioRoutingService');
 const lightingService = require('../../src/services/lightingService');
 
+/** Mock bluetooth service as unavailable (most tests need this) */
+function mockBluetoothUnavailable() {
+  jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
+  jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
+  jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+}
+
 describe('Environment Control Integration', () => {
   let testContext;
   let gm1;
@@ -66,9 +73,7 @@ describe('Environment Control Integration', () => {
   describe('sync:full environment payload', () => {
     it('should include environment object with bluetooth, audio, lighting on GM connect', async () => {
       // Mock BT to avoid shelling out to bluetoothctl
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_001');
 
@@ -116,9 +121,7 @@ describe('Environment Control Integration', () => {
     });
 
     it('should show default audio routing (video -> hdmi)', async () => {
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_003');
 
@@ -140,9 +143,7 @@ describe('Environment Control Integration', () => {
       });
 
       // Mock BT availability for connectAndIdentify
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_010');
 
@@ -174,9 +175,7 @@ describe('Environment Control Integration', () => {
         bluetoothService.emit('scan:stopped', { exitCode: 0 });
       });
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_011');
 
@@ -209,9 +208,7 @@ describe('Environment Control Integration', () => {
         });
       });
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_020');
 
@@ -232,9 +229,7 @@ describe('Environment Control Integration', () => {
     it('should receive gm:command:ack after successful audio route change', async () => {
       jest.spyOn(audioRoutingService, 'applyRouting').mockResolvedValue();
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_021');
 
@@ -259,9 +254,7 @@ describe('Environment Control Integration', () => {
         lightingService.emit('scene:activated', { sceneId, sceneName: sceneId });
       });
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_030');
 
@@ -280,9 +273,7 @@ describe('Environment Control Integration', () => {
         lightingService.emit('scene:activated', { sceneId, sceneName: sceneId });
       });
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_031');
 
@@ -302,9 +293,7 @@ describe('Environment Control Integration', () => {
   describe('graceful degradation: bluetooth unavailable', () => {
     it('should report bluetooth.available:false in sync:full when adapter is absent', async () => {
       // isAvailable returns false -> adapter not present
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_040');
 
@@ -323,9 +312,7 @@ describe('Environment Control Integration', () => {
         return undefined;
       });
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_041');
 
@@ -346,9 +333,7 @@ describe('Environment Control Integration', () => {
     it('should show lighting.connected:false when HA token not configured', async () => {
       // lightingService.isConnected() checks config.lighting.homeAssistantToken
       // In test environment, HA_TOKEN is empty -> isConnected returns false
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_050');
 
@@ -367,9 +352,7 @@ describe('Environment Control Integration', () => {
         new Error('connect ECONNREFUSED 127.0.0.1:8123')
       );
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_051');
 
@@ -399,9 +382,7 @@ describe('Environment Control Integration', () => {
         }, 50);
       });
 
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_060');
 
@@ -419,9 +400,7 @@ describe('Environment Control Integration', () => {
 
   describe('audio:route:set validation', () => {
     it('should return error ack when sink is not provided', async () => {
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_070');
 
@@ -439,9 +418,7 @@ describe('Environment Control Integration', () => {
 
   describe('lighting:scene:activate validation', () => {
     it('should return error ack when sceneId is not provided', async () => {
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_071');
 

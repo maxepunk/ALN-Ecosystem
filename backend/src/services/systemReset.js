@@ -121,7 +121,6 @@ async function performSystemReset(io, services) {
     });
     logger.debug('Display control service re-initialized');
   }
-  logger.debug('Broadcast listeners re-initialized');
 
   // Re-initialize cross-service listeners
   // Services need to re-register listeners on sessionService (cleared by reset)

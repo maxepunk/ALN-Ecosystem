@@ -1,0 +1,117 @@
+/**
+ * Sync Full Payload Helpers
+ * Builds the common sync:full payload used by gmAuth.js (initial connect)
+ * and broadcasts.js (offline:queue:processed).
+ *
+ * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
+ */
+
+const vlcService = require('../services/vlcService');
+const { buildEnvironmentState } = require('./environmentHelpers');
+
+/**
+ * Build the common sync:full payload from current service state.
+ *
+ * @param {Object} options
+ * @param {Object} options.sessionService
+ * @param {Object} options.transactionService
+ * @param {Object} options.videoQueueService
+ * @param {Object} [options.offlineQueueService]
+ * @param {Object} [options.bluetoothService]
+ * @param {Object} [options.audioRoutingService]
+ * @param {Object} [options.lightingService]
+ * @param {Object} [options.deviceFilter] - Optional filter options
+ * @param {boolean} [options.deviceFilter.connectedOnly=false] - Only include connected devices
+ * @returns {Promise<Object>} sync:full payload
+ */
+async function buildSyncFullPayload({
+  sessionService,
+  transactionService,
+  videoQueueService,
+  offlineQueueService,
+  bluetoothService,
+  audioRoutingService,
+  lightingService,
+  deviceFilter = {},
+}) {
+  const session = sessionService.getCurrentSession();
+
+  const videoStatus = {
+    status: videoQueueService.currentStatus || 'idle',
+    queueLength: (videoQueueService.queue || []).length,
+    tokenId: videoQueueService.currentVideo?.tokenId || null,
+    duration: videoQueueService.currentVideo?.duration || null,
+    progress: videoQueueService.currentVideo?.progress || null,
+    expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
+    error: videoQueueService.currentVideo?.error || null,
+  };
+
+  const scores = transactionService.getTeamScores();
+
+  // Enrich ALL transactions with token data (for full state restoration)
+  // Frontend DataManager needs complete transaction history.
+  const recentTransactions = (session?.transactions || []).map(transaction => {
+    const token = transactionService.getToken(transaction.tokenId);
+    return {
+      id: transaction.id,
+      tokenId: transaction.tokenId,
+      teamId: transaction.teamId,
+      deviceId: transaction.deviceId,
+      mode: transaction.mode,
+      status: transaction.status,
+      points: transaction.points,
+      timestamp: transaction.timestamp,
+      memoryType: token?.memoryType || 'UNKNOWN',
+      valueRating: token?.metadata?.rating || 0,
+      summary: transaction.summary || null,
+    };
+  });
+
+  // Get VLC connection status
+  const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
+
+  // Build device list (optionally filtering to connected-only)
+  let devices = [];
+  if (session) {
+    let deviceList = session.connectedDevices || [];
+    if (deviceFilter.connectedOnly) {
+      deviceList = deviceList.filter(d => d.connectionStatus === 'connected');
+    }
+    devices = deviceList.map(device => ({
+      deviceId: device.id,
+      type: device.type,
+      name: device.name,
+      connectionTime: device.connectionTime,
+      ipAddress: device.ipAddress,
+    }));
+  }
+
+  const systemStatus = {
+    orchestrator: 'online',
+    vlc: vlcConnected ? 'connected' : 'disconnected',
+  };
+
+  // Add offline status when offlineQueueService is available
+  if (offlineQueueService) {
+    systemStatus.offline = offlineQueueService.isOffline || false;
+  }
+
+  const environment = await buildEnvironmentState({
+    bluetoothService,
+    audioRoutingService,
+    lightingService,
+  });
+
+  return {
+    session: session ? session.toJSON() : null,
+    scores,
+    recentTransactions,
+    videoStatus,
+    devices,
+    systemStatus,
+    playerScans: session?.playerScans || [],
+    environment,
+  };
+}
+
+module.exports = { buildSyncFullPayload };
