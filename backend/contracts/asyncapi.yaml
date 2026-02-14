@@ -1943,6 +1943,7 @@ components:
                   - spotify:previous
                   - spotify:volume
                   - spotify:playlist
+                  - spotify:cache:verify
                 example: "video:skip"
               payload:
                 type: object

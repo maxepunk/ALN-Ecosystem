@@ -88,7 +88,7 @@ describe('SpotifyService', () => {
       mockExecFileSuccess('');
       await spotifyService.setVolume(80);
       expect(execFile).toHaveBeenCalledWith(
-        'dbus-send', expect.arrayContaining(['double:0.8']),
+        'dbus-send', expect.arrayContaining(['variant:double:0.8']),
         expect.any(Object), expect.any(Function)
       );
     });
@@ -97,7 +97,7 @@ describe('SpotifyService', () => {
       mockExecFileSuccess('');
       await spotifyService.setVolume(150);
       expect(execFile).toHaveBeenCalledWith(
-        'dbus-send', expect.arrayContaining(['double:1']),
+        'dbus-send', expect.arrayContaining(['variant:double:1']),
         expect.any(Object), expect.any(Function)
       );
     });

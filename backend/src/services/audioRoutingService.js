@@ -237,10 +237,11 @@ class AudioRoutingService extends EventEmitter {
       throw new Error(`No available sink for stream '${stream}'`);
     }
 
-    // Find VLC sink-input with retry
-    const sinkInput = await this._findSinkInputWithRetry('VLC');
+    // Find the sink-input for this stream's application
+    const appName = STREAM_APP_NAMES[stream] || 'VLC';
+    const sinkInput = await this._findSinkInputWithRetry(appName);
     if (!sinkInput) {
-      logger.warn('VLC sink-input not found, cannot apply routing', { stream });
+      logger.warn(`${appName} sink-input not found, cannot apply routing`, { stream });
       return;
     }
 

@@ -86,6 +86,9 @@ class GameClockService extends EventEmitter {
    * @param {number} seconds - Threshold in seconds
    */
   setOvertimeThreshold(seconds) {
+    if (typeof seconds !== 'number' || seconds <= 0) {
+      throw new Error(`Invalid overtime threshold: ${seconds} (must be positive number)`);
+    }
     this.overtimeThreshold = seconds;
     this.overtimeFired = false;
   }

@@ -67,9 +67,7 @@ class SpotifyService extends EventEmitter {
   async setVolume(vol) {
     const clamped = Math.max(0, Math.min(100, vol));
     const normalized = clamped / 100;
-    await this._dbusCall('org.freedesktop.DBus.Properties.Set', [
-      `string:${PLAYER_IFACE}`, `string:Volume`, `double:${normalized}`
-    ]);
+    await this._dbusSetProperty(PLAYER_IFACE, 'Volume', 'double', normalized);
     this.volume = clamped;
     this.emit('volume:changed', { volume: clamped });
   }
