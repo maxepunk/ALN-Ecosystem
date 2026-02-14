@@ -9,13 +9,8 @@ const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
 const stateService = require('../services/stateService');
-const videoQueueService = require('../services/videoQueueService');
-const vlcService = require('../services/vlcService');
-const displayControlService = require('../services/displayControlService');
-const bluetoothService = require('../services/bluetoothService');
-const audioRoutingService = require('../services/audioRoutingService');
-const lightingService = require('../services/lightingService');
 const { emitWrapped } = require('./eventWrapper');
+const { executeCommand } = require('../services/commandExecutor');
 
 // Mutex flag to prevent concurrent system resets
 let resetInProgress = false;
@@ -41,382 +36,69 @@ async function handleGmCommand(socket, data, io) {
     const action = commandData.action;
     const payload = commandData.payload || {};
 
-    // Process GM commands
-    let resultMessage = '';
-    switch (action) {
-      case 'session:create':
-        // Create new session (service will emit session:created → broadcasts.js wraps as session:update)
-        // broadcasts.js will initialize devices into the session (event-driven pattern)
-        await sessionService.createSession({
-          name: payload.name || 'New Session',
-          teams: payload.teams || []
+    // Handle system:reset separately (requires io and mutex)
+    if (action === 'system:reset') {
+      // MUTEX PROTECTION: Prevent concurrent resets from causing race conditions
+      if (resetInProgress) {
+        throw new Error('System reset already in progress. Please wait.');
+      }
+
+      resetInProgress = true;
+      try {
+        const { performSystemReset } = require('../services/systemReset');
+
+        logger.info('System reset requested by GM', { gmStation: socket.deviceId });
+
+        await performSystemReset(io, {
+          sessionService,
+          stateService,
+          transactionService,
+          offlineQueueService,
         });
 
-        resultMessage = `Session "${payload.name || 'New Session'}" created successfully`;
-        logger.info('Session created by GM', {
-          gmStation: socket.deviceId,
-          name: payload.name,
-          teams: payload.teams
+        const resultMessage = 'System reset complete - ready for new session';
+        logger.info('System reset by GM complete', { gmStation: socket.deviceId });
+
+        // Send success ack
+        emitWrapped(socket, 'gm:command:ack', {
+          action: action,
+          success: true,
+          message: resultMessage
         });
-        break;
-
-      case 'session:pause':
-        // Service will emit session:updated → broadcasts.js wraps as session:update
-        await sessionService.updateSession({ status: 'paused' });
-        resultMessage = 'Session paused successfully';
-        logger.info('Session paused by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'session:resume':
-        // Service will emit session:updated → broadcasts.js wraps as session:update
-        await sessionService.updateSession({ status: 'active' });
-        resultMessage = 'Session resumed successfully';
-        logger.info('Session resumed by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'session:end':
-        // Service will emit session:updated → broadcasts.js wraps as session:update
-        await sessionService.endSession();
-        resultMessage = 'Session ended successfully';
-        logger.info('Session ended by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'session:addTeam': {
-        const { teamId } = payload;
-        if (!teamId) {
-          throw new Error('teamId is required');
-        }
-
-        // Just trim - no arbitrary validation. GM types it, we store it.
-        const trimmedTeamId = teamId.trim();
-        if (!trimmedTeamId) {
-          throw new Error('Team name cannot be empty');
-        }
-
-        const session = sessionService.getCurrentSession();
-        if (!session) {
-          throw new Error('No active session');
-        }
-
-        await sessionService.addTeamToSession(trimmedTeamId);
-        resultMessage = `Team "${trimmedTeamId}" added to session`;
-        logger.info('Team added to session by GM', { gmStation: socket.deviceId, teamId: trimmedTeamId });
-        break;
+      } finally {
+        resetInProgress = false;
       }
-
-      case 'video:play':
-        // Resume/play current video (FR 4.2.2 line 898)
-        if (config.features.videoPlayback) {
-          await vlcService.resume();
-        }
-        resultMessage = 'Video playback resumed';
-        logger.info('Video playback resumed by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'video:pause':
-        // Pause current video (FR 4.2.2 line 899)
-        if (config.features.videoPlayback) {
-          await vlcService.pause();
-        }
-        resultMessage = 'Video playback paused';
-        logger.info('Video playback paused by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'video:stop':
-        // Stop current video (FR 4.2.2 line 900)
-        if (config.features.videoPlayback) {
-          await vlcService.stop();
-        }
-        resultMessage = 'Video playback stopped';
-        logger.info('Video playback stopped by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'video:skip':
-        videoQueueService.skipCurrent();
-        emitWrapped(io, 'video:skipped', {
-          gmStation: socket.deviceId,
-        });
-        resultMessage = 'Video skipped successfully';
-        logger.info('Video skipped by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'video:queue:add':
-        // Add video to queue by filename (FR 4.2.2 line 907)
-        const { videoFile } = payload;
-        if (!videoFile) {
-          throw new Error('videoFile is required for video:queue:add');
-        }
-        videoQueueService.addVideoByFilename(videoFile, socket.deviceId);
-        resultMessage = `Video ${videoFile} added to queue`;
-        logger.info('Video added to queue by GM', { gmStation: socket.deviceId, videoFile });
-        break;
-
-      case 'video:queue:reorder':
-        // Reorder queue (FR 4.2.2 line 908)
-        const { fromIndex, toIndex } = payload;
-        if (fromIndex === undefined || toIndex === undefined) {
-          throw new Error('fromIndex and toIndex are required for video:queue:reorder');
-        }
-        videoQueueService.reorderQueue(fromIndex, toIndex);
-        resultMessage = `Queue reordered: moved position ${fromIndex} to ${toIndex}`;
-        logger.info('Queue reordered by GM', { gmStation: socket.deviceId, fromIndex, toIndex });
-        break;
-
-      case 'video:queue:clear':
-        // Clear entire queue (FR 4.2.2 line 909)
-        videoQueueService.clearQueue();
-        resultMessage = 'Video queue cleared';
-        logger.info('Video queue cleared by GM', { gmStation: socket.deviceId });
-        break;
-
-      case 'display:idle-loop': {
-        // Switch display to idle loop mode (Phase 4.2)
-        const idleResult = await displayControlService.setIdleLoop();
-        if (idleResult.success) {
-          // Broadcast mode change to all clients
-          const eventData = {
-            mode: 'IDLE_LOOP',
-            changedBy: socket.deviceId
-          };
-          emitWrapped(socket, 'display:mode', eventData);
-          emitWrapped(socket.broadcast, 'display:mode', eventData);
-          resultMessage = 'Display switched to idle loop';
-        } else {
-          throw new Error(idleResult.error || 'Failed to switch to idle loop');
-        }
-        logger.info('Display set to idle loop by GM', { gmStation: socket.deviceId });
-        break;
-      }
-
-      case 'display:scoreboard': {
-        // Switch display to scoreboard mode (Phase 4.2)
-        const scoreboardResult = await displayControlService.setScoreboard();
-        if (scoreboardResult.success) {
-          // Broadcast mode change to all clients
-          const eventData = {
-            mode: 'SCOREBOARD',
-            changedBy: socket.deviceId
-          };
-
-          emitWrapped(socket, 'display:mode', eventData);
-          emitWrapped(socket.broadcast, 'display:mode', eventData);
-          resultMessage = 'Display switched to scoreboard';
-        } else {
-          throw new Error(scoreboardResult.error || 'Failed to switch to scoreboard');
-        }
-        logger.info('Display set to scoreboard by GM', { gmStation: socket.deviceId });
-        break;
-      }
-
-      case 'display:toggle': {
-        // Toggle between idle loop and scoreboard modes (Phase 4.2)
-        const toggleResult = await displayControlService.toggleMode();
-        if (toggleResult.success) {
-          // Broadcast mode change to all clients
-          const eventData = {
-            mode: toggleResult.mode,
-            changedBy: socket.deviceId
-          };
-          emitWrapped(socket, 'display:mode', eventData);
-          emitWrapped(socket.broadcast, 'display:mode', eventData);
-          resultMessage = `Display toggled to ${toggleResult.mode.toLowerCase()}`;
-        } else {
-          throw new Error(toggleResult.error || 'Failed to toggle display mode');
-        }
-        logger.info('Display toggled by GM', { gmStation: socket.deviceId, newMode: toggleResult.mode });
-        break;
-      }
-
-      case 'display:status': {
-        // Get current display mode status (Phase 4.2)
-        const displayStatus = displayControlService.getStatus();
-        emitWrapped(socket, 'display:status', displayStatus);
-        resultMessage = `Display mode: ${displayStatus.currentMode}`;
-        logger.info('Display status requested by GM', { gmStation: socket.deviceId, status: displayStatus });
-        break;
-      }
-
-      case 'score:adjust':
-        // Adjust team score by delta (service will emit score:updated → broadcasts.js wraps it)
-        const { teamId, delta, reason } = payload;
-        if (!teamId || delta === undefined) {
-          throw new Error('teamId and delta are required for score:adjust');
-        }
-        transactionService.adjustTeamScore(teamId, delta, reason || 'Admin adjustment', socket.deviceId);
-        resultMessage = `Team ${teamId} score adjusted by ${delta}`;
-        logger.info('Team score adjusted by GM', {
-          gmStation: socket.deviceId,
-          teamId,
-          delta,
-          reason
-        });
-        break;
-
-      case 'score:reset':
-        // Reset all team scores (triggers scores:reset event → broadcasts)
-        transactionService.resetScores();
-        resultMessage = 'All team scores reset to zero';
-        logger.info('All team scores reset by GM', {
-          gmStation: socket.deviceId,
-          sessionId: session?.id
-        });
-        break;
-
-      case 'transaction:delete': {
-        // Delete transaction and recalculate scores (FR 4.2.4 line 949)
-        const { transactionId } = payload;
-        if (!transactionId) {
-          throw new Error('transactionId is required for transaction:delete');
-        }
-        const deleteSession = sessionService.getCurrentSession();
-        if (!deleteSession) {
-          throw new Error('No active session');
-        }
-        const deleteResult = transactionService.deleteTransaction(transactionId, deleteSession);
-        resultMessage = `Transaction ${transactionId} deleted, team ${deleteResult.deletedTransaction.teamId} score recalculated`;
-        logger.info('Transaction deleted by GM', {
-          gmStation: socket.deviceId,
-          transactionId,
-          affectedTeam: deleteResult.deletedTransaction.teamId,
-          newScore: deleteResult.updatedScore.currentScore,
-        });
-        break;
-      }
-
-      case 'transaction:create': {
-        // Create manual transaction (FR 4.2.4 line 954)
-        const txData = payload;
-        if (!txData.tokenId || !txData.teamId || !txData.mode) {
-          throw new Error('tokenId, teamId, and mode are required for transaction:create');
-        }
-        const createSession = sessionService.getCurrentSession();
-        if (!createSession) {
-          throw new Error('No active session');
-        }
-        // Add admin's deviceId and deviceType from authenticated socket
-        txData.deviceId = socket.deviceId;
-        txData.deviceType = socket.deviceType || 'gm';  // Explicit assignment
-        // Slice 5: Session param removed - createManualTransaction gets session internally
-        const createResult = await transactionService.createManualTransaction(txData);
-        resultMessage = `Manual transaction created for team ${txData.teamId}: ${createResult.points} points`;
-        logger.info('Manual transaction created by GM', {
-          gmStation: socket.deviceId,
-          transactionId: createResult.transactionId,
-          tokenId: txData.tokenId,
-          teamId: txData.teamId,
-          points: createResult.points,
-        });
-        break;
-      }
-
-      case 'system:reset': {
-        // System reset - FR 4.2.5 lines 980-985 (full "nuclear option")
-        // Uses performSystemReset() for consistent reset behavior
-        // MUTEX PROTECTION: Prevent concurrent resets from causing race conditions
-        if (resetInProgress) {
-          throw new Error('System reset already in progress. Please wait.');
-        }
-
-        resetInProgress = true;
-        try {
-          const { performSystemReset } = require('../services/systemReset');
-
-          logger.info('System reset requested by GM', { gmStation: socket.deviceId });
-
-          await performSystemReset(io, {
-            sessionService,
-            stateService,
-            transactionService,
-            videoQueueService,
-            offlineQueueService,
-            displayControlService,
-            vlcService,
-            bluetoothService,
-            audioRoutingService,
-            lightingService,
-          });
-
-          resultMessage = 'System reset complete - ready for new session';
-          logger.info('System reset by GM complete', { gmStation: socket.deviceId });
-        } finally {
-          resetInProgress = false;
-        }
-        break;
-      }
-
-      // --- Environment Control (Phase 0) ---
-
-      case 'bluetooth:scan:start': {
-        const timeout = payload?.timeout || config.bluetooth.scanTimeout;
-        bluetoothService.startScan(timeout);
-        resultMessage = `Bluetooth scan started (${timeout}s timeout)`;
-        logger.info('Bluetooth scan started by GM', { gmStation: socket.deviceId, timeout });
-        break;
-      }
-
-      case 'bluetooth:scan:stop': {
-        bluetoothService.stopScan();
-        resultMessage = 'Bluetooth scan stopped';
-        logger.info('Bluetooth scan stopped by GM', { gmStation: socket.deviceId });
-        break;
-      }
-
-      case 'bluetooth:pair':
-      case 'bluetooth:unpair':
-      case 'bluetooth:connect':
-      case 'bluetooth:disconnect': {
-        const BT_COMMANDS = {
-          'bluetooth:pair':       { method: 'pairDevice',       verb: 'paired' },
-          'bluetooth:unpair':     { method: 'unpairDevice',     verb: 'unpaired' },
-          'bluetooth:connect':    { method: 'connectDevice',    verb: 'connected' },
-          'bluetooth:disconnect': { method: 'disconnectDevice', verb: 'disconnected' },
-        };
-        if (!payload?.address) throw new Error('address is required');
-        const { method, verb } = BT_COMMANDS[action];
-        await bluetoothService[method](payload.address);
-        resultMessage = `Device ${payload.address} ${verb}`;
-        logger.info(`Bluetooth device ${verb} by GM`, { gmStation: socket.deviceId, address: payload.address });
-        break;
-      }
-
-      case 'audio:route:set': {
-        const { stream = 'video', sink } = payload || {};
-        if (!sink) throw new Error('sink is required');
-        await audioRoutingService.setStreamRoute(stream, sink);
-        await audioRoutingService.applyRouting(stream);
-        resultMessage = `Audio route set: ${stream} -> ${sink}`;
-        logger.info('Audio route set by GM', { gmStation: socket.deviceId, stream, sink });
-        break;
-      }
-
-      case 'lighting:scene:activate': {
-        if (!payload?.sceneId) throw new Error('sceneId is required');
-        await lightingService.activateScene(payload.sceneId);
-        resultMessage = `Scene ${payload.sceneId} activated`;
-        logger.info('Lighting scene activated by GM', { gmStation: socket.deviceId, sceneId: payload.sceneId });
-        break;
-      }
-
-      case 'lighting:scenes:refresh': {
-        await lightingService.refreshScenes();
-        resultMessage = 'Lighting scenes refreshed';
-        logger.info('Lighting scenes refreshed by GM', { gmStation: socket.deviceId });
-        break;
-      }
-
-      default:
-        emitWrapped(socket, 'error', {
-          code: 'INVALID_COMMAND',
-          message: `Unknown action: ${action}`
-        });
-        return;
+      return;
     }
 
-    // Send AsyncAPI-compliant ack (requires action, success, message)
+    // Execute command via shared commandExecutor
+    const result = await executeCommand({
+      action,
+      payload,
+      source: 'gm',
+      deviceId: socket.deviceId,
+      deviceType: socket.deviceType
+    });
+
+    // Handle broadcasts (if any)
+    if (result.broadcasts && result.broadcasts.length > 0) {
+      for (const broadcast of result.broadcasts) {
+        if (broadcast.target === 'all') {
+          // Broadcast to sender and all other clients
+          emitWrapped(socket, broadcast.event, broadcast.data);
+          emitWrapped(socket.broadcast, broadcast.event, broadcast.data);
+        } else if (broadcast.target === 'socket') {
+          // Send only to requesting socket
+          emitWrapped(socket, broadcast.event, broadcast.data);
+        }
+      }
+    }
+
+    // Send AsyncAPI-compliant ack
     emitWrapped(socket, 'gm:command:ack', {
       action: action,
-      success: true,
-      message: resultMessage
+      success: result.success,
+      message: result.message
     });
   } catch (error) {
     const commandData = data.data || data;
