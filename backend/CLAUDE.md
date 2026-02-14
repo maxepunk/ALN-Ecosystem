@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2026-02-09
+Last verified: 2026-02-14
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -94,8 +94,12 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `bluetoothService` | Bluetooth speaker pairing via bluetoothctl | `new BluetoothService()` |
 | `lightingService` | Home Assistant scene control (Docker lifecycle) | `new LightingService()` |
 | `heartbeatMonitorService` | HTTP device timeout monitoring | `new HeartbeatMonitorService()` |
+| `gameClockService` | Game clock (start/pause/resume/tick) | `new GameClockService()` |
+| `cueEngineService` | Standing + manual cue evaluation and firing | `new CueEngineService()` |
+| `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
+| `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
-**System Reset:** `systemReset.js` exports `resetAllServices()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services, re-initializes infrastructure.
+**System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services, re-initializes infrastructure (including cue engine event forwarding via `cueEngineWiring.js`).
 
 **transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
@@ -137,6 +141,9 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
 - `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`
 - `lightingService`: `scene:activated`, `connection:changed`, `scenes:refreshed`
+- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:tick`
+- `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`
+- `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
 
 **DEPRECATED Internal Event:**
 - `score:updated` - The internal `transaction:accepted` event now includes `teamScore`. The WebSocket broadcast `transaction:new` also carries the score. Note: `score:updated` is still broadcast via WebSocket by `broadcasts.js` for score adjustments and group bonuses.
@@ -228,20 +235,25 @@ WebSocket command interface for session management:
 
 | Action | Payload | Description |
 |--------|---------|-------------|
-| `session:create` | `{name, teams}` | Create new session with initial teams |
+| `session:create` | `{name, teams}` | Create new session in **setup** state |
+| `session:start` | `{}` | Transition setup → active, start game clock |
 | `session:addTeam` | `{teamId}` | Add team mid-game (trimmed, non-empty) |
-| `session:pause` | `{}` | Pause active session |
+| `session:pause` | `{}` | Pause active session (cascades to game clock + cue engine) |
 | `session:resume` | `{}` | Resume paused session |
 | `session:end` | `{}` | End active session |
+| `cue:fire` | `{cueId}` | Manually fire a cue |
+| `cue:enable` | `{cueId}` | Enable a standing cue |
+| `cue:disable` | `{cueId}` | Disable a standing cue |
+| `sound:play` | `{file, target?, volume?}` | Play sound via pw-play |
+| `sound:stop` | `{file?}` | Stop sound (specific or all) |
 
-**session:addTeam Flow:**
-1. Validate teamId is present and non-empty after trim
-2. Check team doesn't already exist
-3. Add team to session via `sessionService.addTeamToSession()`
-4. Persist to session
-5. Broadcast `session:updated` to all clients
+**Session Lifecycle:** `setup` → `active` → `paused` ↔ `active` → `ended`
 
-**Key Files:** `src/websocket/adminEvents.js`, `src/services/sessionService.js`
+Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused) and cue engine (suspended).
+
+**Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, data?, source, broadcasts[]}`. The `broadcasts[]` array separates socket emission concerns from command logic.
+
+**Key Files:** `src/websocket/adminEvents.js`, `src/services/commandExecutor.js`, `src/services/sessionService.js`
 
 ### Connection Monitoring
 
@@ -304,6 +316,37 @@ HA_DOCKER_MANAGE=true              # Auto-start/stop HA container
 ```
 
 **`sync:full` includes environment state** — on GM connect, `buildEnvironmentState()` snapshots bluetooth/audio/lighting into the sync payload. Gracefully degrades to defaults when services are unavailable.
+
+### Cue Engine Architecture (Phase 1)
+
+Automated show control: standing cues fire on game events, manual cues fired via GM Scanner.
+
+**Services:**
+
+| Service | Purpose | Key Methods |
+|---------|---------|-------------|
+| `gameClockService` | Game elapsed time tracking | `start()`, `pause()`, `resume()`, `getElapsed()`, `toPersistence()`/`restore()` |
+| `cueEngineService` | Cue evaluation and firing | `loadCues()`, `fireCue()`, `handleGameEvent()`, `handleClockTick()`, `activate()`/`suspend()` |
+| `soundService` | pw-play audio wrapper | `play({file, target?, volume?})`, `stop({file?})` |
+| `commandExecutor` | Shared command dispatch | `executeCommand({action, payload, source, deviceId})` |
+
+**Event Forwarding:** `cueEngineWiring.js` registers listeners that forward game events (transaction:accepted, group:completed, video:*, session:*, sound:completed, gameclock:*) to `cueEngineService.handleGameEvent()`. This wiring is shared between `app.js` (startup) and `systemReset.js` (re-initialization).
+
+**Standing Cues:** Trigger on game events or clock thresholds. Evaluated via `EVENT_NORMALIZERS` that flatten event payloads into flat fields for condition matching. Conditions support operators: `eq`, `neq`, `gt`, `gte`, `lt`, `lte`, `in`.
+
+**WebSocket Events (Server → Client):**
+
+| Event | Payload | Source |
+|-------|---------|--------|
+| `gameclock:status` | `{state, elapsed}` | clock started/paused/resumed |
+| `cue:fired` | `{cueId, source, trigger, commands}` | cue evaluation or manual fire |
+| `cue:completed` | `{cueId}` | all cue commands executed |
+| `cue:error` | `{cueId, error}` | cue execution error |
+| `sound:status` | `{type, file, ...}` | sound started/completed/stopped |
+
+**Config Files:** `config/environment/cues.json` (cue definitions), `config/environment/routing.json` (audio stream routes).
+
+**Key Files:** `src/services/gameClockService.js`, `src/services/cueEngineService.js`, `src/services/soundService.js`, `src/services/commandExecutor.js`, `src/services/cueEngineWiring.js`
 
 ## Configuration
 

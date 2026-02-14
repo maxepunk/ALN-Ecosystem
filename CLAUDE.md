@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2026-02-09
+Last verified: 2026-02-14
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -240,6 +240,10 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - `sync:full` includes `playerScans` array for session restoration
 - `videoEvents.js` was deleted (confirmed dead code) — ALL video control goes through `gm:command` actions in `adminEvents.js`
 - Environment control broadcasts: `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `audio:routing:fallback`, `lighting:scene`, `lighting:status`
+- Phase 1 broadcasts: `gameclock:status`, `cue:fired`, `cue:completed`, `cue:error`, `sound:status`
+- Session lifecycle: `setup` → `active` → `paused` ↔ `active` → `ended` (sessions created in setup, `session:start` transitions to active)
+- `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine)
+- `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`)
 
 ## Submodule Architecture
 
