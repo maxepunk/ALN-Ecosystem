@@ -46,7 +46,8 @@ async function performSystemReset(io, services) {
     lightingService,      // Optional (Phase 0 environment control)
     gameClockService,     // Optional (Phase 1)
     cueEngineService,     // Optional (Phase 1)
-    soundService          // Optional (Phase 1)
+    soundService,         // Optional (Phase 1)
+    spotifyService        // Optional (Phase 2)
   } = services;
 
   logger.info('Starting system reset');
@@ -111,6 +112,11 @@ async function performSystemReset(io, services) {
     soundService.reset();
   }
 
+  // Reset Phase 2 services
+  if (spotifyService) {
+    spotifyService.reset();
+  }
+
   logger.debug('All services reset');
 
   // Step 5: Re-initialize infrastructure
@@ -127,6 +133,7 @@ async function performSystemReset(io, services) {
     gameClockService,
     cueEngineService,
     soundService,
+    spotifyService,
   });
   logger.debug('Broadcast listeners re-initialized');
 
@@ -161,7 +168,8 @@ async function performSystemReset(io, services) {
       videoQueueService,
       gameClockService,
       cueEngineService,
-      soundService
+      soundService,
+      spotifyService
     });
   }
 

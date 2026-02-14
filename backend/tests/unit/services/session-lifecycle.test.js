@@ -1,6 +1,6 @@
 'use strict';
 
-describe('Session Lifecycle - Phase 1', () => {
+describe('Session Lifecycle', () => {
   let sessionService, transactionService, gameClockService;
 
   beforeEach(async () => {
@@ -137,6 +137,50 @@ describe('Session Lifecycle - Phase 1', () => {
       await sessionService.createSession({ name: 'Test Game' });
       await sessionService.endSession();
       expect(sessionService.getCurrentSession()).toBeNull();
+    });
+  });
+
+  describe('pause cascade includes Spotify', () => {
+    it('should pause Spotify on session:pause', async () => {
+      const spotifyService = require('../../../src/services/spotifyService');
+      jest.spyOn(spotifyService, 'pauseForGameClock').mockResolvedValue();
+      await sessionService.createSession({ name: 'Test' });
+      await sessionService.startGame();
+      await sessionService.updateSession({ status: 'paused' });
+      expect(spotifyService.pauseForGameClock).toHaveBeenCalled();
+    });
+
+    it('should resume Spotify on session:resume only if pausedByGameClock', async () => {
+      const spotifyService = require('../../../src/services/spotifyService');
+      jest.spyOn(spotifyService, 'pauseForGameClock').mockResolvedValue();
+      jest.spyOn(spotifyService, 'resumeFromGameClock').mockResolvedValue();
+      await sessionService.createSession({ name: 'Test' });
+      await sessionService.startGame();
+      await sessionService.updateSession({ status: 'paused' });
+      await sessionService.updateSession({ status: 'active' });
+      expect(spotifyService.resumeFromGameClock).toHaveBeenCalled();
+    });
+  });
+
+  describe('pause cascade includes cue engine', () => {
+    it('should suspend cue engine on session:pause', async () => {
+      const cueEngineService = require('../../../src/services/cueEngineService');
+      jest.spyOn(cueEngineService, 'suspend');
+      await sessionService.createSession({ name: 'Test' });
+      await sessionService.startGame();
+      await sessionService.updateSession({ status: 'paused' });
+      expect(cueEngineService.suspend).toHaveBeenCalled();
+    });
+
+    it('should activate cue engine on session:resume', async () => {
+      const cueEngineService = require('../../../src/services/cueEngineService');
+      jest.spyOn(cueEngineService, 'suspend');
+      jest.spyOn(cueEngineService, 'activate');
+      await sessionService.createSession({ name: 'Test' });
+      await sessionService.startGame();
+      await sessionService.updateSession({ status: 'paused' });
+      await sessionService.updateSession({ status: 'active' });
+      expect(cueEngineService.activate).toHaveBeenCalled();
     });
   });
 });

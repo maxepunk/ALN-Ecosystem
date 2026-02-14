@@ -26,6 +26,7 @@ const lightingService = require('./services/lightingService');
 const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
+const spotifyService = require('./services/spotifyService');
 
 // Import routes (6 files after health extraction)
 const scanRoutes = require('./routes/scanRoutes');
@@ -167,6 +168,11 @@ async function initializeServices() {
     await audioRoutingService.init();     // Start sink monitor, load persisted routes
     await lightingService.init();         // Non-blocking HA connection check
 
+    // Initialize Phase 2 services
+    spotifyService.checkConnection().catch(err =>
+      logger.warn('Spotify connection check failed (non-blocking)', { error: err.message })
+    );
+
     // Initialize Phase 1 services (game clock, cue engine, sound)
     // Load cue definitions from config
     const fs = require('fs').promises;
@@ -191,7 +197,8 @@ async function initializeServices() {
       videoQueueService,
       gameClockService,
       cueEngineService,
-      soundService
+      soundService,
+      spotifyService
     });
 
     logger.info('Phase 1 services initialized (game clock, cue engine, sound)');

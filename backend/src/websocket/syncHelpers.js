@@ -37,6 +37,7 @@ async function buildSyncFullPayload({
   lightingService,
   gameClockService,
   cueEngineService,
+  spotifyService,
   deviceFilter = {},
 }) {
   const session = sessionService.getCurrentSession();
@@ -113,6 +114,9 @@ async function buildSyncFullPayload({
   // Phase 1: Cue Engine state
   const cueEngine = buildCueEngineState(cueEngineService);
 
+  // Phase 2: Spotify state
+  const spotify = buildSpotifyState(spotifyService);
+
   return {
     session: session ? session.toJSON() : null,
     scores,
@@ -124,6 +128,7 @@ async function buildSyncFullPayload({
     environment,
     gameClock,
     cueEngine,
+    spotify,
   };
 }
 
@@ -164,14 +169,33 @@ function buildCueEngineState(cueEngineService) {
       return { loaded: false, cues: [], activeCues: [], disabledCues: [] };
     }
     return {
-      loaded: true,
+      loaded: cueEngineService.getCues().length > 0,
       cues: cueEngineService.getCueSummaries(),
-      activeCues: [],  // Phase 2: compound cue state
+      activeCues: cueEngineService.getActiveCues(),
       disabledCues: cueEngineService.getDisabledCues()
     };
   } catch (err) {
     logger.warn('Failed to gather cue engine state for sync:full', { error: err.message });
     return { loaded: false, cues: [], activeCues: [], disabledCues: [] };
+  }
+}
+
+/**
+ * Build Spotify state for sync:full payload.
+ * Gracefully degrades when service is unavailable.
+ *
+ * @param {Object} spotifyService - SpotifyService instance (optional)
+ * @returns {Object} Spotify state
+ */
+function buildSpotifyState(spotifyService) {
+  try {
+    if (!spotifyService) {
+      return { connected: false, state: 'stopped', volume: 100, pausedByGameClock: false };
+    }
+    return spotifyService.getState();
+  } catch (err) {
+    logger.warn('Failed to gather Spotify state for sync:full', { error: err.message });
+    return { connected: false, state: 'stopped', volume: 100, pausedByGameClock: false };
   }
 }
 

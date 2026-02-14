@@ -106,6 +106,10 @@ describe('Phase 1 Broadcasts', () => {
       { id: 'cue-1', name: 'Test Cue', type: 'simple' }
     ]);
     mockCueEngineService.getDisabledCues = jest.fn().mockReturnValue([]);
+    mockCueEngineService.getCues = jest.fn().mockReturnValue([
+      { id: 'cue-1', name: 'Test Cue', type: 'simple' }
+    ]);
+    mockCueEngineService.getActiveCues = jest.fn().mockReturnValue([]);
 
     mockSoundService = new EventEmitter();
     mockSoundService.getPlaying = jest.fn().mockReturnValue([]);

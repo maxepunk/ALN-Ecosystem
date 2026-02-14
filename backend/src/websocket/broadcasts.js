@@ -56,7 +56,8 @@ function setupBroadcastListeners(io, services) {
   broadcastListenersActive = true;
 
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
-    bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService } = services;
+    bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
+    spotifyService } = services;
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
@@ -620,6 +621,41 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(soundService, 'sound:stopped', () => {
       emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
       logger.debug('Broadcasted sound:status (stopped)');
+    });
+  }
+
+  // ============================================================
+  // PHASE 2 BROADCASTS - Compound Cue Lifecycle, Spotify Status
+  // ============================================================
+
+  // Compound cue lifecycle broadcasts (cue:started, cue:paused, cue:conflict)
+  if (cueEngineService) {
+    addTrackedListener(cueEngineService, 'cue:started', (data) => {
+      emitToRoom(io, 'gm', 'cue:status', { ...data, state: 'started' });
+      logger.debug('Broadcasted cue:status (started)', { cueId: data.cueId });
+    });
+
+    addTrackedListener(cueEngineService, 'cue:status', (data) => {
+      emitToRoom(io, 'gm', 'cue:status', data);
+      logger.debug('Broadcasted cue:status', { cueId: data.cueId, state: data.state });
+    });
+
+    addTrackedListener(cueEngineService, 'cue:conflict', (data) => {
+      emitToRoom(io, 'gm', 'cue:conflict', data);
+      logger.debug('Broadcasted cue:conflict', { cueId: data.cueId });
+    });
+  }
+
+  // Spotify broadcasts
+  if (spotifyService) {
+    addTrackedListener(spotifyService, 'playback:changed', () => {
+      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
+      logger.debug('Broadcasted spotify:status (playback changed)');
+    });
+
+    addTrackedListener(spotifyService, 'volume:changed', () => {
+      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
+      logger.debug('Broadcasted spotify:status (volume changed)');
     });
   }
 

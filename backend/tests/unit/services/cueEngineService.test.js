@@ -690,4 +690,148 @@ describe('CueEngineService', () => {
       expect(executeCommand).toHaveBeenCalled();
     });
   });
+
+  describe('reset() — compound cue state cleanup', () => {
+    it('should clear activeCues map on reset', () => {
+      // Manually add an active cue entry
+      cueEngineService.activeCues.set('test-cue', {
+        cueId: 'test-cue',
+        state: 'running',
+        startTime: Date.now(),
+        elapsed: 0,
+        timeline: [],
+        maxAt: 60,
+        firedEntries: new Set(),
+        children: new Set(),
+        hasVideo: false,
+      });
+
+      expect(cueEngineService.activeCues.size).toBe(1);
+
+      cueEngineService.reset();
+
+      expect(cueEngineService.activeCues.size).toBe(0);
+    });
+
+    it('should clear conflictTimers and cancel timeouts on reset', () => {
+      jest.useFakeTimers();
+
+      // Manually add a conflict timer
+      const callback = jest.fn();
+      const timer = setTimeout(callback, 10000);
+      cueEngineService.conflictTimers.set('conflict-cue', timer);
+
+      expect(cueEngineService.conflictTimers.size).toBe(1);
+
+      cueEngineService.reset();
+
+      expect(cueEngineService.conflictTimers.size).toBe(0);
+
+      // Advance time past the timer — callback should NOT fire (was cleared)
+      jest.advanceTimersByTime(15000);
+      expect(callback).not.toHaveBeenCalled();
+
+      jest.useRealTimers();
+    });
+
+    it('should clear firedClockCues on reset', () => {
+      cueEngineService.firedClockCues.add('clock-cue-1');
+      cueEngineService.firedClockCues.add('clock-cue-2');
+
+      cueEngineService.reset();
+
+      expect(cueEngineService.firedClockCues.size).toBe(0);
+    });
+
+    it('should deactivate engine on reset', () => {
+      cueEngineService.activate();
+      expect(cueEngineService.active).toBe(true);
+
+      cueEngineService.reset();
+
+      expect(cueEngineService.active).toBe(false);
+    });
+  });
+
+  describe('clock-driven compound cue at non-zero game clock (C1)', () => {
+    it('should use relative elapsed time when cue starts mid-game', async () => {
+      // Set game clock to 100s before firing cue
+      gameClockService.getElapsed.mockReturnValue(100);
+
+      cueEngineService.loadCues([{
+        id: 'late-start',
+        timeline: [
+          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'dim' } },
+          { at: 5, action: 'sound:play', payload: { file: 'alert.wav' } },
+        ],
+      }]);
+
+      // Fire cue — startElapsed captured as 100
+      await cueEngineService.fireCue('late-start');
+      executeCommand.mockClear();
+
+      // Tick at 101s (relative=1) — at:0 already fired, nothing at at:1
+      cueEngineService._tickActiveCompoundCues(101);
+      await flushAsync();
+      expect(executeCommand).not.toHaveBeenCalled();
+
+      // Tick at 105s (relative=5) — at:5 entry should fire
+      cueEngineService._tickActiveCompoundCues(105);
+      await flushAsync();
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'sound:play' })
+      );
+    });
+
+    it('should not fire entries prematurely with absolute clock time', async () => {
+      // Set game clock to 50s before firing cue
+      gameClockService.getElapsed.mockReturnValue(50);
+
+      cueEngineService.loadCues([{
+        id: 'late-start-2',
+        timeline: [
+          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'dim' } },
+          { at: 30, action: 'sound:play', payload: { file: 'late.wav' } },
+        ],
+      }]);
+
+      // Fire cue — startElapsed captured as 50
+      await cueEngineService.fireCue('late-start-2');
+      executeCommand.mockClear();
+
+      // Tick at 51s (relative=1) — at:30 should NOT fire yet
+      cueEngineService._tickActiveCompoundCues(51);
+      await flushAsync();
+      expect(executeCommand).not.toHaveBeenCalled();
+
+      // Tick at 80s (relative=30) — at:30 should fire
+      cueEngineService._tickActiveCompoundCues(80);
+      await flushAsync();
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'sound:play' })
+      );
+    });
+  });
+
+  describe('loadCues() with active cues (M4)', () => {
+    it('should stop active compound cues when loadCues is called', async () => {
+      cueEngineService.loadCues([{
+        id: 'running-cue',
+        timeline: [
+          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'dim' } },
+          { at: 60, action: 'sound:play', payload: { file: 'end.wav' } },
+        ],
+      }]);
+
+      await cueEngineService.fireCue('running-cue');
+      expect(cueEngineService.getActiveCues()).toHaveLength(1);
+
+      // Reload cues — should stop the active cue first
+      cueEngineService.loadCues([{
+        id: 'new-cue',
+        commands: [{ action: 'sound:play', payload: { file: 'new.wav' } }]
+      }]);
+      expect(cueEngineService.getActiveCues()).toHaveLength(0);
+    });
+  });
 });

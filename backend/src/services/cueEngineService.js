@@ -96,6 +96,14 @@ class CueEngineService extends EventEmitter {
     this.active = false;
     /** @type {Set<string>} Clock cue IDs that have already fired (prevents re-fire) */
     this.firedClockCues = new Set();
+
+    // Clear conflict timers before replacing the Map (prevent leaked timeouts)
+    if (this.conflictTimers) {
+      for (const timer of this.conflictTimers.values()) {
+        clearTimeout(timer);
+      }
+    }
+
     /** @type {Map<string, Object>} Running compound cues indexed by cue ID */
     this.activeCues = new Map();
     /** @type {Map<string, NodeJS.Timeout>} Auto-cancel timers for conflicted cues */
@@ -110,6 +118,14 @@ class CueEngineService extends EventEmitter {
    * @throws {Error} If a cue has both commands and timeline (mutually exclusive)
    */
   loadCues(cuesArray) {
+    // Stop any active compound cues before replacing definitions
+    if (this.activeCues && this.activeCues.size > 0) {
+      logger.warn(`[CueEngine] Stopping ${this.activeCues.size} active compound cue(s) before reloading`);
+      for (const cueId of [...this.activeCues.keys()]) {
+        this.stopCue(cueId);
+      }
+    }
+
     const newCues = new Map();
 
     for (const cue of cuesArray) {
@@ -406,7 +422,9 @@ class CueEngineService extends EventEmitter {
     const { id: cueId, timeline } = cue;
 
     // Determine if this is a video-driven cue (has a video:play entry)
-    const hasVideo = timeline.some(entry => entry.action === 'video:play');
+    const hasVideo = timeline.some(entry =>
+      entry.action === 'video:play' || entry.action === 'video:queue:add'
+    );
 
     // Video conflict detection (D13, D37): Check if a video is already playing
     if (hasVideo) {
@@ -455,12 +473,17 @@ class CueEngineService extends EventEmitter {
       spawnedBy = chainArr[chainArr.length - 1];
     }
 
+    // Capture game clock elapsed at cue start for relative time calculation
+    const gameClockService = require('./gameClockService');
+    const startElapsed = gameClockService.getElapsed();
+
     // Create active cue entry
     const activeCue = {
       cueId,
       state: 'running',
       startTime: Date.now(),
       elapsed: 0,
+      startElapsed, // Game clock time at cue start (for relative time calculation)
       timeline,
       maxAt,
       firedEntries: new Set(),
@@ -577,10 +600,11 @@ class CueEngineService extends EventEmitter {
       if (activeCue.state !== 'running') continue;
       if (activeCue.hasVideo) continue; // Video-driven cues use handleVideoProgress
 
-      activeCue.elapsed = elapsed;
+      const relativeElapsed = elapsed - activeCue.startElapsed;
+      activeCue.elapsed = relativeElapsed;
 
       // Fire entries that should have fired by now
-      this._fireTimelineEntries(cueId, elapsed).catch(err => {
+      this._fireTimelineEntries(cueId, relativeElapsed).catch(err => {
         logger.error(`[CueEngine] Error ticking compound cue "${cueId}":`, err.message);
       });
 
@@ -643,6 +667,9 @@ class CueEngineService extends EventEmitter {
   /**
    * Handle video progress event from videoQueueService.
    * Forwards progress to all active video-driven compound cues.
+   *
+   * Note: forwards to ALL active video-driven cues. Safe because only one
+   * video can play at a time (enforced by video conflict detection in _startCompoundCue).
    *
    * @param {Object} data - Video progress event data
    * @param {number} data.position - Video position in seconds

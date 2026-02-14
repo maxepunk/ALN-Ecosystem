@@ -34,6 +34,7 @@ const lightingService = require('./services/lightingService');
 const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
+const spotifyService = require('./services/spotifyService');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order
 const ServerState = {
@@ -117,6 +118,7 @@ function setupServiceListeners(ioInstance) {
     gameClockService,
     cueEngineService,
     soundService,
+    spotifyService,
   });
 
   // Initialize and start heartbeat monitoring for HTTP-based devices
