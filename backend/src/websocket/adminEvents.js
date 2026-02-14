@@ -9,6 +9,12 @@ const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
 const stateService = require('../services/stateService');
+const videoQueueService = require('../services/videoQueueService');
+const displayControlService = require('../services/displayControlService');
+const vlcService = require('../services/vlcService');
+const bluetoothService = require('../services/bluetoothService');
+const audioRoutingService = require('../services/audioRoutingService');
+const lightingService = require('../services/lightingService');
 const { emitWrapped } = require('./eventWrapper');
 const { executeCommand } = require('../services/commandExecutor');
 
@@ -54,6 +60,12 @@ async function handleGmCommand(socket, data, io) {
           stateService,
           transactionService,
           offlineQueueService,
+          videoQueueService,
+          displayControlService,
+          vlcService,
+          bluetoothService,
+          audioRoutingService,
+          lightingService,
         });
 
         const resultMessage = 'System reset complete - ready for new session';
