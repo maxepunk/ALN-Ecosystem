@@ -21,6 +21,8 @@ class GameClockService extends EventEmitter {
     this.totalPausedMs = 0;
     this.interval = null;
     this.status = 'stopped'; // stopped | running | paused
+    this.overtimeThreshold = null;
+    this.overtimeFired = false;
   }
 
   start() {
@@ -78,6 +80,16 @@ class GameClockService extends EventEmitter {
     };
   }
 
+  /**
+   * Set overtime threshold in seconds.
+   * When elapsed time exceeds this threshold, gameclock:overtime event is emitted once.
+   * @param {number} seconds - Threshold in seconds
+   */
+  setOvertimeThreshold(seconds) {
+    this.overtimeThreshold = seconds;
+    this.overtimeFired = false;
+  }
+
   /** Restore clock state from persisted session data (backend restart recovery). */
   restore(clockData) {
     if (!clockData || !clockData.startTime) return;
@@ -129,6 +141,13 @@ class GameClockService extends EventEmitter {
   _tick() {
     const elapsed = this.getElapsed();
     this.emit('gameclock:tick', { elapsed });
+
+    // Check for overtime
+    if (this.overtimeThreshold !== null && !this.overtimeFired && elapsed >= this.overtimeThreshold) {
+      this.overtimeFired = true;
+      this.emit('gameclock:overtime', { elapsed });
+      logger.warn(`[GameClock] Overtime threshold exceeded at ${elapsed}s`);
+    }
   }
 }
 

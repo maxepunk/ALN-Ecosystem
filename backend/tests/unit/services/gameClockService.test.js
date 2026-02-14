@@ -206,4 +206,50 @@ describe('GameClockService', () => {
       expect(gameClockService.getElapsed()).toBe(0);
     });
   });
+
+  describe('overtime detection', () => {
+    it('should emit gameclock:overtime when elapsed exceeds threshold', () => {
+      const handler = jest.fn();
+      gameClockService.on('gameclock:overtime', handler);
+
+      gameClockService.setOvertimeThreshold(120 * 60); // 2 hours in seconds
+      gameClockService.start();
+
+      // Advance past 2 hours
+      jest.advanceTimersByTime(120 * 60 * 1000 + 1000);
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ elapsed: expect.any(Number) })
+      );
+    });
+
+    it('should only emit overtime once', () => {
+      const handler = jest.fn();
+      gameClockService.on('gameclock:overtime', handler);
+
+      gameClockService.setOvertimeThreshold(10);
+      gameClockService.start();
+      jest.advanceTimersByTime(15000);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reset overtime flag on reset()', () => {
+      const handler = jest.fn();
+      gameClockService.on('gameclock:overtime', handler);
+
+      gameClockService.setOvertimeThreshold(5);
+      gameClockService.start();
+      jest.advanceTimersByTime(6000);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      gameClockService.reset();
+      gameClockService.setOvertimeThreshold(5);
+      gameClockService.start();
+      jest.advanceTimersByTime(6000);
+
+      expect(handler).toHaveBeenCalledTimes(2); // Should fire again after reset
+    });
+  });
 });

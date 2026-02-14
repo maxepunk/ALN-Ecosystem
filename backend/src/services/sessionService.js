@@ -19,7 +19,6 @@ class SessionService extends EventEmitter {
 
   initState() {
     this.currentSession = null;
-    this.sessionTimeoutTimer = null;
   }
 
   /**
@@ -225,6 +224,36 @@ class SessionService extends EventEmitter {
   }
 
   /**
+   * Set up listeners for game clock events
+   * Uses listenerRegistry for proper test cleanup
+   */
+  setupGameClockListeners() {
+    // Listen for gameclock:overtime to emit session overtime warning
+    listenerRegistry.addTrackedListener(gameClockService, 'gameclock:overtime', (payload) => {
+      if (!this.currentSession) {
+        logger.warn('No session during gameclock:overtime');
+        return;
+      }
+
+      logger.warn('Session overtime - exceeded expected duration', {
+        sessionId: this.currentSession.id,
+        expectedDuration: config.session.sessionTimeout,
+        startTime: this.currentSession.startTime,
+        elapsed: payload.elapsed
+      });
+
+      // Emit warning event for GM notification (does NOT end session)
+      this.emit('session:overtime', {
+        sessionId: this.currentSession.id,
+        sessionName: this.currentSession.name,
+        startTime: this.currentSession.startTime,
+        expectedDuration: config.session.sessionTimeout,
+        overtimeDuration: 0 // Will be calculated by listener
+      });
+    }, 'sessionService->gameClockService:gameclock:overtime');
+  }
+
+  /**
    * Initialize the service
    * @returns {Promise<void>}
    */
@@ -257,6 +286,9 @@ class SessionService extends EventEmitter {
 
       // Set up new persistence listeners (Slice 2 - single responsibility for persistence)
       this.setupPersistenceListeners();
+
+      // Set up game clock listeners for overtime detection
+      this.setupGameClockListeners();
     } catch (error) {
       logger.error('Failed to initialize session service', error);
     }
@@ -332,14 +364,15 @@ class SessionService extends EventEmitter {
     // Record game start time on the session
     this.currentSession.gameStartTime = new Date().toISOString();
 
+    // Set overtime threshold before starting the clock
+    const overtimeThresholdSeconds = config.session.sessionTimeout * 60; // Convert minutes to seconds
+    gameClockService.setOvertimeThreshold(overtimeThresholdSeconds);
+
     // Start the game clock
     gameClockService.start();
 
     // Persist game clock state on session
     this.currentSession.gameClock = gameClockService.toPersistence();
-
-    // Start session timeout timer
-    this.startSessionTimeout();
 
     // Save to persistence
     await this.saveCurrentSession();
@@ -456,13 +489,11 @@ class SessionService extends EventEmitter {
         this.currentSession.start();
         gameClockService.resume();
         this.currentSession.gameClock = gameClockService.toPersistence();
-        this.startSessionTimeout();
         break;
       case 'paused':
         this.currentSession.pause();
         gameClockService.pause();
         this.currentSession.gameClock = gameClockService.toPersistence();
-        this.stopSessionTimeout();
         break;
       default:
         throw new Error(`Invalid session status: ${status}`);
@@ -502,9 +533,6 @@ class SessionService extends EventEmitter {
 
       // Create backup
       await persistenceService.backupSession(session.toJSON());
-
-      // Stop timeout timer
-      this.stopSessionTimeout();
 
       // Emit domain event for internal coordination
       // broadcasts.js will wrap this for WebSocket broadcast
@@ -640,43 +668,6 @@ class SessionService extends EventEmitter {
     return newTeamScore;
   }
 
-  /**
-   * Start session timeout timer
-   * Emits a warning when session exceeds expected duration (does NOT auto-end)
-   * @private
-   */
-  startSessionTimeout() {
-    this.stopSessionTimeout();
-
-    const timeoutMs = config.session.sessionTimeout * 60 * 1000;
-    this.sessionTimeoutTimer = setTimeout(() => {
-      logger.warn('Session overtime - exceeded expected duration', {
-        sessionId: this.currentSession?.id,
-        expectedDuration: config.session.sessionTimeout,
-        startTime: this.currentSession?.startTime
-      });
-
-      // Emit warning event for GM notification (does NOT end session)
-      this.emit('session:overtime', {
-        sessionId: this.currentSession?.id,
-        sessionName: this.currentSession?.name,
-        startTime: this.currentSession?.startTime,
-        expectedDuration: config.session.sessionTimeout,
-        overtimeDuration: 0 // Will be calculated by listener
-      });
-    }, timeoutMs);
-  }
-
-  /**
-   * Stop session timeout timer
-   * @private
-   */
-  stopSessionTimeout() {
-    if (this.sessionTimeoutTimer) {
-      clearTimeout(this.sessionTimeoutTimer);
-      this.sessionTimeoutTimer = null;
-    }
-  }
 
   /**
    * Add transaction to current session
@@ -789,9 +780,6 @@ class SessionService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async reset() {
-    // Stop timers FIRST
-    this.stopSessionTimeout();
-
     // Stop game clock
     gameClockService.reset();
 
@@ -810,6 +798,7 @@ class SessionService extends EventEmitter {
     // Re-setup cross-service listeners (listenerRegistry handles cleanup via cleanup())
     this.setupScoreListeners();
     this.setupPersistenceListeners();
+    this.setupGameClockListeners();
 
     logger.info('Session service reset');
   }

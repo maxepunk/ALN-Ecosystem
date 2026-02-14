@@ -232,7 +232,6 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       await resetAllServices();
 
       expect(sessionService.getCurrentSession()).toBeNull();
-      expect(sessionService.sessionTimeoutTimer).toBeNull();
     });
   });
 
@@ -398,33 +397,45 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
-  describe('Session Timeout', () => {
-    it('should start session timeout timer after startGame', async () => {
+  describe('Session Overtime Detection', () => {
+    it('should set game clock overtime threshold when starting game', async () => {
+      const gameClockService = require('../../../src/services/gameClockService');
+      const setOvertimeThresholdSpy = jest.spyOn(gameClockService, 'setOvertimeThreshold');
+
       await sessionService.createSession({
-        name: 'Timeout Test',
+        name: 'Overtime Test',
         teams: ['Team Alpha']
       });
-
-      // Timer not started until game starts
-      expect(sessionService.sessionTimeoutTimer).toBeNull();
 
       await sessionService.startGame();
-      expect(sessionService.sessionTimeoutTimer).not.toBeNull();
+
+      // Should set threshold to 120 minutes (7200 seconds)
+      expect(setOvertimeThresholdSpy).toHaveBeenCalledWith(7200);
     });
 
-    it('should stop session timeout timer', async () => {
+    it('should emit session:overtime when game clock exceeds threshold', async () => {
+      const gameClockService = require('../../../src/services/gameClockService');
+      const handler = jest.fn();
+
       await sessionService.createSession({
-        name: 'Stop Timeout Test',
+        name: 'Overtime Event Test',
         teams: ['Team Alpha']
       });
 
-      sessionService.stopSessionTimeout();
-      expect(sessionService.sessionTimeoutTimer).toBeNull();
-    });
+      sessionService.on('session:overtime', handler);
 
-    it('should handle stopSessionTimeout when timer is null', () => {
-      // Should not throw
-      expect(() => sessionService.stopSessionTimeout()).not.toThrow();
+      await sessionService.startGame();
+
+      // Manually trigger overtime from game clock
+      gameClockService.emit('gameclock:overtime', { elapsed: 7201 });
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionId: expect.any(String),
+          sessionName: 'Overtime Event Test',
+          expectedDuration: 120
+        })
+      );
     });
   });
 
