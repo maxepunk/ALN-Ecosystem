@@ -182,69 +182,18 @@ async function initializeServices() {
       logger.warn('Failed to load cue definitions - cue engine will be empty', { error: err.message });
     }
 
-    // Wire game clock tick events to cue engine
+    // Wire game events to cue engine (shared with systemReset re-initialization)
     const listenerRegistry = require('./websocket/listenerRegistry');
-    listenerRegistry.addTrackedListener(gameClockService, 'gameclock:tick', (data) => {
-      cueEngineService.handleClockTick(data.elapsed);
-    }, 'gameClockService->cueEngineService');
-
-    // Wire game events to cue engine
-    // Transaction events
-    listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
-      cueEngineService.handleGameEvent('transaction:accepted', payload);
-    }, 'transactionService->cueEngineService');
-
-    listenerRegistry.addTrackedListener(transactionService, 'group:completed', (data) => {
-      cueEngineService.handleGameEvent('group:completed', data);
-    }, 'transactionService->cueEngineService');
-
-    // Video events
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:loading', (data) => {
-      cueEngineService.handleGameEvent('video:loading', data);
-    }, 'videoQueueService->cueEngineService');
-
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:started', (data) => {
-      cueEngineService.handleGameEvent('video:started', data);
-    }, 'videoQueueService->cueEngineService');
-
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:completed', (data) => {
-      cueEngineService.handleGameEvent('video:completed', data);
-    }, 'videoQueueService->cueEngineService');
-
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:paused', (data) => {
-      cueEngineService.handleGameEvent('video:paused', data);
-    }, 'videoQueueService->cueEngineService');
-
-    listenerRegistry.addTrackedListener(videoQueueService, 'video:resumed', (data) => {
-      cueEngineService.handleGameEvent('video:resumed', data);
-    }, 'videoQueueService->cueEngineService');
-
-    // Session events
-    listenerRegistry.addTrackedListener(sessionService, 'session:created', (session) => {
-      cueEngineService.handleGameEvent('session:created', { sessionId: session.id });
-    }, 'sessionService->cueEngineService');
-
-    listenerRegistry.addTrackedListener(sessionService, 'player-scan:added', (data) => {
-      cueEngineService.handleGameEvent('player:scan', data);
-    }, 'sessionService->cueEngineService');
-
-    // Sound events (for cue chaining)
-    listenerRegistry.addTrackedListener(soundService, 'sound:completed', (data) => {
-      cueEngineService.handleGameEvent('sound:completed', data);
-    }, 'soundService->cueEngineService');
-
-    // Cue events (for cue chaining)
-    listenerRegistry.addTrackedListener(cueEngineService, 'cue:completed', (data) => {
-      cueEngineService.handleGameEvent('cue:completed', data);
-    }, 'cueEngineService->cueEngineService');
-
-    // Spotify events (future)
-    // listenerRegistry.addTrackedListener(spotifyService, 'spotify:track:changed', ...)
-
-    // Game clock events
-    listenerRegistry.addTrackedListener(gameClockService, 'gameclock:started', (data) => {
-      cueEngineService.handleGameEvent('gameclock:started', data);
-    }, 'gameClockService->cueEngineService');
+    const { setupCueEngineForwarding } = require('./services/cueEngineWiring');
+    setupCueEngineForwarding({
+      listenerRegistry,
+      transactionService,
+      sessionService,
+      videoQueueService,
+      gameClockService,
+      cueEngineService,
+      soundService
+    });
 
     logger.info('Phase 1 services initialized (game clock, cue engine, sound)');
 

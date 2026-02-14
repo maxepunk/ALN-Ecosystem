@@ -103,7 +103,7 @@ describe('Cue Engine Integration', () => {
       await waitForEvent(gm1, 'session:update');
 
       // Try to submit transaction while in setup
-      const errorPromise = waitForEvent(gm1, 'error');
+      const resultPromise = waitForEvent(gm1, 'transaction:result');
       const testToken = TestTokens.STANDALONE_TOKENS[0];
       gm1.emit('transaction:submit', {
         event: 'transaction:submit',
@@ -111,14 +111,16 @@ describe('Cue Engine Integration', () => {
           tokenId: testToken.id,
           teamId: 'Team Alpha',
           deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm'
+          deviceType: 'gm',
+          mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
 
-      // Should receive error (transaction rejected during setup/paused)
-      const error = await errorPromise;
-      expect(error.data.message).toBeDefined();
+      // Should receive transaction:result with error (rejected during setup)
+      const result = await resultPromise;
+      expect(result.data.status).toBe('error');
+      expect(result.data.error).toBe('SESSION_NOT_ACTIVE');
     });
 
     it('should accept transactions after start', async () => {
@@ -141,7 +143,8 @@ describe('Cue Engine Integration', () => {
           tokenId: testToken.id,
           teamId: 'Team Alpha',
           deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm'
+          deviceType: 'gm',
+          mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
@@ -194,7 +197,8 @@ describe('Cue Engine Integration', () => {
           tokenId: testToken.id,
           teamId: 'Team Alpha',
           deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm'
+          deviceType: 'gm',
+          mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
@@ -242,7 +246,7 @@ describe('Cue Engine Integration', () => {
       expect(session.status).toBe('paused');
 
       // Try to submit transaction (should be rejected)
-      const errorPromise = waitForEvent(gm1, 'error');
+      const resultPromise = waitForEvent(gm1, 'transaction:result');
       const testToken = TestTokens.STANDALONE_TOKENS[0];
       gm1.emit('transaction:submit', {
         event: 'transaction:submit',
@@ -250,14 +254,16 @@ describe('Cue Engine Integration', () => {
           tokenId: testToken.id,
           teamId: 'Team Alpha',
           deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm'
+          deviceType: 'gm',
+          mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
 
-      // Should receive error (transaction rejected during setup/paused)
-      const error = await errorPromise;
-      expect(error.data.message).toBeDefined();
+      // Should receive transaction:result with error (rejected during paused)
+      const result = await resultPromise;
+      expect(result.data.status).toBe('error');
+      expect(result.data.error).toBe('SESSION_PAUSED');
     });
 
     it('should resume everything on session:resume', async () => {
@@ -299,7 +305,8 @@ describe('Cue Engine Integration', () => {
           tokenId: testToken.id,
           teamId: 'Team Alpha',
           deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm'
+          deviceType: 'gm',
+          mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });

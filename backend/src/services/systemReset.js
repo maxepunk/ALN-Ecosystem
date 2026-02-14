@@ -149,6 +149,22 @@ async function performSystemReset(io, services) {
   // They handle transaction:accepted → persist → emit transaction:added → broadcast transaction:new
   sessionService.setupPersistenceListeners();
 
+  // Phase 1: Re-register cue engine event forwarding
+  // These listeners forward game events (transaction:accepted, group:completed, etc.) to cueEngineService
+  // They were registered in app.js during startup and cleared by listenerRegistry.cleanup()
+  if (cueEngineService && gameClockService) {
+    const { setupCueEngineForwarding } = require('./cueEngineWiring');
+    setupCueEngineForwarding({
+      listenerRegistry,
+      transactionService,
+      sessionService,
+      videoQueueService,
+      gameClockService,
+      cueEngineService,
+      soundService
+    });
+  }
+
   logger.debug('Cross-service listeners re-initialized');
 
   logger.info('System reset complete - ready for new session');
