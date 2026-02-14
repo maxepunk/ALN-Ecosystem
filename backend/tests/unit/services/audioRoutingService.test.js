@@ -484,8 +484,8 @@ describe('AudioRoutingService', () => {
         '\t\tapplication.name = "VLC media player"',
       ].join('\n'));
 
-      const idx = await audioRoutingService.findSinkInput('VLC');
-      expect(idx).toBe('201');
+      const result = await audioRoutingService.findSinkInput('VLC');
+      expect(result).toEqual({ index: '201' });
     });
 
     it('should return null when VLC not found', async () => {
@@ -495,15 +495,15 @@ describe('AudioRoutingService', () => {
         '\t\tapplication.name = "Firefox"',
       ].join('\n'));
 
-      const idx = await audioRoutingService.findSinkInput('VLC');
-      expect(idx).toBeNull();
+      const result = await audioRoutingService.findSinkInput('VLC');
+      expect(result).toBeNull();
     });
 
     it('should return null on empty output', async () => {
       mockExecFileSuccess('');
 
-      const idx = await audioRoutingService.findSinkInput('VLC');
-      expect(idx).toBeNull();
+      const result = await audioRoutingService.findSinkInput('VLC');
+      expect(result).toBeNull();
     });
   });
 
@@ -822,6 +822,85 @@ describe('AudioRoutingService', () => {
       await expect(
         audioRoutingService.moveStreamToSink('201', 'nonexistent_sink')
       ).rejects.toThrow();
+    });
+  });
+
+  // ── audio:volume:set ──
+
+  describe('audio:volume:set', () => {
+    it('should set volume for a valid stream via pactl', async () => {
+      // Mock findSinkInput to return a sink-input index
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('spotify', 75);
+
+      expect(execFile).toHaveBeenCalledWith(
+        'pactl', ['set-sink-input-volume', '42', '75%'],
+        expect.any(Object), expect.any(Function)
+      );
+    });
+
+    it('should reject invalid stream names', async () => {
+      await expect(audioRoutingService.setStreamVolume('invalid', 50))
+        .rejects.toThrow(/invalid stream/i);
+    });
+
+    it('should clamp volume to 0-100 range', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('video', 150);
+
+      expect(execFile).toHaveBeenCalledWith(
+        'pactl', ['set-sink-input-volume', '42', '100%'],
+        expect.any(Object), expect.any(Function)
+      );
+    });
+  });
+
+  // ── VALID_STREAMS expansion ──
+
+  describe('VALID_STREAMS expansion', () => {
+    it('should accept spotify as a valid stream', () => {
+      expect(audioRoutingService.isValidStream('spotify')).toBe(true);
+    });
+
+    it('should accept sound as a valid stream', () => {
+      expect(audioRoutingService.isValidStream('sound')).toBe(true);
+    });
+  });
+
+  // ── fallback routing ──
+
+  describe('fallback routing', () => {
+    it('should try fallback sink when primary is unavailable', async () => {
+      // Mock findSinkInput to return a sink-input
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+
+      // Mock getAvailableSinks to return only HDMI (no bluetooth)
+      jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
+        {
+          id: '47',
+          name: 'alsa_output.platform-fef00700.hdmi.hdmi-stereo',
+          type: 'hdmi',
+        },
+      ]);
+
+      // Mock moveStreamToSink to succeed
+      const moveStream = jest.spyOn(audioRoutingService, 'moveStreamToSink');
+      moveStream.mockResolvedValue(undefined);
+
+      // Set up route with primary bluetooth (unavailable) and fallback hdmi
+      audioRoutingService._routingData.routes.video = {
+        sink: 'bluez_output.missing',
+        fallback: 'hdmi',
+      };
+
+      await audioRoutingService.applyRoutingWithFallback('video');
+
+      // Should move to fallback HDMI sink since bluetooth is not available
+      expect(moveStream).toHaveBeenCalledWith('42', 'alsa_output.platform-fef00700.hdmi.hdmi-stereo');
     });
   });
 });

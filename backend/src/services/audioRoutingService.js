@@ -20,6 +20,13 @@ const { execFileAsync } = require('../utils/execHelper');
 /** Valid stream names for Phase 1 */
 const VALID_STREAMS = ['video', 'spotify', 'sound'];
 
+/** Map stream names to application process names */
+const STREAM_APP_NAMES = {
+  video: 'VLC',
+  spotify: 'spotifyd',
+  sound: 'pw-play',
+};
+
 /** Persistence key for routing config */
 const PERSISTENCE_KEY = 'config:audioRouting';
 
@@ -231,14 +238,14 @@ class AudioRoutingService extends EventEmitter {
     }
 
     // Find VLC sink-input with retry
-    const sinkInputIdx = await this._findSinkInputWithRetry('VLC');
-    if (!sinkInputIdx) {
+    const sinkInput = await this._findSinkInputWithRetry('VLC');
+    if (!sinkInput) {
       logger.warn('VLC sink-input not found, cannot apply routing', { stream });
       return;
     }
 
     // Move the stream
-    await this.moveStreamToSink(sinkInputIdx, targetSink.name);
+    await this.moveStreamToSink(sinkInput.index, targetSink.name);
 
     if (fellBack) {
       this.emit('routing:fallback', {
@@ -263,15 +270,15 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
-   * Find a VLC sink-input by parsing `pactl list sink-inputs`.
-   * Looks for `application.name = "VLC media player"`.
-   * @param {string} appName - App name substring to match (e.g., 'VLC')
-   * @returns {Promise<string|null>} Sink-input index or null
+   * Find a sink-input by application name.
+   * @param {string} appName - App name substring to match (e.g., 'VLC', 'spotifyd', 'pw-play')
+   * @returns {Promise<{index: string}|null>} Sink-input object with index or null
    */
   async findSinkInput(appName) {
     try {
       const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
-      return this._parseSinkInputs(stdout, appName);
+      const index = this._parseSinkInputs(stdout, appName);
+      return index ? { index } : null;
     } catch (err) {
       logger.error('Failed to list sink-inputs', { error: err.message });
       return null;
@@ -287,6 +294,142 @@ class AudioRoutingService extends EventEmitter {
   async moveStreamToSink(sinkInputIdx, sinkName) {
     await this._execFile('pactl', ['move-sink-input', sinkInputIdx, sinkName]);
     logger.debug('Moved sink-input to sink', { sinkInputIdx, sinkName });
+  }
+
+  // ── Stream Validation ──
+
+  /**
+   * Check if a stream name is valid.
+   * @param {string} stream - Stream name to validate
+   * @returns {boolean} True if valid
+   */
+  isValidStream(stream) {
+    return VALID_STREAMS.includes(stream);
+  }
+
+  // ── Volume Control ──
+
+  /**
+   * Set volume for a named stream.
+   * @param {string} stream - Stream name (video, spotify, sound)
+   * @param {number} volume - Volume percentage (0-100)
+   * @returns {Promise<void>}
+   */
+  async setStreamVolume(stream, volume) {
+    this._validateStream(stream);
+
+    // Clamp volume to 0-100 range
+    const clampedVolume = Math.max(0, Math.min(100, volume));
+
+    // Get app name for this stream
+    const appName = STREAM_APP_NAMES[stream];
+
+    // Find the sink-input for this app
+    const sinkInput = await this.findSinkInput(appName);
+    if (!sinkInput || !sinkInput.index) {
+      throw new Error(`No active sink-input found for stream '${stream}'`);
+    }
+
+    // Set the volume
+    await this._execFile('pactl', ['set-sink-input-volume', sinkInput.index, `${clampedVolume}%`]);
+
+    logger.info('Stream volume set', { stream, volume: clampedVolume, sinkInputIdx: sinkInput.index });
+  }
+
+  /**
+   * Get current volume for a named stream.
+   * @param {string} stream - Stream name
+   * @returns {Promise<number|null>} Volume percentage or null if not found
+   */
+  async getStreamVolume(stream) {
+    this._validateStream(stream);
+
+    const appName = STREAM_APP_NAMES[stream];
+    const sinkInput = await this.findSinkInput(appName);
+
+    if (!sinkInput || !sinkInput.index) {
+      return null;
+    }
+
+    try {
+      const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
+      const volumeMatch = this._extractVolumeForSinkInput(stdout, sinkInput.index);
+      return volumeMatch;
+    } catch (err) {
+      logger.error('Failed to get stream volume', { stream, error: err.message });
+      return null;
+    }
+  }
+
+  // ── Routing with Fallback ──
+
+  /**
+   * Apply routing for a stream with fallback support.
+   * Tries primary sink from route config, falls back to fallback sink if specified.
+   * @param {string} stream - Stream name
+   * @returns {Promise<void>}
+   */
+  async applyRoutingWithFallback(stream) {
+    this._validateStream(stream);
+
+    const route = this.getStreamRoute(stream);
+    const appName = STREAM_APP_NAMES[stream];
+
+    // Find the sink-input for this stream
+    const sinkInput = await this.findSinkInput(appName);
+    if (!sinkInput || !sinkInput.index) {
+      logger.warn('No active sink-input found for fallback routing', { stream });
+      return;
+    }
+
+    // Get route config (may have fallback field)
+    const routeConfig = this._routingData.routes[stream];
+    const primarySink = routeConfig?.sink || route;
+    const fallbackSink = routeConfig?.fallback;
+
+    // Try primary sink first
+    try {
+      const availableSinks = await this.getAvailableSinks();
+      const targetSink = this._resolveTargetSink(primarySink, availableSinks);
+
+      if (!targetSink) {
+        throw new Error(`Primary sink '${primarySink}' not available`);
+      }
+
+      await this.moveStreamToSink(sinkInput.index, targetSink.name);
+      logger.info('Applied routing with primary sink', { stream, sink: targetSink.name });
+      return;
+    } catch (primaryErr) {
+      logger.warn('Primary sink failed, trying fallback', {
+        stream,
+        primarySink,
+        error: primaryErr.message,
+      });
+
+      // Try fallback if specified
+      if (!fallbackSink) {
+        throw new Error(`Primary sink failed and no fallback configured: ${primaryErr.message}`);
+      }
+
+      const availableSinks = await this.getAvailableSinks();
+      const fallbackTarget = this._resolveTargetSink(fallbackSink, availableSinks);
+
+      if (!fallbackTarget) {
+        throw new Error(`Fallback sink '${fallbackSink}' not available`);
+      }
+
+      await this.moveStreamToSink(sinkInput.index, fallbackTarget.name);
+      logger.info('Applied routing with fallback sink', {
+        stream,
+        fallbackSink: fallbackTarget.name,
+      });
+
+      this.emit('routing:fallback', {
+        stream,
+        requestedSink: primarySink,
+        actualSink: fallbackTarget.name,
+      });
+    }
   }
 
   // ── Sink Monitor ──
@@ -532,6 +675,43 @@ class AudioRoutingService extends EventEmitter {
         context: 'auto-routing on sink added',
       });
     }
+  }
+
+  /**
+   * Extract volume percentage for a specific sink-input from pactl output.
+   * @param {string} output - Raw pactl list sink-inputs output
+   * @param {string} sinkInputIdx - Sink-input index to find
+   * @returns {number|null} Volume percentage or null
+   * @private
+   */
+  _extractVolumeForSinkInput(output, sinkInputIdx) {
+    if (!output || !output.trim()) {
+      return null;
+    }
+
+    const lines = output.split('\n');
+    let currentIdx = null;
+    let inTargetInput = false;
+
+    for (const line of lines) {
+      // Match "Sink Input #NNN"
+      const idxMatch = line.match(/^Sink Input #(\d+)/);
+      if (idxMatch) {
+        currentIdx = idxMatch[1];
+        inTargetInput = currentIdx === sinkInputIdx;
+      }
+
+      // If we're in the target sink-input, look for volume
+      if (inTargetInput) {
+        // Match "Volume: front-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB"
+        const volumeMatch = line.match(/Volume:.*?(\d+)%/);
+        if (volumeMatch) {
+          return parseInt(volumeMatch[1], 10);
+        }
+      }
+    }
+
+    return null;
   }
 
   /**
