@@ -30,9 +30,10 @@ function setupCueEngineForwarding({
   cueEngineService,
   soundService
 }) {
-  // Game clock tick → cue engine clock trigger evaluation
+  // Game clock tick → cue engine clock trigger evaluation + compound cue advancement
   listenerRegistry.addTrackedListener(gameClockService, 'gameclock:tick', (data) => {
     cueEngineService.handleClockTick(data.elapsed);
+    cueEngineService._tickActiveCompoundCues(data.elapsed); // Advance clock-driven compound cues
   }, 'gameClockService->cueEngineService');
 
   // Transaction events
@@ -44,12 +45,40 @@ function setupCueEngineForwarding({
     cueEngineService.handleGameEvent('group:completed', data);
   }, 'transactionService->cueEngineService');
 
-  // Video events
+  // Video events (for standing cue evaluation)
   for (const event of ['video:loading', 'video:started', 'video:completed', 'video:paused', 'video:resumed']) {
     listenerRegistry.addTrackedListener(videoQueueService, event, (data) => {
       cueEngineService.handleGameEvent(event, data);
     }, `videoQueueService->${event}->cueEngineService`);
   }
+
+  // Video progress → compound cue timeline advancement
+  listenerRegistry.addTrackedListener(
+    videoQueueService, 'video:progress',
+    (data) => {
+      cueEngineService.handleVideoProgressEvent(data);
+    },
+    'videoQueue->video:progress->cueEngine'
+  );
+
+  // Video lifecycle events → compound cue timeline control
+  listenerRegistry.addTrackedListener(
+    videoQueueService, 'video:paused',
+    (data) => cueEngineService.handleVideoLifecycleEvent('paused', data),
+    'videoQueue->video:paused->cueEngine:lifecycle'
+  );
+
+  listenerRegistry.addTrackedListener(
+    videoQueueService, 'video:resumed',
+    (data) => cueEngineService.handleVideoLifecycleEvent('resumed', data),
+    'videoQueue->video:resumed->cueEngine:lifecycle'
+  );
+
+  listenerRegistry.addTrackedListener(
+    videoQueueService, 'video:completed',
+    (data) => cueEngineService.handleVideoLifecycleEvent('completed', data),
+    'videoQueue->video:completed->cueEngine:lifecycle'
+  );
 
   // Session events
   listenerRegistry.addTrackedListener(sessionService, 'session:created', (session) => {

@@ -641,6 +641,50 @@ class CueEngineService extends EventEmitter {
   }
 
   /**
+   * Handle video progress event from videoQueueService.
+   * Forwards progress to all active video-driven compound cues.
+   *
+   * @param {Object} data - Video progress event data
+   * @param {number} data.position - Video position in seconds
+   */
+  handleVideoProgressEvent(data) {
+    const { position } = data;
+    if (position === undefined) return;
+
+    // Forward to all active video-driven cues
+    for (const [cueId, activeCue] of this.activeCues) {
+      if (activeCue.hasVideo && activeCue.state === 'running') {
+        this.handleVideoProgress(cueId, position);
+      }
+    }
+  }
+
+  /**
+   * Handle video lifecycle events (paused, resumed, completed).
+   * Forwards to all active video-driven compound cues.
+   *
+   * @param {string} eventType - Type of lifecycle event ('paused', 'resumed', 'completed')
+   * @param {Object} data - Event data
+   */
+  handleVideoLifecycleEvent(eventType, data) {
+    // Forward to all active video-driven cues
+    for (const [cueId, activeCue] of this.activeCues) {
+      if (!activeCue.hasVideo) continue;
+
+      if (eventType === 'paused') {
+        this.handleVideoPaused(cueId);
+      } else if (eventType === 'resumed') {
+        this.handleVideoResumed(cueId);
+      } else if (eventType === 'completed') {
+        // Video completed - cue should complete naturally via _checkCompoundCueCompletion
+        // Just ensure the cue advances to the end position
+        const maxAt = activeCue.maxAt || 0;
+        this.handleVideoProgress(cueId, maxAt);
+      }
+    }
+  }
+
+  /**
    * Stop a compound cue and cascade stop to all children.
    *
    * @param {string} cueId - The compound cue ID to stop
