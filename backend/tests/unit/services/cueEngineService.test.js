@@ -593,4 +593,101 @@ describe('CueEngineService', () => {
       expect(executeCommand).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('video conflict detection (D13, D37)', () => {
+    let videoQueueService;
+
+    beforeEach(() => {
+      // Mock videoQueueService
+      jest.mock('../../../src/services/videoQueueService', () => ({
+        isPlaying: jest.fn().mockReturnValue(false),
+        getCurrentVideo: jest.fn().mockReturnValue(null),
+      }));
+      videoQueueService = require('../../../src/services/videoQueueService');
+    });
+
+    it('should emit cue:conflict when video is already playing', async () => {
+      const conflictHandler = jest.fn();
+      cueEngineService.on('cue:conflict', conflictHandler);
+
+      // Mock videoQueueService.isPlaying() to return true
+      videoQueueService.isPlaying.mockReturnValue(true);
+      videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
+
+      cueEngineService.loadCues([{
+        id: 'conflict-cue', label: 'Conflict',
+        timeline: [
+          { at: 0, action: 'video:play', payload: { file: 'new.mp4' } },
+          { at: 30, action: 'sound:play', payload: { file: 'hit.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('conflict-cue');
+
+      expect(conflictHandler).toHaveBeenCalledWith(expect.objectContaining({
+        cueId: 'conflict-cue',
+        reason: 'Video conflict',
+        currentVideo: expect.any(Object),
+        autoCancel: true,
+        autoCancelMs: 10000,
+      }));
+    });
+
+    it('should start compound cue immediately when no video conflict', async () => {
+      videoQueueService.isPlaying.mockReturnValue(false);
+
+      cueEngineService.loadCues([{
+        id: 'no-conflict', label: 'No Conflict',
+        timeline: [
+          { at: 0, action: 'video:play', payload: { file: 'new.mp4' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('no-conflict');
+      await flushAsync();
+
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'video:play' })
+      );
+    });
+
+    it('should auto-cancel conflict after 10 seconds timeout', async () => {
+      jest.useFakeTimers();
+      videoQueueService.isPlaying.mockReturnValue(true);
+      videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
+
+      cueEngineService.loadCues([{
+        id: 'timeout-cue', label: 'Timeout',
+        timeline: [{ at: 0, action: 'video:play', payload: { file: 'new.mp4' } }]
+      }]);
+
+      await cueEngineService.fireCue('timeout-cue');
+
+      // Advance 10 seconds — should auto-cancel
+      jest.advanceTimersByTime(10000);
+      expect(cueEngineService.getActiveCues()).toHaveLength(0);
+
+      jest.useRealTimers();
+    });
+
+    it('should not check conflict for non-video compound cues', async () => {
+      const conflictHandler = jest.fn();
+      cueEngineService.on('cue:conflict', conflictHandler);
+
+      videoQueueService.isPlaying.mockReturnValue(true);
+
+      cueEngineService.loadCues([{
+        id: 'no-video-cue', label: 'No Video',
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'hit.wav' } },
+          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('no-video-cue');
+
+      expect(conflictHandler).not.toHaveBeenCalled();
+      expect(executeCommand).toHaveBeenCalled();
+    });
+  });
 });

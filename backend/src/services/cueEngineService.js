@@ -98,6 +98,8 @@ class CueEngineService extends EventEmitter {
     this.firedClockCues = new Set();
     /** @type {Map<string, Object>} Running compound cues indexed by cue ID */
     this.activeCues = new Map();
+    /** @type {Map<string, NodeJS.Timeout>} Auto-cancel timers for conflicted cues */
+    this.conflictTimers = new Map();
   }
 
   /**
@@ -406,6 +408,39 @@ class CueEngineService extends EventEmitter {
     // Determine if this is a video-driven cue (has a video:play entry)
     const hasVideo = timeline.some(entry => entry.action === 'video:play');
 
+    // Video conflict detection (D13, D37): Check if a video is already playing
+    if (hasVideo) {
+      const videoQueueService = require('./videoQueueService');
+      if (videoQueueService.isPlaying()) {
+        const currentVideo = videoQueueService.getCurrentVideo();
+        logger.warn(`[CueEngine] Video conflict for cue "${cueId}": video already playing`);
+
+        // Emit conflict event
+        this.emit('cue:conflict', {
+          cueId,
+          reason: 'Video conflict',
+          currentVideo,
+          autoCancel: true,
+          autoCancelMs: 10000,
+        });
+
+        // Set auto-cancel timer (10 seconds)
+        const autoCancelTimer = setTimeout(() => {
+          logger.info(`[CueEngine] Auto-canceled conflicted cue: ${cueId}`);
+          // Clear the timer reference
+          if (this.conflictTimers && this.conflictTimers.has(cueId)) {
+            this.conflictTimers.delete(cueId);
+          }
+        }, 10000);
+
+        // Store timer reference in a Map for potential cleanup
+        this.conflictTimers.set(cueId, autoCancelTimer);
+
+        // Do NOT start the compound cue yet - wait for GM override or auto-cancel
+        return;
+      }
+    }
+
     // Compute max timeline position (duration)
     const maxAt = Math.max(...timeline.map(e => e.at), 0);
 
@@ -611,6 +646,13 @@ class CueEngineService extends EventEmitter {
    * @param {string} cueId - The compound cue ID to stop
    */
   async stopCue(cueId) {
+    // Clear conflict timer if exists
+    if (this.conflictTimers && this.conflictTimers.has(cueId)) {
+      clearTimeout(this.conflictTimers.get(cueId));
+      this.conflictTimers.delete(cueId);
+      logger.info(`[CueEngine] Cleared conflict timer for: ${cueId}`);
+    }
+
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue) {
       logger.info(`[CueEngine] stopCue: "${cueId}" not active, ignoring`);
