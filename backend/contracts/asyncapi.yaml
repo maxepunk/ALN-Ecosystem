@@ -102,7 +102,9 @@ channels:
           - $ref: '#/components/messages/CueStatus'
           - $ref: '#/components/messages/CueCompleted'
           - $ref: '#/components/messages/CueError'
+          - $ref: '#/components/messages/CueConflict'
           - $ref: '#/components/messages/SoundStatus'
+          - $ref: '#/components/messages/SpotifyStatus'
           - $ref: '#/components/messages/Error'
     publish:
       summary: Send events to orchestrator
@@ -1931,8 +1933,16 @@ components:
                   - cue:resume
                   - cue:enable
                   - cue:disable
+                  - cue:conflict:resolve
                   - sound:play
                   - sound:stop
+                  - spotify:play
+                  - spotify:pause
+                  - spotify:stop
+                  - spotify:next
+                  - spotify:previous
+                  - spotify:volume
+                  - spotify:playlist
                 example: "video:skip"
               payload:
                 type: object
@@ -2570,12 +2580,15 @@ components:
 
     CueStatus:
       name: cue:status
-      title: Cue Status Update
-      summary: Broadcast cue state changes
+      title: Cue Status Update (Phase 2)
+      summary: Compound cue progress update
       description: |
-        Broadcast when a cue's state changes during execution.
+        Broadcast when a compound cue's state or progress changes during execution.
+
+        **Phase 2 Enhancement**: Added progress tracking for compound cues with timelines.
 
         **States**:
+        - started: Cue just began execution
         - running: Cue is actively executing actions
         - paused: Cue execution paused (manual intervention)
         - completed: Cue finished all actions successfully
@@ -2600,16 +2613,29 @@ components:
               cueId:
                 type: string
                 description: Unique cue identifier
-                example: "opening-sequence"
+                example: "interrogation-scene-1"
               state:
                 type: string
                 description: Current cue state
                 enum:
+                  - started
                   - running
                   - paused
                   - completed
                   - stopped
                 example: "running"
+              progress:
+                type: number
+                description: Elapsed seconds into timeline (Phase 2)
+                example: 45.5
+              duration:
+                type: number
+                description: Total timeline duration in seconds (Phase 2)
+                example: 120
+              hasVideo:
+                type: boolean
+                description: Whether this cue includes video playback (Phase 2)
+                example: true
           timestamp:
             type: string
             format: date-time
@@ -2705,6 +2731,64 @@ components:
             description: Event timestamp
             example: "2025-10-15T20:12:00.000Z"
 
+    CueConflict:
+      name: cue:conflict
+      title: Video Conflict Prompt (Phase 2)
+      summary: Video conflict prompt for GM decision
+      description: |
+        Broadcast when a compound cue attempts to play video while another video is active.
+
+        **Phase 2 Feature**: GM must decide whether to interrupt current video or cancel cue.
+
+        **Auto-Cancel Behavior**: If GM doesn't respond within autoCancelMs, cue automatically cancels.
+
+        **GM Response**: GM sends gm:command with action=cue:conflict:resolve and payload={cueId, decision: 'interrupt'|'cancel'}
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: cue:conflict
+            description: Event name
+          data:
+            type: object
+            required:
+              - cueId
+              - reason
+              - currentVideo
+            properties:
+              cueId:
+                type: string
+                description: Cue ID requesting video playback
+                example: "interrogation-scene-2"
+              reason:
+                type: string
+                description: Conflict reason
+                example: "Video already playing"
+              currentVideo:
+                type: string
+                description: Currently playing video filename
+                example: "test_30sec.mp4"
+              autoCancel:
+                type: boolean
+                description: Whether cue will auto-cancel on timeout
+                default: true
+                example: true
+              autoCancelMs:
+                type: number
+                description: Auto-cancel timeout in milliseconds
+                default: 10000
+                example: 10000
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:12:00.000Z"
+
     SoundStatus:
       name: sound:status
       title: Sound Status Event
@@ -2754,6 +2838,89 @@ components:
                 example:
                   - file: "fanfare.wav"
                     target: "combine-bt"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:05:01.000Z"
+
+    SpotifyStatus:
+      name: spotify:status
+      title: Spotify Playback Status (Phase 2)
+      summary: Spotify playback state broadcast
+      description: |
+        Broadcast Spotify playback state changes.
+
+        **Phase 2 Feature**: Spotify integration for background music during gameplay.
+
+        **States**:
+        - playing: Spotify is actively playing
+        - paused: Playback paused
+        - stopped: Playback stopped
+
+        **Cache Status**:
+        - verified: Playlist cached and available offline
+        - missing: Playlist not cached
+        - unchecked: Cache status not yet verified
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: spotify:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - connected
+              - state
+            properties:
+              connected:
+                type: boolean
+                description: Whether Spotify is connected
+                example: true
+              state:
+                type: string
+                description: Current playback state
+                enum:
+                  - playing
+                  - paused
+                  - stopped
+                example: "playing"
+              track:
+                type: object
+                description: Currently playing track (optional)
+                properties:
+                  title:
+                    type: string
+                    description: Track title
+                    example: "Nocturne in E-flat major"
+                  artist:
+                    type: string
+                    description: Artist name
+                    example: "Chopin"
+              volume:
+                type: number
+                description: Current volume (0-100)
+                minimum: 0
+                maximum: 100
+                example: 75
+              playlist:
+                type: string
+                description: Current playlist name
+                example: "Interrogation Ambience"
+              cacheStatus:
+                type: string
+                description: Offline cache status
+                enum:
+                  - verified
+                  - missing
+                  - unchecked
+                example: "verified"
           timestamp:
             type: string
             format: date-time
