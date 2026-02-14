@@ -428,10 +428,11 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'sound:play': {
         const soundService = require('./soundService');
         const entry = soundService.play(payload);
+        if (!entry) {
+          return { success: false, message: `Failed to play ${payload.file}`, source };
+        }
         resultData = entry;
-        resultMessage = entry
-          ? `Playing ${payload.file}`
-          : `Failed to play ${payload.file}`;
+        resultMessage = `Playing ${payload.file}`;
         logger.info('Sound play requested', { source, deviceId, file: payload.file });
         break;
       }
