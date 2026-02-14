@@ -99,37 +99,36 @@ describe('Session Lifecycle - Phase 1', () => {
     });
   });
 
-  describe('pause/resume integrates with game clock', () => {
-    it('should pause game clock on session:pause', async () => {
+  describe('active session tests', () => {
+    beforeEach(async () => {
       await sessionService.createSession({ name: 'Test Game' });
       await sessionService.startGame();
-      await sessionService.updateSession({ status: 'paused' });
-      expect(gameClockService.getState().status).toBe('paused');
     });
 
-    it('should resume game clock on session:resume', async () => {
-      await sessionService.createSession({ name: 'Test Game' });
-      await sessionService.startGame();
-      await sessionService.updateSession({ status: 'paused' });
-      await sessionService.updateSession({ status: 'active' });
-      expect(gameClockService.getState().status).toBe('running');
+    describe('pause/resume integrates with game clock', () => {
+      it('should pause game clock on session:pause', async () => {
+        await sessionService.updateSession({ status: 'paused' });
+        expect(gameClockService.getState().status).toBe('paused');
+      });
+
+      it('should resume game clock on session:resume', async () => {
+        await sessionService.updateSession({ status: 'paused' });
+        await sessionService.updateSession({ status: 'active' });
+        expect(gameClockService.getState().status).toBe('running');
+      });
+
+      it('should stop game clock on session end', async () => {
+        await sessionService.endSession();
+        expect(gameClockService.getState().status).toBe('stopped');
+      });
     });
 
-    it('should stop game clock on session end', async () => {
-      await sessionService.createSession({ name: 'Test Game' });
-      await sessionService.startGame();
-      await sessionService.endSession();
-      expect(gameClockService.status).toBe('stopped');
-    });
-  });
-
-  describe('game clock state persisted on session', () => {
-    it('should include gameClock in session after startGame', async () => {
-      await sessionService.createSession({ name: 'Test Game' });
-      await sessionService.startGame();
-      const session = sessionService.getCurrentSession();
-      expect(session.gameClock).toBeDefined();
-      expect(session.gameClock.startTime).toBeTruthy();
+    describe('game clock state persisted on session', () => {
+      it('should include gameClock in session after startGame', async () => {
+        const session = sessionService.getCurrentSession();
+        expect(session.gameClock).toBeDefined();
+        expect(session.gameClock.startTime).toBeTruthy();
+      });
     });
   });
 

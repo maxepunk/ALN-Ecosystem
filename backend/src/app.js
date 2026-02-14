@@ -23,6 +23,9 @@ const displayControlService = require('./services/displayControlService');
 const bluetoothService = require('./services/bluetoothService');
 const audioRoutingService = require('./services/audioRoutingService');
 const lightingService = require('./services/lightingService');
+const gameClockService = require('./services/gameClockService');
+const cueEngineService = require('./services/cueEngineService');
+const soundService = require('./services/soundService');
 
 // Import routes (6 files after health extraction)
 const scanRoutes = require('./routes/scanRoutes');
@@ -165,10 +168,6 @@ async function initializeServices() {
     await lightingService.init();         // Non-blocking HA connection check
 
     // Initialize Phase 1 services (game clock, cue engine, sound)
-    const gameClockService = require('./services/gameClockService');
-    const cueEngineService = require('./services/cueEngineService');
-    const soundService = require('./services/soundService');
-
     // Load cue definitions from config
     const fs = require('fs').promises;
     const path = require('path');

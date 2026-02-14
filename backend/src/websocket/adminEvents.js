@@ -52,6 +52,9 @@ async function handleGmCommand(socket, data, io) {
       resetInProgress = true;
       try {
         const { performSystemReset } = require('../services/systemReset');
+        const gameClockService = require('../services/gameClockService');
+        const cueEngineService = require('../services/cueEngineService');
+        const soundService = require('../services/soundService');
 
         logger.info('System reset requested by GM', { gmStation: socket.deviceId });
 
@@ -66,6 +69,9 @@ async function handleGmCommand(socket, data, io) {
           bluetoothService,
           audioRoutingService,
           lightingService,
+          gameClockService,
+          cueEngineService,
+          soundService,
         });
 
         const resultMessage = 'System reset complete - ready for new session';

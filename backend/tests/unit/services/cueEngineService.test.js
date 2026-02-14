@@ -27,7 +27,10 @@ jest.mock('../../../src/services/gameClockService', () => {
 const { executeCommand } = require('../../../src/services/commandExecutor');
 
 describe('CueEngineService', () => {
-  let cueEngineService, gameClockService;
+  let cueEngineService, gameClockService, executeCommand;
+
+  // Helper to flush async event loops
+  const flushAsync = () => new Promise(r => setTimeout(r, 10));
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -40,6 +43,7 @@ describe('CueEngineService', () => {
 
     cueEngineService = require('../../../src/services/cueEngineService');
     gameClockService = require('../../../src/services/gameClockService');
+    executeCommand = require('../../../src/services/commandExecutor').executeCommand;
     cueEngineService.reset();
   });
 
@@ -77,7 +81,6 @@ describe('CueEngineService', () => {
 
   describe('fireCue() — simple cue', () => {
     it('should execute all commands in a simple cue', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'multi-cmd',
         label: 'Multi',
@@ -117,7 +120,6 @@ describe('CueEngineService', () => {
     });
 
     it('should skip disabled cue', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'test', label: 'Test',
         commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
@@ -138,7 +140,6 @@ describe('CueEngineService', () => {
 
       await cueEngineService.fireCue('one-shot');
       // Second fire should be skipped
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       executeCommand.mockClear();
       await cueEngineService.fireCue('one-shot');
       expect(executeCommand).not.toHaveBeenCalled();
@@ -157,7 +158,6 @@ describe('CueEngineService', () => {
 
   describe('event-triggered standing cues', () => {
     it('should fire matching cue when event occurs', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'on-scan',
         label: 'On Scan',
@@ -175,12 +175,11 @@ describe('CueEngineService', () => {
       });
 
       // Allow async fire to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
 
     it('should NOT fire when conditions do not match', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'business-only',
         label: 'Business Only',
@@ -202,7 +201,6 @@ describe('CueEngineService', () => {
     });
 
     it('should fire when all conditions match', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'big-business',
         label: 'Big Business',
@@ -247,41 +245,36 @@ describe('CueEngineService', () => {
     };
 
     it('should support neq operator', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       makeEngine([{ field: 'memoryType', op: 'neq', value: 'Personal' }]);
       fireEvent({ memoryType: 'Business' });
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
 
     it('should support in operator', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       makeEngine([{ field: 'memoryType', op: 'in', value: ['Business', 'Technical'] }]);
       fireEvent({ memoryType: 'Technical' });
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
 
     it('should support gt operator', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       makeEngine([{ field: 'points', op: 'gt', value: 40000 }]);
       fireEvent({ points: 50000 });
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
 
     it('should support lt operator', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       makeEngine([{ field: 'valueRating', op: 'lt', value: 4 }]);
       fireEvent({ valueRating: 3 });
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       expect(executeCommand).toHaveBeenCalled();
     });
   });
 
   describe('clock-triggered standing cues', () => {
     it('should fire when game clock reaches threshold', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'midgame',
         label: 'Midgame',
@@ -300,7 +293,6 @@ describe('CueEngineService', () => {
     });
 
     it('should NOT fire before threshold', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'midgame', label: 'Midgame', once: true,
         trigger: { clock: '01:00:00' },
@@ -315,7 +307,6 @@ describe('CueEngineService', () => {
     });
 
     it('should fire only once for a given clock cue', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'midgame', label: 'Midgame',
         trigger: { clock: '01:00:00' },
@@ -324,28 +315,21 @@ describe('CueEngineService', () => {
 
       cueEngineService.activate();
       cueEngineService.handleClockTick(3600);
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       executeCommand.mockClear();
 
       cueEngineService.handleClockTick(3601);
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       expect(executeCommand).not.toHaveBeenCalled();
     });
   });
 
   describe('re-entrancy guard (D4)', () => {
-    it('should not evaluate standing cues for commands dispatched by cues', async () => {
-      // This is tested indirectly: executeCommand is called with source:'cue',
-      // and the cue engine should not re-evaluate standing cues from those dispatches.
-      // The guard is in the activate() listener — it only subscribes to game events,
-      // not to executeCommand output.
-      expect(true).toBe(true); // Structural guarantee — no circular subscription
-    });
+    it.todo('should not evaluate standing cues for commands dispatched by cues');
   });
 
   describe('suspend/reactivate', () => {
     it('should not fire standing cues while suspended', async () => {
-      const { executeCommand } = require('../../../src/services/commandExecutor');
       cueEngineService.loadCues([{
         id: 'test', label: 'Test',
         trigger: { event: 'transaction:accepted' },
@@ -361,7 +345,7 @@ describe('CueEngineService', () => {
         groupBonus: null
       });
 
-      await new Promise(r => setTimeout(r, 10));
+      await flushAsync();
       expect(executeCommand).not.toHaveBeenCalled();
     });
   });

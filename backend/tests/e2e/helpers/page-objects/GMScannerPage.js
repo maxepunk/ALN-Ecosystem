@@ -106,6 +106,7 @@ class GMScannerPage {
     // Session status locators (dynamically rendered by MonitoringDisplay)
     this.sessionContainer = page.locator('#session-status-container');
     this.sessionEmpty = page.locator('#session-status-container .session-status--empty');
+    this.sessionSetup = page.locator('#session-status-container .session-status--setup');
     this.sessionActive = page.locator('#session-status-container .session-status--active');
     this.sessionPaused = page.locator('#session-status-container .session-status--paused');
     this.sessionEnded = page.locator('#session-status-container .session-status--ended');
@@ -1053,8 +1054,8 @@ class GMScannerPage {
     // Click create button
     await this.createSessionBtn.click();
 
-    // Wait for session active state in UI
-    await this.sessionActive.waitFor({ state: 'visible', timeout: 5000 });
+    // Wait for session setup state in UI (Phase 1: sessions start in setup, not active)
+    await this.sessionSetup.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -1185,7 +1186,7 @@ class GMScannerPage {
     this.page.on('dialog', dialogHandler);
 
     await this.resetAndCreateNewBtn.click();
-    await this.sessionActive.waitFor({ state: 'visible', timeout: 5000 });
+    await this.sessionSetup.waitFor({ state: 'visible', timeout: 5000 });
 
     // Remove handler
     this.page.off('dialog', dialogHandler);
@@ -1199,6 +1200,7 @@ class GMScannerPage {
    * @returns {Promise<'none'|'active'|'paused'|'ended'>}
    */
   async getSessionState() {
+    if (await this.sessionSetup.isVisible()) return 'setup';
     if (await this.sessionActive.isVisible()) return 'active';
     if (await this.sessionPaused.isVisible()) return 'paused';
     if (await this.sessionEnded.isVisible()) return 'ended';

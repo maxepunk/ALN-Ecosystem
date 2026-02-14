@@ -577,7 +577,7 @@ function setupBroadcastListeners(io, services) {
 
   // Game Clock events
   if (gameClockService) {
-    addTrackedListener(gameClockService, 'gameclock:started', (data) => {
+    addTrackedListener(gameClockService, 'gameclock:started', () => {
       emitToRoom(io, 'gm', 'gameclock:status', { state: 'running', elapsed: 0 });
       logger.debug('Broadcasted gameclock:status started');
     });

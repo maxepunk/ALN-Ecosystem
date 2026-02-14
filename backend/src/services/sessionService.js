@@ -14,10 +14,9 @@ const listenerRegistry = require('../websocket/listenerRegistry');
 class SessionService extends EventEmitter {
   constructor() {
     super();
-    this.initState(); // ADD THIS
+    this.initState();
   }
 
-  // ADD new method after constructor
   initState() {
     this.currentSession = null;
     this.sessionTimeoutTimer = null;

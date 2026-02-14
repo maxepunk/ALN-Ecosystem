@@ -45,25 +45,11 @@ function setupCueEngineForwarding({
   }, 'transactionService->cueEngineService');
 
   // Video events
-  listenerRegistry.addTrackedListener(videoQueueService, 'video:loading', (data) => {
-    cueEngineService.handleGameEvent('video:loading', data);
-  }, 'videoQueueService->cueEngineService');
-
-  listenerRegistry.addTrackedListener(videoQueueService, 'video:started', (data) => {
-    cueEngineService.handleGameEvent('video:started', data);
-  }, 'videoQueueService->cueEngineService');
-
-  listenerRegistry.addTrackedListener(videoQueueService, 'video:completed', (data) => {
-    cueEngineService.handleGameEvent('video:completed', data);
-  }, 'videoQueueService->cueEngineService');
-
-  listenerRegistry.addTrackedListener(videoQueueService, 'video:paused', (data) => {
-    cueEngineService.handleGameEvent('video:paused', data);
-  }, 'videoQueueService->cueEngineService');
-
-  listenerRegistry.addTrackedListener(videoQueueService, 'video:resumed', (data) => {
-    cueEngineService.handleGameEvent('video:resumed', data);
-  }, 'videoQueueService->cueEngineService');
+  for (const event of ['video:loading', 'video:started', 'video:completed', 'video:paused', 'video:resumed']) {
+    listenerRegistry.addTrackedListener(videoQueueService, event, (data) => {
+      cueEngineService.handleGameEvent(event, data);
+    }, `videoQueueService->${event}->cueEngineService`);
+  }
 
   // Session events
   listenerRegistry.addTrackedListener(sessionService, 'session:created', (session) => {
@@ -91,7 +77,7 @@ function setupCueEngineForwarding({
     cueEngineService.handleGameEvent('gameclock:started', data);
   }, 'gameClockService->cueEngineService');
 
-  logger.debug('Cue engine event forwarding registered');
+  logger.info('Cue engine event forwarding registered');
 }
 
 module.exports = { setupCueEngineForwarding };

@@ -4,8 +4,8 @@
  * streams to PipeWire sinks. Uses pactl CLI for sink discovery, stream
  * routing, and sink monitoring.
  *
- * Phase 0: Only 'video' stream is valid. Routes VLC audio output
- * between HDMI and Bluetooth sinks.
+ * Supports video, spotify, and sound audio streams with configurable
+ * routing between HDMI and Bluetooth sinks.
  *
  * Uses execFile (not exec) to prevent shell injection.
  * Uses spawn for long-running pactl subscribe.

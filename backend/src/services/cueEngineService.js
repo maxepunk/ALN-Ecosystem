@@ -164,7 +164,8 @@ class CueEngineService extends EventEmitter {
     return this.getCues().map(cue => {
       let triggerType = null;
       if (cue.trigger) {
-        triggerType = cue.trigger.event ? 'event' : cue.trigger.clock ? 'clock' : null;
+        if (cue.trigger.event) triggerType = 'event';
+        else if (cue.trigger.clock) triggerType = 'clock';
       }
 
       return {

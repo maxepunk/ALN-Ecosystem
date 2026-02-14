@@ -21,6 +21,40 @@ const cueEngineService = require('../../src/services/cueEngineService');
 const gameClockService = require('../../src/services/gameClockService');
 const TestTokens = require('../fixtures/test-tokens');
 
+/**
+ * Helper: Create session and start game
+ * @param {Socket} socket - Socket.io client
+ * @param {string} name - Session name
+ * @param {string[]} teams - Team names
+ */
+async function createAndStartSession(socket, name, teams) {
+  sendGmCommand(socket, 'session:create', { name, teams });
+  await waitForEvent(socket, 'session:update');
+  sendGmCommand(socket, 'session:start', {});
+  await waitForEvent(socket, 'gameclock:status');
+}
+
+/**
+ * Helper: Submit transaction
+ * @param {Socket} socket - Socket.io client
+ * @param {string} tokenId - Token ID
+ * @param {string} teamId - Team ID
+ * @param {string} deviceId - Device ID (defaults to GM_CUE_TEST_1)
+ */
+function submitTransaction(socket, tokenId, teamId, deviceId = 'GM_CUE_TEST_1') {
+  socket.emit('transaction:submit', {
+    event: 'transaction:submit',
+    data: {
+      tokenId,
+      teamId,
+      deviceId,
+      deviceType: 'gm',
+      mode: 'blackmarket'
+    },
+    timestamp: new Date().toISOString()
+  });
+}
+
 describe('Cue Engine Integration', () => {
   let testContext, gm1;
 
@@ -105,17 +139,7 @@ describe('Cue Engine Integration', () => {
       // Try to submit transaction while in setup
       const resultPromise = waitForEvent(gm1, 'transaction:result');
       const testToken = TestTokens.STANDALONE_TOKENS[0];
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: testToken.id,
-          teamId: 'Team Alpha',
-          deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      submitTransaction(gm1, testToken.id, 'Team Alpha');
 
       // Should receive transaction:result with error (rejected during setup)
       const result = await resultPromise;
@@ -125,29 +149,12 @@ describe('Cue Engine Integration', () => {
 
     it('should accept transactions after start', async () => {
       // Create session and start game
-      sendGmCommand(gm1, 'session:create', {
-        name: 'Active Transaction Test',
-        teams: ['Team Alpha']
-      });
-      await waitForEvent(gm1, 'session:update');
-
-      sendGmCommand(gm1, 'session:start', {});
-      await waitForEvent(gm1, 'gameclock:status');
+      await createAndStartSession(gm1, 'Active Transaction Test', ['Team Alpha']);
 
       // Submit transaction (should succeed)
       const transactionPromise = waitForEvent(gm1, 'transaction:new');
       const testToken = TestTokens.STANDALONE_TOKENS[0];
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: testToken.id,
-          teamId: 'Team Alpha',
-          deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      submitTransaction(gm1, testToken.id, 'Team Alpha');
 
       // Should receive transaction:new broadcast
       const transaction = await transactionPromise;
@@ -171,14 +178,7 @@ describe('Cue Engine Integration', () => {
       ]);
 
       // Create session and start game
-      sendGmCommand(gm1, 'session:create', {
-        name: 'Cue Fire Test Session',
-        teams: ['Team Alpha']
-      });
-      await waitForEvent(gm1, 'session:update');
-
-      sendGmCommand(gm1, 'session:start', {});
-      await waitForEvent(gm1, 'gameclock:status');
+      await createAndStartSession(gm1, 'Cue Fire Test Session', ['Team Alpha']);
 
       // Activate cue engine (would normally be done by session lifecycle)
       cueEngineService.activate();
@@ -191,17 +191,7 @@ describe('Cue Engine Integration', () => {
 
       // Submit transaction (should trigger standing cue)
       const testToken = TestTokens.STANDALONE_TOKENS[0];
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: testToken.id,
-          teamId: 'Team Alpha',
-          deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      submitTransaction(gm1, testToken.id, 'Team Alpha');
 
       // Wait for transaction to be accepted
       await waitForEvent(gm1, 'transaction:new');
@@ -217,14 +207,7 @@ describe('Cue Engine Integration', () => {
   describe('pause cascade', () => {
     it('should pause game clock and suspend cue engine on session:pause', async () => {
       // Create session and start game
-      sendGmCommand(gm1, 'session:create', {
-        name: 'Pause Test Session',
-        teams: ['Team Alpha']
-      });
-      await waitForEvent(gm1, 'session:update');
-
-      sendGmCommand(gm1, 'session:start', {});
-      await waitForEvent(gm1, 'gameclock:status');
+      await createAndStartSession(gm1, 'Pause Test Session', ['Team Alpha']);
 
       // Verify game clock is running
       expect(gameClockService.status).toBe('running');
@@ -248,17 +231,7 @@ describe('Cue Engine Integration', () => {
       // Try to submit transaction (should be rejected)
       const resultPromise = waitForEvent(gm1, 'transaction:result');
       const testToken = TestTokens.STANDALONE_TOKENS[0];
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: testToken.id,
-          teamId: 'Team Alpha',
-          deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      submitTransaction(gm1, testToken.id, 'Team Alpha');
 
       // Should receive transaction:result with error (rejected during paused)
       const result = await resultPromise;
@@ -268,14 +241,7 @@ describe('Cue Engine Integration', () => {
 
     it('should resume everything on session:resume', async () => {
       // Create session, start, and pause
-      sendGmCommand(gm1, 'session:create', {
-        name: 'Resume Test Session',
-        teams: ['Team Alpha']
-      });
-      await waitForEvent(gm1, 'session:update');
-
-      sendGmCommand(gm1, 'session:start', {});
-      await waitForEvent(gm1, 'gameclock:status');
+      await createAndStartSession(gm1, 'Resume Test Session', ['Team Alpha']);
 
       sendGmCommand(gm1, 'session:pause', {});
       await waitForEvent(gm1, 'gameclock:status', (data) => data.data.state === 'paused');
@@ -299,17 +265,7 @@ describe('Cue Engine Integration', () => {
       // Submit transaction (should succeed)
       const transactionPromise = waitForEvent(gm1, 'transaction:new');
       const testToken = TestTokens.STANDALONE_TOKENS[0];
-      gm1.emit('transaction:submit', {
-        event: 'transaction:submit',
-        data: {
-          tokenId: testToken.id,
-          teamId: 'Team Alpha',
-          deviceId: 'GM_CUE_TEST_1',
-          deviceType: 'gm',
-          mode: 'blackmarket'
-        },
-        timestamp: new Date().toISOString()
-      });
+      submitTransaction(gm1, testToken.id, 'Team Alpha');
 
       // Should receive transaction:new broadcast
       const transaction = await transactionPromise;

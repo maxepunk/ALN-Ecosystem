@@ -20,6 +20,7 @@ const displayControlService = require('./displayControlService');
 const bluetoothService = require('./bluetoothService');
 const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
+const soundService = require('./soundService');
 
 /**
  * Execute a gm:command action.
@@ -185,72 +186,46 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       // --- Display commands ---
 
-      case 'display:idle-loop': {
-        // Switch display to idle loop mode
-        const idleResult = await displayControlService.setIdleLoop();
-        if (idleResult.success) {
-          const eventData = {
-            mode: 'IDLE_LOOP',
-            changedBy: deviceId
-          };
-          // Broadcast to all clients
-          broadcasts.push({
-            event: 'display:mode',
-            data: eventData,
-            target: 'all'
-          });
-          resultData = eventData;
-          resultMessage = 'Display switched to idle loop';
-        } else {
-          throw new Error(idleResult.error || 'Failed to switch to idle loop');
-        }
-        logger.info('Display set to idle loop', { source, deviceId });
-        break;
-      }
-
-      case 'display:scoreboard': {
-        // Switch display to scoreboard mode
-        const scoreboardResult = await displayControlService.setScoreboard();
-        if (scoreboardResult.success) {
-          const eventData = {
-            mode: 'SCOREBOARD',
-            changedBy: deviceId
-          };
-          // Broadcast to all clients
-          broadcasts.push({
-            event: 'display:mode',
-            data: eventData,
-            target: 'all'
-          });
-          resultData = eventData;
-          resultMessage = 'Display switched to scoreboard';
-        } else {
-          throw new Error(scoreboardResult.error || 'Failed to switch to scoreboard');
-        }
-        logger.info('Display set to scoreboard', { source, deviceId });
-        break;
-      }
-
+      case 'display:idle-loop':
+      case 'display:scoreboard':
       case 'display:toggle': {
-        // Toggle between idle loop and scoreboard modes
-        const toggleResult = await displayControlService.toggleMode();
-        if (toggleResult.success) {
-          const eventData = {
-            mode: toggleResult.mode,
-            changedBy: deviceId
-          };
-          // Broadcast to all clients
-          broadcasts.push({
-            event: 'display:mode',
-            data: eventData,
-            target: 'all'
-          });
+        // Local helper for display command handling (DRY)
+        async function handleDisplayCommand(serviceMethod, modeName, logMessage) {
+          const result = await serviceMethod();
+          if (!result.success) throw new Error(result.error || `Failed: ${logMessage}`);
+          const mode = result.mode || modeName;
+          const eventData = { mode, changedBy: deviceId };
+          broadcasts.push({ event: 'display:mode', data: eventData, target: 'all' });
+          resultData = eventData;
+          resultMessage = logMessage;
+          logger.info(logMessage, { source, deviceId, mode });
+        }
+
+        // Execute appropriate display command
+        if (action === 'display:idle-loop') {
+          await handleDisplayCommand(
+            () => displayControlService.setIdleLoop(),
+            'IDLE_LOOP',
+            'Display switched to idle loop'
+          );
+        } else if (action === 'display:scoreboard') {
+          await handleDisplayCommand(
+            () => displayControlService.setScoreboard(),
+            'SCOREBOARD',
+            'Display switched to scoreboard'
+          );
+        } else if (action === 'display:toggle') {
+          // display:toggle needs special handling because mode isn't known in advance
+          const toggleResult = await displayControlService.toggleMode();
+          if (!toggleResult.success) {
+            throw new Error(toggleResult.error || 'Failed to toggle display mode');
+          }
+          const eventData = { mode: toggleResult.mode, changedBy: deviceId };
+          broadcasts.push({ event: 'display:mode', data: eventData, target: 'all' });
           resultData = eventData;
           resultMessage = `Display toggled to ${toggleResult.mode.toLowerCase()}`;
-        } else {
-          throw new Error(toggleResult.error || 'Failed to toggle display mode');
+          logger.info('Display toggled', { source, deviceId, newMode: toggleResult.mode });
         }
-        logger.info('Display toggled', { source, deviceId, newMode: toggleResult.mode });
         break;
       }
 
@@ -328,7 +303,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       case 'transaction:create': {
         // Create manual transaction
-        const txData = payload;
+        const txData = { ...payload };
         if (!txData.tokenId || !txData.teamId || !txData.mode) {
           throw new Error('tokenId, teamId, and mode are required for transaction:create');
         }
@@ -426,7 +401,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Sound commands ---
 
       case 'sound:play': {
-        const soundService = require('./soundService');
         const entry = soundService.play(payload);
         if (!entry) {
           return { success: false, message: `Failed to play ${payload.file}`, source };
@@ -438,7 +412,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'sound:stop': {
-        const soundService = require('./soundService');
         soundService.stop(payload);
         resultMessage = payload.file ? `Stopped ${payload.file}` : 'Stopped all sounds';
         logger.info('Sound stop requested', { source, deviceId, file: payload.file });
@@ -448,6 +421,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Cue commands ---
 
       case 'cue:fire': {
+        // Lazy require: cueEngineService imports commandExecutor (circular dependency)
         const cueEngineService = require('./cueEngineService');
         await cueEngineService.fireCue(payload.cueId);
         resultMessage = `Cue fired: ${payload.cueId}`;
@@ -456,6 +430,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'cue:enable': {
+        // Lazy require: cueEngineService imports commandExecutor (circular dependency)
         const cueEngineService = require('./cueEngineService');
         cueEngineService.enableCue(payload.cueId);
         resultMessage = `Cue enabled: ${payload.cueId}`;
@@ -464,6 +439,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'cue:disable': {
+        // Lazy require: cueEngineService imports commandExecutor (circular dependency)
         const cueEngineService = require('./cueEngineService');
         cueEngineService.disableCue(payload.cueId);
         resultMessage = `Cue disabled: ${payload.cueId}`;

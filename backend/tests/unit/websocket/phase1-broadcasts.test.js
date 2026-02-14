@@ -26,6 +26,25 @@ describe('Phase 1 Broadcasts', () => {
   let mockCueEngineService;
   let mockSoundService;
 
+  /**
+   * Helper: Setup broadcast listeners with all mock services
+   */
+  const setupBroadcasts = () => {
+    setupBroadcastListeners(mockIo, {
+      sessionService: mockSessionService,
+      transactionService: mockTransactionService,
+      stateService: mockStateService,
+      videoQueueService: mockVideoQueueService,
+      offlineQueueService: mockOfflineQueueService,
+      bluetoothService: mockBluetoothService,
+      audioRoutingService: mockAudioRoutingService,
+      lightingService: mockLightingService,
+      gameClockService: mockGameClockService,
+      cueEngineService: mockCueEngineService,
+      soundService: mockSoundService,
+    });
+  };
+
   beforeEach(() => {
     // Mock Socket.io server
     mockIo = {
@@ -98,19 +117,7 @@ describe('Phase 1 Broadcasts', () => {
 
   describe('Game Clock Broadcasts', () => {
     it('should broadcast gameclock:status on gameclock:started', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       // Trigger gameclock:started event
       mockGameClockService.emit('gameclock:started', { gameStartTime: 1234567890 });
@@ -131,19 +138,7 @@ describe('Phase 1 Broadcasts', () => {
     });
 
     it('should broadcast gameclock:status on gameclock:paused', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       // Trigger gameclock:paused event
       mockGameClockService.emit('gameclock:paused', { elapsed: 300 });
@@ -164,19 +159,7 @@ describe('Phase 1 Broadcasts', () => {
     });
 
     it('should broadcast gameclock:status on gameclock:resumed', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       // Trigger gameclock:resumed event
       mockGameClockService.emit('gameclock:resumed', { elapsed: 450 });
@@ -199,19 +182,7 @@ describe('Phase 1 Broadcasts', () => {
 
   describe('Cue Engine Broadcasts', () => {
     it('should broadcast cue:fired on cueEngineService cue:fired', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       const cueData = { cueId: 'cue-1', name: 'Test Cue', commands: [] };
       mockCueEngineService.emit('cue:fired', cueData);
@@ -229,19 +200,7 @@ describe('Phase 1 Broadcasts', () => {
     });
 
     it('should broadcast cue:completed on cueEngineService cue:completed', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       const cueData = { cueId: 'cue-1' };
       mockCueEngineService.emit('cue:completed', cueData);
@@ -259,19 +218,7 @@ describe('Phase 1 Broadcasts', () => {
     });
 
     it('should broadcast cue:error on cueEngineService cue:error', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       const errorData = { cueId: 'cue-1', error: 'Test error' };
       mockCueEngineService.emit('cue:error', errorData);
@@ -291,19 +238,7 @@ describe('Phase 1 Broadcasts', () => {
 
   describe('Sound Service Broadcasts', () => {
     it('should broadcast sound:status on soundService sound:started', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       // Configure getPlaying to return current playing list
       const playingList = [{ file: 'test.wav', target: 'default', volume: 100, pid: 1234 }];
@@ -324,19 +259,7 @@ describe('Phase 1 Broadcasts', () => {
     });
 
     it('should broadcast sound:status on soundService sound:completed', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       // After completion, getPlaying returns empty list
       mockSoundService.getPlaying.mockReturnValue([]);
@@ -356,19 +279,7 @@ describe('Phase 1 Broadcasts', () => {
     });
 
     it('should broadcast sound:status on soundService sound:stopped', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        soundService: mockSoundService,
-      });
+      setupBroadcasts();
 
       mockSoundService.getPlaying.mockReturnValue([]);
 

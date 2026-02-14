@@ -1,3 +1,8 @@
+/**
+ * Sound Service
+ * PipeWire pw-play wrapper for audio playback
+ * Manages sound effect processes with start/stop/status tracking
+ */
 'use strict';
 
 const EventEmitter = require('events');
@@ -11,7 +16,7 @@ class SoundService extends EventEmitter {
   constructor() {
     super();
     this.processes = new Map(); // pid → {file, target, volume, process}
-    this.audioDir = path.join(config.video?.directory || path.join(__dirname, '../../public'), '../public/audio');
+    this.audioDir = path.resolve(__dirname, '../../public/audio');
   }
 
   play({ file, target, volume }) {
