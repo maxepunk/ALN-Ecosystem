@@ -56,7 +56,7 @@ const sessionSchema = Joi.object({
   name: Joi.string().required().min(1).max(100),
   startTime: isoDate.required(),
   endTime: isoDate.optional().allow(null),
-  status: Joi.string().valid('active', 'paused', 'ended').required(),  // Per OpenAPI/AsyncAPI contract
+  status: Joi.string().valid('setup', 'active', 'paused', 'ended').required(),  // Per OpenAPI/AsyncAPI contract
   transactions: Joi.array().items(transactionSchema).default([]),
   connectedDevices: Joi.array().items(Joi.object()).default([]),
   videoQueue: Joi.array().items(Joi.object()).default([]),

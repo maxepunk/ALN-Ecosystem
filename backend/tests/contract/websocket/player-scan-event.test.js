@@ -49,6 +49,7 @@ describe('Player Scan Event - Contract Validation', () => {
       name: 'Player Scan Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM socket (will receive player:scan events in gm room)
     // GM scanner uses handshake.auth with JWT token

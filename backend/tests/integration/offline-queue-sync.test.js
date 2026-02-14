@@ -44,6 +44,7 @@ describe('Offline Queue Synchronization Integration', () => {
       name: 'Offline Queue Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM scanner
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_OFFLINE_TEST');

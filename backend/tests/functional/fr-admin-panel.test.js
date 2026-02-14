@@ -58,6 +58,7 @@ describe('FR Section 4: Admin Panel', () => {
       name: 'Admin Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Create scanner (AFTER session created, networked mode for admin panel)
     scanner = await createAuthenticatedScanner(testContext.url, 'GM_ADMIN_TEST', 'blackmarket');
@@ -133,7 +134,7 @@ describe('FR Section 4: Admin Panel', () => {
     it('should support session:create command', async () => {
       // Note: createSession() automatically ends existing session, which emits TWO session:update events:
       // 1. Ended session (status='ended')
-      // 2. New session (status='active')
+      // 2. New session (status='setup')
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -155,7 +156,7 @@ describe('FR Section 4: Admin Panel', () => {
 
       // Wait for second session:update (new session)
       const newSession = await waitForEvent(scanner.socket, 'session:update');
-      expect(newSession.data.status).toBe('active');
+      expect(newSession.data.status).toBe('setup');
       expect(newSession.data.name).toBe('New Session');
 
       // Wait for acknowledgment

@@ -37,6 +37,7 @@ describe('Service Event Communication', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       // Manually create some team scores
       const TeamScore = require('../../src/models/teamScore');
@@ -73,6 +74,7 @@ describe('Service Event Communication', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
+    await sessionService.startGame();
 
       // Give event time to propagate
       await new Promise(resolve => setTimeout(resolve, 100));

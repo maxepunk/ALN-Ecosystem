@@ -37,6 +37,7 @@ describe('TransactionService - Event Emission', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       // Listen for score:adjusted event (emitted by adjustTeamScore for admin changes)
       const eventPromise = new Promise((resolve) => {
@@ -73,6 +74,7 @@ describe('TransactionService - Event Emission', () => {
         name: 'Test Session',
         teams: [] // No teams initially
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const testToken = new Token({
@@ -112,6 +114,7 @@ describe('TransactionService - Event Emission', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const testToken = new Token({
@@ -171,6 +174,7 @@ describe('TransactionService - Event Emission', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const token1 = new Token({
@@ -207,6 +211,7 @@ describe('TransactionService - Event Emission', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
 
@@ -355,6 +360,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -390,6 +396,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Session 1',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const session1 = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -411,6 +418,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Session 2',
         teams: ['002']
       });
+      await sessionService.startGame();
 
       const session2 = sessionService.getCurrentSession();
       const tx2 = Transaction.fromScanRequest({
@@ -430,6 +438,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -466,6 +475,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -489,6 +499,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
+      await sessionService.startGame();
 
       // Wait for session:created event to propagate
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -504,6 +515,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+      await sessionService.startGame();
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -528,6 +540,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+      await sessionService.startGame();
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -541,6 +554,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       await new Promise(resolve => setTimeout(resolve, 10));
 
@@ -565,6 +579,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const token1 = new Token({
@@ -602,6 +617,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Token = require('../../../src/models/token');
@@ -663,6 +679,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const token1 = new Token({
@@ -724,6 +741,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -747,6 +765,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -772,6 +791,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Transaction = require('../../../src/models/transaction');
@@ -807,6 +827,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Token = require('../../../src/models/token');
@@ -848,6 +869,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: []
       });
+      await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       const Token = require('../../../src/models/token');
@@ -895,6 +917,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+      await sessionService.startGame();
 
       // Initialize token
       const Token = require('../../../src/models/token');
@@ -1118,6 +1141,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Enrichment Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
     });
 
     test('should enrich transaction with token default summary when not provided', async () => {
@@ -1553,6 +1577,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Delete Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const testToken = new Token({
@@ -1619,6 +1644,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Re-scan Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const testToken = new Token({
@@ -1674,6 +1700,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Score Recalc Test Session',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame();
 
       const Token = require('../../../src/models/token');
       const token1 = new Token({

@@ -30,7 +30,7 @@ describe('SessionService - Event Emission', () => {
           expect(eventData).toBeDefined();
           expect(eventData.id).toBeDefined();
           expect(eventData.name).toBe('Test Session');
-          expect(eventData.status).toBe('active');
+          expect(eventData.status).toBe('setup');
           expect(eventData.startTime).toBeDefined();
           expect(eventData.teams).toEqual(['Team Alpha', 'Detectives']);
 
@@ -83,7 +83,7 @@ describe('SessionService - Event Emission', () => {
       // Verify unwrapped domain event with full session resource per Decision #7
       expect(eventData).toHaveProperty('id');
       expect(eventData).toHaveProperty('name', 'Full Resource Test');
-      expect(eventData).toHaveProperty('status', 'active');
+      expect(eventData).toHaveProperty('status', 'setup');
       expect(eventData).toHaveProperty('startTime');
       expect(eventData).toHaveProperty('teams');
       expect(eventData).toHaveProperty('metadata');
@@ -123,7 +123,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(session).toBeDefined();
       expect(session.id).toBeDefined();
       expect(session.name).toBe('Test Session');
-      expect(session.status).toBe('active');
+      expect(session.status).toBe('setup');
       expect(session.startTime).toBeDefined();
       expect(session.scores).toBeDefined();
       expect(session.scores.length).toBe(3);
@@ -145,7 +145,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'First Session',
         teams: ['Team Alpha']
       });
-      expect(session1.status).toBe('active');
+      expect(session1.status).toBe('setup');
 
       // Create second session (should end first)
       const session2 = await sessionService.createSession({
@@ -153,7 +153,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         teams: ['002']
       });
 
-      expect(session2.status).toBe('active');
+      expect(session2.status).toBe('setup');
       expect(session2.id).not.toBe(session1.id);
       // First session should no longer be current
       expect(sessionService.getCurrentSession().id).toBe(session2.id);
@@ -196,6 +196,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         name: 'Status Test',
         teams: ['Team Alpha']
       });
+      await sessionService.startGame(); // Must start game before pause/resume
 
       sessionService.updateSessionStatus('paused');
       expect(sessionService.getCurrentSession().status).toBe('paused');
@@ -398,12 +399,16 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
   });
 
   describe('Session Timeout', () => {
-    it('should start session timeout timer', async () => {
+    it('should start session timeout timer after startGame', async () => {
       await sessionService.createSession({
         name: 'Timeout Test',
         teams: ['Team Alpha']
       });
 
+      // Timer not started until game starts
+      expect(sessionService.sessionTimeoutTimer).toBeNull();
+
+      await sessionService.startGame();
       expect(sessionService.sessionTimeoutTimer).not.toBeNull();
     });
 

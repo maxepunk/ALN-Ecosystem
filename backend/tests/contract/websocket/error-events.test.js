@@ -48,6 +48,7 @@ describe('Error Events - Contract Validation', () => {
       name: 'Error Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM socket
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_ERROR');

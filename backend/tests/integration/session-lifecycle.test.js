@@ -107,7 +107,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       // Validate: session:update broadcast (NOT session:new per AsyncAPI line 967)
       expect(sessionUpdate.event).toBe('session:update');
-      expect(sessionUpdate.data.status).toBe('active');
+      expect(sessionUpdate.data.status).toBe('setup'); // Session starts in setup state
       expect(sessionUpdate.data.name).toBe('Lifecycle Test Session');
       expect(sessionUpdate.data.teams).toEqual(['Team Alpha', 'Detectives', 'Blue Squad']);
       expect(sessionUpdate.data.id).toBeDefined(); // Decision #4: 'id' within resource
@@ -129,6 +129,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'Pause Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_PAUSE_TEST', 'blackmarket');
 
@@ -165,6 +166,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'Pause Block Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_PAUSE_BLOCK_TEST', 'blackmarket');
 
@@ -207,6 +209,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'Resume Test Session',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
       await sessionService.updateSession({ status: 'paused' });
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_RESUME_TEST', 'blackmarket');
@@ -256,6 +259,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'End Test Session',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Add a transaction
       const session = sessionService.getCurrentSession();
@@ -306,6 +310,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'Score Adjust Test',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       // Calculate expected scores using production scoring logic (DRY)
       // Token 534e2b03: 3-star Technical
@@ -390,6 +395,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         name: 'Score Bonus Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Calculate expected score using production scoring logic (DRY)
       // Token 534e2b03: 3-star Technical

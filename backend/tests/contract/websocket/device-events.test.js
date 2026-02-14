@@ -54,6 +54,7 @@ describe('Device Events - Contract Validation', () => {
       name: 'Device Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {

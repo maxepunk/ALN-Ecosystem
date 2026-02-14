@@ -53,6 +53,7 @@ describe('Duplicate Detection Integration', () => {
       name: 'Duplicate Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect 2 GM scanners
     gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_DUP_1');
@@ -461,6 +462,7 @@ describe('Duplicate Detection Integration', () => {
         name: 'New Session',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       await new Promise(resolve => setTimeout(resolve, 100)); // Wait for initialization
 

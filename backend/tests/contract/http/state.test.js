@@ -34,6 +34,7 @@ describe('GET /api/state', () => {
     createdSession = await sessionService.createSession({
       name: 'Test Session for State Validation'
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {
@@ -126,5 +127,6 @@ describe('GET /api/state', () => {
     createdSession = await sessionService.createSession({
       name: 'Test Session for State Validation'
     });
+    await sessionService.startGame();
   });
 });

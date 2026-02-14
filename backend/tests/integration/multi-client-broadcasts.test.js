@@ -61,6 +61,7 @@ describe('Multi-Client Broadcast Validation', () => {
       name: 'Multi-Client Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect 3 GM scanners
     gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_MULTI_1');

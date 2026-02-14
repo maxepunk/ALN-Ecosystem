@@ -6,6 +6,7 @@
 const EventEmitter = require('events');
 const Session = require('../models/session');
 const persistenceService = require('./persistenceService');
+const gameClockService = require('./gameClockService');
 const config = require('../config');
 const logger = require('../utils/logger');
 const listenerRegistry = require('../websocket/listenerRegistry');
@@ -241,6 +242,15 @@ class SessionService extends EventEmitter {
         // This ensures transactionService.teamScores Map matches session.scores after restart
         const transactionService = require('./transactionService');
         transactionService.restoreFromSession(this.currentSession);
+
+        // Restore game clock from session data (if session was active/paused)
+        if (this.currentSession.gameClock && this.currentSession.status !== 'ended') {
+          gameClockService.restore(this.currentSession.gameClock);
+          logger.info('Game clock restored from session', {
+            sessionId: this.currentSession.id,
+            clockStatus: gameClockService.status
+          });
+        }
       }
 
       // Set up cross-service event listeners for score sync (legacy - will be removed in Slice 6)
@@ -265,10 +275,10 @@ class SessionService extends EventEmitter {
         await this.endSession();
       }
 
-      // Create new session
+      // Create new session in setup state (transitions to active via startGame)
       this.currentSession = new Session({
         name: sessionData.name,
-        status: 'active',
+        status: 'setup',
         scores: this.initializeTeamScores(sessionData.teams),
       });
 
@@ -277,8 +287,7 @@ class SessionService extends EventEmitter {
       await persistenceService.saveSession(sessionJSON);
       await persistenceService.save('session:current', sessionJSON);
 
-      // Start session timeout timer
-      this.startSessionTimeout();
+      // NOTE: Session timeout and game clock are NOT started until startGame()
 
       // Emit domain event for internal coordination
       // broadcasts.js will wrap this for WebSocket broadcast
@@ -287,7 +296,7 @@ class SessionService extends EventEmitter {
         name: this.currentSession.name,
         startTime: this.currentSession.startTime,
         endTime: this.currentSession.endTime,
-        status: 'active',
+        status: 'setup',
         teams: this.currentSession.scores ? this.currentSession.scores.map(s => s.teamId) : [],
         metadata: this.currentSession.metadata || {}
       });
@@ -302,6 +311,59 @@ class SessionService extends EventEmitter {
       logger.error('Failed to create session', error);
       throw error;
     }
+  }
+
+  /**
+   * Start the game — transitions session from setup to active
+   * Starts the game clock and session timeout
+   * @returns {Promise<Session>}
+   */
+  async startGame() {
+    if (!this.currentSession) {
+      throw new Error('No session to start');
+    }
+
+    if (this.currentSession.status !== 'setup') {
+      throw new Error(`Cannot start game: session is in "${this.currentSession.status}" state (expected "setup")`);
+    }
+
+    // Transition session to active
+    this.currentSession.start();
+
+    // Record game start time on the session
+    this.currentSession.gameStartTime = new Date().toISOString();
+
+    // Start the game clock
+    gameClockService.start();
+
+    // Persist game clock state on session
+    this.currentSession.gameClock = gameClockService.toPersistence();
+
+    // Start session timeout timer
+    this.startSessionTimeout();
+
+    // Save to persistence
+    await this.saveCurrentSession();
+
+    // Emit session:started event for broadcasts
+    this.emit('session:started', {
+      id: this.currentSession.id,
+      name: this.currentSession.name,
+      status: 'active',
+      gameStartTime: this.currentSession.gameStartTime,
+      gameClock: gameClockService.getState()
+    });
+
+    // Also emit session:updated for general listeners
+    this.emit('session:updated', this.currentSession);
+
+    logger.info('Game started', {
+      sessionId: this.currentSession.id,
+      name: this.currentSession.name,
+      gameStartTime: this.currentSession.gameStartTime
+    });
+
+    return this.currentSession;
   }
 
   /**
@@ -393,10 +455,14 @@ class SessionService extends EventEmitter {
     switch (status) {
       case 'active':
         this.currentSession.start();
+        gameClockService.resume();
+        this.currentSession.gameClock = gameClockService.toPersistence();
         this.startSessionTimeout();
         break;
       case 'paused':
         this.currentSession.pause();
+        gameClockService.pause();
+        this.currentSession.gameClock = gameClockService.toPersistence();
         this.stopSessionTimeout();
         break;
       default:
@@ -423,9 +489,12 @@ class SessionService extends EventEmitter {
 
     try {
       // Complete the session
-      if (session.isActive() || session.isPaused()) {
+      if (session.status === 'setup' || session.isActive() || session.isPaused()) {
         session.complete();
       }
+
+      // Stop the game clock
+      gameClockService.stop();
 
       // Save final state (both specific ID and 'current' reference)
       const sessionData = session.toJSON();
@@ -691,6 +760,10 @@ class SessionService extends EventEmitter {
    */
   async saveCurrentSession() {
     if (this.currentSession) {
+      // Persist game clock state on session
+      if (gameClockService.status !== 'stopped') {
+        this.currentSession.gameClock = gameClockService.toPersistence();
+      }
       const sessionData = this.currentSession.toJSON();
       await persistenceService.saveSession(sessionData);
       await persistenceService.save('session:current', sessionData);
@@ -719,6 +792,9 @@ class SessionService extends EventEmitter {
   async reset() {
     // Stop timers FIRST
     this.stopSessionTimeout();
+
+    // Stop game clock
+    gameClockService.reset();
 
     // Remove all listeners registered ON this service (observers)
     // This clears the observer list for this EventEmitter subject

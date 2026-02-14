@@ -45,6 +45,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
       name: 'Sync Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Create prior transaction for team 001 (before late-joiner connects)
     const session = sessionService.getCurrentSession();
@@ -97,6 +98,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
       name: 'Video Sync Test',
       teams: ['Team Alpha']
     });
+    await sessionService.startGame();
 
     // Connect GM using REAL scanner
     scanner = await createAuthenticatedScanner(testContext.url, 'VIDEO_SYNC_GM', 'blackmarket');
@@ -121,6 +123,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
       name: 'System Status Test',
       teams: ['Team Alpha']
     });
+    await sessionService.startGame();
 
     // Connect GM using REAL scanner
     scanner = await createAuthenticatedScanner(testContext.url, 'SYSTEM_STATUS_GM', 'blackmarket');

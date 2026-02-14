@@ -64,6 +64,7 @@ describe('Display Events - Contract Validation', () => {
       name: 'Display Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM socket
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_DISPLAY');

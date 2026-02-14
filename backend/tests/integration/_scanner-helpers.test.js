@@ -36,6 +36,7 @@ describe('Scanner Helper Verification', () => {
       name: 'Helper Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   describe('GM Scanner (OrchestratorClient)', () => {

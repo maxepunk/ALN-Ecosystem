@@ -49,6 +49,7 @@ describe('Offline Queue Events - Contract Validation', () => {
       name: 'Offline Queue Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM socket
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_OFFLINE');

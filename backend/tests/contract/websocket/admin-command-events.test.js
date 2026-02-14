@@ -44,6 +44,7 @@ describe('Admin Command Events - Contract Validation', () => {
         name: 'Test Session for Pause',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       // Setup: Listen for ack
       const ackPromise = waitForEvent(socket, 'gm:command:ack');
@@ -77,6 +78,7 @@ describe('Admin Command Events - Contract Validation', () => {
         name: 'Test Session for Resume',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
       await sessionService.updateSession({ status: 'paused' });
 
       // Setup: Listen for ack
@@ -136,6 +138,7 @@ describe('Admin Command Events - Contract Validation', () => {
         name: 'Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       // Setup: Listen for ack
       const ackPromise = waitForEvent(socket, 'gm:command:ack');

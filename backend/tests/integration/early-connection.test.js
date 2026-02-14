@@ -40,6 +40,7 @@ describe('Early Connection Integration (Phase 1.3)', () => {
       name: 'Early Connection Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM scanner (represents early connection scenario)
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_EARLY_TEST');

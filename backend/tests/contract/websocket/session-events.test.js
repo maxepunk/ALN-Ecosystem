@@ -57,16 +57,16 @@ describe('Session Events - Contract Validation', () => {
 
   describe('session:update event', () => {
     it('should emit with wrapped envelope matching AsyncAPI schema for new session', async () => {
-      // Setup: Listen for event BEFORE triggering
+      // Setup: Listen for session:update BEFORE triggering
       const eventPromise = waitForEvent(socket, 'session:update');
 
-      // Trigger: Create session (emits session:update with status='active')
+      // Trigger: Create session (emits session:update with status='setup')
       const session = await sessionService.createSession({
         name: 'Wrap Test Session',
         teams: ['Team Alpha', 'Detectives']
       });
 
-      // Assert: Wait for WebSocket event
+      // Assert: Wait for WebSocket event (session created in setup state)
       const eventData = await eventPromise;
 
       // Validate: Wrapped envelope structure
@@ -78,12 +78,15 @@ describe('Session Events - Contract Validation', () => {
       // Validate: Payload content (full session resource per Decision #7)
       expect(eventData.data).toHaveProperty('id', session.id);
       expect(eventData.data).toHaveProperty('name', 'Wrap Test Session');
-      expect(eventData.data).toHaveProperty('status', 'active'); // New session = active
+      expect(eventData.data).toHaveProperty('status', 'setup'); // New session starts in setup
       expect(eventData.data).toHaveProperty('teams');
-      expect(eventData.data.teams).toEqual(['Team Alpha', 'Detectives']); // 3-digit zero-padded
+      expect(eventData.data.teams).toEqual(['Team Alpha', 'Detectives']);
 
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(eventData, 'session:update');
+
+      // Start the game for subsequent test interactions
+      await sessionService.startGame();
     });
   });
 
@@ -94,6 +97,7 @@ describe('Session Events - Contract Validation', () => {
         name: 'Sync Full Test Session',
         teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
+    await sessionService.startGame();
 
       // Setup: Disconnect existing socket
       if (socket && socket.connected) {

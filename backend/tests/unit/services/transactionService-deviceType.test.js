@@ -71,6 +71,7 @@ describe('TransactionService - Device-Type Specific Duplicate Detection', () => 
       name: 'Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {

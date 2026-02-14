@@ -34,6 +34,7 @@ describe('GET /api/session', () => {
     createdSession = await sessionService.createSession({
       name: 'Test Session for Contract Validation'
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {
@@ -87,6 +88,7 @@ describe('GET /api/session', () => {
     createdSession = await sessionService.createSession({
       name: 'Test Session for Contract Validation'
     });
+    await sessionService.startGame();
   });
 
   it('should return error structure on 404', async () => {
@@ -104,5 +106,6 @@ describe('GET /api/session', () => {
     createdSession = await sessionService.createSession({
       name: 'Test Session for Contract Validation'
     });
+    await sessionService.startGame();
   });
 });

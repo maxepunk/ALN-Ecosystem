@@ -76,6 +76,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       name: 'Group Completion Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect REAL GM scanner
     gmScanner = await createAuthenticatedScanner(testContext.url, 'GM_GROUP_TEST', 'blackmarket');

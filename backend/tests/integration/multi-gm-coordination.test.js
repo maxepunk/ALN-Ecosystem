@@ -50,6 +50,7 @@ describe('Multi-GM Coordination', () => {
       name: 'Multi-GM Coordination Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {

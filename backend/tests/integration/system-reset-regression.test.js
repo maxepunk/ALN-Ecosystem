@@ -47,6 +47,7 @@ describe('System Reset Regression Tests', () => {
       name: 'Reset Test Session',
       teams: ['Team Alpha']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {
@@ -142,14 +143,19 @@ describe('System Reset Regression Tests', () => {
         name: 'Duplicate Broadcast Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Wait for broadcasts to arrive
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Should receive exactly 1 session:update broadcast
-      // (not 2 or 3 due to accumulated listeners)
-      expect(sessionUpdates.length).toBe(1);
+      // Should receive exactly 2 session:update broadcasts:
+      // 1. createSession (status='setup')
+      // 2. startGame (status='active')
+      // (not 3 or 4 due to accumulated listeners)
+      expect(sessionUpdates.length).toBe(2);
       expect(sessionUpdates[0].data.name).toBe('Duplicate Broadcast Test');
+      expect(sessionUpdates[0].data.status).toBe('setup');
+      expect(sessionUpdates[1].data.status).toBe('active');
     });
 
     it('should handle rapid consecutive resets without crashing', async () => {
@@ -177,6 +183,7 @@ describe('System Reset Regression Tests', () => {
         name: 'Post-Rapid-Reset Session',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       const session = sessionService.getCurrentSession();
       expect(session).not.toBeNull();
@@ -224,6 +231,7 @@ describe('System Reset Regression Tests', () => {
         name: 'Fresh Session',
         teams: ['Detectives']
       });
+    await sessionService.startGame();
 
       const newSession = sessionService.getCurrentSession();
       expect(newSession.transactions.length).toBe(0);

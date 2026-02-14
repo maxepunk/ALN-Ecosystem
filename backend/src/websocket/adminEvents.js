@@ -212,18 +212,20 @@ async function handleTransactionSubmit(socket, data, _io) {
       return;
     }
 
-    // Check if session is paused (FR 1.2: transactions rejected when paused)
-    if (session.status === 'paused') {
+    // Check if session is not active (FR 1.2: transactions rejected when paused or in setup)
+    if (session.status !== 'active') {
+      const errorCode = session.status === 'paused' ? 'SESSION_PAUSED' : 'SESSION_NOT_ACTIVE';
+      const errorMsg = session.status === 'paused' ? 'Session is paused' : 'Game has not started yet';
       emitWrapped(socket, 'transaction:result', {
         status: 'error',
         transactionId: null,
         tokenId: scanRequest.tokenId,
         teamId: scanRequest.teamId,
         points: 0,
-        message: 'Session is paused',
-        error: 'SESSION_PAUSED'
+        message: errorMsg,
+        error: errorCode
       });
-      logger.info('Transaction blocked (session paused)', {
+      logger.info(`Transaction blocked (session ${session.status})`, {
         deviceId: socket.deviceId,
         tokenId: scanRequest.tokenId
       });

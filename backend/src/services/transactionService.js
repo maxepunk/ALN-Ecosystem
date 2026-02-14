@@ -121,8 +121,12 @@ class TransactionService extends EventEmitter {
   async processScan(scanRequest) {
     // Slice 5: Get session internally (read-only for duplicate checking)
     const session = sessionService.getCurrentSession();
-    if (!session) {
-      throw new Error('No active session');
+    if (!session || session.status !== 'active') {
+      return {
+        status: 'rejected',
+        reason: 'No active game — session must be started before scanning',
+        message: 'No active game — session must be started before scanning'
+      };
     }
 
     try {
@@ -803,8 +807,8 @@ class TransactionService extends EventEmitter {
 
     // Slice 5: Session retrieved internally by processScan
     const session = sessionService.getCurrentSession();
-    if (!session) {
-      throw new Error('No active session');
+    if (!session || session.status !== 'active') {
+      throw new Error('No active game — session must be started before creating transactions');
     }
 
     // Get token

@@ -63,6 +63,7 @@ describe('Error Propagation Integration', () => {
       name: 'Error Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM scanner
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ERROR_TEST');

@@ -38,6 +38,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         name: 'Reconnection Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Step 2: Connect GM
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -106,6 +107,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         name: 'Duplicate Prevention Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Step 2: Connect and scan via WebSocket
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -156,6 +158,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         name: 'Multi-Device Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Step 2: GM_001 scans jaw011
       let gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -199,6 +202,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         name: 'Reconnection Flag Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // First connection
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -227,6 +231,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         name: 'Empty State Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Connect without scanning
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -262,6 +267,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
         name: 'Multiple Reconnection Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Initial connection and scan
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');

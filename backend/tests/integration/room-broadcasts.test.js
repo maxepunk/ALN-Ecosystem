@@ -61,6 +61,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         name: 'Broadcast Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // All GMs should receive the event
       const [state1, state2, state3] = await Promise.all([
@@ -94,6 +95,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         name: 'GM Only Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // GM should receive
       await gmEventPromise;
@@ -119,6 +121,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         name: 'Batch ACK Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       // Listen for batch:ack on both GMs
       let gm1ReceivedAck = false;
@@ -168,6 +171,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         name: 'Team Test',
         teams: ['Team Alpha', 'Detectives', 'Blue Squad']
       });
+    await sessionService.startGame();
 
       // Connect GM
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
@@ -197,6 +201,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         name: 'Future Team Broadcast',
         teams: ['Team Alpha', 'Detectives']
       });
+    await sessionService.startGame();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
@@ -227,6 +232,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
         name: 'Session Room Test',
         teams: ['Team Alpha']
       });
+    await sessionService.startGame();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 

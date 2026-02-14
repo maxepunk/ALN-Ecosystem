@@ -1058,13 +1058,64 @@ class GMScannerPage {
   }
 
   /**
+   * Start the game (transition session from setup to active)
+   * Uses a temporary WebSocket connection to send session:start command.
+   * This approach avoids requiring internal socket access from the browser page.
+   */
+  async startGame() {
+    const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../../helpers/websocket-core');
+
+    // Determine orchestrator URL from the page's origin
+    const pageUrl = this.page.url();
+    const url = new URL(pageUrl);
+    const orchestratorUrl = `${url.protocol}//${url.host}`;
+
+    // Get admin password from test config
+    const { ADMIN_PASSWORD } = require('../test-config');
+
+    // Connect a temporary admin socket
+    const tempSocket = await connectWithAuth(
+      orchestratorUrl,
+      ADMIN_PASSWORD,
+      `START_GAME_HELPER_${Date.now()}`,
+      'gm'
+    );
+
+    try {
+      // Send session:start command
+      const ackPromise = waitForEvent(tempSocket, 'gm:command:ack', (ack) => {
+        return ack?.data?.action === 'session:start';
+      }, 5000);
+
+      tempSocket.emit('gm:command', {
+        event: 'gm:command',
+        data: { action: 'session:start', payload: {} },
+        timestamp: new Date().toISOString()
+      });
+
+      const ack = await ackPromise;
+      if (!ack.data?.success) {
+        throw new Error(`session:start failed: ${ack.data?.message || 'Unknown error'}`);
+      }
+    } finally {
+      disconnectSocket(tempSocket);
+    }
+
+    // Wait briefly for the session:update broadcast to reach the scanner page
+    await this.page.waitForTimeout(500);
+  }
+
+  /**
    * Create a session with teams via admin panel UI
-   * Creates session, then adds teams via scanner view
+   * Creates session, starts the game, then adds teams via scanner view
    * @param {string} name - Session name
    * @param {string[]} teams - Array of team names to add
    */
   async createSessionWithTeams(name, teams) {
     await this.createSession(name);
+
+    // Start the game (transitions session from setup to active)
+    await this.startGame();
 
     // Switch to scanner view to add teams
     await this.scannerTab.click();
@@ -1138,6 +1189,9 @@ class GMScannerPage {
 
     // Remove handler
     this.page.off('dialog', dialogHandler);
+
+    // Start the game (transitions session from setup to active)
+    await this.startGame();
   }
 
   /**

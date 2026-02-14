@@ -56,6 +56,7 @@ describe('Admin Intervention Integration', () => {
       name: 'Admin Intervention Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect admin GM and observer GM with unique IDs to prevent collisions
     const timestamp = Date.now();
@@ -250,7 +251,7 @@ describe('Admin Intervention Integration', () => {
       expect(ack.data.action).toBe('session:create');
       expect(sessionUpdate.data.name).toBe('Admin Created Session');
       expect(sessionUpdate.data.teams).toEqual(['Team Alpha', 'Detectives', 'Blue Squad']);
-      expect(sessionUpdate.data.status).toBe('active');
+      expect(sessionUpdate.data.status).toBe('setup'); // Session starts in setup state
     });
 
     it('should pause session and reject new transactions', async () => {
@@ -738,7 +739,8 @@ describe('Admin Intervention Integration', () => {
     });
 
     it('should handle invalid command action', async () => {
-      const errorPromise = waitForEvent(gmAdmin.socket, 'error');
+      // Per AsyncAPI contract, command failures return gm:command:ack with success: false
+      const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       gmAdmin.socket.emit('gm:command', {
         event: 'gm:command',
@@ -749,10 +751,10 @@ describe('Admin Intervention Integration', () => {
         timestamp: new Date().toISOString()
       });
 
-      const errorEvent = await errorPromise;
+      const ackEvent = await ackPromise;
 
-      expect(errorEvent.data.code).toBe('INVALID_COMMAND');
-      expect(errorEvent.data.message).toContain('Unknown action');
+      expect(ackEvent.data.success).toBe(false);
+      expect(ackEvent.data.message).toContain('Unknown action');
     });
 
     it('should handle missing required parameters', async () => {

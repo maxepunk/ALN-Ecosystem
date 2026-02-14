@@ -99,6 +99,7 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       name: 'Video Orchestration Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Create REAL Player Scanner
     playerScanner = createPlayerScanner(testContext.url, 'PLAYER_SCANNER_01');

@@ -33,6 +33,7 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
       name: 'App Flow Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Clear DataManager scanned tokens between tests
     global.DataManager.clearScannedTokens();

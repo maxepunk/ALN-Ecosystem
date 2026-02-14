@@ -59,6 +59,7 @@ describe('FR Section 3: Transaction Processing', () => {
       name: 'FR Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Create scanner (AFTER session created)
     scanner = await createAuthenticatedScanner(testContext.url, 'GM_FR_TEST', 'blackmarket');

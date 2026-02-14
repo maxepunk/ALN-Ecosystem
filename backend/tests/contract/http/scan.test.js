@@ -34,6 +34,7 @@ describe('POST /api/scan', () => {
       name: 'Contract Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {
@@ -168,6 +169,7 @@ describe('POST /api/scan/batch', () => {
       name: 'Batch Contract Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {

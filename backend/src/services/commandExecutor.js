@@ -46,18 +46,25 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Session commands ---
 
       case 'session:create':
-        // Create new session (service will emit session:created → broadcasts.js wraps as session:update)
+        // Create new session in setup state (service will emit session:created → broadcasts.js wraps as session:update)
         await sessionService.createSession({
           name: payload.name || 'New Session',
           teams: payload.teams || []
         });
-        resultMessage = `Session "${payload.name || 'New Session'}" created successfully`;
+        resultMessage = `Session "${payload.name || 'New Session'}" created successfully (in setup)`;
         logger.info('Session created', {
           source,
           deviceId,
           name: payload.name,
           teams: payload.teams
         });
+        break;
+
+      case 'session:start':
+        // Transition session from setup to active (starts game clock)
+        await sessionService.startGame();
+        resultMessage = 'Game started';
+        logger.info('Game started', { source, deviceId });
         break;
 
       case 'session:pause':

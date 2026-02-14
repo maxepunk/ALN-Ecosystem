@@ -63,6 +63,7 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
       name: 'Device Type Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM scanner via WebSocket
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_DEVICE_TYPE_TEST');

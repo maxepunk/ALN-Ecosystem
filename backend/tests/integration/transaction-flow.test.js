@@ -53,6 +53,7 @@ describe('Transaction Flow Integration', () => {
       name: 'Transaction Flow Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
   });
 
   afterEach(async () => {

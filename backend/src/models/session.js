@@ -95,7 +95,7 @@ class Session {
    * Start/resume the session
    */
   start() {
-    if (this.status === 'paused' || this.status === 'active') {
+    if (this.status === 'setup' || this.status === 'paused' || this.status === 'active') {
       this.status = 'active';
     } else {
       throw new Error(`Cannot start session with status ${this.status}`);
@@ -117,7 +117,7 @@ class Session {
    * Complete the session (sets status to 'ended' per contract)
    */
   complete() {
-    if (this.status === 'active' || this.status === 'paused') {
+    if (this.status === 'setup' || this.status === 'active' || this.status === 'paused') {
       this.status = 'ended';
       this.endTime = new Date().toISOString();
     } else {

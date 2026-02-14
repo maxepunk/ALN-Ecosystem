@@ -324,7 +324,7 @@ components:
                         example: null
                       status:
                         type: string
-                        enum: [active, paused, ended]
+                        enum: [setup, active, paused, ended]
                         example: "active"
                       teams:
                         type: array
@@ -1742,7 +1742,7 @@ components:
                 example: null
               status:
                 type: string
-                enum: [active, paused, ended]
+                enum: [setup, active, paused, ended]
                 description: Session status
                 example: "active"
               teams:

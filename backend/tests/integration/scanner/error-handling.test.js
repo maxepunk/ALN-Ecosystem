@@ -39,6 +39,7 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       name: 'Error Handling Test',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Clear DataManager between tests
     global.DataManager.clearScannedTokens();

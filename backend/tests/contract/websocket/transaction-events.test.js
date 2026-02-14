@@ -52,6 +52,7 @@ describe('Transaction Events - Contract Validation', () => {
       name: 'Transaction Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect WebSocket (GM Scanner simulation) using helper
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_TRANSACTIONS');

@@ -51,6 +51,7 @@ describe('Video Events - Contract Validation', () => {
       name: 'Video Test Session',
       teams: ['Team Alpha', 'Detectives']
     });
+    await sessionService.startGame();
 
     // Connect GM socket
     socket = await connectAndIdentify(testContext.socketUrl, 'gm', 'TEST_GM_VIDEO');

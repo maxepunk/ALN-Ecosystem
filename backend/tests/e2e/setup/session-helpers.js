@@ -87,6 +87,40 @@ async function createSessionViaWebSocket(orchestratorUrl, options = {}) {
       throw new Error(`Session creation failed: ${sessionAck.data?.message || 'Unknown error'}`);
     }
 
+    // Start the game (transition session from setup to active)
+    const startAck = await new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Session start timeout after ${timeout}ms`));
+      }, timeout);
+
+      const ackHandler = (ack) => {
+        if (ack.data?.action === 'session:start') {
+          clearTimeout(timeoutId);
+          adminSocket.off('gm:command:ack', ackHandler);
+
+          if (ack.data?.error) {
+            reject(new Error(`Session start failed: ${ack.data.error}`));
+          } else {
+            resolve(ack);
+          }
+        }
+      };
+      adminSocket.on('gm:command:ack', ackHandler);
+
+      adminSocket.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'session:start',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    if (!startAck.data?.success) {
+      throw new Error(`Session start failed: ${startAck.data?.message || 'Unknown error'}`);
+    }
+
     // Session data is broadcast via session:update event, not in ack
     // For HTTP-only tests, we just need to know session exists (backend will accept scans)
     // Return a minimal session object with the name we used
@@ -173,6 +207,40 @@ async function createSessionWithSocket(orchestratorUrl, options = {}) {
     // Verify session was created successfully
     if (!sessionAck.data?.success) {
       throw new Error(`Session creation failed: ${sessionAck.data?.message || 'Unknown error'}`);
+    }
+
+    // Start the game (transition session from setup to active)
+    const startAck = await new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Session start timeout after ${timeout}ms`));
+      }, timeout);
+
+      const ackHandler = (ack) => {
+        if (ack.data?.action === 'session:start') {
+          clearTimeout(timeoutId);
+          adminSocket.off('gm:command:ack', ackHandler);
+
+          if (ack.data?.error) {
+            reject(new Error(`Session start failed: ${ack.data.error}`));
+          } else {
+            resolve(ack);
+          }
+        }
+      };
+      adminSocket.on('gm:command:ack', ackHandler);
+
+      adminSocket.emit('gm:command', {
+        event: 'gm:command',
+        data: {
+          action: 'session:start',
+          payload: {}
+        },
+        timestamp: new Date().toISOString()
+      });
+    });
+
+    if (!startAck.data?.success) {
+      throw new Error(`Session start failed: ${startAck.data?.message || 'Unknown error'}`);
     }
 
     // Return minimal session object and keep socket open for caller
