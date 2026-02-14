@@ -97,6 +97,12 @@ channels:
           - $ref: '#/components/messages/AudioRoutingFallback'
           - $ref: '#/components/messages/LightingScene'
           - $ref: '#/components/messages/LightingStatus'
+          - $ref: '#/components/messages/GameClockStatus'
+          - $ref: '#/components/messages/CueFired'
+          - $ref: '#/components/messages/CueStatus'
+          - $ref: '#/components/messages/CueCompleted'
+          - $ref: '#/components/messages/CueError'
+          - $ref: '#/components/messages/SoundStatus'
           - $ref: '#/components/messages/Error'
     publish:
       summary: Send events to orchestrator
@@ -1892,6 +1898,7 @@ components:
                   - session:pause
                   - session:resume
                   - session:end
+                  - session:start
                   - video:play
                   - video:pause
                   - video:stop
@@ -1915,8 +1922,17 @@ components:
                   - bluetooth:connect
                   - bluetooth:disconnect
                   - audio:route:set
+                  - audio:volume:set
                   - lighting:scene:activate
                   - lighting:scenes:refresh
+                  - cue:fire
+                  - cue:stop
+                  - cue:pause
+                  - cue:resume
+                  - cue:enable
+                  - cue:disable
+                  - sound:play
+                  - sound:stop
                 example: "video:skip"
               payload:
                 type: object
@@ -2447,3 +2463,299 @@ components:
             format: date-time
             description: Event timestamp
             example: "2025-10-15T20:15:30.100Z"
+
+    # ============================================================================
+    # PHASE 1: GAME CLOCK, CUE ENGINE, AND SOUND (6 events)
+    # ============================================================================
+
+    GameClockStatus:
+      name: gameclock:status
+      title: Game Clock Status
+      summary: Broadcast game clock state changes
+      description: |
+        Broadcast when game clock state changes (running, paused, stopped).
+
+        **Phase 1 Feature**: Game clock provides centralized time tracking for the 2-hour game session.
+
+        **State Transitions**:
+        - stopped → running (session starts)
+        - running → paused (session paused)
+        - paused → running (session resumed)
+        - running → stopped (session ended)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: gameclock:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - state
+              - elapsed
+            properties:
+              state:
+                type: string
+                description: Current game clock state
+                enum:
+                  - running
+                  - paused
+                  - stopped
+                example: "running"
+              elapsed:
+                type: integer
+                description: Elapsed time in seconds
+                example: 3600
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:00.000Z"
+
+    CueFired:
+      name: cue:fired
+      title: Cue Fired Event
+      summary: Broadcast when a cue is fired
+      description: |
+        Broadcast when a cue sequence is triggered and begins execution.
+
+        **Phase 1 Feature**: Cue engine automates game actions (sound, lighting, video) based on triggers.
+
+        **Triggers**:
+        - Manual: GM fires cue via gm:command (source: 'gm')
+        - Automatic: Event-based trigger (e.g., transaction:accepted, source: 'cue')
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: cue:fired
+            description: Event name
+          data:
+            type: object
+            required:
+              - cueId
+              - trigger
+              - source
+            properties:
+              cueId:
+                type: string
+                description: Unique cue identifier
+                example: "business-sale"
+              trigger:
+                type: string
+                description: What triggered this cue
+                example: "event:transaction:accepted"
+              source:
+                type: string
+                description: Source of the trigger
+                enum:
+                  - gm
+                  - cue
+                example: "cue"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:10:00.000Z"
+
+    CueStatus:
+      name: cue:status
+      title: Cue Status Update
+      summary: Broadcast cue state changes
+      description: |
+        Broadcast when a cue's state changes during execution.
+
+        **States**:
+        - running: Cue is actively executing actions
+        - paused: Cue execution paused (manual intervention)
+        - completed: Cue finished all actions successfully
+        - stopped: Cue manually stopped before completion
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: cue:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - cueId
+              - state
+            properties:
+              cueId:
+                type: string
+                description: Unique cue identifier
+                example: "opening-sequence"
+              state:
+                type: string
+                description: Current cue state
+                enum:
+                  - running
+                  - paused
+                  - completed
+                  - stopped
+                example: "running"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:05.000Z"
+
+    CueCompleted:
+      name: cue:completed
+      title: Cue Completed Event
+      summary: Broadcast when a cue completes successfully
+      description: |
+        Broadcast when a cue finishes executing all actions successfully.
+
+        **Note**: This is a terminal state - the cue will not execute further unless re-fired.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: cue:completed
+            description: Event name
+          data:
+            type: object
+            required:
+              - cueId
+            properties:
+              cueId:
+                type: string
+                description: Unique cue identifier
+                example: "first-scan-fanfare"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:05:00.000Z"
+
+    CueError:
+      name: cue:error
+      title: Cue Error Event
+      summary: Broadcast when a cue action fails
+      description: |
+        Broadcast when a cue encounters an error during action execution.
+
+        **Error Handling**: Cue engine continues to next action after error (fail-fast per action, not per cue).
+
+        **Common Errors**:
+        - pw-play not found (PipeWire command missing)
+        - File not found (audio/video asset missing)
+        - Home Assistant unreachable (lighting service unavailable)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: cue:error
+            description: Event name
+          data:
+            type: object
+            required:
+              - cueId
+              - action
+              - position
+              - error
+            properties:
+              cueId:
+                type: string
+                description: Unique cue identifier
+                example: "business-sale"
+              action:
+                type: string
+                description: Action that failed
+                example: "sound:play"
+              position:
+                type: integer
+                nullable: true
+                description: Action position in cue sequence (null if not applicable)
+                example: null
+              error:
+                type: string
+                description: Error message
+                example: "pw-play not found"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:12:00.000Z"
+
+    SoundStatus:
+      name: sound:status
+      title: Sound Status Event
+      summary: Broadcast currently playing sounds
+      description: |
+        Broadcast current sound playback state.
+
+        **Phase 1 Feature**: Sound service plays audio via PipeWire (pw-play) to specific targets.
+
+        **Targets**:
+        - combine-bt: Combined Bluetooth speaker output
+        - hdmi: HDMI audio output
+        - (other PipeWire sink names)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: sound:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - playing
+            properties:
+              playing:
+                type: array
+                description: Currently playing sounds
+                items:
+                  type: object
+                  required:
+                    - file
+                    - target
+                  properties:
+                    file:
+                      type: string
+                      description: Audio file name
+                      example: "fanfare.wav"
+                    target:
+                      type: string
+                      description: PipeWire sink target
+                      example: "combine-bt"
+                example:
+                  - file: "fanfare.wav"
+                    target: "combine-bt"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:05:01.000Z"
