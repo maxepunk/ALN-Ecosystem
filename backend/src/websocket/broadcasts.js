@@ -56,7 +56,7 @@ function setupBroadcastListeners(io, services) {
   broadcastListenersActive = true;
 
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
-    bluetoothService, audioRoutingService, lightingService } = services;
+    bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService } = services;
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
@@ -495,6 +495,8 @@ function setupBroadcastListeners(io, services) {
         bluetoothService,
         audioRoutingService,
         lightingService,
+        gameClockService,
+        cueEngineService,
       });
 
       emitWrapped(io, 'sync:full', syncFullPayload);
@@ -566,6 +568,58 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(lightingService, 'scenes:refreshed', (data) => {
       emitToRoom(io, 'gm', 'lighting:status', { type: 'refreshed', ...data });
       logger.debug('Broadcasted lighting:status refreshed', { sceneCount: data?.scenes?.length });
+    });
+  }
+
+  // ============================================================
+  // PHASE 1 BROADCASTS - Game Clock, Cue Engine, Sound Service
+  // ============================================================
+
+  // Game Clock events
+  if (gameClockService) {
+    addTrackedListener(gameClockService, 'gameclock:started', (data) => {
+      emitToRoom(io, 'gm', 'gameclock:status', { state: 'running', elapsed: 0 });
+      logger.debug('Broadcasted gameclock:status started');
+    });
+    addTrackedListener(gameClockService, 'gameclock:paused', (data) => {
+      emitToRoom(io, 'gm', 'gameclock:status', { state: 'paused', elapsed: data.elapsed });
+      logger.debug('Broadcasted gameclock:status paused', { elapsed: data.elapsed });
+    });
+    addTrackedListener(gameClockService, 'gameclock:resumed', (data) => {
+      emitToRoom(io, 'gm', 'gameclock:status', { state: 'running', elapsed: data.elapsed });
+      logger.debug('Broadcasted gameclock:status resumed', { elapsed: data.elapsed });
+    });
+  }
+
+  // Cue Engine events
+  if (cueEngineService) {
+    addTrackedListener(cueEngineService, 'cue:fired', (data) => {
+      emitToRoom(io, 'gm', 'cue:fired', data);
+      logger.debug('Broadcasted cue:fired', { cueId: data.cueId });
+    });
+    addTrackedListener(cueEngineService, 'cue:completed', (data) => {
+      emitToRoom(io, 'gm', 'cue:completed', data);
+      logger.debug('Broadcasted cue:completed', { cueId: data.cueId });
+    });
+    addTrackedListener(cueEngineService, 'cue:error', (data) => {
+      emitToRoom(io, 'gm', 'cue:error', data);
+      logger.error('Broadcasted cue:error', { cueId: data.cueId, error: data.error });
+    });
+  }
+
+  // Sound Service events
+  if (soundService) {
+    addTrackedListener(soundService, 'sound:started', () => {
+      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
+      logger.debug('Broadcasted sound:status (started)');
+    });
+    addTrackedListener(soundService, 'sound:completed', () => {
+      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
+      logger.debug('Broadcasted sound:status (completed)');
+    });
+    addTrackedListener(soundService, 'sound:stopped', () => {
+      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
+      logger.debug('Broadcasted sound:status (stopped)');
     });
   }
 

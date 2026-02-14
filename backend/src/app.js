@@ -164,6 +164,90 @@ async function initializeServices() {
     await audioRoutingService.init();     // Start sink monitor, load persisted routes
     await lightingService.init();         // Non-blocking HA connection check
 
+    // Initialize Phase 1 services (game clock, cue engine, sound)
+    const gameClockService = require('./services/gameClockService');
+    const cueEngineService = require('./services/cueEngineService');
+    const soundService = require('./services/soundService');
+
+    // Load cue definitions from config
+    const fs = require('fs').promises;
+    const path = require('path');
+    const cuesPath = path.join(__dirname, '../config/environment/cues.json');
+    try {
+      const cuesData = await fs.readFile(cuesPath, 'utf8');
+      const cues = JSON.parse(cuesData);
+      cueEngineService.loadCues(cues);
+      logger.info('Cue engine loaded cue definitions', { count: cues.length });
+    } catch (err) {
+      logger.warn('Failed to load cue definitions - cue engine will be empty', { error: err.message });
+    }
+
+    // Wire game clock tick events to cue engine
+    const listenerRegistry = require('./websocket/listenerRegistry');
+    listenerRegistry.addTrackedListener(gameClockService, 'gameclock:tick', (data) => {
+      cueEngineService.handleClockTick(data.elapsed);
+    }, 'gameClockService->cueEngineService');
+
+    // Wire game events to cue engine
+    // Transaction events
+    listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
+      cueEngineService.handleGameEvent('transaction:accepted', payload);
+    }, 'transactionService->cueEngineService');
+
+    listenerRegistry.addTrackedListener(transactionService, 'group:completed', (data) => {
+      cueEngineService.handleGameEvent('group:completed', data);
+    }, 'transactionService->cueEngineService');
+
+    // Video events
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:loading', (data) => {
+      cueEngineService.handleGameEvent('video:loading', data);
+    }, 'videoQueueService->cueEngineService');
+
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:started', (data) => {
+      cueEngineService.handleGameEvent('video:started', data);
+    }, 'videoQueueService->cueEngineService');
+
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:completed', (data) => {
+      cueEngineService.handleGameEvent('video:completed', data);
+    }, 'videoQueueService->cueEngineService');
+
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:paused', (data) => {
+      cueEngineService.handleGameEvent('video:paused', data);
+    }, 'videoQueueService->cueEngineService');
+
+    listenerRegistry.addTrackedListener(videoQueueService, 'video:resumed', (data) => {
+      cueEngineService.handleGameEvent('video:resumed', data);
+    }, 'videoQueueService->cueEngineService');
+
+    // Session events
+    listenerRegistry.addTrackedListener(sessionService, 'session:created', (session) => {
+      cueEngineService.handleGameEvent('session:created', { sessionId: session.id });
+    }, 'sessionService->cueEngineService');
+
+    listenerRegistry.addTrackedListener(sessionService, 'player-scan:added', (data) => {
+      cueEngineService.handleGameEvent('player:scan', data);
+    }, 'sessionService->cueEngineService');
+
+    // Sound events (for cue chaining)
+    listenerRegistry.addTrackedListener(soundService, 'sound:completed', (data) => {
+      cueEngineService.handleGameEvent('sound:completed', data);
+    }, 'soundService->cueEngineService');
+
+    // Cue events (for cue chaining)
+    listenerRegistry.addTrackedListener(cueEngineService, 'cue:completed', (data) => {
+      cueEngineService.handleGameEvent('cue:completed', data);
+    }, 'cueEngineService->cueEngineService');
+
+    // Spotify events (future)
+    // listenerRegistry.addTrackedListener(spotifyService, 'spotify:track:changed', ...)
+
+    // Game clock events
+    listenerRegistry.addTrackedListener(gameClockService, 'gameclock:started', (data) => {
+      cueEngineService.handleGameEvent('gameclock:started', data);
+    }, 'gameClockService->cueEngineService');
+
+    logger.info('Phase 1 services initialized (game clock, cue engine, sound)');
+
     // Initialize VLC service only if video playback is enabled
     if (config.features.videoPlayback) {
       // Add error handler to prevent crashes from VLC connection failures

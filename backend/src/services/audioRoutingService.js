@@ -17,8 +17,8 @@ const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 const { execFileAsync } = require('../utils/execHelper');
 
-/** Valid stream names for Phase 0 */
-const VALID_STREAMS = ['video'];
+/** Valid stream names for Phase 1 */
+const VALID_STREAMS = ['video', 'spotify', 'sound'];
 
 /** Persistence key for routing config */
 const PERSISTENCE_KEY = 'config:audioRouting';

@@ -12,6 +12,8 @@ const videoQueueService = require('../services/videoQueueService');
 const bluetoothService = require('../services/bluetoothService');
 const audioRoutingService = require('../services/audioRoutingService');
 const lightingService = require('../services/lightingService');
+const gameClockService = require('../services/gameClockService');
+const cueEngineService = require('../services/cueEngineService');
 const { emitWrapped } = require('./eventWrapper');
 const { buildSyncFullPayload } = require('./syncHelpers');
 
@@ -143,6 +145,8 @@ async function handleGmIdentify(socket, data, io) {
       bluetoothService,
       audioRoutingService,
       lightingService,
+      gameClockService,
+      cueEngineService,
       deviceFilter: { connectedOnly: true },
     });
 

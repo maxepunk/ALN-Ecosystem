@@ -8,6 +8,7 @@
 
 const vlcService = require('../services/vlcService');
 const { buildEnvironmentState } = require('./environmentHelpers');
+const logger = require('../utils/logger');
 
 /**
  * Build the common sync:full payload from current service state.
@@ -20,6 +21,8 @@ const { buildEnvironmentState } = require('./environmentHelpers');
  * @param {Object} [options.bluetoothService]
  * @param {Object} [options.audioRoutingService]
  * @param {Object} [options.lightingService]
+ * @param {Object} [options.gameClockService]
+ * @param {Object} [options.cueEngineService]
  * @param {Object} [options.deviceFilter] - Optional filter options
  * @param {boolean} [options.deviceFilter.connectedOnly=false] - Only include connected devices
  * @returns {Promise<Object>} sync:full payload
@@ -32,6 +35,8 @@ async function buildSyncFullPayload({
   bluetoothService,
   audioRoutingService,
   lightingService,
+  gameClockService,
+  cueEngineService,
   deviceFilter = {},
 }) {
   const session = sessionService.getCurrentSession();
@@ -102,6 +107,12 @@ async function buildSyncFullPayload({
     lightingService,
   });
 
+  // Phase 1: Game Clock state
+  const gameClock = buildGameClockState(gameClockService);
+
+  // Phase 1: Cue Engine state
+  const cueEngine = buildCueEngineState(cueEngineService);
+
   return {
     session: session ? session.toJSON() : null,
     scores,
@@ -111,7 +122,57 @@ async function buildSyncFullPayload({
     systemStatus,
     playerScans: session?.playerScans || [],
     environment,
+    gameClock,
+    cueEngine,
   };
+}
+
+/**
+ * Build game clock state for sync:full payload.
+ * Gracefully degrades when service is unavailable.
+ *
+ * @param {Object} gameClockService - GameClockService instance (optional)
+ * @returns {Object} Game clock state
+ */
+function buildGameClockState(gameClockService) {
+  try {
+    if (!gameClockService) {
+      return { status: 'stopped', elapsed: 0, expectedDuration: 7200 };
+    }
+    const state = gameClockService.getState();
+    return {
+      status: state.status,
+      elapsed: state.elapsed,
+      expectedDuration: 7200  // 2 hours default; make configurable later
+    };
+  } catch (err) {
+    logger.warn('Failed to gather game clock state for sync:full', { error: err.message });
+    return { status: 'stopped', elapsed: 0, expectedDuration: 7200 };
+  }
+}
+
+/**
+ * Build cue engine state for sync:full payload.
+ * Gracefully degrades when service is unavailable.
+ *
+ * @param {Object} cueEngineService - CueEngineService instance (optional)
+ * @returns {Object} Cue engine state
+ */
+function buildCueEngineState(cueEngineService) {
+  try {
+    if (!cueEngineService) {
+      return { loaded: false, cues: [], activeCues: [], disabledCues: [] };
+    }
+    return {
+      loaded: true,
+      cues: cueEngineService.getCueSummaries(),
+      activeCues: [],  // Phase 2: compound cue state
+      disabledCues: cueEngineService.getDisabledCues()
+    };
+  } catch (err) {
+    logger.warn('Failed to gather cue engine state for sync:full', { error: err.message });
+    return { loaded: false, cues: [], activeCues: [], disabledCues: [] };
+  }
 }
 
 module.exports = { buildSyncFullPayload };

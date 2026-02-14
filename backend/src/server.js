@@ -31,6 +31,9 @@ const heartbeatMonitorService = require('./services/heartbeatMonitorService');
 const bluetoothService = require('./services/bluetoothService');
 const audioRoutingService = require('./services/audioRoutingService');
 const lightingService = require('./services/lightingService');
+const gameClockService = require('./services/gameClockService');
+const cueEngineService = require('./services/cueEngineService');
+const soundService = require('./services/soundService');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order
 const ServerState = {
@@ -111,6 +114,9 @@ function setupServiceListeners(ioInstance) {
     bluetoothService,
     audioRoutingService,
     lightingService,
+    gameClockService,
+    cueEngineService,
+    soundService,
   });
 
   // Initialize and start heartbeat monitoring for HTTP-based devices
