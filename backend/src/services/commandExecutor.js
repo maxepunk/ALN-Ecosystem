@@ -22,6 +22,15 @@ const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
 
+// Lookup tables for command dispatch
+const SPOTIFY_TRANSPORT = {
+  'spotify:play': 'play',
+  'spotify:pause': 'pause',
+  'spotify:stop': 'stop',
+  'spotify:next': 'next',
+  'spotify:previous': 'previous',
+};
+
 /**
  * Execute a gm:command action.
  * Called by WebSocket handler (source: 'gm') and cue engine (source: 'cue').
@@ -447,15 +456,83 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
-      // cue:stop, cue:pause, cue:resume — stub for Phase 1, full implementation in Phase 2
-      case 'cue:stop':
-      case 'cue:pause':
-      case 'cue:resume':
-        return {
-          success: false,
-          message: `${action} not yet implemented (Phase 2: compound cues)`,
-          source
-        };
+      // --- Cue lifecycle commands (Phase 2) ---
+
+      case 'cue:stop': {
+        const cueEngineService = require('./cueEngineService');
+        const { cueId } = payload;
+        if (!cueId) return { success: false, message: 'cueId required', source };
+        await cueEngineService.stopCue(cueId);
+        return { success: true, message: `Cue stopped: ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'stopped' }, target: 'gm' }] };
+      }
+
+      case 'cue:pause': {
+        const cueEngineService = require('./cueEngineService');
+        const { cueId } = payload;
+        if (!cueId) return { success: false, message: 'cueId required', source };
+        await cueEngineService.pauseCue(cueId);
+        return { success: true, message: `Cue paused: ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'paused' }, target: 'gm' }] };
+      }
+
+      case 'cue:resume': {
+        const cueEngineService = require('./cueEngineService');
+        const { cueId } = payload;
+        if (!cueId) return { success: false, message: 'cueId required', source };
+        await cueEngineService.resumeCue(cueId);
+        return { success: true, message: `Cue resumed: ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'running' }, target: 'gm' }] };
+      }
+
+      // --- Spotify commands (Phase 2) ---
+
+      case 'spotify:play':
+      case 'spotify:pause':
+      case 'spotify:stop':
+      case 'spotify:next':
+      case 'spotify:previous': {
+        const spotifyService = require('./spotifyService');
+        const method = SPOTIFY_TRANSPORT[action];
+        await spotifyService[method]();
+        return { success: true, message: `Spotify: ${method}`, source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }] };
+      }
+
+      case 'spotify:playlist': {
+        const spotifyService = require('./spotifyService');
+        const { uri } = payload;
+        if (!uri) return { success: false, message: 'uri required', source };
+        await spotifyService.setPlaylist(uri);
+        return { success: true, message: `Spotify playlist: ${uri}`, source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }] };
+      }
+
+      case 'spotify:volume': {
+        const spotifyService = require('./spotifyService');
+        const { volume } = payload;
+        if (volume === undefined) return { success: false, message: 'volume required', source };
+        await spotifyService.setVolume(volume);
+        return { success: true, message: `Spotify volume: ${volume}`, source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }] };
+      }
+
+      case 'spotify:cache:verify': {
+        const spotifyService = require('./spotifyService');
+        const status = await spotifyService.verifyCacheStatus();
+        return { success: true, message: 'Cache verification complete', data: status, source };
+      }
+
+      // --- Audio volume control (Phase 2) ---
+
+      case 'audio:volume:set': {
+        const { stream, volume } = payload;
+        if (!stream || volume === undefined) {
+          return { success: false, message: 'stream and volume required', source };
+        }
+        await audioRoutingService.setStreamVolume(stream, volume);
+        return { success: true, message: `Volume set: ${stream}=${volume}`, source };
+      }
 
       default:
         return {
