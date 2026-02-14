@@ -71,6 +71,7 @@ npm run health:vlc        # Check VLC only
 - E2E tests require orchestrator running: `npm run dev:full`
 - E2E uses lightweight fixtures (`tests/e2e/fixtures/`) not production token data
 - E2E uses 2 workers (`--workers=2` in npm script overrides playwright.config.js default of 1)
+- E2E `GMScannerPage.createSession()` waits for `.session-status--setup` (Phase 1 lifecycle). `createSessionWithTeams()` then calls `startGame()` to transition to active. If session lifecycle states change, update locators in `tests/e2e/helpers/page-objects/GMScannerPage.js`.
 
 ## Architecture
 
@@ -252,6 +253,8 @@ WebSocket command interface for session management:
 Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused) and cue engine (suspended).
 
 **Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, data?, source, broadcasts[]}`. The `broadcasts[]` array separates socket emission concerns from command logic.
+
+**Circular Dependency:** `commandExecutor.js` ↔ `cueEngineService.js` — cueEngineService imports commandExecutor at module load, so commandExecutor MUST use lazy `require('./cueEngineService')` inside case blocks (not top-level). Other services like `soundService` can use top-level requires.
 
 **Key Files:** `src/websocket/adminEvents.js`, `src/services/commandExecutor.js`, `src/services/sessionService.js`
 

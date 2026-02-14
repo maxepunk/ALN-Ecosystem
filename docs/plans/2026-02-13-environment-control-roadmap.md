@@ -1,9 +1,11 @@
 # Environment Control Roadmap — Phases 1-4 Design
 
-**Date:** 2026-02-13
-**Status:** Draft
+**Date:** 2026-02-13 (updated 2026-02-14)
+**Status:** Phase 1 complete, Phase 2-4 pending
 **Foundation:** Phase 0 complete (Bluetooth speaker management, PipeWire audio routing, Home Assistant lighting scenes)
 **PRD Reference:** `docs/proposals/environment-control-phase0-prd.md`
+**Phase 1 Plan:** `docs/plans/2026-02-14-environment-control-phase1.md`
+**Phase 1 Branch:** `phase1/cue-engine` (parent + ALNScanner submodule)
 
 ---
 
@@ -126,16 +128,21 @@ Fired once when elapsed time reaches the threshold. Marked as fired so they don'
 ### Implementation
 
 ```javascript
-// gameClockService.js
+// gameClockService.js — tracks paused time in milliseconds for precision
 start() {
   this.gameStartTime = Date.now();
-  this.pausedElapsed = 0;
+  this.totalPausedMs = 0;
   this.interval = setInterval(() => this.tick(), 1000);
 }
 
 tick() {
-  const elapsed = Math.floor((Date.now() - this.gameStartTime) / 1000) - this.pausedElapsed;
+  const elapsed = this.getElapsed();
   this.emit('gameclock:tick', { elapsed });
+}
+
+getElapsed() {
+  const now = this.status === 'paused' ? this.pauseStartTime : Date.now();
+  return Math.floor((now - this.gameStartTime - this.totalPausedMs) / 1000);
 }
 
 pause() {
@@ -144,7 +151,7 @@ pause() {
 }
 
 resume() {
-  this.pausedElapsed += Math.floor((Date.now() - this.pauseStartTime) / 1000);
+  this.totalPausedMs += Date.now() - this.pauseStartTime;
   this.interval = setInterval(() => this.tick(), 1000);
 }
 ```
@@ -841,10 +848,10 @@ The core cue orchestration service. Listens to the game clock and game events, e
 **Pattern:** `module.exports = new CueEngineService()` with EventEmitter, `init()`/`cleanup()`/`reset()`.
 
 **Events emitted:**
-- `cue:fired` — `{cueId, trigger, commands, source}`
-- `cue:started` — `{cueId, hasVideo}` (compound cue timeline began)
+- `cue:fired` — `{cueId, trigger, source}` (Phase 1)
+- `cue:started` — `{cueId, hasVideo}` (Phase 2: compound cue timeline began)
 - `cue:completed` — `{cueId}`
-- `cue:paused` — `{cueId, reason: 'gm-video-action' | 'game-paused' | 'manual'}`
+- `cue:paused` — `{cueId, reason: 'gm-video-action' | 'game-paused' | 'manual'}` (Phase 2)
 - `cue:error` — `{cueId, action, position, error}` (timeline command failed, continuing)
 
 ### spotifyService.js
@@ -878,7 +885,8 @@ Wraps `pw-play` for sound effect playback. Responsibilities:
 **Events emitted:**
 - `sound:started` — `{file, target, volume, pid}`
 - `sound:completed` — `{file, pid}`
-- `sound:stopped` — `{file, pid, reason: 'manual'|'cleanup'}`
+- `sound:stopped` — `{file, pid, reason: 'killed'|'error'}`
+- `sound:error` — `{file, error}` (file not found or pw-play spawn failure)
 
 ---
 
@@ -898,7 +906,7 @@ Wraps `pw-play` for sound effect playback. Responsibilities:
 - Add session status check early in `processScan()`: reject with `"No active game"` if session status is not `active` (covers both `setup` and `paused` states)
 - Same check in `createManualTransaction()`
 
-### audioRoutingService.js
+### audioRoutingService.js (Phase 2+)
 
 - Expand `VALID_STREAMS` from `['video']` to `['video', 'spotify', 'sound']`
 - Add `fallback` field to route entries in persistence format
@@ -907,32 +915,52 @@ Wraps `pw-play` for sound effect playback. Responsibilities:
 - Add combine-sink creation/management for multi-speaker default
 - Detect spotifyd and pw-play sink-inputs by `application.name`
 
-### videoQueueService.js
+### videoQueueService.js (Phase 2)
 
 - Extend queue item concept to support compound cue video (polymorphic: video item vs. compound cue item)
 - When processing a compound cue item: start video (if present) via `vlcService`, then activate the cue engine's timeline
 - Video conflict detection: if video-driven compound cue starts while something is playing, emit `cue:conflict` event to GM Scanner
 - Clock-driven compound cues (no video) bypass the queue entirely (cueEngineService handles them directly)
 
-### adminEvents.js
+### adminEvents.js + commandExecutor.js (Phase 1: extracted)
 
-- Extract `handleGmCommand` switch logic into `executeCommand({action, payload, source})` function
-- WebSocket handler calls `executeCommand` with `source: 'gm'`
+- Command logic extracted to `backend/src/services/commandExecutor.js` (separate module, not inline in adminEvents)
+- WebSocket handler in `adminEvents.js` delegates to `executeCommand()` with `source: 'gm'`
+- `executeCommand()` returns `{success, message, data?, source, broadcasts[]}` — broadcasts array separates socket emission from command logic
 - Add all new gm:command cases (cue, sound, spotify, audio volume)
 - Log `source` field with every command execution
+
+### app.js (Phase 1)
+
+- Load cue config from `config/environment/cues.json`
+- Initialize Phase 1 services (`gameClockService`, `cueEngineService`, `soundService`) alongside Phase 0 services
+- Call `setupCueEngineForwarding()` to wire event listeners
+
+### systemReset.js (Phase 1)
+
+- Reset Phase 1 services (`gameClockService`, `cueEngineService`, `soundService`) during `system:reset`
+- Re-wire cue engine event forwarding after reset (via `cueEngineWiring.js`)
+- Reload cue config from file
+
+### cueEngineWiring.js (Phase 1: new utility)
+
+- Extracted event forwarding setup shared by `app.js` and `systemReset.js`
+- Registers tracked listeners from game services → `cueEngineService.handleGameEvent()`
+- Uses `listenerRegistry` for cleanup-safe listener management
 
 ### broadcasts.js
 
 - Add event bridges for new services (cueEngine, spotify, sound)
-- New WebSocket events broadcast to GM room:
+- Phase 1 WebSocket events broadcast to GM room:
   - `gameclock:status` — `{state: 'running'|'paused'|'stopped', elapsed}` (on start/pause/resume, NOT every tick)
   - `cue:fired` — `{cueId, trigger, source}` (point-in-time notification)
-  - `cue:status` — `{cueId, state, progress?, duration?}` (active compound cue progress)
   - `cue:completed` — `{cueId}`
   - `cue:error` — `{cueId, action, position, error}` (timeline command failed, continuing)
+  - `sound:status` — `{playing: [{file, target}]}`
+- Phase 2 WebSocket events:
+  - `cue:status` — `{cueId, state, progress?, duration?}` (active compound cue progress)
   - `cue:conflict` — `{cueId, reason, currentVideo}` (video conflict prompt, auto-cancels after 10s)
   - `spotify:status` — `{state, track?, volume?, playlist?}`
-  - `sound:status` — `{playing: [{file, target}]}`
 
 ### orchestratorClient.js (GM Scanner)
 
@@ -1174,19 +1202,19 @@ Graceful degradation: each new section returns safe defaults when services are u
 
 ## 13. Incremental Delivery Phases
 
-### Phase 1: Game Clock + Cue Engine + Sounds + Standing Cues
+### Phase 1: Game Clock + Cue Engine + Sounds + Standing Cues — COMPLETE
+
+**Status:** ✅ Implemented on `phase1/cue-engine` branch (2026-02-14). 14 parent commits, 4 ALNScanner submodule commits. All tests passing (865 unit + 214 integration + E2E).
 
 **What:** The core automation layer. Game clock as master heartbeat with setup/active/paused session lifecycle. Standing cues (event-triggered + clock-triggered) watch game events and clock, fire gm:commands. Sounds via pw-play. Attention sound before video. Lighting reactions to game events.
 
-**FIRST:** Update `backend/contracts/asyncapi.yaml` with all new WebSocket events (`gameclock:status`, `cue:fired`, `cue:status`, `cue:completed`, `cue:error`, `sound:status`) and new `gm:command` actions (`session:start`, `cue:*`, `sound:*`, `audio:volume:set`). Update `backend/contracts/openapi.yaml` if any new HTTP endpoints are added. Contracts define the interface — implementation follows.
-
-**New services:** `gameClockService`, `cueEngineService`, `soundService`
-**Modified:** `sessionService` (setup phase, `session:start`, game clock integration), `transactionService` (status check), `adminEvents.js` (executeCommand extraction + new actions), `broadcasts.js`, `audioRoutingService` (new streams, volume control)
-**Config:** `cues.json`, `routing.json` (expanded)
-**GM Scanner:** Session setup/start flow, live game clock display, Show Control section (standing cues list, Quick Fire grid for simple cues), CueController, SoundController
+**New services:** `gameClockService`, `cueEngineService`, `soundService`, `commandExecutor` (extracted), `cueEngineWiring` (extracted)
+**Modified:** `sessionService` (setup phase, `session:start`, game clock integration), `transactionService` (status check), `adminEvents.js` (executeCommand extraction + new actions), `broadcasts.js`, `systemReset.js` (cue engine re-wiring), `app.js` (service initialization)
+**Config:** `backend/config/environment/cues.json`, `backend/config/environment/routing.json` (expanded)
+**GM Scanner:** Session setup/start flow, live game clock display, Show Control section (standing cues list, Quick Fire grid for simple cues), CueController, SoundController, MonitoringDisplay event handlers
 **No new hardware/software installs.**
 
-**Delivers:**
+**Delivered:**
 - Session setup phase (GM preps without eating into game time)
 - Explicit "Start Game" action with live elapsed clock display
 - Pause/resume cascades through entire system (clock, cues, media, transactions)
@@ -1195,17 +1223,23 @@ Graceful degradation: each new section returns safe defaults when services are u
 - Sound effects on transactions (cha-ching on Business sale, fanfare on group completion)
 - Manual cue firing via Quick Fire grid
 - Standing cue enable/disable
-- Per-stream volume control
-- Overtime detection via game clock (excludes paused time)
+- 13 event normalizers for flat condition evaluation (transaction:accepted, group:completed, video:*, player:scan, session:created, cue:completed, sound:completed, gameclock:started)
+- Re-entrancy guard (cue-dispatched commands don't re-trigger standing cues)
+- Cue engine event wiring survives system:reset
 
-### Phase 2: Compound Cues + Spotify
+**Deferred to Phase 2+:**
+- Per-stream volume control via `audio:volume:set` (audioRoutingService expansion — roadmap Section 5)
+- Overtime detection via game clock (straightforward to add — currently the existing setTimeout approach still works)
+- `audioRoutingService` VALID_STREAMS expansion and fallback field (roadmap Section 5, 11)
 
-**What:** Time-synced compound cue timelines (video-synced + clock-synced). Spotify integration for soundtrack.
+### Phase 2: Compound Cues + Spotify — PENDING
+
+**What:** Time-synced compound cue timelines (video-synced + clock-synced). Spotify integration for soundtrack. Also picks up deferred Phase 1 items (per-stream volume, overtime via game clock, audioRoutingService expansion).
 
 **FIRST:** Update AsyncAPI contract with `spotify:status`, `cue:conflict`, compound cue progress events, and all `spotify:*` gm:command actions.
 
 **New services:** `spotifyService`
-**Modified:** `videoQueueService` (compound cue items), `cueEngineService` (timeline engine, nesting, cascading stop)
+**Modified:** `videoQueueService` (compound cue items), `cueEngineService` (timeline engine, nesting, cascading stop), `audioRoutingService` (VALID_STREAMS expansion, `audio:volume:set`, fallback field)
 **Install:** spotifyd/raspotify
 **Config:** Compound cue definitions added to `cues.json`, Spotify cache setup
 **GM Scanner:** SpotifyController, compound cue progress in Active Cues, Now Playing subsection, cache verification
@@ -1220,6 +1254,9 @@ Graceful degradation: each new section returns safe defaults when services are u
 - Pre-cached offline Spotify playback
 - Video conflict resolution (GM prompt)
 - GM video control integration (pause/stop video = pause/stop compound cue)
+- Per-stream volume control via `audio:volume:set` (deferred from Phase 1)
+- Overtime detection via game clock (deferred from Phase 1)
+- `audioRoutingService` VALID_STREAMS + fallback expansion (deferred from Phase 1)
 
 ### Phase 3: Multi-Speaker Routing + Ducking
 
