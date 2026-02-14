@@ -43,7 +43,10 @@ async function performSystemReset(io, services) {
     vlcService,           // Optional
     bluetoothService,     // Optional (Phase 0 environment control)
     audioRoutingService,  // Optional (Phase 0 environment control)
-    lightingService       // Optional (Phase 0 environment control)
+    lightingService,      // Optional (Phase 0 environment control)
+    gameClockService,     // Optional (Phase 1)
+    cueEngineService,     // Optional (Phase 1)
+    soundService          // Optional (Phase 1)
   } = services;
 
   logger.info('Starting system reset');
@@ -97,6 +100,17 @@ async function performSystemReset(io, services) {
     lightingService.reset();
   }
 
+  // Reset Phase 1 services
+  if (gameClockService) {
+    gameClockService.reset();
+  }
+  if (cueEngineService) {
+    cueEngineService.reset();
+  }
+  if (soundService) {
+    soundService.reset();
+  }
+
   logger.debug('All services reset');
 
   // Step 5: Re-initialize infrastructure
@@ -110,6 +124,9 @@ async function performSystemReset(io, services) {
     bluetoothService,
     audioRoutingService,
     lightingService,
+    gameClockService,
+    cueEngineService,
+    soundService,
   });
   logger.debug('Broadcast listeners re-initialized');
 

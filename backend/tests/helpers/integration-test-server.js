@@ -136,6 +136,9 @@ async function setupIntegrationTestServer() {
   const bluetoothService = require('../../src/services/bluetoothService');
   const audioRoutingService = require('../../src/services/audioRoutingService');
   const lightingService = require('../../src/services/lightingService');
+  const gameClockService = require('../../src/services/gameClockService');
+  const cueEngineService = require('../../src/services/cueEngineService');
+  const soundService = require('../../src/services/soundService');
 
   setupBroadcastListeners(io, {
     sessionService,
@@ -146,6 +149,9 @@ async function setupIntegrationTestServer() {
     bluetoothService,
     audioRoutingService,
     lightingService,
+    gameClockService,
+    cueEngineService,
+    soundService,
   });
 
   // Start server on random available port
@@ -209,6 +215,9 @@ async function cleanupIntegrationTestServer(context) {
   const bluetoothService = require('../../src/services/bluetoothService');
   const audioRoutingService = require('../../src/services/audioRoutingService');
   const lightingService = require('../../src/services/lightingService');
+  const gameClockService = require('../../src/services/gameClockService');
+  const cueEngineService = require('../../src/services/cueEngineService');
+  const soundService = require('../../src/services/soundService');
 
   await sessionService.reset();
   await transactionService.reset();
@@ -219,6 +228,11 @@ async function cleanupIntegrationTestServer(context) {
   bluetoothService.reset();
   audioRoutingService.reset();
   lightingService.reset();
+
+  // Reset Phase 1 services
+  gameClockService.reset();
+  cueEngineService.reset();
+  soundService.reset();
 
   // Remove remaining event listeners
   sessionService.removeAllListeners();
