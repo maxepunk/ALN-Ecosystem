@@ -1,0 +1,7 @@
+{
+  "routes": {
+    "video": { "sink": "hdmi", "fallback": "hdmi" },
+    "spotify": { "sink": "hdmi", "fallback": "hdmi" },
+    "sound": { "sink": "hdmi", "fallback": "hdmi" }
+  }
+}

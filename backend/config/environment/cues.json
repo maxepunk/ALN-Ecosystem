@@ -1,0 +1,32 @@
+{
+  "cues": [
+    {
+      "id": "attention-before-video",
+      "label": "Pre-Video Alert",
+      "icon": "alert",
+      "trigger": { "event": "video:loading" },
+      "commands": [
+        { "action": "sound:play", "payload": { "file": "attention.wav" } },
+        { "action": "lighting:scene:activate", "payload": { "sceneId": "scene.dim" } }
+      ]
+    },
+    {
+      "id": "restore-after-video",
+      "label": "Post-Video Restore",
+      "icon": "alert",
+      "trigger": { "event": "video:completed" },
+      "commands": [
+        { "action": "lighting:scene:activate", "payload": { "sceneId": "scene.house_lights" } }
+      ]
+    },
+    {
+      "id": "tension-hit",
+      "label": "Tension Hit",
+      "icon": "sound",
+      "quickFire": true,
+      "commands": [
+        { "action": "sound:play", "payload": { "file": "tension.wav" } }
+      ]
+    }
+  ]
+}

@@ -444,6 +444,42 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
+      // --- Cue commands ---
+
+      case 'cue:fire': {
+        const cueEngineService = require('./cueEngineService');
+        await cueEngineService.fireCue(payload.cueId);
+        resultMessage = `Cue fired: ${payload.cueId}`;
+        logger.info('Cue fired', { source, deviceId, cueId: payload.cueId });
+        break;
+      }
+
+      case 'cue:enable': {
+        const cueEngineService = require('./cueEngineService');
+        cueEngineService.enableCue(payload.cueId);
+        resultMessage = `Cue enabled: ${payload.cueId}`;
+        logger.info('Cue enabled', { source, deviceId, cueId: payload.cueId });
+        break;
+      }
+
+      case 'cue:disable': {
+        const cueEngineService = require('./cueEngineService');
+        cueEngineService.disableCue(payload.cueId);
+        resultMessage = `Cue disabled: ${payload.cueId}`;
+        logger.info('Cue disabled', { source, deviceId, cueId: payload.cueId });
+        break;
+      }
+
+      // cue:stop, cue:pause, cue:resume — stub for Phase 1, full implementation in Phase 2
+      case 'cue:stop':
+      case 'cue:pause':
+      case 'cue:resume':
+        return {
+          success: false,
+          message: `${action} not yet implemented (Phase 2: compound cues)`,
+          source
+        };
+
       default:
         return {
           success: false,
