@@ -423,6 +423,27 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
+      // --- Sound commands ---
+
+      case 'sound:play': {
+        const soundService = require('./soundService');
+        const entry = soundService.play(payload);
+        resultData = entry;
+        resultMessage = entry
+          ? `Playing ${payload.file}`
+          : `Failed to play ${payload.file}`;
+        logger.info('Sound play requested', { source, deviceId, file: payload.file });
+        break;
+      }
+
+      case 'sound:stop': {
+        const soundService = require('./soundService');
+        soundService.stop(payload);
+        resultMessage = payload.file ? `Stopped ${payload.file}` : 'Stopped all sounds';
+        logger.info('Sound stop requested', { source, deviceId, file: payload.file });
+        break;
+      }
+
       default:
         return {
           success: false,
