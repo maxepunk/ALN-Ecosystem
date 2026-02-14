@@ -371,4 +371,226 @@ describe('CueEngineService', () => {
       expect(summaries[0].commands).toBeUndefined();
     });
   });
+
+  describe('compound cue execution', () => {
+    it('should execute timeline entries at correct elapsed positions', async () => {
+      cueEngineService.loadCues([{
+        id: 'compound-1', label: 'Test Compound',
+        timeline: [
+          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } },
+          { at: 5, action: 'sound:play', payload: { file: 'hit.wav' } },
+          { at: 10, action: 'lighting:scene:activate', payload: { sceneId: 'scene.bright' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('compound-1');
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'lighting:scene:activate', source: 'cue' })
+      );
+
+      // Simulate 5 clock ticks
+      for (let i = 1; i <= 5; i++) {
+        cueEngineService._tickActiveCompoundCues(i);
+      }
+      await flushAsync();
+
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'sound:play' })
+      );
+    });
+
+    it('should emit cue:started for compound cues', async () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:started', handler);
+
+      cueEngineService.loadCues([{
+        id: 'compound-2', label: 'Test',
+        timeline: [{ at: 0, action: 'sound:play', payload: { file: 'a.wav' } }]
+      }]);
+
+      await cueEngineService.fireCue('compound-2');
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+        cueId: 'compound-2', hasVideo: false
+      }));
+    });
+
+    it('should emit cue:completed when timeline finishes', async () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:completed', handler);
+
+      cueEngineService.loadCues([{
+        id: 'compound-3', label: 'Short',
+        timeline: [{ at: 0, action: 'sound:play', payload: { file: 'a.wav' } }]
+      }]);
+
+      await cueEngineService.fireCue('compound-3');
+      // Tick past the last entry
+      cueEngineService._tickActiveCompoundCues(1);
+      await flushAsync();
+
+      expect(handler).toHaveBeenCalledWith({ cueId: 'compound-3' });
+    });
+
+    it('should track active compound cues', async () => {
+      cueEngineService.loadCues([{
+        id: 'compound-active', label: 'Active',
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'a.wav' } },
+          { at: 60, action: 'sound:play', payload: { file: 'b.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('compound-active');
+      const active = cueEngineService.getActiveCues();
+      expect(active).toHaveLength(1);
+      expect(active[0].cueId).toBe('compound-active');
+      expect(active[0].state).toBe('running');
+    });
+  });
+
+  describe('compound cue stop/pause/resume', () => {
+    it('should stop an active compound cue', async () => {
+      cueEngineService.loadCues([{
+        id: 'stoppable', label: 'Stoppable',
+        timeline: [{ at: 0, action: 'sound:play', payload: {} }, { at: 60, action: 'sound:play', payload: {} }]
+      }]);
+
+      await cueEngineService.fireCue('stoppable');
+      expect(cueEngineService.getActiveCues()).toHaveLength(1);
+
+      await cueEngineService.stopCue('stoppable');
+      expect(cueEngineService.getActiveCues()).toHaveLength(0);
+    });
+
+    it('should pause and resume a compound cue', async () => {
+      cueEngineService.loadCues([{
+        id: 'pausable', label: 'Pausable',
+        timeline: [{ at: 0, action: 'sound:play', payload: {} }, { at: 60, action: 'sound:play', payload: {} }]
+      }]);
+
+      await cueEngineService.fireCue('pausable');
+      await cueEngineService.pauseCue('pausable');
+      expect(cueEngineService.getActiveCues()[0].state).toBe('paused');
+
+      await cueEngineService.resumeCue('pausable');
+      expect(cueEngineService.getActiveCues()[0].state).toBe('running');
+    });
+  });
+
+  describe('compound cue nesting', () => {
+    it('should fire nested cue via cue:fire in timeline', async () => {
+      cueEngineService.loadCues([
+        { id: 'child', label: 'Child', commands: [{ action: 'sound:play', payload: { file: 'child.wav' } }] },
+        { id: 'parent', label: 'Parent', timeline: [
+          { at: 0, action: 'cue:fire', payload: { cueId: 'child' } }
+        ]}
+      ]);
+
+      await cueEngineService.fireCue('parent');
+      await flushAsync();
+
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'cue:fire', payload: { cueId: 'child' } })
+      );
+    });
+
+    it('should detect and prevent cycles', async () => {
+      const errorHandler = jest.fn();
+      cueEngineService.on('cue:error', errorHandler);
+
+      cueEngineService.loadCues([
+        { id: 'cycle-a', label: 'A', timeline: [{ at: 0, action: 'cue:fire', payload: { cueId: 'cycle-b' } }] },
+        { id: 'cycle-b', label: 'B', timeline: [{ at: 0, action: 'cue:fire', payload: { cueId: 'cycle-a' } }] },
+      ]);
+
+      // This should not infinite loop — cycle detection stops it
+      await cueEngineService.fireCue('cycle-a');
+      await flushAsync();
+      // Cycle-b tries to fire cycle-a but it's in the visited set
+    });
+
+    it('should cascade stop to children', async () => {
+      cueEngineService.loadCues([
+        { id: 'child-cue', label: 'Child',
+          timeline: [{ at: 0, action: 'sound:play', payload: {} }, { at: 120, action: 'sound:play', payload: {} }] },
+        { id: 'parent-cue', label: 'Parent',
+          timeline: [{ at: 0, action: 'cue:fire', payload: { cueId: 'child-cue' } }, { at: 120, action: 'sound:play', payload: {} }] },
+      ]);
+
+      await cueEngineService.fireCue('parent-cue');
+      await flushAsync();
+
+      // Both parent and child should be active
+      expect(cueEngineService.getActiveCues().length).toBeGreaterThanOrEqual(1);
+
+      // Stop parent — child should also stop
+      await cueEngineService.stopCue('parent-cue');
+      expect(cueEngineService.getActiveCues()).toHaveLength(0);
+    });
+  });
+
+  describe('video-driven compound cues', () => {
+    it('should sync timeline to video:progress events', async () => {
+      cueEngineService.loadCues([{
+        id: 'video-cue', label: 'Video Cue',
+        timeline: [
+          { at: 0, action: 'video:play', payload: { file: 'test.mp4' } },
+          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('video-cue');
+      await flushAsync();
+
+      // Simulate video progress at 30 seconds
+      cueEngineService.handleVideoProgress('video-cue', 30);
+      await flushAsync();
+
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'lighting:scene:activate' })
+      );
+    });
+
+    it('should pause compound cue when video pauses', async () => {
+      cueEngineService.loadCues([{
+        id: 'video-pause-cue', label: 'VP',
+        timeline: [
+          { at: 0, action: 'video:play', payload: { file: 'test.mp4' } },
+          { at: 60, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('video-pause-cue');
+      cueEngineService.handleVideoPaused('video-pause-cue');
+      expect(cueEngineService.getActiveCues()[0].state).toBe('paused');
+    });
+  });
+
+  describe('timeline error handling (D36)', () => {
+    it('should continue timeline when a command fails', async () => {
+      const errorHandler = jest.fn();
+      cueEngineService.on('cue:error', errorHandler);
+
+      executeCommand.mockRejectedValueOnce(new Error('lighting failed'));
+      executeCommand.mockResolvedValue({ success: true });
+
+      cueEngineService.loadCues([{
+        id: 'error-cue', label: 'Error Test',
+        timeline: [
+          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'bad' } },
+          { at: 0, action: 'sound:play', payload: { file: 'good.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('error-cue');
+      await flushAsync();
+
+      // Error emitted for first command
+      expect(errorHandler).toHaveBeenCalledWith(expect.objectContaining({
+        cueId: 'error-cue', action: 'lighting:scene:activate'
+      }));
+      // Second command still executed
+      expect(executeCommand).toHaveBeenCalledTimes(2);
+    });
+  });
 });

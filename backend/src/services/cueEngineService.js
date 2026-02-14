@@ -2,10 +2,10 @@
  * Cue Engine Service
  * Core cue engine for automated environment control.
  * Loads cue definitions, evaluates standing cues (event-triggered and clock-triggered),
- * and fires simple cues via executeCommand().
+ * fires simple cues (commands array) and compound cues (timeline) via executeCommand().
  *
- * Phase 1 scope: Simple cues only (commands array).
- * Compound cues (timeline) are Phase 2 — validated but rejected at load time.
+ * Phase 1: Simple cues (commands array).
+ * Phase 2: Compound cues (timeline) with nesting, cascading stop, video sync.
  */
 
 'use strict';
@@ -96,6 +96,8 @@ class CueEngineService extends EventEmitter {
     this.active = false;
     /** @type {Set<string>} Clock cue IDs that have already fired (prevents re-fire) */
     this.firedClockCues = new Set();
+    /** @type {Map<string, Object>} Running compound cues indexed by cue ID */
+    this.activeCues = new Map();
   }
 
   /**
@@ -113,9 +115,6 @@ class CueEngineService extends EventEmitter {
       if (cue.commands && cue.timeline) {
         throw new Error(`Cue "${cue.id}": commands and timeline are mutually exclusive`);
       }
-
-      // Phase 1: timeline cues are recognized but cannot be fired
-      // (they load successfully for future Phase 2 support)
 
       newCues.set(cue.id, {
         ...cue,
@@ -181,14 +180,21 @@ class CueEngineService extends EventEmitter {
   }
 
   /**
-   * Fire a cue by ID. Executes all commands in sequence via executeCommand().
+   * Maximum nesting depth for compound cue chains (prevents runaway recursion).
+   */
+  static MAX_NESTING_DEPTH = 5;
+
+  /**
+   * Fire a cue by ID. For simple cues (commands array), executes all commands
+   * in sequence. For compound cues (timeline), starts timeline execution.
    * Skips if cue is disabled. Auto-disables after fire if once=true.
    *
    * @param {string} cueId - The cue ID to fire
    * @param {string} [trigger] - Optional provenance string for logging
+   * @param {Set<string>} [parentChain] - Chain of parent cue IDs for cycle detection
    * @throws {Error} If cue ID is not found
    */
-  async fireCue(cueId, trigger) {
+  async fireCue(cueId, trigger, parentChain) {
     const cue = this.cues.get(cueId);
     if (!cue) {
       throw new Error(`Cue "${cueId}" not found`);
@@ -200,19 +206,51 @@ class CueEngineService extends EventEmitter {
       return;
     }
 
-    // Phase 1: Only simple cues (commands array) are supported
-    if (cue.timeline) {
-      logger.warn(`[CueEngine] Compound cue "${cueId}" not yet supported (Phase 2)`);
+    // Cycle detection: check parent chain (when called with nesting context)
+    if (parentChain && parentChain.has(cueId)) {
+      logger.warn(`[CueEngine] Cycle detected: "${cueId}" is already in chain [${[...parentChain].join(' → ')}]`);
       this.emit('cue:error', {
         cueId,
         action: null,
         position: null,
-        error: 'Compound cues (timeline) are not yet implemented (Phase 2)',
+        error: `Cycle detected: "${cueId}" already in parent chain`,
+      });
+      return;
+    }
+
+    // Secondary cycle guard: compound cue already running (production safety)
+    if (cue.timeline && this.activeCues.has(cueId)) {
+      logger.warn(`[CueEngine] Compound cue "${cueId}" already running, skipping re-fire`);
+      this.emit('cue:error', {
+        cueId,
+        action: null,
+        position: null,
+        error: `Compound cue "${cueId}" is already running`,
+      });
+      return;
+    }
+
+    // Max depth check
+    if (parentChain && parentChain.size >= CueEngineService.MAX_NESTING_DEPTH) {
+      logger.warn(`[CueEngine] Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) reached for "${cueId}"`);
+      this.emit('cue:error', {
+        cueId,
+        action: null,
+        position: null,
+        error: `Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) exceeded`,
       });
       return;
     }
 
     logger.info(`[CueEngine] Firing cue: ${cueId}${trigger ? ` (trigger: ${trigger})` : ''}`);
+
+    // Compound cue (timeline) — start timeline execution
+    if (cue.timeline) {
+      await this._startCompoundCue(cue, trigger, parentChain);
+      return;
+    }
+
+    // Simple cue (commands array)
 
     // Emit cue:fired event
     this.emit('cue:fired', {
@@ -348,6 +386,303 @@ class CueEngineService extends EventEmitter {
       }
     }
   }
+
+  // ============================================================
+  // Compound Cue Timeline Engine (Phase 2)
+  // ============================================================
+
+  /**
+   * Start a compound cue timeline.
+   * Creates an active cue entry, fires at:0 entries immediately,
+   * and tracks for future clock tick or video progress advancement.
+   *
+   * @param {Object} cue - The cue definition
+   * @param {string} [trigger] - Provenance string
+   * @param {Set<string>} [parentChain] - Parent cue chain for cycle detection
+   */
+  async _startCompoundCue(cue, trigger, parentChain) {
+    const { id: cueId, timeline } = cue;
+
+    // Determine if this is a video-driven cue (has a video:play entry)
+    const hasVideo = timeline.some(entry => entry.action === 'video:play');
+
+    // Compute max timeline position (duration)
+    const maxAt = Math.max(...timeline.map(e => e.at), 0);
+
+    // Build parent chain for children
+    const chain = new Set(parentChain || []);
+    chain.add(cueId);
+
+    // Find the parent that spawned this cue (if nested)
+    let spawnedBy = null;
+    if (parentChain && parentChain.size > 0) {
+      const chainArr = [...parentChain];
+      spawnedBy = chainArr[chainArr.length - 1];
+    }
+
+    // Create active cue entry
+    const activeCue = {
+      cueId,
+      state: 'running',
+      startTime: Date.now(),
+      elapsed: 0,
+      timeline,
+      maxAt,
+      firedEntries: new Set(),
+      spawnedBy,
+      children: new Set(),
+      hasVideo,
+      parentChain: chain,
+    };
+
+    this.activeCues.set(cueId, activeCue);
+
+    // Register as child of parent (if nested)
+    if (spawnedBy && this.activeCues.has(spawnedBy)) {
+      this.activeCues.get(spawnedBy).children.add(cueId);
+    }
+
+    // Emit cue:fired event
+    this.emit('cue:fired', {
+      cueId,
+      trigger: trigger || null,
+      source: 'cue',
+    });
+
+    // Emit cue:started event
+    this.emit('cue:started', {
+      cueId,
+      hasVideo,
+      duration: maxAt,
+    });
+
+    logger.info(`[CueEngine] Started compound cue: ${cueId} (${timeline.length} entries, duration: ${maxAt}s, video: ${hasVideo})`);
+
+    // Fire all at:0 entries immediately
+    await this._fireTimelineEntries(cueId, 0);
+
+    // Check if already complete (all entries at 0, maxAt is 0)
+    this._checkCompoundCueCompletion(cueId);
+
+    // Auto-disable if once flag is set
+    if (cue.once) {
+      this.disableCue(cueId);
+      logger.info(`[CueEngine] Auto-disabled once cue: ${cueId}`);
+    }
+  }
+
+  /**
+   * Fire all timeline entries at or before the given elapsed time that haven't been fired yet.
+   *
+   * @param {string} cueId - The compound cue ID
+   * @param {number} elapsed - Current elapsed time in seconds
+   */
+  async _fireTimelineEntries(cueId, elapsed) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue || activeCue.state !== 'running') return;
+
+    const { timeline, firedEntries, parentChain } = activeCue;
+
+    for (let i = 0; i < timeline.length; i++) {
+      const entry = timeline[i];
+      if (entry.at > elapsed) continue;
+      if (firedEntries.has(i)) continue;
+
+      // Mark as fired BEFORE executing (prevents double-fire)
+      firedEntries.add(i);
+
+      try {
+        await executeCommand({
+          action: entry.action,
+          payload: entry.payload || {},
+          source: 'cue',
+          trigger: `cue:${cueId}`,
+        });
+      } catch (err) {
+        // D36: Emit error but CONTINUE the timeline
+        logger.error(`[CueEngine] Timeline command failed in cue "${cueId}" at ${entry.at}s: ${entry.action}`, err.message);
+        this.emit('cue:error', {
+          cueId,
+          action: entry.action,
+          position: entry.at,
+          error: err.message,
+        });
+      }
+    }
+  }
+
+  /**
+   * Check if a compound cue has completed (all entries fired and elapsed >= maxAt).
+   * If complete, emit cue:completed and remove from activeCues.
+   *
+   * @param {string} cueId - The compound cue ID
+   */
+  _checkCompoundCueCompletion(cueId) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue || activeCue.state !== 'running') return;
+
+    const { timeline, firedEntries, maxAt, elapsed } = activeCue;
+
+    // All entries must be fired AND elapsed must be >= max(at)
+    if (firedEntries.size >= timeline.length && elapsed >= maxAt) {
+      logger.info(`[CueEngine] Compound cue completed: ${cueId}`);
+      this.activeCues.delete(cueId);
+      this.emit('cue:completed', { cueId });
+    }
+  }
+
+  /**
+   * Advance clock-driven compound cues. Called from game clock tick handler.
+   * Fires timeline entries whose `at` position has been reached.
+   *
+   * @param {number} elapsed - Current game clock elapsed time in seconds
+   */
+  _tickActiveCompoundCues(elapsed) {
+    for (const [cueId, activeCue] of this.activeCues) {
+      if (activeCue.state !== 'running') continue;
+      if (activeCue.hasVideo) continue; // Video-driven cues use handleVideoProgress
+
+      activeCue.elapsed = elapsed;
+
+      // Fire entries that should have fired by now
+      this._fireTimelineEntries(cueId, elapsed).catch(err => {
+        logger.error(`[CueEngine] Error ticking compound cue "${cueId}":`, err.message);
+      });
+
+      // Check for completion
+      this._checkCompoundCueCompletion(cueId);
+    }
+  }
+
+  /**
+   * Handle video progress for video-driven compound cues.
+   * Advances the timeline based on video playback position.
+   *
+   * @param {string} cueId - The compound cue ID
+   * @param {number} position - Video position in seconds
+   */
+  handleVideoProgress(cueId, position) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue) return;
+    if (activeCue.state !== 'running') return;
+
+    activeCue.elapsed = position;
+
+    this._fireTimelineEntries(cueId, position).catch(err => {
+      logger.error(`[CueEngine] Error advancing video-driven cue "${cueId}":`, err.message);
+    });
+
+    this._checkCompoundCueCompletion(cueId);
+  }
+
+  /**
+   * Handle video paused for video-driven compound cues.
+   * Pauses the compound cue timeline.
+   *
+   * @param {string} cueId - The compound cue ID
+   */
+  handleVideoPaused(cueId) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue || activeCue.state !== 'running') return;
+
+    activeCue.state = 'paused';
+    logger.info(`[CueEngine] Video-driven cue paused: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'paused' });
+  }
+
+  /**
+   * Handle video resumed for video-driven compound cues.
+   * Resumes the compound cue timeline.
+   *
+   * @param {string} cueId - The compound cue ID
+   */
+  handleVideoResumed(cueId) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue || activeCue.state !== 'paused') return;
+
+    activeCue.state = 'running';
+    logger.info(`[CueEngine] Video-driven cue resumed: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'running' });
+  }
+
+  /**
+   * Stop a compound cue and cascade stop to all children.
+   *
+   * @param {string} cueId - The compound cue ID to stop
+   */
+  async stopCue(cueId) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue) {
+      logger.info(`[CueEngine] stopCue: "${cueId}" not active, ignoring`);
+      return;
+    }
+
+    // Cascade stop to children first (depth-first)
+    for (const childId of activeCue.children) {
+      await this.stopCue(childId);
+    }
+
+    logger.info(`[CueEngine] Stopping compound cue: ${cueId}`);
+    activeCue.state = 'stopped';
+    this.activeCues.delete(cueId);
+    this.emit('cue:status', { cueId, state: 'stopped' });
+  }
+
+  /**
+   * Pause a compound cue.
+   *
+   * @param {string} cueId - The compound cue ID to pause
+   */
+  async pauseCue(cueId) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue || activeCue.state !== 'running') {
+      logger.info(`[CueEngine] pauseCue: "${cueId}" not running, ignoring`);
+      return;
+    }
+
+    activeCue.state = 'paused';
+    logger.info(`[CueEngine] Paused compound cue: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'paused' });
+  }
+
+  /**
+   * Resume a paused compound cue.
+   *
+   * @param {string} cueId - The compound cue ID to resume
+   */
+  async resumeCue(cueId) {
+    const activeCue = this.activeCues.get(cueId);
+    if (!activeCue || activeCue.state !== 'paused') {
+      logger.info(`[CueEngine] resumeCue: "${cueId}" not paused, ignoring`);
+      return;
+    }
+
+    activeCue.state = 'running';
+    logger.info(`[CueEngine] Resumed compound cue: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'running' });
+  }
+
+  /**
+   * Get all active compound cues with progress info.
+   *
+   * @returns {Array<Object>} Array of { cueId, state, progress, duration }
+   */
+  getActiveCues() {
+    const result = [];
+    for (const [cueId, activeCue] of this.activeCues) {
+      result.push({
+        cueId,
+        state: activeCue.state,
+        progress: activeCue.elapsed,
+        duration: activeCue.maxAt,
+      });
+    }
+    return result;
+  }
+
+  // ============================================================
+  // Condition Evaluation
+  // ============================================================
 
   /**
    * Evaluate conditions against a normalized context.
