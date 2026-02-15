@@ -98,6 +98,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `gameClockService` | Game clock (start/pause/resume/tick) | `new GameClockService()` |
 | `cueEngineService` | Standing + manual cue evaluation and firing | `new CueEngineService()` |
 | `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
+| `spotifyService` | D-Bus MPRIS wrapper for spotifyd playback | `new SpotifyService()` |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
 **System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services, re-initializes infrastructure (including cue engine event forwarding via `cueEngineWiring.js`).
@@ -140,10 +141,11 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `videoQueueService`: `video:*`, `queue:*`
 - `vlcService`: `degraded`, `connected`, `disconnected`
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
-- `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`
+- `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`, `sink:added`, `sink:removed`
 - `lightingService`: `scene:activated`, `connection:changed`, `scenes:refreshed`
-- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:tick`
-- `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`
+- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:tick`, `gameclock:overtime`
+- `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:conflict`
+- `spotifyService`: `playback:changed`, `volume:changed`, `playlist:changed`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
 
 **DEPRECATED Internal Event:**
@@ -247,10 +249,16 @@ WebSocket command interface for session management:
 | `cue:disable` | `{cueId}` | Disable a standing cue |
 | `sound:play` | `{file, target?, volume?}` | Play sound via pw-play |
 | `sound:stop` | `{file?}` | Stop sound (specific or all) |
+| `spotify:play` | `{}` | Resume Spotify via D-Bus |
+| `spotify:pause` | `{}` | Pause Spotify via D-Bus |
+| `spotify:stop` | `{}` | Stop Spotify via D-Bus |
+| `spotify:next` | `{}` | Next Spotify track |
+| `spotify:previous` | `{}` | Previous Spotify track |
+| `audio:volume:set` | `{stream, volume}` | Set per-stream volume (0-100). Streams: `video`, `spotify`, `sound` |
 
 **Session Lifecycle:** `setup` → `active` → `paused` ↔ `active` → `ended`
 
-Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused) and cue engine (suspended).
+Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused), cue engine (suspended), and Spotify (`pauseForGameClock()`). Resuming restores Spotify only if it was paused by the game clock (preserves user-paused state).
 
 **Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, data?, source, broadcasts[]}`. The `broadcasts[]` array separates socket emission concerns from command logic.
 
@@ -302,7 +310,7 @@ GM Scanner admin panel controls venue environment (audio, lighting, Bluetooth) v
 
 **Key Helper Files:**
 - `src/websocket/environmentHelpers.js` - Builds environment state for `sync:full` payloads
-- `src/websocket/syncHelpers.js` - Assembles full `sync:full` payload (session + environment + video)
+- `src/websocket/syncHelpers.js` - Assembles full `sync:full` payload (session + environment + video + gameClock + cueEngine + spotify)
 - `src/websocket/listenerRegistry.js` - Tracks EventEmitter listeners for cleanup (prevents leaks)
 - `src/utils/execHelper.js` - `execFileAsync` wrapper (no shell injection)
 - `src/utils/dockerHelper.js` - Docker container lifecycle (start/stop Home Assistant)
@@ -347,9 +355,50 @@ Automated show control: standing cues fire on game events, manual cues fired via
 | `cue:error` | `{cueId, error}` | cue execution error |
 | `sound:status` | `{type, file, ...}` | sound started/completed/stopped |
 
-**Config Files:** `config/environment/cues.json` (cue definitions), `config/environment/routing.json` (audio stream routes).
+**Config Files:** `config/environment/cues.json` (cue definitions, wrapper format `{"cues": [...]}`), `config/environment/routing.json` (audio stream routes). `app.js` handles both wrapper and plain array formats.
 
 **Key Files:** `src/services/gameClockService.js`, `src/services/cueEngineService.js`, `src/services/soundService.js`, `src/services/commandExecutor.js`, `src/services/cueEngineWiring.js`
+
+### Compound Cue Architecture (Phase 2)
+
+Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) and Spotify integration.
+
+**Compound Cue Timelines:** Cues with `timeline` arrays containing timed commands. Two drive modes:
+- **Clock-driven:** Advances via `gameclock:tick`. Relative time = `elapsed - startElapsed`.
+- **Video-driven:** Advances via `video:progress`. VLC `position` is 0.0-1.0 ratio, converted via `position * duration` to seconds.
+
+**Video Conflict Detection:** If a compound cue needs to play a video but another video is already playing, emits `cue:conflict` with 10s auto-cancel window.
+
+**Spotify Service:** D-Bus MPRIS wrapper for `spotifyd`. Uses `dbus-send` CLI (no compiled bindings). D-Bus destination discovered dynamically (PID suffix changes on restart). Methods: `play()`, `pause()`, `stop()`, `next()`, `previous()`, `setVolume()`, `setPlaylist()`, `checkConnection()`, `getState()`, `reset()`. `resumeFromGameClock()` only resumes if `_pausedByGameClock === true`.
+
+**Audio Stream Volume:** `audioRoutingService.setStreamVolume(stream, volume)` / `getStreamVolume(stream)`. Valid streams: `['video', 'spotify', 'sound']`.
+
+**Game Clock Overtime:** `gameClockService.setOvertimeThreshold(seconds)` → `gameclock:overtime` event (fires ONCE, does NOT end session).
+
+**Phase 2 Event Forwarding (cueEngineWiring.js):**
+- `videoQueueService.video:progress` → `cueEngineService.handleVideoProgressEvent(data)`
+- `videoQueueService.video:paused/resumed/completed` → `cueEngineService.handleVideoLifecycleEvent(type, data)`
+- `spotifyService` forwarded for standing cue conditions
+
+**WebSocket Events (Server → Client, Phase 2):**
+
+| Event | Payload | Source |
+|-------|---------|--------|
+| `cue:status` | `{cueId, state, progress, duration}` | Compound cue lifecycle (running/paused/stopped) |
+| `cue:conflict` | `{cueId, reason, currentVideo}` | Video conflict detected |
+| `spotify:status` | `{connected, state, volume, pausedByGameClock}` | Spotify playback state |
+
+**`sync:full` Phase 2 Additions:**
+- `spotify`: `{connected, state, volume, pausedByGameClock}` via `buildSpotifyState()`
+- `gameClock`: `{status, elapsed, expectedDuration}` via `buildGameClockState()`
+- `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
+
+**CRITICAL Gotchas:**
+- `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.
+- `cue:started` internal event broadcasts as `cue:status` with `state: 'running'` (not `started`)
+- VLC `position` is 0.0-1.0 ratio, NOT seconds
+
+**Key Files:** `src/services/spotifyService.js`, `src/services/cueEngineWiring.js`, `src/websocket/broadcasts.js`, `src/websocket/syncHelpers.js`
 
 ## Configuration
 

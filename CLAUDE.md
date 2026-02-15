@@ -213,8 +213,9 @@ The GM Scanner is NOT just for scanning tokens - it's the **game command center*
 | **Session** | Create/Pause/Resume/End sessions, Add teams mid-game |
 | **Video** | Play/Pause/Stop/Skip, Queue management, Display mode toggle |
 | **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
-| **Environment** | Bluetooth speaker pairing, Audio routing (HDMI/BT), Lighting scenes (Home Assistant) |
-| **Game Activity** | Unified view of player discoveries + GM transactions, Device status |
+| **Environment** | Bluetooth speaker pairing, Audio routing (HDMI/BT), Per-stream volume, Lighting scenes (Home Assistant) |
+| **Show Control** | Game clock, Manual/standing cues, Compound cue timelines, Sound playback, Spotify control |
+| **Game Activity** | Unified view of player discoveries + GM transactions, Device status, Active cues, Now Playing |
 
 All admin commands use WebSocket `gm:command` events. See 'ALNScanner/CLAUDE.md' for implementation details.
 
@@ -237,13 +238,15 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - Admin score adjustments emit `score:adjusted` (separate from transactions)
 - `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
 - `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
-- `sync:full` includes `playerScans` array for session restoration
+- `sync:full` includes `playerScans` array, `gameClock`, `cueEngine`, and `spotify` state for session restoration
 - `videoEvents.js` was deleted (confirmed dead code) — ALL video control goes through `gm:command` actions in `adminEvents.js`
 - Environment control broadcasts: `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `audio:routing:fallback`, `lighting:scene`, `lighting:status`
 - Phase 1 broadcasts: `gameclock:status`, `cue:fired`, `cue:completed`, `cue:error`, `sound:status`
+- Phase 2 broadcasts: `cue:status` (compound cue lifecycle), `cue:conflict` (video conflict), `spotify:status` (playback state)
 - Session lifecycle: `setup` → `active` → `paused` ↔ `active` → `ended` (sessions created in setup, `session:start` transitions to active)
 - `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine)
-- `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`)
+- `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`). Phase 2 adds video progress/lifecycle forwarding and spotifyService forwarding.
+- **CRITICAL**: `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video (requires token with video field). Do not confuse these.
 
 ## Submodule Architecture
 
