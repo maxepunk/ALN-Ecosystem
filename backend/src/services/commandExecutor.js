@@ -365,9 +365,9 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'bluetooth:connect':
       case 'bluetooth:disconnect': {
         const BT_COMMANDS = {
-          'bluetooth:pair':       { method: 'pairDevice',       verb: 'paired' },
-          'bluetooth:unpair':     { method: 'unpairDevice',     verb: 'unpaired' },
-          'bluetooth:connect':    { method: 'connectDevice',    verb: 'connected' },
+          'bluetooth:pair': { method: 'pairDevice', verb: 'paired' },
+          'bluetooth:unpair': { method: 'unpairDevice', verb: 'unpaired' },
+          'bluetooth:connect': { method: 'connectDevice', verb: 'connected' },
           'bluetooth:disconnect': { method: 'disconnectDevice', verb: 'disconnected' },
         };
         if (!payload?.address) throw new Error('address is required');
@@ -463,8 +463,10 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { cueId } = payload;
         if (!cueId) return { success: false, message: 'cueId required', source };
         await cueEngineService.stopCue(cueId);
-        return { success: true, message: `Cue stopped: ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'stopped' }, target: 'gm' }] };
+        return {
+          success: true, message: `Cue stopped: ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'stopped' }, target: 'gm' }]
+        };
       }
 
       case 'cue:pause': {
@@ -472,8 +474,10 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { cueId } = payload;
         if (!cueId) return { success: false, message: 'cueId required', source };
         await cueEngineService.pauseCue(cueId);
-        return { success: true, message: `Cue paused: ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'paused' }, target: 'gm' }] };
+        return {
+          success: true, message: `Cue paused: ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'paused' }, target: 'gm' }]
+        };
       }
 
       case 'cue:resume': {
@@ -481,8 +485,22 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { cueId } = payload;
         if (!cueId) return { success: false, message: 'cueId required', source };
         await cueEngineService.resumeCue(cueId);
-        return { success: true, message: `Cue resumed: ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'running' }, target: 'gm' }] };
+        return {
+          success: true, message: `Cue resumed: ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'running' }, target: 'gm' }]
+        };
+      }
+
+      case 'cue:conflict:resolve': {
+        const cueEngineService = require('./cueEngineService');
+        const { cueId, decision } = payload;
+        if (!cueId) return { success: false, message: 'cueId required', source };
+        if (!decision) return { success: false, message: 'decision required', source };
+        await cueEngineService.resolveConflict(cueId, decision);
+        return {
+          success: true, message: `Conflict resolved (${decision}): ${cueId}`, source,
+          broadcasts: [{ event: 'cue:status', data: { cueId, state: decision === 'override' ? 'running' : 'cancelled' }, target: 'gm' }]
+        };
       }
 
       // --- Spotify commands (Phase 2) ---
@@ -495,8 +513,10 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const spotifyService = require('./spotifyService');
         const method = SPOTIFY_TRANSPORT[action];
         await spotifyService[method]();
-        return { success: true, message: `Spotify: ${method}`, source,
-          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }] };
+        return {
+          success: true, message: `Spotify: ${method}`, source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
+        };
       }
 
       case 'spotify:playlist': {
@@ -504,8 +524,10 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { uri } = payload;
         if (!uri) return { success: false, message: 'uri required', source };
         await spotifyService.setPlaylist(uri);
-        return { success: true, message: `Spotify playlist: ${uri}`, source,
-          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }] };
+        return {
+          success: true, message: `Spotify playlist: ${uri}`, source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
+        };
       }
 
       case 'spotify:volume': {
@@ -513,8 +535,10 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { volume } = payload;
         if (volume === undefined) return { success: false, message: 'volume required', source };
         await spotifyService.setVolume(volume);
-        return { success: true, message: `Spotify volume: ${volume}`, source,
-          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }] };
+        return {
+          success: true, message: `Spotify volume: ${volume}`, source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
+        };
       }
 
       case 'spotify:cache:verify': {

@@ -88,7 +88,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     for (const [name, info] of Object.entries(serviceStatus)) {
       const status = info.type === 'real' ? 'REAL'
         : info.type === 'mock' ? 'MOCK'
-        : 'UNAVAILABLE';
+          : 'UNAVAILABLE';
       const marker = info.type === 'real' ? '  ' : info.type === 'mock' ? ' !' : ' X';
       const reason = info.reason ? ` (${info.reason})` : '';
       console.log(`║  ${name.padEnd(10)} ${(status + reason).padEnd(29)}${marker}║`);
@@ -254,49 +254,44 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // --- AUDIO OUTPUT: Section visibility + initial state from sync:full ---
 
-    // Audio Output section should be visible in networked mode
-    const audioVisible = await gmScanner1.isAudioOutputSectionVisible();
-    expect(audioVisible).toBe(true);
-    console.log('✓ Audio Output section visible in admin panel');
+    // --- AUDIO OUTPUT: Dropdowns (Phase 3) ---
 
-    // HDMI should be selected by default (from sync:full environment state)
-    const hdmiSelected = await gmScanner1.isHdmiAudioSelected();
-    expect(hdmiSelected).toBe(true);
-    console.log('✓ HDMI audio selected by default (via sync:full)');
+    // Wait for dropdowns to be visible
+    await expect(gmScanner1.audioRoutingDropdowns).toBeVisible();
+    console.log('✓ Audio routing dropdowns visible');
 
-    // --- AUDIO OUTPUT: Command round-trip (audio:route:set) ---
-    // Click Bluetooth radio → triggers gm:command audio:route:set {sink:'bluetooth'}
-    // Backend processes, broadcasts audio:routing back to GM room.
-    // MonitoringDisplay._handleAudioRouting checks sink.startsWith('bluez_sink'):
-    //   - With real BT speaker: sink is 'bluez_sink.XX_XX...' → Bluetooth stays selected
-    //   - Without BT speaker: sink is 'bluetooth' → reverts to HDMI (correct degradation)
-    await gmScanner1.selectBluetoothAudio();
-    console.log('  → Clicked Bluetooth radio (gm:command audio:route:set sent)');
+    // Check video route initial state
+    // Default is 'hdmi', but actual value might be a specific sink name or 'hdmi' 
+    // depending on available sinks. We just check if it has a value.
+    const initialVideoRoute = await gmScanner1.getAudioRouteValue('video');
+    expect(initialVideoRoute).toBeTruthy();
+    console.log(`✓ Initial video route value: ${initialVideoRoute}`);
 
-    // CONDITION-BASED WAIT: After clicking BT, the radio is immediately BT-checked
-    // (native DOM click). Then the backend round-trip either:
-    //   - Reverts to HDMI (no real bluez_sink) — most common in CI/test
-    //   - Keeps BT (real BT speaker paired) — hardware-equipped runs
-    // We wait for HDMI revert; timeout means BT stayed (both are valid).
-    let btStayedSelected = false;
-    try {
-      await gmPage1.waitForFunction(() => {
-        return document.querySelector('input[name="audioOutput"][value="hdmi"]')?.checked;
-      }, { timeout: 5000 });
-      console.log('✓ Audio route correctly reverted to HDMI (no real bluez_sink — expected degradation)');
-    } catch {
-      // Timeout = BT stayed selected = real speaker detected
-      btStayedSelected = true;
-      console.log('✓ Bluetooth audio stayed selected (real BT speaker sink detected)');
-      // Toggle back to HDMI for clean state
-      await gmScanner1.selectHdmiAudio();
-      await gmPage1.waitForFunction(() => {
-        return document.querySelector('input[name="audioOutput"][value="hdmi"]')?.checked;
-      }, { timeout: 5000 });
-      console.log('✓ Audio route toggled back to HDMI');
+    // Get available options to test toggling
+    const videoOptions = await gmScanner1.getAudioRouteOptions('video');
+    console.log(`  Available video sinks: ${videoOptions.map(o => o.label).join(', ')}`);
+
+    if (videoOptions.length > 1) {
+      // Test toggling if we have multiple sinks
+      const targetOption = videoOptions.find(o => o.value !== initialVideoRoute);
+      if (targetOption) {
+        console.log(`  → Changing video route to: ${targetOption.label}`);
+        await gmScanner1.setAudioRoute('video', targetOption.value);
+
+        // wait for value update (should be immediate in UI, but verified)
+        const newRoute = await gmScanner1.getAudioRouteValue('video');
+        expect(newRoute).toBe(targetOption.value);
+        console.log('✓ Video route changed successfully');
+
+        // Revert to initial
+        await gmScanner1.setAudioRoute('video', initialVideoRoute);
+        console.log('✓ Reverted video route to initial state');
+      }
+    } else {
+      console.log('⚠ Skipping route toggle test: only 1 sink available (CI environment?)');
     }
 
-    // Verify BT fallback warning state (informational, not asserted)
+    // Bluetooth warning check (still relevant)
     const btWarning = await gmScanner1.isBtWarningVisible();
     console.log(`  BT fallback warning: ${btWarning ? 'visible' : 'hidden'}`);
 
@@ -807,7 +802,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     const finalEnvState = await gmScanner1.getEnvironmentControlState();
     // Audio section should still be visible and HDMI selected (toggled back in Phase 1.5)
     expect(finalEnvState.audioSectionVisible).toBe(true);
-    expect(finalEnvState.hdmiSelected).toBe(true);
+    expect(finalEnvState.videoRoute).toBe(initialVideoRoute);
     // BT section state should be consistent (no phantom devices from session activity)
     expect(finalEnvState.btDeviceCount).toBeGreaterThanOrEqual(0);
     console.log('✓ Environment control state persisted through full session');

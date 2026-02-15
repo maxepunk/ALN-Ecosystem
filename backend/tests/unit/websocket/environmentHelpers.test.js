@@ -81,9 +81,10 @@ describe('environmentHelpers - buildEnvironmentState', () => {
   describe('audio state', () => {
     it('should gather audio state from service', async () => {
       const mockAudio = {
-        getRoutingStatus: jest.fn().mockReturnValue({
+        getRoutingStatus: jest.fn().mockResolvedValue({
           routes: { video: { sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink' } },
           defaultSink: 'hdmi',
+          availableSinks: [],
         }),
       };
 
@@ -92,6 +93,7 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       expect(result.audio).toEqual({
         routes: { video: { sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink' } },
         defaultSink: 'hdmi',
+        availableSinks: [],
       });
     });
 
@@ -172,9 +174,10 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       };
 
       const mockAudio = {
-        getRoutingStatus: jest.fn().mockReturnValue({
+        getRoutingStatus: jest.fn().mockResolvedValue({
           routes: { video: { sink: 'hdmi' } },
           defaultSink: 'hdmi',
+          availableSinks: [],
         }),
       };
 

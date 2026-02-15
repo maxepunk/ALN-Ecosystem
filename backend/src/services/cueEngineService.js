@@ -24,33 +24,33 @@ const { executeCommand } = require('./commandExecutor');
  */
 const EVENT_NORMALIZERS = {
   'transaction:accepted': (payload) => ({
-    tokenId:      payload.transaction.tokenId,
-    teamId:       payload.transaction.teamId,
-    deviceType:   payload.transaction.deviceType,
-    points:       payload.transaction.points,
-    memoryType:   payload.transaction.memoryType,
-    valueRating:  payload.transaction.valueRating,
-    groupId:      payload.transaction.groupId,
-    teamScore:    payload.teamScore?.currentScore ?? 0,
+    tokenId: payload.transaction.tokenId,
+    teamId: payload.transaction.teamId,
+    deviceType: payload.transaction.deviceType,
+    points: payload.transaction.points,
+    memoryType: payload.transaction.memoryType,
+    valueRating: payload.transaction.valueRating,
+    groupId: payload.transaction.groupId,
+    teamScore: payload.teamScore?.currentScore ?? 0,
     hasGroupBonus: payload.groupBonus !== null,
   }),
   'group:completed': (payload) => ({
-    teamId:     payload.teamId,
-    groupId:    payload.groupId,
+    teamId: payload.teamId,
+    groupId: payload.groupId,
     multiplier: payload.multiplier,
-    bonus:      payload.bonus,
+    bonus: payload.bonus,
   }),
-  'video:loading':   (payload) => ({ tokenId: payload.tokenId }),
-  'video:started':   (payload) => ({ tokenId: payload.queueItem?.tokenId, duration: payload.duration }),
+  'video:loading': (payload) => ({ tokenId: payload.tokenId }),
+  'video:started': (payload) => ({ tokenId: payload.queueItem?.tokenId, duration: payload.duration }),
   'video:completed': (payload) => ({ tokenId: payload.queueItem?.tokenId }),
-  'video:paused':    (payload) => ({ tokenId: payload?.tokenId }),
-  'video:resumed':   (payload) => ({ tokenId: payload?.tokenId }),
-  'player:scan':     (payload) => ({ tokenId: payload.tokenId, deviceId: payload.deviceId, deviceType: payload.deviceType }),
+  'video:paused': (payload) => ({ tokenId: payload?.tokenId }),
+  'video:resumed': (payload) => ({ tokenId: payload?.tokenId }),
+  'player:scan': (payload) => ({ tokenId: payload.tokenId, deviceId: payload.deviceId, deviceType: payload.deviceType }),
   'session:created': (payload) => ({ sessionId: payload.sessionId }),
-  'cue:completed':   (payload) => ({ cueId: payload.cueId }),
+  'cue:completed': (payload) => ({ cueId: payload.cueId }),
   'sound:completed': (payload) => ({ file: payload.file }),
   'spotify:track:changed': (payload) => ({ title: payload.title, artist: payload.artist }),
-  'gameclock:started':     (payload) => ({ gameStartTime: payload.gameStartTime }),
+  'gameclock:started': (payload) => ({ gameStartTime: payload.gameStartTime }),
 };
 
 /**
@@ -58,13 +58,13 @@ const EVENT_NORMALIZERS = {
  * All operators return boolean.
  */
 const CONDITION_OPS = {
-  eq:  (actual, expected) => actual === expected,
+  eq: (actual, expected) => actual === expected,
   neq: (actual, expected) => actual !== expected,
-  gt:  (actual, expected) => actual > expected,
+  gt: (actual, expected) => actual > expected,
   gte: (actual, expected) => actual >= expected,
-  lt:  (actual, expected) => actual < expected,
+  lt: (actual, expected) => actual < expected,
   lte: (actual, expected) => actual <= expected,
-  in:  (actual, expected) => Array.isArray(expected) && expected.includes(actual),
+  in: (actual, expected) => Array.isArray(expected) && expected.includes(actual),
 };
 
 /**
@@ -104,10 +104,17 @@ class CueEngineService extends EventEmitter {
       }
     }
 
+    // Clear pending conflicts
+    if (this.pendingConflicts) {
+      this.pendingConflicts.clear();
+    }
+
     /** @type {Map<string, Object>} Running compound cues indexed by cue ID */
     this.activeCues = new Map();
     /** @type {Map<string, NodeJS.Timeout>} Auto-cancel timers for conflicted cues */
     this.conflictTimers = new Map();
+    /** @type {Map<string, Object>} Stashed cue/trigger/parentChain for conflicted cues */
+    this.pendingConflicts = new Map();
   }
 
   /**
@@ -449,10 +456,15 @@ class CueEngineService extends EventEmitter {
           if (this.conflictTimers && this.conflictTimers.has(cueId)) {
             this.conflictTimers.delete(cueId);
           }
+          // Clear the pending conflict context
+          if (this.pendingConflicts) {
+            this.pendingConflicts.delete(cueId);
+          }
         }, 10000);
 
-        // Store timer reference in a Map for potential cleanup
+        // Store timer reference and conflict context for GM resolution
         this.conflictTimers.set(cueId, autoCancelTimer);
+        this.pendingConflicts.set(cueId, { cue, trigger, parentChain });
 
         // Do NOT start the compound cue yet - wait for GM override or auto-cancel
         return;
@@ -822,6 +834,40 @@ class CueEngineService extends EventEmitter {
     activeCue.state = 'running';
     logger.info(`[CueEngine] Resumed compound cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'running' });
+  }
+
+  /**
+   * Resolve a video conflict for a pending compound cue.
+   * GM can either override (stop current video, start the cue) or cancel.
+   *
+   * @param {string} cueId - The conflicted cue ID
+   * @param {string} decision - 'override' (stop video, start cue) or 'cancel' (discard cue)
+   * @throws {Error} If cueId has no pending conflict or decision is invalid
+   */
+  async resolveConflict(cueId, decision) {
+    const pending = this.pendingConflicts.get(cueId);
+    if (!pending) {
+      throw new Error(`No pending conflict for cue "${cueId}"`);
+    }
+
+    // Clear auto-cancel timer (same pattern as stopCue lines 770-773)
+    if (this.conflictTimers.has(cueId)) {
+      clearTimeout(this.conflictTimers.get(cueId));
+      this.conflictTimers.delete(cueId);
+    }
+    this.pendingConflicts.delete(cueId);
+
+    if (decision === 'override') {
+      // Stop current video, then start the conflicted cue
+      const videoQueueService = require('./videoQueueService');
+      await videoQueueService.stopCurrent();
+      await this._startCompoundCue(pending.cue, pending.trigger, pending.parentChain);
+      logger.info(`[CueEngine] Conflict resolved (override): ${cueId}`);
+    } else if (decision === 'cancel') {
+      logger.info(`[CueEngine] Conflict resolved (cancel): ${cueId}`);
+    } else {
+      throw new Error(`Invalid conflict decision: "${decision}" (expected "override" or "cancel")`);
+    }
   }
 
   /**

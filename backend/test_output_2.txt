@@ -1,0 +1,435 @@
+Loaded shared scoring config from: /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/scoring-config.json
+
+Running 2 tests using 1 worker
+
+Loaded shared scoring config from: /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/scoring-config.json
+{"level":"info","message":"Setting up VLC for E2E tests...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:31.136"}
+{"level":"info","message":"Using existing VLC instance","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:31.184"}
+{"level":"info","message":"[E2E Sound] pw-play available, copied 1 test audio file(s)","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:31.199"}
+{"level":"info","message":"[E2E HA] Home Assistant API already healthy","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:31.213"}
+{"level":"info","message":"[E2E Spotify] spotifyd running but no MPRIS registration (no active Spotify Connect session)","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:36.288"}
+
+╔══════════════════════════════════════════╗
+║  E2E SERVICE STATUS                      ║
+║  vlc        REAL                           ║
+║  spotify    REAL (running but no active Spotify Connect session — MPRIS commands will fail until a client connects)  ║
+║  ha         REAL                           ║
+║  sound      REAL                           ║
+╚══════════════════════════════════════════╝
+{"level":"info","message":"Starting orchestrator for E2E tests","metadata":{"metadata":{"enableHttps":true,"port":35603,"preserveSession":false,"protocol":"https","service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:36.296"}
+{"level":"info","message":"Orchestrator started successfully","metadata":{"metadata":{"pid":220302,"service":"aln-orchestrator","url":"https://localhost:35603"}},"timestamp":"2026-02-15 12:34:36.881"}
+✓ Fetched 48 tokens from https://localhost:35603/api/tokens
+  → Selected group "Marcus Sucks" with 4 tokens (returning all 4)
+  → Video token verified: jaw011.mp4 exists at /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/backend/public/videos
+Token Selection Summary:
+  → Personal token: fli003 (2⭐)
+  → Business token: din021 (3⭐)
+  → Technical token: mab001 (5⭐)
+  → Video token: jaw011
+  → Group tokens: asm031, fli031, jek031, rat031
+  → Unique tokens: alr001, alr002, asm042... (5 total)
+Token Pools Selected:
+  → Round 1 tokens: alr001, alr002, asm031, asm042, det001, det002, din002, din021, fli002
+  → Round 2 tokens: fli003, fli004, fli031, hos002, hos011, jav003, jav021, jav042, jek002
+  → Video tokens: jaw011, kaa003
+Browser launched for multi-device tests
+{"level":"info","message":"Stopping orchestrator","metadata":{"metadata":{"pid":220302,"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:37.311"}
+{"level":"info","message":"Cleaning up VLC resources...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:37.323"}
+{"level":"info","message":"VLC cleanup complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:37.324"}
+  -  1 [chromium] › tests/e2e/flows/30-full-game-session-multi-device.test.js:157:3 › Full Game Session Multi-Device Flow › complete game session with multiple GM and player scanners
+Loaded shared scoring config from: /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/scoring-config.json
+{"level":"info","message":"Setting up VLC for E2E tests...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:38.467"}
+{"level":"info","message":"Using existing VLC instance","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:38.515"}
+{"level":"info","message":"[E2E Sound] pw-play available, copied 1 test audio file(s)","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:38.530"}
+{"level":"info","message":"[E2E HA] Home Assistant API already healthy","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:38.544"}
+{"level":"info","message":"[E2E Spotify] spotifyd running but no MPRIS registration (no active Spotify Connect session)","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:43.614"}
+
+╔══════════════════════════════════════════╗
+║  E2E SERVICE STATUS                      ║
+║  vlc        REAL                           ║
+║  spotify    REAL (running but no active Spotify Connect session — MPRIS commands will fail until a client connects)  ║
+║  ha         REAL                           ║
+║  sound      REAL                           ║
+╚══════════════════════════════════════════╝
+{"level":"info","message":"Starting orchestrator for E2E tests","metadata":{"metadata":{"enableHttps":true,"port":39253,"preserveSession":false,"protocol":"https","service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:34:43.623"}
+{"level":"info","message":"Orchestrator started successfully","metadata":{"metadata":{"pid":220436,"service":"aln-orchestrator","url":"https://localhost:39253"}},"timestamp":"2026-02-15 12:34:44.204"}
+✓ Fetched 48 tokens from https://localhost:39253/api/tokens
+  → Selected group "Marcus Sucks" with 4 tokens (returning all 4)
+  → Video token verified: jaw011.mp4 exists at /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/backend/public/videos
+Token Selection Summary:
+  → Personal token: fli003 (2⭐)
+  → Business token: din021 (3⭐)
+  → Technical token: mab001 (5⭐)
+  → Video token: jaw011
+  → Group tokens: asm031, fli031, jek031, rat031
+  → Unique tokens: alr001, alr002, asm042... (5 total)
+Token Pools Selected:
+  → Round 1 tokens: alr001, alr002, asm031, asm042, det001, det002, din002, din021, fli002
+  → Round 2 tokens: fli003, fli004, fli031, hos002, hos011, jav003, jav021, jav042, jek002
+  → Video tokens: jaw011, kaa003
+Browser launched for multi-device tests
+
+=== PHASE 1: Setup & Session Creation ===
+✓ Public scoreboard connected
+✓ GM Scanner initialized: networked mode, blackmarket game mode
+✓ GM1 connected in networked mode
+✓ Admin panel navigation complete - data loaded
+✓ Admin panel navigation complete - data loaded
+✓ Session created with Team Alpha and Team Beta
+✓ Scoreboard still connected after session creation
+✓ GM Scanner initialized: networked mode, detective game mode
+✓ GM2 connected in detective mode
+✓ Mode verification: GM1=Black Market Mode, GM2=Detective Mode
+
+=== PHASE 1.5: Environment Control Verification ===
+✓ Admin panel navigation complete - data loaded
+✓ Audio routing dropdowns visible
+✓ Initial video route value: alsa_output.platform-107c701400.hdmi.hdmi-stereo
+  Available video sinks: HDMI
+⚠ Skipping route toggle test: only 1 sink available (CI environment?)
+  BT fallback warning: hidden
+  → BT Scan button initial text: "Scan for Speakers"
+  → Clicked BT Scan button (gm:command bluetooth:scan:start sent)
+  BT scan still running after 15s, moving on
+  BT devices found: 4
+  → Activating scene: "Party" (scene.party)
+✓ Lighting scene "Party" activated (round-trip verified)
+Environment Control State: {
+  "audioSectionVisible": true,
+  "videoRoute": "alsa_output.platform-107c701400.hdmi.hdmi-stereo",
+  "spotifyRoute": "alsa_output.platform-107c701400.hdmi.hdmi-stereo",
+  "soundRoute": "alsa_output.platform-107c701400.hdmi.hdmi-stereo",
+  "btWarningVisible": false,
+  "btUnavailable": false,
+  "btDeviceCount": 4,
+  "lightingSectionVisible": true,
+  "lightingNotConnected": false,
+  "lightingSceneCount": 3
+}
+
+=== PHASE 1.6: Game Clock + Compound Cues ===
+✓ Game clock running: 00:00:05
+  → Firing clock-driven compound cue: e2e-compound-test
+✓ Compound cue active in UI, state: 
+              Running
+            
+⚠️ Lighting scene verification timed out (HA may have lost connection)
+✓ Clock-driven compound cue completed (removed from active cues UI)
+  → Firing video-driven compound cue: e2e-video-compound
+✓ Video compound cue active in UI
+✓ VLC video playing (progress container visible)
+✓ Video-driven compound cue completed
+✓ Spotify status rendered in UI (connected: false)
+  Note: running but no active Spotify Connect session — MPRIS commands will fail until a client connects
+=== Phase 1.6 Complete ===
+
+
+=== PHASE 2: Player Scanners Join ===
+✓ All 3 player scanners connected
+
+=== PHASE 3: GM Processing Round 1 Tokens ===
+  → GM2 (Detective) scanned alr001 for Team Alpha 1771187684383
+  → GM2 (Detective) scanned alr002 for Team Alpha 1771187684383
+  → GM2 (Detective) scanned asm031 for Team Alpha 1771187684383
+✓ GM2 history shows 3 transactions
+✓ Public scoreboard shows 3 total evidence (hero + feed)
+  → GM1 (Blackmarket) scanned asm042 for Team Beta 1771187684383
+  → GM1 (Blackmarket) scanned det001 for Team Beta 1771187684383
+  → GM1 (Blackmarket) scanned det002 for Team Beta 1771187684383
+✓ GM1 history shows 6 total session transactions (3 detective + 3 blackmarket)
+✓ GM1 scoreboard shows Team Beta with score: $800000
+
+=== PHASE 4: Video Token Handling ===
+✓ Video alert displayed for token jaw011: "VIDEO MEMORY"
+✓ Video alert auto-dismissed
+
+=== PHASE 5: New Team Creation & Round 2 Processing ===
+✓ Team Gamma created mid-session by GM1 (now on scan screen)
+✓ Team Gamma now available in GM1 team list
+✓ Team Gamma synced to GM2 - multi-GM team sync verified
+  → GM1 (Blackmarket) scanned fli003 for Team Gamma 1771187684383
+  → GM1 (Blackmarket) scanned fli004 for Team Gamma 1771187684383
+  → GM1 (Blackmarket) scanned fli031 for Team Gamma 1771187684383
+✓ GM1 scoreboard shows 3 team entries
+✓ Public scoreboard shows 2 score entries
+
+=== PHASE 5b: Score Adjustment ===
+Team Beta score before adjustment: $800000
+[GMScannerPage] Intervention controls visible
+[GMScannerPage] Filled adjustment input: 5000
+[GMScannerPage] Filled reason: E2E test bonus
+[GMScannerPage] Clicked adjust button
+✓ GM1 adjusted Team Beta score by +$5000
+Team Beta score after adjustment: $805000
+✓ Score adjustment verified: $800000 → $805000
+
+=== PHASE 6: Transaction Deletion & Rescan ===
+✓ GM1 still in blackmarket mode
+✓ GM1 scanned hos002 as blackmarket for Team Beta 1771187684383
+✓ Opened team details for Team Beta 1771187684383
+⚠️ Token hos002 not visible in team details, skipping deletion
+✓ GM1 switched to detective mode for rescan
+✓ GM1 rescanned hos002 as detective for Team Beta 1771187684383
+
+=== PHASE 7: Final Verification ===
+✓ GM1 final history count: 11 transactions
+✓ GM2 final history count: 11 transactions
+✓ Final public scoreboard: 2 score entries, 2 evidence cards
+✓ Admin panel navigation complete - data loaded
+{"level":"info","message":"Stopping orchestrator","metadata":{"metadata":{"pid":220436,"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:13.732"}
+{"level":"info","message":"Cleaning up VLC resources...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:13.742"}
+{"level":"info","message":"VLC cleanup complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:13.743"}
+  ✘  2 [mobile-chrome] › tests/e2e/flows/30-full-game-session-multi-device.test.js:157:3 › Full Game Session Multi-Device Flow › complete game session with multiple GM and player scanners (1.4m)
+Loaded shared scoring config from: /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALN-TokenData/scoring-config.json
+{"level":"info","message":"Setting up VLC for E2E tests...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:18.344"}
+{"level":"info","message":"Using existing VLC instance","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:18.393"}
+{"level":"info","message":"[E2E Sound] pw-play available, copied 1 test audio file(s)","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:18.409"}
+{"level":"info","message":"[E2E HA] Home Assistant API already healthy","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:18.424"}
+{"level":"info","message":"[E2E Spotify] spotifyd running but no MPRIS registration (no active Spotify Connect session)","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:23.480"}
+
+╔══════════════════════════════════════════╗
+║  E2E SERVICE STATUS                      ║
+║  vlc        REAL                           ║
+║  spotify    REAL (running but no active Spotify Connect session — MPRIS commands will fail until a client connects)  ║
+║  ha         REAL                           ║
+║  sound      REAL                           ║
+╚══════════════════════════════════════════╝
+{"level":"info","message":"Starting orchestrator for E2E tests","metadata":{"metadata":{"enableHttps":true,"port":40753,"preserveSession":false,"protocol":"https","service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:36:23.489"}
+{"level":"info","message":"Orchestrator started successfully","metadata":{"metadata":{"pid":221330,"service":"aln-orchestrator","url":"https://localhost:40753"}},"timestamp":"2026-02-15 12:36:24.071"}
+✓ Fetched 48 tokens from https://localhost:40753/api/tokens
+  → Selected group "Marcus Sucks" with 4 tokens (returning all 4)
+  → Video token verified: jaw011.mp4 exists at /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/backend/public/videos
+Token Selection Summary:
+  → Personal token: fli003 (2⭐)
+  → Business token: din021 (3⭐)
+  → Technical token: mab001 (5⭐)
+  → Video token: jaw011
+  → Group tokens: asm031, fli031, jek031, rat031
+  → Unique tokens: alr001, alr002, asm042... (5 total)
+Token Pools Selected:
+  → Round 1 tokens: alr001, alr002, asm031, asm042, det001, det002, din002, din021, fli002
+  → Round 2 tokens: fli003, fli004, fli031, hos002, hos011, jav003, jav021, jav042, jek002
+  → Video tokens: jaw011, kaa003
+Browser launched for multi-device tests
+
+=== PHASE 1: Setup & Session Creation ===
+✓ Public scoreboard connected
+✓ GM Scanner initialized: networked mode, blackmarket game mode
+✓ GM1 connected in networked mode
+✓ Admin panel navigation complete - data loaded
+✓ Admin panel navigation complete - data loaded
+✓ Session created with Team Alpha and Team Beta
+✓ Scoreboard still connected after session creation
+✓ GM Scanner initialized: networked mode, detective game mode
+✓ GM2 connected in detective mode
+✓ Mode verification: GM1=Black Market Mode, GM2=Detective Mode
+
+=== PHASE 1.5: Environment Control Verification ===
+✓ Admin panel navigation complete - data loaded
+✓ Audio routing dropdowns visible
+✓ Initial video route value: alsa_output.platform-107c701400.hdmi.hdmi-stereo
+  Available video sinks: HDMI
+⚠ Skipping route toggle test: only 1 sink available (CI environment?)
+  BT fallback warning: hidden
+  → BT Scan button initial text: "Scan for Speakers"
+  → Clicked BT Scan button (gm:command bluetooth:scan:start sent)
+  BT scan still running after 15s, moving on
+  BT devices found: 3
+  → Activating scene: "Party" (scene.party)
+✓ Lighting scene "Party" activated (round-trip verified)
+Environment Control State: {
+  "audioSectionVisible": true,
+  "videoRoute": "alsa_output.platform-107c701400.hdmi.hdmi-stereo",
+  "spotifyRoute": "alsa_output.platform-107c701400.hdmi.hdmi-stereo",
+  "soundRoute": "alsa_output.platform-107c701400.hdmi.hdmi-stereo",
+  "btWarningVisible": false,
+  "btUnavailable": false,
+  "btDeviceCount": 5,
+  "lightingSectionVisible": true,
+  "lightingNotConnected": false,
+  "lightingSceneCount": 3
+}
+
+=== PHASE 1.6: Game Clock + Compound Cues ===
+✓ Game clock running: 00:00:05
+  → Firing clock-driven compound cue: e2e-compound-test
+✓ Compound cue active in UI, state: 
+              Running
+            
+⚠️ Lighting scene verification timed out (HA may have lost connection)
+✓ Clock-driven compound cue completed (removed from active cues UI)
+  → Firing video-driven compound cue: e2e-video-compound
+✓ Video compound cue active in UI
+✓ VLC video playing (progress container visible)
+✓ Video-driven compound cue completed
+✓ Spotify status rendered in UI (connected: false)
+  Note: running but no active Spotify Connect session — MPRIS commands will fail until a client connects
+=== Phase 1.6 Complete ===
+
+
+=== PHASE 2: Player Scanners Join ===
+✓ All 3 player scanners connected
+
+=== PHASE 3: GM Processing Round 1 Tokens ===
+  → GM2 (Detective) scanned alr001 for Team Alpha 1771187784250
+  → GM2 (Detective) scanned alr002 for Team Alpha 1771187784250
+  → GM2 (Detective) scanned asm031 for Team Alpha 1771187784250
+✓ GM2 history shows 3 transactions
+✓ Public scoreboard shows 3 total evidence (hero + feed)
+  → GM1 (Blackmarket) scanned asm042 for Team Beta 1771187784250
+  → GM1 (Blackmarket) scanned det001 for Team Beta 1771187784250
+  → GM1 (Blackmarket) scanned det002 for Team Beta 1771187784250
+✓ GM1 history shows 6 total session transactions (3 detective + 3 blackmarket)
+✓ GM1 scoreboard shows Team Beta with score: $800000
+
+=== PHASE 4: Video Token Handling ===
+✓ Video alert displayed for token jaw011: "VIDEO MEMORY"
+✓ Video alert auto-dismissed
+
+=== PHASE 5: New Team Creation & Round 2 Processing ===
+✓ Team Gamma created mid-session by GM1 (now on scan screen)
+✓ Team Gamma now available in GM1 team list
+✓ Team Gamma synced to GM2 - multi-GM team sync verified
+  → GM1 (Blackmarket) scanned fli003 for Team Gamma 1771187784250
+  → GM1 (Blackmarket) scanned fli004 for Team Gamma 1771187784250
+  → GM1 (Blackmarket) scanned fli031 for Team Gamma 1771187784250
+✓ GM1 scoreboard shows 3 team entries
+✓ Public scoreboard shows 2 score entries
+
+=== PHASE 5b: Score Adjustment ===
+Team Beta score before adjustment: $800000
+[GMScannerPage] Intervention controls visible
+[GMScannerPage] Filled adjustment input: 5000
+[GMScannerPage] Filled reason: E2E test bonus
+[GMScannerPage] Clicked adjust button
+✓ GM1 adjusted Team Beta score by +$5000
+Team Beta score after adjustment: $805000
+✓ Score adjustment verified: $800000 → $805000
+
+=== PHASE 6: Transaction Deletion & Rescan ===
+✓ GM1 still in blackmarket mode
+✓ GM1 scanned hos002 as blackmarket for Team Beta 1771187784250
+✓ Opened team details for Team Beta 1771187784250
+⚠️ Token hos002 not visible in team details, skipping deletion
+✓ GM1 switched to detective mode for rescan
+✓ GM1 rescanned hos002 as detective for Team Beta 1771187784250
+
+=== PHASE 7: Final Verification ===
+✓ GM1 final history count: 11 transactions
+✓ GM2 final history count: 11 transactions
+✓ Final public scoreboard: 2 score entries, 2 evidence cards
+✓ Admin panel navigation complete - data loaded
+{"level":"info","message":"Stopping orchestrator","metadata":{"metadata":{"pid":221330,"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:37:55.934"}
+{"level":"info","message":"Cleaning up VLC resources...","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:37:55.941"}
+{"level":"info","message":"VLC cleanup complete","metadata":{"metadata":{"service":"aln-orchestrator"}},"timestamp":"2026-02-15 12:37:55.942"}
+  ✘  3 [mobile-chrome] › tests/e2e/flows/30-full-game-session-multi-device.test.js:157:3 › Full Game Session Multi-Device Flow › complete game session with multiple GM and player scanners (retry #1) (1.4m)
+
+
+  1) [mobile-chrome] › tests/e2e/flows/30-full-game-session-multi-device.test.js:157:3 › Full Game Session Multi-Device Flow › complete game session with multiple GM and player scanners 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mundefined[39m
+
+      803 |     // Audio section should still be visible and HDMI selected (toggled back in Phase 1.5)
+      804 |     expect(finalEnvState.audioSectionVisible).toBe(true);
+    > 805 |     expect(finalEnvState.hdmiSelected).toBe(true);
+          |                                        ^
+      806 |     // BT section state should be consistent (no phantom devices from session activity)
+      807 |     expect(finalEnvState.btDeviceCount).toBeGreaterThanOrEqual(0);
+      808 |     console.log('✓ Environment control state persisted through full session');
+        at /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/backend/tests/e2e/flows/30-full-game-session-multi-device.test.js:805:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/test-failed-6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBe[2m([22m[32mexpected[39m[2m) // Object.is equality[22m
+
+    Expected: [32mtrue[39m
+    Received: [31mundefined[39m
+
+      803 |     // Audio section should still be visible and HDMI selected (toggled back in Phase 1.5)
+      804 |     expect(finalEnvState.audioSectionVisible).toBe(true);
+    > 805 |     expect(finalEnvState.hdmiSelected).toBe(true);
+          |                                        ^
+      806 |     // BT section state should be consistent (no phantom devices from session activity)
+      807 |     expect(finalEnvState.btDeviceCount).toBeGreaterThanOrEqual(0);
+      808 |     console.log('✓ Environment control state persisted through full session');
+        at /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/backend/tests/e2e/flows/30-full-game-session-multi-device.test.js:805:40
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/test-failed-6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/error-context.md
+
+    attachment #8: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/30-full-game-session-multi-4b0f0-iple-GM-and-player-scanners-mobile-chrome-retry1/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [mobile-chrome] › tests/e2e/flows/30-full-game-session-multi-device.test.js:157:3 › Full Game Session Multi-Device Flow › complete game session with multiple GM and player scanners 
+  1 skipped
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

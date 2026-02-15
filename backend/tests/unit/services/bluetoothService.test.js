@@ -254,13 +254,15 @@ describe('BluetoothService', () => {
       expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should emit scan:stopped when process exits', () => {
+    it('should emit scan:stopped when process exits', async () => {
       const handler = jest.fn();
       bluetoothService.on('scan:stopped', handler);
 
       bluetoothService.startScan(10);
       mockProc.emit('close', 0);
 
+      // scan:stopped is emitted after async post-scan resolution
+      await new Promise(resolve => bluetoothService.once('scan:stopped', resolve));
       expect(handler).toHaveBeenCalled();
     });
 
@@ -279,8 +281,142 @@ describe('BluetoothService', () => {
         'data',
         Buffer.from('[CHG] Device AA:BB:CC:DD:EE:FF RSSI: -55\n')
       );
-      // The CHG line doesn't match [NEW] pattern, so only 1 event
+      // CHG RSSI line is filtered out (not a name), so only 1 event
       expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should parse device lines with ANSI escape codes from bluetoothctl', () => {
+      const handler = jest.fn();
+      bluetoothService.on('device:discovered', handler);
+
+      bluetoothService.startScan(10);
+
+      // Real bluetoothctl output includes ANSI color codes and readline markers
+      const ansiLine = '[\x01\x1b[0;92m\x02NEW\x01\x1b[0m\x02] Device F4:4E:FD:53:5D:F2 W-KING X10\n';
+      mockProc.stdout.emit('data', Buffer.from(ansiLine));
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          address: 'F4:4E:FD:53:5D:F2',
+          name: 'W-KING X10',
+        })
+      );
+    });
+
+    it('should discover cached devices from CHG lines with names', () => {
+      const handler = jest.fn();
+      bluetoothService.on('device:discovered', handler);
+
+      bluetoothService.startScan(10);
+
+      // Cached device appears as CHG with name (not NEW)
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device AA:BB:CC:DD:EE:FF JBL Speaker\n'));
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          address: 'AA:BB:CC:DD:EE:FF',
+          name: 'JBL Speaker',
+        })
+      );
+    });
+
+    it('should filter out RSSI-only and ManufacturerData CHG lines', () => {
+      const handler = jest.fn();
+      bluetoothService.on('device:discovered', handler);
+
+      bluetoothService.startScan(10);
+
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device AA:BB:CC:DD:EE:FF RSSI: -57\n'));
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device AA:BB:CC:DD:EE:FF ManufacturerData Key: 0x0075\n'));
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('should resolve cached devices via bluetoothctl info after scan ends', async () => {
+      const discoveredHandler = jest.fn();
+      const stoppedHandler = jest.fn();
+      bluetoothService.on('device:discovered', discoveredHandler);
+      bluetoothService.on('scan:stopped', stoppedHandler);
+
+      // Mock bluetoothctl info response for the cached device
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'info' && args[1] === 'F4:4E:FD:53:5D:F2') {
+          cb(null, [
+            'Device F4:4E:FD:53:5D:F2 (public)',
+            '\tName: W-KING X10',
+            '\tAlias: W-KING X10',
+            '\tPaired: no',
+            '\tUUID: Audio Sink                (0000110b-0000-1000-8000-00805f9b34fb)',
+            '\tConnected: no',
+          ].join('\n'), '');
+        } else {
+          cb(new Error('Unknown command'), '', '');
+        }
+      });
+
+      bluetoothService.startScan(10);
+
+      // Device appears only as RSSI updates during scan (cached by BlueZ)
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device F4:4E:FD:53:5D:F2 RSSI: -56\n'));
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device F4:4E:FD:53:5D:F2 RSSI: -58\n'));
+
+      // No discovery during scan (RSSI lines filtered)
+      expect(discoveredHandler).not.toHaveBeenCalled();
+
+      // Scan ends — triggers post-scan resolution
+      mockProc.emit('close', 0);
+
+      // Wait for async resolution to complete
+      await new Promise(resolve => bluetoothService.once('scan:stopped', resolve));
+
+      expect(discoveredHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          address: 'F4:4E:FD:53:5D:F2',
+          name: 'W-KING X10',
+        })
+      );
+      expect(stoppedHandler).toHaveBeenCalled();
+    });
+
+    it('should not re-resolve devices already discovered during scan', async () => {
+      const discoveredHandler = jest.fn();
+      bluetoothService.on('device:discovered', discoveredHandler);
+
+      bluetoothService.startScan(10);
+
+      // Device appears with name first, then RSSI updates
+      mockProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF JBL Speaker\n'));
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device AA:BB:CC:DD:EE:FF RSSI: -50\n'));
+
+      expect(discoveredHandler).toHaveBeenCalledTimes(1);
+
+      mockProc.emit('close', 0);
+      await new Promise(resolve => bluetoothService.once('scan:stopped', resolve));
+
+      // Should still be only 1 discovery (no duplicate from resolution)
+      expect(discoveredHandler).toHaveBeenCalledTimes(1);
+      // execFile should NOT have been called for info resolution
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should emit scan:stopped even if resolution fails', async () => {
+      const stoppedHandler = jest.fn();
+      bluetoothService.on('scan:stopped', stoppedHandler);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('bluetoothctl not found'), '', '');
+      });
+
+      bluetoothService.startScan(10);
+
+      // RSSI-only device
+      mockProc.stdout.emit('data', Buffer.from('[CHG] Device AA:BB:CC:DD:EE:FF RSSI: -70\n'));
+
+      mockProc.emit('close', 0);
+      await new Promise(resolve => bluetoothService.once('scan:stopped', resolve));
+
+      // scan:stopped still emitted despite resolution error
+      expect(stoppedHandler).toHaveBeenCalled();
     });
   });
 
@@ -457,36 +593,54 @@ describe('BluetoothService', () => {
     });
   });
 
-  // ── pairDevice() ──
+  // ── pairDevice() — interactive session (scan + pair + trust in one process) ──
 
   describe('pairDevice()', () => {
-    it('should call pair and trust with NoInputNoOutput agent', async () => {
-      const calls = [];
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        calls.push(args);
-        cb(null, 'Success\n', '');
-      });
+    let mockPairProc;
 
-      await bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+    beforeEach(() => {
+      mockPairProc = new EventEmitter();
+      mockPairProc.stdout = new EventEmitter();
+      mockPairProc.stderr = new EventEmitter();
+      mockPairProc.stdin = { write: jest.fn() };
+      mockPairProc.kill = jest.fn();
+      mockPairProc.pid = 54321;
+      spawn.mockReturnValue(mockPairProc);
+    });
 
-      // Should call pair then trust
-      expect(calls).toEqual(
-        expect.arrayContaining([
-          expect.arrayContaining(['pair', 'AA:BB:CC:DD:EE:FF']),
-          expect.arrayContaining(['trust', 'AA:BB:CC:DD:EE:FF']),
-        ])
-      );
+    it('should spawn interactive bluetoothctl and run scan → pair → trust', async () => {
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      expect(spawn).toHaveBeenCalledWith('bluetoothctl', ['--agent', 'NoInputNoOutput']);
+      expect(mockPairProc.stdin.write).toHaveBeenCalledWith('scan on\n');
+
+      // Simulate: scan starts → device discovered → pair success → trust success
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+
+      expect(mockPairProc.stdin.write).toHaveBeenCalledWith('pair AA:BB:CC:DD:EE:FF\n');
+
+      mockPairProc.stdout.emit('data', Buffer.from('Pairing successful\n'));
+
+      expect(mockPairProc.stdin.write).toHaveBeenCalledWith('trust AA:BB:CC:DD:EE:FF\n');
+
+      mockPairProc.stdout.emit('data', Buffer.from('Changing AA:BB:CC:DD:EE:FF trust succeeded\n'));
+
+      await pairPromise;
     });
 
     it('should emit device:paired on successful pair', async () => {
       const handler = jest.fn();
       bluetoothService.on('device:paired', handler);
 
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        cb(null, 'Success\n', '');
-      });
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
 
-      await bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('Pairing successful\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('trust succeeded\n'));
+
+      await pairPromise;
 
       expect(handler).toHaveBeenCalledWith(
         expect.objectContaining({ address: 'AA:BB:CC:DD:EE:FF' })
@@ -497,6 +651,67 @@ describe('BluetoothService', () => {
       await expect(
         bluetoothService.pairDevice('not-valid')
       ).rejects.toThrow('Invalid MAC address');
+    });
+
+    it('should reject when pair fails with error', async () => {
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+      mockPairProc.stdout.emit('data', Buffer.from(
+        'Failed to pair: org.bluez.Error.AuthenticationFailed\n'
+      ));
+
+      await expect(pairPromise).rejects.toThrow(/Failed to pair/);
+    });
+
+    it('should handle already-paired devices (AlreadyExists)', async () => {
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('org.bluez.Error.AlreadyExists\n'));
+
+      expect(mockPairProc.stdin.write).toHaveBeenCalledWith('trust AA:BB:CC:DD:EE:FF\n');
+
+      mockPairProc.stdout.emit('data', Buffer.from('trust succeeded\n'));
+
+      await pairPromise;
+    });
+
+    it('should stop active scan before pairing', async () => {
+      // Start a scan first
+      const scanProc = new EventEmitter();
+      scanProc.stdout = new EventEmitter();
+      scanProc.stderr = new EventEmitter();
+      scanProc.kill = jest.fn();
+      scanProc.pid = 99999;
+      spawn.mockReturnValueOnce(scanProc);
+
+      bluetoothService.startScan(10);
+
+      // Now pair — should stop the scan first
+      spawn.mockReturnValue(mockPairProc);
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      expect(scanProc.kill).toHaveBeenCalled();
+
+      // Complete the pair
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('Pairing successful\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('trust succeeded\n'));
+
+      await pairPromise;
+    });
+
+    it('should reject when process exits before pair completes', async () => {
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.emit('close', 1);
+
+      await expect(pairPromise).rejects.toThrow(/bluetoothctl exited/);
     });
   });
 

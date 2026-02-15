@@ -49,12 +49,17 @@ const FIND_SINK_INPUT_BACKOFF = 100;
 
 /** Restart delay for pactl subscribe health check (ms) */
 const MONITOR_RESTART_DELAY = 5000;
+/** Max consecutive monitor failures before giving up (prevents PipeWire connection exhaustion) */
+const MONITOR_MAX_FAILURES = 5;
+/** Backoff multiplier per consecutive failure */
+const MONITOR_BACKOFF_MULTIPLIER = 2;
 
 class AudioRoutingService extends EventEmitter {
   constructor() {
     super();
     this._monitorProc = null;
     this._monitorRestartTimer = null;
+    this._monitorFailures = 0;
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
 
     // Combine-sink state
@@ -105,6 +110,7 @@ class AudioRoutingService extends EventEmitter {
       clearTimeout(this._monitorRestartTimer);
       this._monitorRestartTimer = null;
     }
+    this._monitorFailures = 0;
 
     // Tear down combine-sink processes
     this._killCombineSinkProcs();
@@ -157,6 +163,9 @@ class AudioRoutingService extends EventEmitter {
     }
     if (name.toLowerCase().includes('hdmi')) {
       return 'hdmi';
+    }
+    if (name === 'combine-bt' || name === 'aln-combine') {
+      return 'combine';
     }
     return 'other';
   }
@@ -215,10 +224,11 @@ class AudioRoutingService extends EventEmitter {
    * Get full routing status for sync:full payloads.
    * @returns {Object} Full routing state
    */
-  getRoutingStatus() {
+  async getRoutingStatus() {
     return {
       routes: { ...this._routingData.routes },
       defaultSink: this._routingData.defaultSink,
+      availableSinks: await this.getAvailableSinksWithCombine(),
     };
   }
 
@@ -408,15 +418,31 @@ class AudioRoutingService extends EventEmitter {
       );
     }
 
-    // Use first two BT speakers
+    // 1. Create Null Sink (The Source)
+    try {
+      const stdout = await execFileAsync('pactl', [
+        'load-module',
+        'module-null-sink',
+        'sink_name=aln-combine',
+        'sink_properties=device.description=ALN_Multi_Speaker'
+      ]);
+      this._combineSinkModuleId = stdout.trim();
+      logger.info('Created null sink aln-combine', { moduleId: this._combineSinkModuleId });
+    } catch (err) {
+      logger.error('Failed to create null sink', { error: err.message });
+      throw err;
+    }
+
+    // 2. Spawn Loopbacks (The Cables)
+    // Connect aln-combine.monitor -> Speaker Sinks
     const targetSinks = btSinks.slice(0, 2);
     const procs = [];
     const pids = [];
 
     for (const sink of targetSinks) {
       const proc = spawn('pw-loopback', [
-        '--capture-props', 'media.class=Audio/Sink node.name=combine-bt',
-        '--playback-props', `node.target=${sink.name}`,
+        '--capture-props', 'node.target=aln-combine.monitor media.class=Stream/Input/Audio',
+        '--playback-props', `node.target=${sink.name} node.latency=200/1000`, // 200ms latency request
       ]);
 
       // Handle unexpected exit of pw-loopback process
@@ -436,7 +462,7 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkProcs = procs;
 
     const sinkNames = targetSinks.map(s => s.name);
-    logger.info('Combine-sink created', { pids, sinks: sinkNames });
+    logger.info('Combine-sink created (Null Sink + Loopbacks)', { pids, sinks: sinkNames });
 
     this.emit('combine-sink:created', { pids, sinks: sinkNames });
   }
@@ -451,7 +477,19 @@ class AudioRoutingService extends EventEmitter {
       return;
     }
 
+    // 1. Kill Loopbacks
     this._killCombineSinkProcs();
+
+    // 2. Unload Null Sink
+    if (this._combineSinkModuleId) {
+      try {
+        await execFileAsync('pactl', ['unload-module', this._combineSinkModuleId]);
+        logger.info('Unloaded null sink aln-combine', { moduleId: this._combineSinkModuleId });
+      } catch (err) {
+        logger.warn('Failed to unload null sink', { error: err.message, moduleId: this._combineSinkModuleId });
+      }
+      this._combineSinkModuleId = null;
+    }
 
     logger.info('Combine-sink destroyed');
     this.emit('combine-sink:destroyed');
@@ -462,17 +500,23 @@ class AudioRoutingService extends EventEmitter {
    * @returns {Promise<Array>} Array of sink objects (real + virtual)
    */
   async getAvailableSinksWithCombine() {
-    const sinks = await this.getAvailableSinks();
+    let sinks = await this.getAvailableSinks();
 
+    // Remove any raw 'aln-combine' sinks (from pactl list) to avoid duplicates with our virtual entry
+    // Also remove legacy 'combine-bt' if present
+    sinks = sinks.filter(s => s.name !== 'aln-combine' && s.name !== 'combine-bt');
+
+    // Only add virtual sink if combine is active
     if (this._combineSinkActive) {
       sinks.push({
         id: 'virtual-combine',
-        name: 'combine-bt',
-        driver: 'pw-loopback',
+        name: 'aln-combine',
+        driver: 'module-null-sink',
         format: '',
         state: 'RUNNING',
         type: 'combine',
         virtual: true,
+        label: 'All Bluetooth Speakers',
       });
     }
 
@@ -859,7 +903,9 @@ class AudioRoutingService extends EventEmitter {
     logger.info('Sink monitor started', { pid: this._monitorProc.pid });
 
     let buffer = '';
+    let receivedData = false;
     this._monitorProc.stdout.on('data', (data) => {
+      receivedData = true;
       buffer += data.toString();
       const lines = buffer.split('\n');
       buffer = lines.pop(); // Keep incomplete line in buffer
@@ -885,14 +931,27 @@ class AudioRoutingService extends EventEmitter {
 
     this._monitorProc.on('close', (code) => {
       this._monitorProc = null;
-      logger.warn('Sink monitor exited', { exitCode: code });
 
-      // Auto-restart with backoff
+      if (receivedData) {
+        // Was running successfully, reset failure count
+        this._monitorFailures = 0;
+        logger.info('Sink monitor exited normally, restarting', { exitCode: code });
+      } else {
+        // Failed immediately (PipeWire unavailable)
+        this._monitorFailures++;
+        if (this._monitorFailures >= MONITOR_MAX_FAILURES) {
+          logger.error(`Sink monitor failed ${this._monitorFailures} times, giving up. Restart orchestrator to retry.`);
+          return;
+        }
+        logger.warn('Sink monitor exited', { exitCode: code, failures: this._monitorFailures });
+      }
+
+      const delay = MONITOR_RESTART_DELAY * Math.pow(MONITOR_BACKOFF_MULTIPLIER, this._monitorFailures);
       this._monitorRestartTimer = setTimeout(() => {
         this._monitorRestartTimer = null;
-        logger.info('Restarting sink monitor');
+        logger.info('Restarting sink monitor', { delay });
         this.startSinkMonitor();
-      }, MONITOR_RESTART_DELAY);
+      }, delay);
     });
   }
 
@@ -946,17 +1005,59 @@ class AudioRoutingService extends EventEmitter {
       const format = parts[3] || '';
       const state = parts[4] || '';
 
+      const type = this.classifySink(name);
+
       sinks.push({
         id,
         name,
         driver,
         format,
         state,
-        type: this.classifySink(name),
+        type,
+        label: this._generateSinkLabel(name, type),
       });
     }
 
     return sinks;
+  }
+
+  /**
+   * Generate a human-readable label for a sink based on its name and type.
+   * @param {string} name - Raw sink name
+   * @param {string} type - Sink type ('hdmi', 'bluetooth', 'combine', 'other')
+   * @returns {string} Human-readable label
+   * @private
+   */
+  _generateSinkLabel(name, type) {
+    if (type === 'hdmi') {
+      return 'HDMI';
+    }
+
+    if (type === 'bluetooth') {
+      // Extract MAC address from bluez_output.XX_XX_XX_XX_XX_XX.1
+      // Format: "BT Speaker (XX:XX)"
+      const match = name.match(/bluez_output\.([0-9A-F_]+)(\.\d+)?$/);
+      if (match && match[1]) {
+        const macPart = match[1].replace(/_/g, ':');
+        // Show first 2 and last 2 bytes for brevity? Or full? 
+        // Let's just show the last 2 bytes for brevity if it's long, 
+        // but user usually wants to identify specific speakers.
+        // Let's use last 2 bytes: XX:XX
+        const parts = macPart.split(':');
+        if (parts.length >= 2) {
+          return `BT Speaker (${parts.slice(-2).join(':')})`;
+        }
+        return `BT Speaker (${macPart})`;
+      }
+      return 'Bluetooth Speaker';
+    }
+
+    if (type === 'combine') {
+      return 'All Bluetooth Speakers';
+    }
+
+    // Fallback: use usage-agnostic name if possible, or just the raw name
+    return name;
   }
 
   /**

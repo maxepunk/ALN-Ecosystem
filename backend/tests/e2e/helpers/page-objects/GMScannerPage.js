@@ -162,12 +162,12 @@ class GMScannerPage {
     this.btnScoreboard = page.locator('#btn-scoreboard');
 
     // Environment control elements (Phase 0 - Admin panel)
+    // Environment control elements (Phase 3 - Admin panel)
     this.audioOutputSection = page.locator('#audio-output-section');
-    this.audioHdmiRadio = page.locator('input[name="audioOutput"][value="hdmi"]');
-    this.audioBluetoothRadio = page.locator('input[name="audioOutput"][value="bluetooth"]');
-    // Labels are the visible click targets (inputs are hidden via CSS opacity:0)
-    this.audioHdmiLabel = page.locator('label.radio-toggle:has(input[value="hdmi"])');
-    this.audioBluetoothLabel = page.locator('label.radio-toggle:has(input[value="bluetooth"])');
+    this.audioRoutingDropdowns = page.locator('#audio-routing-dropdowns');
+    this.audioRouteVideo = page.locator('select[data-stream="video"]');
+    this.audioRouteSpotify = page.locator('select[data-stream="spotify"]');
+    this.audioRouteSound = page.locator('select[data-stream="sound"]');
     this.btWarning = page.locator('#bt-warning');
     this.btSpeakerCount = page.locator('#bt-speaker-count');
     this.btScanBtn = page.locator('#btn-bt-scan');
@@ -854,33 +854,38 @@ class GMScannerPage {
   }
 
   /**
-   * Check if HDMI audio is selected
-   * @returns {Promise<boolean>}
+   * Get selected audio route value for a stream
+   * @param {string} stream - Stream name ('video', 'spotify', 'sound')
+   * @returns {Promise<string>} Selected sink value (e.g., 'hdmi', 'bluez_output...')
    */
-  async isHdmiAudioSelected() {
-    return await this.audioHdmiRadio.isChecked();
+  async getAudioRouteValue(stream = 'video') {
+    const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
+    return await dropdown.inputValue();
   }
 
   /**
-   * Check if Bluetooth audio is selected
-   * @returns {Promise<boolean>}
+   * Set audio route for a stream
+   * @param {string} stream - Stream name
+   * @param {string} sinkValue - Target sink value
    */
-  async isBluetoothAudioSelected() {
-    return await this.audioBluetoothRadio.isChecked();
+  async setAudioRoute(stream, sinkValue) {
+    const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
+    await dropdown.selectOption(sinkValue);
   }
 
   /**
-   * Select HDMI audio output (clicks visible label, not hidden input)
+   * Get available options for a stream dropdown
+   * @param {string} stream
+   * @returns {Promise<Array<{value: string, label: string}>>}
    */
-  async selectHdmiAudio() {
-    await this.audioHdmiLabel.click();
-  }
-
-  /**
-   * Select Bluetooth audio output (clicks visible label, not hidden input)
-   */
-  async selectBluetoothAudio() {
-    await this.audioBluetoothLabel.click();
+  async getAudioRouteOptions(stream = 'video') {
+    const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
+    return await dropdown.evaluate(select => {
+      return Array.from(select.options).map(opt => ({
+        value: opt.value,
+        label: opt.text
+      }));
+    });
   }
 
   /**
@@ -958,8 +963,9 @@ class GMScannerPage {
   async getEnvironmentControlState() {
     return {
       audioSectionVisible: await this.isAudioOutputSectionVisible(),
-      hdmiSelected: await this.isHdmiAudioSelected(),
-      bluetoothSelected: await this.isBluetoothAudioSelected(),
+      videoRoute: await this.getAudioRouteValue('video'),
+      spotifyRoute: await this.getAudioRouteValue('spotify'),
+      soundRoute: await this.getAudioRouteValue('sound'),
       btWarningVisible: await this.isBtWarningVisible(),
       btUnavailable: await this.isBtUnavailable(),
       btDeviceCount: await this.getBtDeviceCount(),

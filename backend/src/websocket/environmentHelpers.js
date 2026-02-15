@@ -19,6 +19,7 @@ const DEFAULTS = {
   audio: {
     routes: { video: { sink: 'hdmi' } },
     defaultSink: 'hdmi',
+    availableSinks: [],
   },
   lighting: {
     connected: false,
@@ -62,7 +63,7 @@ async function buildEnvironmentState({ bluetoothService, audioRoutingService, li
   let audio = DEFAULTS.audio;
   if (audioRoutingService) {
     try {
-      audio = audioRoutingService.getRoutingStatus();
+      audio = await audioRoutingService.getRoutingStatus();
     } catch (err) {
       logger.warn('Failed to gather audio state for sync:full', { error: err.message });
     }

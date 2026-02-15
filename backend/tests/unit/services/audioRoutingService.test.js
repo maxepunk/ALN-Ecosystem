@@ -80,11 +80,13 @@ describe('AudioRoutingService', () => {
         id: '47',
         name: 'alsa_output.platform-fef00700.hdmi.hdmi-stereo',
         type: 'hdmi',
+        label: 'HDMI',
       }));
       expect(sinks[1]).toEqual(expect.objectContaining({
         id: '89',
         name: 'bluez_output.AA_BB_CC_DD_EE_FF.1',
         type: 'bluetooth',
+        label: 'BT Speaker (EE:FF)', // Default logic uses last 2 bytes
       }));
     });
 
@@ -145,8 +147,37 @@ describe('AudioRoutingService', () => {
       expect(audioRoutingService.classifySink('alsa_output.HDMI-A-1')).toBe('hdmi');
     });
 
+    it('should classify combine-bt as combine', () => {
+      expect(audioRoutingService.classifySink('combine-bt')).toBe('combine');
+    });
+
     it('should classify unknown sinks as other', () => {
       expect(audioRoutingService.classifySink('alsa_output.usb-something')).toBe('other');
+    });
+  });
+
+  // ── _generateSinkLabel() ──
+
+  describe('_generateSinkLabel()', () => {
+    it('should label hdmi as HDMI', () => {
+      expect(audioRoutingService._generateSinkLabel('any.hdmi.sink', 'hdmi')).toBe('HDMI');
+    });
+
+    it('should label bluetooth with short MAC', () => {
+      const name = 'bluez_output.AA_BB_CC_DD_EE_FF.1';
+      expect(audioRoutingService._generateSinkLabel(name, 'bluetooth')).toBe('BT Speaker (EE:FF)');
+    });
+
+    it('should label bluetooth fallback if MAC missing', () => {
+      expect(audioRoutingService._generateSinkLabel('bluez_output.weird_name', 'bluetooth')).toBe('Bluetooth Speaker');
+    });
+
+    it('should label combine sink', () => {
+      expect(audioRoutingService._generateSinkLabel('combine-bt', 'combine')).toBe('All Bluetooth Speakers');
+    });
+
+    it('should use raw name for other types', () => {
+      expect(audioRoutingService._generateSinkLabel('alsa_output.pci-0000_00_1f.3.analog-stereo', 'other')).toBe('alsa_output.pci-0000_00_1f.3.analog-stereo');
     });
   });
 
@@ -666,14 +697,36 @@ describe('AudioRoutingService', () => {
 
       audioRoutingService.startSinkMonitor();
 
-      // Simulate process exit
-      mockProc1.emit('close', 1);
+      // Simulate process exit with code 0 after receiving data (normal restart)
+      mockProc1.stdout.emit('data', "Event 'new' on sink #42\n");
+      mockProc1.emit('close', 0);
 
-      // Advance timer to trigger restart
+      // Advance timer to trigger restart (5000ms base, 0 failures = 5000ms)
       await jest.advanceTimersByTimeAsync(5000);
 
       // Should have spawned a second process
       expect(spawn).toHaveBeenCalledTimes(2);
+
+      jest.useRealTimers();
+    });
+
+    it('should give up after max consecutive failures', async () => {
+      jest.useFakeTimers();
+
+      audioRoutingService._monitorFailures = 4; // One below max (5)
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValueOnce(mockProc);
+
+      audioRoutingService.startSinkMonitor();
+
+      // Simulate immediate failure (no data received)
+      mockProc.emit('close', 1);
+
+      // Advance timer well past any backoff
+      await jest.advanceTimersByTimeAsync(600000);
+
+      // Should NOT have spawned another process (gave up)
+      expect(spawn).toHaveBeenCalledTimes(1);
 
       jest.useRealTimers();
     });
@@ -682,8 +735,13 @@ describe('AudioRoutingService', () => {
   // ── getRoutingStatus() ──
 
   describe('getRoutingStatus()', () => {
-    it('should return full routing state', () => {
-      const status = audioRoutingService.getRoutingStatus();
+    it('should return full routing state with available sinks', async () => {
+      // Mock available sinks
+      mockExecFileSuccess(
+        '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+      );
+
+      const status = await audioRoutingService.getRoutingStatus();
 
       expect(status).toEqual(expect.objectContaining({
         routes: expect.objectContaining({
@@ -692,13 +750,19 @@ describe('AudioRoutingService', () => {
           }),
         }),
         defaultSink: 'hdmi',
+        availableSinks: expect.arrayContaining([
+          expect.objectContaining({ type: 'hdmi' })
+        ]),
       }));
     });
 
     it('should reflect updated routes', async () => {
       await audioRoutingService.setStreamRoute('video', 'bluetooth');
 
-      const status = audioRoutingService.getRoutingStatus();
+      // mock available sinks again for the call
+      mockExecFileSuccess('');
+
+      const status = await audioRoutingService.getRoutingStatus();
       expect(status.routes.video.sink).toBe('bluetooth');
     });
   });
@@ -920,6 +984,8 @@ describe('AudioRoutingService', () => {
         mockProc2.pid = 1002;
         spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
 
+        mockExecFileSuccess('42\n');
+
         await audioRoutingService.createCombineSink();
 
         // Should spawn two pw-loopback processes
@@ -983,10 +1049,25 @@ describe('AudioRoutingService', () => {
         mockProc2.pid = 1002;
         spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
 
+        mockExecFileSuccess('42\n');
+
         const handler = jest.fn();
         audioRoutingService.on('combine-sink:created', handler);
 
         await audioRoutingService.createCombineSink();
+
+        expect(execFile).toHaveBeenCalledWith('pactl', [
+          'load-module', 'module-null-sink',
+          'sink_name=aln-combine',
+          'sink_properties=device.description=ALN_Multi_Speaker'
+        ], expect.any(Object), expect.any(Function));
+
+        expect(audioRoutingService._combineSinkModuleId).toBe('42');
+
+        expect(spawn).toHaveBeenCalledWith('pw-loopback', [
+          '--capture-props', 'node.target=aln-combine.monitor media.class=Stream/Input/Audio',
+          '--playback-props', 'node.target=bluez_output.AA_BB_CC_DD_EE_FF.1 node.latency=200/1000'
+        ]);
 
         expect(handler).toHaveBeenCalledWith(expect.objectContaining({
           pids: [1001, 1002],
@@ -1010,6 +1091,8 @@ describe('AudioRoutingService', () => {
         mockProc2.pid = 1002;
         spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
 
+        mockExecFileSuccess('42\n');
+
         await audioRoutingService.createCombineSink();
 
         // Should only spawn two pw-loopback processes
@@ -1019,21 +1102,27 @@ describe('AudioRoutingService', () => {
     });
 
     describe('destroyCombineSink()', () => {
-      it('should kill pw-loopback processes and reset state', async () => {
+      it('should unload null sink module, kill loopbacks, and reset state', async () => {
         const proc1 = createMockSpawnProc();
         proc1.pid = 123;
         const proc2 = createMockSpawnProc();
         proc2.pid = 456;
 
         audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkModuleId = '42';
         audioRoutingService._combineSinkPids = [123, 456];
         audioRoutingService._combineSinkProcs = [proc1, proc2];
+
+        mockExecFileSuccess('');
 
         await audioRoutingService.destroyCombineSink();
 
         expect(proc1.kill).toHaveBeenCalled();
         expect(proc2.kill).toHaveBeenCalled();
+        expect(execFile).toHaveBeenCalledWith('pactl', ['unload-module', '42'], expect.any(Object), expect.any(Function));
+
         expect(audioRoutingService._combineSinkActive).toBe(false);
+        expect(audioRoutingService._combineSinkModuleId).toBeNull();
         expect(audioRoutingService._combineSinkPids).toEqual([]);
         expect(audioRoutingService._combineSinkProcs).toEqual([]);
       });
@@ -1077,7 +1166,7 @@ describe('AudioRoutingService', () => {
     });
 
     describe('getAvailableSinksWithCombine()', () => {
-      it('should include combine-bt when combine-sink is active', async () => {
+      it('should include aln-combine when combine-sink is active', async () => {
         audioRoutingService._combineSinkActive = true;
 
         mockExecFileSuccess(
@@ -1087,13 +1176,38 @@ describe('AudioRoutingService', () => {
 
         const sinks = await audioRoutingService.getAvailableSinksWithCombine();
 
-        expect(sinks.some(s => s.name === 'combine-bt')).toBe(true);
-        const combineSink = sinks.find(s => s.name === 'combine-bt');
+        expect(sinks.some(s => s.name === 'aln-combine')).toBe(true);
+        const combineSink = sinks.find(s => s.name === 'aln-combine');
         expect(combineSink.type).toBe('combine');
         expect(combineSink.virtual).toBe(true);
+        expect(combineSink.label).toBe('All Bluetooth Speakers');
       });
 
-      it('should not include combine-bt when combine-sink is inactive', async () => {
+
+
+      it('should NOT add virtual combine sink if real aln-combine sink exists', async () => {
+        audioRoutingService._combineSinkActive = true;
+
+        // Mock output including a real combine-bt sink
+        mockExecFileSuccess(
+          '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n' +
+          '99\taln-combine\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+        );
+
+        const sinks = await audioRoutingService.getAvailableSinksWithCombine();
+
+        // Should return real sinks + NO virtual duplicate
+        expect(sinks).toHaveLength(2); // HDMI, Combine (real)
+
+        const combineSink = sinks.find(s => s.name === 'aln-combine');
+        expect(combineSink).toBeTruthy();
+        expect(combineSink.id).toBe('99'); // Real ID
+        expect(combineSink.virtual).toBeUndefined(); // Only virtual one has this flag
+        expect(combineSink.type).toBe('combine'); // Classified correctly
+        expect(combineSink.label).toBe('All Bluetooth Speakers');
+      });
+
+      it('should not include aln-combine when combine-sink is inactive', async () => {
         audioRoutingService._combineSinkActive = false;
 
         mockExecFileSuccess(
@@ -1102,10 +1216,10 @@ describe('AudioRoutingService', () => {
 
         const sinks = await audioRoutingService.getAvailableSinksWithCombine();
 
-        expect(sinks.some(s => s.name === 'combine-bt')).toBe(false);
+        expect(sinks.some(s => s.name === 'aln-combine')).toBe(false);
       });
 
-      it('should include all real sinks alongside combine-bt', async () => {
+      it('should include all real sinks alongside aln-combine', async () => {
         audioRoutingService._combineSinkActive = true;
 
         mockExecFileSuccess(
@@ -1224,6 +1338,9 @@ describe('AudioRoutingService', () => {
         const mockProc2 = createMockSpawnProc();
         mockProc2.pid = 1002;
         spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
+
+        // Mock module load for createCombineSink
+        mockExecFileSuccess('42\n');
 
         await audioRoutingService.createCombineSink();
         expect(audioRoutingService._combineSinkActive).toBe(true);

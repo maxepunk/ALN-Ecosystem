@@ -50,7 +50,8 @@
       "WebSearch",
       "Skill(superpowers:subagent-driven-development)",
       "Skill(superpowers:writing-plans)",
-      "Bash(git -C /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem rev-parse HEAD)"
+      "Bash(git -C /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem rev-parse HEAD)",
+      "Skill(claude-md-management:revise-claude-md)"
     ],
     "deny": [],
     "ask": []
