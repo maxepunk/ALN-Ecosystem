@@ -66,6 +66,7 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     mockOfflineQueueService = new EventEmitter();
     mockBluetoothService = new EventEmitter();
     mockAudioRoutingService = new EventEmitter();
+    mockAudioRoutingService.handleDuckingEvent = jest.fn();
     mockLightingService = new EventEmitter();
 
     // Methods needed by broadcast handlers

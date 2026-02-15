@@ -90,6 +90,7 @@ describe('Phase 1 Broadcasts', () => {
     // Mock environment services (Phase 0)
     mockBluetoothService = new EventEmitter();
     mockAudioRoutingService = new EventEmitter();
+    mockAudioRoutingService.handleDuckingEvent = jest.fn();
     mockLightingService = new EventEmitter();
 
     // Mock Phase 1 services

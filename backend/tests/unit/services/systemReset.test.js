@@ -70,6 +70,7 @@ describe('performSystemReset', () => {
       },
       audioRoutingService: {
         reset: jest.fn(),
+        loadDuckingRules: jest.fn(),
       },
       lightingService: {
         reset: jest.fn(),

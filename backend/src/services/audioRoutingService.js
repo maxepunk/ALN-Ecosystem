@@ -61,6 +61,11 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkActive = false;
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
+
+    // Ducking engine state
+    this._duckingRules = [];
+    this._activeDuckingSources = {};  // { targetStream: ['video', 'sound'] }
+    this._preDuckVolumes = {};        // { targetStream: originalVolume }
   }
 
   // ── Lifecycle ──
@@ -117,6 +122,11 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkActive = false;
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
+
+    // Reset ducking engine state
+    this._duckingRules = [];
+    this._activeDuckingSources = {};
+    this._preDuckVolumes = {};
   }
 
   // ── Sink Discovery and Classification ──
@@ -531,6 +541,235 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkActive = false;
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
+  }
+
+  // ── Ducking Engine ──
+
+  /**
+   * Load ducking rules from config. Replaces any existing rules and clears active state.
+   * Rules define automatic volume reduction when audio sources (video, sound) are active.
+   *
+   * @param {Array<{when: string, duck: string, to: number, fadeMs: number}>} rules - Ducking rules
+   *   - when: source stream that triggers ducking (e.g., 'video', 'sound')
+   *   - duck: target stream to duck (e.g., 'spotify')
+   *   - to: volume percentage to duck to (0-100)
+   *   - fadeMs: fade duration in milliseconds (reserved for future use)
+   */
+  loadDuckingRules(rules) {
+    this._duckingRules = [...rules];
+    this._activeDuckingSources = {};
+    this._preDuckVolumes = {};
+
+    logger.info('Ducking rules loaded', { ruleCount: rules.length });
+  }
+
+  /**
+   * Handle a ducking lifecycle event from a source stream.
+   * Called when video/sound starts, completes, pauses, or resumes.
+   *
+   * @param {string} source - Source stream name (e.g., 'video', 'sound')
+   * @param {'started'|'completed'|'paused'|'resumed'} lifecycle - Lifecycle event
+   */
+  handleDuckingEvent(source, lifecycle) {
+    if (!this._duckingRules || this._duckingRules.length === 0) {
+      return;
+    }
+
+    // Find rules matching this source
+    const matchingRules = this._duckingRules.filter(r => r.when === source);
+    if (matchingRules.length === 0) {
+      return;
+    }
+
+    switch (lifecycle) {
+      case 'started':
+      case 'resumed':
+        this._handleDuckingStart(source, matchingRules);
+        break;
+      case 'completed':
+      case 'paused':
+        this._handleDuckingStop(source, matchingRules);
+        break;
+      default:
+        logger.warn('Unknown ducking lifecycle event', { source, lifecycle });
+    }
+  }
+
+  /**
+   * Handle ducking start (source started or resumed).
+   * Stores pre-duck volume if not already stored, adds source to active list,
+   * and sets target volume to lowest active "to" value.
+   *
+   * @param {string} source - Source stream name
+   * @param {Array} matchingRules - Rules matching this source
+   * @private
+   */
+  _handleDuckingStart(source, matchingRules) {
+    // Group rules by target stream
+    const targetStreams = new Set(matchingRules.map(r => r.duck));
+
+    for (const target of targetStreams) {
+      // Initialize active sources array for this target if needed
+      if (!this._activeDuckingSources[target]) {
+        this._activeDuckingSources[target] = [];
+      }
+
+      // Don't double-add the same source
+      if (!this._activeDuckingSources[target].includes(source)) {
+        this._activeDuckingSources[target].push(source);
+      }
+
+      // Store pre-duck volume before first duck (async, fire-and-forget)
+      if (this._preDuckVolumes[target] === undefined) {
+        this._capturePreDuckVolume(target);
+      }
+
+      // Calculate the lowest "to" value among all active sources for this target
+      const effectiveVolume = this._calculateEffectiveVolume(target);
+
+      // Apply the ducked volume
+      this.setStreamVolume(target, effectiveVolume).catch(err => {
+        logger.error('Failed to set ducked volume', {
+          target, volume: effectiveVolume, error: err.message
+        });
+      });
+
+      // Emit ducking:changed event
+      this.emit('ducking:changed', {
+        stream: target,
+        ducked: true,
+        volume: effectiveVolume,
+        activeSources: [...this._activeDuckingSources[target]],
+        restoredVolume: this._preDuckVolumes[target] !== undefined
+          ? this._preDuckVolumes[target] : 100,
+      });
+
+      logger.info('Ducking applied', {
+        source, target, volume: effectiveVolume,
+        activeSources: this._activeDuckingSources[target],
+      });
+    }
+  }
+
+  /**
+   * Handle ducking stop (source completed or paused).
+   * Removes source from active list, re-evaluates volume, and restores if no sources remain.
+   *
+   * @param {string} source - Source stream name
+   * @param {Array} matchingRules - Rules matching this source
+   * @private
+   */
+  _handleDuckingStop(source, matchingRules) {
+    const targetStreams = new Set(matchingRules.map(r => r.duck));
+
+    for (const target of targetStreams) {
+      if (!this._activeDuckingSources[target]) {
+        return; // No active ducking for this target
+      }
+
+      // Remove this source from active list
+      this._activeDuckingSources[target] = this._activeDuckingSources[target]
+        .filter(s => s !== source);
+
+      if (this._activeDuckingSources[target].length === 0) {
+        // No more active sources — restore to pre-duck volume
+        const restoreVolume = this._preDuckVolumes[target] !== undefined
+          ? this._preDuckVolumes[target] : 100;
+
+        this.setStreamVolume(target, restoreVolume).catch(err => {
+          logger.error('Failed to restore volume after ducking', {
+            target, volume: restoreVolume, error: err.message
+          });
+        });
+
+        // Emit ducking:changed — no longer ducked
+        this.emit('ducking:changed', {
+          stream: target,
+          ducked: false,
+          volume: restoreVolume,
+          activeSources: [],
+          restoredVolume: restoreVolume,
+        });
+
+        // Clean up pre-duck volume
+        delete this._preDuckVolumes[target];
+
+        logger.info('Ducking restored', { source, target, volume: restoreVolume });
+      } else {
+        // Other sources still active — re-evaluate to new lowest
+        const effectiveVolume = this._calculateEffectiveVolume(target);
+
+        this.setStreamVolume(target, effectiveVolume).catch(err => {
+          logger.error('Failed to re-evaluate ducked volume', {
+            target, volume: effectiveVolume, error: err.message
+          });
+        });
+
+        // Emit ducking:changed — still ducked but at different level
+        this.emit('ducking:changed', {
+          stream: target,
+          ducked: true,
+          volume: effectiveVolume,
+          activeSources: [...this._activeDuckingSources[target]],
+          restoredVolume: this._preDuckVolumes[target] !== undefined
+            ? this._preDuckVolumes[target] : 100,
+        });
+
+        logger.info('Ducking re-evaluated', {
+          source, target, volume: effectiveVolume,
+          remainingSources: this._activeDuckingSources[target],
+        });
+      }
+    }
+  }
+
+  /**
+   * Calculate the effective ducked volume for a target stream.
+   * Uses the lowest "to" value among all active ducking sources.
+   *
+   * @param {string} target - Target stream name
+   * @returns {number} Lowest "to" volume among active sources
+   * @private
+   */
+  _calculateEffectiveVolume(target) {
+    const activeSources = this._activeDuckingSources[target] || [];
+
+    let lowestVolume = Infinity;
+    for (const rule of this._duckingRules) {
+      if (rule.duck === target && activeSources.includes(rule.when)) {
+        if (rule.to < lowestVolume) {
+          lowestVolume = rule.to;
+        }
+      }
+    }
+
+    return lowestVolume === Infinity ? 100 : lowestVolume;
+  }
+
+  /**
+   * Capture the pre-duck volume for a target stream asynchronously.
+   * Only stores if not already captured (prevents overwriting during active ducking).
+   *
+   * @param {string} target - Target stream name
+   * @private
+   */
+  _capturePreDuckVolume(target) {
+    this.getStreamVolume(target)
+      .then(volume => {
+        // Only store if still not set (race condition guard)
+        if (this._preDuckVolumes[target] === undefined) {
+          this._preDuckVolumes[target] = volume !== null ? volume : 100;
+        }
+      })
+      .catch(err => {
+        // Default to 100 if we can't read current volume
+        if (this._preDuckVolumes[target] === undefined) {
+          this._preDuckVolumes[target] = 100;
+        }
+        logger.warn('Failed to capture pre-duck volume, defaulting to 100', {
+          target, error: err.message
+        });
+      });
   }
 
   // ── Routing with Fallback ──

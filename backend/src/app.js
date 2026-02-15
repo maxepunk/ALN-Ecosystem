@@ -203,6 +203,19 @@ async function initializeServices() {
       spotifyService
     });
 
+    // Load ducking rules from routing config
+    const routingPath = path.join(__dirname, '../config/environment/routing.json');
+    try {
+      const routingData = await fs.readFile(routingPath, 'utf8');
+      const routingConfig = JSON.parse(routingData);
+      if (routingConfig.ducking && Array.isArray(routingConfig.ducking)) {
+        audioRoutingService.loadDuckingRules(routingConfig.ducking);
+        logger.info('Ducking rules loaded from routing config', { count: routingConfig.ducking.length });
+      }
+    } catch (err) {
+      logger.warn('Failed to load ducking rules - ducking engine will be inactive', { error: err.message });
+    }
+
     logger.info('Phase 1 services initialized (game clock, cue engine, sound)');
 
     // Initialize VLC service only if video playback is enabled

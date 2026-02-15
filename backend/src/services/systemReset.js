@@ -173,6 +173,23 @@ async function performSystemReset(io, services) {
     });
   }
 
+  // Re-load ducking rules from routing config (cleared by audioRoutingService.reset())
+  if (audioRoutingService) {
+    try {
+      const fs = require('fs').promises;
+      const path = require('path');
+      const routingPath = path.join(__dirname, '../../config/environment/routing.json');
+      const routingData = await fs.readFile(routingPath, 'utf8');
+      const routingConfig = JSON.parse(routingData);
+      if (routingConfig.ducking && Array.isArray(routingConfig.ducking)) {
+        audioRoutingService.loadDuckingRules(routingConfig.ducking);
+        logger.debug('Ducking rules re-loaded after system reset', { count: routingConfig.ducking.length });
+      }
+    } catch (err) {
+      logger.warn('Failed to re-load ducking rules after system reset', { error: err.message });
+    }
+  }
+
   logger.debug('Cross-service listeners re-initialized');
 
   logger.info('System reset complete - ready for new session');

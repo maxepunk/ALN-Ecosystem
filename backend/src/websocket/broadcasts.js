@@ -554,6 +554,37 @@ function setupBroadcastListeners(io, services) {
       emitToRoom(io, 'gm', 'audio:routing:fallback', data);
       logger.info('Broadcasted audio:routing:fallback', { stream: data?.stream, actualSink: data?.actualSink });
     });
+    addTrackedListener(audioRoutingService, 'ducking:changed', (data) => {
+      emitToRoom(io, 'gm', 'audio:ducking:status', data);
+      logger.debug('Broadcasted audio:ducking:status', {
+        stream: data?.stream, ducked: data?.ducked, volume: data?.volume
+      });
+    });
+  }
+
+  // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService
+  if (audioRoutingService && videoQueueService) {
+    addTrackedListener(videoQueueService, 'video:started', () => {
+      audioRoutingService.handleDuckingEvent('video', 'started');
+    });
+    addTrackedListener(videoQueueService, 'video:completed', () => {
+      audioRoutingService.handleDuckingEvent('video', 'completed');
+    });
+    addTrackedListener(videoQueueService, 'video:paused', () => {
+      audioRoutingService.handleDuckingEvent('video', 'paused');
+    });
+    addTrackedListener(videoQueueService, 'video:resumed', () => {
+      audioRoutingService.handleDuckingEvent('video', 'resumed');
+    });
+  }
+
+  if (audioRoutingService && soundService) {
+    addTrackedListener(soundService, 'sound:started', () => {
+      audioRoutingService.handleDuckingEvent('sound', 'started');
+    });
+    addTrackedListener(soundService, 'sound:completed', () => {
+      audioRoutingService.handleDuckingEvent('sound', 'completed');
+    });
   }
 
   // Lighting events

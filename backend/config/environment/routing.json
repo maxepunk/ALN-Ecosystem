@@ -3,5 +3,9 @@
     "video": { "sink": "hdmi", "fallback": "hdmi" },
     "spotify": { "sink": "hdmi", "fallback": "hdmi" },
     "sound": { "sink": "hdmi", "fallback": "hdmi" }
-  }
+  },
+  "ducking": [
+    { "when": "video", "duck": "spotify", "to": 20, "fadeMs": 500 },
+    { "when": "sound", "duck": "spotify", "to": 40, "fadeMs": 200 }
+  ]
 }

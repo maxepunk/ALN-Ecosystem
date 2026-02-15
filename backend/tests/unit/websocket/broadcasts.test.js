@@ -549,6 +549,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     beforeEach(() => {
       mockBluetoothService = new EventEmitter();
       mockAudioRoutingService = new EventEmitter();
+      mockAudioRoutingService.handleDuckingEvent = jest.fn();
       mockLightingService = new EventEmitter();
     });
 
