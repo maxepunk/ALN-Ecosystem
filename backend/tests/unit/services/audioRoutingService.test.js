@@ -903,4 +903,341 @@ describe('AudioRoutingService', () => {
       expect(moveStream).toHaveBeenCalledWith('42', 'alsa_output.platform-fef00700.hdmi.hdmi-stereo');
     });
   });
+
+  // ── Combine-sink management ──
+
+  describe('combine-sink management', () => {
+    describe('createCombineSink()', () => {
+      it('should create combine-sink from two BT speakers using pw-loopback', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+        ]);
+
+        const mockProc1 = createMockSpawnProc();
+        mockProc1.pid = 1001;
+        const mockProc2 = createMockSpawnProc();
+        mockProc2.pid = 1002;
+        spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
+
+        await audioRoutingService.createCombineSink();
+
+        // Should spawn two pw-loopback processes
+        expect(spawn).toHaveBeenCalledTimes(2);
+        expect(spawn).toHaveBeenCalledWith(
+          'pw-loopback',
+          expect.arrayContaining([
+            expect.stringContaining('bluez_output.AA_BB_CC_DD_EE_FF.1'),
+          ])
+        );
+        expect(spawn).toHaveBeenCalledWith(
+          'pw-loopback',
+          expect.arrayContaining([
+            expect.stringContaining('bluez_output.11_22_33_44_55_66.1'),
+          ])
+        );
+
+        expect(audioRoutingService._combineSinkActive).toBe(true);
+        expect(audioRoutingService._combineSinkPids).toEqual([1001, 1002]);
+      });
+
+      it('should reject when fewer than two BT speakers are available', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+        ]);
+
+        await expect(audioRoutingService.createCombineSink())
+          .rejects.toThrow('Need at least 2 Bluetooth speakers');
+      });
+
+      it('should reject when no BT speakers are available', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([]);
+
+        await expect(audioRoutingService.createCombineSink())
+          .rejects.toThrow('Need at least 2 Bluetooth speakers');
+      });
+
+      it('should not create if combine-sink is already active', async () => {
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [1001, 1002];
+
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+        ]);
+
+        // Should not spawn additional processes
+        await audioRoutingService.createCombineSink();
+        expect(spawn).not.toHaveBeenCalledWith('pw-loopback', expect.any(Array));
+      });
+
+      it('should emit combine-sink:created on success', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+        ]);
+
+        const mockProc1 = createMockSpawnProc();
+        mockProc1.pid = 1001;
+        const mockProc2 = createMockSpawnProc();
+        mockProc2.pid = 1002;
+        spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
+
+        const handler = jest.fn();
+        audioRoutingService.on('combine-sink:created', handler);
+
+        await audioRoutingService.createCombineSink();
+
+        expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+          pids: [1001, 1002],
+          sinks: expect.arrayContaining([
+            'bluez_output.AA_BB_CC_DD_EE_FF.1',
+            'bluez_output.11_22_33_44_55_66.1',
+          ]),
+        }));
+      });
+
+      it('should use first two BT speakers when more than two are available', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+          { id: '91', name: 'bluez_output.77_88_99_AA_BB_CC.1', type: 'bluetooth' },
+        ]);
+
+        const mockProc1 = createMockSpawnProc();
+        mockProc1.pid = 1001;
+        const mockProc2 = createMockSpawnProc();
+        mockProc2.pid = 1002;
+        spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
+
+        await audioRoutingService.createCombineSink();
+
+        // Should only spawn two pw-loopback processes
+        expect(spawn).toHaveBeenCalledTimes(2);
+        expect(audioRoutingService._combineSinkPids).toEqual([1001, 1002]);
+      });
+    });
+
+    describe('destroyCombineSink()', () => {
+      it('should kill pw-loopback processes and reset state', async () => {
+        const proc1 = createMockSpawnProc();
+        proc1.pid = 123;
+        const proc2 = createMockSpawnProc();
+        proc2.pid = 456;
+
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [123, 456];
+        audioRoutingService._combineSinkProcs = [proc1, proc2];
+
+        await audioRoutingService.destroyCombineSink();
+
+        expect(proc1.kill).toHaveBeenCalled();
+        expect(proc2.kill).toHaveBeenCalled();
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+        expect(audioRoutingService._combineSinkPids).toEqual([]);
+        expect(audioRoutingService._combineSinkProcs).toEqual([]);
+      });
+
+      it('should be safe to call when no combine-sink is active', async () => {
+        await expect(audioRoutingService.destroyCombineSink()).resolves.not.toThrow();
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+      });
+
+      it('should emit combine-sink:destroyed on teardown', async () => {
+        const proc1 = createMockSpawnProc();
+        proc1.pid = 123;
+
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [123];
+        audioRoutingService._combineSinkProcs = [proc1];
+
+        const handler = jest.fn();
+        audioRoutingService.on('combine-sink:destroyed', handler);
+
+        await audioRoutingService.destroyCombineSink();
+
+        expect(handler).toHaveBeenCalled();
+      });
+
+      it('should handle already-exited processes gracefully', async () => {
+        const proc1 = createMockSpawnProc();
+        proc1.pid = 123;
+        proc1.kill.mockImplementation(() => {
+          throw new Error('kill ESRCH');
+        });
+
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [123];
+        audioRoutingService._combineSinkProcs = [proc1];
+
+        // Should not throw even if kill fails
+        await expect(audioRoutingService.destroyCombineSink()).resolves.not.toThrow();
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+      });
+    });
+
+    describe('getAvailableSinksWithCombine()', () => {
+      it('should include combine-bt when combine-sink is active', async () => {
+        audioRoutingService._combineSinkActive = true;
+
+        mockExecFileSuccess(
+          '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n' +
+          '89\tbluez_output.AA_BB_CC_DD_EE_FF.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE\n'
+        );
+
+        const sinks = await audioRoutingService.getAvailableSinksWithCombine();
+
+        expect(sinks.some(s => s.name === 'combine-bt')).toBe(true);
+        const combineSink = sinks.find(s => s.name === 'combine-bt');
+        expect(combineSink.type).toBe('combine');
+        expect(combineSink.virtual).toBe(true);
+      });
+
+      it('should not include combine-bt when combine-sink is inactive', async () => {
+        audioRoutingService._combineSinkActive = false;
+
+        mockExecFileSuccess(
+          '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+        );
+
+        const sinks = await audioRoutingService.getAvailableSinksWithCombine();
+
+        expect(sinks.some(s => s.name === 'combine-bt')).toBe(false);
+      });
+
+      it('should include all real sinks alongside combine-bt', async () => {
+        audioRoutingService._combineSinkActive = true;
+
+        mockExecFileSuccess(
+          '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n' +
+          '89\tbluez_output.AA_BB_CC_DD_EE_FF.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE\n'
+        );
+
+        const sinks = await audioRoutingService.getAvailableSinksWithCombine();
+
+        // 2 real sinks + 1 virtual combine-bt
+        expect(sinks).toHaveLength(3);
+        expect(sinks.filter(s => s.virtual !== true)).toHaveLength(2);
+      });
+    });
+
+    describe('auto-create / auto-destroy', () => {
+      it('should auto-create combine-sink when second BT speaker connects', async () => {
+        const createSpy = jest.spyOn(audioRoutingService, 'createCombineSink').mockResolvedValue();
+
+        // Simulate two BT sinks now available
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+        ]);
+
+        await audioRoutingService._onBtSinkChanged();
+
+        expect(createSpy).toHaveBeenCalled();
+      });
+
+      it('should auto-destroy combine-sink when BT speaker disconnects (fewer than 2)', async () => {
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [1001, 1002];
+        audioRoutingService._combineSinkProcs = [createMockSpawnProc(), createMockSpawnProc()];
+
+        const destroySpy = jest.spyOn(audioRoutingService, 'destroyCombineSink').mockResolvedValue();
+
+        // Only one BT sink remaining
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+        ]);
+
+        await audioRoutingService._onBtSinkChanged();
+
+        expect(destroySpy).toHaveBeenCalled();
+      });
+
+      it('should not auto-create when only one BT speaker is available', async () => {
+        const createSpy = jest.spyOn(audioRoutingService, 'createCombineSink').mockResolvedValue();
+
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+        ]);
+
+        await audioRoutingService._onBtSinkChanged();
+
+        expect(createSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not auto-destroy when combine-sink is not active', async () => {
+        audioRoutingService._combineSinkActive = false;
+        const destroySpy = jest.spyOn(audioRoutingService, 'destroyCombineSink').mockResolvedValue();
+
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+        ]);
+
+        await audioRoutingService._onBtSinkChanged();
+
+        expect(destroySpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('cleanup integration', () => {
+      it('should destroy combine-sink on cleanup()', () => {
+        const proc1 = createMockSpawnProc();
+        proc1.pid = 1001;
+        const proc2 = createMockSpawnProc();
+        proc2.pid = 1002;
+
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [1001, 1002];
+        audioRoutingService._combineSinkProcs = [proc1, proc2];
+
+        audioRoutingService.cleanup();
+
+        expect(proc1.kill).toHaveBeenCalled();
+        expect(proc2.kill).toHaveBeenCalled();
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+        expect(audioRoutingService._combineSinkPids).toEqual([]);
+        expect(audioRoutingService._combineSinkProcs).toEqual([]);
+      });
+
+      it('should reset combine-sink state on reset()', () => {
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [1001, 1002];
+        audioRoutingService._combineSinkProcs = [createMockSpawnProc(), createMockSpawnProc()];
+
+        audioRoutingService.reset();
+
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+        expect(audioRoutingService._combineSinkPids).toEqual([]);
+        expect(audioRoutingService._combineSinkProcs).toEqual([]);
+      });
+    });
+
+    describe('pw-loopback process lifecycle', () => {
+      it('should auto-destroy combine-sink if a pw-loopback process exits unexpectedly', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+        ]);
+
+        const mockProc1 = createMockSpawnProc();
+        mockProc1.pid = 1001;
+        const mockProc2 = createMockSpawnProc();
+        mockProc2.pid = 1002;
+        spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
+
+        await audioRoutingService.createCombineSink();
+        expect(audioRoutingService._combineSinkActive).toBe(true);
+
+        // Simulate one pw-loopback process exiting
+        mockProc1.emit('close', 1);
+
+        // Allow async handler to run
+        await new Promise(resolve => setTimeout(resolve, 10));
+
+        // Combine-sink should be torn down
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+        expect(mockProc2.kill).toHaveBeenCalled();
+      });
+    });
+  });
 });

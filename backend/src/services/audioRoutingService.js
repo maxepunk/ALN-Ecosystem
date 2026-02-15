@@ -56,6 +56,11 @@ class AudioRoutingService extends EventEmitter {
     this._monitorProc = null;
     this._monitorRestartTimer = null;
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
+
+    // Combine-sink state
+    this._combineSinkActive = false;
+    this._combineSinkPids = [];
+    this._combineSinkProcs = [];
   }
 
   // ── Lifecycle ──
@@ -95,6 +100,10 @@ class AudioRoutingService extends EventEmitter {
       clearTimeout(this._monitorRestartTimer);
       this._monitorRestartTimer = null;
     }
+
+    // Tear down combine-sink processes
+    this._killCombineSinkProcs();
+
     logger.info('Audio routing service cleaned up');
   }
 
@@ -105,6 +114,9 @@ class AudioRoutingService extends EventEmitter {
     this.cleanup();
     this.removeAllListeners();
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
+    this._combineSinkActive = false;
+    this._combineSinkPids = [];
+    this._combineSinkProcs = [];
   }
 
   // ── Sink Discovery and Classification ──
@@ -362,6 +374,165 @@ class AudioRoutingService extends EventEmitter {
     }
   }
 
+  // ── Combine-Sink Management ──
+
+  /**
+   * Create a virtual combine-sink that forwards audio to both BT speakers.
+   * Spawns two pw-loopback processes, one per BT speaker, sharing a virtual
+   * capture node named 'combine-bt'. Tracks PIDs for cleanup.
+   *
+   * Requires at least 2 connected Bluetooth speakers.
+   * No-op if combine-sink is already active.
+   * @returns {Promise<void>}
+   */
+  async createCombineSink() {
+    if (this._combineSinkActive) {
+      logger.info('Combine-sink already active, skipping creation');
+      return;
+    }
+
+    const btSinks = await this.getBluetoothSinks();
+    if (btSinks.length < 2) {
+      throw new Error(
+        `Need at least 2 Bluetooth speakers for combine-sink, found ${btSinks.length}`
+      );
+    }
+
+    // Use first two BT speakers
+    const targetSinks = btSinks.slice(0, 2);
+    const procs = [];
+    const pids = [];
+
+    for (const sink of targetSinks) {
+      const proc = spawn('pw-loopback', [
+        '--capture-props', 'media.class=Audio/Sink node.name=combine-bt',
+        '--playback-props', `node.target=${sink.name}`,
+      ]);
+
+      // Handle unexpected exit of pw-loopback process
+      proc.on('close', (code) => {
+        logger.warn('pw-loopback process exited', { pid: proc.pid, code, sink: sink.name });
+        this._onCombineLoopbackExit(proc.pid);
+      });
+
+      procs.push(proc);
+      pids.push(proc.pid);
+
+      logger.info('pw-loopback started', { pid: proc.pid, target: sink.name });
+    }
+
+    this._combineSinkActive = true;
+    this._combineSinkPids = pids;
+    this._combineSinkProcs = procs;
+
+    const sinkNames = targetSinks.map(s => s.name);
+    logger.info('Combine-sink created', { pids, sinks: sinkNames });
+
+    this.emit('combine-sink:created', { pids, sinks: sinkNames });
+  }
+
+  /**
+   * Tear down the combine-sink by killing all pw-loopback processes.
+   * Safe to call when no combine-sink is active.
+   * @returns {Promise<void>}
+   */
+  async destroyCombineSink() {
+    if (!this._combineSinkActive) {
+      return;
+    }
+
+    this._killCombineSinkProcs();
+
+    logger.info('Combine-sink destroyed');
+    this.emit('combine-sink:destroyed');
+  }
+
+  /**
+   * Get available sinks including the virtual combine-bt sink if active.
+   * @returns {Promise<Array>} Array of sink objects (real + virtual)
+   */
+  async getAvailableSinksWithCombine() {
+    const sinks = await this.getAvailableSinks();
+
+    if (this._combineSinkActive) {
+      sinks.push({
+        id: 'virtual-combine',
+        name: 'combine-bt',
+        driver: 'pw-loopback',
+        format: '',
+        state: 'RUNNING',
+        type: 'combine',
+        virtual: true,
+      });
+    }
+
+    return sinks;
+  }
+
+  /**
+   * Handle BT sink changes (called from sink:added / sink:removed).
+   * Auto-creates combine-sink when 2+ BT speakers are available.
+   * Auto-destroys combine-sink when fewer than 2 BT speakers remain.
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _onBtSinkChanged() {
+    try {
+      const btSinks = await this.getBluetoothSinks();
+
+      if (btSinks.length >= 2 && !this._combineSinkActive) {
+        logger.info('Two BT speakers detected, auto-creating combine-sink');
+        await this.createCombineSink();
+      } else if (btSinks.length < 2 && this._combineSinkActive) {
+        logger.info('Fewer than 2 BT speakers, auto-destroying combine-sink');
+        await this.destroyCombineSink();
+      }
+    } catch (err) {
+      logger.error('Failed to handle BT sink change for combine-sink', {
+        error: err.message,
+      });
+    }
+  }
+
+  /**
+   * Handle unexpected exit of a pw-loopback process.
+   * Tears down the entire combine-sink since it requires both loopbacks.
+   * @param {number} exitedPid - PID of the exited process
+   * @private
+   */
+  _onCombineLoopbackExit(exitedPid) {
+    if (!this._combineSinkActive) return;
+
+    logger.warn('pw-loopback exited unexpectedly, tearing down combine-sink', {
+      exitedPid,
+    });
+
+    // Kill any remaining processes (the one that didn't exit)
+    this._killCombineSinkProcs();
+  }
+
+  /**
+   * Kill all combine-sink pw-loopback processes and reset state.
+   * @private
+   */
+  _killCombineSinkProcs() {
+    for (const proc of this._combineSinkProcs) {
+      try {
+        proc.kill();
+      } catch (err) {
+        // Process may have already exited
+        logger.debug('Failed to kill pw-loopback process', {
+          pid: proc.pid,
+          error: err.message,
+        });
+      }
+    }
+
+    this._combineSinkActive = false;
+    this._combineSinkPids = [];
+    this._combineSinkProcs = [];
+  }
+
   // ── Routing with Fallback ──
 
   /**
@@ -461,8 +632,10 @@ class AudioRoutingService extends EventEmitter {
         if (event.action === 'new' && event.type === 'sink') {
           this.emit('sink:added', { id: event.id });
           this._onSinkAdded(event.id);
+          this._onBtSinkChanged();
         } else if (event.action === 'remove' && event.type === 'sink') {
           this.emit('sink:removed', { id: event.id });
+          this._onBtSinkChanged();
         }
       }
     });
