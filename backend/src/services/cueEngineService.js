@@ -541,6 +541,9 @@ class CueEngineService extends EventEmitter {
 
     const { timeline, firedEntries, parentChain } = activeCue;
 
+    // Look up cue definition for routing resolution
+    const cueDef = this.cues.get(cueId);
+
     for (let i = 0; i < timeline.length; i++) {
       const entry = timeline[i];
       if (entry.at > elapsed) continue;
@@ -549,10 +552,13 @@ class CueEngineService extends EventEmitter {
       // Mark as fired BEFORE executing (prevents double-fire)
       firedEntries.add(i);
 
+      // Resolve 3-tier routing: command-level > cue-level > global (service default)
+      const resolvedPayload = this._resolveRouting(entry.action, entry.payload || {}, cueDef);
+
       try {
         await executeCommand({
           action: entry.action,
-          payload: entry.payload || {},
+          payload: resolvedPayload,
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
@@ -567,6 +573,37 @@ class CueEngineService extends EventEmitter {
         });
       }
     }
+  }
+
+  /**
+   * Resolve 3-tier routing for a timeline command payload.
+   * Priority: command-level target > cue-level routing > global (no injection).
+   *
+   * Stream type is derived from the action prefix (e.g., 'sound:play' → 'sound').
+   *
+   * @param {string} action - The command action (e.g., 'sound:play', 'video:play')
+   * @param {Object} payload - The original command payload
+   * @param {Object} [cueDef] - The cue definition (may have routing object)
+   * @returns {Object} Payload with target resolved (or unchanged)
+   */
+  _resolveRouting(action, payload, cueDef) {
+    // If command already has a target, use it (command-level override wins)
+    if (payload.target) {
+      return payload;
+    }
+
+    // Check for cue-level routing
+    if (cueDef && cueDef.routing) {
+      // Derive stream type from action prefix (e.g., 'sound:play' → 'sound')
+      const streamType = action.split(':')[0];
+      const cueTarget = cueDef.routing[streamType];
+      if (cueTarget) {
+        return { ...payload, target: cueTarget };
+      }
+    }
+
+    // No routing to inject — global routing resolves at service level
+    return payload;
   }
 
   /**

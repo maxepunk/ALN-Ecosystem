@@ -834,4 +834,65 @@ describe('CueEngineService', () => {
       expect(cueEngineService.getActiveCues()).toHaveLength(0);
     });
   });
+
+  describe('routing inheritance (D9, D51)', () => {
+    it('should resolve command-level target override', async () => {
+      cueEngineService.loadCues([{
+        id: 'routing-test', label: 'Routing',
+        routing: { sound: 'bt-right' },
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'door.wav', target: 'bt-left' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('routing-test');
+      await flushAsync();
+
+      // Command-level target wins over cue-level routing
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({ target: 'bt-left' })
+        })
+      );
+    });
+
+    it('should resolve cue-level routing when no command target', async () => {
+      cueEngineService.loadCues([{
+        id: 'cue-routing', label: 'Cue Route',
+        routing: { sound: 'bt-right' },
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'glass.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('cue-routing');
+      await flushAsync();
+
+      // Cue-level routing injected into payload
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.objectContaining({ target: 'bt-right' })
+        })
+      );
+    });
+
+    it('should fall back to global routing when no cue or command target', async () => {
+      cueEngineService.loadCues([{
+        id: 'global-routing', label: 'Global',
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'plain.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('global-routing');
+      await flushAsync();
+
+      // No target injected — audioRoutingService handles global routing at play time
+      expect(executeCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          payload: expect.not.objectContaining({ target: expect.anything() })
+        })
+      );
+    });
+  });
 });
