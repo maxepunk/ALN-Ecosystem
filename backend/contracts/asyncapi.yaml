@@ -95,6 +95,7 @@ channels:
           - $ref: '#/components/messages/BluetoothScan'
           - $ref: '#/components/messages/AudioRouting'
           - $ref: '#/components/messages/AudioRoutingFallback'
+          - $ref: '#/components/messages/AudioDuckingStatus'
           - $ref: '#/components/messages/LightingScene'
           - $ref: '#/components/messages/LightingStatus'
           - $ref: '#/components/messages/GameClockStatus'
@@ -1432,8 +1433,9 @@ components:
         **Phase 0**: Environment Control - Audio output routing via PipeWire/pactl
 
         **Streams-and-Sinks Model**: Audio routing uses a per-stream routing table.
-        Phase 0 only routes the `video` stream. Future phases add ambient, cue, and
-        attention streams.
+        Phase 0 routes the `video` stream only. Phase 3 adds `spotify` and `sound`
+        streams with independent routing, plus `combine-bt` virtual sink for dual
+        Bluetooth speaker output.
 
         **When Sent**:
         - GM sets audio route via audio:route:set command
@@ -1461,7 +1463,8 @@ components:
             properties:
               stream:
                 type: string
-                description: Audio stream name (Phase 0 only uses 'video')
+                description: Audio stream name (video, spotify, or sound)
+                enum: [video, spotify, sound]
                 example: "video"
               sink:
                 type: string
@@ -1560,6 +1563,113 @@ components:
               from: "bluez_output.AA_BB_CC_DD_EE_FF.1"
               to: "alsa_output.platform-fef00700.hdmi.hdmi-stereo"
             timestamp: "2025-10-15T20:30:00.000Z"
+
+    AudioDuckingStatus:
+      name: audio:ducking:status
+      title: Audio Ducking Status Broadcast
+      summary: Broadcast audio ducking state changes
+      description: |
+        Broadcast audio ducking state changes to all GM Scanners.
+
+        **Phase 3**: Multi-Speaker Routing + Ducking
+
+        Ducking automatically reduces volume of a target stream (e.g., Spotify) when
+        a priority stream (e.g., video, sound effects) is active. Multiple ducking
+        sources can be active simultaneously — the lowest target volume wins.
+
+        **When Sent**:
+        - Video starts playing → duck Spotify
+        - Sound effect plays → duck Spotify (lighter reduction)
+        - Video/sound completes → restore if no other ducking sources active
+        - Video/sound paused/resumed → duck state updated
+
+        **Ducking Rules** (loaded from `config/environment/routing.json`):
+        ```json
+        { "when": "video", "duck": "spotify", "to": 20, "fadeMs": 500 }
+        { "when": "sound", "duck": "spotify", "to": 40, "fadeMs": 200 }
+        ```
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: audio:ducking:status
+            description: Event name
+          data:
+            type: object
+            required:
+              - stream
+              - ducked
+              - volume
+            properties:
+              stream:
+                type: string
+                description: The stream being ducked
+                example: "spotify"
+              ducked:
+                type: boolean
+                description: Whether the stream is currently ducked
+                example: true
+              volume:
+                type: integer
+                description: Current effective volume of the ducked stream (0-100)
+                minimum: 0
+                maximum: 100
+                example: 20
+              activeSources:
+                type: array
+                description: List of active ducking sources (e.g., video, sound)
+                items:
+                  type: string
+                example: ["video"]
+              restoredVolume:
+                type: integer
+                description: Volume that will be restored when all ducking sources complete
+                minimum: 0
+                maximum: 100
+                example: 100
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:30:00.000Z"
+      examples:
+        - name: Spotify Ducked for Video
+          payload:
+            event: audio:ducking:status
+            data:
+              stream: spotify
+              ducked: true
+              volume: 20
+              activeSources: ["video"]
+              restoredVolume: 80
+            timestamp: "2025-10-15T20:30:00.000Z"
+        - name: Spotify Restored After Video
+          payload:
+            event: audio:ducking:status
+            data:
+              stream: spotify
+              ducked: false
+              volume: 80
+              activeSources: []
+              restoredVolume: 80
+            timestamp: "2025-10-15T20:31:00.000Z"
+        - name: Multiple Ducking Sources Active
+          payload:
+            event: audio:ducking:status
+            data:
+              stream: spotify
+              ducked: true
+              volume: 20
+              activeSources: ["video", "sound"]
+              restoredVolume: 80
+            timestamp: "2025-10-15T20:30:15.000Z"
 
     LightingScene:
       name: lighting:scene
@@ -1866,10 +1976,12 @@ components:
         - `bluetooth:unpair` — `{address: string}` (required)
         - `bluetooth:connect` — `{address: string}` (required)
         - `bluetooth:disconnect` — `{address: string}` (required)
-        - `audio:route:set` — `{stream: 'video', sink: 'hdmi'|'bluetooth'}` (Phase 0 only accepts stream='video').
-          The GM sends a logical alias ('hdmi'/'bluetooth'); audioRoutingService resolves
-          it to an actual PipeWire sink name. The `audio:routing` broadcast reports the
-          resolved sink name with a `sinkType` field for the UI-friendly category.
+        - `audio:route:set` — `{stream: 'video'|'spotify'|'sound', sink: 'hdmi'|'bluetooth'|'combine-bt'}`.
+          Phase 0 only routed stream='video'. Phase 3 adds per-stream routing for all three streams
+          and 'combine-bt' sink (virtual combined Bluetooth output). The GM sends a logical alias;
+          audioRoutingService resolves it to an actual PipeWire sink name.
+        - `audio:combine:create` — `{}` Create virtual combine-bt sink from connected BT speakers
+        - `audio:combine:destroy` — `{}` Tear down combine-bt sink
         - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
         - `lighting:scenes:refresh` — `{}`
 
@@ -1925,6 +2037,8 @@ components:
                   - bluetooth:disconnect
                   - audio:route:set
                   - audio:volume:set
+                  - audio:combine:create
+                  - audio:combine:destroy
                   - lighting:scene:activate
                   - lighting:scenes:refresh
                   - cue:fire
