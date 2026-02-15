@@ -243,6 +243,7 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - Environment control broadcasts: `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `audio:routing:fallback`, `lighting:scene`, `lighting:status`
 - Phase 1 broadcasts: `gameclock:status`, `cue:fired`, `cue:completed`, `cue:error`, `sound:status`
 - Phase 2 broadcasts: `cue:status` (compound cue lifecycle), `cue:conflict` (video conflict), `spotify:status` (playback state)
+- Phase 3 broadcasts: `audio:ducking:status` (ducking state change). Phase 3 features: combine-bt virtual sink (dual BT speakers), ducking engine (auto-duck Spotify for video/sound), routing inheritance (command > cue > global target resolution)
 - Session lifecycle: `setup` → `active` → `paused` ↔ `active` → `ended` (sessions created in setup, `session:start` transitions to active)
 - `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine)
 - `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`). Phase 2 adds video progress/lifecycle forwarding and spotifyService forwarding.

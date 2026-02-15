@@ -1,11 +1,13 @@
 # Environment Control Roadmap — Phases 1-4 Design
 
 **Date:** 2026-02-13 (updated 2026-02-14)
-**Status:** Phase 1 complete, Phase 2-4 pending
+**Status:** Phases 1-3 complete, Phase 4 pending
 **Foundation:** Phase 0 complete (Bluetooth speaker management, PipeWire audio routing, Home Assistant lighting scenes)
 **PRD Reference:** `docs/proposals/environment-control-phase0-prd.md`
 **Phase 1 Plan:** `docs/plans/2026-02-14-environment-control-phase1.md`
 **Phase 1 Branch:** `phase1/cue-engine` (parent + ALNScanner submodule)
+**Phases 2-3 Plan:** `docs/plans/2026-02-14-environment-control-phases-2-3.md`
+**Phases 2-3 Branch:** `phase2/compound-cues-spotify` (parent + ALNScanner submodule)
 
 ---
 

@@ -400,6 +400,41 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 
 **Key Files:** `src/services/spotifyService.js`, `src/services/cueEngineWiring.js`, `src/websocket/broadcasts.js`, `src/websocket/syncHelpers.js`
 
+### Multi-Speaker Routing + Ducking (Phase 3)
+
+Extends Phase 0 audio routing with PipeWire combine-sink management, event-driven ducking engine, and cue-level routing inheritance.
+
+**Combine-Sink (Dual BT Speakers):** Creates a virtual `combine-bt` sink using `pw-loopback` processes to route audio to two Bluetooth speakers simultaneously. `audioRoutingService.createCombineSink()` / `destroyCombineSink()`. Requires 2+ paired BT sinks. The virtual sink appears in `getAvailableSinksWithCombine()` when active. Managed via `audio:combine:create` / `audio:combine:destroy` gm:command actions.
+
+**Ducking Engine:** Automatically reduces Spotify volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
+
+**Routing Inheritance (3-tier resolution):** When a compound cue dispatches a command, routing is resolved as: command-level `target` > cue-level `routing` map > global default. The `_resolveRouting(action, payload, cueDef)` method in `cueEngineService` derives stream type from the action prefix (e.g., `sound:play` → `sound`), then checks `cueDef.routing[streamType]`.
+
+**Phase 3 gm:command Actions:**
+
+| Action | Payload | Description |
+|--------|---------|-------------|
+| `audio:combine:create` | `{}` | Create combine-bt virtual sink from paired BT speakers |
+| `audio:combine:destroy` | `{}` | Destroy combine-bt virtual sink |
+
+**WebSocket Events (Server → Client, Phase 3):**
+
+| Event | Payload | Source |
+|-------|---------|--------|
+| `audio:ducking:status` | `{stream, ducked, volume, activeSources[]}` | Ducking state change |
+
+**Config:** `config/environment/routing.json` — `ducking` array:
+```json
+[
+  { "when": "video", "duck": "spotify", "to": 20, "fadeMs": 500 },
+  { "when": "sound", "duck": "spotify", "to": 40, "fadeMs": 200 }
+]
+```
+
+**CRITICAL Gotcha:** `audio:ducking:status` is not yet forwarded to the GM Scanner (not in `orchestratorClient.js` messageTypes). Ducking is fully automated on the backend — no GM intervention needed.
+
+**Key Files:** `src/services/audioRoutingService.js` (combine-sink + ducking), `src/services/cueEngineService.js` (`_resolveRouting`), `config/environment/routing.json`
+
 ## Configuration
 
 ### Environment Variables
