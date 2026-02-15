@@ -1,13 +1,21 @@
 // backend/src/services/spotifyService.js
 const EventEmitter = require('events');
 const { execFile } = require('child_process');
-const { promisify } = require('util');
 const fs = require('fs');
 const logger = require('../utils/logger');
 
-const execFileAsync = promisify(execFile);
+// Wrap execFile to always return {stdout, stderr} (Node's custom promisify
+// is lost when jest.mock('child_process') auto-mocks the module)
+function execFileAsync(cmd, args, opts) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, opts, (err, stdout, stderr) => {
+      if (err) reject(err);
+      else resolve({ stdout, stderr });
+    });
+  });
+}
 
-const DBUS_DEST = 'org.mpris.MediaPlayer2.spotifyd';
+const DBUS_DEST_PREFIX = 'org.mpris.MediaPlayer2.spotifyd';
 const DBUS_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 
@@ -18,13 +26,36 @@ class SpotifyService extends EventEmitter {
     this.state = 'stopped';
     this.volume = 100;
     this._pausedByGameClock = false;
+    this._dbusDest = null; // Discovered dynamically (spotifyd appends .instance{PID})
     this.cachePath = process.env.SPOTIFY_CACHE_PATH || '/home/maxepunk/.cache/spotifyd';
   }
 
+  async _discoverDbusDest() {
+    if (this._dbusDest) return this._dbusDest;
+    try {
+      const { stdout } = await execFileAsync('dbus-send', [
+        '--session', '--type=method_call', '--print-reply',
+        '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus',
+        'org.freedesktop.DBus.ListNames'
+      ], { timeout: 3000 });
+      const match = stdout.match(/"(org\.mpris\.MediaPlayer2\.spotifyd[^"]*)"/);
+      if (match) {
+        this._dbusDest = match[1];
+        logger.debug(`[Spotify] Discovered D-Bus dest: ${this._dbusDest}`);
+        return this._dbusDest;
+      }
+    } catch (err) {
+      logger.debug('[Spotify] D-Bus discovery failed:', err.message);
+    }
+    return null;
+  }
+
   async _dbusCall(method, args = []) {
+    const dest = await this._discoverDbusDest();
+    if (!dest) throw new Error('spotifyd not found on D-Bus');
     const cmdArgs = [
       '--session', '--type=method_call', '--print-reply',
-      '--dest=' + DBUS_DEST, DBUS_PATH,
+      '--dest=' + dest, DBUS_PATH,
       method, ...args
     ];
     return execFileAsync('dbus-send', cmdArgs, { timeout: 5000 });
@@ -90,12 +121,23 @@ class SpotifyService extends EventEmitter {
 
   async checkConnection() {
     try {
-      await execFileAsync('dbus-send', [
+      const dest = await this._discoverDbusDest();
+      if (!dest) {
+        this.connected = false;
+        return false;
+      }
+      // Use Properties.Get instead of Peer.Ping (spotifyd doesn't implement Peer)
+      const { stdout } = await execFileAsync('dbus-send', [
         '--session', '--type=method_call', '--print-reply',
-        '--dest=' + DBUS_DEST, DBUS_PATH,
-        'org.freedesktop.DBus.Peer.Ping'
+        '--dest=' + dest, DBUS_PATH,
+        'org.freedesktop.DBus.Properties.Get',
+        `string:${PLAYER_IFACE}`, 'string:PlaybackStatus'
       ], { timeout: 2000 });
       this.connected = true;
+      // Sync state from actual D-Bus status
+      if (stdout.includes('"Playing"')) this.state = 'playing';
+      else if (stdout.includes('"Paused"')) this.state = 'paused';
+      else this.state = 'stopped';
       return true;
     } catch {
       this.connected = false;
@@ -128,6 +170,7 @@ class SpotifyService extends EventEmitter {
     this.state = 'stopped';
     this.volume = 100;
     this._pausedByGameClock = false;
+    this._dbusDest = null; // Re-discover on next call (PID may change after restart)
   }
 
   cleanup() {

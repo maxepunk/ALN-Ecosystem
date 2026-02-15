@@ -27,6 +27,25 @@
       "commands": [
         { "action": "sound:play", "payload": { "file": "tension.wav" } }
       ]
+    },
+    {
+      "id": "e2e-compound-test",
+      "label": "E2E Compound Test",
+      "timeline": [
+        { "at": 0, "action": "sound:play", "payload": { "file": "test_tone.wav" } },
+        { "at": 1, "action": "lighting:scene:activate", "payload": { "sceneId": "scene.dim" } },
+        { "at": 3, "action": "sound:play", "payload": { "file": "test_tone.wav" } },
+        { "at": 4, "action": "lighting:scene:activate", "payload": { "sceneId": "scene.house_lights" } }
+      ],
+      "duration": 5
+    },
+    {
+      "id": "e2e-video-compound",
+      "label": "E2E Video Compound",
+      "timeline": [
+        { "at": 0, "action": "video:queue:add", "payload": { "videoFile": "jaw011.mp4" } },
+        { "at": 1, "action": "sound:play", "payload": { "file": "test_tone.wav" } }
+      ]
     }
   ]
 }

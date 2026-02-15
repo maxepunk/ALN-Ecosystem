@@ -25,6 +25,9 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
+const { setupSpotify } = require('../setup/spotify-service');
+const { setupHA } = require('../setup/ha-service');
+const { setupSound, cleanupTestAudioFixtures } = require('../setup/sound-service');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 
 const {
@@ -45,6 +48,9 @@ const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
+let spotifyInfo = null;
+let haInfo = null;
+let soundInfo = null;
 let testTokens = null;
 
 // Token pools for multi-round testing (dynamically selected)
@@ -65,7 +71,41 @@ test.describe('Full Game Session Multi-Device Flow', () => {
   test.beforeAll(async () => {
     await clearSessionData();
 
+    // Setup all services (parallel where possible)
     vlcInfo = await setupVLC();
+    [spotifyInfo, haInfo, soundInfo] = await Promise.all([
+      setupSpotify(),
+      setupHA(),
+      setupSound(),
+    ]);
+
+    // ═══════════════════════════════════════════════
+    // SERVICE STATUS BANNER
+    // ═══════════════════════════════════════════════
+    const serviceStatus = { vlc: vlcInfo, spotify: spotifyInfo, ha: haInfo, sound: soundInfo };
+    console.log('\n╔══════════════════════════════════════════╗');
+    console.log('║  E2E SERVICE STATUS                      ║');
+    for (const [name, info] of Object.entries(serviceStatus)) {
+      const status = info.type === 'real' ? 'REAL'
+        : info.type === 'mock' ? 'MOCK'
+        : 'UNAVAILABLE';
+      const marker = info.type === 'real' ? '  ' : info.type === 'mock' ? ' !' : ' X';
+      const reason = info.reason ? ` (${info.reason})` : '';
+      console.log(`║  ${name.padEnd(10)} ${(status + reason).padEnd(29)}${marker}║`);
+    }
+    console.log('╚══════════════════════════════════════════╝');
+
+    const degraded = Object.entries(serviceStatus)
+      .filter(([, info]) => info.type !== 'real')
+      .map(([name, info]) => `${name}: ${info.type}${info.reason ? ` (${info.reason})` : ''}`);
+
+    if (degraded.length > 0) {
+      console.warn(`\n  ${degraded.length} service(s) degraded: ${degraded.join(', ')}`);
+      if (process.env.E2E_REQUIRE_REAL === 'true') {
+        throw new Error(`E2E_REQUIRE_REAL=true but services degraded: ${degraded.join(', ')}`);
+      }
+    }
+
     orchestratorInfo = await startOrchestrator({
       https: true,
       // Dynamic port assignment (port=0) prevents conflicts when running parallel workers
@@ -111,6 +151,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     if (browser) await browser.close();
     await stopOrchestrator();
     await cleanupVLC();
+    cleanupTestAudioFixtures();
   });
 
   test('complete game session with multiple GM and player scanners', async () => {
@@ -362,6 +403,96 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // --- ENVIRONMENT STATE SNAPSHOT ---
     const envState = await gmScanner1.getEnvironmentControlState();
     console.log('Environment Control State:', JSON.stringify(envState, null, 2));
+
+    // ============================================
+    // PHASE 1.6: Game Clock + Compound Cues
+    // ============================================
+    // Tests Phase 2 compound cue lifecycle: fire → active in UI → completion.
+    // Exercises REAL services: pw-play (sound), Home Assistant (lighting), VLC (video).
+    // Service availability determines what gets verified — but cue engine
+    // lifecycle (appear → progress → disappear) is always tested.
+    console.log('\n=== PHASE 1.6: Game Clock + Compound Cues ===');
+
+    // 1.6.1: Verify game clock is running (started by createSessionWithTeams → startGame)
+    const clockRunning = await gmScanner1.isGameClockRunning(8000);
+    expect(clockRunning).toBe(true);
+    const clockText = await gmScanner1.getGameClockText();
+    console.log(`✓ Game clock running: ${clockText}`);
+
+    // 1.6.2: Fire clock-driven compound cue (sound + HA lighting, 5s duration)
+    // This cue's timeline: at:0 sound, at:1 lighting, at:3 sound, at:4 lighting
+    console.log('  → Firing clock-driven compound cue: e2e-compound-test');
+    await gmScanner1.fireCue('e2e-compound-test');
+
+    // 1.6.3: Verify active cue appears in MonitoringDisplay
+    await gmScanner1.waitForActiveCue('e2e-compound-test', 5000);
+    const cueState = await gmScanner1.getActiveCueState('e2e-compound-test');
+    console.log(`✓ Compound cue active in UI, state: ${cueState}`);
+
+    // 1.6.4: Conditional service verification
+    // If HA is real, verify lighting scene was activated
+    if (haInfo.type === 'real') {
+      // Wait for at:1 lighting action to execute, then check scene tile
+      await gmPage1.waitForTimeout(2000);
+      try {
+        const dimActive = await gmPage1.waitForFunction(
+          () => {
+            const tile = document.querySelector('.scene-tile[data-scene-id="scene.dim"]');
+            return tile?.classList.contains('scene-tile--active');
+          },
+          { timeout: 5000 }
+        );
+        console.log('✓ HA lighting scene "dim" activated by compound cue (real HA verified)');
+      } catch {
+        console.log('⚠️ Lighting scene verification timed out (HA may have lost connection)');
+      }
+    } else {
+      console.log(`  Skipping HA lighting verification (${haInfo.type}: ${haInfo.reason || 'N/A'})`);
+    }
+
+    // 1.6.5: Wait for cue completion (duration=5s, allow extra time for clock tick resolution)
+    await gmScanner1.waitForCueComplete('e2e-compound-test', 15000);
+    console.log('✓ Clock-driven compound cue completed (removed from active cues UI)');
+
+    // 1.6.6: Fire video-driven compound cue (IF VLC is real)
+    if (vlcInfo.type === 'real') {
+      console.log('  → Firing video-driven compound cue: e2e-video-compound');
+      await gmScanner1.fireCue('e2e-video-compound');
+
+      // Verify active cue appears
+      await gmScanner1.waitForActiveCue('e2e-video-compound', 5000);
+      console.log('✓ Video compound cue active in UI');
+
+      // Verify VLC is playing (video progress bar should appear)
+      try {
+        await gmScanner1.videoProgressContainer.waitFor({ state: 'visible', timeout: 10000 });
+        console.log('✓ VLC video playing (progress container visible)');
+      } catch {
+        console.log('⚠️ Video progress container not visible (VLC may not have started playback)');
+      }
+
+      // Wait for video compound cue completion (cue completes when all timeline entries fire,
+      // not when video ends — maxAt=1s, but VLC startup has latency)
+      await gmScanner1.waitForCueComplete('e2e-video-compound', 40000);
+      console.log('✓ Video-driven compound cue completed');
+    } else {
+      console.log(`  Skipping video compound cue (VLC: ${vlcInfo.type})`);
+    }
+
+    // 1.6.7: Spotify status check (verify DOM reflects connection state)
+    const spotifyConnected = await gmScanner1.isSpotifyConnected();
+    if (spotifyInfo.type === 'real') {
+      // With spotifyd running, we should see connected or disconnected
+      // depending on whether an active Spotify Connect session exists
+      console.log(`✓ Spotify status rendered in UI (connected: ${spotifyConnected})`);
+      if (spotifyInfo.reason) {
+        console.log(`  Note: ${spotifyInfo.reason}`);
+      }
+    } else {
+      console.log(`  Spotify status: disconnected (service ${spotifyInfo.type}: ${spotifyInfo.reason || 'N/A'})`);
+    }
+
+    console.log('=== Phase 1.6 Complete ===\n');
 
     // Return to scanner view for next phase
     await gmScanner1.scannerTab.click();

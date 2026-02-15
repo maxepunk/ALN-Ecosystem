@@ -18,7 +18,9 @@ const DiscoveryService = require('./services/discoveryService');
 const { createSocketServer } = require('./websocket/socketServer');
 const { handleGmIdentify } = require('./websocket/gmAuth');
 const { setupBroadcastListeners } = require('./websocket/broadcasts');
-const { handleDisconnect, handleSyncRequest } = require('./websocket/deviceTracking');
+const { handleDisconnect } = require('./websocket/deviceTracking');
+const { buildSyncFullPayload } = require('./websocket/syncHelpers');
+const { emitWrapped } = require('./websocket/eventWrapper');
 const { handleGmCommand, handleTransactionSubmit, handleStateRequest } = require('./websocket/adminEvents');
 
 // Import services for WebSocket events
@@ -73,9 +75,26 @@ function setupWebSocketHandlers(ioInstance) {
     }, ioInstance);
   }
 
-  // State sync request
-  socket.on('sync:request', () => {
-    handleSyncRequest(socket);
+  // State sync request — uses shared payload builder (includes gameClock, cueEngine, spotify)
+  socket.on('sync:request', async () => {
+    try {
+      const syncPayload = await buildSyncFullPayload({
+        sessionService,
+        transactionService,
+        videoQueueService,
+        offlineQueueService,
+        bluetoothService,
+        audioRoutingService,
+        lightingService,
+        gameClockService,
+        cueEngineService,
+        spotifyService,
+      });
+      emitWrapped(socket, 'sync:full', syncPayload);
+      logger.debug('Sent sync:full in response to sync:request', { deviceId: socket.deviceId });
+    } catch (error) {
+      logger.error('sync:request handler error', { error: error.message, deviceId: socket.deviceId });
+    }
   });
   
   // State request (contract compliant)

@@ -183,6 +183,11 @@ class GMScannerPage {
     this.lightingNotConnected = page.locator('#lighting-not-connected');
     this.lightingRetryBtn = page.locator('button[data-action="admin.lightingRetry"]');
     this.haConnectionStatus = page.locator('#ha-connection-status');
+
+    // Phase 2: Game Clock, Active Cues, Spotify (MonitoringDisplay)
+    this.gameClockDisplay = page.locator('#game-clock-display');
+    this.activeCuesList = page.locator('#active-cues-list');
+    this.nowPlayingSection = page.locator('#now-playing-section');
   }
 
   /**
@@ -1618,6 +1623,131 @@ class GMScannerPage {
       });
     }
     return details.sort((a, b) => a.rank - b.rank);
+  }
+
+  // ==========================================================================
+  // Phase 2: Game Clock, Active Cues, Spotify
+  // ==========================================================================
+
+  /**
+   * Check if game clock is in running state
+   * @returns {Promise<boolean>}
+   */
+  async isGameClockRunning(timeout = 5000) {
+    try {
+      await this.page.locator('#game-clock-display.clock-running').waitFor({ state: 'attached', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Check if game clock is in paused state
+   * @returns {Promise<boolean>}
+   */
+  async isGameClockPaused(timeout = 5000) {
+    try {
+      await this.page.locator('#game-clock-display.clock-paused').waitFor({ state: 'attached', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Get game clock display text (e.g., "00:01:30")
+   * @returns {Promise<string>}
+   */
+  async getGameClockText() {
+    return await this.gameClockDisplay.textContent();
+  }
+
+  /**
+   * Get locator for a specific active cue item by cue ID
+   * @param {string} cueId
+   * @returns {import('@playwright/test').Locator}
+   */
+  getActiveCueElement(cueId) {
+    return this.activeCuesList.locator(`.active-cue-item[data-cue-id="${cueId}"]`);
+  }
+
+  /**
+   * Wait for an active cue to appear in the UI
+   * @param {string} cueId
+   * @param {number} timeout
+   */
+  async waitForActiveCue(cueId, timeout = 10000) {
+    await this.getActiveCueElement(cueId).waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Wait for an active cue to disappear from the UI (completed/stopped)
+   * @param {string} cueId
+   * @param {number} timeout
+   */
+  async waitForCueComplete(cueId, timeout = 15000) {
+    await this.getActiveCueElement(cueId).waitFor({ state: 'hidden', timeout });
+  }
+
+  /**
+   * Get the state text of an active cue (e.g., "Running", "Paused")
+   * @param {string} cueId
+   * @returns {Promise<string>}
+   */
+  async getActiveCueState(cueId) {
+    const stateEl = this.getActiveCueElement(cueId).locator('.active-cue-item__state');
+    return await stateEl.textContent();
+  }
+
+  /**
+   * Check if Spotify Now Playing shows disconnected state
+   * @returns {Promise<boolean>}
+   */
+  async isSpotifyConnected() {
+    return await this.nowPlayingSection.locator('.now-playing--connected').isVisible();
+  }
+
+  /**
+   * Fire a cue via WebSocket (temporary admin connection, same pattern as startGame)
+   * @param {string} cueId - The cue ID to fire
+   */
+  async fireCue(cueId) {
+    const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../../helpers/websocket-core');
+    const { ADMIN_PASSWORD } = require('../test-config');
+
+    const pageUrl = this.page.url();
+    const url = new URL(pageUrl);
+    const orchestratorUrl = `${url.protocol}//${url.host}`;
+
+    const tempSocket = await connectWithAuth(
+      orchestratorUrl,
+      ADMIN_PASSWORD,
+      `FIRE_CUE_HELPER_${Date.now()}`,
+      'gm'
+    );
+
+    try {
+      const ackPromise = waitForEvent(tempSocket, 'gm:command:ack', (ack) => {
+        return ack?.data?.action === 'cue:fire';
+      }, 5000);
+
+      tempSocket.emit('gm:command', {
+        event: 'gm:command',
+        data: { action: 'cue:fire', payload: { cueId } },
+        timestamp: new Date().toISOString()
+      });
+
+      const ack = await ackPromise;
+      if (!ack.data?.success) {
+        throw new Error(`cue:fire failed for "${cueId}": ${ack.data?.message || 'Unknown error'}`);
+      }
+    } finally {
+      disconnectSocket(tempSocket);
+    }
+
+    // Brief wait for broadcast to reach the scanner page
+    await this.page.waitForTimeout(500);
   }
 }
 

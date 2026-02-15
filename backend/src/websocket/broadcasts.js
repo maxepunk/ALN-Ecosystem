@@ -631,7 +631,7 @@ function setupBroadcastListeners(io, services) {
   // Compound cue lifecycle broadcasts (cue:started, cue:paused, cue:conflict)
   if (cueEngineService) {
     addTrackedListener(cueEngineService, 'cue:started', (data) => {
-      emitToRoom(io, 'gm', 'cue:status', { ...data, state: 'started' });
+      emitToRoom(io, 'gm', 'cue:status', { ...data, state: 'running', progress: 0 });
       logger.debug('Broadcasted cue:status (started)', { cueId: data.cueId });
     });
 

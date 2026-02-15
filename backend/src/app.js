@@ -180,9 +180,11 @@ async function initializeServices() {
     const cuesPath = path.join(__dirname, '../config/environment/cues.json');
     try {
       const cuesData = await fs.readFile(cuesPath, 'utf8');
-      const cues = JSON.parse(cuesData);
-      cueEngineService.loadCues(cues);
-      logger.info('Cue engine loaded cue definitions', { count: cues.length });
+      const cuesConfig = JSON.parse(cuesData);
+      // Support both plain array and wrapped {cues: [...]} formats
+      const cuesArray = Array.isArray(cuesConfig) ? cuesConfig : (cuesConfig.cues || []);
+      cueEngineService.loadCues(cuesArray);
+      logger.info('Cue engine loaded cue definitions', { count: cuesArray.length });
     } catch (err) {
       logger.warn('Failed to load cue definitions - cue engine will be empty', { error: err.message });
     }

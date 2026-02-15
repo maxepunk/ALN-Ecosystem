@@ -141,7 +141,7 @@ describe('Phase 2 Broadcasts', () => {
   // ================================================================
 
   describe('Compound Cue Lifecycle Broadcasts', () => {
-    it('should broadcast cue:status with state=started on cue:started', () => {
+    it('should broadcast cue:status with state=running on cue:started', () => {
       setupBroadcasts();
 
       const data = { cueId: 'compound-1', hasVideo: true, duration: 120 };
@@ -156,7 +156,8 @@ describe('Phase 2 Broadcasts', () => {
             cueId: 'compound-1',
             hasVideo: true,
             duration: 120,
-            state: 'started',
+            state: 'running',
+            progress: 0,
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })

@@ -28,6 +28,8 @@ describe('SpotifyService', () => {
     execFile = cp.execFile;
     spotifyService = require('../../../src/services/spotifyService');
     spotifyService.reset();
+    // Pre-seed D-Bus destination to skip discovery (spotifyd appends .instance{PID})
+    spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd';
   });
 
   afterEach(() => {
@@ -105,15 +107,75 @@ describe('SpotifyService', () => {
 
   describe('connection detection', () => {
     it('should detect when spotifyd is not running', async () => {
+      spotifyService._dbusDest = null; // Force discovery
       mockExecFileError('org.freedesktop.DBus.Error.ServiceUnknown');
       const result = await spotifyService.checkConnection();
       expect(result).toBe(false);
     });
 
-    it('should detect when spotifyd is running', async () => {
-      mockExecFileSuccess('boolean true');
+    it('should detect when spotifyd is running and playing', async () => {
+      mockExecFileSuccess('variant       string "Playing"');
       const result = await spotifyService.checkConnection();
       expect(result).toBe(true);
+      expect(spotifyService.state).toBe('playing');
+    });
+
+    it('should detect when spotifyd is running and paused', async () => {
+      mockExecFileSuccess('variant       string "Paused"');
+      const result = await spotifyService.checkConnection();
+      expect(result).toBe(true);
+      expect(spotifyService.state).toBe('paused');
+    });
+  });
+
+  describe('D-Bus discovery', () => {
+    it('should discover spotifyd instance name from D-Bus', async () => {
+      spotifyService._dbusDest = null; // Force discovery
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n  string "org.mpris.MediaPlayer2.spotifyd.instance12345"\n]`;
+      // First call: discovery (ListNames), second call: actual command
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, listNamesOutput, '');
+        else cb(null, '', '');
+      });
+      await spotifyService.play();
+      expect(spotifyService._dbusDest).toBe('org.mpris.MediaPlayer2.spotifyd.instance12345');
+    });
+
+    it('should throw when spotifyd not found on D-Bus', async () => {
+      spotifyService._dbusDest = null; // Force discovery
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      await expect(spotifyService.play()).rejects.toThrow('spotifyd not found on D-Bus');
+    });
+
+    it('should cache discovered destination', async () => {
+      spotifyService._dbusDest = null;
+      const listNamesOutput = `array [\n  string "org.mpris.MediaPlayer2.spotifyd.instance99"\n]`;
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, listNamesOutput, '');
+        else cb(null, '', '');
+      });
+      await spotifyService.play();
+      // Clear call count, reset mock for second operation
+      execFile.mockClear();
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, '', '');
+      });
+      await spotifyService.pause();
+      // Only 1 execFile call for pause (no discovery needed — dest is cached)
+      expect(execFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('should clear cached destination on reset', () => {
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance99';
+      spotifyService.reset();
+      expect(spotifyService._dbusDest).toBeNull();
     });
   });
 

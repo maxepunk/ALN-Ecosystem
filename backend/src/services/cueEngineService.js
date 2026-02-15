@@ -603,6 +603,15 @@ class CueEngineService extends EventEmitter {
       const relativeElapsed = elapsed - activeCue.startElapsed;
       activeCue.elapsed = relativeElapsed;
 
+      // Emit progress update for UI
+      const progress = activeCue.maxAt > 0 ? Math.min(100, (relativeElapsed / activeCue.maxAt) * 100) : 100;
+      this.emit('cue:status', {
+        cueId,
+        state: activeCue.state,
+        progress,
+        duration: activeCue.maxAt,
+      });
+
       // Fire entries that should have fired by now
       this._fireTimelineEntries(cueId, relativeElapsed).catch(err => {
         logger.error(`[CueEngine] Error ticking compound cue "${cueId}":`, err.message);
@@ -675,13 +684,16 @@ class CueEngineService extends EventEmitter {
    * @param {number} data.position - Video position in seconds
    */
   handleVideoProgressEvent(data) {
-    const { position } = data;
+    const { position, duration } = data;
     if (position === undefined) return;
+
+    // Convert VLC position (0.0-1.0 ratio) to seconds using duration
+    const positionSeconds = (duration && duration > 0) ? position * duration : position;
 
     // Forward to all active video-driven cues
     for (const [cueId, activeCue] of this.activeCues) {
       if (activeCue.hasVideo && activeCue.state === 'running') {
-        this.handleVideoProgress(cueId, position);
+        this.handleVideoProgress(cueId, positionSeconds);
       }
     }
   }
