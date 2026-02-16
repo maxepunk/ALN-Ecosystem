@@ -292,11 +292,14 @@ describe('LightingService', () => {
       ]);
     });
 
-    it('should return empty array when HA unreachable', async () => {
+    it('should return fallback scenes when HA unreachable', async () => {
       axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
 
       const scenes = await lightingService.getScenes();
-      expect(scenes).toEqual([]);
+      // Falls back to fixtures/scenes.json
+      expect(scenes.length).toBeGreaterThan(0);
+      expect(scenes[0]).toHaveProperty('id');
+      expect(scenes[0]).toHaveProperty('name');
     });
 
     it('should update the scene cache', async () => {
@@ -402,6 +405,9 @@ describe('LightingService', () => {
       });
       await lightingService.getScenes();
 
+      // Set connected = true so it actually POSTs to HA (not simulated)
+      lightingService._connected = true;
+
       await lightingService.activateScene('scene.game_start');
 
       expect(axios.post).toHaveBeenCalledWith(
@@ -466,12 +472,19 @@ describe('LightingService', () => {
       });
     });
 
-    it('should throw when HA returns an error', async () => {
+    it('should still emit scene:activated even when HA returns error', async () => {
+      lightingService._connected = true;
+      const handler = jest.fn();
+      lightingService.on('scene:activated', handler);
       axios.post.mockRejectedValue(new Error('Service not found'));
 
-      await expect(
-        lightingService.activateScene('scene.nonexistent')
-      ).rejects.toThrow();
+      // Should NOT throw — catches error and emits optimistically
+      await lightingService.activateScene('scene.nonexistent');
+
+      expect(handler).toHaveBeenCalledWith({
+        sceneId: 'scene.nonexistent',
+        sceneName: 'scene.nonexistent',
+      });
     });
   });
 
