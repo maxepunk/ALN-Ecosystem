@@ -597,8 +597,12 @@ describe('BluetoothService', () => {
 
   describe('pairDevice()', () => {
     let mockPairProc;
+    let originalGetDeviceName;
+    let originalExecFile;
 
     beforeEach(() => {
+      jest.useFakeTimers();
+
       mockPairProc = new EventEmitter();
       mockPairProc.stdout = new EventEmitter();
       mockPairProc.stderr = new EventEmitter();
@@ -606,10 +610,26 @@ describe('BluetoothService', () => {
       mockPairProc.kill = jest.fn();
       mockPairProc.pid = 54321;
       spawn.mockReturnValue(mockPairProc);
+
+      // Save original methods and mock for pairDevice tests only
+      originalGetDeviceName = bluetoothService._getDeviceName;
+      originalExecFile = bluetoothService._execFile;
+      bluetoothService._getDeviceName = jest.fn().mockResolvedValue('Mock Speaker');
+      bluetoothService._execFile = jest.fn().mockResolvedValue('');
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      // Restore original methods
+      bluetoothService._getDeviceName = originalGetDeviceName;
+      bluetoothService._execFile = originalExecFile;
     });
 
     it('should spawn interactive bluetoothctl and run scan → pair → trust', async () => {
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      // Advance past the 500ms BlueZ settle delay
+      await jest.advanceTimersByTimeAsync(500);
 
       expect(spawn).toHaveBeenCalledWith('bluetoothctl', ['--agent', 'NoInputNoOutput']);
       expect(mockPairProc.stdin.write).toHaveBeenCalledWith('scan on\n');
@@ -635,6 +655,9 @@ describe('BluetoothService', () => {
 
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
 
+      // Advance past the 500ms BlueZ settle delay
+      await jest.advanceTimersByTimeAsync(500);
+
       mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
       mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
       mockPairProc.stdout.emit('data', Buffer.from('Pairing successful\n'));
@@ -656,6 +679,9 @@ describe('BluetoothService', () => {
     it('should reject when pair fails with error', async () => {
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
 
+      // Advance past the 500ms BlueZ settle delay
+      await jest.advanceTimersByTimeAsync(500);
+
       mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
       mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
       mockPairProc.stdout.emit('data', Buffer.from(
@@ -667,6 +693,9 @@ describe('BluetoothService', () => {
 
     it('should handle already-paired devices (AlreadyExists)', async () => {
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      // Advance past the 500ms BlueZ settle delay
+      await jest.advanceTimersByTimeAsync(500);
 
       mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
       mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
@@ -694,7 +723,14 @@ describe('BluetoothService', () => {
       spawn.mockReturnValue(mockPairProc);
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
 
+      // The scan process should be killed synchronously
       expect(scanProc.kill).toHaveBeenCalled();
+
+      // Emit scan:stopped to resolve stopScan() promise
+      scanProc.emit('close', 0);
+
+      // Wait for stopScan() to resolve + 500ms BlueZ settle delay
+      await jest.advanceTimersByTimeAsync(500);
 
       // Complete the pair
       mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
@@ -707,6 +743,9 @@ describe('BluetoothService', () => {
 
     it('should reject when process exits before pair completes', async () => {
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+
+      // Advance past the 500ms BlueZ settle delay
+      await jest.advanceTimersByTimeAsync(500);
 
       mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
       mockPairProc.emit('close', 1);
