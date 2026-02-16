@@ -1185,10 +1185,10 @@ describe('AudioRoutingService', () => {
 
 
 
-      it('should NOT add virtual combine sink if real aln-combine sink exists', async () => {
+      it('should strip real aln-combine sink and add virtual entry when active', async () => {
         audioRoutingService._combineSinkActive = true;
 
-        // Mock output including a real combine-bt sink
+        // Mock output that includes a real aln-combine sink from pactl
         mockExecFileSuccess(
           '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n' +
           '99\taln-combine\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
@@ -1196,14 +1196,14 @@ describe('AudioRoutingService', () => {
 
         const sinks = await audioRoutingService.getAvailableSinksWithCombine();
 
-        // Should return real sinks + NO virtual duplicate
-        expect(sinks).toHaveLength(2); // HDMI, Combine (real)
+        // Real aln-combine stripped, virtual added
+        expect(sinks).toHaveLength(2); // HDMI + virtual combine
 
         const combineSink = sinks.find(s => s.name === 'aln-combine');
         expect(combineSink).toBeTruthy();
-        expect(combineSink.id).toBe('99'); // Real ID
-        expect(combineSink.virtual).toBeUndefined(); // Only virtual one has this flag
-        expect(combineSink.type).toBe('combine'); // Classified correctly
+        expect(combineSink.id).toBe('virtual-combine'); // Virtual, not '99'
+        expect(combineSink.virtual).toBe(true);
+        expect(combineSink.type).toBe('combine');
         expect(combineSink.label).toBe('All Bluetooth Speakers');
       });
 
