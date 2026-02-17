@@ -86,7 +86,7 @@ describe('CueEngineService', () => {
         label: 'Multi',
         commands: [
           { action: 'sound:play', payload: { file: 'a.wav' } },
-          { action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } }
+          { action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } }
         ]
       }]);
 
@@ -377,7 +377,7 @@ describe('CueEngineService', () => {
       cueEngineService.loadCues([{
         id: 'compound-1', label: 'Test Compound',
         timeline: [
-          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } },
+          { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } },
           { at: 5, action: 'sound:play', payload: { file: 'hit.wav' } },
           { at: 10, action: 'lighting:scene:activate', payload: { sceneId: 'scene.bright' } },
         ]
@@ -481,9 +481,11 @@ describe('CueEngineService', () => {
     it('should fire nested cue via cue:fire in timeline', async () => {
       cueEngineService.loadCues([
         { id: 'child', label: 'Child', commands: [{ action: 'sound:play', payload: { file: 'child.wav' } }] },
-        { id: 'parent', label: 'Parent', timeline: [
-          { at: 0, action: 'cue:fire', payload: { cueId: 'child' } }
-        ]}
+        {
+          id: 'parent', label: 'Parent', timeline: [
+            { at: 0, action: 'cue:fire', payload: { cueId: 'child' } }
+          ]
+        }
       ]);
 
       await cueEngineService.fireCue('parent');
@@ -511,10 +513,14 @@ describe('CueEngineService', () => {
 
     it('should cascade stop to children', async () => {
       cueEngineService.loadCues([
-        { id: 'child-cue', label: 'Child',
-          timeline: [{ at: 0, action: 'sound:play', payload: {} }, { at: 120, action: 'sound:play', payload: {} }] },
-        { id: 'parent-cue', label: 'Parent',
-          timeline: [{ at: 0, action: 'cue:fire', payload: { cueId: 'child-cue' } }, { at: 120, action: 'sound:play', payload: {} }] },
+        {
+          id: 'child-cue', label: 'Child',
+          timeline: [{ at: 0, action: 'sound:play', payload: {} }, { at: 120, action: 'sound:play', payload: {} }]
+        },
+        {
+          id: 'parent-cue', label: 'Parent',
+          timeline: [{ at: 0, action: 'cue:fire', payload: { cueId: 'child-cue' } }, { at: 120, action: 'sound:play', payload: {} }]
+        },
       ]);
 
       await cueEngineService.fireCue('parent-cue');
@@ -535,7 +541,7 @@ describe('CueEngineService', () => {
         id: 'video-cue', label: 'Video Cue',
         timeline: [
           { at: 0, action: 'video:play', payload: { file: 'test.mp4' } },
-          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } },
+          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } },
         ]
       }]);
 
@@ -680,7 +686,7 @@ describe('CueEngineService', () => {
         id: 'no-video-cue', label: 'No Video',
         timeline: [
           { at: 0, action: 'sound:play', payload: { file: 'hit.wav' } },
-          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'scene.dim' } },
+          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } },
         ]
       }]);
 

@@ -134,7 +134,7 @@ class BluetoothService extends EventEmitter {
           // Skip CHG lines that are just property updates (RSSI, ManufacturerData, etc.)
           // but track the MAC for post-scan name resolution
           if (/^[0-9A-Fa-f]{2}[:-][0-9A-Fa-f]{2}[:-]/.test(name) ||
-              name.startsWith('RSSI:') || name.startsWith('ManufacturerData')) {
+            name.startsWith('RSSI:') || name.startsWith('ManufacturerData')) {
             if (!this._discoveredAddresses.has(address)) {
               pendingResolve.add(address);
             }
@@ -183,11 +183,22 @@ class BluetoothService extends EventEmitter {
   /**
    * Stop an active scan
    */
-  stopScan() {
+  /**
+   * Stop an active scan
+   * @returns {Promise<void>}
+   */
+  async stopScan() {
     if (this._scanProc) {
-      this._scanProc.kill();
-      // The 'close' handler will set _scanProc = null and emit scan:stopped
+      return new Promise((resolve) => {
+        this.once('scan:stopped', () => resolve());
+        if (this._scanProc) {
+          this._scanProc.kill();
+        } else {
+          resolve();
+        }
+      });
     }
+    return Promise.resolve();
   }
 
   /**
@@ -231,29 +242,52 @@ class BluetoothService extends EventEmitter {
    * @param {string} address - MAC address
    * @returns {Promise<void>}
    */
+  /**
+   * Pair with a Bluetooth device
+   * @param {string} address - Bluetooth MAC address
+   * @returns {Promise<void>}
+   */
   async pairDevice(address) {
     this._validateMAC(address);
 
-    // Stop any active scan to avoid D-Bus conflicts
-    this.stopScan();
+    if (this._pairProc) {
+      throw new Error('Pairing already in progress');
+    }
+
+    // Stop scan and WAIT for it to fully exit/resolve cached devices
+    // This prevents "org.bluez.Error.InProgress"
+    await this.stopScan();
+
+    // Small buffer to let BlueZ settle
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     logger.info('Pairing device', { address });
-    await this._pairInteractive(address);
 
-    // Resolve device name now that it's permanently in BlueZ cache
-    const name = await this._getDeviceName(address);
-    logger.info('Device paired and trusted', { address, name });
-    this.emit('device:paired', { address, name });
-
-    // Auto-connect — for speakers, pair without connect is useless
     try {
-      await this._execFile('bluetoothctl', ['connect', address]);
-      logger.info('Device auto-connected after pair', { address, name });
-      this.emit('device:connected', { address, name });
-    } catch (err) {
-      logger.warn('Auto-connect after pair failed (connect manually)', {
-        address, error: err.message,
-      });
+      await this._pairInteractive(address);
+
+      // Resolve device name now that it's permanently in BlueZ cache
+      const name = await this._getDeviceName(address);
+      logger.info('Device paired and trusted', { address, name });
+      this.emit('device:paired', { address, name });
+
+      // Auto-connect — for speakers, pair without connect is useless
+      try {
+        await this._execFile('bluetoothctl', ['connect', address]);
+        logger.info('Device auto-connected after pair', { address, name });
+        this.emit('device:connected', { address, name });
+      } catch (err) {
+        logger.warn('Auto-connect after pair failed (connect manually)', {
+          address, error: err.message,
+        });
+      }
+    } finally {
+      // Ensure _pairProc is cleared even if something throws unexpectedly
+      // (Though _pairInteractive should handle its own cleanup)
+      if (this._pairProc) {
+        this._pairProc.kill();
+        this._pairProc = null;
+      }
     }
   }
 

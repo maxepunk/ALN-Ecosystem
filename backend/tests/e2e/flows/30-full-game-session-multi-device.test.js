@@ -432,7 +432,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       try {
         const dimActive = await gmPage1.waitForFunction(
           () => {
-            const tile = document.querySelector('.scene-tile[data-scene-id="scene.dim"]');
+            const tile = document.querySelector('.scene-tile[data-scene-id="scene.game"]');
             return tile?.classList.contains('scene-tile--active');
           },
           { timeout: 5000 }

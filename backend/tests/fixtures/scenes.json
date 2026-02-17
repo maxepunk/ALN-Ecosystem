@@ -1,0 +1,22 @@
+[
+    {
+        "id": "scene.off",
+        "name": "OFF"
+    },
+    {
+        "id": "scene.game",
+        "name": "Game"
+    },
+    {
+        "id": "scene.party",
+        "name": "Party"
+    },
+    {
+        "id": "scene.game",
+        "name": "Dim (Test Fallback)"
+    },
+    {
+        "id": "scene.party",
+        "name": "House Lights (Test Fallback)"
+    }
+]

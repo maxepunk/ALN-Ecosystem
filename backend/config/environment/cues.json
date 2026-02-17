@@ -4,19 +4,38 @@
       "id": "attention-before-video",
       "label": "Pre-Video Alert",
       "icon": "alert",
-      "trigger": { "event": "video:loading" },
+      "trigger": {
+        "event": "video:loading"
+      },
       "commands": [
-        { "action": "sound:play", "payload": { "file": "attention.wav" } },
-        { "action": "lighting:scene:activate", "payload": { "sceneId": "scene.dim" } }
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "attention.wav"
+          }
+        },
+        {
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.game"
+          }
+        }
       ]
     },
     {
       "id": "restore-after-video",
       "label": "Post-Video Restore",
       "icon": "alert",
-      "trigger": { "event": "video:completed" },
+      "trigger": {
+        "event": "video:completed"
+      },
       "commands": [
-        { "action": "lighting:scene:activate", "payload": { "sceneId": "scene.house_lights" } }
+        {
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.party"
+          }
+        }
       ]
     },
     {
@@ -25,17 +44,47 @@
       "icon": "sound",
       "quickFire": true,
       "commands": [
-        { "action": "sound:play", "payload": { "file": "tension.wav" } }
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "tension.wav"
+          }
+        }
       ]
     },
     {
       "id": "e2e-compound-test",
       "label": "E2E Compound Test",
+      "quickFire": true,
       "timeline": [
-        { "at": 0, "action": "sound:play", "payload": { "file": "test_tone.wav" } },
-        { "at": 1, "action": "lighting:scene:activate", "payload": { "sceneId": "scene.dim" } },
-        { "at": 3, "action": "sound:play", "payload": { "file": "test_tone.wav" } },
-        { "at": 4, "action": "lighting:scene:activate", "payload": { "sceneId": "scene.house_lights" } }
+        {
+          "at": 0,
+          "action": "sound:play",
+          "payload": {
+            "file": "test_tone.wav"
+          }
+        },
+        {
+          "at": 1,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.game"
+          }
+        },
+        {
+          "at": 3,
+          "action": "sound:play",
+          "payload": {
+            "file": "test_tone.wav"
+          }
+        },
+        {
+          "at": 4,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.party"
+          }
+        }
       ],
       "duration": 5
     },
@@ -43,8 +92,20 @@
       "id": "e2e-video-compound",
       "label": "E2E Video Compound",
       "timeline": [
-        { "at": 0, "action": "video:queue:add", "payload": { "videoFile": "jaw011.mp4" } },
-        { "at": 1, "action": "sound:play", "payload": { "file": "test_tone.wav" } }
+        {
+          "at": 0,
+          "action": "video:queue:add",
+          "payload": {
+            "videoFile": "jaw011.mp4"
+          }
+        },
+        {
+          "at": 1,
+          "action": "sound:play",
+          "payload": {
+            "file": "test_tone.wav"
+          }
+        }
       ]
     }
   ]
