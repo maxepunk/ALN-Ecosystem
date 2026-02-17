@@ -383,8 +383,9 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'audio:route:set': {
         const { stream = 'video', sink } = payload || {};
         if (!sink) throw new Error('sink is required');
+        // Apply first to validate sink exists, THEN persist
+        await audioRoutingService.applyRouting(stream, sink);
         await audioRoutingService.setStreamRoute(stream, sink);
-        await audioRoutingService.applyRouting(stream);
         resultMessage = `Audio route set: ${stream} -> ${sink}`;
         logger.info('Audio route set', { source, deviceId, stream, sink });
         break;
@@ -574,7 +575,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       broadcasts
     };
   } catch (error) {
-    logger.error(`[executeCommand] ${action} failed:`, error.message);
+    logger.error(`[executeCommand] ${action} failed`, { error: error.message, action, source });
     return {
       success: false,
       message: error.message,

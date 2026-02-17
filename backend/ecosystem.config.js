@@ -1,8 +1,48 @@
 /**
  * PM2 Ecosystem Configuration
  * Production deployment configuration for ALN Orchestrator
- * Optimized for Raspberry Pi 4 (8GB RAM)
+ * Optimized for Raspberry Pi (8GB RAM)
  */
+
+const fs = require('fs');
+
+/**
+ * Detect Raspberry Pi model from device tree.
+ */
+function detectPlatform() {
+  try {
+    const model = fs.readFileSync('/proc/device-tree/model', 'utf8').trim();
+    if (model.includes('Raspberry Pi 5')) return 'pi5';
+    if (model.includes('Raspberry Pi 4')) return 'pi4';
+    if (model.includes('Raspberry Pi')) return 'pi-other';
+  } catch {
+    // Not a Pi (dev machine, CI, etc.)
+  }
+  return 'generic';
+}
+
+/**
+ * Get VLC hardware acceleration flags for the current platform.
+ */
+function getVlcHwArgs() {
+  if (process.env.VLC_HW_ACCEL !== undefined) {
+    return process.env.VLC_HW_ACCEL;
+  }
+  const platform = detectPlatform();
+  switch (platform) {
+    case 'pi4':
+      return '--codec=avcodec --avcodec-hw=v4l2_m2m';
+    case 'pi5':
+    case 'pi-other':
+    case 'generic':
+    default:
+      return '';
+  }
+}
+
+const VLC_BASE_ARGS = '--no-loop --intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 -A pulse --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd';
+const vlcHwArgs = getVlcHwArgs();
+const VLC_ARGS = vlcHwArgs ? `${VLC_BASE_ARGS} ${vlcHwArgs}` : VLC_BASE_ARGS;
 
 module.exports = {
   apps: [
@@ -12,7 +52,7 @@ module.exports = {
       script: './src/server.js',
       instances: 1, // Single instance for stateful WebSocket connections
       exec_mode: 'fork', // Fork mode for stateful application
-      
+
       // Environment variables
       env: {
         NODE_ENV: 'production',
@@ -40,50 +80,50 @@ module.exports = {
         SSL_CERT_PATH: './ssl/cert.pem',
         HTTP_REDIRECT_PORT: 8000,
       },
-      
+
       env_staging: {
         NODE_ENV: 'staging',
         PORT: 3000,
         HOST: '0.0.0.0',
       },
-      
+
       // Process management
       watch: false, // Disable in production
       ignore_watch: ['node_modules', 'logs', 'data', '.git'],
       max_memory_restart: '2G', // Restart if memory exceeds 2GB (8GB Pi)
-      
+
       // Logging
       log_file: './logs/combined.log',
       error_file: './logs/error.log',
       out_file: './logs/out.log',
       log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
       merge_logs: true,
-      
+
       // Restart behavior
       autorestart: true,
       min_uptime: '10s', // Minimum uptime to consider app started
       max_restarts: 10, // Maximum restarts within min_uptime
-      
+
       // Graceful shutdown
       kill_timeout: 5000, // Time in ms before sending SIGKILL
       wait_ready: false, // Disabled - app doesn't send ready signal
       listen_timeout: 3000, // Time to wait for app to listen
-      
+
       // Monitoring
       instance_var: 'INSTANCE_ID',
-      
+
       // Node.js arguments
       node_args: '--max-old-space-size=2048', // 2GB max for 8GB Raspberry Pi
-      
+
       // Cron restart (optional - restart daily at 3 AM)
       // cron_restart: '0 3 * * *',
-      
+
       // Error handling
       combine_logs: true,
-      
+
       // Development helpers (disabled in production)
       vizion: false, // Disable vizion features
-      
+
       // Health check
       health_check: {
         interval: 30000, // 30 seconds
@@ -96,8 +136,9 @@ module.exports = {
     {
       name: 'vlc-http',
       script: '/usr/bin/cvlc',
-      // Optimized for RPi 4: Hardware decode via v4l2_m2m, PulseAudio for compatibility with PipeWire
-      args: '--no-loop --intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 -A pulse --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd --codec=avcodec --avcodec-hw=v4l2_m2m',
+      // Platform-aware: Pi 4 uses v4l2_m2m hw decode, Pi 5+ uses auto-detect.
+      // Override with VLC_HW_ACCEL env var (e.g., VLC_HW_ACCEL='' to force software decode).
+      args: VLC_ARGS,
       interpreter: 'none', // Not a Node.js process
       exec_mode: 'fork',
 
@@ -125,7 +166,7 @@ module.exports = {
       vizion: false,
     },
   ],
-  
+
   // Deploy configuration (optional)
   deploy: {
     production: {
@@ -138,7 +179,7 @@ module.exports = {
       'post-deploy': 'npm install && pm2 reload ecosystem.config.js --env production',
       'pre-setup': 'mkdir -p /home/pi/aln-orchestrator',
     },
-    
+
     staging: {
       user: 'deploy',
       host: ['staging.aln.local'],
@@ -152,14 +193,14 @@ module.exports = {
 
 /**
  * PM2 Commands Reference:
- * 
+ *
  * Start application:
  *   pm2 start ecosystem.config.js
- * 
+ *
  * Start in specific environment:
  *   pm2 start ecosystem.config.js --env production
  *   pm2 start ecosystem.config.js --env development
- * 
+ *
  * Management commands:
  *   pm2 status              # Show status
  *   pm2 logs                # Show logs
@@ -169,16 +210,16 @@ module.exports = {
  *   pm2 restart aln-orchestrator # Hard restart
  *   pm2 stop aln-orchestrator    # Stop application
  *   pm2 delete aln-orchestrator  # Remove from PM2
- * 
+ *
  * Save configuration:
  *   pm2 save                # Save current process list
  *   pm2 startup             # Generate startup script
- * 
+ *
  * Deploy commands:
  *   pm2 deploy production setup    # Initial setup
  *   pm2 deploy production          # Deploy to production
  *   pm2 deploy production revert 1 # Revert to previous deployment
- * 
+ *
  * Monitoring:
  *   pm2 web                 # Start web monitoring (port 9615)
  *   pm2 plus                # Enhanced monitoring (requires account)

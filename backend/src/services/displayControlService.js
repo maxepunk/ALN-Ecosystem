@@ -32,6 +32,7 @@ class DisplayControlService extends EventEmitter {
     this.videoQueueService = null;
     this.pendingVideo = null;  // Track video being played
     this._initialized = false;
+    this._switchLock = Promise.resolve();
   }
 
   /**
@@ -49,15 +50,12 @@ class DisplayControlService extends EventEmitter {
     this.vlcService = vlcService;
     this.videoQueueService = videoQueueService;
 
-    // Listen for video completion to return to previous mode
-    // Use videoQueueService.video:completed (queue-level event) not vlcService.video:stopped (raw VLC event)
-    // This integrates with the queue abstraction rather than bypassing it
-    // Store bound handlers for cleanup in reset()
+    // ONLY listen to video:idle (queue empty), NOT video:completed (per-video).
+    // video:completed fires after each video even when more are queued.
+    // displayControlService should only restore the display when the entire queue drains.
     if (this.videoQueueService) {
-      this._boundVideoCompleteHandler = () => this._handleVideoComplete();
-      this._boundQueueEmptyHandler = () => this._handleQueueEmpty();
-      this.videoQueueService.on('video:completed', this._boundVideoCompleteHandler);
-      this.videoQueueService.on('video:idle', this._boundQueueEmptyHandler);
+      this._boundVideoIdleHandler = () => this._handleVideoComplete();
+      this.videoQueueService.on('video:idle', this._boundVideoIdleHandler);
     }
 
     this._initialized = true;
@@ -86,11 +84,34 @@ class DisplayControlService extends EventEmitter {
   }
 
   /**
+   * Serialize async transitions so only one runs at a time.
+   * Each call waits for the previous lock holder to finish before executing.
+   * @param {Function} fn - Async function to execute under the lock
+   * @returns {Promise<*>} Result of fn()
+   * @private
+   */
+  _withLock(fn) {
+    const prev = this._switchLock;
+    let resolve;
+    this._switchLock = new Promise(r => { resolve = r; });
+    return prev.then(() => fn()).finally(resolve);
+  }
+
+  /**
    * Switch to Idle Loop mode
    * VLC plays idle-loop.mp4 on continuous loop
    * @returns {Promise<Object>} Result of mode switch
    */
   async setIdleLoop() {
+    return this._withLock(() => this._doSetIdleLoop());
+  }
+
+  /**
+   * Internal: Switch to Idle Loop mode (no lock, for use inside _withLock)
+   * @returns {Promise<Object>} Result of mode switch
+   * @private
+   */
+  async _doSetIdleLoop() {
     logger.info('[DisplayControl] Switching to IDLE_LOOP mode');
 
     const oldMode = this.currentMode;
@@ -129,6 +150,15 @@ class DisplayControlService extends EventEmitter {
    * @returns {Promise<Object>} Result of mode switch
    */
   async setScoreboard() {
+    return this._withLock(() => this._doSetScoreboard());
+  }
+
+  /**
+   * Internal: Switch to Scoreboard mode (no lock, for use inside _withLock)
+   * @returns {Promise<Object>} Result of mode switch
+   * @private
+   */
+  async _doSetScoreboard() {
     logger.info('[DisplayControl] Switching to SCOREBOARD mode');
 
     const oldMode = this.currentMode;
@@ -167,6 +197,16 @@ class DisplayControlService extends EventEmitter {
    * @returns {Promise<Object>} Result of video play
    */
   async playVideo(videoFile) {
+    return this._withLock(() => this._doPlayVideo(videoFile));
+  }
+
+  /**
+   * Internal: Play a video (no lock, for use inside _withLock)
+   * @param {string} videoFile - Video filename to play
+   * @returns {Promise<Object>} Result of video play
+   * @private
+   */
+  async _doPlayVideo(videoFile) {
     logger.info('[DisplayControl] Playing video', { videoFile });
 
     // Store current mode to return to after video
@@ -210,6 +250,7 @@ class DisplayControlService extends EventEmitter {
 
   /**
    * Handle video completion - return to previous mode
+   * Called from video:idle listener, acquires lock to serialize with other transitions.
    * @private
    */
   async _handleVideoComplete() {
@@ -224,7 +265,7 @@ class DisplayControlService extends EventEmitter {
     const completedVideo = this.pendingVideo;
     this.pendingVideo = null;
 
-    // Return to previous mode
+    // Return to previous mode (goes through public API to acquire lock)
     switch (this.previousMode) {
       case DisplayMode.SCOREBOARD:
         await this.setScoreboard();
@@ -242,31 +283,23 @@ class DisplayControlService extends EventEmitter {
   }
 
   /**
-   * Handle queue empty - return to idle loop if in VIDEO mode
-   * @private
-   */
-  async _handleQueueEmpty() {
-    if (this.currentMode === DisplayMode.VIDEO) {
-      logger.info('[DisplayControl] Video queue empty, returning to previous mode');
-      await this._handleVideoComplete();
-    }
-  }
-
-  /**
    * Toggle between IDLE_LOOP and SCOREBOARD modes
    * Useful for quick switching from admin panel
    * @returns {Promise<Object>} Result of mode toggle
    */
   async toggleMode() {
-    if (this.currentMode === DisplayMode.IDLE_LOOP) {
-      return await this.setScoreboard();
-    } else if (this.currentMode === DisplayMode.SCOREBOARD) {
-      return await this.setIdleLoop();
-    } else {
-      // If in VIDEO mode, do nothing (let video complete)
-      logger.info('[DisplayControl] Cannot toggle while in VIDEO mode');
-      return { success: false, error: 'Cannot toggle during video playback' };
-    }
+    return this._withLock(async () => {
+      if (this.currentMode === DisplayMode.IDLE_LOOP) {
+        // Call internal _do* method to avoid deadlock (already holding the lock)
+        return await this._doSetScoreboard();
+      } else if (this.currentMode === DisplayMode.SCOREBOARD) {
+        return await this._doSetIdleLoop();
+      } else {
+        // If in VIDEO mode, do nothing (let video complete)
+        logger.info('[DisplayControl] Cannot toggle while in VIDEO mode');
+        return { success: false, error: 'Cannot toggle during video playback' };
+      }
+    });
   }
 
   /**
@@ -275,8 +308,7 @@ class DisplayControlService extends EventEmitter {
   reset() {
     // Remove listeners WE added to other services FIRST
     if (this.videoQueueService) {
-      this.videoQueueService.removeListener('video:completed', this._boundVideoCompleteHandler);
-      this.videoQueueService.removeListener('video:idle', this._boundQueueEmptyHandler);
+      this.videoQueueService.removeListener('video:idle', this._boundVideoIdleHandler);
     }
 
     // Then remove our own listeners
@@ -289,8 +321,8 @@ class DisplayControlService extends EventEmitter {
     this.vlcService = null;
     this.videoQueueService = null;
     this._initialized = false;
-    this._boundVideoCompleteHandler = null;
-    this._boundQueueEmptyHandler = null;
+    this._switchLock = Promise.resolve();
+    this._boundVideoIdleHandler = null;
     logger.info('[DisplayControl] Service reset');
   }
 }

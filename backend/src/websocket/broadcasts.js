@@ -560,6 +560,34 @@ function setupBroadcastListeners(io, services) {
         stream: data?.stream, ducked: data?.ducked, volume: data?.volume
       });
     });
+
+    // Sink add/remove events — refresh GM dropdown sink list
+    addTrackedListener(audioRoutingService, 'sink:added', async (data) => {
+      try {
+        const status = await audioRoutingService.getRoutingStatus();
+        emitToRoom(io, 'gm', 'audio:sinks', {
+          type: 'added',
+          sinkId: data.id,
+          availableSinks: status.availableSinks,
+        });
+        logger.debug('Broadcasted audio:sinks (added)', { sinkId: data.id });
+      } catch (err) {
+        logger.warn('Failed to broadcast sink:added', { error: err.message });
+      }
+    });
+    addTrackedListener(audioRoutingService, 'sink:removed', async (data) => {
+      try {
+        const status = await audioRoutingService.getRoutingStatus();
+        emitToRoom(io, 'gm', 'audio:sinks', {
+          type: 'removed',
+          sinkId: data.id,
+          availableSinks: status.availableSinks,
+        });
+        logger.debug('Broadcasted audio:sinks (removed)', { sinkId: data.id });
+      } catch (err) {
+        logger.warn('Failed to broadcast sink:removed', { error: err.message });
+      }
+    });
   }
 
   // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService

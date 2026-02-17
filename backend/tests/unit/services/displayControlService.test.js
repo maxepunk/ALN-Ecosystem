@@ -346,4 +346,53 @@ describe('DisplayControlService - State Machine', () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe('Video completion event wiring', () => {
+    it('should NOT register listener on video:completed', () => {
+      // video:completed fires per-video, even when queue has more items.
+      // displayControlService should only act on video:idle (queue empty).
+      const registeredEvents = mockVideoQueueService.on.mock.calls.map(c => c[0]);
+      expect(registeredEvents).not.toContain('video:completed');
+    });
+
+    it('should register listener on video:idle', () => {
+      const registeredEvents = mockVideoQueueService.on.mock.calls.map(c => c[0]);
+      expect(registeredEvents).toContain('video:idle');
+    });
+  });
+
+  describe('Concurrent mode switch protection', () => {
+    it('should serialize concurrent setIdleLoop and setScoreboard calls', async () => {
+      const callOrder = [];
+
+      // Mock displayDriver methods with delays to detect interleaving
+      // displayControlService imports displayDriver at module level, so we need
+      // to mock the vlcService methods which are already injected as mocks
+      mockVlcService.returnToIdleLoop.mockImplementation(async () => {
+        callOrder.push('idle:start');
+        await new Promise(r => setTimeout(r, 30));
+        callOrder.push('idle:end');
+      });
+      mockVlcService.stop.mockImplementation(async () => {
+        callOrder.push('scoreboard:start');
+        await new Promise(r => setTimeout(r, 30));
+        callOrder.push('scoreboard:end');
+      });
+
+      // Fire both concurrently
+      await Promise.all([
+        displayControlService.setIdleLoop(),
+        displayControlService.setScoreboard(),
+      ]);
+
+      // Verify serialization: first transition completes fully before second starts
+      const starts = callOrder.filter(s => s.endsWith(':start'));
+      const ends = callOrder.filter(s => s.endsWith(':end'));
+      if (starts.length > 1) {
+        const firstEndIdx = callOrder.indexOf(ends[0]);
+        const secondStartIdx = callOrder.indexOf(starts[1]);
+        expect(firstEndIdx).toBeLessThan(secondStartIdx);
+      }
+    });
+  });
 });

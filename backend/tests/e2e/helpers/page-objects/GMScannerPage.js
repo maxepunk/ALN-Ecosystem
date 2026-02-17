@@ -256,11 +256,15 @@ class GMScannerPage {
   }
 
   /**
-   * Confirm team selection and proceed to scan screen
+   * Confirm team selection and proceed to scan screen.
+   * In networked mode, confirmTeamId() does a WebSocket round-trip
+   * (up to 10s) before calling showScreen('scan'). 15s timeout
+   * covers the 10s WebSocket timeout + 5s buffer.
    */
   async confirmTeam() {
+    await this.confirmTeamBtn.waitFor({ state: 'visible' });
     await this.confirmTeamBtn.click();
-    await this.scanScreen.waitFor({ state: 'visible', timeout: 5000 });
+    await this.scanScreen.waitFor({ state: 'visible', timeout: 15000 });
   }
 
   /**

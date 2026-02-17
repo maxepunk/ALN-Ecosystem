@@ -317,8 +317,8 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
         mockIo
       );
 
+      expect(audioRoutingService.applyRouting).toHaveBeenCalledWith('video', 'bluetooth');
       expect(audioRoutingService.setStreamRoute).toHaveBeenCalledWith('video', 'bluetooth');
-      expect(audioRoutingService.applyRouting).toHaveBeenCalledWith('video');
       const ack = getAck();
       expect(ack.action).toBe('audio:route:set');
       expect(ack.success).toBe(true);
@@ -331,8 +331,8 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
         mockIo
       );
 
+      expect(audioRoutingService.applyRouting).toHaveBeenCalledWith('video', 'hdmi');
       expect(audioRoutingService.setStreamRoute).toHaveBeenCalledWith('video', 'hdmi');
-      expect(audioRoutingService.applyRouting).toHaveBeenCalledWith('video');
     });
 
     it('should fail when sink is missing', async () => {

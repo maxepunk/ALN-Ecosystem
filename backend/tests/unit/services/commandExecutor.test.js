@@ -413,6 +413,42 @@ describe('commandExecutor', () => {
     });
   });
 
+  describe('audio:route:set - apply-before-persist', () => {
+    it('should not persist route if applyRouting fails', async () => {
+      audioRoutingService.setStreamRoute.mockResolvedValue();
+      audioRoutingService.applyRouting.mockRejectedValue(new Error('No available sink'));
+
+      const result = await executeCommand({
+        action: 'audio:route:set',
+        payload: { stream: 'video', sink: 'nonexistent' },
+        source: 'gm',
+        deviceId: 'test-device'
+      });
+
+      expect(result.success).toBe(false);
+      // setStreamRoute should NOT have been called because applyRouting failed
+      expect(audioRoutingService.setStreamRoute).not.toHaveBeenCalled();
+    });
+
+    it('should persist route after successful applyRouting', async () => {
+      audioRoutingService.setStreamRoute.mockResolvedValue();
+      audioRoutingService.applyRouting.mockResolvedValue();
+
+      const result = await executeCommand({
+        action: 'audio:route:set',
+        payload: { stream: 'video', sink: 'hdmi' },
+        source: 'gm',
+        deviceId: 'test-device'
+      });
+
+      expect(result.success).toBe(true);
+      // applyRouting called first, then setStreamRoute persists
+      const applyOrder = audioRoutingService.applyRouting.mock.invocationCallOrder[0];
+      const setOrder = audioRoutingService.setStreamRoute.mock.invocationCallOrder[0];
+      expect(applyOrder).toBeLessThan(setOrder);
+    });
+  });
+
   describe('lighting commands', () => {
     it('should execute lighting:scene:activate', async () => {
       const result = await executeCommand({
@@ -460,6 +496,30 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(false);
       expect(result.message).toContain('Service error');
+    });
+
+    it('should log error message in metadata when command throws', async () => {
+      // Arrange: applyRouting succeeds (default mock), but setStreamRoute rejects.
+      // This tests the logger.error metadata format in the catch block.
+      const mockAudioRouting = require('../../../src/services/audioRoutingService');
+      mockAudioRouting.setStreamRoute = jest.fn().mockRejectedValue(new Error('Sink not found'));
+      const logger = require('../../../src/utils/logger');
+
+      // Act
+      const result = await executeCommand({
+        action: 'audio:route:set',
+        payload: { stream: 'video', sink: 'nonexistent' },
+        source: 'gm',
+        deviceId: 'test-device'
+      });
+
+      // Assert: error message must appear in structured metadata, not as a dropped string
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Sink not found');
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.stringContaining('audio:route:set failed'),
+        expect.objectContaining({ error: 'Sink not found' })
+      );
     });
   });
 

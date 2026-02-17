@@ -550,6 +550,11 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockBluetoothService = new EventEmitter();
       mockAudioRoutingService = new EventEmitter();
       mockAudioRoutingService.handleDuckingEvent = jest.fn();
+      mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({
+        routes: { video: 'hdmi' },
+        defaultSink: 'hdmi',
+        availableSinks: [{ id: '1', name: 'hdmi' }]
+      });
       mockLightingService = new EventEmitter();
     });
 
@@ -853,6 +858,75 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
             offlineQueueService: mockOfflineQueueService
           });
         }).not.toThrow();
+      });
+    });
+
+    describe('audio sink events', () => {
+      it('should broadcast audio:sinks when sink:added fires', async () => {
+        setupWithEnvServices();
+
+        mockAudioRoutingService.emit('sink:added', { id: '42' });
+
+        // Handler is async (calls getRoutingStatus), wait for it
+        await new Promise(r => setImmediate(r));
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'audio:sinks',
+          expect.objectContaining({
+            event: 'audio:sinks',
+            data: expect.objectContaining({ type: 'added' }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should broadcast audio:sinks when sink:removed fires', async () => {
+        setupWithEnvServices();
+
+        mockAudioRoutingService.emit('sink:removed', { id: '42' });
+
+        // Handler is async (calls getRoutingStatus), wait for it
+        await new Promise(r => setImmediate(r));
+
+        expect(mockIo.to).toHaveBeenCalledWith('gm');
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'audio:sinks',
+          expect.objectContaining({
+            event: 'audio:sinks',
+            data: expect.objectContaining({ type: 'removed' }),
+            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+          })
+        );
+      });
+
+      it('should include availableSinks from getRoutingStatus in broadcast', async () => {
+        const mockSinks = [
+          { id: '1', name: 'hdmi' },
+          { id: '2', name: 'bluez_output.XX' }
+        ];
+        mockAudioRoutingService.getRoutingStatus.mockResolvedValue({
+          routes: { video: 'hdmi' },
+          defaultSink: 'hdmi',
+          availableSinks: mockSinks
+        });
+
+        setupWithEnvServices();
+
+        mockAudioRoutingService.emit('sink:added', { id: '2' });
+
+        await new Promise(r => setImmediate(r));
+
+        expect(mockIo.emit).toHaveBeenCalledWith(
+          'audio:sinks',
+          expect.objectContaining({
+            data: expect.objectContaining({
+              type: 'added',
+              sinkId: '2',
+              availableSinks: mockSinks
+            })
+          })
+        );
       });
     });
 

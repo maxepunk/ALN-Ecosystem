@@ -25,6 +25,7 @@ jest.mock('../../../src/utils/logger', () => ({
   error: jest.fn(),
   debug: jest.fn(),
 }));
+const logger = require('../../../src/utils/logger');
 
 const audioRoutingService = require('../../../src/services/audioRoutingService');
 
@@ -745,9 +746,7 @@ describe('AudioRoutingService', () => {
 
       expect(status).toEqual(expect.objectContaining({
         routes: expect.objectContaining({
-          video: expect.objectContaining({
-            sink: 'hdmi',
-          }),
+          video: 'hdmi',
         }),
         defaultSink: 'hdmi',
         availableSinks: expect.arrayContaining([
@@ -763,7 +762,36 @@ describe('AudioRoutingService', () => {
       mockExecFileSuccess('');
 
       const status = await audioRoutingService.getRoutingStatus();
-      expect(status.routes.video.sink).toBe('bluetooth');
+      expect(status.routes.video).toBe('bluetooth');
+    });
+  });
+
+  describe('getRoutingStatus - routes shape', () => {
+    it('should return routes as flat strings, not objects', async () => {
+      // Set a route (internally stored as { sink: 'hdmi' })
+      await audioRoutingService.setStreamRoute('video', 'hdmi');
+
+      mockExecFileSuccess('');
+
+      const status = await audioRoutingService.getRoutingStatus();
+
+      // Route values must be plain strings for GM Scanner dropdown compatibility
+      expect(status.routes.video).toBe('hdmi');
+      expect(typeof status.routes.video).toBe('string');
+    });
+
+    it('should normalize all configured routes to strings', async () => {
+      await audioRoutingService.setStreamRoute('video', 'hdmi');
+      await audioRoutingService.setStreamRoute('spotify', 'bluetooth');
+      await audioRoutingService.setStreamRoute('sound', 'aln-combine');
+
+      mockExecFileSuccess('');
+
+      const status = await audioRoutingService.getRoutingStatus();
+
+      expect(status.routes.video).toBe('hdmi');
+      expect(status.routes.spotify).toBe('bluetooth');
+      expect(status.routes.sound).toBe('aln-combine');
     });
   });
 
@@ -1232,6 +1260,23 @@ describe('AudioRoutingService', () => {
         // 2 real sinks + 1 virtual combine-bt
         expect(sinks).toHaveLength(3);
         expect(sinks.filter(s => s.virtual !== true)).toHaveLength(2);
+      });
+    });
+
+    describe('getAvailableSinksWithCombine - filtering', () => {
+      it('should exclude auto_null sink from available sinks', async () => {
+        audioRoutingService.getAvailableSinks = jest.fn().mockResolvedValue([
+          { id: '1', name: 'alsa_output.hdmi', driver: 'alsa', format: '', state: 'RUNNING', type: 'hdmi' },
+          { id: '2', name: 'auto_null', driver: 'null', format: '', state: 'RUNNING', type: 'other' },
+          { id: '3', name: 'bluez_output.XX_XX', driver: 'bluez', format: '', state: 'RUNNING', type: 'bluetooth' },
+        ]);
+
+        const sinks = await audioRoutingService.getAvailableSinksWithCombine();
+
+        const sinkNames = sinks.map(s => s.name);
+        expect(sinkNames).not.toContain('auto_null');
+        expect(sinkNames).toContain('alsa_output.hdmi');
+        expect(sinkNames).toContain('bluez_output.XX_XX');
       });
     });
 
@@ -1733,6 +1778,85 @@ describe('AudioRoutingService', () => {
         expect(() => {
           audioRoutingService.handleDuckingEvent('video', 'started');
         }).not.toThrow();
+      });
+    });
+
+    describe('ducking engine - missing sink-input handling', () => {
+      it('should not log error when target stream has no sink-input', async () => {
+        // Load ducking rules
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+        ]);
+
+        // Mock setStreamVolume to throw (spotifyd not running)
+        audioRoutingService.setStreamVolume = jest.fn()
+          .mockRejectedValue(new Error('No active sink-input found for stream \'spotify\''));
+
+        // Trigger ducking
+        audioRoutingService.handleDuckingEvent('video', 'started');
+
+        // Wait for async .catch()
+        await new Promise(r => setTimeout(r, 50));
+
+        // Should warn, not error
+        expect(logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('sink-input not available for ducking'),
+          expect.any(Object)
+        );
+        expect(logger.error).not.toHaveBeenCalledWith(
+          expect.stringContaining('Failed to set ducked volume'),
+          expect.any(Object)
+        );
+      });
+
+      it('should not log error when restoring volume and target has no sink-input', async () => {
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+        ]);
+
+        // Start ducking first (with successful volume set)
+        const mockSetVolume = jest.fn()
+          .mockResolvedValueOnce()  // First call (duck start) succeeds
+          .mockRejectedValue(new Error('No active sink-input found for stream \'spotify\''));  // Restore fails
+        audioRoutingService.setStreamVolume = mockSetVolume;
+
+        audioRoutingService.handleDuckingEvent('video', 'started');
+        await new Promise(r => setTimeout(r, 10));
+
+        jest.clearAllMocks();
+
+        // Trigger restore
+        audioRoutingService.handleDuckingEvent('video', 'completed');
+        await new Promise(r => setTimeout(r, 50));
+
+        // Should warn, not error
+        expect(logger.warn).toHaveBeenCalledWith(
+          expect.stringContaining('sink-input not available'),
+          expect.any(Object)
+        );
+        expect(logger.error).not.toHaveBeenCalledWith(
+          expect.stringContaining('Failed to restore volume'),
+          expect.any(Object)
+        );
+      });
+
+      it('should still log error for unexpected volume failures', async () => {
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+        ]);
+
+        // Mock setStreamVolume to throw an unexpected error
+        audioRoutingService.setStreamVolume = jest.fn()
+          .mockRejectedValue(new Error('PipeWire connection refused'));
+
+        audioRoutingService.handleDuckingEvent('video', 'started');
+        await new Promise(r => setTimeout(r, 50));
+
+        // Should still log as error for unexpected failures
+        expect(logger.error).toHaveBeenCalledWith(
+          expect.stringContaining('Failed to set ducked volume'),
+          expect.any(Object)
+        );
       });
     });
   });

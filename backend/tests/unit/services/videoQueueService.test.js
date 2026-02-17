@@ -128,4 +128,41 @@ describe('VideoQueueService - Queue Management', () => {
       videoQueueService.processQueue();
     });
   });
+
+  describe('processQueue - no direct VLC idle call', () => {
+    let vlcService;
+
+    beforeEach(() => {
+      // Access the vlcService that videoQueueService uses internally
+      vlcService = require('../../../src/services/vlcService');
+      // Spy on returnToIdleLoop (may not exist as mock, so create spy)
+      if (!jest.isMockFunction(vlcService.returnToIdleLoop)) {
+        jest.spyOn(vlcService, 'returnToIdleLoop').mockResolvedValue(true);
+      }
+      vlcService.returnToIdleLoop.mockClear();
+    });
+
+    afterEach(() => {
+      if (jest.isMockFunction(vlcService.returnToIdleLoop) && vlcService.returnToIdleLoop.mockRestore) {
+        vlcService.returnToIdleLoop.mockRestore();
+      }
+    });
+
+    it('should NOT call vlcService.returnToIdleLoop when queue is empty', async () => {
+      // displayControlService owns the post-video display decision via video:idle
+      await videoQueueService.processQueue();
+
+      expect(vlcService.returnToIdleLoop).not.toHaveBeenCalled();
+    });
+
+    it('should emit video:idle when queue is empty', async () => {
+      const idleHandler = jest.fn();
+      videoQueueService.on('video:idle', idleHandler);
+
+      await videoQueueService.processQueue();
+
+      expect(idleHandler).toHaveBeenCalled();
+      videoQueueService.removeListener('video:idle', idleHandler);
+    });
+  });
 });

@@ -17,7 +17,7 @@ const DEFAULTS = {
     connectedDevices: [],
   },
   audio: {
-    routes: { video: { sink: 'hdmi' } },
+    routes: { video: 'hdmi' },
     defaultSink: 'hdmi',
     availableSinks: [],
   },

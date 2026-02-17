@@ -74,13 +74,8 @@ class VideoQueueService extends EventEmitter {
     const nextItem = this.queue.find(item => item.isPending());
     if (!nextItem) {
       this.currentItem = null;
-
-      // Return to idle loop if enabled
-      if (config.features.videoPlayback) {
-        await vlcService.returnToIdleLoop();
-      }
-
-      this.emit('video:idle'); // Emit idle when queue is empty
+      // displayControlService handles display restoration via video:idle listener
+      this.emit('video:idle');
       return; // Nothing to play
     }
 

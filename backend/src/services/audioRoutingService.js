@@ -225,8 +225,14 @@ class AudioRoutingService extends EventEmitter {
    * @returns {Object} Full routing state
    */
   async getRoutingStatus() {
+    // Normalize routes to flat strings (internal format is { sink: 'hdmi' })
+    // so sync:full and routing:changed events use the same shape for the GM Scanner
+    const routes = {};
+    for (const [stream, route] of Object.entries(this._routingData.routes)) {
+      routes[stream] = typeof route === 'object' ? route.sink : route;
+    }
     return {
-      routes: { ...this._routingData.routes },
+      routes,
       defaultSink: this._routingData.defaultSink,
       availableSinks: await this.getAvailableSinksWithCombine(),
     };
@@ -238,12 +244,13 @@ class AudioRoutingService extends EventEmitter {
    * Apply routing for a stream: find the VLC sink-input and move it to the target sink.
    * Falls back to HDMI when the target sink is unavailable.
    * @param {string} stream - Stream name
+   * @param {string} [sinkOverride] - Optional sink to use instead of the persisted route
    * @returns {Promise<void>}
    */
-  async applyRouting(stream) {
+  async applyRouting(stream, sinkOverride) {
     this._validateStream(stream);
 
-    const targetSinkType = this.getStreamRoute(stream);
+    const targetSinkType = sinkOverride || this.getStreamRoute(stream);
     const availableSinks = await this.getAvailableSinks();
 
     // Resolve target sink name
@@ -502,9 +509,14 @@ class AudioRoutingService extends EventEmitter {
   async getAvailableSinksWithCombine() {
     let sinks = await this.getAvailableSinks();
 
-    // Remove any raw 'aln-combine' sinks (from pactl list) to avoid duplicates with our virtual entry
-    // Also remove legacy 'combine-bt' if present
-    sinks = sinks.filter(s => s.name !== 'aln-combine' && s.name !== 'combine-bt');
+    // Remove internal/virtual sinks that should not appear in GM dropdown:
+    // - aln-combine / combine-bt: raw combine sinks (we add our own virtual entry)
+    // - auto_null: PipeWire dummy sink (appears when no real sinks available)
+    sinks = sinks.filter(s =>
+      s.name !== 'aln-combine' &&
+      s.name !== 'combine-bt' &&
+      s.name !== 'auto_null'
+    );
 
     // Only add virtual sink if combine is active
     if (this._combineSinkActive) {
@@ -673,9 +685,15 @@ class AudioRoutingService extends EventEmitter {
 
       // Apply the ducked volume
       this.setStreamVolume(target, effectiveVolume).catch(err => {
-        logger.error('Failed to set ducked volume', {
-          target, volume: effectiveVolume, error: err.message
-        });
+        if (err.message.includes('No active sink-input')) {
+          logger.warn('Ducking skipped: sink-input not available for ducking', {
+            target, volume: effectiveVolume,
+          });
+        } else {
+          logger.error('Failed to set ducked volume', {
+            target, volume: effectiveVolume, error: err.message,
+          });
+        }
       });
 
       // Emit ducking:changed event
@@ -721,9 +739,15 @@ class AudioRoutingService extends EventEmitter {
           ? this._preDuckVolumes[target] : 100;
 
         this.setStreamVolume(target, restoreVolume).catch(err => {
-          logger.error('Failed to restore volume after ducking', {
-            target, volume: restoreVolume, error: err.message
-          });
+          if (err.message.includes('No active sink-input')) {
+            logger.warn('Ducking restore skipped: sink-input not available', {
+              target, volume: restoreVolume,
+            });
+          } else {
+            logger.error('Failed to restore volume after ducking', {
+              target, volume: restoreVolume, error: err.message,
+            });
+          }
         });
 
         // Emit ducking:changed — no longer ducked
@@ -744,9 +768,15 @@ class AudioRoutingService extends EventEmitter {
         const effectiveVolume = this._calculateEffectiveVolume(target);
 
         this.setStreamVolume(target, effectiveVolume).catch(err => {
-          logger.error('Failed to re-evaluate ducked volume', {
-            target, volume: effectiveVolume, error: err.message
-          });
+          if (err.message.includes('No active sink-input')) {
+            logger.warn('Ducking re-evaluate skipped: sink-input not available', {
+              target, volume: effectiveVolume,
+            });
+          } else {
+            logger.error('Failed to re-evaluate ducked volume', {
+              target, volume: effectiveVolume, error: err.message,
+            });
+          }
         });
 
         // Emit ducking:changed — still ducked but at different level
