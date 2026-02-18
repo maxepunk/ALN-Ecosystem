@@ -128,6 +128,42 @@ describe('SpotifyService', () => {
     });
   });
 
+  describe('connection:changed event', () => {
+    it('should emit connection:changed when connection status changes to true', async () => {
+      const handler = jest.fn();
+      spotifyService.on('connection:changed', handler);
+      spotifyService.connected = false;
+
+      mockExecFileSuccess('variant       string "Playing"');
+      await spotifyService.checkConnection();
+
+      expect(handler).toHaveBeenCalledWith({ connected: true });
+    });
+
+    it('should emit connection:changed when connection status changes to false', async () => {
+      const handler = jest.fn();
+      spotifyService.on('connection:changed', handler);
+      spotifyService.connected = true;
+
+      spotifyService._dbusDest = null;
+      mockExecFileError('org.freedesktop.DBus.Error.ServiceUnknown');
+      await spotifyService.checkConnection();
+
+      expect(handler).toHaveBeenCalledWith({ connected: false });
+    });
+
+    it('should NOT emit connection:changed when status stays the same', async () => {
+      const handler = jest.fn();
+      spotifyService.on('connection:changed', handler);
+      spotifyService.connected = true;
+
+      mockExecFileSuccess('variant       string "Playing"');
+      await spotifyService.checkConnection();
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
   describe('D-Bus discovery', () => {
     it('should discover spotifyd instance name from D-Bus', async () => {
       spotifyService._dbusDest = null; // Force discovery

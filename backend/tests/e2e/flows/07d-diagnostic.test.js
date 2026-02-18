@@ -147,17 +147,32 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
         timestamp: new Date().toISOString()
       });
 
-      logger.log('TEST', 'WAIT', 'Waiting for session:update...');
+      logger.log('TEST', 'WAIT', 'Waiting for session:update (setup)...');
+
+      await waitForEvent(
+        socket,
+        'session:update',
+        (event) => event.data.status === 'setup' && event.data.name === 'Diagnostic Test',
+        10000
+      );
+
+      // Transition setup → active (Phase 1 lifecycle)
+      logger.backendInput('gm:command', { action: 'session:start' });
+      socket.emit('gm:command', {
+        event: 'gm:command',
+        data: { action: 'session:start', payload: {} },
+        timestamp: new Date().toISOString()
+      });
 
       const sessionUpdate = await waitForEvent(
         socket,
         'session:update',
-        (event) => event.data.status === 'active' && event.data.name === 'Diagnostic Test',
-        10000 // Longer timeout for diagnostics
+        (event) => event.data.status === 'active',
+        10000
       );
 
       logger.backend('session:update', { status: sessionUpdate.data.status });
-      logger.log('TEST', 'PHASE', '✓ Session created successfully');
+      logger.log('TEST', 'PHASE', '✓ Session created and started successfully');
 
       // ========== PHASE 2: Scanner Initialization ==========
       logger.log('TEST', 'PHASE', 'Initializing Scanner 1 (monitoring)');

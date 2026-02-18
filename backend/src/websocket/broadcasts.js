@@ -305,7 +305,7 @@ function setupBroadcastListeners(io, services) {
     // which emits session:updated (already handled above)
 
     // Transaction service - scores reset (bulk operation)
-    addTrackedListener(transactionService, 'scores:reset', (data) => {
+    addTrackedListener(transactionService, 'scores:reset', async (data) => {
       // Get session FIRST for scoped broadcast
       const session = sessionService.getCurrentSession();
       if (!session) {
@@ -319,9 +319,20 @@ function setupBroadcastListeners(io, services) {
         teamsReset: data?.teamsReset || []
       });
 
-      // Provide complete updated state (follows processQueue pattern)
-      const fullState = stateService.getCurrentState();
-      emitWrapped(io, 'sync:full', fullState);
+      // Build proper sync:full payload (not GameState — that lacks `session` field)
+      const syncFullPayload = await buildSyncFullPayload({
+        sessionService,
+        transactionService,
+        videoQueueService,
+        offlineQueueService,
+        bluetoothService,
+        audioRoutingService,
+        lightingService,
+        gameClockService,
+        cueEngineService,
+        spotifyService,
+      });
+      emitWrapped(io, 'sync:full', syncFullPayload);
 
       logger.info('Broadcasted scores:reset + sync:full to session', {
         sessionId: session.id,
@@ -498,6 +509,7 @@ function setupBroadcastListeners(io, services) {
         lightingService,
         gameClockService,
         cueEngineService,
+        spotifyService,
       });
 
       emitWrapped(io, 'sync:full', syncFullPayload);

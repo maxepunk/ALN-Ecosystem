@@ -391,6 +391,20 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
+      case 'audio:combine:create': {
+        resultData = await audioRoutingService.createCombineSink();
+        resultMessage = 'Combine-sink created';
+        logger.info('Combine-sink created', { source, deviceId });
+        break;
+      }
+
+      case 'audio:combine:destroy': {
+        await audioRoutingService.destroyCombineSink();
+        resultMessage = 'Combine-sink destroyed';
+        logger.info('Combine-sink destroyed', { source, deviceId });
+        break;
+      }
+
       // --- Lighting commands ---
 
       case 'lighting:scene:activate': {

@@ -655,6 +655,15 @@ test.describe('Player Scanner Networked Scanning', () => {
       console.log('Note: Batch request may have completed before interception. Queue size:', await scanner.getOfflineQueueSize());
       // This is acceptable - queue may have been processed already
     }
+
+    // Wait for background queue processing to complete before test ends.
+    // processOfflineQueue() is fire-and-forget in onConnectionRestored() —
+    // if the test ends while it's still running, console.log on a destroyed
+    // page context crashes the Chromium worker process.
+    await page.waitForFunction(
+      () => !window.orchestrator || window.orchestrator.offlineQueue.length === 0,
+      { timeout: 10000 }
+    ).catch(() => {});
   });
 
   test('queue cleared after successful sync', async () => {

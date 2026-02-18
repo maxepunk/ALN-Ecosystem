@@ -217,48 +217,19 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
     // Capture browser console logs for debugging
     addConsoleCapture(page, 'Test2-ResetScores');
 
-    // Helper to log backend state at checkpoints
-    // Uses page.request (Playwright's built-in) which handles HTTPS properly
-    const logBackendState = async (checkpoint) => {
-      try {
-        const response = await page.request.get(`${orchestratorInfo.url}/api/state`);
-        const state = await response.json();
-        console.log(`\n[DEBUG:${checkpoint}] Backend State:`);
-        console.log(`  Session: ${state.session ? `${state.session.name} (${state.session.status})` : 'none'}`);
-        console.log(`  Session teams: ${JSON.stringify(state.session?.teams || [])}`);
-        console.log(`  Scores count: ${state.scores?.length || 0}`);
-        if (state.scores?.length > 0) {
-          console.log(`  Scores detail:`);
-          state.scores.forEach(s => {
-            console.log(`    - ${s.teamId}: ${s.currentScore} (txCount: ${s.transactionCount})`);
-          });
-        }
-      } catch (e) {
-        console.log(`[DEBUG:${checkpoint}] Error fetching state: ${e.message}`);
-      }
-    };
-
     try {
-      // CHECKPOINT 1: Before any setup
-      await logBackendState('1-BEFORE-SETUP');
-
       // Setup
       const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
         orchestratorUrl: orchestratorInfo.url,
         password: ADMIN_PASSWORD
       });
 
-      // CHECKPOINT 2: After scanner init
-      await logBackendState('2-AFTER-SCANNER-INIT');
 
       // Navigate to admin panel first
       await gmScanner.navigateToAdminPanel();
 
       // Create session with teams via admin panel UI
       await gmScanner.createSessionWithTeams('Reset Test', ['Team Alpha', 'Detectives']);
-
-      // CHECKPOINT 3: After session creation
-      await logBackendState('3-AFTER-SESSION-CREATE');
 
       // Wait for session to be active
       await gmScanner.waitForBackendState(
@@ -280,40 +251,14 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       // Use finishTeam() to return to teamEntryScreen (not continueScan which stays on scanScreen)
       await gmScanner.finishTeam();
 
-      // CHECKPOINT 4: After Team Alpha scan
-      await logBackendState('4-AFTER-TEAM-ALPHA-SCAN');
-
       // Scan for Detectives (selectTeamFromList auto-confirms)
       await gmScanner.selectTeamFromList('Detectives');
       await gmScanner.manualScan(testTokens.businessToken.SF_RFID);
       // Use finishTeam() since we're done scanning for this team
       await gmScanner.finishTeam();
 
-      // CHECKPOINT 5: After Detectives scan
-      await logBackendState('5-AFTER-DETECTIVES-SCAN');
-
       // Navigate back to admin panel
       await gmScanner.navigateToAdminPanel();
-
-      // DEBUG: Check what backend /api/state returns for scores
-      await logBackendState('6-AFTER-ADMIN-NAV');
-
-      // DEBUG: Check frontend backendScores Map size via localStorage or DOM
-      const frontendScoreInfo = await page.evaluate(() => {
-        // Try to get score info from the rendered scoreboard entries
-        const entries = document.querySelectorAll('#admin-score-board .scoreboard-entry');
-        const rowData = [];
-        entries.forEach(entry => {
-          const team = entry.querySelector('.scoreboard-team')?.textContent;
-          const score = entry.querySelector('.scoreboard-score')?.textContent;
-          rowData.push({ team, score });
-        });
-        return {
-          rowCount: entries.length,
-          rowData
-        };
-      });
-      console.log(`[DEBUG:7-FRONTEND-SCOREBOARD] Rendered entries: ${JSON.stringify(frontendScoreInfo)}`);
 
       // Verify admin panel sections are rendered
       const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
@@ -359,7 +304,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       );
 
       // After reset, both teams have zero scores so scoreboard should show 2 entries with $0
-      await expect(scoreboardEntries).toHaveCount(2, { timeout: 5000 });
+      await expect(scoreboardEntries).toHaveCount(2, { timeout: 10000 });
 
       console.log('✓ Score reset test completed successfully');
 

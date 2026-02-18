@@ -2,6 +2,8 @@
 const EventEmitter = require('events');
 const { execFile } = require('child_process');
 const fs = require('fs');
+const path = require('path');
+const os = require('os');
 const logger = require('../utils/logger');
 
 // Wrap execFile to always return {stdout, stderr} (Node's custom promisify
@@ -27,7 +29,7 @@ class SpotifyService extends EventEmitter {
     this.volume = 100;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Discovered dynamically (spotifyd appends .instance{PID})
-    this.cachePath = process.env.SPOTIFY_CACHE_PATH || '/home/maxepunk/.cache/spotifyd';
+    this.cachePath = process.env.SPOTIFY_CACHE_PATH || path.join(os.homedir(), '.cache', 'spotifyd');
   }
 
   async _discoverDbusDest() {
@@ -119,11 +121,23 @@ class SpotifyService extends EventEmitter {
 
   isPausedByGameClock() { return this._pausedByGameClock; }
 
+  /**
+   * Update connected state and emit connection:changed if it actually changed.
+   * @param {boolean} newConnected - The new connection state
+   */
+  _setConnected(newConnected) {
+    const changed = this.connected !== newConnected;
+    this.connected = newConnected;
+    if (changed) {
+      this.emit('connection:changed', { connected: newConnected });
+    }
+  }
+
   async checkConnection() {
     try {
       const dest = await this._discoverDbusDest();
       if (!dest) {
-        this.connected = false;
+        this._setConnected(false);
         return false;
       }
       // Use Properties.Get instead of Peer.Ping (spotifyd doesn't implement Peer)
@@ -133,14 +147,14 @@ class SpotifyService extends EventEmitter {
         'org.freedesktop.DBus.Properties.Get',
         `string:${PLAYER_IFACE}`, 'string:PlaybackStatus'
       ], { timeout: 2000 });
-      this.connected = true;
+      this._setConnected(true);
       // Sync state from actual D-Bus status
       if (stdout.includes('"Playing"')) this.state = 'playing';
       else if (stdout.includes('"Paused"')) this.state = 'paused';
       else this.state = 'stopped';
       return true;
     } catch {
-      this.connected = false;
+      this._setConnected(false);
       return false;
     }
   }

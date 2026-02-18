@@ -475,6 +475,36 @@ describe('CueEngineService', () => {
       await cueEngineService.resumeCue('pausable');
       expect(cueEngineService.getActiveCues()[0].state).toBe('running');
     });
+
+    it('should cascade pause to child cues', async () => {
+      // Manually set up parent-child activeCues (executeCommand is mocked, so cue:fire in timeline
+      // doesn't actually spawn children — we set up the relationship directly)
+      cueEngineService.activeCues.set('parent', {
+        state: 'running', children: new Set(['child']), firedEntries: new Set(), timeline: []
+      });
+      cueEngineService.activeCues.set('child', {
+        state: 'running', children: new Set(), spawnedBy: 'parent', firedEntries: new Set(), timeline: []
+      });
+
+      await cueEngineService.pauseCue('parent');
+
+      expect(cueEngineService.activeCues.get('parent').state).toBe('paused');
+      expect(cueEngineService.activeCues.get('child').state).toBe('paused');
+    });
+
+    it('should cascade resume to child cues', async () => {
+      cueEngineService.activeCues.set('parent', {
+        state: 'paused', children: new Set(['child']), firedEntries: new Set(), timeline: []
+      });
+      cueEngineService.activeCues.set('child', {
+        state: 'paused', children: new Set(), spawnedBy: 'parent', firedEntries: new Set(), timeline: []
+      });
+
+      await cueEngineService.resumeCue('parent');
+
+      expect(cueEngineService.activeCues.get('parent').state).toBe('running');
+      expect(cueEngineService.activeCues.get('child').state).toBe('running');
+    });
   });
 
   describe('compound cue nesting', () => {

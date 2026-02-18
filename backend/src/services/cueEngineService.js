@@ -817,6 +817,16 @@ class CueEngineService extends EventEmitter {
     activeCue.state = 'paused';
     logger.info(`[CueEngine] Paused compound cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'paused' });
+
+    // Cascade pause to children (same pattern as stopCue)
+    for (const childId of activeCue.children) {
+      const childCue = this.activeCues.get(childId);
+      if (childCue && childCue.state === 'running') {
+        childCue.state = 'paused';
+        logger.info(`[CueEngine] Cascade-paused child cue: ${childId}`);
+        this.emit('cue:status', { cueId: childId, state: 'paused' });
+      }
+    }
   }
 
   /**
@@ -834,6 +844,16 @@ class CueEngineService extends EventEmitter {
     activeCue.state = 'running';
     logger.info(`[CueEngine] Resumed compound cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'running' });
+
+    // Cascade resume to children
+    for (const childId of activeCue.children) {
+      const childCue = this.activeCues.get(childId);
+      if (childCue && childCue.state === 'paused') {
+        childCue.state = 'running';
+        logger.info(`[CueEngine] Cascade-resumed child cue: ${childId}`);
+        this.emit('cue:status', { cueId: childId, state: 'running' });
+      }
+    }
   }
 
   /**

@@ -248,6 +248,7 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine)
 - `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`). Phase 2 adds video progress/lifecycle forwarding and spotifyService forwarding.
 - **CRITICAL**: `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video (requires token with video field). Do not confuse these.
+- **CRITICAL**: GM scanner token scans do NOT trigger video playback (`transactionService.js` explicitly skips video for GM). Video playback is triggered by: (1) player scanner scanning a video token, or (2) admin panel queue controls (`video:queue:add`).
 
 ## Submodule Architecture
 

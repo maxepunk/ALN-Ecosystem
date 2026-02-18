@@ -3,7 +3,7 @@
  *
  * Tests end-to-end flows for Phase 3 features:
  * 1. Ducking engine — video/sound lifecycle auto-ducks Spotify volume
- * 2. Combine-sink management — virtual combine-bt sink for dual BT speakers
+ * 2. Combine-sink management — virtual aln-combine sink for dual BT speakers
  * 3. Per-stream volume control — setStreamVolume/getStreamVolume
  * 4. Routing inheritance — cue-level routing injected at dispatch time
  *
@@ -154,6 +154,8 @@ describe('Audio Routing Phase 3 Integration', () => {
         { name: 'bluez_output.AA.a2dp', type: 'bluetooth' },
         { name: 'bluez_output.BB.a2dp', type: 'bluetooth' },
       ]);
+      // Mock pactl (null sink creation) — same pattern as Per-Stream Volume tests
+      jest.spyOn(audioRoutingService, '_execFile').mockResolvedValue('12345');
       // Mock spawn to prevent real pw-loopback
       const mockProc = { pid: 1234, on: jest.fn(), kill: jest.fn() };
       jest.spyOn(require('child_process'), 'spawn').mockReturnValue(mockProc);
@@ -172,27 +174,27 @@ describe('Audio Routing Phase 3 Integration', () => {
       expect(audioRoutingService._combineSinkActive).toBe(false);
     });
 
-    it('should include virtual combine-bt sink when active', async () => {
+    it('should include virtual aln-combine sink when active', async () => {
       audioRoutingService._combineSinkActive = true;
       jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
         { name: 'hdmi', type: 'hdmi' },
       ]);
 
       const sinks = await audioRoutingService.getAvailableSinksWithCombine();
-      const combineSink = sinks.find(s => s.name === 'combine-bt');
+      const combineSink = sinks.find(s => s.name === 'aln-combine');
 
       expect(combineSink).toBeDefined();
       expect(combineSink.virtual).toBe(true);
     });
 
-    it('should NOT include combine-bt when inactive', async () => {
+    it('should NOT include aln-combine when inactive', async () => {
       audioRoutingService._combineSinkActive = false;
       jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
         { name: 'hdmi', type: 'hdmi' },
       ]);
 
       const sinks = await audioRoutingService.getAvailableSinksWithCombine();
-      expect(sinks.find(s => s.name === 'combine-bt')).toBeUndefined();
+      expect(sinks.find(s => s.name === 'aln-combine')).toBeUndefined();
     });
 
     it('should clean up combine-sink on destroy', async () => {

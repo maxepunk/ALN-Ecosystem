@@ -523,6 +523,28 @@ describe('commandExecutor', () => {
     });
   });
 
+  describe('audio:combine:create', () => {
+    it('should call audioRoutingService.createCombineSink()', async () => {
+      audioRoutingService.createCombineSink = jest.fn().mockResolvedValue({ sink: 'aln-combine' });
+
+      const result = await executeCommand({ action: 'audio:combine:create', payload: {}, source: 'gm' });
+
+      expect(result.success).toBe(true);
+      expect(audioRoutingService.createCombineSink).toHaveBeenCalled();
+    });
+  });
+
+  describe('audio:combine:destroy', () => {
+    it('should call audioRoutingService.destroyCombineSink()', async () => {
+      audioRoutingService.destroyCombineSink = jest.fn().mockResolvedValue();
+
+      const result = await executeCommand({ action: 'audio:combine:destroy', payload: {}, source: 'gm' });
+
+      expect(result.success).toBe(true);
+      expect(audioRoutingService.destroyCombineSink).toHaveBeenCalled();
+    });
+  });
+
   describe('spotify commands', () => {
     it('should execute spotify:play', async () => {
       const result = await executeCommand({ action: 'spotify:play', payload: {}, source: 'gm' });

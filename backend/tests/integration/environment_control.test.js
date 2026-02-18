@@ -128,7 +128,7 @@ describe('Environment Control Integration', () => {
       const syncData = gm1.lastSyncFull;
       const env = syncData.data?.environment || syncData.environment;
 
-      expect(env.audio.routes.video.sink).toBe('hdmi');
+      expect(env.audio.routes.video).toBe('hdmi');
     });
   });
 

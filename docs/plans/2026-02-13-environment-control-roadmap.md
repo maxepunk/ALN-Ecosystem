@@ -1234,7 +1234,7 @@ Graceful degradation: each new section returns safe defaults when services are u
 - Overtime detection via game clock (straightforward to add — currently the existing setTimeout approach still works)
 - `audioRoutingService` VALID_STREAMS expansion and fallback field (roadmap Section 5, 11)
 
-### Phase 2: Compound Cues + Spotify — PENDING
+### Phase 2: Compound Cues + Spotify — COMPLETE
 
 **What:** Time-synced compound cue timelines (video-synced + clock-synced). Spotify integration for soundtrack. Also picks up deferred Phase 1 items (per-stream volume, overtime via game clock, audioRoutingService expansion).
 
@@ -1260,7 +1260,7 @@ Graceful degradation: each new section returns safe defaults when services are u
 - Overtime detection via game clock (deferred from Phase 1)
 - `audioRoutingService` VALID_STREAMS + fallback expansion (deferred from Phase 1)
 
-### Phase 3: Multi-Speaker Routing + Ducking
+### Phase 3: Multi-Speaker Routing + Ducking — COMPLETE
 
 **What:** PipeWire combine-sink for multi-speaker. Routing inheritance. Automatic ducking.
 

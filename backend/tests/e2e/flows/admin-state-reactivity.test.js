@@ -15,6 +15,7 @@
 
 const { test, expect, chromium } = require('@playwright/test');
 const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../setup/test-server');
+const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
@@ -22,6 +23,7 @@ const { selectTestTokens } = require('../helpers/token-selection');
 
 let browser = null;
 let orchestratorInfo = null;
+let vlcInfo = null;
 
 test.describe('GM Scanner - Multi-Client Reactivity', () => {
     // Tests are mobile-first in this project, but Admin Panel is desktop-focused.
@@ -29,6 +31,9 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
 
     test.beforeAll(async () => {
         await clearSessionData();
+        // VLC must be set up BEFORE orchestrator starts (vlcService connects on startup)
+        vlcInfo = await setupVLC();
+        console.log(`VLC started: ${vlcInfo.type} mode on port ${vlcInfo.port}`);
         orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
         browser = await chromium.launch({
             headless: true,
@@ -40,73 +45,63 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
         await closeAllContexts();
         if (browser) await browser.close();
         await stopOrchestrator();
+        await cleanupVLC();
     });
 
-    test('Video State: GM1 scan command updates GM2 UI', async () => {
+    test('Video State: GM1 queue command updates GM2 UI', async () => {
         const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
         const page1 = await createPage(context1);
-
-        // 1. SETUP: Open Admin Panel in a second context (GM2)
-        const context2 = await browser.newContext({ baseURL: orchestratorInfo.url }); // Ensure baseURL is set for the new context
+        const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
         const page2 = await context2.newPage();
 
-        // Assuming initAdminPanel is a helper function that navigates to the admin panel and logs in
-        // For this test, we will use initializeGMScannerWithMode for GM2 as well, then navigate to admin panel
-        // This keeps consistency with how GM1 is initialized.
-        // If `initAdminPanel` is a new helper, it should be defined elsewhere.
-        // For now, we'll keep the original flow for GM2 initialization but add the console listener.
-        // The original line `const page2 = await createPage(context2);` is implicitly replaced by the new context/page creation.
-
         try {
-            // 0. Prepare Text Data - We need a valid Video Token
-            // This hits the backend API to find a token that triggers video
+            // 0. Find a valid video file for the test
+            // GM scanning does NOT auto-play video (that's player scanner territory).
+            // Video playback is triggered via admin panel queue controls.
             const tokens = await selectTestTokens(orchestratorInfo.url);
             if (!tokens.videoToken) {
                 test.skip('No video token available in database - skipping video reactivity test');
                 return;
             }
-            const videoTokenId = tokens.videoToken.SF_RFID;
             const videoFilename = tokens.videoToken.video;
 
             // 1. Init GM1 & GM2
             const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
             const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
 
-            // GM1: Enters a Team to be ready to scan
-            await gm1.enterTeam('Team Reactivity');
-            await gm1.confirmTeam();
+            // Check VLC is actually connected to the orchestrator
+            const stateResp = await page1.evaluate(async (url) => {
+                const resp = await fetch(`${url}/api/state`, { method: 'GET' });
+                return resp.json();
+            }, orchestratorInfo.url);
+            if (stateResp?.systemStatus?.vlc !== 'connected') {
+                test.skip('VLC not connected to orchestrator - skipping video reactivity test');
+                return;
+            }
 
-            // GM2: Navigates to Admin Panel to observe
+            // GM1: Create session, then navigate to Admin Panel
+            await gm1.createSessionWithTeams('Reactivity Test', ['Team Reactivity']);
+            // createSessionWithTeams ends on admin panel already
+
+            // GM2: Navigate to Admin Panel to observe
             await gm2.navigateToAdminPanel();
 
-            // Wait for display to settle on GM2
-            // Note: Video container might be hidden initially if no video playing
-            // We check for the container that SHOULD appear
-            const videoControlPanel = page2.locator('#video-control-panel');
-            await expect(videoControlPanel).toBeAttached();
+            // Wait for video control panel to be present on both GMs
+            await expect(page1.locator('#video-control-panel')).toBeAttached();
+            await expect(page2.locator('#video-control-panel')).toBeAttached();
 
-            // 2. TRIGGER: GM1 Scans a Video Token
-            // This mimics the exact production flow: Scan -> Backend -> Broadcast -> UI Update
-            console.log(`GM1 scanning video token: ${videoTokenId} (${videoFilename})`);
-            await gm1.manualScan(videoTokenId);
+            // 2. TRIGGER: GM1 queues a video via admin panel UI
+            // Use the manual queue input to add a video file
+            console.log(`GM1 queuing video: ${videoFilename}`);
+            await page1.fill('#manual-video-input', videoFilename);
+            await page1.click('button[data-action="app.adminAddVideoToQueue"]');
 
-            // GM1 should see "Token Accepted" or similar result
-            await expect(page1.locator('#resultStatus')).toContainText('Access Granted'); // or whatever success message
-
-            // 3. VERIFY: GM2 UI matches expected state
+            // 3. VERIFY: GM2 UI shows the video playing
             // The #now-showing-value element should update to show the video name
             const nowShowingValue = page2.locator('#now-showing-value');
+            await expect(nowShowingValue).toContainText(videoFilename, { timeout: 15000 });
 
-            // We expect the video filename to appear in the "Now Playing" text
-            // e.g. "Now Playing: 'some_video.mp4'" or just "some_video.mp4" depending on renderer
-            await expect(nowShowingValue).toContainText(videoFilename, { timeout: 10000 });
-
-            // Verify status badge removed/hidden or updated? 
-            // VideoRenderer logic: "Now Playing: [filename]"
-            // Status badge logic: #video-status-badge might not exist in the new UI layout?
-            // Let's check index.html for #video-status-badge... IT DOES NOT EXIST in the Phase 4.2 layout!
-            // The renderer tries to getElementById('video-status-badge') but it might be null.
-            // The icon #now-showing-icon IS updated.
+            // Verify play icon appears
             const nowShowingIcon = page2.locator('#now-showing-icon');
             await expect(nowShowingIcon).toHaveText('▶️');
 

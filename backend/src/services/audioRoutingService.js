@@ -427,7 +427,7 @@ class AudioRoutingService extends EventEmitter {
 
     // 1. Create Null Sink (The Source)
     try {
-      const stdout = await execFileAsync('pactl', [
+      const stdout = await this._execFile('pactl', [
         'load-module',
         'module-null-sink',
         'sink_name=aln-combine',
@@ -490,7 +490,7 @@ class AudioRoutingService extends EventEmitter {
     // 2. Unload Null Sink
     if (this._combineSinkModuleId) {
       try {
-        await execFileAsync('pactl', ['unload-module', this._combineSinkModuleId]);
+        await this._execFile('pactl', ['unload-module', this._combineSinkModuleId]);
         logger.info('Unloaded null sink aln-combine', { moduleId: this._combineSinkModuleId });
       } catch (err) {
         logger.warn('Failed to unload null sink', { error: err.message, moduleId: this._combineSinkModuleId });

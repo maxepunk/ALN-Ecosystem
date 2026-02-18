@@ -60,7 +60,14 @@ const createMockElement = () => ({
   removeEventListener: () => { },
   dispatchEvent: () => true,
   // DOM manipulation - MonitoringDisplay uses remove() to remove transaction elements
-  remove: () => { }
+  remove: () => { },
+  // DOM manipulation - MonitoringDisplay uses insertAdjacentHTML for game activity log
+  insertAdjacentHTML: () => { },
+  innerHTML: '',
+  children: [],
+  firstChild: null,
+  appendChild: () => createMockElement(),
+  closest: () => null
 });
 
 global.document = {
@@ -351,29 +358,43 @@ if (!TokenManager.buildGroupInventory) {
 }
 global.TokenManager = TokenManager;
 
-// Mock DataManager global (App.recordTransaction uses DataManager.markTokenAsScanned)
+// Mock DataManager global — extends EventTarget for Phase 2+ event-based wiring
 // In browser, loaded via separate <script> tag
 // TokenManager.buildGroupInventory() requires parseGroupInfo and normalizeGroupName
-global.DataManager = {
-  transactions: [],  // Transaction history array - required by App.updateAdminPanel() fallback
-  scannedTokens: new Set(),  // Track scanned tokens for duplicate detection
+class MockDataManager extends EventTarget {
+  constructor() {
+    super();
+    this.transactions = [];  // Transaction history array - required by App.updateAdminPanel() fallback
+    this.scannedTokens = new Set();  // Track scanned tokens for duplicate detection
+    this.playerScans = [];
+    this._networkedStrategy = null;
+    this.backendScores = new Map();
+    this.currentSessionId = null;
+    // Phase 2+ state
+    this.sessionState = {};
+    this.environmentState = {
+      audio: { routes: {}, availableSinks: [], defaultSink: 'hdmi' },
+      lighting: { connected: false, scenes: [], activeScene: null },
+      bluetooth: { scanning: false, pairedDevices: [], connectedDevices: [] },
+    };
+    this.cueState = { cues: new Map(), activeCues: new Map(), disabledCues: new Set() };
+  }
 
   markTokenAsScanned(tokenId) {
     this.scannedTokens.add(tokenId);
-  },
+  }
 
   isTokenScanned(tokenId) {
     return this.scannedTokens.has(tokenId);
-  },
+  }
 
   // Clear scanned tokens (for duplicate detection bypass or test cleanup)
   clearScannedTokens() {
     this.scannedTokens.clear();
-  },
+  }
 
   // Restore scanned tokens from server state (handles reconnection)
   // Called by OrchestratorClient.js when sync:full received with deviceScannedTokens
-  // Matches ALNScanner/src/core/dataManager.js:70-77
   setScannedTokensFromServer(serverTokens) {
     if (!Array.isArray(serverTokens)) {
       console.log('[MockDataManager] setScannedTokensFromServer: invalid input (not array)');
@@ -381,12 +402,10 @@ global.DataManager = {
     }
     this.scannedTokens = new Set(serverTokens);
     console.log(`[MockDataManager] Synced ${serverTokens.length} scanned tokens from server`);
-  },
+  }
 
   // Sync player scans from server (Game Activity feature)
   // Called by NetworkedSession.js when sync:full received with playerScans
-  // Matches ALNScanner/src/core/dataManager.js
-  playerScans: [],
   setPlayerScansFromServer(serverPlayerScans) {
     if (!Array.isArray(serverPlayerScans)) {
       console.log('[MockDataManager] setPlayerScansFromServer: invalid input (not array)');
@@ -394,7 +413,7 @@ global.DataManager = {
     }
     this.playerScans = serverPlayerScans;
     console.log(`[MockDataManager] Synced ${serverPlayerScans.length} player scans from server`);
-  },
+  }
 
   // Clear all data (for test cleanup between tests)
   clearAll() {
@@ -402,27 +421,29 @@ global.DataManager = {
     this.transactions = [];
     this.backendScores.clear();
     this.playerScans = [];
-  },
+  }
 
-  // UnifiedDataManager mode initialization (app.js:504, app.js:434)
-  // Sets _networkedStrategy so app.js:512 can update the socket reference
-  _networkedStrategy: null,
+  // UnifiedDataManager mode initialization (app.js)
+  // Sets _networkedStrategy so app.js can update the socket reference
   async initializeNetworkedMode(socket) {
     this._networkedStrategy = { socket, isReady: () => true };
-  },
+  }
+
   async initializeStandaloneMode() {
     this._networkedStrategy = null;
-  },
+  }
 
-  addTransaction: () => { },
+  addTransaction() { }
+
   addTransactionFromBroadcast(tx) {
     if (tx) this.transactions.push(tx);
-  },
-  handlePlayerScan: () => { },
-  loadTransactions: () => { },  // App.init() loads transaction history
-  loadScannedTokens: () => { },  // App.init() loads scanned tokens
-  saveScannedTokens: () => { },  // Called by orchestratorClient.js:305 on transaction:deleted
-  clearSession: () => { },
+  }
+
+  handlePlayerScan() { }
+  loadTransactions() { }  // App.init() loads transaction history
+  loadScannedTokens() { }  // App.init() loads scanned tokens
+  saveScannedTokens() { }  // Called by orchestratorClient.js on transaction:deleted
+  clearSession() { }
 
   // Called by MonitoringDisplay when transaction:deleted event received
   removeTransaction(transactionId) {
@@ -434,10 +455,9 @@ global.DataManager = {
         this.scannedTokens.delete(removed.tokenId);
       }
     }
-  },
+  }
 
   // Called by OrchestratorClient when new session detected (sync:full or session:update events)
-  // Matches ALNScanner/src/core/dataManager.js:191-207
   resetForNewSession(sessionId = null) {
     this.scannedTokens.clear();
     this.transactions = [];
@@ -453,22 +473,21 @@ global.DataManager = {
         global.localStorage.removeItem('currentSessionId');
       }
     }
-  },
+  }
 
-  calculateTokenValue: () => 0,
-  backendScores: new Map(),
+  calculateTokenValue() { return 0; }
 
   // Called by MonitoringDisplay when scores:reset event received
   clearBackendScores() {
     this.backendScores.clear();
-  },
+  }
 
   // Called by OrchestratorClient when score:updated event received
   updateTeamScoreFromBackend(scoreData) {
     if (scoreData && scoreData.teamId) {
       this.backendScores.set(scoreData.teamId, scoreData);
     }
-  },
+  }
 
   // Required by TokenManager.buildGroupInventory()
   parseGroupInfo(groupName) {
@@ -483,7 +502,7 @@ global.DataManager = {
       return multiplier < 1 ? { name, multiplier: 1 } : { name, multiplier };
     }
     return { name: trimmed, multiplier: 1 };
-  },
+  }
 
   normalizeGroupName(name) {
     if (!name) return '';
@@ -493,7 +512,97 @@ global.DataManager = {
       .replace(/\s+/g, ' ')
       .replace(/['\u2018\u2019]/g, "'");
   }
-};
+
+  // Phase 2+ methods called by networkedSession.js and MonitoringDisplay
+  updateSessionState(payload) {
+    if (!payload) {
+      this.sessionState = {};
+      this.currentSessionId = null;
+    } else {
+      this.sessionState = { ...this.sessionState, ...payload };
+      if (payload.id) this.currentSessionId = payload.id;
+    }
+    this.dispatchEvent(new CustomEvent('session-state:updated', {
+      detail: { session: this.sessionState }
+    }));
+  }
+
+  updateAudioState(payload) {
+    if (!payload) return;
+    if (payload.routes) this.environmentState.audio.routes = { ...payload.routes };
+    if (payload.availableSinks) this.environmentState.audio.availableSinks = payload.availableSinks;
+    this.dispatchEvent(new CustomEvent('audio-state:updated', {
+      detail: { audio: { ...this.environmentState.audio } }
+    }));
+  }
+
+  updateLightingState(payload) {
+    if (!payload) return;
+    const lighting = this.environmentState.lighting;
+    if (payload.connected !== undefined) lighting.connected = payload.connected;
+    if (payload.scenes) lighting.scenes = payload.scenes;
+    if (payload.sceneId) lighting.activeScene = { id: payload.sceneId };
+    this.dispatchEvent(new CustomEvent('lighting-state:updated', {
+      detail: { lighting: { ...lighting } }
+    }));
+  }
+
+  updateBluetoothState(payload) {
+    if (!payload) return;
+    const bt = this.environmentState.bluetooth;
+    if (payload.scanning !== undefined) bt.scanning = payload.scanning;
+    if (payload.pairedDevices) bt.pairedDevices = payload.pairedDevices;
+    if (payload.connectedDevices) bt.connectedDevices = payload.connectedDevices;
+    this.dispatchEvent(new CustomEvent('bluetooth-state:updated', {
+      detail: { bluetooth: { ...bt } }
+    }));
+  }
+
+  updateCueState(payload) {
+    this.dispatchEvent(new CustomEvent('cue-state:updated', { detail: payload }));
+  }
+
+  reportCueConflict(payload) {
+    this.dispatchEvent(new CustomEvent('cue:conflict', { detail: payload }));
+  }
+
+  getCueState() {
+    return {
+      cues: this.cueState.cues,
+      activeCues: this.cueState.activeCues,
+      disabledCues: this.cueState.disabledCues,
+    };
+  }
+
+  // Phase 2+ methods called by networkedSession.js event handlers
+  updateVideoState(payload) {
+    this.dispatchEvent(new CustomEvent('video-state:updated', { detail: payload }));
+  }
+
+  updateCueStatus(payload) {
+    this.dispatchEvent(new CustomEvent('cue-state:updated', { detail: payload }));
+  }
+
+  handleCueConflict(payload) {
+    this.dispatchEvent(new CustomEvent('cue:conflict', { detail: payload }));
+  }
+
+  updateAudioDucking(payload) {
+    this.dispatchEvent(new CustomEvent('audio-ducking:updated', { detail: payload }));
+  }
+
+  updateBluetoothScan(payload) {
+    const bt = this.environmentState.bluetooth;
+    if (payload.scanning !== undefined) bt.scanning = payload.scanning;
+    this.dispatchEvent(new CustomEvent('bluetooth-scan:updated', { detail: payload }));
+  }
+
+  updateBluetoothDevice(payload) {
+    this.dispatchEvent(new CustomEvent('bluetooth-device:updated', { detail: payload }));
+  }
+}
+
+global.DataManager = new MockDataManager();
 
 // CRITICAL: Link window.DataManager to global.DataManager so OrchestratorClient can access it
 // OrchestratorClient checks "if (window.DataManager)" and calls updateTeamScoreFromBackend

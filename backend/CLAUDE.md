@@ -393,6 +393,8 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 - `gameClock`: `{status, elapsed, expectedDuration}` via `buildGameClockState()`
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
+**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`). Missing a service = silent state desync. Bug has recurred in `scores:reset` and `offline:queue:processed` handlers — audit ALL emission points when adding new services.
+
 **CRITICAL Gotchas:**
 - `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.
 - `cue:started` internal event broadcasts as `cue:status` with `state: 'running'` (not `started`)
@@ -404,7 +406,7 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 
 Extends Phase 0 audio routing with PipeWire combine-sink management, event-driven ducking engine, and cue-level routing inheritance.
 
-**Combine-Sink (Dual BT Speakers):** Creates a virtual `combine-bt` sink using `pw-loopback` processes to route audio to two Bluetooth speakers simultaneously. `audioRoutingService.createCombineSink()` / `destroyCombineSink()`. Requires 2+ paired BT sinks. The virtual sink appears in `getAvailableSinksWithCombine()` when active. Managed via `audio:combine:create` / `audio:combine:destroy` gm:command actions.
+**Combine-Sink (Dual BT Speakers):** Creates a virtual `combine-bt` sink using `pw-loopback` processes to route audio to two Bluetooth speakers simultaneously. `audioRoutingService.createCombineSink()` / `destroyCombineSink()`. Requires 2+ paired BT sinks. The virtual sink appears in `getAvailableSinksWithCombine()` when active. Managed via `audio:combine:create` / `audio:combine:destroy` gm:command actions. **IMPORTANT:** `createCombineSink()` and `destroyCombineSink()` must use `this._execFile()` (not raw `execFileAsync`) — all other methods use `_execFile()` which is mockable in tests.
 
 **Ducking Engine:** Automatically reduces Spotify volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
 

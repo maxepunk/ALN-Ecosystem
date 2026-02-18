@@ -404,19 +404,31 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
   });
 
   describe('scores:reset event', () => {
-    it('should broadcast scores:reset and sync:full when transactionService emits scores:reset', () => {
-      // Mock getCurrentSession for sync:full emission
-      mockSessionService.getCurrentSession = jest.fn().mockReturnValue({
+    it('should broadcast scores:reset and sync:full when transactionService emits scores:reset', async () => {
+      // Mock getCurrentSession for scoped broadcast and buildSyncFullPayload
+      const mockSession = {
         id: 'test-session',
-        toJSON: () => ({ id: 'test-session', status: 'active' })
-      });
-
-      // Mock getCurrentState for sync:full emission
-      mockStateService.getCurrentState = jest.fn().mockReturnValue({
-        session: { id: 'test-session', status: 'active' },
+        name: 'Test Session',
+        startTime: new Date().toISOString(),
+        endTime: null,
+        status: 'active',
+        teams: [],
+        transactions: [],
+        connectedDevices: [],
+        playerScans: [],
+        metadata: {},
         scores: [],
-        recentTransactions: []
-      });
+        toJSON: function() { return { id: this.id, name: this.name, status: this.status, teams: this.teams }; }
+      };
+      mockSessionService.getCurrentSession = jest.fn().mockReturnValue(mockSession);
+
+      // Mock transactionService.getTeamScores (needed by buildSyncFullPayload)
+      mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
+
+      // Mock videoQueueService properties (needed by buildSyncFullPayload)
+      mockVideoQueueService.currentStatus = 'idle';
+      mockVideoQueueService.queue = [];
+      mockVideoQueueService.currentVideo = null;
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
@@ -428,6 +440,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       // Emit scores:reset from transactionService
       mockTransactionService.emit('scores:reset', { teamsReset: ['Team Alpha', 'Detectives'] });
+
+      // Wait for async handler to complete (buildSyncFullPayload is async)
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       // Verify scores:reset broadcast to session-scoped room (prevents cross-session contamination)
       // CRITICAL: Uses session-scoped room like transaction:deleted, NOT 'gm' room
@@ -441,12 +456,13 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         })
       );
 
-      // Verify sync:full broadcast
+      // Verify sync:full broadcast uses proper payload shape (with session field)
       expect(mockIo.emit).toHaveBeenCalledWith(
         'sync:full',
         expect.objectContaining({
           event: 'sync:full',
           data: expect.objectContaining({
+            session: expect.objectContaining({ id: 'test-session' }),
             scores: []
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
