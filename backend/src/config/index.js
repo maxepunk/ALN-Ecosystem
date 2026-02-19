@@ -78,24 +78,17 @@ const config = {
   game: {
     transactionHistoryLimit: parseInt(process.env.TRANSACTION_HISTORY_LIMIT || '1000', 10),
     recentTransactionsCount: parseInt(process.env.RECENT_TRANSACTIONS_COUNT || '10', 10),
-    bonusThreshold: parseInt(process.env.BONUS_THRESHOLD || '5', 10),
-    bonusMultiplier: parseFloat(process.env.BONUS_MULTIPLIER || '1.5'),
+    // Value rating to points mapping (from shared scoring-config.json)
+    valueRatingMap: Object.fromEntries(
+      Object.entries(sharedScoringConfig.baseValues).map(([k, v]) => [parseInt(k, 10), v])
+    ),
 
-    // Value rating to points mapping (from shared config, env vars override)
-    valueRatingMap: {
-      1: parseInt(process.env.VALUE_RATING_1 || sharedScoringConfig.baseValues['1'], 10),
-      2: parseInt(process.env.VALUE_RATING_2 || sharedScoringConfig.baseValues['2'], 10),
-      3: parseInt(process.env.VALUE_RATING_3 || sharedScoringConfig.baseValues['3'], 10),
-      4: parseInt(process.env.VALUE_RATING_4 || sharedScoringConfig.baseValues['4'], 10),
-      5: parseInt(process.env.VALUE_RATING_5 || sharedScoringConfig.baseValues['5'], 10),
-    },
-
-    // Type multipliers (from shared config, env vars override)
+    // Type multipliers (from shared scoring-config.json)
     typeMultipliers: {
-      personal: parseFloat(process.env.TYPE_MULT_PERSONAL || sharedScoringConfig.typeMultipliers['Personal']),
-      business: parseFloat(process.env.TYPE_MULT_BUSINESS || sharedScoringConfig.typeMultipliers['Business']),
-      technical: parseFloat(process.env.TYPE_MULT_TECHNICAL || sharedScoringConfig.typeMultipliers['Technical']),
-      unknown: parseFloat(process.env.TYPE_MULT_UNKNOWN || sharedScoringConfig.typeMultipliers['UNKNOWN'] || 0),
+      personal: sharedScoringConfig.typeMultipliers.Personal,
+      business: sharedScoringConfig.typeMultipliers.Business,
+      technical: sharedScoringConfig.typeMultipliers.Technical,
+      unknown: sharedScoringConfig.typeMultipliers.UNKNOWN || 0,
     },
   },
 
