@@ -5,7 +5,8 @@
       "label": "Pre-Video Alert",
       "icon": "alert",
       "trigger": {
-        "event": "video:loading"
+        "event": "video:loading",
+        "conditions": []
       },
       "commands": [
         {
@@ -27,7 +28,8 @@
       "label": "Post-Video Restore",
       "icon": "alert",
       "trigger": {
-        "event": "video:completed"
+        "event": "video:completed",
+        "conditions": []
       },
       "commands": [
         {
@@ -61,7 +63,7 @@
           "at": 0,
           "action": "sound:play",
           "payload": {
-            "file": "test_tone.wav"
+            "file": "attention.wav"
           }
         },
         {
@@ -75,7 +77,7 @@
           "at": 3,
           "action": "sound:play",
           "payload": {
-            "file": "test_tone.wav"
+            "file": "attention.wav"
           }
         },
         {
@@ -103,7 +105,7 @@
           "at": 1,
           "action": "sound:play",
           "payload": {
-            "file": "test_tone.wav"
+            "file": "attention.wav"
           }
         }
       ]
