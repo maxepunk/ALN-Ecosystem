@@ -131,10 +131,14 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
     "SF_ValueRating": 1-5,
     "SF_MemoryType": "Personal" | "Business" | "Technical",
     "SF_Group": "Group Name (xN)" | "",
-    "summary": "Optional summary text"
+    "summary": "Optional summary text",
+    "owner": "CHARACTER_NAME" | null
   }
 }
 ```
+
+**Field Notes:**
+- `owner`: Character who owns this memory, resolved from Notion Elements→Characters Owner relation during sync (role prefix stripped)
 
 **Data Flow:**
 ```

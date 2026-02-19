@@ -36,6 +36,7 @@ if not NOTION_TOKEN:
     exit(1)
 
 ELEMENTS_DATABASE_ID = "18c2f33d-583f-8020-91bc-d84c7dd94306"
+CHARACTERS_DATABASE_ID = "18c2f33d-583f-8060-a6ab-de32ff06bca2"
 
 # File paths (relative to ALN-Ecosystem root)
 ECOSYSTEM_ROOT = Path("/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem")
@@ -483,11 +484,53 @@ def find_video_file(rfid):
 
     return None
 
+def fetch_all_characters():
+    """Fetch all characters from Notion and build {page_id: name} map."""
+    all_results = []
+    has_more = True
+    start_cursor = None
+
+    while has_more:
+        query_data = {}
+        if start_cursor:
+            query_data["start_cursor"] = start_cursor
+
+        resp = requests.post(
+            f"https://api.notion.com/v1/databases/{CHARACTERS_DATABASE_ID}/query",
+            headers=headers,
+            json=query_data
+        )
+        data = resp.json()
+
+        if "results" not in data:
+            print(f"Error fetching characters: {data}")
+            break
+
+        all_results.extend(data["results"])
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
+
+    # Build page_id -> name map
+    character_map = {}
+    for page in all_results:
+        page_id = page["id"]
+        name_data = page["properties"].get("Name", {}).get("title", [])
+        name = name_data[0]["text"]["content"].strip() if name_data else None
+        if name:
+            # Strip role prefix if present (e.g., "E - Ashe Motoko" → "Ashe Motoko")
+            if len(name) > 4 and name[1:4] == ' - ':
+                name = name[4:]
+            character_map[page_id] = name
+
+    print(f"Loaded {len(character_map)} characters from Notion")
+    return character_map
+
 def fetch_all_memory_tokens():
     """Fetch all memory token elements from Notion."""
     query_data = {
         "filter": {
             "or": [
+                {"property": "Basic Type", "select": {"equals": "Memory Token"}},
                 {"property": "Basic Type", "select": {"equals": "Memory Token Image"}},
                 {"property": "Basic Type", "select": {"equals": "Memory Token Audio"}},
                 {"property": "Basic Type", "select": {"equals": "Memory Token Video"}},
@@ -522,7 +565,7 @@ def fetch_all_memory_tokens():
 
     return all_results
 
-def process_token(page):
+def process_token(page, character_map):
     """Process a single Notion page into a token entry."""
     props = page["properties"]
 
@@ -591,6 +634,14 @@ def process_token(page):
         "SF_Group": sf_data.get('SF_Group', "")
     }
 
+    # Look up character owner from Notion relation
+    owner_refs = page["properties"].get("Owner", {}).get("relation", [])
+    if owner_refs:
+        owner_id = owner_refs[0]["id"]  # First owner (primary)
+        token_entry["owner"] = character_map.get(owner_id)
+    else:
+        token_entry["owner"] = None
+
     # Add summary field if it exists (optional field)
     if sf_data.get('SF_Summary'):
         token_entry["summary"] = sf_data.get('SF_Summary')
@@ -627,13 +678,18 @@ def main():
     print(f"Found {len(pages)} memory token elements in Notion")
     print()
 
+    # Fetch character name map for Owner relation lookups
+    print("Fetching characters from Notion...")
+    character_map = fetch_all_characters()
+    print()
+
     # Process tokens
     tokens = {}
     skipped = []
 
     print("Processing tokens...")
     for page in pages:
-        result = process_token(page)
+        result = process_token(page, character_map)
         if result:
             rfid, token_entry = result
             tokens[rfid] = token_entry
