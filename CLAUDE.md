@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2026-02-14
+Last verified: 2026-02-19
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -15,6 +15,7 @@ ALN (About Last Night) Ecosystem is a memory token scanning and video playback s
 - **Player Scanner (ESP32)** (`arduino-cyd-player-scanner/`): Hardware scanner - 'arduino-cyd-player-scanner/CLAUDE.md'
 - **Token Data** (`ALN-TokenData/`): Shared JSON token definitions
 - **Notion Sync Scripts** (`scripts/`): Python scripts for Notion → tokens.json
+- **Config Tool** (`config-tool/`): Web UI for venue setup and config management - 'config-tool/README.md'
 
 ## How the Game Works
 
@@ -255,6 +256,7 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 ```
 ALN-Ecosystem/                     # Parent repo
 ├── backend/                       # [DIRECT] Orchestrator server
+├── config-tool/                   # [DIRECT] Web config UI (port 9000)
 ├── ALN-TokenData/                 # [SUBMODULE] Token definitions
 ├── aln-memory-scanner/            # [SUBMODULE] Player scanner
 │   └── data/                      # [NESTED → ALN-TokenData]
@@ -290,6 +292,14 @@ npm run dev        # Vite dev server (HTTPS:8443)
 npm test           # Jest unit tests
 npm run test:e2e   # Playwright E2E
 npm run build      # Production build
+```
+
+**Config Tool:** See 'config-tool/README.md' for full documentation.
+```bash
+cd config-tool
+npm start          # Express server (port 9000)
+npm run dev        # Development with auto-reload
+npm test           # Node.js built-in test runner
 ```
 
 ## Cross-Module Debugging

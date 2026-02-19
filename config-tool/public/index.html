@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ALN Config Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar__brand">
+        <div class="sidebar__logo">ALN</div>
+        <span class="sidebar__title">Config Tool</span>
+      </div>
+      <ul class="sidebar__nav">
+        <li>
+          <button class="sidebar__link active" data-section="economy">
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            Game Economy
+          </button>
+        </li>
+        <li>
+          <button class="sidebar__link" data-section="showcontrol">
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Show Control
+          </button>
+        </li>
+        <li>
+          <button class="sidebar__link" data-section="audio">
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+            Audio &amp; Environment
+          </button>
+        </li>
+        <li>
+          <button class="sidebar__link" data-section="infra">
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1"/><circle cx="6" cy="18" r="1"/></svg>
+            Infrastructure
+          </button>
+        </li>
+        <li>
+          <button class="sidebar__link" data-section="presets">
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Presets
+          </button>
+        </li>
+      </ul>
+      <div class="sidebar__footer">
+        <div class="sidebar__status" id="connectionStatus">
+          <span class="sidebar__status-dot"></span>
+          Ready
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Toolbar -->
+      <header class="toolbar">
+        <div class="toolbar__section-name" id="sectionTitle">Game Economy</div>
+        <div class="toolbar__actions">
+          <div class="toolbar__dirty-indicator" id="dirtyIndicator" hidden>
+            <span class="toolbar__dirty-dot"></span>
+            Unsaved changes
+          </div>
+          <button class="btn btn--primary" id="saveBtn" hidden>
+            <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save
+          </button>
+        </div>
+      </header>
+
+      <!-- Section Containers -->
+      <div class="content">
+        <section class="section active" id="section-economy">
+          <div class="section__loading">Loading economy config...</div>
+        </section>
+        <section class="section" id="section-showcontrol">
+          <div class="section__loading">Loading show control...</div>
+        </section>
+        <section class="section" id="section-audio">
+          <div class="section__loading">Loading audio config...</div>
+        </section>
+        <section class="section" id="section-infra">
+          <div class="section__loading">Loading infrastructure config...</div>
+        </section>
+        <section class="section" id="section-presets">
+          <div class="section__loading">Loading presets...</div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>
