@@ -228,6 +228,10 @@ body {
   animation: pulse-fade 2s ease-in-out infinite;
 }
 
+.toolbar__dirty-indicator[hidden] {
+  display: none;
+}
+
 .toolbar__dirty-dot {
   width: 6px;
   height: 6px;

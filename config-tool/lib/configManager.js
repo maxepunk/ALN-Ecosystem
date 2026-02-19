@@ -77,7 +77,7 @@ class ConfigManager {
   }
 
   listVideos() {
-    return this._listFiles(this.paths.videosDir, ['.mp4']);
+    return this._listFiles(this._getVideosDir(), ['.mp4']);
   }
 
   _listFiles(dir, extensions) {
@@ -93,14 +93,22 @@ class ConfigManager {
   }
 
   deleteAsset(type, filename) {
-    const dir = type === 'sounds' ? this.paths.soundsDir : this.paths.videosDir;
+    const dir = type === 'sounds' ? this.paths.soundsDir : this._getVideosDir();
     const filePath = path.join(dir, path.basename(filename));
     if (!fs.existsSync(filePath)) throw new Error(`File not found: ${filename}`);
     fs.unlinkSync(filePath);
   }
 
   getAssetUploadDir(type) {
-    return type === 'sounds' ? this.paths.soundsDir : this.paths.videosDir;
+    return type === 'sounds' ? this.paths.soundsDir : this._getVideosDir();
+  }
+
+  _getVideosDir() {
+    try {
+      const env = readEnv(this.paths.envPath).values;
+      if (env.VIDEO_DIR) return path.resolve(path.dirname(this.paths.envPath), env.VIDEO_DIR);
+    } catch { /* fall through */ }
+    return this.paths.videosDir;
   }
 
   // -- Presets --

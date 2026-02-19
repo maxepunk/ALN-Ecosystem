@@ -126,6 +126,31 @@ function createRouter(configManager) {
     }
   });
 
+  // -- Lighting Scenes (from Home Assistant) --
+
+  router.get('/scenes', async (req, res) => {
+    try {
+      const env = configManager.readAll().env;
+      const url = env.HOME_ASSISTANT_URL;
+      const token = env.HOME_ASSISTANT_TOKEN;
+      if (!url || !token) {
+        return res.json([]);
+      }
+      const response = await fetch(`${url}/api/states`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) return res.json([]);
+      const states = await response.json();
+      const scenes = states
+        .filter(e => e.entity_id.startsWith('scene.'))
+        .map(e => ({ id: e.entity_id, name: e.attributes.friendly_name }));
+      res.json(scenes);
+    } catch {
+      res.json([]); // HA unreachable — return empty, frontend falls back to text input
+    }
+  });
+
   // -- Presets --
 
   router.get('/presets', (req, res) => {

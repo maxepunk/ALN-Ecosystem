@@ -15,7 +15,7 @@ const ACTION_DEFS = {
     { key: 'file', type: 'sound-picker', label: 'Sound File (blank = all)' },
   ]},
   'lighting:scene:activate': { label: 'Activate Scene', category: 'lighting', fields: [
-    { key: 'sceneId', type: 'text', label: 'Scene ID', required: true },
+    { key: 'sceneId', type: 'scene-picker', label: 'Scene', required: true },
   ]},
   'video:queue:add': { label: 'Queue Video', category: 'video', fields: [
     { key: 'videoFile', type: 'video-picker', label: 'Video File', required: true },
@@ -61,6 +61,7 @@ export { ACTION_DEFS };
 // Cached asset lists
 let soundsCache = null;
 let videosCache = null;
+let scenesCache = null;
 
 export async function ensureAssets() {
   if (!soundsCache) {
@@ -69,11 +70,15 @@ export async function ensureAssets() {
   if (!videosCache) {
     try { videosCache = await api.getVideos(); } catch { videosCache = []; }
   }
+  if (!scenesCache) {
+    try { scenesCache = await api.getScenes(); } catch { scenesCache = []; }
+  }
 }
 
 export function invalidateAssetCache() {
   soundsCache = null;
   videosCache = null;
+  scenesCache = null;
 }
 
 export function renderCommandList(container, cue, allCues, editorCtx) {
@@ -269,6 +274,26 @@ export function buildPayloadField(field, cmd, allCues, editorCtx) {
       ),
     );
     group.appendChild(select);
+
+  } else if (field.type === 'scene-picker') {
+    if (scenesCache && scenesCache.length > 0) {
+      const select = el('select', {
+        onChange: () => { cmd.payload[field.key] = select.value; editorCtx.markDirty(); },
+      },
+        el('option', { value: '' }, '— select —'),
+        ...scenesCache.map(s =>
+          el('option', { value: s.id, ...(s.id === currentVal ? { selected: true } : {}) }, `${s.name} (${s.id})`)
+        ),
+      );
+      group.appendChild(select);
+    } else {
+      // Fallback to text input when HA is unreachable
+      const input = el('input', {
+        type: 'text', value: currentVal || '', placeholder: 'e.g. scene.game',
+        onInput: () => { cmd.payload[field.key] = input.value; editorCtx.markDirty(); },
+      });
+      group.appendChild(input);
+    }
 
   } else if (field.type === 'range') {
     const val = currentVal ?? field.default ?? field.min ?? 0;

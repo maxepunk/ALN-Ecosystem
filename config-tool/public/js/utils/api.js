@@ -30,6 +30,9 @@ export const putRouting = (data) => request('PUT', '/config/routing', data);
 // Tokens
 export const getTokens = () => request('GET', '/tokens');
 
+// Scenes
+export const getScenes = () => request('GET', '/scenes');
+
 // Assets
 export const getSounds = () => request('GET', '/assets/sounds');
 export const getVideos = () => request('GET', '/assets/videos');
