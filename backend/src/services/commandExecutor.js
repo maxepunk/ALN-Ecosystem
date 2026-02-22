@@ -556,6 +556,18 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         };
       }
 
+      case 'spotify:reconnect': {
+        const spotifyService = require('./spotifyService');
+        const connected = await spotifyService.checkConnection();
+        return {
+          success: true,
+          message: connected ? 'Spotify connected' : 'Spotify not available',
+          data: { connected },
+          source,
+          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
+        };
+      }
+
       case 'spotify:cache:verify': {
         const spotifyService = require('./spotifyService');
         const status = await spotifyService.verifyCacheStatus();

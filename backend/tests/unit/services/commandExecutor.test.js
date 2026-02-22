@@ -100,6 +100,7 @@ jest.mock('../../../src/services/spotifyService', () => ({
   previous: jest.fn().mockResolvedValue(),
   setPlaylist: jest.fn().mockResolvedValue(),
   setVolume: jest.fn().mockResolvedValue(),
+  checkConnection: jest.fn().mockResolvedValue(true),
   verifyCacheStatus: jest.fn().mockResolvedValue({ status: 'verified', trackCount: 42 }),
   getState: jest.fn().mockReturnValue({ connected: true, state: 'playing', volume: 80 }),
   reset: jest.fn(),
@@ -627,6 +628,41 @@ describe('commandExecutor', () => {
       expect(result.success).toBe(true);
       expect(result.data.status).toBe('verified');
       expect(result.data.trackCount).toBe(42);
+    });
+
+    it('should execute spotify:reconnect', async () => {
+      spotifyService.checkConnection.mockResolvedValue(true);
+      spotifyService.getState.mockReturnValue({
+        connected: true, state: 'stopped', volume: 100, pausedByGameClock: false
+      });
+
+      const result = await executeCommand({
+        action: 'spotify:reconnect',
+        payload: {},
+        source: 'gm',
+        deviceId: 'gm1'
+      });
+      expect(result.success).toBe(true);
+      expect(spotifyService.checkConnection).toHaveBeenCalled();
+      expect(result.broadcasts).toEqual([
+        expect.objectContaining({ event: 'spotify:status', target: 'gm' })
+      ]);
+    });
+
+    it('should handle spotify:reconnect when not available', async () => {
+      spotifyService.checkConnection.mockResolvedValue(false);
+      spotifyService.getState.mockReturnValue({
+        connected: false, state: 'stopped', volume: 100, pausedByGameClock: false
+      });
+
+      const result = await executeCommand({
+        action: 'spotify:reconnect',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('not available');
+      expect(result.data.connected).toBe(false);
     });
   });
 

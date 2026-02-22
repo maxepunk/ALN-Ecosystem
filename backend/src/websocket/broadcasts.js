@@ -728,6 +728,11 @@ function setupBroadcastListeners(io, services) {
       emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
       logger.debug('Broadcasted spotify:status (volume changed)');
     });
+
+    addTrackedListener(spotifyService, 'connection:changed', () => {
+      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
+      logger.debug('Broadcasted spotify:status (connection changed)');
+    });
   }
 
   // Error events
