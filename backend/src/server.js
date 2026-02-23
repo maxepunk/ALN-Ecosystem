@@ -37,6 +37,7 @@ const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
 const spotifyService = require('./services/spotifyService');
+const displayControlService = require('./services/displayControlService');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order
 const ServerState = {
@@ -89,6 +90,7 @@ function setupWebSocketHandlers(ioInstance) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        deviceFilter: { connectedOnly: true },
       });
       emitWrapped(socket, 'sync:full', syncPayload);
       logger.debug('Sent sync:full in response to sync:request', { deviceId: socket.deviceId });
@@ -138,6 +140,7 @@ function setupServiceListeners(ioInstance) {
     cueEngineService,
     soundService,
     spotifyService,
+    displayControlService,
   });
 
   // Initialize and start heartbeat monitoring for HTTP-based devices

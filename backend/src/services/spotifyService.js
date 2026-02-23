@@ -105,7 +105,7 @@ class SpotifyService extends EventEmitter {
       ], { timeout: 5000 });
 
       // Wait for MPRIS interface to register after activation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await this._activationDelay();
 
       // Clear cached MPRIS dest (may have changed after activation)
       this._dbusDest = null;
@@ -117,6 +117,14 @@ class SpotifyService extends EventEmitter {
       this._setConnected(false);
       return false;
     }
+  }
+
+  /**
+   * Delay after TransferPlayback to allow MPRIS interface to register.
+   * Extracted for test mockability (avoids 1.5s real delay per test).
+   */
+  _activationDelay() {
+    return new Promise(resolve => setTimeout(resolve, 1500));
   }
 
   /**
@@ -163,7 +171,7 @@ class SpotifyService extends EventEmitter {
           if (activated) {
             logger.info('[Spotify] Recovery succeeded, retrying command');
             const retryDest = await this._discoverDbusDest();
-            if (!retryDest) throw new Error('spotifyd MPRIS not available after recovery');
+            if (!retryDest) throw new Error('MPRIS interface not found after TransferPlayback recovery');
             const retryCmdArgs = [
               '--session', '--type=method_call', '--print-reply',
               '--dest=' + retryDest, DBUS_PATH,

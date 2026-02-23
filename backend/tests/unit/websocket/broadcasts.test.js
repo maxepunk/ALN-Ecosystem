@@ -469,6 +469,52 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         })
       );
     });
+
+    it('should filter disconnected devices from sync:full payload (connectedOnly)', async () => {
+      const mockSession = {
+        id: 'test-session',
+        name: 'Test Session',
+        startTime: new Date().toISOString(),
+        endTime: null,
+        status: 'active',
+        teams: [],
+        transactions: [],
+        connectedDevices: [
+          { id: 'gm-1', type: 'gm', name: 'GM iPad', connectionTime: new Date().toISOString(), connectionStatus: 'connected', ipAddress: '10.0.0.1' },
+          { id: 'player-1', type: 'player', name: 'Player Phone', connectionTime: new Date().toISOString(), connectionStatus: 'disconnected', ipAddress: '10.0.0.2' },
+          { id: 'scoreboard-1', type: 'scoreboard', name: 'Scoreboard', connectionTime: new Date().toISOString(), connectionStatus: 'connected', ipAddress: '10.0.0.3' },
+        ],
+        playerScans: [],
+        metadata: {},
+        scores: [],
+        toJSON: function() { return { id: this.id, name: this.name, status: this.status, teams: this.teams }; }
+      };
+      mockSessionService.getCurrentSession = jest.fn().mockReturnValue(mockSession);
+      mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
+      mockVideoQueueService.currentStatus = 'idle';
+      mockVideoQueueService.queue = [];
+      mockVideoQueueService.currentVideo = null;
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService
+      });
+
+      mockTransactionService.emit('scores:reset', { teamsReset: ['Team Alpha'] });
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Find the sync:full emit call
+      const syncFullCall = mockIo.emit.mock.calls.find(c => c[0] === 'sync:full');
+      expect(syncFullCall).toBeDefined();
+      const devices = syncFullCall[1].data.devices;
+
+      // Only connected devices should appear (gm-1, scoreboard-1)
+      expect(devices).toHaveLength(2);
+      expect(devices.map(d => d.deviceId)).toEqual(['gm-1', 'scoreboard-1']);
+    });
   });
 
   describe('Error Events - Unwrapped → Wrapped Conversion', () => {
@@ -975,6 +1021,73 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect(mockLightingService.listenerCount('connection:changed')).toBe(0);
         expect(mockLightingService.listenerCount('scenes:refreshed')).toBe(0);
       });
+    });
+  });
+
+  describe('Spotify playlist:changed listener', () => {
+    let mockSpotifyService;
+
+    beforeEach(() => {
+      mockSpotifyService = new EventEmitter();
+      mockSpotifyService.getState = jest.fn().mockReturnValue({
+        connected: true, state: 'playing', volume: 80, pausedByGameClock: false
+      });
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        spotifyService: mockSpotifyService,
+      });
+    });
+
+    it('should broadcast spotify:status on playlist:changed', () => {
+      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
+
+      mockSpotifyService.emit('playlist:changed', { uri: 'spotify:playlist:act2' });
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'spotify:status',
+        expect.objectContaining({
+          event: 'spotify:status',
+          data: expect.objectContaining({ connected: true, state: 'playing' })
+        })
+      );
+    });
+  });
+
+  describe('Display mode:changed listener', () => {
+    let mockDisplayControlService;
+
+    beforeEach(() => {
+      mockDisplayControlService = new EventEmitter();
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        displayControlService: mockDisplayControlService,
+      });
+    });
+
+    it('should broadcast display:mode on display:mode:changed', () => {
+      mockDisplayControlService.emit('display:mode:changed', {
+        mode: 'SCOREBOARD',
+        previousMode: 'IDLE_LOOP'
+      });
+
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'display:mode',
+        expect.objectContaining({
+          event: 'display:mode',
+          data: expect.objectContaining({ mode: 'SCOREBOARD' })
+        })
+      );
     });
   });
 });

@@ -30,6 +30,8 @@ describe('SpotifyService', () => {
     spotifyService.reset();
     // Pre-seed D-Bus destination to skip discovery (spotifyd appends .instance{PID})
     spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd';
+    // Mock activation delay to avoid 1.5s real wait per test
+    spotifyService._activationDelay = jest.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -444,6 +446,7 @@ describe('SpotifyService', () => {
       });
       await spotifyService.play();
       expect(spotifyService.state).toBe('playing');
+      expect(spotifyService._recovering).toBe(false);
     });
 
     it('should throw if recovery also fails', async () => {
