@@ -632,9 +632,6 @@ describe('commandExecutor', () => {
 
     it('should execute spotify:reconnect', async () => {
       spotifyService.checkConnection.mockResolvedValue(true);
-      spotifyService.getState.mockReturnValue({
-        connected: true, state: 'stopped', volume: 100, pausedByGameClock: false
-      });
 
       const result = await executeCommand({
         action: 'spotify:reconnect',
@@ -644,9 +641,8 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(spotifyService.checkConnection).toHaveBeenCalled();
-      expect(result.broadcasts).toEqual([
-        expect.objectContaining({ event: 'spotify:status', target: 'gm' })
-      ]);
+      // No broadcasts — connection:changed EventEmitter in broadcasts.js handles it
+      expect(result.broadcasts).toBeUndefined();
     });
 
     it('should handle spotify:reconnect when not available', async () => {
