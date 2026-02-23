@@ -725,6 +725,33 @@ describe('CueEngineService', () => {
       expect(conflictHandler).not.toHaveBeenCalled();
       expect(executeCommand).toHaveBeenCalled();
     });
+
+    it('should emit cue:status with state cancelled when conflict is cancelled', async () => {
+      videoQueueService.isPlaying.mockReturnValue(true);
+      videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
+
+      cueEngineService.loadCues([{
+        id: 'cancel-cue', label: 'Cancel Cue',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } }
+        ]
+      }]);
+
+      // Fire the cue — will create a pending conflict
+      await cueEngineService.fireCue('cancel-cue');
+
+      // Listen for cue:status emission
+      const handler = jest.fn();
+      cueEngineService.on('cue:status', handler);
+
+      // Resolve with cancel
+      await cueEngineService.resolveConflict('cancel-cue', 'cancel');
+
+      expect(handler).toHaveBeenCalledWith({
+        cueId: 'cancel-cue',
+        state: 'cancelled'
+      });
+    });
   });
 
   describe('reset() — compound cue state cleanup', () => {

@@ -472,4 +472,45 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
       expect(ack.message).toMatch(/Home Assistant unreachable/);
     });
   });
+
+  // ── gm:command:ack data field ──
+
+  describe('gm:command:ack data field', () => {
+    it('should include result.data in ack when present', async () => {
+      const displayControlService = require('../../../src/services/displayControlService');
+      displayControlService.getStatus.mockReturnValue({
+        currentMode: 'IDLE_LOOP',
+        previousMode: 'IDLE_LOOP',
+        pendingVideo: null,
+        timestamp: new Date().toISOString()
+      });
+
+      await handleGmCommand(
+        socket,
+        createCommand('display:status', {}),
+        mockIo
+      );
+
+      const ack = getAck();
+      expect(ack).not.toBeNull();
+      expect(ack.success).toBe(true);
+      expect(ack.data).toBeDefined();
+      expect(ack.data.displayStatus).toBeDefined();
+      expect(ack.data.displayStatus.currentMode).toBe('IDLE_LOOP');
+    });
+
+    it('should not include data field when result.data is null', async () => {
+      // bluetooth:scan:start returns no data
+      await handleGmCommand(
+        socket,
+        createCommand('bluetooth:scan:start'),
+        mockIo
+      );
+
+      const ack = getAck();
+      expect(ack).not.toBeNull();
+      expect(ack.success).toBe(true);
+      expect(ack.data).toBeUndefined();
+    });
+  });
 });

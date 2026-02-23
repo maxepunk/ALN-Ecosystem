@@ -1135,11 +1135,12 @@ components:
                 enum: [IDLE_LOOP, SCOREBOARD, VIDEO]
                 description: Current display mode
                 example: "SCOREBOARD"
-              changedBy:
+              previousMode:
                 type: string
+                enum: [IDLE_LOOP, SCOREBOARD, VIDEO]
                 nullable: true
-                description: Device ID that triggered the change
-                example: "GM_STATION_1"
+                description: Previous display mode before the change
+                example: "IDLE_LOOP"
               video:
                 type: string
                 nullable: true
@@ -1156,15 +1157,14 @@ components:
             event: display:mode
             data:
               mode: SCOREBOARD
-              changedBy: GM_STATION_1
+              previousMode: IDLE_LOOP
             timestamp: "2025-10-15T20:15:45.000Z"
         - name: Video Playing
           payload:
             event: display:mode
             data:
               mode: VIDEO
-              changedBy: GM_STATION_1
-              video: "intro.mp4"
+              previousMode: SCOREBOARD
             timestamp: "2025-10-15T20:16:00.000Z"
 
     DisplayStatus:

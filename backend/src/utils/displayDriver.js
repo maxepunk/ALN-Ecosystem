@@ -35,7 +35,7 @@ function getLocalIP() {
 
 // Use actual IP to ensure CDN resources load correctly
 const LOCAL_IP = getLocalIP();
-const SCOREBOARD_URL = `https://${LOCAL_IP}:${process.env.PORT || 3000}/scoreboard`;
+const SCOREBOARD_URL = `https://${LOCAL_IP}:${process.env.PORT || 3000}/scoreboard?kiosk=true`;
 
 /**
  * Launch scoreboard in kiosk browser

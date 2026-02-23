@@ -885,6 +885,7 @@ class CueEngineService extends EventEmitter {
       logger.info(`[CueEngine] Conflict resolved (override): ${cueId}`);
     } else if (decision === 'cancel') {
       logger.info(`[CueEngine] Conflict resolved (cancel): ${cueId}`);
+      this.emit('cue:status', { cueId, state: 'cancelled' });
     } else {
       throw new Error(`Invalid conflict decision: "${decision}" (expected "override" or "cancel")`);
     }

@@ -98,26 +98,16 @@ async function handleGmCommand(socket, data, io) {
       deviceType: socket.deviceType
     });
 
-    // Handle broadcasts (if any)
-    if (result.broadcasts && result.broadcasts.length > 0) {
-      for (const broadcast of result.broadcasts) {
-        if (broadcast.target === 'all') {
-          // Broadcast to sender and all other clients
-          emitWrapped(socket, broadcast.event, broadcast.data);
-          emitWrapped(socket.broadcast, broadcast.event, broadcast.data);
-        } else if (broadcast.target === 'socket') {
-          // Send only to requesting socket
-          emitWrapped(socket, broadcast.event, broadcast.data);
-        }
-      }
-    }
-
     // Send AsyncAPI-compliant ack
-    emitWrapped(socket, 'gm:command:ack', {
+    const ackPayload = {
       action: action,
       success: result.success,
       message: result.message
-    });
+    };
+    if (result.data !== undefined && result.data !== null) {
+      ackPayload.data = result.data;
+    }
+    emitWrapped(socket, 'gm:command:ack', ackPayload);
   } catch (error) {
     const commandData = data.data || data;
     const action = commandData.action;

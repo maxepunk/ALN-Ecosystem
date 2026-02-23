@@ -4,6 +4,9 @@
  *
  * Phase 4.2: HDMI Display Control state machine
  * Layer 3 (Contract): Validates event structure, NOT business logic flow
+ *
+ * display:mode is broadcast via displayControlService EventEmitter → broadcasts.js
+ * display:status is returned via gm:command:ack data field (not a broadcast)
  */
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
@@ -51,12 +54,14 @@ describe('Display Events - Contract Validation', () => {
     });
 
     // CRITICAL: Re-register broadcast listeners after resetAllServices
+    // Must include displayControlService for display:mode:changed → display:mode broadcasts
     setupBroadcastListeners(testContext.io, {
       sessionService,
       stateService,
       videoQueueService,
       offlineQueueService,
-      transactionService
+      transactionService,
+      displayControlService
     });
 
     // Create session (needed for GM authentication)
@@ -92,7 +97,7 @@ describe('Display Events - Contract Validation', () => {
       // Trigger: Send display:idle-loop command
       sendGmCommand(socket, 'display:idle-loop', {});
 
-      // Wait: For display:mode broadcast
+      // Wait: For display:mode broadcast (via displayControlService EventEmitter → broadcasts.js)
       const event = await eventPromise;
 
       // Validate: Wrapped envelope structure
@@ -101,9 +106,9 @@ describe('Display Events - Contract Validation', () => {
       expect(event).toHaveProperty('timestamp');
       expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
-      // Validate: Payload content
+      // Validate: Payload content (from displayControlService display:mode:changed event)
       expect(event.data.mode).toBe('IDLE_LOOP');
-      expect(event.data).toHaveProperty('changedBy');
+      expect(event.data).toHaveProperty('previousMode');
 
       // Validate: Against AsyncAPI contract schema
       validateWebSocketEvent(event, 'display:mode');
@@ -124,7 +129,7 @@ describe('Display Events - Contract Validation', () => {
 
       // Validate: Payload content
       expect(event.data.mode).toBe('SCOREBOARD');
-      expect(event.data).toHaveProperty('changedBy');
+      expect(event.data).toHaveProperty('previousMode');
 
       // Validate: Against AsyncAPI contract
       validateWebSocketEvent(event, 'display:mode');
@@ -148,15 +153,17 @@ describe('Display Events - Contract Validation', () => {
 
       // Validate: Payload content (toggled to SCOREBOARD)
       expect(event.data.mode).toBe('SCOREBOARD');
-      expect(event.data).toHaveProperty('changedBy');
+      expect(event.data).toHaveProperty('previousMode');
 
       // Validate: Against AsyncAPI contract
       validateWebSocketEvent(event, 'display:mode');
     });
 
     it('should match AsyncAPI schema for display:toggle command (SCOREBOARD -> IDLE_LOOP)', async () => {
-      // First switch to SCOREBOARD
+      // First switch to SCOREBOARD and consume that broadcast
+      const setupPromise = waitForEvent(socket, 'display:mode');
       await displayControlService.setScoreboard();
+      await setupPromise;
       expect(displayControlService.getCurrentMode()).toBe('SCOREBOARD');
 
       const eventPromise = waitForEvent(socket, 'display:mode');
@@ -173,59 +180,55 @@ describe('Display Events - Contract Validation', () => {
 
       // Validate: Payload content (toggled back to IDLE_LOOP)
       expect(event.data.mode).toBe('IDLE_LOOP');
-      expect(event.data).toHaveProperty('changedBy');
+      expect(event.data).toHaveProperty('previousMode');
 
       // Validate: Against AsyncAPI contract
       validateWebSocketEvent(event, 'display:mode');
     });
   });
 
-  describe('display:status event', () => {
-    it('should match AsyncAPI schema for display:status command', async () => {
-      // Setup: Listen for display:status BEFORE triggering
-      const eventPromise = waitForEvent(socket, 'display:status');
+  describe('display:status via ack', () => {
+    it('should include display status in gm:command:ack data', async () => {
+      // display:status is now returned via gm:command:ack data field (not a separate broadcast)
+      const ackPromise = waitForEvent(socket, 'gm:command:ack');
 
       // Trigger: Send display:status command
       sendGmCommand(socket, 'display:status', {});
 
-      // Wait: For display:status response
-      const event = await eventPromise;
+      // Wait: For ack response
+      const ack = await ackPromise;
 
-      // Validate: Wrapped envelope structure
-      expect(event).toHaveProperty('event', 'display:status');
-      expect(event).toHaveProperty('data');
-      expect(event).toHaveProperty('timestamp');
-      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      // Validate: Ack structure
+      expect(ack).toHaveProperty('event', 'gm:command:ack');
+      expect(ack).toHaveProperty('data');
+      expect(ack.data.success).toBe(true);
+      expect(ack.data.action).toBe('display:status');
 
-      // Validate: Payload content
-      expect(event.data).toHaveProperty('currentMode');
-      expect(event.data).toHaveProperty('previousMode');
-      expect(event.data).toHaveProperty('timestamp');
-      expect(['IDLE_LOOP', 'SCOREBOARD', 'VIDEO']).toContain(event.data.currentMode);
-      expect(['IDLE_LOOP', 'SCOREBOARD', 'VIDEO']).toContain(event.data.previousMode);
-
-      // Validate: Against AsyncAPI contract schema
-      validateWebSocketEvent(event, 'display:status');
+      // Validate: Display status in ack data
+      expect(ack.data.data).toBeDefined();
+      expect(ack.data.data.displayStatus).toBeDefined();
+      expect(ack.data.data.displayStatus).toHaveProperty('currentMode');
+      expect(ack.data.data.displayStatus).toHaveProperty('previousMode');
+      expect(ack.data.data.displayStatus).toHaveProperty('timestamp');
+      expect(['IDLE_LOOP', 'SCOREBOARD', 'VIDEO']).toContain(ack.data.data.displayStatus.currentMode);
+      expect(['IDLE_LOOP', 'SCOREBOARD', 'VIDEO']).toContain(ack.data.data.displayStatus.previousMode);
     });
 
     it('should return correct status after mode changes', async () => {
       // Switch to SCOREBOARD first
       await displayControlService.setScoreboard();
 
-      const eventPromise = waitForEvent(socket, 'display:status');
+      const ackPromise = waitForEvent(socket, 'gm:command:ack');
 
       // Trigger: Send display:status command
       sendGmCommand(socket, 'display:status', {});
 
-      const event = await eventPromise;
+      const ack = await ackPromise;
 
       // Validate: Current mode is SCOREBOARD
-      expect(event.data.currentMode).toBe('SCOREBOARD');
-      expect(event.data.previousMode).toBe('IDLE_LOOP');
-      expect(event.data.pendingVideo).toBeNull();
-
-      // Validate: Against AsyncAPI contract
-      validateWebSocketEvent(event, 'display:status');
+      expect(ack.data.data.displayStatus.currentMode).toBe('SCOREBOARD');
+      expect(ack.data.data.displayStatus.previousMode).toBe('IDLE_LOOP');
+      expect(ack.data.data.displayStatus.pendingVideo).toBeNull();
     });
   });
 });

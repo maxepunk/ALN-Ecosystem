@@ -134,6 +134,7 @@ async function performSystemReset(io, services) {
     cueEngineService,
     soundService,
     spotifyService,
+    displayControlService,
   });
   logger.debug('Broadcast listeners re-initialized');
 
