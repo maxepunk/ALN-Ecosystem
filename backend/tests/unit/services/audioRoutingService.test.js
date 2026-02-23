@@ -212,6 +212,56 @@ describe('AudioRoutingService', () => {
     });
   });
 
+  // ── Sink cache ──
+
+  describe('sink cache', () => {
+    it('should return cached sinks within TTL (no second pactl call)', async () => {
+      mockExecFileSuccess(
+        '47\talsa_output.platform-fef00700.hdmi.hdmi-stereo\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+      );
+
+      const first = await audioRoutingService.getAvailableSinks();
+      const second = await audioRoutingService.getAvailableSinks();
+
+      expect(first).toEqual(second);
+      // Only one pactl call — second was a cache hit
+      expect(execFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fetch fresh data after cache invalidation', async () => {
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) {
+          cb(null, '47\talsa_output.hdmi\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n', '');
+        } else {
+          cb(null, '47\talsa_output.hdmi\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n89\tbluez_output.AA_BB.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE\n', '');
+        }
+      });
+
+      const first = await audioRoutingService.getAvailableSinks();
+      expect(first).toHaveLength(1);
+
+      audioRoutingService._invalidateSinkCache();
+      const second = await audioRoutingService.getAvailableSinks();
+      expect(second).toHaveLength(2);
+      expect(callCount).toBe(2);
+    });
+
+    it('should invalidate cache on reset()', async () => {
+      mockExecFileSuccess(
+        '47\talsa_output.hdmi\tPipeWire\ts32le 2ch 48000Hz\tRUNNING\n'
+      );
+
+      await audioRoutingService.getAvailableSinks();
+      expect(audioRoutingService._sinkCache).not.toBeNull();
+
+      audioRoutingService.reset();
+      expect(audioRoutingService._sinkCache).toBeNull();
+      expect(audioRoutingService._sinkCacheTime).toBe(0);
+    });
+  });
+
   // ── getBluetoothSinks() ──
 
   describe('getBluetoothSinks()', () => {
@@ -548,7 +598,7 @@ describe('AudioRoutingService', () => {
 
       audioRoutingService.startSinkMonitor();
 
-      expect(spawn).toHaveBeenCalledWith('pactl', ['subscribe']);
+      expect(spawn).toHaveBeenCalledWith('pactl', ['subscribe'], expect.any(Object));
     });
 
     it('should emit sink:added on new sink event', () => {
@@ -657,18 +707,22 @@ describe('AudioRoutingService', () => {
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
 
-      // Mock getAvailableSinks to identify BT sink, but fail on applyRouting
-      let callCount = 0;
+      // BT sink exists, VLC sink-input found, but move-sink-input fails
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (args[0] === 'list' && args[1] === 'sinks' && args[2] === 'short') {
-          callCount++;
-          if (callCount === 1) {
-            // First call from _onSinkAdded → getAvailableSinks — BT sink exists
-            cb(null, '89\tbluez_output.AA_BB_CC_DD_EE_FF.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE\n', '');
-          } else {
-            // Second call from applyRouting → getAvailableSinks — no sinks (trigger error)
-            cb(null, '', '');
-          }
+          cb(null, '89\tbluez_output.AA_BB_CC_DD_EE_FF.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE\n', '');
+          return;
+        }
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #201',
+            '\tProperties:',
+            '\t\tapplication.name = "VLC media player"',
+          ].join('\n'), '');
+          return;
+        }
+        if (args[0] === 'move-sink-input') {
+          cb(new Error('Failure: No such entity'), '', '');
           return;
         }
         cb(null, '', '');
@@ -838,7 +892,7 @@ describe('AudioRoutingService', () => {
 
       await audioRoutingService.init();
 
-      expect(spawn).toHaveBeenCalledWith('pactl', ['subscribe']);
+      expect(spawn).toHaveBeenCalledWith('pactl', ['subscribe'], expect.any(Object));
     });
 
     it('should use defaults when no persisted data', async () => {
@@ -948,6 +1002,44 @@ describe('AudioRoutingService', () => {
         'pactl', ['set-sink-input-volume', '42', '100%'],
         expect.any(Object), expect.any(Function)
       );
+    });
+  });
+
+  // ── getStreamVolume() ──
+
+  describe('getStreamVolume()', () => {
+    it('should read volume with a single pactl call (not two)', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #42',
+            '\tDriver: PipeWire',
+            '\tState: RUNNING',
+            '\tVolume: front-left: 49152 /  75% / -7.50 dB,   front-right: 49152 /  75% / -7.50 dB',
+            '\tProperties:',
+            '\t\tapplication.name = "spotifyd"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(new Error('unexpected'), '', '');
+      });
+
+      const volume = await audioRoutingService.getStreamVolume('spotify');
+
+      expect(volume).toBe(75);
+      // Only ONE pactl call — not two (previously called findSinkInput + list sink-inputs separately)
+      expect(execFile).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return null when stream has no sink-input', async () => {
+      mockExecFileSuccess([
+        'Sink Input #100',
+        '\tProperties:',
+        '\t\tapplication.name = "Firefox"',
+      ].join('\n'));
+
+      const volume = await audioRoutingService.getStreamVolume('spotify');
+      expect(volume).toBeNull();
     });
   });
 

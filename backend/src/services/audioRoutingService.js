@@ -54,6 +54,12 @@ const MONITOR_MAX_FAILURES = 5;
 /** Backoff multiplier per consecutive failure */
 const MONITOR_BACKOFF_MULTIPLIER = 2;
 
+/** How long to cache sink list (ms) — invalidated immediately on sink events */
+const SINK_CACHE_TTL = 5000;
+
+/** Debounce delay for BT sink change processing (ms) */
+const BT_SINK_DEBOUNCE = 300;
+
 class AudioRoutingService extends EventEmitter {
   constructor() {
     super();
@@ -61,6 +67,11 @@ class AudioRoutingService extends EventEmitter {
     this._monitorRestartTimer = null;
     this._monitorFailures = 0;
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
+
+    // Sink list cache (reduces pactl calls — invalidated on sink events)
+    this._sinkCache = null;
+    this._sinkCacheTime = 0;
+    this._btSinkDebounceTimer = null;
 
     // Combine-sink state
     this._combineSinkActive = false;
@@ -106,11 +117,20 @@ class AudioRoutingService extends EventEmitter {
       this._monitorProc.kill();
       this._monitorProc = null;
     }
+    if (this._processExitHandler) {
+      process.removeListener('exit', this._processExitHandler);
+      this._processExitHandler = null;
+    }
     if (this._monitorRestartTimer) {
       clearTimeout(this._monitorRestartTimer);
       this._monitorRestartTimer = null;
     }
+    if (this._btSinkDebounceTimer) {
+      clearTimeout(this._btSinkDebounceTimer);
+      this._btSinkDebounceTimer = null;
+    }
     this._monitorFailures = 0;
+    this._invalidateSinkCache();
 
     // Tear down combine-sink processes
     this._killCombineSinkProcs();
@@ -125,6 +145,8 @@ class AudioRoutingService extends EventEmitter {
     this.cleanup();
     this.removeAllListeners();
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
+    this._sinkCache = null;
+    this._sinkCacheTime = 0;
     this._combineSinkActive = false;
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
@@ -143,13 +165,33 @@ class AudioRoutingService extends EventEmitter {
    * @returns {Promise<Array<{id: string, name: string, driver: string, format: string, state: string, type: string}>>}
    */
   async getAvailableSinks() {
+    // Return cached result if still fresh (prevents redundant pactl calls
+    // during cascading sink events — a single sink:added triggers 3-5 calls)
+    const now = Date.now();
+    if (this._sinkCache && (now - this._sinkCacheTime) < SINK_CACHE_TTL) {
+      return this._sinkCache;
+    }
+
     try {
       const stdout = await this._execFile('pactl', ['list', 'sinks', 'short']);
-      return this._parseSinkList(stdout);
+      this._sinkCache = this._parseSinkList(stdout);
+      this._sinkCacheTime = now;
+      return this._sinkCache;
     } catch (err) {
       logger.error('Failed to get available sinks', { error: err.message });
       return [];
     }
+  }
+
+  /**
+   * Invalidate the sink list cache.
+   * Called on sink:added/sink:removed events so the next getAvailableSinks()
+   * fetches fresh data from PipeWire.
+   * @private
+   */
+  _invalidateSinkCache() {
+    this._sinkCache = null;
+    this._sinkCacheTime = 0;
   }
 
   /**
@@ -385,16 +427,14 @@ class AudioRoutingService extends EventEmitter {
     this._validateStream(stream);
 
     const appName = STREAM_APP_NAMES[stream];
-    const sinkInput = await this.findSinkInput(appName);
 
-    if (!sinkInput || !sinkInput.index) {
-      return null;
-    }
-
+    // Single pactl call — find sink-input AND extract volume from same output
+    // (previously called pactl list sink-inputs TWICE: once in findSinkInput, once here)
     try {
       const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
-      const volumeMatch = this._extractVolumeForSinkInput(stdout, sinkInput.index);
-      return volumeMatch;
+      const index = this._parseSinkInputs(stdout, appName);
+      if (!index) return null;
+      return this._extractVolumeForSinkInput(stdout, index);
     } catch (err) {
       logger.error('Failed to get stream volume', { stream, error: err.message });
       return null;
@@ -558,6 +598,22 @@ class AudioRoutingService extends EventEmitter {
         error: err.message,
       });
     }
+  }
+
+  /**
+   * Debounced version of _onBtSinkChanged.
+   * Coalesces rapid sink events (e.g., BT speaker connect triggers multiple
+   * PipeWire events) into a single processing cycle.
+   * @private
+   */
+  _debouncedBtSinkChanged() {
+    if (this._btSinkDebounceTimer) {
+      clearTimeout(this._btSinkDebounceTimer);
+    }
+    this._btSinkDebounceTimer = setTimeout(() => {
+      this._btSinkDebounceTimer = null;
+      this._onBtSinkChanged();
+    }, BT_SINK_DEBOUNCE);
   }
 
   /**
@@ -929,8 +985,21 @@ class AudioRoutingService extends EventEmitter {
       return;
     }
 
-    this._monitorProc = spawn('pactl', ['subscribe']);
+    // stdio: ['ignore', 'pipe', 'pipe'] — don't inherit stdin (prevents orphan from
+    // holding stdin open), pipe stdout/stderr for event parsing.
+    this._monitorProc = spawn('pactl', ['subscribe'], { stdio: ['ignore', 'pipe', 'pipe'] });
     logger.info('Sink monitor started', { pid: this._monitorProc.pid });
+
+    // CRITICAL: Register a process exit handler to kill the monitor on unclean shutdown.
+    // Without this, PM2 restarts orphan the pactl subscribe process (re-parented to PID 1),
+    // each holding a PipeWire-pulse connection slot. Over multiple restarts this exhausts
+    // the max-clients limit (default 64), breaking ALL audio.
+    this._processExitHandler = () => {
+      if (this._monitorProc) {
+        this._monitorProc.kill();
+      }
+    };
+    process.on('exit', this._processExitHandler);
 
     let buffer = '';
     let receivedData = false;
@@ -945,12 +1014,14 @@ class AudioRoutingService extends EventEmitter {
         if (!event) continue;
 
         if (event.action === 'new' && event.type === 'sink') {
+          this._invalidateSinkCache();
           this.emit('sink:added', { id: event.id });
           this._onSinkAdded(event.id);
-          this._onBtSinkChanged();
+          this._debouncedBtSinkChanged();
         } else if (event.action === 'remove' && event.type === 'sink') {
+          this._invalidateSinkCache();
           this.emit('sink:removed', { id: event.id });
-          this._onBtSinkChanged();
+          this._debouncedBtSinkChanged();
         }
       }
     });
