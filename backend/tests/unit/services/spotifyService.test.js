@@ -208,10 +208,18 @@ describe('SpotifyService', () => {
       expect(execFile).toHaveBeenCalledTimes(1);
     });
 
-    it('should clear cached destination on reset', () => {
+    it('should clear all cached state on reset', () => {
       spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance99';
+      spotifyService._spotifydDest = 'rs.spotifyd.instance99';
+      spotifyService._recovering = true;
+      spotifyService.connected = true;
+      spotifyService.state = 'playing';
       spotifyService.reset();
       expect(spotifyService._dbusDest).toBeNull();
+      expect(spotifyService._spotifydDest).toBeNull();
+      expect(spotifyService._recovering).toBe(false);
+      expect(spotifyService.connected).toBe(false);
+      expect(spotifyService.state).toBe('stopped');
     });
   });
 
@@ -401,6 +409,58 @@ describe('SpotifyService', () => {
       mockExecFileError('Connection refused');
       await spotifyService.init();
       expect(spotifyService.connected).toBe(false);
+    });
+  });
+
+  describe('reactive recovery in _dbusCall', () => {
+    it('should retry after recovery when first call fails', async () => {
+      // Flow: original MPRIS call fails → clear caches → discover native →
+      // TransferPlayback → wait → discover MPRIS → checkConnection →
+      // re-discover MPRIS → retry original command
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) {
+          // Original Play call — fails (stale MPRIS dest)
+          cb(new Error('org.freedesktop.DBus.Error.ServiceUnknown'), '', '');
+        } else if (callCount === 2) {
+          // Recovery: _discoverSpotifydDest → ListNames
+          cb(null, `array [\n  string "rs.spotifyd.instance999"\n]`, '');
+        } else if (callCount === 3) {
+          // Recovery: activate → TransferPlayback
+          cb(null, '', '');
+        } else if (callCount === 4) {
+          // Recovery: checkConnection → _discoverDbusDest → ListNames
+          cb(null, `array [\n  string "org.mpris.MediaPlayer2.spotifyd.instance999"\n]`, '');
+        } else if (callCount === 5) {
+          // Recovery: checkConnection → Properties.Get
+          cb(null, 'variant       string "Playing"', '');
+        } else if (callCount === 6) {
+          // Retry: _discoverDbusDest (cached from checkConnection)
+          // This is the retry of the original Play command
+          cb(null, '', '');
+        }
+      });
+      await spotifyService.play();
+      expect(spotifyService.state).toBe('playing');
+    });
+
+    it('should throw if recovery also fails', async () => {
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      mockExecFileError('org.freedesktop.DBus.Error.ServiceUnknown');
+      await expect(spotifyService.play()).rejects.toThrow();
+    });
+
+    it('should not recurse infinitely on repeated failures', async () => {
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        cb(new Error('D-Bus error'), '', '');
+      });
+      await expect(spotifyService.play()).rejects.toThrow();
+      expect(callCount).toBeLessThan(20);
     });
   });
 

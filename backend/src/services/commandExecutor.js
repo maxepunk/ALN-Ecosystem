@@ -42,7 +42,7 @@ const SPOTIFY_TRANSPORT = {
  * @param {string} [params.trigger] - Provenance string when source is 'cue'
  * @param {string} [params.deviceId] - Device ID (for logging/transactions)
  * @param {string} [params.deviceType] - Device type (for transactions)
- * @returns {Promise<{success: boolean, message: string, data?: any, source: string, broadcasts?: Array}>}
+ * @returns {Promise<{success: boolean, message: string, data?: any, source: string}>}
  */
 async function executeCommand({ action, payload = {}, source = 'gm', trigger, deviceId, deviceType }) {
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
@@ -50,7 +50,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   try {
     let resultMessage = '';
     let resultData = null;
-    const broadcasts = []; // Array of {event, data, target} for caller to emit
 
     switch (action) {
       // --- Session commands ---
@@ -152,12 +151,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       case 'video:skip':
         videoQueueService.skipCurrent();
-        // Broadcast video:skipped event
-        broadcasts.push({
-          event: 'video:skipped',
-          data: { gmStation: deviceId },
-          target: 'all'
-        });
         resultMessage = 'Video skipped successfully';
         logger.info('Video skipped', { source, deviceId });
         break;
@@ -203,9 +196,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
           const result = await serviceMethod();
           if (!result.success) throw new Error(result.error || `Failed: ${logMessage}`);
           const mode = result.mode || modeName;
-          const eventData = { mode, changedBy: deviceId };
-          broadcasts.push({ event: 'display:mode', data: eventData, target: 'all' });
-          resultData = eventData;
+          resultData = { mode };
           resultMessage = logMessage;
           logger.info(logMessage, { source, deviceId, mode });
         }
@@ -229,9 +220,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
           if (!toggleResult.success) {
             throw new Error(toggleResult.error || 'Failed to toggle display mode');
           }
-          const eventData = { mode: toggleResult.mode, changedBy: deviceId };
-          broadcasts.push({ event: 'display:mode', data: eventData, target: 'all' });
-          resultData = eventData;
+          resultData = { mode: toggleResult.mode };
           resultMessage = `Display toggled to ${toggleResult.mode.toLowerCase()}`;
           logger.info('Display toggled', { source, deviceId, newMode: toggleResult.mode });
         }
@@ -241,12 +230,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'display:status': {
         // Get current display mode status
         const displayStatus = displayControlService.getStatus();
-        // Caller should emit this directly to requesting socket only
-        broadcasts.push({
-          event: 'display:status',
-          data: displayStatus,
-          target: 'socket'
-        });
         resultData = { displayStatus };
         resultMessage = `Display mode: ${displayStatus.currentMode}`;
         logger.info('Display status requested', { source, deviceId, status: displayStatus });
@@ -478,10 +461,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { cueId } = payload;
         if (!cueId) return { success: false, message: 'cueId required', source };
         await cueEngineService.stopCue(cueId);
-        return {
-          success: true, message: `Cue stopped: ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'stopped' }, target: 'gm' }]
-        };
+        return { success: true, message: `Cue stopped: ${cueId}`, source };
       }
 
       case 'cue:pause': {
@@ -489,10 +469,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { cueId } = payload;
         if (!cueId) return { success: false, message: 'cueId required', source };
         await cueEngineService.pauseCue(cueId);
-        return {
-          success: true, message: `Cue paused: ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'paused' }, target: 'gm' }]
-        };
+        return { success: true, message: `Cue paused: ${cueId}`, source };
       }
 
       case 'cue:resume': {
@@ -500,10 +477,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { cueId } = payload;
         if (!cueId) return { success: false, message: 'cueId required', source };
         await cueEngineService.resumeCue(cueId);
-        return {
-          success: true, message: `Cue resumed: ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: 'running' }, target: 'gm' }]
-        };
+        return { success: true, message: `Cue resumed: ${cueId}`, source };
       }
 
       case 'cue:conflict:resolve': {
@@ -512,10 +486,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         if (!cueId) return { success: false, message: 'cueId required', source };
         if (!decision) return { success: false, message: 'decision required', source };
         await cueEngineService.resolveConflict(cueId, decision);
-        return {
-          success: true, message: `Conflict resolved (${decision}): ${cueId}`, source,
-          broadcasts: [{ event: 'cue:status', data: { cueId, state: decision === 'override' ? 'running' : 'cancelled' }, target: 'gm' }]
-        };
+        return { success: true, message: `Conflict resolved (${decision}): ${cueId}`, source };
       }
 
       // --- Spotify commands (Phase 2) ---
@@ -528,10 +499,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const spotifyService = require('./spotifyService');
         const method = SPOTIFY_TRANSPORT[action];
         await spotifyService[method]();
-        return {
-          success: true, message: `Spotify: ${method}`, source,
-          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
-        };
+        return { success: true, message: `Spotify: ${method}`, source };
       }
 
       case 'spotify:playlist': {
@@ -539,10 +507,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { uri } = payload;
         if (!uri) return { success: false, message: 'uri required', source };
         await spotifyService.setPlaylist(uri);
-        return {
-          success: true, message: `Spotify playlist: ${uri}`, source,
-          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
-        };
+        return { success: true, message: `Spotify playlist: ${uri}`, source };
       }
 
       case 'spotify:volume': {
@@ -550,16 +515,13 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const { volume } = payload;
         if (volume === undefined) return { success: false, message: 'volume required', source };
         await spotifyService.setVolume(volume);
-        return {
-          success: true, message: `Spotify volume: ${volume}`, source,
-          broadcasts: [{ event: 'spotify:status', data: spotifyService.getState(), target: 'gm' }]
-        };
+        return { success: true, message: `Spotify volume: ${volume}`, source };
       }
 
       case 'spotify:reconnect': {
         const spotifyService = require('./spotifyService');
-        const connected = await spotifyService.checkConnection();
-        // No broadcasts needed — checkConnection() calls _setConnected() which emits
+        const connected = await spotifyService.activate();
+        // No broadcasts needed — activate() calls _setConnected() which emits
         // 'connection:changed', picked up by broadcasts.js EventEmitter listener
         return {
           success: true,
@@ -598,8 +560,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       success: true,
       message: resultMessage,
       data: resultData,
-      source,
-      broadcasts
+      source
     };
   } catch (error) {
     logger.error(`[executeCommand] ${action} failed`, { error: error.message, action, source });

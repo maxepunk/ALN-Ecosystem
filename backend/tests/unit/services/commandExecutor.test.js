@@ -101,6 +101,7 @@ jest.mock('../../../src/services/spotifyService', () => ({
   setPlaylist: jest.fn().mockResolvedValue(),
   setVolume: jest.fn().mockResolvedValue(),
   checkConnection: jest.fn().mockResolvedValue(true),
+  activate: jest.fn().mockResolvedValue(true),
   verifyCacheStatus: jest.fn().mockResolvedValue({ status: 'verified', trackCount: 42 }),
   getState: jest.fn().mockReturnValue({ connected: true, state: 'playing', volume: 80 }),
   reset: jest.fn(),
@@ -551,8 +552,6 @@ describe('commandExecutor', () => {
       const result = await executeCommand({ action: 'spotify:play', payload: {}, source: 'gm' });
       expect(result.success).toBe(true);
       expect(spotifyService.play).toHaveBeenCalled();
-      expect(result.broadcasts).toBeDefined();
-      expect(result.broadcasts[0].event).toBe('spotify:status');
     });
 
     it('should execute spotify:pause', async () => {
@@ -631,7 +630,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute spotify:reconnect', async () => {
-      spotifyService.checkConnection.mockResolvedValue(true);
+      spotifyService.activate.mockResolvedValue(true);
 
       const result = await executeCommand({
         action: 'spotify:reconnect',
@@ -640,13 +639,13 @@ describe('commandExecutor', () => {
         deviceId: 'gm1'
       });
       expect(result.success).toBe(true);
-      expect(spotifyService.checkConnection).toHaveBeenCalled();
+      expect(spotifyService.activate).toHaveBeenCalled();
       // No broadcasts — connection:changed EventEmitter in broadcasts.js handles it
       expect(result.broadcasts).toBeUndefined();
     });
 
     it('should handle spotify:reconnect when not available', async () => {
-      spotifyService.checkConnection.mockResolvedValue(false);
+      spotifyService.activate.mockResolvedValue(false);
       spotifyService.getState.mockReturnValue({
         connected: false, state: 'stopped', volume: 100, pausedByGameClock: false
       });
@@ -723,8 +722,6 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(cueEngineService.stopCue).toHaveBeenCalledWith('opening');
-      expect(result.broadcasts[0].event).toBe('cue:status');
-      expect(result.broadcasts[0].data.state).toBe('stopped');
     });
 
     it('should reject cue:stop without cueId', async () => {
@@ -749,7 +746,6 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(cueEngineService.pauseCue).toHaveBeenCalledWith('opening');
-      expect(result.broadcasts[0].data.state).toBe('paused');
     });
 
     it('should reject cue:pause without cueId', async () => {
@@ -774,7 +770,6 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(cueEngineService.resumeCue).toHaveBeenCalledWith('opening');
-      expect(result.broadcasts[0].data.state).toBe('running');
     });
 
     it('should reject cue:resume without cueId', async () => {

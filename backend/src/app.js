@@ -169,8 +169,8 @@ async function initializeServices() {
     await lightingService.init();         // Non-blocking HA connection check
 
     // Initialize Phase 2 services
-    spotifyService.checkConnection().catch(err =>
-      logger.warn('Spotify connection check failed (non-blocking)', { error: err.message })
+    spotifyService.init().catch(err =>
+      logger.warn('Spotify init failed (non-blocking)', { error: err.message })
     );
 
     // Initialize Phase 1 services (game clock, cue engine, sound)

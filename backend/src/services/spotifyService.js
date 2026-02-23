@@ -31,6 +31,7 @@ class SpotifyService extends EventEmitter {
     this._pausedByGameClock = false;
     this._dbusDest = null; // Discovered dynamically (spotifyd appends .instance{PID})
     this._spotifydDest = null; // Native rs.spotifyd D-Bus dest (for TransferPlayback)
+    this._recovering = false; // Prevents infinite recursion in reactive recovery
     this.cachePath = process.env.SPOTIFY_CACHE_PATH || path.join(os.homedir(), '.cache', 'spotifyd');
   }
 
@@ -147,7 +148,35 @@ class SpotifyService extends EventEmitter {
       '--dest=' + dest, DBUS_PATH,
       method, ...args
     ];
-    return execFileAsync('dbus-send', cmdArgs, { timeout: 5000 });
+    try {
+      return await execFileAsync('dbus-send', cmdArgs, { timeout: 5000 });
+    } catch (err) {
+      // Reactive recovery: if not already recovering, try to re-activate
+      if (!this._recovering) {
+        this._recovering = true;
+        logger.warn(`[Spotify] D-Bus call failed, attempting recovery: ${err.message}`);
+        // Clear caches so discovery starts fresh
+        this._dbusDest = null;
+        this._spotifydDest = null;
+        try {
+          const activated = await this.activate();
+          if (activated) {
+            logger.info('[Spotify] Recovery succeeded, retrying command');
+            const retryDest = await this._discoverDbusDest();
+            if (!retryDest) throw new Error('spotifyd MPRIS not available after recovery');
+            const retryCmdArgs = [
+              '--session', '--type=method_call', '--print-reply',
+              '--dest=' + retryDest, DBUS_PATH,
+              method, ...args
+            ];
+            return await execFileAsync('dbus-send', retryCmdArgs, { timeout: 5000 });
+          }
+        } finally {
+          this._recovering = false;
+        }
+      }
+      throw err;
+    }
   }
 
   async _dbusSetProperty(iface, property, type, value) {
@@ -282,6 +311,7 @@ class SpotifyService extends EventEmitter {
     this._pausedByGameClock = false;
     this._dbusDest = null; // Re-discover on next call (PID may change after restart)
     this._spotifydDest = null;
+    this._recovering = false;
   }
 
   cleanup() {
