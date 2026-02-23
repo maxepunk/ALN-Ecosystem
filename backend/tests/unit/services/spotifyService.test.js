@@ -215,6 +215,195 @@ describe('SpotifyService', () => {
     });
   });
 
+  describe('_findDbusDest', () => {
+    it('should find D-Bus name matching pattern', async () => {
+      spotifyService._dbusDest = null;
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n  string "rs.spotifyd.instance12345"\n  string "org.mpris.MediaPlayer2.spotifyd.instance12345"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      const result = await spotifyService._findDbusDest('rs\\.spotifyd\\.');
+      expect(result).toBe('rs.spotifyd.instance12345');
+    });
+
+    it('should return null when no match found', async () => {
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      const result = await spotifyService._findDbusDest('rs\\.spotifyd\\.');
+      expect(result).toBeNull();
+    });
+
+    it('should return null on D-Bus error', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('Connection refused'), '', '');
+      });
+      const result = await spotifyService._findDbusDest('rs\\.spotifyd\\.');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('_discoverSpotifydDest', () => {
+    it('should find native spotifyd D-Bus name', async () => {
+      spotifyService._spotifydDest = null;
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n  string "rs.spotifyd.instance12345"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      const result = await spotifyService._discoverSpotifydDest();
+      expect(result).toBe('rs.spotifyd.instance12345');
+    });
+
+    it('should cache the discovered destination', async () => {
+      spotifyService._spotifydDest = null;
+      const listNamesOutput = `array [\n  string "rs.spotifyd.instance99"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      await spotifyService._discoverSpotifydDest();
+      execFile.mockClear();
+      const result = await spotifyService._discoverSpotifydDest();
+      expect(result).toBe('rs.spotifyd.instance99');
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should return null when spotifyd not on D-Bus', async () => {
+      spotifyService._spotifydDest = null;
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      const result = await spotifyService._discoverSpotifydDest();
+      expect(result).toBeNull();
+    });
+  });
+
+  // Helper: MPRIS ListNames response for re-discovery after TransferPlayback
+  const mprisListNamesOutput = `array [\n  string "org.mpris.MediaPlayer2.spotifyd.instance123"\n]`;
+
+  describe('activate', () => {
+    // activate() flow: TransferPlayback → wait → clear _dbusDest → checkConnection()
+    // checkConnection() calls _discoverDbusDest() → _findDbusDest(ListNames) → Properties.Get
+    // So successful activation = 3 execFile calls minimum
+
+    it('should call TransferPlayback via native D-Bus interface', async () => {
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) {
+          // TransferPlayback
+          expect(args).toContain('--dest=rs.spotifyd.instance123');
+          expect(args).toContain('rs.spotifyd.Controls.TransferPlayback');
+          cb(null, '', '');
+        } else if (callCount === 2) {
+          // MPRIS re-discovery (ListNames)
+          cb(null, mprisListNamesOutput, '');
+        } else {
+          // Properties.Get (checkConnection)
+          cb(null, 'variant       string "Playing"', '');
+        }
+      });
+      const result = await spotifyService.activate();
+      expect(result).toBe(true);
+      expect(spotifyService.connected).toBe(true);
+    });
+
+    it('should discover native dest if not cached', async () => {
+      spotifyService._spotifydDest = null;
+      const nativeListNamesOutput = `array [\n  string "rs.spotifyd.instance456"\n]`;
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, nativeListNamesOutput, ''); // native discovery
+        else if (callCount === 2) cb(null, '', '');               // TransferPlayback
+        else if (callCount === 3) cb(null, mprisListNamesOutput, ''); // MPRIS re-discovery
+        else cb(null, 'variant       string "Paused"', '');       // Properties.Get
+      });
+      const result = await spotifyService.activate();
+      expect(result).toBe(true);
+      expect(spotifyService._spotifydDest).toBe('rs.spotifyd.instance456');
+    });
+
+    it('should return false when spotifyd not found', async () => {
+      spotifyService._spotifydDest = null;
+      const listNamesOutput = `array [\n  string "org.freedesktop.DBus"\n]`;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, listNamesOutput, '');
+      });
+      const result = await spotifyService.activate();
+      expect(result).toBe(false);
+      expect(spotifyService.connected).toBe(false);
+    });
+
+    it('should return false when TransferPlayback fails', async () => {
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('D-Bus method call failed'), '', '');
+      });
+      const result = await spotifyService.activate();
+      expect(result).toBe(false);
+    });
+
+    it('should emit connection:changed on successful activation', async () => {
+      const handler = jest.fn();
+      spotifyService.on('connection:changed', handler);
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      spotifyService.connected = false;
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, '', '');                    // TransferPlayback
+        else if (callCount === 2) cb(null, mprisListNamesOutput, ''); // MPRIS re-discovery
+        else cb(null, 'variant       string "Playing"', '');      // Properties.Get
+      });
+      await spotifyService.activate();
+      expect(handler).toHaveBeenCalledWith({ connected: true });
+    });
+  });
+
+  describe('init', () => {
+    it('should attempt activate first', async () => {
+      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, '', '');                    // TransferPlayback
+        else if (callCount === 2) cb(null, mprisListNamesOutput, ''); // MPRIS re-discovery
+        else cb(null, 'variant       string "Playing"', '');      // Properties.Get
+      });
+      await spotifyService.init();
+      expect(spotifyService.connected).toBe(true);
+    });
+
+    it('should fall back to checkConnection when activate fails', async () => {
+      spotifyService._spotifydDest = null;
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance99';
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) {
+          // Discovery for native dest — not found
+          cb(null, `array [\n  string "org.freedesktop.DBus"\n]`, '');
+        } else {
+          // checkConnection — MPRIS available (dest pre-seeded)
+          cb(null, 'variant       string "Paused"', '');
+        }
+      });
+      await spotifyService.init();
+      expect(spotifyService.connected).toBe(true);
+    });
+
+    it('should not throw when both activate and checkConnection fail', async () => {
+      spotifyService._spotifydDest = null;
+      spotifyService._dbusDest = null;
+      mockExecFileError('Connection refused');
+      await spotifyService.init();
+      expect(spotifyService.connected).toBe(false);
+    });
+  });
+
   describe('cache verification', () => {
     it('should return verified when cache directory has tracks', async () => {
       jest.spyOn(require('fs'), 'existsSync').mockReturnValue(true);
@@ -261,6 +450,22 @@ describe('SpotifyService', () => {
       spotifyService.on('playback:changed', handler);
       mockExecFileSuccess('');
       await spotifyService.play();
+      expect(handler).toHaveBeenCalledWith({ state: 'playing' });
+    });
+
+    it('should emit playback:changed on next', async () => {
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+      mockExecFileSuccess('');
+      await spotifyService.next();
+      expect(handler).toHaveBeenCalledWith({ state: 'playing' });
+    });
+
+    it('should emit playback:changed on previous', async () => {
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+      mockExecFileSuccess('');
+      await spotifyService.previous();
       expect(handler).toHaveBeenCalledWith({ state: 'playing' });
     });
   });

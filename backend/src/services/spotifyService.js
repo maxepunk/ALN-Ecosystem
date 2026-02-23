@@ -20,6 +20,7 @@ function execFileAsync(cmd, args, opts) {
 const DBUS_DEST_PREFIX = 'org.mpris.MediaPlayer2.spotifyd';
 const DBUS_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
+const SPOTIFYD_IFACE = 'rs.spotifyd.Controls';
 
 class SpotifyService extends EventEmitter {
   constructor() {
@@ -29,27 +30,113 @@ class SpotifyService extends EventEmitter {
     this.volume = 100;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Discovered dynamically (spotifyd appends .instance{PID})
+    this._spotifydDest = null; // Native rs.spotifyd D-Bus dest (for TransferPlayback)
     this.cachePath = process.env.SPOTIFY_CACHE_PATH || path.join(os.homedir(), '.cache', 'spotifyd');
   }
 
-  async _discoverDbusDest() {
-    if (this._dbusDest) return this._dbusDest;
+  /**
+   * Find a D-Bus destination name matching the given regex pattern.
+   * Shared helper used by both MPRIS and native spotifyd discovery.
+   * @param {string} pattern - Regex pattern to match against D-Bus names
+   * @returns {Promise<string|null>} Matching D-Bus name or null
+   */
+  async _findDbusDest(pattern) {
     try {
       const { stdout } = await execFileAsync('dbus-send', [
         '--session', '--type=method_call', '--print-reply',
         '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus',
         'org.freedesktop.DBus.ListNames'
       ], { timeout: 3000 });
-      const match = stdout.match(/"(org\.mpris\.MediaPlayer2\.spotifyd[^"]*)"/);
-      if (match) {
-        this._dbusDest = match[1];
-        logger.debug(`[Spotify] Discovered D-Bus dest: ${this._dbusDest}`);
-        return this._dbusDest;
-      }
+      const re = new RegExp(`"(${pattern}[^"]*)"`);
+      const match = stdout.match(re);
+      return match ? match[1] : null;
     } catch (err) {
-      logger.debug('[Spotify] D-Bus discovery failed:', err.message);
+      logger.debug(`[Spotify] D-Bus discovery failed for pattern ${pattern}:`, err.message);
+      return null;
     }
-    return null;
+  }
+
+  async _discoverDbusDest() {
+    if (this._dbusDest) return this._dbusDest;
+    const dest = await this._findDbusDest('org\\.mpris\\.MediaPlayer2\\.spotifyd');
+    if (dest) {
+      this._dbusDest = dest;
+      logger.debug(`[Spotify] Discovered MPRIS dest: ${this._dbusDest}`);
+    }
+    return this._dbusDest;
+  }
+
+  /**
+   * Discover native spotifyd D-Bus destination (rs.spotifyd.instance{PID}).
+   * This interface provides TransferPlayback for Spotify Connect activation.
+   * @returns {Promise<string|null>}
+   */
+  async _discoverSpotifydDest() {
+    if (this._spotifydDest) return this._spotifydDest;
+    const dest = await this._findDbusDest('rs\\.spotifyd\\.');
+    if (dest) {
+      this._spotifydDest = dest;
+      logger.debug(`[Spotify] Discovered native dest: ${this._spotifydDest}`);
+    }
+    return this._spotifydDest;
+  }
+
+  /**
+   * Activate Spotify Connect on this device via TransferPlayback.
+   * Calls the native rs.spotifyd.Controls interface, then waits for MPRIS
+   * to register and verifies connection.
+   * @returns {Promise<boolean>} true if activation succeeded and MPRIS is available
+   */
+  async activate() {
+    try {
+      const dest = await this._discoverSpotifydDest();
+      if (!dest) {
+        logger.warn('[Spotify] Cannot activate — spotifyd not found on D-Bus');
+        this._setConnected(false);
+        return false;
+      }
+
+      logger.info('[Spotify] Activating via TransferPlayback');
+      await execFileAsync('dbus-send', [
+        '--session', '--type=method_call', '--print-reply',
+        '--dest=' + dest, '/',
+        `${SPOTIFYD_IFACE}.TransferPlayback`
+      ], { timeout: 5000 });
+
+      // Wait for MPRIS interface to register after activation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Clear cached MPRIS dest (may have changed after activation)
+      this._dbusDest = null;
+
+      // Verify MPRIS is now available
+      return await this.checkConnection();
+    } catch (err) {
+      logger.error('[Spotify] Activation failed:', err.message);
+      this._setConnected(false);
+      return false;
+    }
+  }
+
+  /**
+   * Initialize Spotify service at server startup.
+   * Attempts activation first (TransferPlayback), falls back to passive check.
+   * Non-blocking: logs warnings on failure, never throws.
+   */
+  async init() {
+    logger.info('[Spotify] Initializing');
+    const activated = await this.activate();
+    if (activated) {
+      logger.info('[Spotify] Initialized via TransferPlayback activation');
+      return;
+    }
+    // Activation failed (no native interface), try passive MPRIS check
+    const connected = await this.checkConnection();
+    if (connected) {
+      logger.info('[Spotify] Initialized via existing MPRIS connection');
+    } else {
+      logger.warn('[Spotify] Not available at startup (will retry on reconnect command)');
+    }
   }
 
   async _dbusCall(method, args = []) {
@@ -89,8 +176,17 @@ class SpotifyService extends EventEmitter {
     this.emit('playback:changed', { state: 'stopped' });
   }
 
-  async next() { await this._dbusCall(`${PLAYER_IFACE}.Next`); }
-  async previous() { await this._dbusCall(`${PLAYER_IFACE}.Previous`); }
+  async next() {
+    await this._dbusCall(`${PLAYER_IFACE}.Next`);
+    this.state = 'playing';
+    this.emit('playback:changed', { state: 'playing' });
+  }
+
+  async previous() {
+    await this._dbusCall(`${PLAYER_IFACE}.Previous`);
+    this.state = 'playing';
+    this.emit('playback:changed', { state: 'playing' });
+  }
 
   async setPlaylist(uri) {
     await this._dbusCall(`${PLAYER_IFACE}.OpenUri`, [`string:${uri}`]);
@@ -185,6 +281,7 @@ class SpotifyService extends EventEmitter {
     this.volume = 100;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Re-discover on next call (PID may change after restart)
+    this._spotifydDest = null;
   }
 
   cleanup() {
