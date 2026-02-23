@@ -57,7 +57,7 @@ function setupBroadcastListeners(io, services) {
 
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
     bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
-    spotifyService } = services;
+    spotifyService, displayControlService } = services;
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
@@ -331,6 +331,7 @@ function setupBroadcastListeners(io, services) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        deviceFilter: { connectedOnly: true },
       });
       emitWrapped(io, 'sync:full', syncFullPayload);
 
@@ -510,6 +511,7 @@ function setupBroadcastListeners(io, services) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        deviceFilter: { connectedOnly: true },
       });
 
       emitWrapped(io, 'sync:full', syncFullPayload);
@@ -732,6 +734,19 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(spotifyService, 'connection:changed', () => {
       emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
       logger.debug('Broadcasted spotify:status (connection changed)');
+    });
+
+    addTrackedListener(spotifyService, 'playlist:changed', () => {
+      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
+      logger.debug('Broadcasted spotify:status (playlist changed)');
+    });
+  }
+
+  // Display mode events
+  if (displayControlService) {
+    addTrackedListener(displayControlService, 'display:mode:changed', (data) => {
+      emitWrapped(io, 'display:mode', data);
+      logger.debug('Broadcasted display:mode', { mode: data.mode });
     });
   }
 
