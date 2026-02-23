@@ -21,6 +21,7 @@ const DBUS_DEST_PREFIX = 'org.mpris.MediaPlayer2.spotifyd';
 const DBUS_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 const SPOTIFYD_IFACE = 'rs.spotifyd.Controls';
+const SPOTIFYD_PATH = '/rs/spotifyd/Controls';
 
 class SpotifyService extends EventEmitter {
   constructor() {
@@ -100,7 +101,7 @@ class SpotifyService extends EventEmitter {
       logger.info('[Spotify] Activating via TransferPlayback');
       await execFileAsync('dbus-send', [
         '--session', '--type=method_call', '--print-reply',
-        '--dest=' + dest, '/',
+        '--dest=' + dest, SPOTIFYD_PATH,
         `${SPOTIFYD_IFACE}.TransferPlayback`
       ], { timeout: 5000 });
 

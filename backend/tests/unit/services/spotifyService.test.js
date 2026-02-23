@@ -303,8 +303,9 @@ describe('SpotifyService', () => {
       execFile.mockImplementation((cmd, args, opts, cb) => {
         callCount++;
         if (callCount === 1) {
-          // TransferPlayback
+          // TransferPlayback — must use /rs/spotifyd/Controls path (not /)
           expect(args).toContain('--dest=rs.spotifyd.instance123');
+          expect(args).toContain('/rs/spotifyd/Controls');
           expect(args).toContain('rs.spotifyd.Controls.TransferPlayback');
           cb(null, '', '');
         } else if (callCount === 2) {
