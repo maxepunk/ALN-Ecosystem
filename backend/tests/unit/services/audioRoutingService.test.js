@@ -1986,11 +1986,11 @@ describe('AudioRoutingService', () => {
 
         // Should warn, not error
         expect(logger.warn).toHaveBeenCalledWith(
-          expect.stringContaining('sink-input not available for ducking'),
+          expect.stringContaining('sink-input not available'),
           expect.any(Object)
         );
         expect(logger.error).not.toHaveBeenCalledWith(
-          expect.stringContaining('Failed to set ducked volume'),
+          expect.stringContaining('Failed to apply ducked volume'),
           expect.any(Object)
         );
       });
@@ -2040,7 +2040,7 @@ describe('AudioRoutingService', () => {
 
         // Should still log as error for unexpected failures
         expect(logger.error).toHaveBeenCalledWith(
-          expect.stringContaining('Failed to set ducked volume'),
+          expect.stringContaining('Failed to apply ducked volume'),
           expect.any(Object)
         );
       });

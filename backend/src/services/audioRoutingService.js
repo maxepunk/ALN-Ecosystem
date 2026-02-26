@@ -791,17 +791,7 @@ class AudioRoutingService extends EventEmitter {
       const effectiveVolume = this._calculateEffectiveVolume(target);
 
       // Apply the ducked volume
-      this.setStreamVolume(target, effectiveVolume).catch(err => {
-        if (err.message.includes('No active sink-input')) {
-          logger.warn('Ducking skipped: sink-input not available for ducking', {
-            target, volume: effectiveVolume,
-          });
-        } else {
-          logger.error('Failed to set ducked volume', {
-            target, volume: effectiveVolume, error: err.message,
-          });
-        }
-      });
+      this._setVolumeForDucking(target, effectiveVolume, 'apply');
 
       // Emit ducking:changed event
       this.emit('ducking:changed', {
@@ -845,17 +835,7 @@ class AudioRoutingService extends EventEmitter {
         const restoreVolume = this._preDuckVolumes[target] !== undefined
           ? this._preDuckVolumes[target] : 100;
 
-        this.setStreamVolume(target, restoreVolume).catch(err => {
-          if (err.message.includes('No active sink-input')) {
-            logger.warn('Ducking restore skipped: sink-input not available', {
-              target, volume: restoreVolume,
-            });
-          } else {
-            logger.error('Failed to restore volume after ducking', {
-              target, volume: restoreVolume, error: err.message,
-            });
-          }
-        });
+        this._setVolumeForDucking(target, restoreVolume, 'restore');
 
         // Emit ducking:changed — no longer ducked
         this.emit('ducking:changed', {
@@ -874,17 +854,7 @@ class AudioRoutingService extends EventEmitter {
         // Other sources still active — re-evaluate to new lowest
         const effectiveVolume = this._calculateEffectiveVolume(target);
 
-        this.setStreamVolume(target, effectiveVolume).catch(err => {
-          if (err.message.includes('No active sink-input')) {
-            logger.warn('Ducking re-evaluate skipped: sink-input not available', {
-              target, volume: effectiveVolume,
-            });
-          } else {
-            logger.error('Failed to re-evaluate ducked volume', {
-              target, volume: effectiveVolume, error: err.message,
-            });
-          }
-        });
+        this._setVolumeForDucking(target, effectiveVolume, 're-evaluate');
 
         // Emit ducking:changed — still ducked but at different level
         this.emit('ducking:changed', {
@@ -925,6 +895,24 @@ class AudioRoutingService extends EventEmitter {
     }
 
     return lowestVolume === Infinity ? 100 : lowestVolume;
+  }
+
+  /**
+   * Set stream volume with graceful handling for missing sink-inputs.
+   * Shared by ducking start, restore, and re-evaluate paths.
+   * @param {string} target - Target stream name
+   * @param {number} volume - Volume to set
+   * @param {string} context - Context label for logging (e.g., 'apply', 'restore', 're-evaluate')
+   * @private
+   */
+  _setVolumeForDucking(target, volume, context) {
+    this.setStreamVolume(target, volume).catch(err => {
+      if (err.message.includes('No active sink-input')) {
+        logger.warn(`Ducking ${context} skipped: sink-input not available`, { target, volume });
+      } else {
+        logger.error(`Failed to ${context} ducked volume`, { target, volume, error: err.message });
+      }
+    });
   }
 
   /**
