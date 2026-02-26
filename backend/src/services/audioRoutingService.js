@@ -78,6 +78,9 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
 
+    // Shutdown guard — prevents monitor close handler from restarting after cleanup
+    this._shuttingDown = false;
+
     // Ducking engine state
     this._duckingRules = [];
     this._activeDuckingSources = {};  // { targetStream: ['video', 'sound'] }
@@ -92,6 +95,13 @@ class AudioRoutingService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async init() {
+    // Kill stale pactl subscribe processes from previous instances that weren't
+    // cleaned up (e.g., after SIGKILL from pm2 kill). Safe to call before our
+    // own monitor starts since init() is called at startup.
+    await this._killStaleMonitors();
+
+    this._shuttingDown = false;
+
     // Load persisted routing config
     const persisted = await persistenceService.load(PERSISTENCE_KEY);
     if (persisted && persisted.routes) {
@@ -113,6 +123,8 @@ class AudioRoutingService extends EventEmitter {
    * Kill pactl subscribe process, prevent orphaned processes on shutdown.
    */
   cleanup() {
+    this._shuttingDown = true;
+
     if (this._monitorProc) {
       this._monitorProc.kill();
       this._monitorProc = null;
@@ -155,6 +167,7 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [];
     this._activeDuckingSources = {};
     this._preDuckVolumes = {};
+    this._shuttingDown = false;
   }
 
   // ── Sink Discovery and Classification ──
@@ -655,6 +668,30 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkProcs = [];
   }
 
+  /**
+   * Kill orphaned pactl subscribe and pw-loopback processes from previous server
+   * instances. Called during init() before starting our own monitor.
+   *
+   * When PM2 sends SIGKILL (e.g., after `pm2 kill` or kill_timeout expiry),
+   * child processes are re-parented to PID 1 and never cleaned up. Over multiple
+   * restarts these accumulate and exhaust PipeWire's max-clients limit.
+   * @private
+   */
+  async _killStaleMonitors() {
+    for (const processName of ['pactl subscribe', 'pw-loopback']) {
+      try {
+        const stdout = await this._execFile('pgrep', ['-f', processName]);
+        const pids = stdout.trim().split('\n').filter(Boolean);
+        if (pids.length > 0) {
+          logger.warn(`Killing ${pids.length} stale ${processName} process(es)`, { pids });
+          await this._execFile('pkill', ['-f', processName]);
+        }
+      } catch {
+        // pgrep exits 1 when no matches — expected when clean
+      }
+    }
+  }
+
   // ── Ducking Engine ──
 
   /**
@@ -782,7 +819,7 @@ class AudioRoutingService extends EventEmitter {
 
     for (const target of targetStreams) {
       if (!this._activeDuckingSources[target]) {
-        return; // No active ducking for this target
+        continue; // No active ducking for this target — check next
       }
 
       // Remove this source from active list
@@ -1032,6 +1069,9 @@ class AudioRoutingService extends EventEmitter {
 
     this._monitorProc.on('close', (code) => {
       this._monitorProc = null;
+
+      // Don't restart if cleanup() was called (shutdown in progress)
+      if (this._shuttingDown) return;
 
       if (receivedData) {
         // Was running successfully, reset failure count

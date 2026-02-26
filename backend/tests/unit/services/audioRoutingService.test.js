@@ -870,12 +870,25 @@ describe('AudioRoutingService', () => {
   // ── init() ──
 
   describe('init()', () => {
+    // Helper: mock execFile so pgrep/pkill calls from _killStaleMonitors resolve
+    function mockExecFileForInit() {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        // pgrep/pkill: no stale processes found (exit code 1)
+        if (cmd === 'pgrep' || cmd === 'pkill') {
+          cb(new Error('no matches'), '', '');
+          return;
+        }
+        cb(null, '', '');
+      });
+    }
+
     it('should load persisted routing on init', async () => {
       persistenceService.load.mockResolvedValue({
         routes: { video: { sink: 'bluetooth' } },
         defaultSink: 'hdmi',
       });
 
+      mockExecFileForInit();
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
 
@@ -887,6 +900,7 @@ describe('AudioRoutingService', () => {
 
     it('should start sink monitor on init', async () => {
       persistenceService.load.mockResolvedValue(null);
+      mockExecFileForInit();
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
 
@@ -897,12 +911,44 @@ describe('AudioRoutingService', () => {
 
     it('should use defaults when no persisted data', async () => {
       persistenceService.load.mockResolvedValue(null);
+      mockExecFileForInit();
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
 
       await audioRoutingService.init();
 
       expect(audioRoutingService.getStreamRoute('video')).toBe('hdmi');
+    });
+
+    it('should kill stale pactl subscribe processes on init', async () => {
+      persistenceService.load.mockResolvedValue(null);
+      const pkillCalls = [];
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (cmd === 'pgrep') {
+          // Simulate finding stale processes
+          cb(null, '12345\n67890\n', '');
+          return;
+        }
+        if (cmd === 'pkill') {
+          pkillCalls.push(args);
+          cb(null, '', '');
+          return;
+        }
+        cb(null, '', '');
+      });
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      expect(pkillCalls).toEqual([
+        ['-f', 'pactl subscribe'],
+        ['-f', 'pw-loopback'],
+      ]);
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Killing 2 stale pactl subscribe'),
+        expect.any(Object)
+      );
     });
   });
 
@@ -921,6 +967,24 @@ describe('AudioRoutingService', () => {
 
     it('should be safe to call when no monitor is running', () => {
       expect(() => audioRoutingService.cleanup()).not.toThrow();
+    });
+
+    it('should prevent monitor restart after cleanup (shutdown guard)', () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      audioRoutingService.startSinkMonitor();
+
+      // Simulate data received (so close handler would normally restart)
+      mockProc.stdout.emit('data', 'Event on sink #47\n');
+
+      audioRoutingService.cleanup();
+
+      // Simulate the close event firing (would normally schedule restart)
+      mockProc.emit('close', 0);
+
+      // Should NOT have scheduled a restart — spawn only called once (the initial start)
+      expect(spawn).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -1649,6 +1713,25 @@ describe('AudioRoutingService', () => {
     });
 
     describe('handleDuckingEvent() - completed lifecycle', () => {
+      it('should process all target streams even when first has no active ducking', () => {
+        // Rules: video ducks BOTH spotify AND sound
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
+          { when: 'video', duck: 'sound', to: 30, fadeMs: 200 },
+        ]);
+
+        // Only start ducking for 'sound', NOT for 'spotify'
+        // Manually set up state so spotify has no active sources but sound does
+        audioRoutingService._activeDuckingSources = { sound: ['video'] };
+        audioRoutingService._preDuckVolumes = { sound: 80 };
+
+        // Complete video — should restore 'sound' even though 'spotify' has no active sources
+        audioRoutingService.handleDuckingEvent('video', 'completed');
+
+        // 'sound' should be restored to pre-duck volume
+        expect(setVolume).toHaveBeenCalledWith('sound', 80);
+      });
+
       it('should restore Spotify when video completes', () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
