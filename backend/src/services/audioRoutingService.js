@@ -162,6 +162,7 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkActive = false;
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
+    this._combineSinkModuleId = null;
 
     // Reset ducking engine state
     this._duckingRules = [];

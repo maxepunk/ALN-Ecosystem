@@ -1518,12 +1518,14 @@ describe('AudioRoutingService', () => {
         audioRoutingService._combineSinkActive = true;
         audioRoutingService._combineSinkPids = [1001, 1002];
         audioRoutingService._combineSinkProcs = [createMockSpawnProc(), createMockSpawnProc()];
+        audioRoutingService._combineSinkModuleId = '42';
 
         audioRoutingService.reset();
 
         expect(audioRoutingService._combineSinkActive).toBe(false);
         expect(audioRoutingService._combineSinkPids).toEqual([]);
         expect(audioRoutingService._combineSinkProcs).toEqual([]);
+        expect(audioRoutingService._combineSinkModuleId).toBeNull();
       });
     });
 
