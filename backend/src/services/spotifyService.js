@@ -1,7 +1,7 @@
 // backend/src/services/spotifyService.js
 const EventEmitter = require('events');
 const { execFile } = require('child_process');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const logger = require('../utils/logger');
@@ -29,6 +29,7 @@ class SpotifyService extends EventEmitter {
     this.connected = false;
     this.state = 'stopped';
     this.volume = 100;
+    this.track = null;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Discovered dynamically (spotifyd appends .instance{PID})
     this._spotifydDest = null; // Native rs.spotifyd D-Bus dest (for TransferPlayback)
@@ -149,14 +150,18 @@ class SpotifyService extends EventEmitter {
     }
   }
 
-  async _dbusCall(method, args = []) {
-    const dest = await this._discoverDbusDest();
-    if (!dest) throw new Error('spotifyd not found on D-Bus');
-    const cmdArgs = [
+  _buildDbusArgs(dest, method, args = []) {
+    return [
       '--session', '--type=method_call', '--print-reply',
       '--dest=' + dest, DBUS_PATH,
       method, ...args
     ];
+  }
+
+  async _dbusCall(method, args = []) {
+    const dest = await this._discoverDbusDest();
+    if (!dest) throw new Error('spotifyd not found on D-Bus');
+    const cmdArgs = this._buildDbusArgs(dest, method, args);
     try {
       return await execFileAsync('dbus-send', cmdArgs, { timeout: 5000 });
     } catch (err) {
@@ -173,11 +178,7 @@ class SpotifyService extends EventEmitter {
             logger.info('[Spotify] Recovery succeeded, retrying command');
             const retryDest = await this._discoverDbusDest();
             if (!retryDest) throw new Error('MPRIS interface not found after TransferPlayback recovery');
-            const retryCmdArgs = [
-              '--session', '--type=method_call', '--print-reply',
-              '--dest=' + retryDest, DBUS_PATH,
-              method, ...args
-            ];
+            const retryCmdArgs = this._buildDbusArgs(retryDest, method, args);
             return await execFileAsync('dbus-send', retryCmdArgs, { timeout: 5000 });
           }
         } finally {
@@ -188,47 +189,85 @@ class SpotifyService extends EventEmitter {
     }
   }
 
+  async _dbusGetProperty(iface, property) {
+    return this._dbusCall('org.freedesktop.DBus.Properties.Get', [
+      `string:${iface}`, `string:${property}`
+    ]);
+  }
+
   async _dbusSetProperty(iface, property, type, value) {
     return this._dbusCall('org.freedesktop.DBus.Properties.Set', [
       `string:${iface}`, `string:${property}`, `variant:${type}:${value}`
     ]);
   }
 
-  async play() {
-    await this._dbusCall(`${PLAYER_IFACE}.Play`);
-    this.state = 'playing';
-    this._pausedByGameClock = false;
-    this.emit('playback:changed', { state: 'playing' });
+  /**
+   * Parse D-Bus Metadata dict for xesam:title and xesam:artist.
+   * @param {string} stdout - Raw dbus-send output
+   * @returns {{ title: string, artist: string } | null}
+   */
+  _parseMetadata(stdout) {
+    if (!stdout) return null;
+    const titleMatch = stdout.match(/xesam:title[\s\S]*?variant\s+string\s+"([^"]*)"/);
+    const artistMatch = stdout.match(/xesam:artist[\s\S]*?string\s+"([^"]*)"/);
+    const title = titleMatch ? titleMatch[1] : null;
+    const artist = artistMatch ? artistMatch[1] : null;
+    if (!title) return null;
+    return { title, artist: artist || 'Unknown Artist' };
   }
 
-  async pause() {
-    await this._dbusCall(`${PLAYER_IFACE}.Pause`);
-    this.state = 'paused';
-    this.emit('playback:changed', { state: 'paused' });
+  /**
+   * Refresh track metadata from D-Bus.
+   * @returns {Promise<boolean>} true if track changed
+   */
+  async _refreshMetadata() {
+    try {
+      const { stdout } = await this._dbusGetProperty(PLAYER_IFACE, 'Metadata');
+      const newTrack = this._parseMetadata(stdout);
+      const changed = JSON.stringify(newTrack) !== JSON.stringify(this.track);
+      this.track = newTrack;
+      if (changed && newTrack) {
+        this.emit('track:changed', { track: newTrack });
+      }
+      return changed;
+    } catch (err) {
+      logger.debug('[Spotify] Metadata refresh failed:', err.message);
+      return false;
+    }
   }
 
-  async stop() {
-    await this._dbusCall(`${PLAYER_IFACE}.Stop`);
-    this.state = 'stopped';
-    this._pausedByGameClock = false;
-    this.emit('playback:changed', { state: 'stopped' });
+  /**
+   * Shared transport helper — consolidates play/pause/stop/next/previous.
+   * @param {string} method - MPRIS method name (e.g., 'Play')
+   * @param {string} newState - New playback state
+   * @param {Object} [opts]
+   * @param {boolean} [opts.clearPausedFlag=false] - Reset _pausedByGameClock
+   * @param {boolean} [opts.refreshMetadata=false] - Refresh track metadata after 200ms
+   */
+  async _transport(method, newState, { clearPausedFlag = false, refreshMetadata = false } = {}) {
+    await this._dbusCall(`${PLAYER_IFACE}.${method}`);
+    this.state = newState;
+    if (clearPausedFlag) this._pausedByGameClock = false;
+    this.emit('playback:changed', { state: newState });
+    if (refreshMetadata) {
+      setTimeout(() => this._refreshMetadata().catch(e =>
+        logger.debug('[Spotify] Deferred metadata refresh failed:', e.message)
+      ), 200);
+    }
   }
 
-  async next() {
-    await this._dbusCall(`${PLAYER_IFACE}.Next`);
-    this.state = 'playing';
-    this.emit('playback:changed', { state: 'playing' });
-  }
-
-  async previous() {
-    await this._dbusCall(`${PLAYER_IFACE}.Previous`);
-    this.state = 'playing';
-    this.emit('playback:changed', { state: 'playing' });
-  }
+  async play() { await this._transport('Play', 'playing', { clearPausedFlag: true, refreshMetadata: true }); }
+  async pause() { await this._transport('Pause', 'paused'); }
+  async stop() { await this._transport('Stop', 'stopped', { clearPausedFlag: true }); }
+  async next() { await this._transport('Next', 'playing', { refreshMetadata: true }); }
+  async previous() { await this._transport('Previous', 'playing', { refreshMetadata: true }); }
 
   async setPlaylist(uri) {
     await this._dbusCall(`${PLAYER_IFACE}.OpenUri`, [`string:${uri}`]);
     this.emit('playlist:changed', { uri });
+    setTimeout(() => this._refreshMetadata().catch(e =>
+      logger.debug('[Spotify] Deferred metadata refresh failed:', e.message)
+    ), 200);
   }
 
   async setVolume(vol) {
@@ -275,17 +314,19 @@ class SpotifyService extends EventEmitter {
         return false;
       }
       // Use Properties.Get instead of Peer.Ping (spotifyd doesn't implement Peer)
-      const { stdout } = await execFileAsync('dbus-send', [
-        '--session', '--type=method_call', '--print-reply',
-        '--dest=' + dest, DBUS_PATH,
-        'org.freedesktop.DBus.Properties.Get',
+      const cmdArgs = this._buildDbusArgs(dest, 'org.freedesktop.DBus.Properties.Get', [
         `string:${PLAYER_IFACE}`, 'string:PlaybackStatus'
-      ], { timeout: 2000 });
+      ]);
+      const { stdout } = await execFileAsync('dbus-send', cmdArgs, { timeout: 2000 });
       this._setConnected(true);
       // Sync state from actual D-Bus status
       if (stdout.includes('"Playing"')) this.state = 'playing';
       else if (stdout.includes('"Paused"')) this.state = 'paused';
       else this.state = 'stopped';
+      // Refresh track metadata (fire-and-forget, don't block connection check)
+      this._refreshMetadata().catch(e =>
+        logger.debug('[Spotify] Metadata refresh failed during checkConnection:', e.message)
+      );
       return true;
     } catch {
       this._setConnected(false);
@@ -294,14 +335,18 @@ class SpotifyService extends EventEmitter {
   }
 
   async verifyCacheStatus() {
-    if (!fs.existsSync(this.cachePath)) {
-      return { status: 'missing', message: 'Cache directory not found' };
+    try {
+      const files = await fs.readdir(this.cachePath);
+      if (files.length === 0) {
+        return { status: 'missing', message: 'Cache is empty' };
+      }
+      return { status: 'verified', trackCount: files.length };
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        return { status: 'missing', message: 'Cache directory not found' };
+      }
+      throw err;
     }
-    const files = fs.readdirSync(this.cachePath);
-    if (files.length === 0) {
-      return { status: 'missing', message: 'Cache is empty' };
-    }
-    return { status: 'verified', trackCount: files.length };
   }
 
   getState() {
@@ -310,6 +355,7 @@ class SpotifyService extends EventEmitter {
       state: this.state,
       volume: this.volume,
       pausedByGameClock: this._pausedByGameClock,
+      track: this.track,
     };
   }
 
@@ -317,6 +363,7 @@ class SpotifyService extends EventEmitter {
     this.connected = false;
     this.state = 'stopped';
     this.volume = 100;
+    this.track = null;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Re-discover on next call (PID may change after restart)
     this._spotifydDest = null;
