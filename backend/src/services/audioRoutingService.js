@@ -635,7 +635,7 @@ class AudioRoutingService extends EventEmitter {
    * @param {number} exitedPid - PID of the exited process
    * @private
    */
-  _onCombineLoopbackExit(exitedPid) {
+  async _onCombineLoopbackExit(exitedPid) {
     if (!this._combineSinkActive) return;
 
     logger.warn('pw-loopback exited unexpectedly, tearing down combine-sink', {
@@ -644,6 +644,19 @@ class AudioRoutingService extends EventEmitter {
 
     // Kill any remaining processes (the one that didn't exit)
     this._killCombineSinkProcs();
+
+    // Unload the null sink module (matches destroyCombineSink behavior)
+    if (this._combineSinkModuleId) {
+      try {
+        await this._execFile('pactl', ['unload-module', this._combineSinkModuleId]);
+        logger.info('Unloaded null sink after loopback exit', { moduleId: this._combineSinkModuleId });
+      } catch (err) {
+        logger.warn('Failed to unload null sink after loopback exit', {
+          error: err.message, moduleId: this._combineSinkModuleId,
+        });
+      }
+      this._combineSinkModuleId = null;
+    }
   }
 
   /**

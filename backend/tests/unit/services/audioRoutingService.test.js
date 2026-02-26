@@ -1555,6 +1555,15 @@ describe('AudioRoutingService', () => {
         // Combine-sink should be torn down
         expect(audioRoutingService._combineSinkActive).toBe(false);
         expect(mockProc2.kill).toHaveBeenCalled();
+
+        // Null sink module should be unloaded
+        expect(execFile).toHaveBeenCalledWith(
+          'pactl',
+          ['unload-module', '42'],
+          expect.any(Object),
+          expect.any(Function)
+        );
+        expect(audioRoutingService._combineSinkModuleId).toBeNull();
       });
     });
   });
