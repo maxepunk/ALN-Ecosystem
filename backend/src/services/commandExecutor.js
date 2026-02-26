@@ -51,6 +51,13 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
     let resultMessage = '';
     let resultData = null;
 
+    // Lazy getter for circular dependency (cueEngineService imports commandExecutor)
+    let _cueEngine;
+    const getCueEngine = () => {
+      if (!_cueEngine) _cueEngine = require('./cueEngineService');
+      return _cueEngine;
+    };
+
     switch (action) {
       // --- Session commands ---
 
@@ -409,9 +416,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       case 'sound:play': {
         const entry = soundService.play(payload);
-        if (!entry) {
-          return { success: false, message: `Failed to play ${payload.file}`, source };
-        }
+        if (!entry) throw new Error(`Failed to play ${payload.file}`);
         resultData = entry;
         resultMessage = `Playing ${payload.file}`;
         logger.info('Sound play requested', { source, deviceId, file: payload.file });
@@ -428,8 +433,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Cue commands ---
 
       case 'cue:fire': {
-        // Lazy require: cueEngineService imports commandExecutor (circular dependency)
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         await cueEngineService.fireCue(payload.cueId);
         resultMessage = `Cue fired: ${payload.cueId}`;
         logger.info('Cue fired', { source, deviceId, cueId: payload.cueId });
@@ -437,8 +441,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'cue:enable': {
-        // Lazy require: cueEngineService imports commandExecutor (circular dependency)
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         cueEngineService.enableCue(payload.cueId);
         resultMessage = `Cue enabled: ${payload.cueId}`;
         logger.info('Cue enabled', { source, deviceId, cueId: payload.cueId });
@@ -446,8 +449,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'cue:disable': {
-        // Lazy require: cueEngineService imports commandExecutor (circular dependency)
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         cueEngineService.disableCue(payload.cueId);
         resultMessage = `Cue disabled: ${payload.cueId}`;
         logger.info('Cue disabled', { source, deviceId, cueId: payload.cueId });
@@ -457,36 +459,44 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Cue lifecycle commands (Phase 2) ---
 
       case 'cue:stop': {
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         const { cueId } = payload;
-        if (!cueId) return { success: false, message: 'cueId required', source };
+        if (!cueId) throw new Error('cueId required');
         await cueEngineService.stopCue(cueId);
-        return { success: true, message: `Cue stopped: ${cueId}`, source };
+        resultMessage = `Cue stopped: ${cueId}`;
+        logger.info('Cue stopped', { source, deviceId, cueId });
+        break;
       }
 
       case 'cue:pause': {
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         const { cueId } = payload;
-        if (!cueId) return { success: false, message: 'cueId required', source };
+        if (!cueId) throw new Error('cueId required');
         await cueEngineService.pauseCue(cueId);
-        return { success: true, message: `Cue paused: ${cueId}`, source };
+        resultMessage = `Cue paused: ${cueId}`;
+        logger.info('Cue paused', { source, deviceId, cueId });
+        break;
       }
 
       case 'cue:resume': {
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         const { cueId } = payload;
-        if (!cueId) return { success: false, message: 'cueId required', source };
+        if (!cueId) throw new Error('cueId required');
         await cueEngineService.resumeCue(cueId);
-        return { success: true, message: `Cue resumed: ${cueId}`, source };
+        resultMessage = `Cue resumed: ${cueId}`;
+        logger.info('Cue resumed', { source, deviceId, cueId });
+        break;
       }
 
       case 'cue:conflict:resolve': {
-        const cueEngineService = require('./cueEngineService');
+        const cueEngineService = getCueEngine();
         const { cueId, decision } = payload;
-        if (!cueId) return { success: false, message: 'cueId required', source };
-        if (!decision) return { success: false, message: 'decision required', source };
+        if (!cueId) throw new Error('cueId required');
+        if (!decision) throw new Error('decision required');
         await cueEngineService.resolveConflict(cueId, decision);
-        return { success: true, message: `Conflict resolved (${decision}): ${cueId}`, source };
+        resultMessage = `Conflict resolved (${decision}): ${cueId}`;
+        logger.info('Cue conflict resolved', { source, deviceId, cueId, decision });
+        break;
       }
 
       // --- Spotify commands (Phase 2) ---
@@ -499,53 +509,58 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         const spotifyService = require('./spotifyService');
         const method = SPOTIFY_TRANSPORT[action];
         await spotifyService[method]();
-        return { success: true, message: `Spotify: ${method}`, source };
+        resultMessage = `Spotify: ${method}`;
+        logger.info(`Spotify ${method}`, { source, deviceId });
+        break;
       }
 
       case 'spotify:playlist': {
         const spotifyService = require('./spotifyService');
         const { uri } = payload;
-        if (!uri) return { success: false, message: 'uri required', source };
+        if (!uri) throw new Error('uri required');
         await spotifyService.setPlaylist(uri);
-        return { success: true, message: `Spotify playlist: ${uri}`, source };
+        resultMessage = `Spotify playlist: ${uri}`;
+        logger.info('Spotify playlist set', { source, deviceId, uri });
+        break;
       }
 
       case 'spotify:volume': {
         const spotifyService = require('./spotifyService');
         const { volume } = payload;
-        if (volume === undefined) return { success: false, message: 'volume required', source };
+        if (volume === undefined) throw new Error('volume required');
         await spotifyService.setVolume(volume);
-        return { success: true, message: `Spotify volume: ${volume}`, source };
+        resultMessage = `Spotify volume: ${volume}`;
+        logger.info('Spotify volume set', { source, deviceId, volume });
+        break;
       }
 
       case 'spotify:reconnect': {
         const spotifyService = require('./spotifyService');
         const connected = await spotifyService.activate();
-        // No broadcasts needed — activate() calls _setConnected() which emits
-        // 'connection:changed', picked up by broadcasts.js EventEmitter listener
-        return {
-          success: true,
-          message: connected ? 'Spotify connected' : 'Spotify not available',
-          data: { connected },
-          source
-        };
+        resultData = { connected };
+        resultMessage = connected ? 'Spotify connected' : 'Spotify not available';
+        logger.info('Spotify reconnect', { source, deviceId, connected });
+        break;
       }
 
       case 'spotify:cache:verify': {
         const spotifyService = require('./spotifyService');
         const status = await spotifyService.verifyCacheStatus();
-        return { success: true, message: 'Cache verification complete', data: status, source };
+        resultData = status;
+        resultMessage = 'Cache verification complete';
+        logger.info('Spotify cache verified', { source, deviceId, status: status.status });
+        break;
       }
 
       // --- Audio volume control (Phase 2) ---
 
       case 'audio:volume:set': {
         const { stream, volume } = payload;
-        if (!stream || volume === undefined) {
-          return { success: false, message: 'stream and volume required', source };
-        }
+        if (!stream || volume === undefined) throw new Error('stream and volume required');
         await audioRoutingService.setStreamVolume(stream, volume);
-        return { success: true, message: `Volume set: ${stream}=${volume}`, source };
+        resultMessage = `Volume set: ${stream}=${volume}`;
+        logger.info('Audio volume set', { source, deviceId, stream, volume });
+        break;
       }
 
       default:
