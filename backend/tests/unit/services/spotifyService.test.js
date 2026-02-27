@@ -136,17 +136,55 @@ describe('SpotifyService', () => {
     });
 
     it('should detect when spotifyd is running and playing', async () => {
-      mockExecFileSuccess('variant       string "Playing"');
+      // First call: PlaybackStatus; second call: Metadata (awaited by checkConnection)
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, 'variant       string "Playing"', '');
+        else cb(null, '', ''); // empty metadata is fine
+      });
       const result = await spotifyService.checkConnection();
       expect(result).toBe(true);
       expect(spotifyService.state).toBe('playing');
     });
 
     it('should detect when spotifyd is running and paused', async () => {
-      mockExecFileSuccess('variant       string "Paused"');
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, 'variant       string "Paused"', '');
+        else cb(null, '', '');
+      });
       const result = await spotifyService.checkConnection();
       expect(result).toBe(true);
       expect(spotifyService.state).toBe('paused');
+    });
+
+    it('should populate track before checkConnection returns', async () => {
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) {
+          // PlaybackStatus
+          cb(null, 'variant       string "Playing"', '');
+        } else {
+          // Metadata
+          cb(null, [
+            'array [',
+            '  dict entry(',
+            '    string "xesam:title"',
+            '    variant       string "Test Song"',
+            '  )',
+            ']',
+          ].join('\n'), '');
+        }
+      });
+
+      const result = await spotifyService.checkConnection();
+
+      expect(result).toBe(true);
+      expect(spotifyService.track).not.toBeNull();
+      expect(spotifyService.track.title).toBe('Test Song');
     });
   });
 
@@ -156,7 +194,12 @@ describe('SpotifyService', () => {
       spotifyService.on('connection:changed', handler);
       spotifyService.connected = false;
 
-      mockExecFileSuccess('variant       string "Playing"');
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, 'variant       string "Playing"', '');
+        else cb(null, '', '');
+      });
       await spotifyService.checkConnection();
 
       expect(handler).toHaveBeenCalledWith({ connected: true });
@@ -179,7 +222,12 @@ describe('SpotifyService', () => {
       spotifyService.on('connection:changed', handler);
       spotifyService.connected = true;
 
-      mockExecFileSuccess('variant       string "Playing"');
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, 'variant       string "Playing"', '');
+        else cb(null, '', '');
+      });
       await spotifyService.checkConnection();
 
       expect(handler).not.toHaveBeenCalled();
@@ -466,7 +514,7 @@ describe('SpotifyService', () => {
           // Recovery: checkConnection → Properties.Get
           cb(null, 'variant       string "Playing"', '');
         } else {
-          // Call 6: checkConnection._refreshMetadata (fire-and-forget)
+          // Call 6: checkConnection._refreshMetadata (awaited)
           // Call 7: Retry of the original Play command
           cb(null, '', '');
         }

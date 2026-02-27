@@ -355,10 +355,8 @@ class SpotifyService extends EventEmitter {
       if (stdout.includes('"Playing"')) this.state = 'playing';
       else if (stdout.includes('"Paused"')) this.state = 'paused';
       else this.state = 'stopped';
-      // Refresh track metadata (fire-and-forget, don't block connection check)
-      this._refreshMetadata().catch(e =>
-        logger.debug('[Spotify] Metadata refresh failed during checkConnection:', e.message)
-      );
+      // Await metadata so getState().track is populated before sync:full
+      await this._refreshMetadata();
       return true;
     } catch {
       this._setConnected(false);
