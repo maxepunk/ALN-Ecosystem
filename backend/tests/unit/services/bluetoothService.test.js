@@ -800,6 +800,48 @@ describe('BluetoothService', () => {
     });
   });
 
+  // ── _enforceA2DPProfile() ──
+
+  describe('_enforceA2DPProfile()', () => {
+    it('should call pactl set-card-profile with a2dp-sink', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, '', '');
+      });
+
+      await bluetoothService._enforceA2DPProfile('AA:BB:CC:DD:EE:FF');
+
+      expect(execFile).toHaveBeenCalledWith(
+        'pactl',
+        ['set-card-profile', 'bluez_card.AA_BB_CC_DD_EE_FF', 'a2dp-sink'],
+        expect.any(Object),
+        expect.any(Function)
+      );
+    });
+
+    it('should not throw on failure (best-effort)', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('No such card'), '', '');
+      });
+
+      // Should not throw
+      await bluetoothService._enforceA2DPProfile('AA:BB:CC:DD:EE:FF');
+    });
+  });
+
+  describe('connectDevice with A2DP enforcement', () => {
+    it('should enforce A2DP profile after successful connect', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'Connection successful\n', '');
+      });
+      const spy = jest.spyOn(bluetoothService, '_enforceA2DPProfile');
+
+      await bluetoothService.connectDevice('AA:BB:CC:DD:EE:FF');
+
+      expect(spy).toHaveBeenCalledWith('AA:BB:CC:DD:EE:FF');
+      spy.mockRestore();
+    });
+  });
+
   // ── disconnectDevice() ──
 
   describe('disconnectDevice()', () => {

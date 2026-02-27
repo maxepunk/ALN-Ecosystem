@@ -371,6 +371,10 @@ class SessionService extends EventEmitter {
     // Start the game clock
     gameClockService.start();
 
+    // Activate cue engine for standing cue evaluation
+    const cueEngineService = require('./cueEngineService');
+    cueEngineService.activate();
+
     // Persist game clock state on session
     this.currentSession.gameClock = gameClockService.toPersistence();
 

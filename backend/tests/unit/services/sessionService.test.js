@@ -439,6 +439,24 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('Cue Engine Activation on Game Start', () => {
+    it('should activate cue engine when game starts', async () => {
+      const cueEngineService = require('../../../src/services/cueEngineService');
+      const activateSpy = jest.spyOn(cueEngineService, 'activate');
+
+      await sessionService.createSession({
+        name: 'Cue Engine Test',
+        teams: ['Team Alpha']
+      });
+
+      await sessionService.startGame();
+
+      expect(activateSpy).toHaveBeenCalled();
+
+      activateSpy.mockRestore();
+    });
+  });
+
   describe('Session Validation', () => {
     it('should validate GM station capacity', async () => {
       await sessionService.createSession({

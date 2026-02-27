@@ -1158,8 +1158,8 @@ describe('AudioRoutingService', () => {
     describe('createCombineSink()', () => {
       it('should create combine-sink from two BT speakers using pw-loopback', async () => {
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
-          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         const mockProc1 = createMockSpawnProc();
@@ -1193,7 +1193,7 @@ describe('AudioRoutingService', () => {
 
       it('should reject when fewer than two BT speakers are available', async () => {
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         await expect(audioRoutingService.createCombineSink())
@@ -1212,8 +1212,8 @@ describe('AudioRoutingService', () => {
         audioRoutingService._combineSinkPids = [1001, 1002];
 
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
-          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         // Should not spawn additional processes
@@ -1223,8 +1223,8 @@ describe('AudioRoutingService', () => {
 
       it('should emit combine-sink:created on success', async () => {
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
-          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         const mockProc1 = createMockSpawnProc();
@@ -1264,9 +1264,9 @@ describe('AudioRoutingService', () => {
 
       it('should use first two BT speakers when more than two are available', async () => {
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
-          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
-          { id: '91', name: 'bluez_output.77_88_99_AA_BB_CC.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '91', name: 'bluez_output.77_88_99_AA_BB_CC.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         const mockProc1 = createMockSpawnProc();
@@ -1282,6 +1282,43 @@ describe('AudioRoutingService', () => {
         // Should only spawn two pw-loopback processes
         expect(spawn).toHaveBeenCalledTimes(2);
         expect(audioRoutingService._combineSinkPids).toEqual([1001, 1002]);
+      });
+
+      it('should skip low-quality BT sinks (HFP/HSP mono 16kHz)', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.speaker', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.headset', type: 'bluetooth', format: 's16le 1ch 16000Hz' },
+        ]);
+
+        // Only 1 high-quality sink — should throw
+        await expect(audioRoutingService.createCombineSink())
+          .rejects.toThrow(/Need at least 2/);
+      });
+
+      it('should create combine-sink with only high-quality sinks', async () => {
+        jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
+          { id: '89', name: 'bluez_output.speaker1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.speaker2', type: 'bluetooth', format: 's16le 2ch 44100Hz' },
+          { id: '91', name: 'bluez_output.headset', type: 'bluetooth', format: 's16le 1ch 16000Hz' },
+        ]);
+
+        const mockProc1 = createMockSpawnProc();
+        mockProc1.pid = 2001;
+        const mockProc2 = createMockSpawnProc();
+        mockProc2.pid = 2002;
+        spawn.mockReturnValueOnce(mockProc1).mockReturnValueOnce(mockProc2);
+
+        mockExecFileSuccess('42\n');
+
+        await audioRoutingService.createCombineSink();
+
+        // Should spawn only 2 loopbacks (excluding headset)
+        expect(spawn).toHaveBeenCalledTimes(2);
+        // --playback-props is the 4th arg (index 3) in the pw-loopback args array
+        const playbackArgs = spawn.mock.calls.map(c => c[1][3]);
+        expect(playbackArgs.some(a => a.includes('speaker1'))).toBe(true);
+        expect(playbackArgs.some(a => a.includes('speaker2'))).toBe(true);
+        expect(playbackArgs.some(a => a.includes('headset'))).toBe(false);
       });
     });
 
@@ -1442,8 +1479,8 @@ describe('AudioRoutingService', () => {
 
         // Simulate two BT sinks now available
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
-          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         await audioRoutingService._onBtSinkChanged();
@@ -1460,7 +1497,7 @@ describe('AudioRoutingService', () => {
 
         // Only one BT sink remaining
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         await audioRoutingService._onBtSinkChanged();
@@ -1472,7 +1509,7 @@ describe('AudioRoutingService', () => {
         const createSpy = jest.spyOn(audioRoutingService, 'createCombineSink').mockResolvedValue();
 
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         await audioRoutingService._onBtSinkChanged();
@@ -1485,7 +1522,7 @@ describe('AudioRoutingService', () => {
         const destroySpy = jest.spyOn(audioRoutingService, 'destroyCombineSink').mockResolvedValue();
 
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         await audioRoutingService._onBtSinkChanged();
@@ -1532,8 +1569,8 @@ describe('AudioRoutingService', () => {
     describe('pw-loopback process lifecycle', () => {
       it('should auto-destroy combine-sink if a pw-loopback process exits unexpectedly', async () => {
         jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth' },
-          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth' },
+          { id: '89', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+          { id: '90', name: 'bluez_output.11_22_33_44_55_66.1', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
         ]);
 
         const mockProc1 = createMockSpawnProc();
@@ -2044,6 +2081,32 @@ describe('AudioRoutingService', () => {
           expect.any(Object)
         );
       });
+    });
+  });
+
+  describe('_isHighQualitySink()', () => {
+    it('should accept stereo 48kHz sink', () => {
+      expect(audioRoutingService._isHighQualitySink({ format: 's16le 2ch 48000Hz' })).toBe(true);
+    });
+
+    it('should accept stereo 44100Hz sink', () => {
+      expect(audioRoutingService._isHighQualitySink({ format: 's16le 2ch 44100Hz' })).toBe(true);
+    });
+
+    it('should reject mono 16kHz sink (HFP/HSP)', () => {
+      expect(audioRoutingService._isHighQualitySink({ format: 's16le 1ch 16000Hz' })).toBe(false);
+    });
+
+    it('should reject mono 8kHz sink', () => {
+      expect(audioRoutingService._isHighQualitySink({ format: 's16le 1ch 8000Hz' })).toBe(false);
+    });
+
+    it('should reject sink with empty format', () => {
+      expect(audioRoutingService._isHighQualitySink({ format: '' })).toBe(false);
+    });
+
+    it('should reject sink with missing format', () => {
+      expect(audioRoutingService._isHighQualitySink({})).toBe(false);
     });
   });
 });

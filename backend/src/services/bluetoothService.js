@@ -274,6 +274,8 @@ class BluetoothService extends EventEmitter {
       // Auto-connect — for speakers, pair without connect is useless
       try {
         await this._execFile('bluetoothctl', ['connect', address]);
+        // Best-effort: force A2DP profile
+        await this._enforceA2DPProfile(address);
         logger.info('Device auto-connected after pair', { address, name });
         this.emit('device:connected', { address, name });
       } catch (err) {
@@ -302,9 +304,31 @@ class BluetoothService extends EventEmitter {
     logger.info('Connecting to device', { address });
     await this._execFile('bluetoothctl', ['connect', address]);
     const name = await this._getDeviceName(address);
+
+    // Best-effort: force A2DP profile (prevents HFP/HSP mono mode)
+    await this._enforceA2DPProfile(address);
+
     logger.info('Device connected', { address, name });
 
     this.emit('device:connected', { address, name });
+  }
+
+  /**
+   * Best-effort A2DP profile enforcement after Bluetooth connect.
+   * Sets the PipeWire card profile to a2dp-sink, preventing HFP/HSP
+   * (mono 16kHz headset mode) which produces garbled audio.
+   * @param {string} address - Bluetooth MAC address
+   */
+  async _enforceA2DPProfile(address) {
+    const cardName = `bluez_card.${address.replace(/:/g, '_')}`;
+    try {
+      await this._execFile('pactl', ['set-card-profile', cardName, 'a2dp-sink']);
+      logger.info('A2DP profile enforced', { address, cardName });
+    } catch (err) {
+      logger.warn('A2DP profile enforcement failed (device may not support A2DP)', {
+        address, error: err.message,
+      });
+    }
   }
 
   /**

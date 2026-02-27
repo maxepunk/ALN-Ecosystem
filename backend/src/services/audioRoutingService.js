@@ -472,7 +472,14 @@ class AudioRoutingService extends EventEmitter {
       return;
     }
 
-    const btSinks = await this.getBluetoothSinks();
+    const allBtSinks = await this.getBluetoothSinks();
+    const btSinks = allBtSinks.filter(s => this._isHighQualitySink(s));
+    if (btSinks.length < allBtSinks.length) {
+      const skipped = allBtSinks.filter(s => !this._isHighQualitySink(s));
+      logger.warn('Skipping low-quality BT sinks (HFP/HSP) for combine-sink', {
+        skipped: skipped.map(s => ({ name: s.name, format: s.format })),
+      });
+    }
     if (btSinks.length < 2) {
       throw new Error(
         `Need at least 2 Bluetooth speakers for combine-sink, found ${btSinks.length}`
@@ -1162,6 +1169,25 @@ class AudioRoutingService extends EventEmitter {
     }
 
     return sinks;
+  }
+
+  /**
+   * Check if a BT sink supports high-quality audio (A2DP profile).
+   * HFP/HSP sinks are mono 16kHz and produce garbled audio via pw-loopback.
+   * Requires stereo (2+ channels) and sample rate >= 44100Hz.
+   * @param {Object} sink - Sink object from _parseSinkList
+   * @returns {boolean}
+   * @private
+   */
+  _isHighQualitySink(sink) {
+    if (!sink.format) return false;
+    // Format example: "s16le 2ch 48000Hz"
+    const chMatch = sink.format.match(/(\d+)ch/);
+    const hzMatch = sink.format.match(/(\d+)Hz/);
+    if (!chMatch || !hzMatch) return false;
+    const channels = parseInt(chMatch[1], 10);
+    const sampleRate = parseInt(hzMatch[1], 10);
+    return channels >= 2 && sampleRate >= 44100;
   }
 
   /**
