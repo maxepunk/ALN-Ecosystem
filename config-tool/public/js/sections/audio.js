@@ -86,6 +86,7 @@ function renderStreamRouting(container) {
   const fieldOpts = { sectionName: 'audio', markDirty: ctx.markDirty };
   const defaultGrid = el('div', { className: 'form-grid', style: { marginTop: '12px' } },
     makeEnvField(envData, 'AUDIO_DEFAULT_OUTPUT', 'Default Output', 'select', { ...fieldOpts, options: ['hdmi', 'bluetooth', 'combine-bt'] }),
+    makeEnvField(envData, 'SPOTIFY_DEFAULT_PLAYLIST', 'Spotify Default Playlist', 'text', { ...fieldOpts, placeholder: 'spotify:playlist:...' }),
   );
   card.appendChild(defaultGrid);
 
@@ -235,7 +236,7 @@ export async function save() {
   // Save env vars that belong to audio/environment
   const envUpdates = {};
   for (const key of [
-    'AUDIO_DEFAULT_OUTPUT',
+    'AUDIO_DEFAULT_OUTPUT', 'SPOTIFY_DEFAULT_PLAYLIST',
     'BLUETOOTH_SCAN_TIMEOUT_SEC', 'BLUETOOTH_CONNECT_TIMEOUT_SEC',
     'HOME_ASSISTANT_URL', 'HOME_ASSISTANT_TOKEN', 'LIGHTING_ENABLED', 'HA_DOCKER_MANAGE',
   ]) {
