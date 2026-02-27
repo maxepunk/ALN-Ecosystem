@@ -1024,13 +1024,14 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
-  describe('Spotify playlist:changed listener', () => {
+  describe('Spotify broadcast listeners', () => {
     let mockSpotifyService;
 
     beforeEach(() => {
       mockSpotifyService = new EventEmitter();
       mockSpotifyService.getState = jest.fn().mockReturnValue({
-        connected: true, state: 'playing', volume: 80, pausedByGameClock: false
+        connected: true, state: 'playing', volume: 80, pausedByGameClock: false,
+        track: { title: 'Test Song', artist: 'Test Artist' }
       });
 
       setupBroadcastListeners(mockIo, {
@@ -1054,6 +1055,65 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect.objectContaining({
           event: 'spotify:status',
           data: expect.objectContaining({ connected: true, state: 'playing' })
+        })
+      );
+    });
+
+    it('should broadcast spotify:status on track:changed', () => {
+      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
+
+      mockSpotifyService.emit('track:changed', { track: { title: 'New Song', artist: 'Artist' } });
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'spotify:status',
+        expect.objectContaining({
+          event: 'spotify:status',
+          data: expect.objectContaining({
+            connected: true,
+            track: { title: 'Test Song', artist: 'Test Artist' }
+          })
+        })
+      );
+    });
+  });
+
+  describe('ducking:changed broadcast', () => {
+    let mockAudioRoutingService;
+
+    beforeEach(() => {
+      mockAudioRoutingService = new EventEmitter();
+      // Stub getRoutingStatus so sink:added/removed handlers don't fail
+      mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
+      mockAudioRoutingService.handleDuckingEvent = jest.fn();
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        audioRoutingService: mockAudioRoutingService,
+      });
+    });
+
+    it('should broadcast audio:ducking:status on ducking:changed', () => {
+      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
+
+      const duckingData = {
+        stream: 'spotify',
+        ducked: true,
+        volume: 20,
+        activeSources: ['video'],
+      };
+      mockAudioRoutingService.emit('ducking:changed', duckingData);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'audio:ducking:status',
+        expect.objectContaining({
+          event: 'audio:ducking:status',
+          data: expect.objectContaining({ stream: 'spotify', ducked: true }),
         })
       );
     });

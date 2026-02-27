@@ -74,6 +74,17 @@ describe('SpotifyService', () => {
         expect.any(Object), expect.any(Function)
       );
     });
+
+    it('should call Player.Previous via D-Bus', async () => {
+      mockExecFileSuccess('');
+      await spotifyService.previous();
+      expect(execFile).toHaveBeenCalledWith(
+        'dbus-send',
+        expect.arrayContaining(['org.mpris.MediaPlayer2.Player.Previous']),
+        expect.any(Object),
+        expect.any(Function)
+      );
+    });
   });
 
   describe('playlist switching', () => {
@@ -104,6 +115,12 @@ describe('SpotifyService', () => {
         'dbus-send', expect.arrayContaining(['variant:double:1']),
         expect.any(Object), expect.any(Function)
       );
+    });
+
+    it('should clamp negative volume to 0', async () => {
+      mockExecFileSuccess('');
+      await spotifyService.setVolume(-50);
+      expect(spotifyService.volume).toBe(0);
     });
   });
 
@@ -216,12 +233,14 @@ describe('SpotifyService', () => {
       spotifyService._recovering = true;
       spotifyService.connected = true;
       spotifyService.state = 'playing';
+      spotifyService.track = { title: 'Test', artist: 'Artist' };
       spotifyService.reset();
       expect(spotifyService._dbusDest).toBeNull();
       expect(spotifyService._spotifydDest).toBeNull();
       expect(spotifyService._recovering).toBe(false);
       expect(spotifyService.connected).toBe(false);
       expect(spotifyService.state).toBe('stopped');
+      expect(spotifyService.track).toBeNull();
     });
   });
 
@@ -419,7 +438,7 @@ describe('SpotifyService', () => {
     it('should retry after recovery when first call fails', async () => {
       // Flow: original MPRIS call fails → clear caches → discover native →
       // TransferPlayback → wait → discover MPRIS → checkConnection →
-      // re-discover MPRIS → retry original command
+      // checkConnection._refreshMetadata (fire-and-forget) → retry original command
       spotifyService._spotifydDest = 'rs.spotifyd.instance123';
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
@@ -439,9 +458,9 @@ describe('SpotifyService', () => {
         } else if (callCount === 5) {
           // Recovery: checkConnection → Properties.Get
           cb(null, 'variant       string "Playing"', '');
-        } else if (callCount === 6) {
-          // Retry: _discoverDbusDest (cached from checkConnection)
-          // This is the retry of the original Play command
+        } else {
+          // Call 6: checkConnection._refreshMetadata (fire-and-forget)
+          // Call 7: Retry of the original Play command
           cb(null, '', '');
         }
       });
@@ -470,17 +489,25 @@ describe('SpotifyService', () => {
 
   describe('cache verification', () => {
     it('should return verified when cache directory has tracks', async () => {
-      jest.spyOn(require('fs'), 'existsSync').mockReturnValue(true);
-      jest.spyOn(require('fs'), 'readdirSync').mockReturnValue(['track1.ogg', 'track2.ogg']);
+      jest.spyOn(require('fs').promises, 'readdir').mockResolvedValue(['track1.ogg', 'track2.ogg']);
       const status = await spotifyService.verifyCacheStatus();
       expect(status.status).toBe('verified');
+      expect(status.trackCount).toBe(2);
     });
 
     it('should return missing when cache directory is empty', async () => {
-      jest.spyOn(require('fs'), 'existsSync').mockReturnValue(true);
-      jest.spyOn(require('fs'), 'readdirSync').mockReturnValue([]);
+      jest.spyOn(require('fs').promises, 'readdir').mockResolvedValue([]);
       const status = await spotifyService.verifyCacheStatus();
       expect(status.status).toBe('missing');
+    });
+
+    it('should return missing when cache directory does not exist (ENOENT)', async () => {
+      const err = new Error('ENOENT');
+      err.code = 'ENOENT';
+      jest.spyOn(require('fs').promises, 'readdir').mockRejectedValue(err);
+      const status = await spotifyService.verifyCacheStatus();
+      expect(status.status).toBe('missing');
+      expect(status.message).toBe('Cache directory not found');
     });
   });
 
@@ -531,6 +558,167 @@ describe('SpotifyService', () => {
       mockExecFileSuccess('');
       await spotifyService.previous();
       expect(handler).toHaveBeenCalledWith({ state: 'playing' });
+    });
+
+    it('should emit playback:changed on pause', async () => {
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+      mockExecFileSuccess('');
+      await spotifyService.pause();
+      expect(handler).toHaveBeenCalledWith({ state: 'paused' });
+    });
+
+    it('should emit playback:changed on stop', async () => {
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+      mockExecFileSuccess('');
+      await spotifyService.stop();
+      expect(handler).toHaveBeenCalledWith({ state: 'stopped' });
+    });
+  });
+
+  describe('_parseMetadata', () => {
+    it('should parse title and artist from D-Bus metadata output', () => {
+      const stdout = `
+        dict entry(
+          string "xesam:title"
+          variant             string "Midnight City"
+        )
+        dict entry(
+          string "xesam:artist"
+          variant             array [
+            string "M83"
+          ]
+        )
+      `;
+      const result = spotifyService._parseMetadata(stdout);
+      expect(result).toEqual({ title: 'Midnight City', artist: 'M83' });
+    });
+
+    it('should return null when no title present', () => {
+      const stdout = `dict entry(\n  string "xesam:artist"\n  variant string "M83"\n)`;
+      const result = spotifyService._parseMetadata(stdout);
+      expect(result).toBeNull();
+    });
+
+    it('should return null for empty/null input', () => {
+      expect(spotifyService._parseMetadata(null)).toBeNull();
+      expect(spotifyService._parseMetadata('')).toBeNull();
+    });
+
+    it('should default artist to Unknown Artist when missing', () => {
+      const stdout = `dict entry(\n  string "xesam:title"\n  variant             string "Untitled"\n)`;
+      const result = spotifyService._parseMetadata(stdout);
+      expect(result).toEqual({ title: 'Untitled', artist: 'Unknown Artist' });
+    });
+  });
+
+  describe('_refreshMetadata', () => {
+    it('should update track and return true when metadata changes', async () => {
+      const metadataOutput = `dict entry(\n  string "xesam:title"\n  variant             string "New Song"\n  string "xesam:artist"\n  variant             array [\n    string "Artist"\n  ]\n)`;
+      mockExecFileSuccess(metadataOutput);
+      const changed = await spotifyService._refreshMetadata();
+      expect(changed).toBe(true);
+      expect(spotifyService.track).toEqual({ title: 'New Song', artist: 'Artist' });
+    });
+
+    it('should return false when metadata stays the same', async () => {
+      spotifyService.track = { title: 'Same', artist: 'Artist' };
+      const metadataOutput = `dict entry(\n  string "xesam:title"\n  variant             string "Same"\n  string "xesam:artist"\n  variant             array [\n    string "Artist"\n  ]\n)`;
+      mockExecFileSuccess(metadataOutput);
+      const changed = await spotifyService._refreshMetadata();
+      expect(changed).toBe(false);
+    });
+
+    it('should return false on D-Bus error', async () => {
+      mockExecFileError('D-Bus error');
+      const changed = await spotifyService._refreshMetadata();
+      expect(changed).toBe(false);
+    });
+
+    it('should emit track:changed when track changes to a new value', async () => {
+      const handler = jest.fn();
+      spotifyService.on('track:changed', handler);
+      const metadataOutput = `dict entry(\n  string "xesam:title"\n  variant             string "Track"\n  string "xesam:artist"\n  variant             array [\n    string "Band"\n  ]\n)`;
+      mockExecFileSuccess(metadataOutput);
+      await spotifyService._refreshMetadata();
+      expect(handler).toHaveBeenCalledWith({ track: { title: 'Track', artist: 'Band' } });
+    });
+
+    it('should NOT emit track:changed when metadata is null', async () => {
+      const handler = jest.fn();
+      spotifyService.on('track:changed', handler);
+      mockExecFileSuccess('no metadata here');
+      await spotifyService._refreshMetadata();
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('track:changed after transport', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should schedule metadata refresh after next()', async () => {
+      mockExecFileSuccess('');
+      const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
+      await spotifyService.next();
+      expect(spy).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(200);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should schedule metadata refresh after play()', async () => {
+      mockExecFileSuccess('');
+      const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
+      await spotifyService.play();
+      expect(spy).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(200);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('should NOT schedule metadata refresh after pause()', async () => {
+      mockExecFileSuccess('');
+      const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
+      await spotifyService.pause();
+      jest.advanceTimersByTime(500);
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should handle metadata refresh failure gracefully', async () => {
+      mockExecFileSuccess('');
+      jest.spyOn(spotifyService, '_refreshMetadata').mockRejectedValue(new Error('fail'));
+      await spotifyService.next();
+      // Should not throw
+      jest.advanceTimersByTime(200);
+    });
+  });
+
+  describe('getState', () => {
+    it('should include track in state', () => {
+      spotifyService.track = { title: 'Song', artist: 'Artist' };
+      const state = spotifyService.getState();
+      expect(state.track).toEqual({ title: 'Song', artist: 'Artist' });
+    });
+
+    it('should return null track when not set', () => {
+      const state = spotifyService.getState();
+      expect(state.track).toBeNull();
+    });
+  });
+
+  describe('_buildDbusArgs', () => {
+    it('should build correct args array', () => {
+      const args = spotifyService._buildDbusArgs('org.test', 'org.test.Method', ['arg1']);
+      expect(args).toEqual([
+        '--session', '--type=method_call', '--print-reply',
+        '--dest=org.test', '/org/mpris/MediaPlayer2',
+        'org.test.Method', 'arg1'
+      ]);
     });
   });
 });
