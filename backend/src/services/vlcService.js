@@ -136,67 +136,47 @@ class VlcService extends EventEmitter {
   /**
    * Play video file
    * @param {string} videoPath - Path to video file
-   * @returns {Promise<Object>} VLC response or degraded response
+   * @returns {Promise<Object>} VLC status object
+   * @throws {Error} If VLC is not connected or HTTP call fails
    */
   async playVideo(videoPath) {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - returning degraded response');
-      this.emit('video:played', videoPath);
-      return {
-        connected: false,
-        state: 'playing',
-        currentItem: videoPath,
-        degraded: true,
-        message: 'VLC not available - video control simulated'
-      };
+      throw new Error('VLC not connected');
     }
 
-    try {
-      // STEP 1: ALWAYS clear playlist first to maintain 1-item invariant
-      await this.clearPlaylist();
-      logger.debug('Playlist cleared before playing video', { videoPath });
+    // STEP 1: ALWAYS clear playlist first to maintain 1-item invariant
+    await this.clearPlaylist();
+    logger.debug('Playlist cleared before playing video', { videoPath });
 
-      // STEP 2: ALWAYS disable loop for regular videos (idle loop will override)
-      await this.setLoop(false);
-      logger.debug('Loop disabled for video playback', { videoPath });
+    // STEP 2: ALWAYS disable loop for regular videos (idle loop will override)
+    await this.setLoop(false);
+    logger.debug('Loop disabled for video playback', { videoPath });
 
-      // STEP 3: Convert relative paths to absolute file:// URLs for VLC
-      let vlcPath = videoPath;
-      if (videoPath.startsWith('/')) {
-        // Relative to public directory (e.g., /videos/sample.mp4)
-        vlcPath = `file://${process.cwd()}/public${videoPath}`;
-        logger.debug('Converted relative path to absolute', { original: videoPath, converted: vlcPath });
-      } else if (!videoPath.startsWith('http') && !videoPath.startsWith('file://')) {
-        // Assume it's relative to videos directory
-        vlcPath = `file://${process.cwd()}/public/videos/${videoPath}`;
-        logger.debug('Converted filename to absolute path', { original: videoPath, converted: vlcPath });
-      }
-
-      // STEP 4: Add video and start playback immediately
-      // Use 'in_play' to add to playlist AND start playing (not 'in_enqueue' which only queues)
-      await this.client.get('/requests/status.json', {
-        params: {
-          command: 'in_play',
-          input: vlcPath, // VLC HTTP interface handles encoding internally
-        },
-      });
-
-      logger.info('Video playback started', { videoPath });
-      this.emit('video:played', videoPath);
-
-      return await this.getStatus();
-    } catch (error) {
-      logger.error('Failed to play video - returning degraded response', { videoPath, error });
-      // Graceful degradation - don't crash
-      this.emit('video:played', videoPath);
-      return {
-        connected: false,
-        state: 'playing',
-        currentItem: videoPath,
-        degraded: true,
-        error: error.message
-      };
+    // STEP 3: Convert relative paths to absolute file:// URLs for VLC
+    let vlcPath = videoPath;
+    if (videoPath.startsWith('/')) {
+      // Relative to public directory (e.g., /videos/sample.mp4)
+      vlcPath = `file://${process.cwd()}/public${videoPath}`;
+      logger.debug('Converted relative path to absolute', { original: videoPath, converted: vlcPath });
+    } else if (!videoPath.startsWith('http') && !videoPath.startsWith('file://')) {
+      // Assume it's relative to videos directory
+      vlcPath = `file://${process.cwd()}/public/videos/${videoPath}`;
+      logger.debug('Converted filename to absolute path', { original: videoPath, converted: vlcPath });
     }
+
+    // STEP 4: Add video and start playback immediately
+    // Use 'in_play' to add to playlist AND start playing (not 'in_enqueue' which only queues)
+    await this.client.get('/requests/status.json', {
+      params: {
+        command: 'in_play',
+        input: vlcPath, // VLC HTTP interface handles encoding internally
+      },
+    });
+
+    logger.info('Video playback started', { videoPath });
+    this.emit('video:played', videoPath);
+
+    return await this.getStatus();
   }
 
   /**
@@ -205,23 +185,15 @@ class VlcService extends EventEmitter {
    */
   async stop() {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - simulating stop');
-      this.emit('video:stopped');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: { command: 'pl_stop' },
-      });
+    await this.client.get('/requests/status.json', {
+      params: { command: 'pl_stop' },
+    });
 
-      logger.info('Video playback stopped');
-      this.emit('video:stopped');
-    } catch (error) {
-      logger.error('Failed to stop video - simulating stop', error);
-      // Graceful degradation
-      this.emit('video:stopped');
-    }
+    logger.info('Video playback stopped');
+    this.emit('video:stopped');
   }
 
   /**
@@ -230,23 +202,15 @@ class VlcService extends EventEmitter {
    */
   async pause() {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - simulating pause');
-      this.emit('video:paused');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: { command: 'pl_pause' },
-      });
+    await this.client.get('/requests/status.json', {
+      params: { command: 'pl_pause' },
+    });
 
-      logger.info('Video playback paused');
-      this.emit('video:paused');
-    } catch (error) {
-      logger.error('Failed to pause video - simulating pause', error);
-      // Graceful degradation
-      this.emit('video:paused');
-    }
+    logger.info('Video playback paused');
+    this.emit('video:paused');
   }
 
   /**
@@ -255,23 +219,15 @@ class VlcService extends EventEmitter {
    */
   async resume() {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - simulating resume');
-      this.emit('video:resumed');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: { command: 'pl_play' },
-      });
+    await this.client.get('/requests/status.json', {
+      params: { command: 'pl_play' },
+    });
 
-      logger.info('Video playback resumed');
-      this.emit('video:resumed');
-    } catch (error) {
-      logger.error('Failed to resume video - simulating resume', error);
-      // Graceful degradation
-      this.emit('video:resumed');
-    }
+    logger.info('Video playback resumed');
+    this.emit('video:resumed');
   }
 
   /**
@@ -280,23 +236,15 @@ class VlcService extends EventEmitter {
    */
   async skip() {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - simulating skip');
-      this.emit('video:skipped');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: { command: 'pl_next' },
-      });
+    await this.client.get('/requests/status.json', {
+      params: { command: 'pl_next' },
+    });
 
-      logger.info('Skipped to next video');
-      this.emit('video:skipped');
-    } catch (error) {
-      logger.error('Failed to skip video - simulating skip', error);
-      // Graceful degradation
-      this.emit('video:skipped');
-    }
+    logger.info('Skipped to next video');
+    this.emit('video:skipped');
   }
 
   /**
@@ -305,44 +253,24 @@ class VlcService extends EventEmitter {
    */
   async getStatus() {
     if (!registry.isHealthy('vlc')) {
-      return {
-        connected: false,
-        state: 'disconnected',
-        currentItem: null,
-        position: 0,
-        length: 0,
-        volume: 0,
-        loop: false,
-        repeat: false,
-      };
+      throw new Error('VLC not connected');
     }
 
-    try {
-      const response = await this.client.get('/requests/status.json');
-      const status = response.data;
+    const response = await this.client.get('/requests/status.json');
+    const status = response.data;
 
-      return {
-        connected: true,
-        state: status.state,
-        currentItem: status.information?.category?.meta?.filename || null,
-        position: status.position || 0,
-        length: status.length || 0,
-        time: status.time || 0,
-        volume: status.volume || 0,
-        fullscreen: status.fullscreen || false,
-        loop: status.loop || false,
-        repeat: status.repeat || false,
-      };
-    } catch (error) {
-      logger.error('Failed to get VLC status', error);
-      return {
-        connected: false,
-        state: 'error',
-        error: error.message,
-        loop: false,
-        repeat: false,
-      };
-    }
+    return {
+      connected: true,
+      state: status.state,
+      currentItem: status.information?.category?.meta?.filename || null,
+      position: status.position || 0,
+      length: status.length || 0,
+      time: status.time || 0,
+      volume: status.volume || 0,
+      fullscreen: status.fullscreen || false,
+      loop: status.loop || false,
+      repeat: status.repeat || false,
+    };
   }
 
   /**
@@ -352,23 +280,17 @@ class VlcService extends EventEmitter {
    */
   async setVolume(volume) {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - volume change simulated');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: {
-          command: 'volume',
-          val: Math.max(0, Math.min(256, volume)),
-        },
-      });
+    await this.client.get('/requests/status.json', {
+      params: {
+        command: 'volume',
+        val: Math.max(0, Math.min(256, volume)),
+      },
+    });
 
-      logger.info('Volume set', { volume });
-    } catch (error) {
-      logger.error('Failed to set volume - change simulated', { volume, error });
-      // Graceful degradation - don't throw
-    }
+    logger.info('Volume set', { volume });
   }
 
   /**
@@ -377,20 +299,14 @@ class VlcService extends EventEmitter {
    */
   async toggleFullscreen() {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - fullscreen toggle simulated');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: { command: 'fullscreen' },
-      });
+    await this.client.get('/requests/status.json', {
+      params: { command: 'fullscreen' },
+    });
 
-      logger.info('Fullscreen toggled');
-    } catch (error) {
-      logger.error('Failed to toggle fullscreen - simulated', error);
-      // Graceful degradation - don't throw
-    }
+    logger.info('Fullscreen toggled');
   }
 
   /**
@@ -399,20 +315,14 @@ class VlcService extends EventEmitter {
    */
   async clearPlaylist() {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - playlist clear simulated');
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: { command: 'pl_empty' },
-      });
+    await this.client.get('/requests/status.json', {
+      params: { command: 'pl_empty' },
+    });
 
-      logger.info('Playlist cleared');
-    } catch (error) {
-      logger.error('Failed to clear playlist - simulated', error);
-      // Graceful degradation - don't throw
-    }
+    logger.info('Playlist cleared');
   }
 
   /**
@@ -422,23 +332,17 @@ class VlcService extends EventEmitter {
    */
   async addToPlaylist(videoPath) {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - playlist addition simulated', { videoPath });
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: {
-          command: 'in_enqueue',
-          input: encodeURIComponent(videoPath),
-        },
-      });
+    await this.client.get('/requests/status.json', {
+      params: {
+        command: 'in_enqueue',
+        input: encodeURIComponent(videoPath),
+      },
+    });
 
-      logger.info('Video added to playlist', { videoPath });
-    } catch (error) {
-      logger.error('Failed to add video to playlist - simulated', { videoPath, error });
-      // Graceful degradation - don't throw
-    }
+    logger.info('Video added to playlist', { videoPath });
   }
 
   /**
@@ -448,23 +352,17 @@ class VlcService extends EventEmitter {
    */
   async seek(position) {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - seek simulated', { position });
-      return;
+      throw new Error('VLC not connected');
     }
 
-    try {
-      await this.client.get('/requests/status.json', {
-        params: {
-          command: 'seek',
-          val: position,
-        },
-      });
+    await this.client.get('/requests/status.json', {
+      params: {
+        command: 'seek',
+        val: position,
+      },
+    });
 
-      logger.info('Seeked to position', { position });
-    } catch (error) {
-      logger.error('Failed to seek - simulated', { position, error });
-      // Graceful degradation - don't throw
-    }
+    logger.info('Seeked to position', { position });
   }
 
   /**
@@ -474,8 +372,7 @@ class VlcService extends EventEmitter {
    */
   async setLoop(enabled) {
     if (!registry.isHealthy('vlc')) {
-      logger.warn('VLC not connected - loop setting simulated');
-      return;
+      throw new Error('VLC not connected');
     }
 
     try {

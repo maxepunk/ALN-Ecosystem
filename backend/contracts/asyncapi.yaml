@@ -2827,9 +2827,10 @@ components:
     CueCompleted:
       name: cue:completed
       title: Cue Completed Event
-      summary: Broadcast when a cue completes successfully
+      summary: Broadcast when a cue completes execution
       description: |
-        Broadcast when a cue finishes executing all actions successfully.
+        Broadcast when a cue finishes executing all commands. Includes per-command
+        tracking so the GM knows which commands succeeded and which failed.
 
         **Note**: This is a terminal state - the cue will not execute further unless re-fired.
       payload:
@@ -2847,11 +2848,50 @@ components:
             type: object
             required:
               - cueId
+              - completedCommands
+              - failedCommands
             properties:
               cueId:
                 type: string
                 description: Unique cue identifier
                 example: "first-scan-fanfare"
+              completedCommands:
+                type: array
+                description: Commands that executed successfully
+                items:
+                  type: object
+                  required:
+                    - action
+                  properties:
+                    action:
+                      type: string
+                      description: The command action that succeeded
+                      example: "sound:play"
+                    position:
+                      type: number
+                      description: Timeline position in seconds (compound cues only)
+                      example: 0
+              failedCommands:
+                type: array
+                description: Commands that failed during execution
+                items:
+                  type: object
+                  required:
+                    - action
+                    - error
+                  properties:
+                    action:
+                      type: string
+                      description: The command action that failed
+                      example: "lighting:scene:activate"
+                    error:
+                      type: string
+                      description: Error message from the failed command
+                      example: "Lighting service not connected"
+                    position:
+                      type: number
+                      description: Timeline position in seconds (compound cues only)
+                      example: 5
           timestamp:
             type: string
             format: date-time

@@ -195,35 +195,27 @@ class LightingService extends EventEmitter {
 
   /**
    * Activate a scene.
-   * If using fallback or HA unreachable, simulates activation.
+   * Throws if lighting is unavailable or HA API call fails.
    * POST /api/services/scene/turn_on with {entity_id}.
-   * Emits scene:activated with {sceneId, sceneName}.
+   * Emits scene:activated with {sceneId, sceneName} only on confirmed success.
    * @param {string} sceneId - The scene entity_id (e.g. 'scene.game')
    * @returns {Promise<void>}
    */
   async activateScene(sceneId) {
+    if (!registry.isHealthy('lighting')) {
+      throw new Error('Lighting service not connected');
+    }
+
     // Resolve friendly name from cache
     const cached = this._scenes.find((s) => s.id === sceneId);
     const sceneName = cached ? cached.name : sceneId;
 
-    if (this._usingFallback || !registry.isHealthy('lighting')) {
-      logger.info('Simulating scene activation (Fallback/Offline)', { sceneId, sceneName });
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } else {
-      try {
-        await axios.post(
-          `${config.lighting.homeAssistantUrl}/api/services/scene/turn_on`,
-          { entity_id: sceneId },
-          { headers: this._getHeaders(), timeout: 5000 }
-        );
-        logger.info('Scene activated via HA', { sceneId, sceneName });
-      } catch (err) {
-        logger.error('Failed to activate scene on HA', { sceneId, error: err.message });
-        // Don't throw, just log. UI should still update optimistically or we could choose not to emit.
-        // For now, we emit so the UI feels responsive even if HA flakes.
-      }
-    }
+    await axios.post(
+      `${config.lighting.homeAssistantUrl}/api/services/scene/turn_on`,
+      { entity_id: sceneId },
+      { headers: this._getHeaders(), timeout: 5000 }
+    );
+    logger.info('Scene activated via HA', { sceneId, sceneName });
 
     this._activeScene = sceneId;
     this.emit('scene:activated', { sceneId, sceneName });

@@ -8,6 +8,7 @@ const VideoQueueItem = require('../models/videoQueueItem');
 const config = require('../config');
 const logger = require('../utils/logger');
 const vlcService = require('./vlcService'); // Load at top to avoid lazy require in timer callbacks
+const registry = require('./serviceHealthRegistry');
 const fs = require('fs');
 const path = require('path');
 
@@ -176,7 +177,7 @@ class VideoQueueService extends EventEmitter {
           itemId: queueItem.id,
           tokenId: queueItem.tokenId,
           duration,
-          vlcConnected: vlcService.isConnected(),
+          vlcHealthy: registry.isHealthy('vlc'),
         });
 
         // Start monitoring immediately (VLC is confirmed playing)
@@ -478,14 +479,8 @@ class VideoQueueService extends EventEmitter {
       tokenId: this.currentItem.tokenId,
     });
 
-
     if (config.features.videoPlayback) {
-      try {
-        // Stop through VLC
-        await vlcService.stop();
-      } catch (error) {
-        logger.error('Failed to stop video through VLC', { error });
-      }
+      await vlcService.stop();
     }
 
     this.completePlayback(this.currentItem);
@@ -501,14 +496,8 @@ class VideoQueueService extends EventEmitter {
       return false;
     }
 
-
     if (config.features.videoPlayback) {
-      try {
-        // Pause through VLC
-        await vlcService.pause();
-      } catch (error) {
-        logger.error('Failed to pause video through VLC', { error });
-      }
+      await vlcService.pause();
     }
 
     if (this.playbackTimer) {
@@ -529,19 +518,13 @@ class VideoQueueService extends EventEmitter {
       return false;
     }
 
-
     if (config.features.videoPlayback) {
-      try {
-        // Resume through VLC
-        await vlcService.resume();
+      await vlcService.resume();
 
-        // Restart monitoring
-        const status = await vlcService.getStatus();
-        const remaining = status.length ? (status.length / 1000) * (1 - status.position) : 30;
-        this.monitorVlcPlayback(this.currentItem, remaining);
-      } catch (error) {
-        logger.error('Failed to resume video through VLC', { error });
-      }
+      // Restart monitoring
+      const status = await vlcService.getStatus();
+      const remaining = status.length ? (status.length / 1000) * (1 - status.position) : 30;
+      this.monitorVlcPlayback(this.currentItem, remaining);
     } else {
       // Test mode - calculate remaining time
       const elapsed = (Date.now() - new Date(this.currentItem.playbackStart).getTime()) / 1000;

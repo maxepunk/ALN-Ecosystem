@@ -61,7 +61,11 @@ describe('Phase 1 AsyncAPI Contract - New Events', () => {
     it('should validate cue completed event', () => {
       validateWebSocketEvent({
         event: 'cue:completed',
-        data: { cueId: 'first-scan-fanfare' },
+        data: {
+          cueId: 'first-scan-fanfare',
+          completedCommands: [{ action: 'sound:play' }],
+          failedCommands: [],
+        },
         timestamp: new Date().toISOString()
       }, 'cue:completed');
     });

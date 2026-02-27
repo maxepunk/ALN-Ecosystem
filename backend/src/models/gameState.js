@@ -27,8 +27,6 @@ class GameState {
     if (!data.systemStatus) {
       data.systemStatus = {
         orchestratorOnline: true,
-        vlcConnected: false,
-        videoDisplayReady: false,
         offline: false,
       };
     }
@@ -142,15 +140,6 @@ class GameState {
   }
 
   /**
-   * Update system status
-   * @param {Object} status - Partial status update
-   */
-  updateSystemStatus(status) {
-    Object.assign(this.systemStatus, status);
-    this.touch();
-  }
-
-  /**
    * Get team score
    * @param {string} teamId - Team ID
    * @returns {Object|null} Team score or null if not found
@@ -171,16 +160,6 @@ class GameState {
     return this.scores.reduce((winner, score) => {
       return score.currentScore > winner.currentScore ? score : winner;
     });
-  }
-
-  /**
-   * Check if system is fully operational
-   * @returns {boolean}
-   */
-  isSystemOperational() {
-    return this.systemStatus.orchestratorOnline &&
-           this.systemStatus.vlcConnected &&
-           this.systemStatus.videoDisplayReady;
   }
 
   /**
@@ -231,8 +210,6 @@ class GameState {
         session.transactions.slice(-10),
       systemStatus: {
         orchestratorOnline: true,
-        vlcConnected: systemStatus.vlcConnected || false,
-        videoDisplayReady: systemStatus.videoDisplayReady || false,
         offline: systemStatus.offline || false,
       },
     });

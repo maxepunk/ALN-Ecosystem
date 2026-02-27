@@ -166,6 +166,75 @@ describe('VLCService', () => {
         })
       );
     });
+
+    it('should throw when VLC not connected', async () => {
+      registry.report('vlc', 'down', 'Test');
+      await expect(vlcService.stop()).rejects.toThrow('VLC not connected');
+    });
+
+    it('should throw on HTTP error (no fake event)', async () => {
+      mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
+      const handler = jest.fn();
+      vlcService.on('video:stopped', handler);
+
+      await expect(vlcService.stop()).rejects.toThrow('Network error');
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('pause', () => {
+    beforeEach(async () => {
+      mockAxiosInstance.get.mockResolvedValue({ status: 200, data: { state: 'playing' } });
+      await vlcService.init();
+      jest.clearAllMocks();
+    });
+
+    it('should throw when VLC not connected', async () => {
+      registry.report('vlc', 'down', 'Test');
+      await expect(vlcService.pause()).rejects.toThrow('VLC not connected');
+    });
+
+    it('should throw on HTTP error (no fake event)', async () => {
+      mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
+      const handler = jest.fn();
+      vlcService.on('video:paused', handler);
+
+      await expect(vlcService.pause()).rejects.toThrow('Network error');
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resume', () => {
+    beforeEach(async () => {
+      mockAxiosInstance.get.mockResolvedValue({ status: 200, data: { state: 'paused' } });
+      await vlcService.init();
+      jest.clearAllMocks();
+    });
+
+    it('should throw when VLC not connected', async () => {
+      registry.report('vlc', 'down', 'Test');
+      await expect(vlcService.resume()).rejects.toThrow('VLC not connected');
+    });
+
+    it('should throw on HTTP error (no fake event)', async () => {
+      mockAxiosInstance.get.mockRejectedValue(new Error('Network error'));
+      const handler = jest.fn();
+      vlcService.on('video:resumed', handler);
+
+      await expect(vlcService.resume()).rejects.toThrow('Network error');
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('playVideo when disconnected', () => {
+    it('should throw when VLC not connected (no fake event)', async () => {
+      registry.report('vlc', 'down', 'Test');
+      const handler = jest.fn();
+      vlcService.on('video:played', handler);
+
+      await expect(vlcService.playVideo('test.mp4')).rejects.toThrow('VLC not connected');
+      expect(handler).not.toHaveBeenCalled();
+    });
   });
 
   describe('getStatus', () => {
@@ -213,30 +282,20 @@ describe('VLCService', () => {
       expect(status.currentItem).toBe('test-video.mp4');
     });
 
-    it('should return disconnected status when not connected', async () => {
+    it('should throw when VLC not connected', async () => {
       // ARRANGE - mark VLC as down in registry
       registry.report('vlc', 'down', 'Test disconnected');
 
-      // ACT
-      const status = await vlcService.getStatus();
-
-      // ASSERT
-      expect(status.connected).toBe(false);
-      expect(status.state).toBe('disconnected');
-      expect(status.currentItem).toBeNull();
+      // ACT & ASSERT
+      await expect(vlcService.getStatus()).rejects.toThrow('VLC not connected');
     });
 
-    it('should handle errors gracefully', async () => {
+    it('should throw on HTTP errors', async () => {
       // ARRANGE
       mockAxiosInstance.get.mockRejectedValue(new Error('Timeout'));
 
-      // ACT
-      const status = await vlcService.getStatus();
-
-      // ASSERT
-      expect(status.connected).toBe(false);
-      expect(status.state).toBe('error');
-      expect(status.error).toBe('Timeout');
+      // ACT & ASSERT
+      await expect(vlcService.getStatus()).rejects.toThrow('Timeout');
     });
   });
 });

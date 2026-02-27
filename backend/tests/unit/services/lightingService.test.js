@@ -432,6 +432,7 @@ describe('LightingService', () => {
       });
       await lightingService.getScenes();
 
+      registry.report('lighting', 'healthy');
       axios.post.mockResolvedValue({ status: 200, data: [] });
       await lightingService.activateScene('scene.blackout');
 
@@ -450,6 +451,7 @@ describe('LightingService', () => {
       });
       await lightingService.getScenes();
 
+      registry.report('lighting', 'healthy');
       axios.post.mockResolvedValue({ status: 200, data: [] });
       await lightingService.activateScene('scene.ambient');
 
@@ -460,6 +462,7 @@ describe('LightingService', () => {
       const handler = jest.fn();
       lightingService.on('scene:activated', handler);
 
+      registry.report('lighting', 'healthy');
       axios.post.mockResolvedValue({ status: 200, data: [] });
       await lightingService.activateScene('scene.unknown');
 
@@ -469,19 +472,20 @@ describe('LightingService', () => {
       });
     });
 
-    it('should still emit scene:activated even when HA returns error', async () => {
+    it('should throw when lighting not connected', async () => {
+      await expect(lightingService.activateScene('scene.test'))
+        .rejects.toThrow('Lighting service not connected');
+    });
+
+    it('should throw on HA error (no fake event)', async () => {
       registry.report('lighting', 'healthy');
       const handler = jest.fn();
       lightingService.on('scene:activated', handler);
       axios.post.mockRejectedValue(new Error('Service not found'));
 
-      // Should NOT throw — catches error and emits optimistically
-      await lightingService.activateScene('scene.nonexistent');
-
-      expect(handler).toHaveBeenCalledWith({
-        sceneId: 'scene.nonexistent',
-        sceneName: 'scene.nonexistent',
-      });
+      await expect(lightingService.activateScene('scene.nonexistent'))
+        .rejects.toThrow('Service not found');
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 
@@ -502,6 +506,7 @@ describe('LightingService', () => {
       });
       await lightingService.getScenes();
 
+      registry.report('lighting', 'healthy');
       axios.post.mockResolvedValue({ status: 200, data: [] });
       await lightingService.activateScene('scene.a');
       await lightingService.activateScene('scene.b');

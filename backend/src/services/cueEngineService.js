@@ -286,7 +286,10 @@ class CueEngineService extends EventEmitter {
       source: 'cue',
     });
 
-    // Execute all commands in sequence
+    // Execute all commands in sequence, tracking per-command results
+    const completedCommands = [];
+    const failedCommands = [];
+
     for (const cmd of cue.commands) {
       try {
         await executeCommand({
@@ -295,8 +298,10 @@ class CueEngineService extends EventEmitter {
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
+        completedCommands.push({ action: cmd.action });
       } catch (err) {
         logger.error(`[CueEngine] Command failed in cue "${cueId}": ${cmd.action}`, err.message);
+        failedCommands.push({ action: cmd.action, error: err.message });
         this.emit('cue:error', {
           cueId,
           action: cmd.action,
@@ -306,8 +311,8 @@ class CueEngineService extends EventEmitter {
       }
     }
 
-    // Emit cue:completed
-    this.emit('cue:completed', { cueId });
+    // Emit cue:completed with per-command tracking
+    this.emit('cue:completed', { cueId, completedCommands, failedCommands });
 
     // Auto-disable if once flag is set
     if (cue.once) {
@@ -503,6 +508,8 @@ class CueEngineService extends EventEmitter {
       timeline,
       maxAt,
       firedEntries: new Set(),
+      completedCommands: [],
+      failedCommands: [],
       spawnedBy,
       children: new Set(),
       hasVideo,
@@ -578,9 +585,11 @@ class CueEngineService extends EventEmitter {
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
+        activeCue.completedCommands.push({ action: entry.action, position: entry.at });
       } catch (err) {
         // D36: Emit error but CONTINUE the timeline
         logger.error(`[CueEngine] Timeline command failed in cue "${cueId}" at ${entry.at}s: ${entry.action}`, err.message);
+        activeCue.failedCommands.push({ action: entry.action, position: entry.at, error: err.message });
         this.emit('cue:error', {
           cueId,
           action: entry.action,
@@ -636,9 +645,13 @@ class CueEngineService extends EventEmitter {
 
     // All entries must be fired AND elapsed must be >= max(at)
     if (firedEntries.size >= timeline.length && elapsed >= maxAt) {
-      logger.info(`[CueEngine] Compound cue completed: ${cueId}`);
+      const { completedCommands, failedCommands } = activeCue;
+      logger.info(`[CueEngine] Compound cue completed: ${cueId}`, {
+        completed: completedCommands.length,
+        failed: failedCommands.length,
+      });
       this.activeCues.delete(cueId);
-      this.emit('cue:completed', { cueId });
+      this.emit('cue:completed', { cueId, completedCommands, failedCommands });
     }
   }
 

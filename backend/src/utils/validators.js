@@ -83,8 +83,6 @@ const gameStateSchema = Joi.object({
   recentTransactions: Joi.array().items(transactionSchema).required(),
   systemStatus: Joi.object({
     orchestratorOnline: Joi.boolean().required(),
-    vlcConnected: Joi.boolean().required(),
-    videoDisplayReady: Joi.boolean().required(),
   }).required(),
 });
 

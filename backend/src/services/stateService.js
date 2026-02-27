@@ -22,8 +22,6 @@ class StateService extends EventEmitter {
     // NOTE: currentState removed - GameState is now computed on-demand from session
     this.previousState = null;
     this.syncInterval = null;
-    this.vlcConnected = false;
-    this.videoDisplayReady = false;
     this.listenersInitialized = false;
 
     // Cache offline status from events (Phase 1.1.4 - aggregator pattern)
@@ -337,8 +335,6 @@ class StateService extends EventEmitter {
 
     // Always derive fresh from session + current system status
     return GameState.fromSession(session, {
-      vlcConnected: this.vlcConnected || false,
-      videoDisplayReady: this.videoDisplayReady || false,
       offline: this.cachedOfflineStatus || false
     });
   }
@@ -388,8 +384,6 @@ class StateService extends EventEmitter {
       recentTransactions: [],
       systemStatus: {
         orchestratorOnline: true,
-        vlcConnected: this.vlcConnected,
-        videoDisplayReady: this.videoDisplayReady,
         offline: this.cachedOfflineStatus,  // Use cached value (Phase 1.1.4)
       }
     });
@@ -409,8 +403,6 @@ class StateService extends EventEmitter {
     // Use cached offline status (Phase 1.1.4 - aggregator pattern)
     const systemStatus = {
       orchestratorOnline: true,
-      vlcConnected: this.vlcConnected,
-      videoDisplayReady: this.videoDisplayReady,
       offline: this.cachedOfflineStatus,
     };
 
@@ -436,10 +428,8 @@ class StateService extends EventEmitter {
   async updateState(updates, options = {}) {
     // GameState is computed from session - we can't mutate it directly
 
-    // System status updates are handled separately to avoid circular calls
+    // System status updates are no longer supported via updateState
     if (updates.systemStatus !== undefined) {
-      logger.warn('updateState called with systemStatus - use updateSystemStatus() directly instead');
-      // Don't process here - caller should use updateSystemStatus()
       delete updates.systemStatus;
     }
 
@@ -471,30 +461,6 @@ class StateService extends EventEmitter {
     } catch (error) {
       logger.error('Failed to update game state', error);
       throw error;
-    }
-  }
-
-  /**
-   * Update system status
-   * @param {Object} status - System status updates
-   * @returns {Promise<void>}
-   */
-  async updateSystemStatus(status) {
-    if (status.vlcConnected !== undefined) {
-      this.vlcConnected = status.vlcConnected;
-    }
-
-    if (status.videoDisplayReady !== undefined) {
-      this.videoDisplayReady = status.videoDisplayReady;
-    }
-
-    // Emit state update if session exists (GameState is computed from session)
-    const currentState = this.getCurrentState();
-    if (currentState) {
-      // Emit directly without calling updateState (which would call us back)
-      const fullState = currentState.toJSON();
-      this.emitStateUpdate(fullState, true); // immediate emit for system status
-      logger.debug('System status updated', { status });
     }
   }
 
@@ -679,14 +645,6 @@ class StateService extends EventEmitter {
    */
   getWinningTeam() {
     return this.getCurrentState()?.getWinningTeam() || null;
-  }
-
-  /**
-   * Check if system is operational
-   * @returns {boolean}
-   */
-  isSystemOperational() {
-    return this.getCurrentState()?.isSystemOperational() || false;
   }
 
   /**

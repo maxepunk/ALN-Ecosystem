@@ -129,6 +129,51 @@ describe('CueEngineService', () => {
       await cueEngineService.fireCue('test');
       expect(executeCommand).not.toHaveBeenCalled();
     });
+
+    it('should emit cue:completed with per-command tracking (all succeed)', async () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:completed', handler);
+      cueEngineService.loadCues([{
+        id: 'track-ok', label: 'Track OK',
+        commands: [
+          { action: 'sound:play', payload: { file: 'a.wav' } },
+          { action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('track-ok');
+      expect(handler).toHaveBeenCalledWith({
+        cueId: 'track-ok',
+        completedCommands: [
+          { action: 'sound:play' },
+          { action: 'lighting:scene:activate' },
+        ],
+        failedCommands: [],
+      });
+    });
+
+    it('should emit cue:completed with failed commands tracked', async () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:completed', handler);
+
+      executeCommand.mockResolvedValueOnce({ success: true });
+      executeCommand.mockRejectedValueOnce(new Error('HA unreachable'));
+
+      cueEngineService.loadCues([{
+        id: 'track-fail', label: 'Track Fail',
+        commands: [
+          { action: 'sound:play', payload: { file: 'a.wav' } },
+          { action: 'lighting:scene:activate', payload: { sceneId: 'scene.bad' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('track-fail');
+      expect(handler).toHaveBeenCalledWith({
+        cueId: 'track-fail',
+        completedCommands: [{ action: 'sound:play' }],
+        failedCommands: [{ action: 'lighting:scene:activate', error: 'HA unreachable' }],
+      });
+    });
   });
 
   describe('once flag', () => {
@@ -443,7 +488,11 @@ describe('CueEngineService', () => {
       cueEngineService._tickActiveCompoundCues(1);
       await flushAsync();
 
-      expect(handler).toHaveBeenCalledWith({ cueId: 'compound-3' });
+      expect(handler).toHaveBeenCalledWith({
+        cueId: 'compound-3',
+        completedCommands: [{ action: 'sound:play', position: 0 }],
+        failedCommands: [],
+      });
     });
 
     it('should track active compound cues', async () => {
