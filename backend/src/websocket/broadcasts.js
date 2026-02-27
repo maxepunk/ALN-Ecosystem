@@ -8,7 +8,7 @@ const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
 const { buildSyncFullPayload } = require('./syncHelpers');
 
-// ADD: Module-level tracking
+// Module-level listener tracking for cleanup
 const activeListeners = [];
 
 // Idempotency guard flag
@@ -474,7 +474,7 @@ function setupBroadcastListeners(io, services) {
     broadcastQueueUpdate();
   });
 
-  // NOTE: video:completed queue update moved to main video:completed handler at line 341
+  // NOTE: video:completed queue update handled in main video:completed handler above
   // to avoid duplicate listener registration (causes listener accumulation in tests)
 
   addTrackedListener(videoQueueService, 'video:started', () => {
@@ -721,25 +721,13 @@ function setupBroadcastListeners(io, services) {
 
   // Spotify broadcasts
   if (spotifyService) {
-    addTrackedListener(spotifyService, 'playback:changed', () => {
-      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
-      logger.debug('Broadcasted spotify:status (playback changed)');
-    });
-
-    addTrackedListener(spotifyService, 'volume:changed', () => {
-      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
-      logger.debug('Broadcasted spotify:status (volume changed)');
-    });
-
-    addTrackedListener(spotifyService, 'connection:changed', () => {
-      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
-      logger.debug('Broadcasted spotify:status (connection changed)');
-    });
-
-    addTrackedListener(spotifyService, 'playlist:changed', () => {
-      emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
-      logger.debug('Broadcasted spotify:status (playlist changed)');
-    });
+    const SPOTIFY_EVENTS = ['playback:changed', 'volume:changed', 'connection:changed', 'playlist:changed', 'track:changed'];
+    for (const event of SPOTIFY_EVENTS) {
+      addTrackedListener(spotifyService, event, () => {
+        emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
+        logger.debug(`Broadcasted spotify:status (${event})`);
+      });
+    }
   }
 
   // Display mode events
