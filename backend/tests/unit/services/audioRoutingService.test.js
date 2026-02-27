@@ -133,6 +133,42 @@ describe('AudioRoutingService', () => {
     });
   });
 
+  describe('_parseSinkInputs with application.process.binary fallback', () => {
+    it('finds spotifyd by application.process.binary when application.name is empty', () => {
+      const output = [
+        'Sink Input #42',
+        '\tProperties:',
+        '\t\tapplication.name = ""',
+        '\t\tapplication.process.binary = "spotifyd"',
+      ].join('\n');
+      expect(audioRoutingService._parseSinkInputs(output, 'spotifyd')).toBe('42');
+    });
+
+    it('still finds VLC by application.name when set', () => {
+      const output = [
+        'Sink Input #99',
+        '\tProperties:',
+        '\t\tapplication.name = "VLC media player (LibVLC 3.0.23)"',
+        '\t\tapplication.process.binary = "vlc"',
+      ].join('\n');
+      expect(audioRoutingService._parseSinkInputs(output, 'VLC')).toBe('99');
+    });
+
+    it('skips sink-inputs where neither field matches', () => {
+      const output = [
+        'Sink Input #10',
+        '\tProperties:',
+        '\t\tapplication.name = ""',
+        '\t\tapplication.process.binary = "chromium"',
+        'Sink Input #20',
+        '\tProperties:',
+        '\t\tapplication.name = ""',
+        '\t\tapplication.process.binary = "spotifyd"',
+      ].join('\n');
+      expect(audioRoutingService._parseSinkInputs(output, 'spotifyd')).toBe('20');
+    });
+  });
+
   // ── classifySink() ──
 
   describe('classifySink()', () => {

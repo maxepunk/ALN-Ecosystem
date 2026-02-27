@@ -1270,10 +1270,13 @@ class AudioRoutingService extends EventEmitter {
         currentIdx = idxMatch[1];
       }
 
-      // Match application.name = "..."
+      // Match application.name = "..." or application.process.binary = "..."
+      // Fallback to process.binary handles spotifyd which sets application.name = ""
       const nameMatch = line.match(/application\.name\s*=\s*"([^"]+)"/);
-      if (nameMatch && currentIdx) {
-        if (nameMatch[1].includes(appName)) {
+      const binaryMatch = line.match(/application\.process\.binary\s*=\s*"([^"]+)"/);
+      const match = nameMatch || binaryMatch;
+      if (match && currentIdx) {
+        if (match[1].includes(appName)) {
           return currentIdx;
         }
       }
