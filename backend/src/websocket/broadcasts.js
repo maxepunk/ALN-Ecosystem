@@ -608,6 +608,10 @@ function setupBroadcastListeners(io, services) {
   if (audioRoutingService && videoQueueService) {
     addTrackedListener(videoQueueService, 'video:started', () => {
       audioRoutingService.handleDuckingEvent('video', 'started');
+      // Route video audio to configured output (VLC sink-input exists by video:started)
+      audioRoutingService.applyRouting('video').catch(err => {
+        logger.warn('Video audio routing failed on video:started', { error: err.message });
+      });
     });
     addTrackedListener(videoQueueService, 'video:completed', () => {
       audioRoutingService.handleDuckingEvent('video', 'completed');

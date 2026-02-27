@@ -17,6 +17,9 @@ function execFileAsync(cmd, args, opts) {
   });
 }
 
+/** D-Bus destination cache TTL (ms) — re-discover if spotifyd PID changed */
+const DBUS_DEST_CACHE_TTL = 300000; // 5 minutes
+
 const DBUS_DEST_PREFIX = 'org.mpris.MediaPlayer2.spotifyd';
 const DBUS_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
@@ -32,7 +35,9 @@ class SpotifyService extends EventEmitter {
     this.track = null;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Discovered dynamically (spotifyd appends .instance{PID})
+    this._dbusCacheTime = 0;
     this._spotifydDest = null; // Native rs.spotifyd D-Bus dest (for TransferPlayback)
+    this._spotifydCacheTime = 0;
     this._recovering = false; // Prevents infinite recursion in reactive recovery
     this.cachePath = process.env.SPOTIFY_CACHE_PATH || path.join(os.homedir(), '.cache', 'spotifyd');
   }
@@ -60,11 +65,17 @@ class SpotifyService extends EventEmitter {
   }
 
   async _discoverDbusDest() {
-    if (this._dbusDest) return this._dbusDest;
+    if (this._dbusDest && (Date.now() - this._dbusCacheTime) < DBUS_DEST_CACHE_TTL) {
+      return this._dbusDest;
+    }
     const dest = await this._findDbusDest('org\\.mpris\\.MediaPlayer2\\.spotifyd');
     if (dest) {
       this._dbusDest = dest;
+      this._dbusCacheTime = Date.now();
       logger.debug(`[Spotify] Discovered MPRIS dest: ${this._dbusDest}`);
+    } else {
+      this._dbusDest = null;
+      this._dbusCacheTime = 0;
     }
     return this._dbusDest;
   }
@@ -75,11 +86,17 @@ class SpotifyService extends EventEmitter {
    * @returns {Promise<string|null>}
    */
   async _discoverSpotifydDest() {
-    if (this._spotifydDest) return this._spotifydDest;
+    if (this._spotifydDest && (Date.now() - this._spotifydCacheTime) < DBUS_DEST_CACHE_TTL) {
+      return this._spotifydDest;
+    }
     const dest = await this._findDbusDest('rs\\.spotifyd\\.');
     if (dest) {
       this._spotifydDest = dest;
+      this._spotifydCacheTime = Date.now();
       logger.debug(`[Spotify] Discovered native dest: ${this._spotifydDest}`);
+    } else {
+      this._spotifydDest = null;
+      this._spotifydCacheTime = 0;
     }
     return this._spotifydDest;
   }
@@ -245,6 +262,7 @@ class SpotifyService extends EventEmitter {
    * @param {boolean} [opts.refreshMetadata=false] - Refresh track metadata after 200ms
    */
   async _transport(method, newState, { clearPausedFlag = false, refreshMetadata = false } = {}) {
+    await this._ensureConnection();
     await this._dbusCall(`${PLAYER_IFACE}.${method}`);
     this.state = newState;
     if (clearPausedFlag) this._pausedByGameClock = false;
@@ -304,6 +322,17 @@ class SpotifyService extends EventEmitter {
     if (changed) {
       this.emit('connection:changed', { connected: newConnected });
     }
+  }
+
+  /**
+   * Pre-command validation — verifies Spotify is reachable before transport.
+   * If not connected, runs checkConnection() to probe. Throws if still unreachable.
+   * @throws {Error} If Spotify is not connected after probing
+   */
+  async _ensureConnection() {
+    if (this.connected) return;
+    const ok = await this.checkConnection();
+    if (!ok) throw new Error('Spotify not connected');
   }
 
   async checkConnection() {
@@ -366,7 +395,9 @@ class SpotifyService extends EventEmitter {
     this.track = null;
     this._pausedByGameClock = false;
     this._dbusDest = null; // Re-discover on next call (PID may change after restart)
+    this._dbusCacheTime = 0;
     this._spotifydDest = null;
+    this._spotifydCacheTime = 0;
     this._recovering = false;
   }
 

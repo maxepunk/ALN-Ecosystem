@@ -1119,6 +1119,36 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
+  describe('video routing via video:started', () => {
+    let mockAudioRoutingService;
+
+    beforeEach(() => {
+      mockAudioRoutingService = new EventEmitter();
+      mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
+      mockAudioRoutingService.handleDuckingEvent = jest.fn();
+      mockAudioRoutingService.applyRouting = jest.fn().mockResolvedValue();
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        audioRoutingService: mockAudioRoutingService,
+      });
+    });
+
+    it('should apply video routing on video:started event', () => {
+      mockVideoQueueService.emit('video:started', {
+        queueItem: { tokenId: 'test-token', videoPath: 'test.mp4' },
+        duration: 30,
+        expectedEndTime: new Date().toISOString(),
+      });
+
+      expect(mockAudioRoutingService.applyRouting).toHaveBeenCalledWith('video');
+    });
+  });
+
   describe('Display mode:changed listener', () => {
     let mockDisplayControlService;
 

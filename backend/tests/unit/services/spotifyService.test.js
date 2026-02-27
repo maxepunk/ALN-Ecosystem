@@ -30,6 +30,9 @@ describe('SpotifyService', () => {
     spotifyService.reset();
     // Pre-seed D-Bus destination to skip discovery (spotifyd appends .instance{PID})
     spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd';
+    spotifyService._dbusCacheTime = Date.now();
+    // Pre-seed connected to skip _ensureConnection probe in transport calls
+    spotifyService.connected = true;
     // Mock activation delay to avoid 1.5s real wait per test
     spotifyService._activationDelay = jest.fn().mockResolvedValue(undefined);
   });
@@ -318,6 +321,7 @@ describe('SpotifyService', () => {
 
     it('should call TransferPlayback via native D-Bus interface', async () => {
       spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      spotifyService._spotifydCacheTime = Date.now();
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
         callCount++;
@@ -369,6 +373,7 @@ describe('SpotifyService', () => {
 
     it('should return false when TransferPlayback fails', async () => {
       spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      spotifyService._spotifydCacheTime = Date.now();
       execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(new Error('D-Bus method call failed'), '', '');
       });
@@ -380,6 +385,7 @@ describe('SpotifyService', () => {
       const handler = jest.fn();
       spotifyService.on('connection:changed', handler);
       spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      spotifyService._spotifydCacheTime = Date.now();
       spotifyService.connected = false;
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
@@ -396,6 +402,7 @@ describe('SpotifyService', () => {
   describe('init', () => {
     it('should attempt activate first', async () => {
       spotifyService._spotifydDest = 'rs.spotifyd.instance123';
+      spotifyService._spotifydCacheTime = Date.now();
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
         callCount++;
@@ -719,6 +726,111 @@ describe('SpotifyService', () => {
         '--dest=org.test', '/org/mpris/MediaPlayer2',
         'org.test.Method', 'arg1'
       ]);
+    });
+  });
+
+  describe('D-Bus cache TTL', () => {
+    beforeEach(() => {
+      spotifyService.reset();
+      jest.spyOn(spotifyService, '_activationDelay').mockResolvedValue();
+    });
+
+    it('should re-discover MPRIS dest after TTL expires', async () => {
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance1';
+      spotifyService._dbusCacheTime = Date.now() - 400000; // 6+ min ago (TTL = 5 min)
+
+      jest.spyOn(spotifyService, '_findDbusDest').mockResolvedValue('org.mpris.MediaPlayer2.spotifyd.instance2');
+
+      const dest = await spotifyService._discoverDbusDest();
+      expect(dest).toBe('org.mpris.MediaPlayer2.spotifyd.instance2');
+      expect(spotifyService._findDbusDest).toHaveBeenCalled();
+    });
+
+    it('should return cached MPRIS dest within TTL', async () => {
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance1';
+      spotifyService._dbusCacheTime = Date.now(); // just cached
+
+      jest.spyOn(spotifyService, '_findDbusDest');
+
+      const dest = await spotifyService._discoverDbusDest();
+      expect(dest).toBe('org.mpris.MediaPlayer2.spotifyd.instance1');
+      expect(spotifyService._findDbusDest).not.toHaveBeenCalled();
+    });
+
+    it('should re-discover native spotifyd dest after TTL expires', async () => {
+      spotifyService._spotifydDest = 'rs.spotifyd.instance100';
+      spotifyService._spotifydCacheTime = Date.now() - 400000;
+
+      jest.spyOn(spotifyService, '_findDbusDest').mockResolvedValue('rs.spotifyd.instance200');
+
+      const dest = await spotifyService._discoverSpotifydDest();
+      expect(dest).toBe('rs.spotifyd.instance200');
+    });
+
+    it('should clear cache timestamps on reset', () => {
+      spotifyService._dbusCacheTime = Date.now();
+      spotifyService._spotifydCacheTime = Date.now();
+      spotifyService.reset();
+      expect(spotifyService._dbusCacheTime).toBe(0);
+      expect(spotifyService._spotifydCacheTime).toBe(0);
+    });
+  });
+
+  describe('_ensureConnection', () => {
+    beforeEach(() => {
+      spotifyService.reset();
+      spotifyService._dbusCacheTime = Date.now();
+      jest.spyOn(spotifyService, '_activationDelay').mockResolvedValue();
+    });
+
+    it('should pass when already connected', async () => {
+      spotifyService.connected = true;
+      jest.spyOn(spotifyService, 'checkConnection');
+
+      await spotifyService._ensureConnection();
+      expect(spotifyService.checkConnection).not.toHaveBeenCalled();
+    });
+
+    it('should run checkConnection when disconnected', async () => {
+      spotifyService.connected = false;
+      jest.spyOn(spotifyService, 'checkConnection').mockResolvedValue(true);
+
+      await spotifyService._ensureConnection();
+      expect(spotifyService.checkConnection).toHaveBeenCalled();
+    });
+
+    it('should throw when checkConnection fails', async () => {
+      spotifyService.connected = false;
+      jest.spyOn(spotifyService, 'checkConnection').mockResolvedValue(false);
+
+      await expect(spotifyService._ensureConnection())
+        .rejects.toThrow('Spotify not connected');
+    });
+  });
+
+  describe('_transport calls _ensureConnection', () => {
+    beforeEach(() => {
+      spotifyService.reset();
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd';
+      spotifyService._dbusCacheTime = Date.now();
+      spotifyService.connected = true;
+      jest.spyOn(spotifyService, '_activationDelay').mockResolvedValue();
+    });
+
+    it('should validate connection before D-Bus call', async () => {
+      jest.spyOn(spotifyService, '_ensureConnection').mockResolvedValue();
+      jest.spyOn(spotifyService, '_dbusCall').mockResolvedValue({});
+
+      await spotifyService.play();
+      expect(spotifyService._ensureConnection).toHaveBeenCalled();
+    });
+
+    it('should reject when not connected', async () => {
+      jest.spyOn(spotifyService, '_ensureConnection').mockRejectedValue(
+        new Error('Spotify not connected')
+      );
+
+      await expect(spotifyService.play()).rejects.toThrow('Spotify not connected');
     });
   });
 });
