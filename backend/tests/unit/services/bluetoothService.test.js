@@ -741,6 +741,23 @@ describe('BluetoothService', () => {
       await pairPromise;
     });
 
+    it('should enforce A2DP profile after auto-connect in pairDevice', async () => {
+      const spy = jest.spyOn(bluetoothService, '_enforceA2DPProfile').mockResolvedValue();
+
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+      await jest.advanceTimersByTimeAsync(500);
+
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('Pairing successful\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('trust succeeded\n'));
+
+      await pairPromise;
+
+      expect(spy).toHaveBeenCalledWith('AA:BB:CC:DD:EE:FF');
+      spy.mockRestore();
+    });
+
     it('should reject when process exits before pair completes', async () => {
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
 

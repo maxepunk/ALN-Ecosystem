@@ -128,6 +128,7 @@ class SpotifyService extends EventEmitter {
 
       // Clear cached MPRIS dest (may have changed after activation)
       this._dbusDest = null;
+      this._dbusCacheTime = 0;
 
       // Verify MPRIS is now available
       return await this.checkConnection();
@@ -188,7 +189,9 @@ class SpotifyService extends EventEmitter {
         logger.warn(`[Spotify] D-Bus call failed, attempting recovery: ${err.message}`);
         // Clear caches so discovery starts fresh
         this._dbusDest = null;
+        this._dbusCacheTime = 0;
         this._spotifydDest = null;
+        this._spotifydCacheTime = 0;
         try {
           const activated = await this.activate();
           if (activated) {
