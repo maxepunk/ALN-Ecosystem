@@ -11,12 +11,30 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('../utils/logger');
 const config = require('../config');
+const registry = require('./serviceHealthRegistry');
+const { execFileAsync } = require('../utils/execHelper');
 
 class SoundService extends EventEmitter {
   constructor() {
     super();
     this.processes = new Map(); // pid → {file, target, volume, process}
     this.audioDir = path.resolve(__dirname, '../../public/audio');
+  }
+
+  /**
+   * Initialize the sound service.
+   * Checks that pw-play is available on the system.
+   * @returns {Promise<void>}
+   */
+  async init() {
+    try {
+      await execFileAsync('which', ['pw-play'], 3000);
+      registry.report('sound', 'healthy', 'pw-play available');
+      logger.info('[Sound] Service initialized — pw-play available');
+    } catch {
+      registry.report('sound', 'down', 'pw-play not found');
+      logger.warn('[Sound] Service initialized — pw-play not available');
+    }
   }
 
   play({ file, target, volume }) {
@@ -83,6 +101,7 @@ class SoundService extends EventEmitter {
   reset() {
     this.stop();
     this.processes.clear();
+    registry.report('sound', 'down', 'Reset');
   }
 
   cleanup() {

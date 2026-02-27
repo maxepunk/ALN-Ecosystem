@@ -7,8 +7,14 @@ const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
-const vlcService = require('../services/vlcService');
+const bluetoothService = require('../services/bluetoothService');
+const audioRoutingService = require('../services/audioRoutingService');
+const lightingService = require('../services/lightingService');
+const gameClockService = require('../services/gameClockService');
+const cueEngineService = require('../services/cueEngineService');
+const spotifyService = require('../services/spotifyService');
 const { emitWrapped } = require('./eventWrapper');
+const { buildSyncFullPayload } = require('./syncHelpers');
 const { disconnectDevice } = require('./deviceHelpers');
 
 /**
@@ -51,7 +57,7 @@ async function handleDisconnect(socket, io) {
  * Handle sync request from client
  * @param {Socket} socket - Socket.io socket instance
  */
-function handleSyncRequest(socket) {
+async function handleSyncRequest(socket) {
   try {
     if (!socket.deviceId) {
       emitWrapped(socket, 'error', {
@@ -61,61 +67,20 @@ function handleSyncRequest(socket) {
       return;
     }
 
-    const session = sessionService.getCurrentSession();
-
-    // Get video queue status
-    const videoStatus = {
-      status: videoQueueService.currentStatus || 'idle',
-      queueLength: (videoQueueService.queue || []).length,
-      tokenId: videoQueueService.currentVideo?.tokenId || null,
-      duration: videoQueueService.currentVideo?.duration || null,
-      progress: videoQueueService.currentVideo?.progress || null,
-      expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
-      error: videoQueueService.currentVideo?.error || null
-    };
-
-    // Get VLC connection status
-    const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
-
-    // Enrich ALL transactions with token data (for full state restoration)
-    // CRITICAL: Send ALL transactions, not just recent 100, to support team details screen
-    // after page refresh. Frontend DataManager needs complete transaction history.
-    const recentTransactions = (session?.transactions || []).map(transaction => {
-      const token = transactionService.getToken(transaction.tokenId);
-      return {
-        id: transaction.id,
-        tokenId: transaction.tokenId,
-        teamId: transaction.teamId,
-        deviceId: transaction.deviceId,
-        mode: transaction.mode,
-        status: transaction.status,
-        points: transaction.points,
-        timestamp: transaction.timestamp,
-        memoryType: token?.memoryType || 'UNKNOWN',
-        valueRating: token?.metadata?.rating || 0,
-        summary: transaction.summary || null  // Summary from transaction (complete persisted record)
-      };
+    const syncPayload = await buildSyncFullPayload({
+      sessionService,
+      transactionService,
+      videoQueueService,
+      bluetoothService,
+      audioRoutingService,
+      lightingService,
+      gameClockService,
+      cueEngineService,
+      spotifyService,
+      deviceFilter: { connectedOnly: true },
     });
 
-    // Send full state sync per AsyncAPI contract (sync:full event)
-    // Per AsyncAPI lines 335-341: requires session, scores, recentTransactions, videoStatus, devices, systemStatus
-    emitWrapped(socket, 'sync:full', {
-      session: session ? session.toJSON() : null,
-      scores: transactionService.getTeamScores(),
-      recentTransactions,
-      videoStatus: videoStatus,
-      devices: (session?.connectedDevices || []).map(device => ({
-        deviceId: device.id,
-        type: device.type,
-        name: device.name,
-        connectionTime: device.connectionTime,
-        ipAddress: device.ipAddress
-      })),
-      systemStatus: {
-        orchestrator: 'online',
-        vlc: vlcConnected ? 'connected' : 'disconnected'
-      }
-    });
+    emitWrapped(socket, 'sync:full', syncPayload);
 
     logger.info('Sent full sync to device', { deviceId: socket.deviceId });
   } catch (error) {

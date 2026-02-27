@@ -18,6 +18,7 @@ jest.mock('../../../src/utils/logger', () => ({
 }));
 
 const bluetoothService = require('../../../src/services/bluetoothService');
+const registry = require('../../../src/services/serviceHealthRegistry');
 
 describe('BluetoothService', () => {
   beforeEach(() => {
@@ -996,6 +997,44 @@ describe('BluetoothService', () => {
 
       const result = bluetoothService.startScan(10);
       expect(result).not.toEqual({ alreadyScanning: true });
+    });
+  });
+
+  // ── Health registry reporting ──
+
+  describe('health registry reporting', () => {
+    it('should report healthy when adapter is available on init', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'Controller XX:XX\n\tPowered: yes\n', '');
+      });
+
+      await bluetoothService.init();
+
+      expect(registry.isHealthy('bluetooth')).toBe(true);
+      expect(registry.getStatus('bluetooth').message).toBe('Adapter available');
+    });
+
+    it('should report down when no adapter on init', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('No default controller available'), '', '');
+      });
+
+      await bluetoothService.init();
+
+      expect(registry.isHealthy('bluetooth')).toBe(false);
+    });
+
+    it('should report down on reset', async () => {
+      // First make it healthy
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'Controller XX:XX\n\tPowered: yes\n', '');
+      });
+      await bluetoothService.init();
+      expect(registry.isHealthy('bluetooth')).toBe(true);
+
+      bluetoothService.reset();
+
+      expect(registry.isHealthy('bluetooth')).toBe(false);
     });
   });
 });

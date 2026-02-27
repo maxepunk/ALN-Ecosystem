@@ -16,6 +16,7 @@ const { spawn } = require('child_process');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 const { execFileAsync } = require('../utils/execHelper');
+const registry = require('./serviceHealthRegistry');
 
 /** Valid stream names for Phase 1 */
 const VALID_STREAMS = ['video', 'spotify', 'sound'];
@@ -117,6 +118,8 @@ class AudioRoutingService extends EventEmitter {
 
     // Start sink monitor
     this.startSinkMonitor();
+
+    registry.report('audio', 'healthy', 'Audio routing initialized');
   }
 
   /**
@@ -169,6 +172,8 @@ class AudioRoutingService extends EventEmitter {
     this._activeDuckingSources = {};
     this._preDuckVolumes = {};
     this._shuttingDown = false;
+
+    registry.report('audio', 'down', 'Reset');
   }
 
   // ── Sink Discovery and Classification ──
@@ -918,6 +923,7 @@ class AudioRoutingService extends EventEmitter {
         logger.warn(`Ducking ${context} skipped: sink-input not available`, { target, volume });
       } else {
         logger.error(`Failed to ${context} ducked volume`, { target, volume, error: err.message });
+        this.emit('ducking:failed', { target, volume, context, error: err.message });
       }
     });
   }

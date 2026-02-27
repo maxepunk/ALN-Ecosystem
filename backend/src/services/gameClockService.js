@@ -8,11 +8,13 @@
 
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
+const registry = require('./serviceHealthRegistry');
 
 class GameClockService extends EventEmitter {
   constructor() {
     super();
     this._reset();
+    registry.report('gameclock', 'healthy', 'In-process timer');
   }
 
   _reset() {
@@ -122,6 +124,7 @@ class GameClockService extends EventEmitter {
   reset() {
     this._stopInterval();
     this._reset();
+    registry.report('gameclock', 'healthy', 'Timer stopped');
   }
 
   cleanup() {

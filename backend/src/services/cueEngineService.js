@@ -13,6 +13,7 @@
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const { executeCommand } = require('./commandExecutor');
+const registry = require('./serviceHealthRegistry');
 
 /**
  * Flatten internal event payloads to flat fields for cue condition evaluation.
@@ -152,6 +153,7 @@ class CueEngineService extends EventEmitter {
     }
 
     this.cues = newCues;
+    registry.report('cueengine', 'healthy', `Loaded ${newCues.size} cues`);
     logger.info(`[CueEngine] Loaded ${newCues.size} cues (${this.getStandingCues().length} standing)`);
   }
 
@@ -321,6 +323,7 @@ class CueEngineService extends EventEmitter {
   enableCue(cueId) {
     this.disabledCues.delete(cueId);
     logger.info(`[CueEngine] Enabled cue: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'enabled' });
   }
 
   /**
@@ -330,6 +333,7 @@ class CueEngineService extends EventEmitter {
   disableCue(cueId) {
     this.disabledCues.add(cueId);
     logger.info(`[CueEngine] Disabled cue: ${cueId}`);
+    this.emit('cue:status', { cueId, state: 'disabled' });
   }
 
   /**
@@ -880,7 +884,7 @@ class CueEngineService extends EventEmitter {
     if (decision === 'override') {
       // Stop current video, then start the conflicted cue
       const videoQueueService = require('./videoQueueService');
-      await videoQueueService.stopCurrent();
+      await videoQueueService.skipCurrent();
       await this._startCompoundCue(pending.cue, pending.trigger, pending.parentChain);
       logger.info(`[CueEngine] Conflict resolved (override): ${cueId}`);
     } else if (decision === 'cancel') {
@@ -941,6 +945,7 @@ class CueEngineService extends EventEmitter {
    */
   reset() {
     this._reset();
+    registry.report('cueengine', 'down', 'Reset');
   }
 
   /**

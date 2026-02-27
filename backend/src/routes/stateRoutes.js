@@ -10,7 +10,7 @@ const logger = require('../utils/logger');
 const stateService = require('../services/stateService');
 const sessionService = require('../services/sessionService');
 const videoQueueService = require('../services/videoQueueService');
-const vlcService = require('../services/vlcService');
+const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 
 /**
  * GET /api/state
@@ -88,11 +88,8 @@ router.get('/', async (req, res) => {
         }))
       : [];
 
-    // Get system status
-    const systemStatus = {
-      orchestrator: 'online',  // If we're responding, we're online
-      vlc: vlcService.isConnected() ? 'connected' : 'disconnected'
-    };
+    // Registry snapshot: all 8 services with status, message, lastChecked
+    const serviceHealth = serviceHealthRegistry.getSnapshot();
 
     // Build GameState response per OpenAPI contract
     const gameState = {
@@ -101,7 +98,7 @@ router.get('/', async (req, res) => {
       recentTransactions,
       videoStatus,
       devices,
-      systemStatus
+      serviceHealth
     };
 
     // Generate ETag for caching

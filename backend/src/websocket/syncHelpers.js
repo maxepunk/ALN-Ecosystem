@@ -6,7 +6,7 @@
  * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
  */
 
-const vlcService = require('../services/vlcService');
+const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 const { buildEnvironmentState } = require('./environmentHelpers');
 const logger = require('../utils/logger');
 
@@ -17,7 +17,6 @@ const logger = require('../utils/logger');
  * @param {Object} options.sessionService
  * @param {Object} options.transactionService
  * @param {Object} options.videoQueueService
- * @param {Object} [options.offlineQueueService]
  * @param {Object} [options.bluetoothService]
  * @param {Object} [options.audioRoutingService]
  * @param {Object} [options.lightingService]
@@ -31,7 +30,6 @@ async function buildSyncFullPayload({
   sessionService,
   transactionService,
   videoQueueService,
-  offlineQueueService,
   bluetoothService,
   audioRoutingService,
   lightingService,
@@ -73,9 +71,6 @@ async function buildSyncFullPayload({
     };
   });
 
-  // Get VLC connection status
-  const vlcConnected = vlcService?.isConnected ? vlcService.isConnected() : false;
-
   // Build device list (optionally filtering to connected-only)
   let devices = [];
   if (session) {
@@ -92,15 +87,8 @@ async function buildSyncFullPayload({
     }));
   }
 
-  const systemStatus = {
-    orchestrator: 'online',
-    vlc: vlcConnected ? 'connected' : 'disconnected',
-  };
-
-  // Add offline status when offlineQueueService is available
-  if (offlineQueueService) {
-    systemStatus.offline = offlineQueueService.isOffline || false;
-  }
+  // Registry snapshot: all 8 services with status, message, lastChecked
+  const serviceHealth = serviceHealthRegistry.getSnapshot();
 
   const environment = await buildEnvironmentState({
     bluetoothService,
@@ -123,7 +111,7 @@ async function buildSyncFullPayload({
     recentTransactions,
     videoStatus,
     devices,
-    systemStatus,
+    serviceHealth,
     playerScans: session?.playerScans || [],
     environment,
     gameClock,

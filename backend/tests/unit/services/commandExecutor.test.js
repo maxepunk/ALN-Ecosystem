@@ -52,6 +52,8 @@ jest.mock('../../../src/services/videoQueueService', () => ({
   reorderQueue: jest.fn(),
   clearQueue: jest.fn(),
   skipCurrent: jest.fn(),
+  pauseCurrent: jest.fn(),
+  resumeCurrent: jest.fn(),
 }));
 
 jest.mock('../../../src/services/vlcService', () => ({
@@ -147,11 +149,9 @@ describe('commandExecutor', () => {
     videoQueueService.addVideoByFilename.mockReturnValue(undefined);
     videoQueueService.reorderQueue.mockReturnValue(undefined);
     videoQueueService.clearQueue.mockReturnValue(undefined);
-    videoQueueService.skipCurrent.mockReturnValue(undefined);
-
-    vlcService.resume.mockResolvedValue(true);
-    vlcService.pause.mockResolvedValue(true);
-    vlcService.stop.mockResolvedValue(true);
+    videoQueueService.skipCurrent.mockResolvedValue(undefined);
+    videoQueueService.pauseCurrent.mockResolvedValue(undefined);
+    videoQueueService.resumeCurrent.mockResolvedValue(undefined);
 
     displayControlService.setIdleLoop.mockResolvedValue({ success: true });
     displayControlService.setScoreboard.mockResolvedValue({ success: true });
@@ -265,7 +265,7 @@ describe('commandExecutor', () => {
   });
 
   describe('video commands', () => {
-    it('should execute video:play', async () => {
+    it('should route video:play through videoQueueService.resumeCurrent()', async () => {
       const result = await executeCommand({
         action: 'video:play',
         payload: {},
@@ -273,6 +273,48 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain('resumed');
+      expect(videoQueueService.resumeCurrent).toHaveBeenCalled();
+      expect(vlcService.resume).not.toHaveBeenCalled();
+    });
+
+    it('should route video:pause through videoQueueService.pauseCurrent()', async () => {
+      const result = await executeCommand({
+        action: 'video:pause',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('paused');
+      expect(videoQueueService.pauseCurrent).toHaveBeenCalled();
+      expect(vlcService.pause).not.toHaveBeenCalled();
+    });
+
+    it('should route video:stop through videoQueueService (skip then clear)', async () => {
+      const callOrder = [];
+      videoQueueService.skipCurrent.mockImplementation(() => { callOrder.push('skip'); return Promise.resolve(); });
+      videoQueueService.clearQueue.mockImplementation(() => { callOrder.push('clear'); });
+
+      const result = await executeCommand({
+        action: 'video:stop',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('stopped');
+      expect(videoQueueService.skipCurrent).toHaveBeenCalled();
+      expect(videoQueueService.clearQueue).toHaveBeenCalled();
+      expect(callOrder).toEqual(['skip', 'clear']);
+      expect(vlcService.stop).not.toHaveBeenCalled();
+    });
+
+    it('should await video:skip', async () => {
+      const result = await executeCommand({
+        action: 'video:skip',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(videoQueueService.skipCurrent).toHaveBeenCalled();
     });
 
     it('should execute video:queue:add', async () => {

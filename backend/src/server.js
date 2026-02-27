@@ -83,7 +83,6 @@ function setupWebSocketHandlers(ioInstance) {
         sessionService,
         transactionService,
         videoQueueService,
-        offlineQueueService,
         bluetoothService,
         audioRoutingService,
         lightingService,

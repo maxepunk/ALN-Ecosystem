@@ -5,6 +5,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const logger = require('../utils/logger');
+const registry = require('./serviceHealthRegistry');
 
 // Wrap execFile to always return {stdout, stderr} (Node's custom promisify
 // is lost when jest.mock('child_process') auto-mocks the module)
@@ -29,7 +30,6 @@ const SPOTIFYD_PATH = '/rs/spotifyd/Controls';
 class SpotifyService extends EventEmitter {
   constructor() {
     super();
-    this.connected = false;
     this.state = 'stopped';
     this.volume = 100;
     this.track = null;
@@ -244,9 +244,11 @@ class SpotifyService extends EventEmitter {
     try {
       const { stdout } = await this._dbusGetProperty(PLAYER_IFACE, 'Metadata');
       const newTrack = this._parseMetadata(stdout);
+      // Don't overwrite valid track with null during transitions
+      if (!newTrack) return false;
       const changed = JSON.stringify(newTrack) !== JSON.stringify(this.track);
       this.track = newTrack;
-      if (changed && newTrack) {
+      if (changed) {
         this.emit('track:changed', { track: newTrack });
       }
       return changed;
@@ -262,7 +264,7 @@ class SpotifyService extends EventEmitter {
    * @param {string} newState - New playback state
    * @param {Object} [opts]
    * @param {boolean} [opts.clearPausedFlag=false] - Reset _pausedByGameClock
-   * @param {boolean} [opts.refreshMetadata=false] - Refresh track metadata after 200ms
+   * @param {boolean} [opts.refreshMetadata=false] - Refresh track metadata after transport
    */
   async _transport(method, newState, { clearPausedFlag = false, refreshMetadata = false } = {}) {
     await this._ensureConnection();
@@ -271,9 +273,7 @@ class SpotifyService extends EventEmitter {
     if (clearPausedFlag) this._pausedByGameClock = false;
     this.emit('playback:changed', { state: newState });
     if (refreshMetadata) {
-      setTimeout(() => this._refreshMetadata().catch(e =>
-        logger.debug('[Spotify] Deferred metadata refresh failed:', e.message)
-      ), 200);
+      await this._refreshMetadata();
     }
   }
 
@@ -286,9 +286,7 @@ class SpotifyService extends EventEmitter {
   async setPlaylist(uri) {
     await this._dbusCall(`${PLAYER_IFACE}.OpenUri`, [`string:${uri}`]);
     this.emit('playlist:changed', { uri });
-    setTimeout(() => this._refreshMetadata().catch(e =>
-      logger.debug('[Spotify] Deferred metadata refresh failed:', e.message)
-    ), 200);
+    await this._refreshMetadata();
   }
 
   async setVolume(vol) {
@@ -316,15 +314,12 @@ class SpotifyService extends EventEmitter {
   isPausedByGameClock() { return this._pausedByGameClock; }
 
   /**
-   * Update connected state and emit connection:changed if it actually changed.
+   * Update connected state via service health registry.
    * @param {boolean} newConnected - The new connection state
    */
   _setConnected(newConnected) {
-    const changed = this.connected !== newConnected;
-    this.connected = newConnected;
-    if (changed) {
-      this.emit('connection:changed', { connected: newConnected });
-    }
+    registry.report('spotify', newConnected ? 'healthy' : 'down',
+      newConnected ? 'D-Bus connected' : 'D-Bus unreachable');
   }
 
   /**
@@ -333,7 +328,7 @@ class SpotifyService extends EventEmitter {
    * @throws {Error} If Spotify is not connected after probing
    */
   async _ensureConnection() {
-    if (this.connected) return;
+    if (registry.isHealthy('spotify')) return;
     const ok = await this.checkConnection();
     if (!ok) throw new Error('Spotify not connected');
   }
@@ -352,9 +347,15 @@ class SpotifyService extends EventEmitter {
       const { stdout } = await execFileAsync('dbus-send', cmdArgs, { timeout: 2000 });
       this._setConnected(true);
       // Sync state from actual D-Bus status
-      if (stdout.includes('"Playing"')) this.state = 'playing';
-      else if (stdout.includes('"Paused"')) this.state = 'paused';
-      else this.state = 'stopped';
+      let newState;
+      if (stdout.includes('"Playing"')) newState = 'playing';
+      else if (stdout.includes('"Paused"')) newState = 'paused';
+      else newState = 'stopped';
+
+      if (newState !== this.state) {
+        this.state = newState;
+        this.emit('playback:changed', { state: newState });
+      }
       // Await metadata so getState().track is populated before sync:full
       await this._refreshMetadata();
       return true;
@@ -381,7 +382,7 @@ class SpotifyService extends EventEmitter {
 
   getState() {
     return {
-      connected: this.connected,
+      connected: registry.isHealthy('spotify'),
       state: this.state,
       volume: this.volume,
       pausedByGameClock: this._pausedByGameClock,
@@ -390,7 +391,7 @@ class SpotifyService extends EventEmitter {
   }
 
   reset() {
-    this.connected = false;
+    registry.report('spotify', 'down', 'Reset');
     this.state = 'stopped';
     this.volume = 100;
     this.track = null;

@@ -28,6 +28,7 @@ jest.mock('../../../src/utils/logger', () => ({
 const logger = require('../../../src/utils/logger');
 
 const audioRoutingService = require('../../../src/services/audioRoutingService');
+const registry = require('../../../src/services/serviceHealthRegistry');
 
 // ── Helpers ──
 
@@ -2117,6 +2118,43 @@ describe('AudioRoutingService', () => {
           expect.any(Object)
         );
       });
+
+      it('should emit ducking:failed for non-missing-sink errors', async () => {
+        const handler = jest.fn();
+        audioRoutingService.on('ducking:failed', handler);
+
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+        ]);
+
+        audioRoutingService.setStreamVolume = jest.fn()
+          .mockRejectedValue(new Error('PipeWire daemon not responding'));
+
+        audioRoutingService.handleDuckingEvent('video', 'started');
+        await new Promise(r => setTimeout(r, 50));
+
+        expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+          target: 'spotify',
+          error: expect.stringContaining('PipeWire')
+        }));
+      });
+
+      it('should NOT emit ducking:failed for missing sink-input', async () => {
+        const handler = jest.fn();
+        audioRoutingService.on('ducking:failed', handler);
+
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+        ]);
+
+        audioRoutingService.setStreamVolume = jest.fn()
+          .mockRejectedValue(new Error('No active sink-input for spotify'));
+
+        audioRoutingService.handleDuckingEvent('video', 'started');
+        await new Promise(r => setTimeout(r, 50));
+
+        expect(handler).not.toHaveBeenCalled();
+      });
     });
   });
 
@@ -2143,6 +2181,34 @@ describe('AudioRoutingService', () => {
 
     it('should reject sink with missing format', () => {
       expect(audioRoutingService._isHighQualitySink({})).toBe(false);
+    });
+  });
+
+  // ── Health registry reporting ──
+
+  describe('health registry reporting', () => {
+    it('should report healthy on init', async () => {
+      mockExecFileSuccess(''); // _killStaleMonitors
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      expect(registry.isHealthy('audio')).toBe(true);
+      expect(registry.getStatus('audio').message).toBe('Audio routing initialized');
+    });
+
+    it('should report down on reset', async () => {
+      // First make it healthy
+      mockExecFileSuccess('');
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+      await audioRoutingService.init();
+      expect(registry.isHealthy('audio')).toBe(true);
+
+      audioRoutingService.reset();
+
+      expect(registry.isHealthy('audio')).toBe(false);
     });
   });
 });

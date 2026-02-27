@@ -1,7 +1,7 @@
 jest.mock('child_process');
 
 describe('SpotifyService', () => {
-  let spotifyService, execFile;
+  let spotifyService, execFile, registry;
 
   /**
    * Helper: mock execFile to resolve with given stdout
@@ -27,12 +27,13 @@ describe('SpotifyService', () => {
     const cp = require('child_process');
     execFile = cp.execFile;
     spotifyService = require('../../../src/services/spotifyService');
+    registry = require('../../../src/services/serviceHealthRegistry');
     spotifyService.reset();
     // Pre-seed D-Bus destination to skip discovery (spotifyd appends .instance{PID})
     spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd';
     spotifyService._dbusCacheTime = Date.now();
-    // Pre-seed connected to skip _ensureConnection probe in transport calls
-    spotifyService.connected = true;
+    // Pre-seed connected via registry to skip _ensureConnection probe in transport calls
+    registry.report('spotify', 'healthy');
     // Mock activation delay to avoid 1.5s real wait per test
     spotifyService._activationDelay = jest.fn().mockResolvedValue(undefined);
   });
@@ -186,14 +187,45 @@ describe('SpotifyService', () => {
       expect(spotifyService.track).not.toBeNull();
       expect(spotifyService.track.title).toBe('Test Song');
     });
+
+    it('should emit playback:changed when checkConnection detects state change', async () => {
+      spotifyService.state = 'stopped';
+      registry.report('spotify', 'down');
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, 'variant       string "Playing"', '');
+        else cb(null, '', ''); // empty metadata
+      });
+
+      await spotifyService.checkConnection();
+      expect(handler).toHaveBeenCalledWith({ state: 'playing' });
+    });
+
+    it('should NOT emit playback:changed when state has not changed', async () => {
+      spotifyService.state = 'playing';
+      registry.report('spotify', 'healthy');
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount === 1) cb(null, 'variant       string "Playing"', '');
+        else cb(null, '', '');
+      });
+
+      await spotifyService.checkConnection();
+      expect(handler).not.toHaveBeenCalled();
+    });
   });
 
-  describe('connection:changed event', () => {
-    it('should emit connection:changed when connection status changes to true', async () => {
-      const handler = jest.fn();
-      spotifyService.on('connection:changed', handler);
-      spotifyService.connected = false;
+  describe('health registry reporting', () => {
 
+    it('should report healthy to registry when connection succeeds', async () => {
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
         callCount++;
@@ -202,25 +234,33 @@ describe('SpotifyService', () => {
       });
       await spotifyService.checkConnection();
 
-      expect(handler).toHaveBeenCalledWith({ connected: true });
+      expect(registry.isHealthy('spotify')).toBe(true);
     });
 
-    it('should emit connection:changed when connection status changes to false', async () => {
-      const handler = jest.fn();
-      spotifyService.on('connection:changed', handler);
-      spotifyService.connected = true;
+    it('should report down to registry when connection fails', async () => {
+      // First make it healthy
+      let callCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        callCount++;
+        if (callCount <= 2) cb(null, 'variant       string "Playing"', '');
+        else cb(new Error('ServiceUnknown'), '', '');
+      });
+      await spotifyService.checkConnection();
+      expect(registry.isHealthy('spotify')).toBe(true);
 
+      // Now make it fail
       spotifyService._dbusDest = null;
       mockExecFileError('org.freedesktop.DBus.Error.ServiceUnknown');
       await spotifyService.checkConnection();
 
-      expect(handler).toHaveBeenCalledWith({ connected: false });
+      expect(registry.isHealthy('spotify')).toBe(false);
     });
 
-    it('should NOT emit connection:changed when status stays the same', async () => {
+    it('should emit health:changed on registry when status changes', async () => {
+      // Start from down so the transition to healthy fires the event
+      registry.report('spotify', 'down');
       const handler = jest.fn();
-      spotifyService.on('connection:changed', handler);
-      spotifyService.connected = true;
+      registry.on('health:changed', handler);
 
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
@@ -230,7 +270,11 @@ describe('SpotifyService', () => {
       });
       await spotifyService.checkConnection();
 
-      expect(handler).not.toHaveBeenCalled();
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+        serviceId: 'spotify',
+        status: 'healthy'
+      }));
+      registry.removeListener('health:changed', handler);
     });
   });
 
@@ -282,14 +326,14 @@ describe('SpotifyService', () => {
       spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance99';
       spotifyService._spotifydDest = 'rs.spotifyd.instance99';
       spotifyService._recovering = true;
-      spotifyService.connected = true;
+      registry.report('spotify', 'healthy');
       spotifyService.state = 'playing';
       spotifyService.track = { title: 'Test', artist: 'Artist' };
       spotifyService.reset();
       expect(spotifyService._dbusDest).toBeNull();
       expect(spotifyService._spotifydDest).toBeNull();
       expect(spotifyService._recovering).toBe(false);
-      expect(spotifyService.connected).toBe(false);
+      expect(registry.isHealthy('spotify')).toBe(false);
       expect(spotifyService.state).toBe('stopped');
       expect(spotifyService.track).toBeNull();
     });
@@ -389,7 +433,7 @@ describe('SpotifyService', () => {
       });
       const result = await spotifyService.activate();
       expect(result).toBe(true);
-      expect(spotifyService.connected).toBe(true);
+      expect(registry.isHealthy('spotify')).toBe(true);
     });
 
     it('should discover native dest if not cached', async () => {
@@ -416,7 +460,7 @@ describe('SpotifyService', () => {
       });
       const result = await spotifyService.activate();
       expect(result).toBe(false);
-      expect(spotifyService.connected).toBe(false);
+      expect(registry.isHealthy('spotify')).toBe(false);
     });
 
     it('should return false when TransferPlayback fails', async () => {
@@ -429,12 +473,11 @@ describe('SpotifyService', () => {
       expect(result).toBe(false);
     });
 
-    it('should emit connection:changed on successful activation', async () => {
-      const handler = jest.fn();
-      spotifyService.on('connection:changed', handler);
+    it('should report healthy to registry on successful activation', async () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
       spotifyService._spotifydDest = 'rs.spotifyd.instance123';
       spotifyService._spotifydCacheTime = Date.now();
-      spotifyService.connected = false;
+      registry.report('spotify', 'down'); // Start disconnected
       let callCount = 0;
       execFile.mockImplementation((cmd, args, opts, cb) => {
         callCount++;
@@ -443,7 +486,7 @@ describe('SpotifyService', () => {
         else cb(null, 'variant       string "Playing"', '');      // Properties.Get
       });
       await spotifyService.activate();
-      expect(handler).toHaveBeenCalledWith({ connected: true });
+      expect(registry.isHealthy('spotify')).toBe(true);
     });
   });
 
@@ -459,7 +502,7 @@ describe('SpotifyService', () => {
         else cb(null, 'variant       string "Playing"', '');      // Properties.Get
       });
       await spotifyService.init();
-      expect(spotifyService.connected).toBe(true);
+      expect(registry.isHealthy('spotify')).toBe(true);
     });
 
     it('should fall back to checkConnection when activate fails', async () => {
@@ -477,7 +520,7 @@ describe('SpotifyService', () => {
         }
       });
       await spotifyService.init();
-      expect(spotifyService.connected).toBe(true);
+      expect(registry.isHealthy('spotify')).toBe(true);
     });
 
     it('should not throw when both activate and checkConnection fail', async () => {
@@ -485,7 +528,7 @@ describe('SpotifyService', () => {
       spotifyService._dbusDest = null;
       mockExecFileError('Connection refused');
       await spotifyService.init();
-      expect(spotifyService.connected).toBe(false);
+      expect(registry.isHealthy('spotify')).toBe(false);
     });
   });
 
@@ -707,49 +750,42 @@ describe('SpotifyService', () => {
       await spotifyService._refreshMetadata();
       expect(handler).not.toHaveBeenCalled();
     });
+
+    it('should not overwrite track with null on empty metadata', async () => {
+      spotifyService.track = { title: 'Old Song', artist: 'Old Artist' };
+      mockExecFileSuccess('no metadata here');
+      await spotifyService._refreshMetadata();
+      expect(spotifyService.track).toEqual({ title: 'Old Song', artist: 'Old Artist' });
+    });
   });
 
   describe('track:changed after transport', () => {
-    beforeEach(() => {
-      jest.useFakeTimers();
-    });
-
-    afterEach(() => {
-      jest.useRealTimers();
-    });
-
-    it('should schedule metadata refresh after next()', async () => {
+    it('should await metadata refresh after next()', async () => {
       mockExecFileSuccess('');
       const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
       await spotifyService.next();
-      expect(spy).not.toHaveBeenCalled();
-      jest.advanceTimersByTime(200);
+      // Metadata should be called synchronously (awaited), not deferred
       expect(spy).toHaveBeenCalled();
     });
 
-    it('should schedule metadata refresh after play()', async () => {
+    it('should await metadata refresh after play()', async () => {
       mockExecFileSuccess('');
       const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
       await spotifyService.play();
-      expect(spy).not.toHaveBeenCalled();
-      jest.advanceTimersByTime(200);
       expect(spy).toHaveBeenCalled();
     });
 
-    it('should NOT schedule metadata refresh after pause()', async () => {
+    it('should NOT refresh metadata after pause()', async () => {
       mockExecFileSuccess('');
       const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
       await spotifyService.pause();
-      jest.advanceTimersByTime(500);
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('should handle metadata refresh failure gracefully', async () => {
+    it('should propagate metadata refresh failure to caller', async () => {
       mockExecFileSuccess('');
       jest.spyOn(spotifyService, '_refreshMetadata').mockRejectedValue(new Error('fail'));
-      await spotifyService.next();
-      // Should not throw
-      jest.advanceTimersByTime(200);
+      await expect(spotifyService.next()).rejects.toThrow('fail');
     });
   });
 
@@ -832,7 +868,7 @@ describe('SpotifyService', () => {
     });
 
     it('should pass when already connected', async () => {
-      spotifyService.connected = true;
+      registry.report('spotify', 'healthy');
       jest.spyOn(spotifyService, 'checkConnection');
 
       await spotifyService._ensureConnection();
@@ -840,7 +876,7 @@ describe('SpotifyService', () => {
     });
 
     it('should run checkConnection when disconnected', async () => {
-      spotifyService.connected = false;
+      registry.report('spotify', 'down');
       jest.spyOn(spotifyService, 'checkConnection').mockResolvedValue(true);
 
       await spotifyService._ensureConnection();
@@ -848,7 +884,7 @@ describe('SpotifyService', () => {
     });
 
     it('should throw when checkConnection fails', async () => {
-      spotifyService.connected = false;
+      registry.report('spotify', 'down');
       jest.spyOn(spotifyService, 'checkConnection').mockResolvedValue(false);
 
       await expect(spotifyService._ensureConnection())
@@ -861,7 +897,7 @@ describe('SpotifyService', () => {
       spotifyService.reset();
       spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd';
       spotifyService._dbusCacheTime = Date.now();
-      spotifyService.connected = true;
+      registry.report('spotify', 'healthy');
       jest.spyOn(spotifyService, '_activationDelay').mockResolvedValue();
     });
 

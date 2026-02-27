@@ -154,6 +154,21 @@ describe('CueEngineService', () => {
       cueEngineService.enableCue('test');
       expect(cueEngineService.getDisabledCues()).not.toContain('test');
     });
+
+    it('should emit cue:status with state enabled on enableCue', () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:status', handler);
+      cueEngineService.disabledCues.add('test-cue');
+      cueEngineService.enableCue('test-cue');
+      expect(handler).toHaveBeenCalledWith({ cueId: 'test-cue', state: 'enabled' });
+    });
+
+    it('should emit cue:status with state disabled on disableCue', () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:status', handler);
+      cueEngineService.disableCue('test-cue');
+      expect(handler).toHaveBeenCalledWith({ cueId: 'test-cue', state: 'disabled' });
+    });
   });
 
   describe('event-triggered standing cues', () => {
@@ -638,6 +653,7 @@ describe('CueEngineService', () => {
       jest.mock('../../../src/services/videoQueueService', () => ({
         isPlaying: jest.fn().mockReturnValue(false),
         getCurrentVideo: jest.fn().mockReturnValue(null),
+        skipCurrent: jest.fn().mockResolvedValue(),
       }));
       videoQueueService = require('../../../src/services/videoQueueService');
     });
@@ -751,6 +767,25 @@ describe('CueEngineService', () => {
         cueId: 'cancel-cue',
         state: 'cancelled'
       });
+    });
+
+    it('should call skipCurrent (not stopCurrent) when conflict is overridden', async () => {
+      videoQueueService.isPlaying.mockReturnValue(true);
+      videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
+
+      cueEngineService.loadCues([{
+        id: 'override-cue', label: 'Override Cue',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'new.mp4' } }
+        ]
+      }]);
+
+      await cueEngineService.fireCue('override-cue');
+
+      // Resolve with override — should call skipCurrent
+      await cueEngineService.resolveConflict('override-cue', 'override');
+
+      expect(videoQueueService.skipCurrent).toHaveBeenCalled();
     });
   });
 
@@ -956,6 +991,29 @@ describe('CueEngineService', () => {
           payload: expect.not.objectContaining({ target: expect.anything() })
         })
       );
+    });
+  });
+
+  // ── Health registry reporting ──
+
+  describe('health registry reporting', () => {
+    it('should report healthy after loadCues succeeds', () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      cueEngineService.loadCues([
+        { id: 'test', label: 'Test', commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }
+      ]);
+      expect(registry.isHealthy('cueengine')).toBe(true);
+      expect(registry.getStatus('cueengine').message).toBe('Loaded 1 cues');
+    });
+
+    it('should report down on reset', () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      cueEngineService.loadCues([{ id: 'test', label: 'T', commands: [] }]);
+      expect(registry.isHealthy('cueengine')).toBe(true);
+
+      cueEngineService.reset();
+
+      expect(registry.isHealthy('cueengine')).toBe(false);
     });
   });
 });

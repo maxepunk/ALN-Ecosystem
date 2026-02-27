@@ -4,6 +4,7 @@ const { EventEmitter } = require('events');
 
 jest.mock('child_process');
 jest.mock('fs');
+jest.mock('../../../src/utils/execHelper');
 
 describe('SoundService', () => {
   let soundService;
@@ -148,6 +149,45 @@ describe('SoundService', () => {
 
       proc.emit('close', 0);
       expect(soundService.getPlaying()).toHaveLength(0);
+    });
+  });
+
+  // ── Health registry reporting ──
+
+  describe('health registry reporting', () => {
+    it('should report healthy when pw-play is available on init', async () => {
+      const { execFileAsync } = require('../../../src/utils/execHelper');
+      execFileAsync.mockResolvedValue('/usr/bin/pw-play\n');
+
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      await soundService.init();
+
+      expect(registry.isHealthy('sound')).toBe(true);
+      expect(registry.getStatus('sound').message).toBe('pw-play available');
+    });
+
+    it('should report down when pw-play is not found on init', async () => {
+      const { execFileAsync } = require('../../../src/utils/execHelper');
+      execFileAsync.mockRejectedValue(new Error('not found'));
+
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      await soundService.init();
+
+      expect(registry.isHealthy('sound')).toBe(false);
+    });
+
+    it('should report down on reset', async () => {
+      // First make it healthy
+      const { execFileAsync } = require('../../../src/utils/execHelper');
+      execFileAsync.mockResolvedValue('/usr/bin/pw-play\n');
+
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      await soundService.init();
+      expect(registry.isHealthy('sound')).toBe(true);
+
+      soundService.reset();
+
+      expect(registry.isHealthy('sound')).toBe(false);
     });
   });
 });

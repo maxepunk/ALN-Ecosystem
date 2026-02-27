@@ -140,7 +140,7 @@ describe('Session Events - Contract Validation', () => {
       expect(event.data).toHaveProperty('recentTransactions');
       expect(event.data).toHaveProperty('videoStatus');
       expect(event.data).toHaveProperty('devices');
-      expect(event.data).toHaveProperty('systemStatus');
+      expect(event.data).toHaveProperty('serviceHealth');
 
       // Validate: session field (Session object or null)
       if (event.data.session !== null) {
@@ -176,11 +176,12 @@ describe('Session Events - Contract Validation', () => {
       // Validate: devices field (array)
       expect(Array.isArray(event.data.devices)).toBe(true);
 
-      // Validate: systemStatus field (object with orchestrator and vlc)
-      expect(event.data.systemStatus).toHaveProperty('orchestrator');
-      expect(event.data.systemStatus).toHaveProperty('vlc');
-      expect(['online', 'offline']).toContain(event.data.systemStatus.orchestrator);
-      expect(['connected', 'disconnected', 'error']).toContain(event.data.systemStatus.vlc);
+      // Validate: serviceHealth field (registry snapshot with service entries)
+      expect(event.data.serviceHealth).toHaveProperty('vlc');
+      expect(event.data.serviceHealth).toHaveProperty('spotify');
+      expect(event.data.serviceHealth.vlc).toHaveProperty('status');
+      expect(event.data.serviceHealth.vlc).toHaveProperty('message');
+      expect(['healthy', 'down']).toContain(event.data.serviceHealth.vlc.status);
 
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'sync:full');

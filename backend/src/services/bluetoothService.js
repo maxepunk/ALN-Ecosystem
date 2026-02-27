@@ -13,6 +13,7 @@ const { spawn } = require('child_process');
 const config = require('../config');
 const logger = require('../utils/logger');
 const { execFileAsync } = require('../utils/execHelper');
+const registry = require('./serviceHealthRegistry');
 
 /** MAC address validation regex */
 const MAC_REGEX = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
@@ -44,8 +45,10 @@ class BluetoothService extends EventEmitter {
   async init() {
     const available = await this.isAvailable();
     if (available) {
+      registry.report('bluetooth', 'healthy', 'Adapter available');
       logger.info('Bluetooth service initialized — adapter available');
     } else {
+      registry.report('bluetooth', 'down', 'No adapter or adapter powered off');
       logger.warn('Bluetooth service initialized — no adapter or adapter powered off');
     }
   }
@@ -383,6 +386,7 @@ class BluetoothService extends EventEmitter {
     this.cleanup();
     this.removeAllListeners();
     this._discoveredAddresses = new Set();
+    registry.report('bluetooth', 'down', 'Reset');
   }
 
   // ── Private helpers ──

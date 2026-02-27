@@ -295,7 +295,7 @@ components:
               - recentTransactions
               - videoStatus
               - devices
-              - systemStatus
+              - serviceHealth
             properties:
               session:
                 description: Current session (matches Session schema from OpenAPI)
@@ -551,21 +551,27 @@ components:
                     ipAddress:
                       type: string
                       example: "10.0.0.81"
-              systemStatus:
+              serviceHealth:
                 type: object
-                description: System health status
-                required:
-                  - orchestrator
-                  - vlc
-                properties:
-                  orchestrator:
-                    type: string
-                    enum: [online, offline]
-                    example: "online"
-                  vlc:
-                    type: string
-                    enum: [connected, disconnected, error]
-                    example: "connected"
+                description: Health snapshot for all registered services from serviceHealthRegistry
+                additionalProperties:
+                  type: object
+                  required:
+                    - status
+                    - message
+                  properties:
+                    status:
+                      type: string
+                      enum: [healthy, down]
+                    message:
+                      type: string
+                    lastChecked:
+                      type: string
+                      format: date-time
+                      nullable: true
+                example:
+                  vlc: { status: "healthy", message: "Connected to VLC", lastChecked: "2025-10-15T19:00:30.000Z" }
+                  spotify: { status: "down", message: "Not yet checked", lastChecked: null }
           timestamp:
             type: string
             format: date-time
@@ -2590,6 +2596,63 @@ components:
             example: "2025-10-15T20:15:30.100Z"
 
     # ============================================================================
+    # SERVICE HEALTH (1 event)
+    # ============================================================================
+
+    ServiceHealth:
+      name: service:health
+      title: Service Health Changed
+      summary: Broadcast when a service health status transitions
+      description: |
+        Emitted by serviceHealthRegistry when a service transitions between
+        'healthy' and 'down'. Broadcast to the GM room only.
+
+        **Services tracked**: vlc, spotify, sound, bluetooth, audio, lighting, gameclock, cueengine
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: service:health
+            description: Event name
+          data:
+            type: object
+            required:
+              - serviceId
+              - status
+              - message
+              - previousStatus
+            properties:
+              serviceId:
+                type: string
+                enum: [vlc, spotify, sound, bluetooth, audio, lighting, gameclock, cueengine]
+                description: Service identifier
+                example: "vlc"
+              status:
+                type: string
+                enum: [healthy, down]
+                description: New health status
+                example: "healthy"
+              message:
+                type: string
+                description: Human-readable status detail
+                example: "Connected to VLC"
+              previousStatus:
+                type: string
+                enum: [healthy, down]
+                description: Previous health status
+                example: "down"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:30.200Z"
+
+    # ============================================================================
     # PHASE 1: GAME CLOCK, CUE ENGINE, AND SOUND (6 events)
     # ============================================================================
 
@@ -2708,6 +2771,8 @@ components:
         - paused: Cue execution paused (manual intervention)
         - completed: Cue finished all actions successfully
         - stopped: Cue manually stopped before completion
+        - enabled: Standing cue enabled via admin panel
+        - disabled: Standing cue disabled via admin panel
       payload:
         type: object
         required:
@@ -2738,6 +2803,8 @@ components:
                   - paused
                   - completed
                   - stopped
+                  - enabled
+                  - disabled
                 example: "running"
               progress:
                 type: number
@@ -2953,6 +3020,18 @@ components:
                 example:
                   - file: "fanfare.wav"
                     target: "combine-bt"
+              error:
+                type: object
+                description: Sound playback error (present only on sound:error events)
+                properties:
+                  file:
+                    type: string
+                    description: Audio file that failed
+                    example: "missing.wav"
+                  error:
+                    type: string
+                    description: Error message
+                    example: "File not found"
           timestamp:
             type: string
             format: date-time

@@ -7,12 +7,12 @@ const axios = require('axios');
 const EventEmitter = require('events');
 const config = require('../config');
 const logger = require('../utils/logger');
+const registry = require('./serviceHealthRegistry');
 
 class VlcService extends EventEmitter {
   constructor() {
     super();
     this.client = null;
-    this.connected = false;
     this.reconnectTimer = null;
     this.reconnectAttempts = 0;
   }
@@ -46,8 +46,7 @@ class VlcService extends EventEmitter {
     } catch (error) {
       logger.warn('VLC service initialization failed - running in degraded mode', error);
       // Don't throw - allow system to run without VLC
-      this.connected = false;
-      this.emit('degraded');
+      registry.report('vlc', 'down', 'Init failed: ' + error.message);
     }
   }
 
@@ -119,22 +118,17 @@ class VlcService extends EventEmitter {
   async checkConnection() {
     try {
       const response = await this.client.get('/requests/status.json');
-      
+
       if (response.status === 200) {
-        if (!this.connected) {
-          this.connected = true;
+        if (!registry.isHealthy('vlc')) {
           this.reconnectAttempts = 0;
-          this.emit('connected');
           logger.info('VLC connection established');
         }
+        registry.report('vlc', 'healthy', 'Connected');
         return true;
       }
     } catch (error) {
-      if (this.connected) {
-        this.connected = false;
-        this.emit('disconnected');
-        logger.warn('VLC connection lost');
-      }
+      registry.report('vlc', 'down', 'Connection lost');
       return false;
     }
   }
@@ -145,7 +139,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<Object>} VLC response or degraded response
    */
   async playVideo(videoPath) {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - returning degraded response');
       this.emit('video:played', videoPath);
       return {
@@ -210,7 +204,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async stop() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - simulating stop');
       this.emit('video:stopped');
       return;
@@ -235,7 +229,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async pause() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - simulating pause');
       this.emit('video:paused');
       return;
@@ -260,7 +254,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async resume() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - simulating resume');
       this.emit('video:resumed');
       return;
@@ -285,7 +279,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async skip() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - simulating skip');
       this.emit('video:skipped');
       return;
@@ -310,7 +304,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<Object>} Status object
    */
   async getStatus() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       return {
         connected: false,
         state: 'disconnected',
@@ -357,7 +351,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async setVolume(volume) {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - volume change simulated');
       return;
     }
@@ -382,7 +376,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async toggleFullscreen() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - fullscreen toggle simulated');
       return;
     }
@@ -404,7 +398,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async clearPlaylist() {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - playlist clear simulated');
       return;
     }
@@ -427,7 +421,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async addToPlaylist(videoPath) {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - playlist addition simulated', { videoPath });
       return;
     }
@@ -453,7 +447,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async seek(position) {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - seek simulated', { position });
       return;
     }
@@ -479,7 +473,7 @@ class VlcService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async setLoop(enabled) {
-    if (!this.connected) {
+    if (!registry.isHealthy('vlc')) {
       logger.warn('VLC not connected - loop setting simulated');
       return;
     }
@@ -521,7 +515,7 @@ class VlcService extends EventEmitter {
     // Store interval so it can be cleared
     this.healthCheckInterval = setInterval(async () => {
       await this.checkConnection();
-      if (!this.connected) {
+      if (!registry.isHealthy('vlc')) {
         this.scheduleReconnect();
       }
     }, 10000); // Check every 10 seconds
@@ -563,7 +557,7 @@ class VlcService extends EventEmitter {
       
       if (this.reconnectAttempts < config.vlc.maxRetries) {
         await this.checkConnection();
-        if (!this.connected) {
+        if (!registry.isHealthy('vlc')) {
           this.scheduleReconnect();
         }
       } else {
@@ -574,11 +568,11 @@ class VlcService extends EventEmitter {
   }
 
   /**
-   * Check if service is connected
+   * Check if service is connected (delegates to registry)
    * @returns {boolean}
    */
   isConnected() {
-    return this.connected;
+    return registry.isHealthy('vlc');
   }
 
   /**
@@ -610,7 +604,7 @@ class VlcService extends EventEmitter {
     this.removeAllListeners();
 
     // 3. Reset state
-    this.connected = false;
+    registry.report('vlc', 'down', 'Reset');
     this.reconnectAttempts = 0;
     this.client = null;
 

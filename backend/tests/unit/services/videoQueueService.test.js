@@ -110,6 +110,33 @@ describe('VideoQueueService - Queue Management', () => {
       expect(videoQueueService.currentItem).toBeNull();
       expect(videoQueueService.playbackTimer).toBeNull();
     });
+
+    it('should preserve event listeners after reset', () => {
+      const handler = jest.fn();
+      videoQueueService.on('video:idle', handler);
+      const countBefore = videoQueueService.listenerCount('video:idle');
+
+      videoQueueService.reset();
+
+      // Listeners should survive reset (broadcasts.js depends on this)
+      expect(videoQueueService.listenerCount('video:idle')).toBe(countBefore);
+      videoQueueService.removeListener('video:idle', handler);
+    });
+
+    it('should clear all four timer types on reset', () => {
+      // Set all timer types
+      videoQueueService.playbackTimer = setTimeout(() => {}, 10000);
+      videoQueueService.progressTimer = setInterval(() => {}, 1000);
+      videoQueueService.fallbackTimer = setTimeout(() => {}, 5000);
+      videoQueueService.monitoringDelayTimer = setTimeout(() => {}, 3000);
+
+      videoQueueService.reset();
+
+      expect(videoQueueService.playbackTimer).toBeNull();
+      expect(videoQueueService.progressTimer).toBeNull();
+      expect(videoQueueService.fallbackTimer).toBeNull();
+      expect(videoQueueService.monitoringDelayTimer).toBeNull();
+    });
   });
 
   describe('Event Emission Pattern', () => {

@@ -171,7 +171,7 @@ function assertSyncFullStructure(syncData) {
   expect(syncData).toHaveProperty('recentTransactions');
   expect(syncData).toHaveProperty('videoStatus');
   expect(syncData).toHaveProperty('devices');
-  expect(syncData).toHaveProperty('systemStatus');
+  expect(syncData).toHaveProperty('serviceHealth');
 
   // Validate arrays
   expect(Array.isArray(syncData.scores)).toBe(true);
@@ -181,9 +181,10 @@ function assertSyncFullStructure(syncData) {
   // Validate video status
   assertVideoStatusStructure(syncData.videoStatus);
 
-  // Validate system status
-  expect(syncData.systemStatus).toHaveProperty('orchestrator');
-  expect(syncData.systemStatus).toHaveProperty('vlc');
+  // Validate service health (registry snapshot)
+  expect(syncData.serviceHealth).toHaveProperty('vlc');
+  expect(syncData.serviceHealth.vlc).toHaveProperty('status');
+  expect(['healthy', 'down']).toContain(syncData.serviceHealth.vlc.status);
 }
 
 /**

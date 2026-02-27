@@ -63,7 +63,7 @@ describe('GET /api/state', () => {
     expect(response.body).toHaveProperty('recentTransactions');
     expect(response.body).toHaveProperty('videoStatus');
     expect(response.body).toHaveProperty('devices');  // Per OpenAPI contract
-    expect(response.body).toHaveProperty('systemStatus');
+    expect(response.body).toHaveProperty('serviceHealth');
 
     // Type validation
     expect(typeof response.body.session).toBe('object');
@@ -71,7 +71,7 @@ describe('GET /api/state', () => {
     expect(Array.isArray(response.body.recentTransactions)).toBe(true);
     expect(typeof response.body.videoStatus).toBe('object');
     expect(Array.isArray(response.body.devices)).toBe(true);
-    expect(typeof response.body.systemStatus).toBe('object');
+    expect(typeof response.body.serviceHealth).toBe('object');
   });
 
   it('should support ETag caching with If-None-Match', async () => {
@@ -118,7 +118,7 @@ describe('GET /api/state', () => {
     // Should still return valid GameState structure
     expect(response.body).toHaveProperty('session');
     expect(response.body).toHaveProperty('scores');
-    expect(response.body).toHaveProperty('systemStatus');
+    expect(response.body).toHaveProperty('serviceHealth');
 
     // Session should be null when no active session
     expect(response.body.session).toBe(null);

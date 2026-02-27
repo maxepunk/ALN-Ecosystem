@@ -851,9 +851,15 @@ paths:
                     name: "Player Scanner 1"
                     connectionTime: "2025-10-15T19:02:00.000Z"
                     ipAddress: "10.0.0.82"
-                systemStatus:
-                  orchestrator: "online"
-                  vlc: "connected"
+                serviceHealth:
+                  vlc:
+                    status: "healthy"
+                    message: "Connected to VLC"
+                    lastChecked: "2025-10-15T19:00:30.000Z"
+                  spotify:
+                    status: "down"
+                    message: "Not yet checked"
+                    lastChecked: null
         '304':
           description: Not Modified (ETag match)
         '500':
@@ -1119,7 +1125,7 @@ components:
         - recentTransactions
         - videoStatus
         - devices
-        - systemStatus
+        - serviceHealth
       properties:
         session:
           oneOf:
@@ -1309,23 +1315,33 @@ components:
                 type: string
                 description: Device IP address
                 example: "10.0.0.81"
-        systemStatus:
+        serviceHealth:
           type: object
-          required:
-            - orchestrator
-            - vlc
-          description: System health status
-          properties:
-            orchestrator:
-              type: string
-              enum: [online, offline]
-              description: Orchestrator status
-              example: "online"
+          description: Health snapshot for all registered services from serviceHealthRegistry
+          additionalProperties:
+            type: object
+            required:
+              - status
+              - message
+            properties:
+              status:
+                type: string
+                enum: [healthy, down]
+              message:
+                type: string
+              lastChecked:
+                type: string
+                format: date-time
+                nullable: true
+          example:
             vlc:
-              type: string
-              enum: [connected, disconnected, error]
-              description: VLC connection status
-              example: "connected"
+              status: "healthy"
+              message: "Connected to VLC"
+              lastChecked: "2025-10-15T19:00:30.000Z"
+            spotify:
+              status: "down"
+              message: "Not yet checked"
+              lastChecked: null
 
   responses:
     ValidationError:

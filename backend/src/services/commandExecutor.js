@@ -15,7 +15,6 @@ const config = require('../config');
 const sessionService = require('./sessionService');
 const transactionService = require('./transactionService');
 const videoQueueService = require('./videoQueueService');
-const vlcService = require('./vlcService');
 const displayControlService = require('./displayControlService');
 const bluetoothService = require('./bluetoothService');
 const audioRoutingService = require('./audioRoutingService');
@@ -130,34 +129,34 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Video commands ---
 
       case 'video:play':
-        // Resume/play current video
         if (config.features.videoPlayback) {
-          await vlcService.resume();
+          await videoQueueService.resumeCurrent();
         }
         resultMessage = 'Video playback resumed';
         logger.info('Video playback resumed', { source, deviceId });
         break;
 
       case 'video:pause':
-        // Pause current video
         if (config.features.videoPlayback) {
-          await vlcService.pause();
+          await videoQueueService.pauseCurrent();
         }
         resultMessage = 'Video playback paused';
         logger.info('Video playback paused', { source, deviceId });
         break;
 
       case 'video:stop':
-        // Stop current video
         if (config.features.videoPlayback) {
-          await vlcService.stop();
+          await videoQueueService.skipCurrent();
+          videoQueueService.clearQueue();
         }
         resultMessage = 'Video playback stopped';
         logger.info('Video playback stopped', { source, deviceId });
         break;
 
       case 'video:skip':
-        videoQueueService.skipCurrent();
+        if (config.features.videoPlayback) {
+          await videoQueueService.skipCurrent();
+        }
         resultMessage = 'Video skipped successfully';
         logger.info('Video skipped', { source, deviceId });
         break;

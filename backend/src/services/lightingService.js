@@ -12,11 +12,11 @@ const axios = require('axios');
 const config = require('../config');
 const logger = require('../utils/logger');
 const dockerHelper = require('../utils/dockerHelper');
+const registry = require('./serviceHealthRegistry');
 
 class LightingService extends EventEmitter {
   constructor() {
     super();
-    this._connected = false;
     this._scenes = [];
     this._activeScene = null;
     this._reconnectInterval = null;
@@ -47,7 +47,7 @@ class LightingService extends EventEmitter {
     try {
       await this.checkConnection();
 
-      if (this._connected) {
+      if (registry.isHealthy('lighting')) {
         await this.getScenes();
         logger.info('Lighting service initialized — connected to Home Assistant', {
           sceneCount: this._scenes.length,
@@ -62,7 +62,7 @@ class LightingService extends EventEmitter {
     }
 
     // Start periodic reconnect when disconnected
-    if (!this._connected) {
+    if (!registry.isHealthy('lighting')) {
       this._startReconnect();
     }
   }
@@ -76,12 +76,12 @@ class LightingService extends EventEmitter {
     if (!config.lighting.homeAssistantToken) {
       return false;
     }
-    return this._connected;
+    return registry.isHealthy('lighting');
   }
 
   /**
    * Ping Home Assistant API to check connection status.
-   * Emits connection:changed when status changes.
+   * Reports health to serviceHealthRegistry.
    * @returns {Promise<void>}
    */
   async checkConnection() {
@@ -89,22 +89,22 @@ class LightingService extends EventEmitter {
       return;
     }
 
-    const wasConnected = this._connected;
+    const wasHealthy = registry.isHealthy('lighting');
 
     try {
       await axios.get(`${config.lighting.homeAssistantUrl}/api/`, {
         headers: this._getHeaders(),
         timeout: 5000,
       });
-      this._connected = true;
+      registry.report('lighting', 'healthy', 'Connected to Home Assistant');
     } catch {
-      this._connected = false;
+      registry.report('lighting', 'down', 'Home Assistant unreachable');
     }
 
-    if (wasConnected !== this._connected) {
-      this.emit('connection:changed', { connected: this._connected });
+    const isNowHealthy = registry.isHealthy('lighting');
 
-      if (this._connected) {
+    if (wasHealthy !== isNowHealthy) {
+      if (isNowHealthy) {
         logger.info('Home Assistant connection established');
         this._clearReconnect();
       } else {
@@ -124,7 +124,7 @@ class LightingService extends EventEmitter {
    */
   async getScenes() {
     try {
-      if (!this._connected && !config.lighting.homeAssistantToken) {
+      if (!registry.isHealthy('lighting') && !config.lighting.homeAssistantToken) {
         return this._loadFallbackScenes();
       }
 
@@ -206,7 +206,7 @@ class LightingService extends EventEmitter {
     const cached = this._scenes.find((s) => s.id === sceneId);
     const sceneName = cached ? cached.name : sceneId;
 
-    if (this._usingFallback || !this._connected) {
+    if (this._usingFallback || !registry.isHealthy('lighting')) {
       logger.info('Simulating scene activation (Fallback/Offline)', { sceneId, sceneName });
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -269,7 +269,7 @@ class LightingService extends EventEmitter {
   reset() {
     this._clearReconnect();
     this.removeAllListeners();
-    this._connected = false;
+    registry.report('lighting', 'down', 'Reset');
     this._usingFallback = false;
     this._scenes = [];
     this._activeScene = null;

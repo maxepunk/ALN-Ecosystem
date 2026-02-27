@@ -75,7 +75,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     expect(syncEvent.data).toHaveProperty('recentTransactions');
     expect(syncEvent.data).toHaveProperty('videoStatus');
     expect(syncEvent.data).toHaveProperty('devices');
-    expect(syncEvent.data).toHaveProperty('systemStatus');
+    expect(syncEvent.data).toHaveProperty('serviceHealth');
 
     // Validate: Session data
     const sessionData = syncEvent.data.session;
@@ -118,25 +118,28 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     expect(syncEvent.data.videoStatus.tokenId).toBeNull();
   });
 
-  it('should include systemStatus in sync:full', async () => {
+  it('should include serviceHealth in sync:full', async () => {
     await sessionService.createSession({
-      name: 'System Status Test',
+      name: 'Service Health Test',
       teams: ['Team Alpha']
     });
     await sessionService.startGame();
 
     // Connect GM using REAL scanner
-    scanner = await createAuthenticatedScanner(testContext.url, 'SYSTEM_STATUS_GM', 'blackmarket');
+    scanner = await createAuthenticatedScanner(testContext.url, 'SERVICE_HEALTH_GM', 'blackmarket');
 
     // Request sync
     const syncPromise = waitForEvent(scanner.socket, 'sync:full');
     scanner.socket.emit('sync:request');
     const syncEvent = await syncPromise;
 
-    // Validate: systemStatus structure (real scanner receives correct structure)
-    expect(syncEvent.data.systemStatus).toBeDefined();
-    expect(syncEvent.data.systemStatus).toHaveProperty('orchestrator');
-    expect(syncEvent.data.systemStatus).toHaveProperty('vlc');
-    expect(syncEvent.data.systemStatus.orchestrator).toBe('online');
+    // Validate: serviceHealth structure (registry snapshot with all 8 services)
+    expect(syncEvent.data.serviceHealth).toBeDefined();
+    expect(syncEvent.data.serviceHealth).toHaveProperty('vlc');
+    expect(syncEvent.data.serviceHealth).toHaveProperty('spotify');
+    expect(syncEvent.data.serviceHealth).toHaveProperty('lighting');
+    expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('status');
+    expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('message');
+    expect(['healthy', 'down']).toContain(syncEvent.data.serviceHealth.vlc.status);
   });
 });

@@ -600,6 +600,16 @@ class MockDataManager extends EventTarget {
   updateBluetoothDevice(payload) {
     this.dispatchEvent(new CustomEvent('bluetooth-device:updated', { detail: payload }));
   }
+
+  // Called by networkedSession.js when sync:full includes cueEngine state
+  syncCueState(cueEngine) {
+    this.dispatchEvent(new CustomEvent('cue-state:updated', { detail: cueEngine }));
+  }
+
+  // Called by networkedSession.js for spotify:status events and sync:full spotify state
+  updateSpotifyState(payload) {
+    this.dispatchEvent(new CustomEvent('spotify-state:updated', { detail: payload }));
+  }
 }
 
 global.DataManager = new MockDataManager();

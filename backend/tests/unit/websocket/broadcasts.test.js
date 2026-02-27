@@ -289,6 +289,37 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
+  describe('Video Queue Broadcast Listeners', () => {
+    beforeEach(() => {
+      mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService
+      });
+    });
+
+    it('should broadcast queue update on queue:reordered', () => {
+      mockVideoQueueService.emit('queue:reordered', { fromIndex: 0, toIndex: 1 });
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith('video:queue:update', expect.any(Object));
+    });
+
+    it('should broadcast queue update on queue:pending-cleared', () => {
+      mockVideoQueueService.emit('queue:pending-cleared', { itemsCleared: 3 });
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith('video:queue:update', expect.any(Object));
+    });
+
+    it('should broadcast queue update on queue:reset', () => {
+      mockVideoQueueService.emit('queue:reset');
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith('video:queue:update', expect.any(Object));
+    });
+  });
+
   describe('Score Events - Manual Wrapping → Helper Usage', () => {
     it('should broadcast score:updated from transaction:accepted (Slice 4)', () => {
       setupBroadcastListeners(mockIo, {
@@ -866,26 +897,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         );
       });
 
-      it('should broadcast lighting:status on connection:changed', () => {
-        setupWithEnvServices();
-
-        const data = { connected: true, url: 'http://homeassistant.local:8123' };
-        mockLightingService.emit('connection:changed', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'lighting:status',
-          expect.objectContaining({
-            event: 'lighting:status',
-            data: expect.objectContaining({
-              connected: true,
-              url: 'http://homeassistant.local:8123'
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
       it('should broadcast lighting:status with type refreshed on scenes:refreshed', () => {
         setupWithEnvServices();
 
@@ -1004,7 +1015,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect(mockAudioRoutingService.listenerCount('routing:applied')).toBeGreaterThan(0);
         expect(mockAudioRoutingService.listenerCount('routing:fallback')).toBeGreaterThan(0);
         expect(mockLightingService.listenerCount('scene:activated')).toBeGreaterThan(0);
-        expect(mockLightingService.listenerCount('connection:changed')).toBeGreaterThan(0);
         expect(mockLightingService.listenerCount('scenes:refreshed')).toBeGreaterThan(0);
 
         // Cleanup
@@ -1018,7 +1028,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         expect(mockAudioRoutingService.listenerCount('routing:applied')).toBe(0);
         expect(mockAudioRoutingService.listenerCount('routing:fallback')).toBe(0);
         expect(mockLightingService.listenerCount('scene:activated')).toBe(0);
-        expect(mockLightingService.listenerCount('connection:changed')).toBe(0);
         expect(mockLightingService.listenerCount('scenes:refreshed')).toBe(0);
       });
     });
@@ -1073,6 +1082,41 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
             connected: true,
             track: { title: 'Test Song', artist: 'Test Artist' }
           })
+        })
+      );
+    });
+  });
+
+  describe('service:health broadcast', () => {
+    const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+
+    beforeEach(() => {
+      serviceHealthRegistry.reset();
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+      });
+    });
+
+    it('should broadcast service:health to gm room on health:changed', () => {
+      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
+
+      serviceHealthRegistry.report('vlc', 'healthy', 'Connected');
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'service:health',
+        expect.objectContaining({
+          event: 'service:health',
+          data: expect.objectContaining({
+            serviceId: 'vlc',
+            status: 'healthy',
+            message: 'Connected'
+          }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
       );
     });
@@ -1178,6 +1222,35 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
           data: expect.objectContaining({ mode: 'SCOREBOARD' })
         })
       );
+    });
+  });
+
+  describe('Sound Error Broadcast', () => {
+    let mockSoundService;
+
+    beforeEach(() => {
+      mockSoundService = new EventEmitter();
+      mockSoundService.getPlaying = jest.fn().mockReturnValue([]);
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        soundService: mockSoundService,
+      });
+    });
+
+    it('should broadcast sound:status on sound:error', () => {
+      mockSoundService.emit('sound:error', { file: 'missing.wav', error: 'File not found' });
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith('sound:status', expect.objectContaining({
+        event: 'sound:status',
+        data: expect.objectContaining({
+          error: expect.objectContaining({ file: 'missing.wav' })
+        }),
+        timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+      }));
     });
   });
 });

@@ -27,6 +27,7 @@ const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
 const spotifyService = require('./services/spotifyService');
+const serviceHealthRegistry = require('./services/serviceHealthRegistry');
 
 // Import routes (6 files after health extraction)
 const scanRoutes = require('./routes/scanRoutes');
@@ -167,6 +168,7 @@ async function initializeServices() {
     await bluetoothService.init();        // Check adapter, warn if unavailable
     await audioRoutingService.init();     // Start sink monitor, load persisted routes
     await lightingService.init();         // Non-blocking HA connection check
+    await soundService.init();            // Check pw-play availability
 
     // Initialize Phase 2 services
     spotifyService.init().catch(err =>
@@ -224,15 +226,6 @@ async function initializeServices() {
       vlcService.on('error', (error) => {
         logger.error('VLC service error (non-fatal)', error);
         logger.info('System will continue without video playback functionality');
-      });
-
-      // Update state service when VLC connects/disconnects
-      vlcService.on('connected', () => {
-        stateService.updateSystemStatus({ vlcConnected: true });
-      });
-
-      vlcService.on('disconnected', () => {
-        stateService.updateSystemStatus({ vlcConnected: false });
       });
 
       try {

@@ -151,8 +151,8 @@ describe('Audio Routing Phase 3 Integration', () => {
   describe('Combine-Sink Management', () => {
     it('should create combine-sink when 2 BT speakers available', async () => {
       jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-        { name: 'bluez_output.AA.a2dp', type: 'bluetooth' },
-        { name: 'bluez_output.BB.a2dp', type: 'bluetooth' },
+        { name: 'bluez_output.AA.a2dp', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
+        { name: 'bluez_output.BB.a2dp', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
       ]);
       // Mock pactl (null sink creation) — same pattern as Per-Stream Volume tests
       jest.spyOn(audioRoutingService, '_execFile').mockResolvedValue('12345');

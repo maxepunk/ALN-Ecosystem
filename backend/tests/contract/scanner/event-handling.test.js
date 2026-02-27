@@ -172,9 +172,9 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             queueLength: 0
           },
           devices: [],
-          systemStatus: {
-            orchestrator: 'online',
-            vlc: 'connected'
+          serviceHealth: {
+            vlc: { status: 'healthy', message: 'Connected', lastChecked: null },
+            spotify: { status: 'down', message: 'Not yet checked', lastChecked: null }
           }
         },
         timestamp: new Date().toISOString()
@@ -197,9 +197,9 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             queueLength: 0
           },
           devices: [],
-          systemStatus: {
-            orchestrator: 'online',
-            vlc: 'disconnected'
+          serviceHealth: {
+            vlc: { status: 'down', message: 'Disconnected', lastChecked: null },
+            spotify: { status: 'down', message: 'Not yet checked', lastChecked: null }
           }
         },
         timestamp: new Date().toISOString()
@@ -230,7 +230,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             recentTransactions: [],
             videoStatus: { status: 'idle', queueLength: 0 },
             devices: [],
-            systemStatus: { orchestrator: 'online', vlc: 'connected' }
+            serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
           },
           timestamp: new Date().toISOString()
         };
@@ -261,7 +261,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               error: videoStatus === 'error' ? 'Test error' : null
             },
             devices: [],
-            systemStatus: { orchestrator: 'online', vlc: 'connected' }
+            serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
           },
           timestamp: new Date().toISOString()
         };
@@ -724,7 +724,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               recentTransactions: [],
               videoStatus: { status: 'idle', queueLength: 0 },
               devices: [],
-              systemStatus: { orchestrator: 'online', vlc: 'connected' }
+              serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
             },
             timestamp: new Date().toISOString()
           }

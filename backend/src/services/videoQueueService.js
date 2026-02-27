@@ -176,7 +176,7 @@ class VideoQueueService extends EventEmitter {
           itemId: queueItem.id,
           tokenId: queueItem.tokenId,
           duration,
-          vlcConnected: vlcService.connected,
+          vlcConnected: vlcService.isConnected(),
         });
 
         // Start monitoring immediately (VLC is confirmed playing)
@@ -898,29 +898,6 @@ class VideoQueueService extends EventEmitter {
     this.currentItem = null;
 
     // 3. Log completion
-    logger.info('Video queue service reset');
-  }
-  /**
-   * Reset service state (for testing)
-   */
-  reset() {
-    // Stop any active playback/monitoring
-    if (this.playbackTimer) {
-      clearTimeout(this.playbackTimer);
-      this.playbackTimer = null;
-    }
-    if (this.progressTimer) {
-      clearInterval(this.progressTimer);
-      this.progressTimer = null;
-    }
-
-    // Clear queue and state
-    this.queue = [];
-    this.currentItem = null;
-
-    // Remove all listeners
-    this.removeAllListeners();
-
     logger.info('Video queue service reset');
   }
 }

@@ -27,11 +27,11 @@ jest.mock('../../src/services/commandExecutor', () => ({
 }));
 
 const mockIsPlaying = jest.fn().mockReturnValue(false);
-const mockStopCurrent = jest.fn().mockResolvedValue();
+const mockSkipCurrent = jest.fn().mockResolvedValue();
 const mockGetCurrentVideo = jest.fn().mockReturnValue(null);
 jest.mock('../../src/services/videoQueueService', () => ({
     isPlaying: (...args) => mockIsPlaying(...args),
-    stopCurrent: (...args) => mockStopCurrent(...args),
+    skipCurrent: (...args) => mockSkipCurrent(...args),
     getCurrentVideo: (...args) => mockGetCurrentVideo(...args),
 }));
 
@@ -80,7 +80,7 @@ describe('Compound Cue Integration (Phase 2)', () => {
         // Reset all mocks
         mockExecuteCommand.mockClear();
         mockIsPlaying.mockReturnValue(false);
-        mockStopCurrent.mockClear();
+        mockSkipCurrent.mockClear();
         mockGetCurrentVideo.mockReturnValue(null);
         mockGetElapsed.mockReturnValue(0);
 
@@ -259,7 +259,7 @@ describe('Compound Cue Integration (Phase 2)', () => {
             await cueEngineService.resolveConflict('override-cue', 'override');
 
             // Video should be stopped
-            expect(mockStopCurrent).toHaveBeenCalledTimes(1);
+            expect(mockSkipCurrent).toHaveBeenCalledTimes(1);
 
             // Cue should now be active
             const activeCues = cueEngineService.getActiveCues();
@@ -323,7 +323,7 @@ describe('Compound Cue Integration (Phase 2)', () => {
             await cueEngineService.resolveConflict('cancel-cue', 'cancel');
 
             expect(cueEngineService.getActiveCues()).toHaveLength(0);
-            expect(mockStopCurrent).not.toHaveBeenCalled();
+            expect(mockSkipCurrent).not.toHaveBeenCalled();
         });
 
         it('should clean up pendingConflicts and conflictTimers on cancel', async () => {

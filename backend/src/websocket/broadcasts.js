@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
 const { buildSyncFullPayload } = require('./syncHelpers');
+const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 
 // Module-level listener tracking for cleanup
 const activeListeners = [];
@@ -324,7 +325,6 @@ function setupBroadcastListeners(io, services) {
         sessionService,
         transactionService,
         videoQueueService,
-        offlineQueueService,
         bluetoothService,
         audioRoutingService,
         lightingService,
@@ -474,6 +474,18 @@ function setupBroadcastListeners(io, services) {
     broadcastQueueUpdate();
   });
 
+  addTrackedListener(videoQueueService, 'queue:reordered', () => {
+    broadcastQueueUpdate();
+  });
+
+  addTrackedListener(videoQueueService, 'queue:pending-cleared', () => {
+    broadcastQueueUpdate();
+  });
+
+  addTrackedListener(videoQueueService, 'queue:reset', () => {
+    broadcastQueueUpdate();
+  });
+
   // NOTE: video:completed queue update handled in main video:completed handler above
   // to avoid duplicate listener registration (causes listener accumulation in tests)
 
@@ -504,7 +516,6 @@ function setupBroadcastListeners(io, services) {
         sessionService,
         transactionService,
         videoQueueService,
-        offlineQueueService,
         bluetoothService,
         audioRoutingService,
         lightingService,
@@ -518,6 +529,15 @@ function setupBroadcastListeners(io, services) {
       logger.info('Broadcasted sync:full after offline queue processing');
     });
   }
+
+  // ============================================================
+  // SERVICE HEALTH BROADCASTS
+  // ============================================================
+
+  addTrackedListener(serviceHealthRegistry, 'health:changed', (data) => {
+    emitToRoom(io, 'gm', 'service:health', data);
+    logger.debug('Broadcasted service:health', { serviceId: data.serviceId, status: data.status });
+  });
 
   // ============================================================
   // ENVIRONMENT CONTROL BROADCASTS (Phase 0)
@@ -639,10 +659,6 @@ function setupBroadcastListeners(io, services) {
       emitToRoom(io, 'gm', 'lighting:scene', data);
       logger.debug('Broadcasted lighting:scene activated', { sceneId: data?.sceneId });
     });
-    addTrackedListener(lightingService, 'connection:changed', (data) => {
-      emitToRoom(io, 'gm', 'lighting:status', data);
-      logger.debug('Broadcasted lighting:status', { connected: data?.connected });
-    });
     addTrackedListener(lightingService, 'scenes:refreshed', (data) => {
       emitToRoom(io, 'gm', 'lighting:status', { type: 'refreshed', ...data });
       logger.debug('Broadcasted lighting:status refreshed', { sceneCount: data?.scenes?.length });
@@ -699,6 +715,10 @@ function setupBroadcastListeners(io, services) {
       emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
       logger.debug('Broadcasted sound:status (stopped)');
     });
+    addTrackedListener(soundService, 'sound:error', (data) => {
+      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying(), error: data });
+      logger.error('Broadcasted sound:status (error)', { file: data?.file });
+    });
   }
 
   // ============================================================
@@ -725,7 +745,7 @@ function setupBroadcastListeners(io, services) {
 
   // Spotify broadcasts
   if (spotifyService) {
-    const SPOTIFY_EVENTS = ['playback:changed', 'volume:changed', 'connection:changed', 'playlist:changed', 'track:changed'];
+    const SPOTIFY_EVENTS = ['playback:changed', 'volume:changed', 'playlist:changed', 'track:changed'];
     for (const event of SPOTIFY_EVENTS) {
       addTrackedListener(spotifyService, event, () => {
         emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());

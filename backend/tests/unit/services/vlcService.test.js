@@ -5,6 +5,7 @@
 
 const vlcService = require('../../../src/services/vlcService');
 const axios = require('axios');
+const registry = require('../../../src/services/serviceHealthRegistry');
 
 // Mock axios HTTP calls
 jest.mock('axios');
@@ -213,8 +214,8 @@ describe('VLCService', () => {
     });
 
     it('should return disconnected status when not connected', async () => {
-      // ARRANGE
-      vlcService.connected = false;
+      // ARRANGE - mark VLC as down in registry
+      registry.report('vlc', 'down', 'Test disconnected');
 
       // ACT
       const status = await vlcService.getStatus();

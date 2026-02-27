@@ -252,4 +252,29 @@ describe('GameClockService', () => {
       expect(handler).toHaveBeenCalledTimes(2); // Should fire again after reset
     });
   });
+
+  // ── Health registry reporting ──
+
+  describe('health registry reporting', () => {
+    it('should report healthy on construction', () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      // Constructor reports healthy; reset() also reports healthy (in-process timer).
+      // Re-require to get fresh singleton where constructor just ran.
+      jest.resetModules();
+      const freshService = require('../../../src/services/gameClockService');
+      const freshRegistry = require('../../../src/services/serviceHealthRegistry');
+
+      expect(freshRegistry.isHealthy('gameclock')).toBe(true);
+      expect(freshRegistry.getStatus('gameclock').message).toBe('In-process timer');
+
+      freshService.cleanup();
+    });
+
+    it('should report healthy with stopped message on reset', () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      // In-process timer is always healthy — reset just changes the message
+      expect(registry.isHealthy('gameclock')).toBe(true);
+      expect(registry.getStatus('gameclock').message).toBe('Timer stopped');
+    });
+  });
 });

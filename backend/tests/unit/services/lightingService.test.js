@@ -44,6 +44,7 @@ jest.mock('../../../src/utils/logger', () => ({
 const logger = require('../../../src/utils/logger');
 
 const lightingService = require('../../../src/services/lightingService');
+const registry = require('../../../src/services/serviceHealthRegistry');
 
 describe('LightingService', () => {
   beforeEach(() => {
@@ -166,45 +167,41 @@ describe('LightingService', () => {
       expect(lightingService.isConnected()).toBe(true);
     });
 
-    it('should emit connection:changed with {connected: true} when status changes', async () => {
-      const handler = jest.fn();
-      lightingService.on('connection:changed', handler);
-
+    it('should report healthy to registry when status changes to connected', async () => {
       axios.get.mockResolvedValue({ status: 200, data: { message: 'API running.' } });
 
       await lightingService.checkConnection();
 
-      expect(handler).toHaveBeenCalledWith({ connected: true });
+      expect(registry.isHealthy('lighting')).toBe(true);
+      expect(registry.getStatus('lighting').message).toBe('Connected to Home Assistant');
     });
 
-    it('should not emit connection:changed when status unchanged', async () => {
+    it('should not emit health:changed when status unchanged', async () => {
       // First call — connects
       axios.get.mockResolvedValue({ status: 200, data: { message: 'API running.' } });
       await lightingService.checkConnection();
 
       const handler = jest.fn();
-      lightingService.on('connection:changed', handler);
+      registry.on('health:changed', handler);
 
       // Second call — still connected
       await lightingService.checkConnection();
 
       expect(handler).not.toHaveBeenCalled();
+      registry.removeListener('health:changed', handler);
     });
 
-    it('should emit connection:changed with {connected: false} on connection loss', async () => {
+    it('should report down to registry on connection loss', async () => {
       // First establish connection
       axios.get.mockResolvedValue({ status: 200, data: { message: 'API running.' } });
       await lightingService.checkConnection();
-
-      const handler = jest.fn();
-      lightingService.on('connection:changed', handler);
 
       // Now lose connection
       axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
       await lightingService.checkConnection();
 
-      expect(handler).toHaveBeenCalledWith({ connected: false });
-      expect(lightingService.isConnected()).toBe(false);
+      expect(registry.isHealthy('lighting')).toBe(false);
+      expect(registry.getStatus('lighting').message).toBe('Home Assistant unreachable');
     });
 
     it('should skip when token is empty', async () => {
@@ -406,7 +403,7 @@ describe('LightingService', () => {
       await lightingService.getScenes();
 
       // Set connected = true so it actually POSTs to HA (not simulated)
-      lightingService._connected = true;
+      registry.report('lighting', 'healthy');
 
       await lightingService.activateScene('scene.game_start');
 
@@ -473,7 +470,7 @@ describe('LightingService', () => {
     });
 
     it('should still emit scene:activated even when HA returns error', async () => {
-      lightingService._connected = true;
+      registry.report('lighting', 'healthy');
       const handler = jest.fn();
       lightingService.on('scene:activated', handler);
       axios.post.mockRejectedValue(new Error('Service not found'));
