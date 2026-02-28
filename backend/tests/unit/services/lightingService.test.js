@@ -9,6 +9,26 @@
 jest.mock('axios');
 const axios = require('axios');
 
+// Mock ws module for WebSocket tests
+// Use a class-based mock that survives jest.clearAllMocks()
+const mockWsInstances = [];
+jest.mock('ws', () => {
+  const { EventEmitter } = require('events');
+  class MockWS extends EventEmitter {
+    constructor(...args) {
+      super();
+      this._constructorArgs = args;
+      this.send = jest.fn();
+      this.close = jest.fn();
+      this.readyState = 1;
+      this.OPEN = 1;
+      mockWsInstances.push(this);
+    }
+  }
+  return MockWS;
+});
+const MockWebSocket = require('ws');
+
 // Mock dockerHelper for container lifecycle tests
 jest.mock('../../../src/utils/dockerHelper', () => ({
   containerExists: jest.fn(),
@@ -50,6 +70,7 @@ describe('LightingService', () => {
   beforeEach(() => {
     lightingService.reset();
     jest.clearAllMocks();
+    mockWsInstances.length = 0;
 
     // Restore default config for each test
     config.lighting.enabled = true;
@@ -733,6 +754,166 @@ describe('LightingService', () => {
         // stopContainer should NOT be called during reset
         expect(dockerHelper.stopContainer).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  // ── WebSocket monitor ──
+
+  describe('WebSocket monitor', () => {
+    const haApiMock = (url) => {
+      if (url === 'http://localhost:8123/api/') {
+        return Promise.resolve({ status: 200 });
+      }
+      if (url === 'http://localhost:8123/api/states') {
+        return Promise.resolve({ status: 200, data: [] });
+      }
+      return Promise.reject(new Error('Unexpected URL'));
+    };
+
+    it('should connect to HA WebSocket URL on init', async () => {
+      axios.get.mockImplementation(haApiMock);
+
+      await lightingService.init();
+
+      expect(mockWsInstances.length).toBe(1);
+      expect(mockWsInstances[0]._constructorArgs[0]).toBe('ws://localhost:8123/api/websocket');
+    });
+
+    it('should authenticate with token after auth_required message', async () => {
+      axios.get.mockImplementation(haApiMock);
+
+      await lightingService.init();
+      const ws = mockWsInstances[0];
+
+      ws.emit('message', JSON.stringify({ type: 'auth_required' }));
+
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({
+        type: 'auth',
+        access_token: 'test-ha-token',
+      }));
+    });
+
+    it('should subscribe to state_changed events after auth_ok', async () => {
+      axios.get.mockImplementation(haApiMock);
+
+      await lightingService.init();
+      const ws = mockWsInstances[0];
+
+      ws.emit('message', JSON.stringify({ type: 'auth_ok' }));
+
+      expect(ws.send).toHaveBeenCalledWith(expect.stringContaining('"subscribe_events"'));
+      const sentMsg = JSON.parse(ws.send.mock.calls[ws.send.mock.calls.length - 1][0]);
+      expect(sentMsg.type).toBe('subscribe_events');
+      expect(sentMsg.event_type).toBe('state_changed');
+      expect(sentMsg.id).toBeDefined();
+    });
+
+    it('should emit scene:activated on scene state change event', async () => {
+      axios.get.mockImplementation(haApiMock);
+
+      await lightingService.init();
+
+      const handler = jest.fn();
+      lightingService.on('scene:activated', handler);
+
+      const ws = mockWsInstances[0];
+
+      ws.emit('message', JSON.stringify({
+        type: 'event',
+        event: {
+          data: {
+            entity_id: 'scene.game_start',
+            new_state: {
+              state: 'scening',
+              attributes: { friendly_name: 'Game Start' },
+            },
+          },
+        },
+      }));
+
+      expect(handler).toHaveBeenCalledWith({
+        sceneId: 'scene.game_start',
+        sceneName: 'Game Start',
+      });
+    });
+
+    it('should report health down on WebSocket close', async () => {
+      jest.useFakeTimers();
+
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+
+      const ws = mockWsInstances[0];
+      ws.emit('message', JSON.stringify({ type: 'auth_ok' }));
+      expect(registry.isHealthy('lighting')).toBe(true);
+
+      ws.emit('close');
+
+      expect(registry.isHealthy('lighting')).toBe(false);
+
+      lightingService.reset();
+      jest.useRealTimers();
+    });
+
+    it('should auto-reconnect with backoff after WebSocket close', async () => {
+      jest.useFakeTimers();
+
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+
+      expect(mockWsInstances.length).toBe(1);
+
+      const firstWs = mockWsInstances[0];
+      firstWs.emit('close');
+
+      await jest.advanceTimersByTimeAsync(5000);
+
+      expect(mockWsInstances.length).toBe(2);
+
+      lightingService.reset();
+      jest.useRealTimers();
+    });
+
+    it('should close WebSocket on cleanup and prevent reconnect', async () => {
+      jest.useFakeTimers();
+
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+
+      const ws = mockWsInstances[0];
+
+      await lightingService.cleanup();
+
+      expect(ws.close).toHaveBeenCalled();
+
+      // Should not reconnect after cleanup
+      await jest.advanceTimersByTimeAsync(30000);
+      expect(mockWsInstances.length).toBe(1);
+
+      jest.useRealTimers();
+    });
+
+    it('should not crash if WebSocket connection fails', async () => {
+      jest.useFakeTimers();
+
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+
+      // Simulate error event on the WebSocket (connection refused)
+      const ws = mockWsInstances[mockWsInstances.length - 1];
+      ws.emit('error', new Error('Connection refused'));
+      ws.emit('close');
+
+      // WS close reports health down, but HTTP was healthy
+      // Service degrades gracefully (no crash), WS reconnect will be attempted
+      expect(mockWsInstances.length).toBe(1);
+
+      // Reconnect attempt happens after delay
+      await jest.advanceTimersByTimeAsync(5000);
+      expect(mockWsInstances.length).toBe(2);
+
+      lightingService.reset();
+      jest.useRealTimers();
     });
   });
 

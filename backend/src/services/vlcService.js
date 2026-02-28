@@ -15,6 +15,7 @@ class VlcService extends EventEmitter {
     this.client = null;
     this.reconnectTimer = null;
     this.reconnectAttempts = 0;
+    this._previousState = null;
   }
 
   /**
@@ -125,6 +126,25 @@ class VlcService extends EventEmitter {
           logger.info('VLC connection established');
         }
         registry.report('vlc', 'healthy', 'Connected');
+
+        // State delta detection — parse response data and compare with previous
+        const data = response.data;
+        const currentState = {
+          state: data.state || null,
+          filename: data.information?.category?.meta?.filename || null,
+          volume: data.volume || 0,
+        };
+
+        if (this._previousState &&
+            (this._previousState.state !== currentState.state ||
+             this._previousState.filename !== currentState.filename)) {
+          this.emit('state:changed', {
+            previous: this._previousState,
+            current: currentState,
+          });
+        }
+        this._previousState = currentState;
+
         return true;
       }
     } catch (error) {
@@ -395,7 +415,7 @@ class VlcService extends EventEmitter {
       if (!registry.isHealthy('vlc')) {
         this.scheduleReconnect();
       }
-    }, 10000); // Check every 10 seconds
+    }, 3000); // Check every 3 seconds
   }
 
   /**
@@ -481,6 +501,7 @@ class VlcService extends EventEmitter {
     registry.report('vlc', 'down', 'Reset');
     this.reconnectAttempts = 0;
     this.client = null;
+    this._previousState = null;
 
     // 4. Log completion
     logger.info('VLC service reset');

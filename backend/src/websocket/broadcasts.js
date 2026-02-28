@@ -58,7 +58,7 @@ function setupBroadcastListeners(io, services) {
 
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
     bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
-    spotifyService, displayControlService } = services;
+    spotifyService, vlcService, displayControlService } = services;
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
@@ -78,6 +78,23 @@ function setupBroadcastListeners(io, services) {
     // This handles devices that connected before session existed
     // AWAIT to ensure all devices are registered before continuing
     await initializeSessionDevices(io, session);
+
+    // Broadcast sync:full so all GMs get complete state (including device list)
+    // Without this, GMs that connected before session creation would not see
+    // themselves in the device list until the next manual sync:request
+    try {
+      const syncPayload = await buildSyncFullPayload({
+        sessionService, transactionService, videoQueueService,
+        bluetoothService, audioRoutingService, lightingService,
+        gameClockService, cueEngineService, spotifyService,
+      });
+      emitToRoom(io, 'gm', 'sync:full', syncPayload);
+      logger.info('Broadcasted sync:full after session creation', { sessionId: session.id });
+    } catch (err) {
+      logger.warn('Failed to broadcast sync:full after session creation', {
+        sessionId: session.id, error: err.message,
+      });
+    }
 
     logger.info('Broadcasted session:update (created)', { sessionId: session.id, status: session.status });
   });
@@ -615,6 +632,20 @@ function setupBroadcastListeners(io, services) {
     });
     addTrackedListener(soundService, 'sound:completed', () => {
       audioRoutingService.handleDuckingEvent('sound', 'completed');
+    });
+  }
+
+  // VLC external state change detection
+  if (vlcService) {
+    addTrackedListener(vlcService, 'state:changed', (data) => {
+      emitToRoom(io, 'gm', 'video:status', {
+        status: data.current.state,
+        currentItem: data.current.filename,
+        vlcDelta: true,
+      });
+      logger.debug('Broadcasted video:status (VLC state delta)', {
+        state: data.current.state, filename: data.current.filename,
+      });
     });
   }
 

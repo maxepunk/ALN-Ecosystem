@@ -304,4 +304,154 @@ describe('VLCService', () => {
       await expect(vlcService.getStatus()).rejects.toThrow('Timeout');
     });
   });
+
+  describe('state delta detection', () => {
+    // init() calls checkConnection() which sets _previousState from the init data.
+    // Tests must account for this baseline. We use a consistent init state.
+    const initData = { state: 'stopped', volume: 0 };
+
+    beforeEach(async () => {
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: initData,
+      });
+      await vlcService.init();
+      jest.clearAllMocks();
+      // After init: _previousState = { state: 'stopped', filename: null, volume: 0 }
+    });
+
+    it('should emit state:changed when playback state changes', async () => {
+      const handler = jest.fn();
+      vlcService.on('state:changed', handler);
+
+      // State changes from stopped (init baseline) to playing
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: {
+          state: 'playing',
+          volume: 128,
+          information: { category: { meta: { filename: 'video.mp4' } } }
+        }
+      });
+      await vlcService.checkConnection();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+        previous: expect.objectContaining({ state: 'stopped' }),
+        current: expect.objectContaining({ state: 'playing', filename: 'video.mp4' })
+      }));
+    });
+
+    it('should emit state:changed when current file changes', async () => {
+      // First: establish playing file A as baseline
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: {
+          state: 'playing',
+          volume: 128,
+          information: { category: { meta: { filename: 'video-a.mp4' } } }
+        }
+      });
+      await vlcService.checkConnection();
+
+      const handler = jest.fn();
+      vlcService.on('state:changed', handler);
+
+      // File changes to B
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: {
+          state: 'playing',
+          volume: 128,
+          information: { category: { meta: { filename: 'video-b.mp4' } } }
+        }
+      });
+      await vlcService.checkConnection();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+        previous: expect.objectContaining({ filename: 'video-a.mp4' }),
+        current: expect.objectContaining({ filename: 'video-b.mp4' })
+      }));
+    });
+
+    it('should NOT emit when state is unchanged (normal heartbeat)', async () => {
+      // First call: matches init baseline (stopped, no file) — no delta
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'stopped', volume: 0 },
+      });
+      await vlcService.checkConnection();
+
+      const handler = jest.fn();
+      vlcService.on('state:changed', handler);
+
+      // Second call: same state — no delta
+      await vlcService.checkConnection();
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('should use 3s health check interval', async () => {
+      jest.useFakeTimers();
+
+      // Reset and re-init to capture the interval
+      vlcService.reset();
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'stopped' }
+      });
+      // Re-create axios client since reset nulls it
+      axios.create.mockReturnValue(mockAxiosInstance);
+      await vlcService.init();
+      jest.clearAllMocks();
+
+      // Advance 3s — should trigger health check
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'stopped' }
+      });
+      await jest.advanceTimersByTimeAsync(3000);
+      expect(mockAxiosInstance.get).toHaveBeenCalled();
+
+      vlcService.reset();
+      jest.useRealTimers();
+    });
+
+    it('should clear _previousState on reset()', async () => {
+      // Reset clears _previousState
+      vlcService.reset();
+
+      const handler = jest.fn();
+
+      // Re-init — checkConnection() sets baseline but no previous to compare
+      axios.create.mockReturnValue(mockAxiosInstance);
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'playing', volume: 128 }
+      });
+      await vlcService.init();
+      vlcService.on('state:changed', handler);
+
+      // Same state again — should NOT emit (baseline set by init, no change)
+      mockAxiosInstance.get.mockResolvedValue({
+        status: 200,
+        data: { state: 'playing', volume: 128 }
+      });
+      await vlcService.checkConnection();
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('should not emit state:changed when checkConnection fails', async () => {
+      const handler = jest.fn();
+      vlcService.on('state:changed', handler);
+
+      // Connection fails — should not emit
+      mockAxiosInstance.get.mockRejectedValue(new Error('ECONNREFUSED'));
+      await vlcService.checkConnection();
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -9,6 +9,7 @@
 
 const EventEmitter = require('events');
 const axios = require('axios');
+const WebSocket = require('ws');
 const config = require('../config');
 const logger = require('../utils/logger');
 const dockerHelper = require('../utils/dockerHelper');
@@ -21,6 +22,13 @@ class LightingService extends EventEmitter {
     this._activeScene = null;
     this._reconnectInterval = null;
     this._containerStartedByUs = false;
+
+    // WebSocket real-time event monitor
+    this._ws = null;
+    this._wsReconnectTimer = null;
+    this._wsReconnectAttempts = 0;
+    this._wsMessageId = 0;
+    this._wsStopped = false;
   }
 
   // ── Connection management ──
@@ -65,6 +73,9 @@ class LightingService extends EventEmitter {
     if (!registry.isHealthy('lighting')) {
       this._startReconnect();
     }
+
+    // Start WebSocket connection for real-time event monitoring
+    this._connectWebSocket();
   }
 
   /**
@@ -112,6 +123,145 @@ class LightingService extends EventEmitter {
         this._startReconnect();
       }
     }
+  }
+
+  // ── WebSocket real-time event monitor ──
+
+  /**
+   * Connect to Home Assistant WebSocket API for real-time events.
+   * Non-blocking: logs warning on failure, never throws.
+   * @private
+   */
+  _connectWebSocket() {
+    if (!config.lighting.homeAssistantToken || this._wsStopped) {
+      return;
+    }
+
+    const wsUrl = config.lighting.homeAssistantUrl.replace(/^http/, 'ws') + '/api/websocket';
+
+    try {
+      this._ws = new WebSocket(wsUrl);
+    } catch (err) {
+      logger.warn('Failed to create HA WebSocket connection', { error: err.message });
+      return;
+    }
+
+    this._ws.on('message', (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        this._handleWsMessage(msg);
+      } catch (err) {
+        logger.debug('Failed to parse HA WebSocket message', { error: err.message });
+      }
+    });
+
+    this._ws.on('close', () => {
+      this._handleWsClose();
+    });
+
+    this._ws.on('error', (err) => {
+      logger.debug('HA WebSocket error', { error: err.message });
+    });
+  }
+
+  /**
+   * Handle incoming HA WebSocket message.
+   * @param {Object} msg - Parsed JSON message
+   * @private
+   */
+  _handleWsMessage(msg) {
+    switch (msg.type) {
+      case 'auth_required':
+        this._ws.send(JSON.stringify({
+          type: 'auth',
+          access_token: config.lighting.homeAssistantToken,
+        }));
+        break;
+
+      case 'auth_ok':
+        this._wsReconnectAttempts = 0;
+        this._wsMessageId++;
+        this._ws.send(JSON.stringify({
+          id: this._wsMessageId,
+          type: 'subscribe_events',
+          event_type: 'state_changed',
+        }));
+        registry.report('lighting', 'healthy', 'Connected via WebSocket');
+        logger.info('HA WebSocket authenticated and subscribed');
+        break;
+
+      case 'auth_invalid':
+        logger.error('HA WebSocket auth failed — invalid token');
+        if (this._ws) this._ws.close();
+        this._wsStopped = true; // Don't reconnect with bad token
+        break;
+
+      case 'event':
+        if (msg.event?.data) {
+          this._handleStateChanged(msg.event.data);
+        }
+        break;
+
+      case 'result':
+        // Subscription acknowledgement — no action needed
+        break;
+    }
+  }
+
+  /**
+   * Handle HA state_changed event data.
+   * @param {Object} eventData - { entity_id, new_state: { state, attributes } }
+   * @private
+   */
+  _handleStateChanged(eventData) {
+    const { entity_id, new_state } = eventData;
+
+    if (entity_id?.startsWith('scene.') && new_state?.state === 'scening') {
+      const sceneName = new_state.attributes?.friendly_name || entity_id;
+      this._activeScene = entity_id;
+      this.emit('scene:activated', { sceneId: entity_id, sceneName });
+      logger.info('Scene activated via HA WebSocket', { sceneId: entity_id, sceneName });
+    }
+  }
+
+  /**
+   * Handle WebSocket close — schedule reconnect with backoff.
+   * @private
+   */
+  _handleWsClose() {
+    this._ws = null;
+
+    if (this._wsStopped) return;
+
+    registry.report('lighting', 'down', 'WebSocket disconnected');
+
+    this._wsReconnectAttempts++;
+    const delay = Math.min(5000 * this._wsReconnectAttempts, 30000);
+
+    this._wsReconnectTimer = setTimeout(() => {
+      this._wsReconnectTimer = null;
+      if (!this._wsStopped) {
+        logger.info('Reconnecting HA WebSocket', { attempt: this._wsReconnectAttempts });
+        this._connectWebSocket();
+      }
+    }, delay);
+  }
+
+  /**
+   * Close WebSocket and prevent reconnection.
+   * @private
+   */
+  _closeWebSocket() {
+    this._wsStopped = true;
+    if (this._ws) {
+      this._ws.close();
+      this._ws = null;
+    }
+    if (this._wsReconnectTimer) {
+      clearTimeout(this._wsReconnectTimer);
+      this._wsReconnectTimer = null;
+    }
+    this._wsReconnectAttempts = 0;
   }
 
   // ── Scene management ──
@@ -242,6 +392,7 @@ class LightingService extends EventEmitter {
    */
   async cleanup() {
     this._clearReconnect();
+    this._closeWebSocket();
 
     if (this._containerStartedByUs) {
       const container = config.lighting.dockerContainer;
@@ -264,6 +415,8 @@ class LightingService extends EventEmitter {
    */
   reset() {
     this._clearReconnect();
+    this._closeWebSocket();
+    this._wsStopped = false; // Allow reconnect after reset (unlike cleanup)
     this.removeAllListeners();
     registry.report('lighting', 'down', 'Reset');
     this._scenes = [];

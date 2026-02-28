@@ -159,6 +159,7 @@ async function setupIntegrationTestServer() {
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
   const spotifyService = require('../../src/services/spotifyService');
+  const vlcService = require('../../src/services/vlcService');
 
   setupBroadcastListeners(io, {
     sessionService,
@@ -172,6 +173,8 @@ async function setupIntegrationTestServer() {
     gameClockService,
     cueEngineService,
     soundService,
+    spotifyService,
+    vlcService,
   });
 
   // Start server on random available port
