@@ -20,10 +20,22 @@ jest.mock('../../../src/utils/logger', () => ({
 const bluetoothService = require('../../../src/services/bluetoothService');
 const registry = require('../../../src/services/serviceHealthRegistry');
 
+/** Default mock spawn proc for device monitor (started by init when adapter available) */
+function createDefaultMockSpawnProc() {
+  const proc = new EventEmitter();
+  proc.stdout = new EventEmitter();
+  proc.stderr = new EventEmitter();
+  proc.kill = jest.fn();
+  proc.pid = 88888;
+  return proc;
+}
+
 describe('BluetoothService', () => {
   beforeEach(() => {
     bluetoothService.reset();
     jest.clearAllMocks();
+    // Default mock for spawn — init() starts device monitor when adapter is available
+    spawn.mockReturnValue(createDefaultMockSpawnProc());
   });
 
   // ── Parsing helpers (critical — exact output formats from Task 4) ──
@@ -1066,6 +1078,268 @@ describe('BluetoothService', () => {
       bluetoothService.reset();
 
       expect(registry.isHealthy('bluetooth')).toBe(false);
+    });
+  });
+
+  // ── D-Bus Device State Monitor ──
+
+  describe('D-Bus device monitor', () => {
+    function createMockSpawnProc() {
+      const proc = new EventEmitter();
+      proc.stdout = new EventEmitter();
+      proc.stderr = new EventEmitter();
+      proc.kill = jest.fn();
+      proc.pid = 99999;
+      return proc;
+    }
+
+    /** Feed a multi-line D-Bus signal for a BlueZ device property change */
+    function feedDevicePropertyChange(mockProc, mac, propName, propType, propValue) {
+      const devPath = mac.replace(/:/g, '_');
+      const lines = [
+        `signal time=1234567890.123 sender=:1.5 -> destination=(null destination) serial=42 path=/org/bluez/hci0/dev_${devPath}; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged`,
+        `   string "org.bluez.Device1"`,
+        `   array [`,
+        `      dict entry(`,
+        `         string "${propName}"`,
+        `         variant             ${propType} ${propValue}`,
+        `      )`,
+        `   ]`,
+        `   array [`,
+        `   ]`,
+        // Next signal boundary to flush the previous
+        `signal time=1234567891.000 sender=:1.5 -> destination=(null destination) serial=43 path=/other; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged`,
+      ];
+      for (const line of lines) {
+        mockProc.stdout.emit('data', Buffer.from(line + '\n'));
+      }
+    }
+
+    it('should start dbus-monitor with correct match rule', () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService.startDeviceMonitor();
+
+      expect(spawn).toHaveBeenCalledWith(
+        'dbus-monitor',
+        expect.arrayContaining(['--system', '--monitor']),
+        expect.any(Object)
+      );
+    });
+
+    it('should emit device:connected when Connected changes to true', (done) => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      // Pre-seed cache with device in disconnected state
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: false, paired: true, name: 'Test Speaker' }],
+      ]);
+
+      bluetoothService.on('device:connected', (data) => {
+        expect(data.device.address).toBe('AA:BB:CC:DD:EE:FF');
+        expect(data.device.name).toBe('Test Speaker');
+        jest.useRealTimers();
+        done();
+      });
+
+      bluetoothService.startDeviceMonitor();
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'true');
+
+      // Advance past debounce
+      jest.advanceTimersByTime(1000);
+    });
+
+    it('should emit device:disconnected when Connected changes to false', (done) => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Test Speaker' }],
+      ]);
+
+      bluetoothService.on('device:disconnected', (data) => {
+        expect(data.device.address).toBe('AA:BB:CC:DD:EE:FF');
+        jest.useRealTimers();
+        done();
+      });
+
+      bluetoothService.startDeviceMonitor();
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'false');
+
+      jest.advanceTimersByTime(1000);
+    });
+
+    it('should emit device:paired when Paired changes to true', (done) => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: false, paired: false, name: 'Test Speaker' }],
+      ]);
+
+      bluetoothService.on('device:paired', (data) => {
+        expect(data.device.address).toBe('AA:BB:CC:DD:EE:FF');
+        jest.useRealTimers();
+        done();
+      });
+
+      bluetoothService.startDeviceMonitor();
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Paired', 'boolean', 'true');
+
+      jest.advanceTimersByTime(1000);
+    });
+
+    it('should NOT emit when Connected unchanged', () => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      // Already connected — no delta
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Test Speaker' }],
+      ]);
+
+      const handler = jest.fn();
+      bluetoothService.on('device:connected', handler);
+      bluetoothService.on('device:disconnected', handler);
+
+      bluetoothService.startDeviceMonitor();
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'true');
+
+      jest.advanceTimersByTime(1000);
+      expect(handler).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('should ignore signals for non-Device1 interfaces', () => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      const handler = jest.fn();
+      bluetoothService.on('device:connected', handler);
+
+      bluetoothService.startDeviceMonitor();
+
+      // Adapter1 signal should be ignored
+      const lines = [
+        'signal time=1234567890.123 sender=:1.5 -> destination=(null destination) serial=42 path=/org/bluez/hci0; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged',
+        '   string "org.bluez.Adapter1"',
+        '   array [',
+        '      dict entry(',
+        '         string "Powered"',
+        '         variant             boolean true',
+        '      )',
+        '   ]',
+        '   array [',
+        '   ]',
+        'signal time=1234567891.000 sender=:1.5 -> destination=(null destination) serial=43 path=/other; interface=org.test; member=Foo',
+      ];
+      for (const line of lines) {
+        mockProc.stdout.emit('data', Buffer.from(line + '\n'));
+      }
+
+      jest.advanceTimersByTime(1000);
+      expect(handler).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('should extract MAC address from D-Bus path', () => {
+      const mac = bluetoothService._extractMacFromPath('/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF');
+      expect(mac).toBe('AA:BB:CC:DD:EE:FF');
+    });
+
+    it('should return null for path without MAC', () => {
+      const mac = bluetoothService._extractMacFromPath('/org/bluez/hci0');
+      expect(mac).toBeNull();
+    });
+
+    it('should stop monitor on stopDeviceMonitor()', () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService.startDeviceMonitor();
+      bluetoothService.stopDeviceMonitor();
+
+      expect(mockProc.kill).toHaveBeenCalled();
+    });
+
+    it('should stop monitor on cleanup()', () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService.startDeviceMonitor();
+      bluetoothService.cleanup();
+
+      expect(mockProc.kill).toHaveBeenCalled();
+    });
+
+    it('should stop monitor and clear cache on reset()', () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Test' }],
+      ]);
+
+      bluetoothService.startDeviceMonitor();
+      bluetoothService.reset();
+
+      expect(mockProc.kill).toHaveBeenCalled();
+      expect(bluetoothService._cachedDeviceStates.size).toBe(0);
+    });
+
+    it('should debounce rapid signals for same device', () => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: false, paired: true, name: 'Test Speaker' }],
+      ]);
+
+      const handler = jest.fn();
+      bluetoothService.on('device:connected', handler);
+
+      bluetoothService.startDeviceMonitor();
+
+      // Send same signal 3 times rapidly
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'true');
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'true');
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'true');
+
+      jest.advanceTimersByTime(1000);
+      // Should only fire once due to debouncing
+      expect(handler).toHaveBeenCalledTimes(1);
+      jest.useRealTimers();
+    });
+
+    it('should look up device name via _getDeviceName when not in cache', (done) => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      // Device NOT in cache — will need name lookup
+      bluetoothService._cachedDeviceStates = new Map();
+
+      // Mock _getDeviceName
+      jest.spyOn(bluetoothService, '_getDeviceName').mockResolvedValue('Looked Up Speaker');
+
+      bluetoothService.on('device:connected', (data) => {
+        expect(data.device.name).toBe('Looked Up Speaker');
+        jest.useRealTimers();
+        done();
+      });
+
+      bluetoothService.startDeviceMonitor();
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Connected', 'boolean', 'true');
+
+      jest.advanceTimersByTime(1000);
     });
   });
 });

@@ -14,6 +14,8 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const { execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
+const ProcessMonitor = require('../utils/processMonitor');
+const DbusSignalParser = require('../utils/dbusSignalParser');
 
 /** MAC address validation regex */
 const MAC_REGEX = /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/;
@@ -30,12 +32,24 @@ const DEVICE_LINE_REGEX = /^Device ([0-9A-Fa-f:]{17}) (.+)$/;
  *  that bluetoothctl embeds between brackets and text. */
 const SCAN_DEVICE_REGEX = /\[[\s\S]*?(?:NEW|CHG)[\s\S]*?\] Device ([0-9A-Fa-f:]{17}) (.+)/;
 
+/** Regex for extracting MAC from D-Bus BlueZ device path */
+const DBUS_MAC_REGEX = /dev_([0-9A-F]{2}_[0-9A-F]{2}_[0-9A-F]{2}_[0-9A-F]{2}_[0-9A-F]{2}_[0-9A-F]{2})/i;
+
+/** Debounce delay for D-Bus device property signals (ms) */
+const DEVICE_DEBOUNCE_MS = 500;
+
 class BluetoothService extends EventEmitter {
   constructor() {
     super();
     this._scanProc = null;
     this._pairProc = null;
     this._discoveredAddresses = new Set();
+
+    // D-Bus device state monitor
+    this._deviceMonitor = null;
+    this._deviceSignalParser = null;
+    this._cachedDeviceStates = new Map(); // address → { connected, paired, name }
+    this._deviceDebounceTimers = new Map(); // address → timeoutId
   }
 
   /**
@@ -46,6 +60,7 @@ class BluetoothService extends EventEmitter {
     const available = await this.checkHealth();
     if (available) {
       logger.info('Bluetooth service initialized — adapter available');
+      this.startDeviceMonitor();
     } else {
       logger.warn('Bluetooth service initialized — no adapter or adapter powered off');
     }
@@ -372,6 +387,7 @@ class BluetoothService extends EventEmitter {
    * Kill active scan process, prevent orphaned processes on shutdown
    */
   cleanup() {
+    this.stopDeviceMonitor();
     if (this._scanProc) {
       this._scanProc.kill();
       this._scanProc = null;
@@ -390,7 +406,130 @@ class BluetoothService extends EventEmitter {
     this.cleanup();
     this.removeAllListeners();
     this._discoveredAddresses = new Set();
+    this._cachedDeviceStates = new Map();
     registry.report('bluetooth', 'down', 'Reset');
+  }
+
+  // ── D-Bus Device State Monitor ──
+
+  /**
+   * Start monitoring BlueZ device property changes via dbus-monitor.
+   * Detects external connect/disconnect/pair events and emits domain events.
+   */
+  startDeviceMonitor() {
+    if (this._deviceMonitor) return;
+
+    const matchRule = "type='signal',sender='org.bluez',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
+
+    this._deviceMonitor = new ProcessMonitor({
+      command: 'dbus-monitor',
+      args: ['--system', '--monitor', matchRule],
+      label: 'bluez-dbus-monitor',
+    });
+
+    this._deviceSignalParser = new DbusSignalParser();
+
+    this._deviceMonitor.on('line', (line) => {
+      this._deviceSignalParser.feedLine(line);
+    });
+
+    this._deviceSignalParser.on('signal', (signal) => {
+      this._handleDeviceSignal(signal);
+    });
+
+    this._deviceMonitor.start();
+    logger.info('BlueZ D-Bus device monitor started');
+  }
+
+  /** Stop the D-Bus device monitor and flush pending signals. */
+  stopDeviceMonitor() {
+    if (this._deviceMonitor) {
+      this._deviceMonitor.stop();
+      this._deviceMonitor = null;
+    }
+    if (this._deviceSignalParser) {
+      this._deviceSignalParser.flush();
+      this._deviceSignalParser = null;
+    }
+    // Clear debounce timers
+    for (const timer of this._deviceDebounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this._deviceDebounceTimers.clear();
+  }
+
+  /**
+   * Handle a parsed D-Bus signal from the BlueZ monitor.
+   * Filters for org.bluez.Device1 PropertiesChanged, debounces, and emits events on delta.
+   * @private
+   */
+  _handleDeviceSignal(signal) {
+    if (signal.changedInterface !== 'org.bluez.Device1') return;
+
+    const address = this._extractMacFromPath(signal.path);
+    if (!address) return;
+
+    // Debounce per-device (BlueZ is chatty — RSSI, name, etc.)
+    if (this._deviceDebounceTimers.has(address)) {
+      clearTimeout(this._deviceDebounceTimers.get(address));
+    }
+
+    const properties = signal.properties || {};
+    this._deviceDebounceTimers.set(address, setTimeout(async () => {
+      this._deviceDebounceTimers.delete(address);
+      await this._processDevicePropertyChange(address, properties);
+    }, DEVICE_DEBOUNCE_MS));
+  }
+
+  /**
+   * Process debounced device property changes and emit events on delta.
+   * @private
+   */
+  async _processDevicePropertyChange(address, properties) {
+    const cached = this._cachedDeviceStates.get(address) || { connected: false, paired: false, name: null };
+
+    // Resolve device name if not cached
+    let name = cached.name;
+    if (!name) {
+      name = await this._getDeviceName(address);
+    }
+
+    let changed = false;
+
+    if ('Connected' in properties && properties.Connected !== cached.connected) {
+      cached.connected = properties.Connected;
+      changed = true;
+
+      const eventType = properties.Connected ? 'device:connected' : 'device:disconnected';
+      this.emit(eventType, { device: { address, name, connected: properties.Connected } });
+      logger.info(`BlueZ monitor: ${eventType}`, { address, name });
+    }
+
+    if ('Paired' in properties && properties.Paired !== cached.paired) {
+      cached.paired = properties.Paired;
+      changed = true;
+
+      if (properties.Paired) {
+        this.emit('device:paired', { device: { address, name, paired: true } });
+        logger.info('BlueZ monitor: device:paired', { address, name });
+      }
+    }
+
+    if (changed) {
+      cached.name = name;
+      this._cachedDeviceStates.set(address, cached);
+    }
+  }
+
+  /**
+   * Extract MAC address from D-Bus BlueZ device path.
+   * @param {string} path - D-Bus path (e.g., /org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF)
+   * @returns {string|null} MAC address (e.g., AA:BB:CC:DD:EE:FF) or null
+   */
+  _extractMacFromPath(path) {
+    const match = path.match(DBUS_MAC_REGEX);
+    if (!match) return null;
+    return match[1].replace(/_/g, ':');
   }
 
   // ── Private helpers ──
