@@ -115,6 +115,7 @@ async function setupIntegrationTestServer() {
           lightingService,
           gameClockService,
           cueEngineService,
+          spotifyService,
           deviceFilter: { connectedOnly: true },
         });
         emitWrapped(socket, 'sync:full', syncPayload);
@@ -157,6 +158,7 @@ async function setupIntegrationTestServer() {
   const gameClockService = require('../../src/services/gameClockService');
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
+  const spotifyService = require('../../src/services/spotifyService');
 
   setupBroadcastListeners(io, {
     sessionService,
