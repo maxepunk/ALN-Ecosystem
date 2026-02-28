@@ -326,26 +326,6 @@ class VlcService extends EventEmitter {
   }
 
   /**
-   * Add video to playlist
-   * @param {string} videoPath - Path to video file
-   * @returns {Promise<void>}
-   */
-  async addToPlaylist(videoPath) {
-    if (!registry.isHealthy('vlc')) {
-      throw new Error('VLC not connected');
-    }
-
-    await this.client.get('/requests/status.json', {
-      params: {
-        command: 'in_enqueue',
-        input: encodeURIComponent(videoPath),
-      },
-    });
-
-    logger.info('Video added to playlist', { videoPath });
-  }
-
-  /**
    * Seek to position
    * @param {number} position - Position in seconds
    * @returns {Promise<void>}
@@ -488,10 +468,7 @@ class VlcService extends EventEmitter {
    */
   reset() {
     // 1. Clear timers/intervals FIRST
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-      this.healthCheckInterval = null;
-    }
+    this.stopHealthCheck();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -513,5 +490,5 @@ class VlcService extends EventEmitter {
 // Export singleton instance
 module.exports = new VlcService();
 
-// Export resetForTests method
-module.exports.resetForTests = () => module.exports.reset();
+// Alias for test compatibility
+module.exports.resetForTests = module.exports.reset;

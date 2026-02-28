@@ -175,60 +175,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
-  describe('State Events - Unwrapped → Wrapped Conversion', () => {
-    it('should wrap state:sync event using emitWrapped helper', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService
-      });
-
-      const mockState = { session: {}, scores: [] };
-      mockStateService.emit('state:sync', mockState);
-
-      // Assert: io.emit called with wrapped structure
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'state:sync',
-        expect.objectContaining({
-          event: 'state:sync',
-          data: mockState,
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-
-    it('should use emitToRoom for state:updated (GM stations only)', () => {
-      // Mock GM stations room
-      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket-1', 'socket-2']));
-
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService
-      });
-
-      const delta = { scores: { '001': 100 } };
-      mockStateService.emit('state:updated', delta);
-
-      // Assert: io.to called with gm room
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-
-      // Assert: emit called with wrapped structure
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'state:update',
-        expect.objectContaining({
-          event: 'state:update',
-          data: delta,
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-  });
-
   describe('Video Events - Manual Wrapping → Helper Usage', () => {
     it('should use emitToRoom for video:loading (GM stations only)', () => {
       setupBroadcastListeners(mockIo, {
@@ -589,7 +535,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       // Trigger various events
       mockSessionService.emit('session:created', { id: 'test', name: 'Test' });
-      mockStateService.emit('state:sync', { test: 'data' });
+      mockStateService.emit('sync:full', { session: {}, state: {}, queue: [] });
 
       // All emit calls should have wrapped structure
       mockIo.emit.mock.calls.forEach(call => {

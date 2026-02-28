@@ -123,19 +123,15 @@ describe('VideoQueueService - Queue Management', () => {
       videoQueueService.removeListener('video:idle', handler);
     });
 
-    it('should clear all four timer types on reset', () => {
-      // Set all timer types
+    it('should clear all timer types on reset', () => {
+      // Set both timer types
       videoQueueService.playbackTimer = setTimeout(() => {}, 10000);
       videoQueueService.progressTimer = setInterval(() => {}, 1000);
-      videoQueueService.fallbackTimer = setTimeout(() => {}, 5000);
-      videoQueueService.monitoringDelayTimer = setTimeout(() => {}, 3000);
 
       videoQueueService.reset();
 
       expect(videoQueueService.playbackTimer).toBeNull();
       expect(videoQueueService.progressTimer).toBeNull();
-      expect(videoQueueService.fallbackTimer).toBeNull();
-      expect(videoQueueService.monitoringDelayTimer).toBeNull();
     });
   });
 

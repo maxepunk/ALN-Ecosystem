@@ -22,7 +22,6 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('..
 const { logTestFileEntry, logTestFileExit, getServiceListenerCounts } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 
 describe('System Reset Regression Tests', () => {
   let testContext;
@@ -68,8 +67,7 @@ describe('System Reset Regression Tests', () => {
         const beforeReset = {
           session: sessionService.listenerCount('session:created') +
                    sessionService.listenerCount('session:updated'),
-          transaction: transactionService.listenerCount('transaction:accepted'),
-          state: stateService.listenerCount('state:updated')
+          transaction: transactionService.listenerCount('transaction:accepted')
         };
 
         // Send system:reset command
@@ -95,8 +93,7 @@ describe('System Reset Regression Tests', () => {
         const afterReset = {
           session: sessionService.listenerCount('session:created') +
                    sessionService.listenerCount('session:updated'),
-          transaction: transactionService.listenerCount('transaction:accepted'),
-          state: stateService.listenerCount('state:updated')
+          transaction: transactionService.listenerCount('transaction:accepted')
         };
 
         listenerHistory.push({ reset: i, beforeReset, afterReset });
@@ -117,7 +114,6 @@ describe('System Reset Regression Tests', () => {
       // This verifies infrastructure is properly re-initialized
       expect(listenerHistory[2].afterReset.session).toBeGreaterThan(0);
       expect(listenerHistory[2].afterReset.transaction).toBeGreaterThan(0);
-      expect(listenerHistory[2].afterReset.state).toBeGreaterThan(0);
     });
 
     it('should not cause duplicate broadcasts after multiple resets', async () => {

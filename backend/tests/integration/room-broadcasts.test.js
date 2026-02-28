@@ -26,7 +26,7 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
 
   beforeEach(async () => {
     // CRITICAL: Use resetAllServicesForTesting to properly cleanup and re-register broadcast listeners
-    // Room broadcast tests depend on state:update events which are emitted by broadcast listeners
+    // Room broadcast tests depend on session:update events which are emitted by broadcast listeners
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       stateService,
@@ -51,28 +51,28 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       gm2 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_002');
       gm3 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_003');
 
-      // Listen for state updates on all GMs
-      const statePromise1 = waitForEvent(gm1, 'state:update');
-      const statePromise2 = waitForEvent(gm2, 'state:update');
-      const statePromise3 = waitForEvent(gm3, 'state:update');
+      // Listen for session updates on all GMs (broadcast globally via emitWrapped)
+      const sessionPromise1 = waitForEvent(gm1, 'session:update');
+      const sessionPromise2 = waitForEvent(gm2, 'session:update');
+      const sessionPromise3 = waitForEvent(gm3, 'session:update');
 
-      // Trigger state update (should broadcast to 'gm' room)
+      // Trigger session update (should broadcast to all connected clients)
       await sessionService.createSession({
         name: 'Broadcast Test',
         teams: ['Team Alpha']
       });
-    await sessionService.startGame();
+      await sessionService.startGame();
 
       // All GMs should receive the event
-      const [state1, state2, state3] = await Promise.all([
-        statePromise1,
-        statePromise2,
-        statePromise3
+      const [session1, session2, session3] = await Promise.all([
+        sessionPromise1,
+        sessionPromise2,
+        sessionPromise3
       ]);
 
-      expect(state1).toBeDefined();
-      expect(state2).toBeDefined();
-      expect(state3).toBeDefined();
+      expect(session1).toBeDefined();
+      expect(session2).toBeDefined();
+      expect(session3).toBeDefined();
     });
 
     it('should NOT broadcast to player scanners in gm room', async () => {
@@ -82,20 +82,19 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
       const player = await connectAndIdentify(testContext.socketUrl, 'player', 'PLAYER_001');
 
-      // Listen for events
-      const gmEventPromise = waitForEvent(gm1, 'state:update', 2000);
+      // Directly emit to gm room to test room isolation
+      const { emitToRoom } = require('../../src/websocket/eventWrapper');
+
+      // Listen for GM-room-only event
+      const gmEventPromise = waitForEvent(gm1, 'test:gm-only', 2000);
 
       let playerReceivedEvent = false;
-      player.on('state:update', () => {
+      player.on('test:gm-only', () => {
         playerReceivedEvent = true;
       });
 
-      // Trigger GM-only broadcast
-      await sessionService.createSession({
-        name: 'GM Only Test',
-        teams: ['Team Alpha']
-      });
-    await sessionService.startGame();
+      // Emit directly to gm room
+      emitToRoom(testContext.io, 'gm', 'test:gm-only', { test: true });
 
       // GM should receive
       await gmEventPromise;

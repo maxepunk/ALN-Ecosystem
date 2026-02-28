@@ -190,31 +190,6 @@ function setupBroadcastListeners(io, services) {
     }
   });
 
-  // State events (contract-compliant)
-
-  addTrackedListener(stateService, 'state:updated', (delta) => {
-    logger.debug('Received state:updated event for broadcast', {
-      deltaKeys: Object.keys(delta),
-      deltaPreview: JSON.stringify(delta).substring(0, 200)
-    });
-
-    // CRITICAL: Only broadcast to GM stations, not all clients
-    const gmRoom = io.sockets.adapter.rooms.get('gm');
-    const gmCount = gmRoom ? gmRoom.size : 0;
-
-    emitToRoom(io, 'gm', 'state:update', delta);
-
-    logger.debug('Broadcasted state:update to GM stations', {
-      deltaKeys: Object.keys(delta),
-      gmStationCount: gmCount
-    });
-  });
-
-  addTrackedListener(stateService, 'state:sync', (state) => {
-    emitWrapped(io, 'state:sync', state);
-    logger.info('Broadcasted state:sync');
-  });
-
   // Full sync event (contract compliant)
   addTrackedListener(stateService, 'sync:full', (fullState) => {
     emitWrapped(io, 'sync:full', fullState);
@@ -301,9 +276,6 @@ function setupBroadcastListeners(io, services) {
       emitToRoom(io, 'gm', 'group:completed', payload);
       logger.info('Broadcasted group:completed to GM stations', data);
     });
-
-    // Note: team:created listener removed - teams now created via sessionService.addTeamToSession()
-    // which emits session:updated (already handled above)
 
     // Transaction service - scores reset (bulk operation)
     addTrackedListener(transactionService, 'scores:reset', async (data) => {

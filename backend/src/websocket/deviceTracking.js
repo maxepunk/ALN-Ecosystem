@@ -5,16 +5,6 @@
 
 const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
-const transactionService = require('../services/transactionService');
-const videoQueueService = require('../services/videoQueueService');
-const bluetoothService = require('../services/bluetoothService');
-const audioRoutingService = require('../services/audioRoutingService');
-const lightingService = require('../services/lightingService');
-const gameClockService = require('../services/gameClockService');
-const cueEngineService = require('../services/cueEngineService');
-const spotifyService = require('../services/spotifyService');
-const { emitWrapped } = require('./eventWrapper');
-const { buildSyncFullPayload } = require('./syncHelpers');
 const { disconnectDevice } = require('./deviceHelpers');
 
 /**
@@ -53,47 +43,6 @@ async function handleDisconnect(socket, io) {
   }
 }
 
-/**
- * Handle sync request from client
- * @param {Socket} socket - Socket.io socket instance
- */
-async function handleSyncRequest(socket) {
-  try {
-    if (!socket.deviceId) {
-      emitWrapped(socket, 'error', {
-        code: 'AUTH_REQUIRED',
-        message: 'Not identified'
-      });
-      return;
-    }
-
-    const syncPayload = await buildSyncFullPayload({
-      sessionService,
-      transactionService,
-      videoQueueService,
-      bluetoothService,
-      audioRoutingService,
-      lightingService,
-      gameClockService,
-      cueEngineService,
-      spotifyService,
-      deviceFilter: { connectedOnly: true },
-    });
-
-    emitWrapped(socket, 'sync:full', syncPayload);
-
-    logger.info('Sent full sync to device', { deviceId: socket.deviceId });
-  } catch (error) {
-    logger.error('Sync request error', { error, socketId: socket.id });
-    emitWrapped(socket, 'error', {
-      code: 'SERVER_ERROR',
-      message: 'Failed to sync state',
-      details: error.message,
-    });
-  }
-}
-
 module.exports = {
   handleDisconnect,
-  handleSyncRequest,
 };

@@ -37,10 +37,6 @@ describe('StateService - Aggregator Pattern', () => {
         teams: ['Team Alpha']
       });
 
-      // Sync stateService from session (creates state)
-      const session = sessionService.getCurrentSession();
-      await stateService.syncFromSession(session);
-
       // Verify initial state has offline status
       const initialState = stateService.getCurrentState();
       expect(initialState).toBeDefined();
@@ -60,24 +56,14 @@ describe('StateService - Aggregator Pattern', () => {
 
     it('should have event listeners registered for aggregation', () => {
       // Verify: stateService has listeners registered (aggregator pattern)
-      // This proves it's set up to aggregate from other services via events
-
-      // Check that stateService is listening to events from other services
-      const listenerCount = stateService.listenerCount('state:updated');
-
-      // stateService extends EventEmitter and should be set up
       expect(typeof stateService.on).toBe('function');
       expect(typeof stateService.emit).toBe('function');
 
       // The fact that init() completed without errors proves listeners are set up
-      // (setupTransactionListeners was called successfully)
       expect(stateService.listenersInitialized).toBe(true);
     });
 
     it('should initialize with top-level imports (no lazy requires)', () => {
-      // This test verifies that stateService can be required without triggering lazy requires
-      // If this test passes, it means all service imports are at top-level
-
       // The fact that we can require stateService in beforeEach without errors
       // and that init() completes successfully proves no lazy require issues
       expect(stateService).toBeDefined();

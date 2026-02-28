@@ -17,7 +17,9 @@ const TestTokens = require('../fixtures/test-tokens');
 // Import WebSocket setup
 const { handleGmIdentify } = require('../../src/websocket/gmAuth');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
-const { handleDisconnect, handleSyncRequest } = require('../../src/websocket/deviceTracking');
+const { handleDisconnect } = require('../../src/websocket/deviceTracking');
+const { emitWrapped } = require('../../src/websocket/eventWrapper');
+const { buildSyncFullPayload } = require('../../src/websocket/syncHelpers');
 const { handleGmCommand, handleTransactionSubmit } = require('../../src/websocket/adminEvents');
 
 /**
@@ -101,9 +103,25 @@ async function setupIntegrationTestServer() {
     // the server finishes the async callback and registers handlers. Messages arrive with no
     // handler → silently dropped → test timeouts.
 
-    // Sync request
+    // Sync request (inline handler matching production server.js pattern)
     socket.on('sync:request', async () => {
-      await handleSyncRequest(socket, io);
+      try {
+        const syncPayload = await buildSyncFullPayload({
+          sessionService,
+          transactionService,
+          videoQueueService,
+          bluetoothService,
+          audioRoutingService,
+          lightingService,
+          gameClockService,
+          cueEngineService,
+          deviceFilter: { connectedOnly: true },
+        });
+        emitWrapped(socket, 'sync:full', syncPayload);
+        logger.debug('Sent sync:full in response to sync:request', { deviceId: socket.deviceId });
+      } catch (error) {
+        logger.error('sync:request handler error', { error: error.message, deviceId: socket.deviceId });
+      }
     });
 
     // Transaction submit

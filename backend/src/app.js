@@ -9,7 +9,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const logger = require('./utils/logger');
-const { ValidationError } = require('./utils/validators');
 
 // Import services
 const persistenceService = require('./services/persistenceService');

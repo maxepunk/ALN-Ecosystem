@@ -76,10 +76,6 @@ describe('Video Events - Contract Validation', () => {
       clearInterval(videoQueueService.progressTimer);
       videoQueueService.progressTimer = null;
     }
-    if (videoQueueService.fallbackTimer) {
-      clearTimeout(videoQueueService.fallbackTimer);
-      videoQueueService.fallbackTimer = null;
-    }
   });
 
   describe('video:status event - all status types', () => {
