@@ -138,7 +138,7 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 **Key Services & Events:**
 - `sessionService`: `session:created`, `session:updated`, `transaction:added`, `player-scan:added`, `device:updated/removed`
 - `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`
-- `stateService`: `state:updated`, `state:sync`, `sync:full`
+- `stateService`: `sync:full` (NOTE: `state:updated` and `state:sync` were removed as dead code — no consumers)
 - `videoQueueService`: `video:*`, `queue:*`
 - `serviceHealthRegistry`: `health:changed` (all service health consolidated here — no per-service connection events)
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
@@ -146,8 +146,9 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `lightingService`: `scene:activated`, `scenes:refreshed`
 - `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:tick`, `gameclock:overtime`
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
-- `spotifyService`: `playback:changed`, `volume:changed`, `playlist:changed`
+- `spotifyService`: `playback:changed`, `volume:changed`, `playlist:changed`, `track:changed`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
+- `vlcService`: `state:changed` (emitted by health poll when playback state or filename changes)
 
 **DEPRECATED Internal Event:**
 - `score:updated` - The internal `transaction:accepted` event now includes `teamScore`. The WebSocket broadcast `transaction:new` also carries the score. Note: `score:updated` is still broadcast via WebSocket by `broadcasts.js` for score adjustments and group bonuses.
@@ -334,6 +335,26 @@ HA_DOCKER_MANAGE=true              # Auto-start/stop HA container
 
 **`sync:full` includes environment state** — on GM connect, `buildEnvironmentState()` snapshots bluetooth/audio/lighting into the sync payload. Gracefully degrades to defaults when services are unavailable.
 
+### External State Monitoring
+
+Services that wrap external systems use persistent monitors to detect state changes the backend didn't initiate:
+
+| Service | Monitor | What It Detects |
+|---------|---------|-----------------|
+| `audioRoutingService` | `ProcessMonitor` + `pactl subscribe` | PipeWire sink add/remove |
+| `bluetoothService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --system` | Device connect/disconnect/pair |
+| `spotifyService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --session` | Playback/track/volume changes |
+| `vlcService` | Extended health poll (3s interval) | Playback state/filename delta |
+| `lightingService` | WebSocket client (`ws://host:8123/api/websocket`) | HA scene activations |
+
+**Reusable Utilities:**
+- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention)
+- `src/utils/dbusSignalParser.js` — Parses `dbus-monitor --monitor` multi-line output into structured signal objects with PropertiesChanged property extraction
+
+**Key Pattern:** Monitors emit domain events on service singletons (e.g., `device:connected`, `playback:changed`, `state:changed`). These events are already wired in `broadcasts.js` → WebSocket delivery. No new broadcast wiring needed for monitors.
+
+**Key Files:** `src/utils/processMonitor.js`, `src/utils/dbusSignalParser.js`, `tests/integration/external-state-propagation.test.js`
+
 ### Cue Engine Architecture (Phase 1)
 
 Automated show control: standing cues fire on game events, manual cues fired via GM Scanner.
@@ -407,7 +428,7 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 - `serviceHealth`: `{vlc: {status, message}, spotify: {...}, ...}` via `serviceHealthRegistry.getSnapshot()`
 - `heldItems`: `[{id, type, cueId?, reason, ...}]` via `buildHeldItemsState()`
 
-**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`). Missing a service = silent state desync. Bug has recurred in `scores:reset` and `offline:queue:processed` handlers — audit ALL emission points when adding new services.
+**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`). Missing a service = silent state desync. Bug has recurred in `scores:reset`, `offline:queue:processed`, and `integration-test-server.js` — audit ALL emission points (including test helpers) when adding new services.
 
 **CRITICAL Gotchas:**
 - `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.
