@@ -139,7 +139,12 @@ describe('SpotifyService', () => {
     it('should clamp negative volume to 0', async () => {
       mockExecFileSuccess('');
       await spotifyService.setVolume(-50);
-      expect(spotifyService.volume).toBe(0);
+      // Volume clamped to 0 and sent as D-Bus double 0.0
+      // State NOT updated eagerly — D-Bus monitor is sole authority
+      expect(execFile).toHaveBeenCalledWith(
+        'dbus-send', expect.arrayContaining(['variant:double:0']),
+        expect.any(Object), expect.any(Function)
+      );
     });
   });
 
@@ -627,14 +632,15 @@ describe('SpotifyService', () => {
   describe('pause cascade', () => {
     it('should track pausedByGameClock flag', async () => {
       mockExecFileSuccess('');
-      await spotifyService.play(); // Set state to 'playing' first
+      // Simulate monitor having set state to 'playing'
+      spotifyService.state = 'playing';
       await spotifyService.pauseForGameClock();
       expect(spotifyService.isPausedByGameClock()).toBe(true);
     });
 
     it('should resume only if paused by game clock', async () => {
       mockExecFileSuccess('');
-      await spotifyService.play(); // Set state to 'playing' first
+      spotifyService.state = 'playing';
       await spotifyService.pauseForGameClock();
       await spotifyService.resumeFromGameClock();
       expect(spotifyService.isPausedByGameClock()).toBe(false);
@@ -642,51 +648,30 @@ describe('SpotifyService', () => {
 
     it('should NOT resume if GM manually paused', async () => {
       mockExecFileSuccess('');
-      await spotifyService.pause(); // GM manual pause
-      // Game clock resume should not unpause
+      await spotifyService.pause(); // GM manual pause (no flag set)
       expect(spotifyService.isPausedByGameClock()).toBe(false);
     });
   });
 
   describe('events', () => {
-    it('should emit playback:changed on play', async () => {
+    it('should NOT emit playback:changed from commands (monitor is sole authority)', async () => {
       const handler = jest.fn();
       spotifyService.on('playback:changed', handler);
       mockExecFileSuccess('');
       await spotifyService.play();
-      expect(handler).toHaveBeenCalledWith({ state: 'playing' });
-    });
-
-    it('should emit playback:changed on next', async () => {
-      const handler = jest.fn();
-      spotifyService.on('playback:changed', handler);
-      mockExecFileSuccess('');
-      await spotifyService.next();
-      expect(handler).toHaveBeenCalledWith({ state: 'playing' });
-    });
-
-    it('should emit playback:changed on previous', async () => {
-      const handler = jest.fn();
-      spotifyService.on('playback:changed', handler);
-      mockExecFileSuccess('');
-      await spotifyService.previous();
-      expect(handler).toHaveBeenCalledWith({ state: 'playing' });
-    });
-
-    it('should emit playback:changed on pause', async () => {
-      const handler = jest.fn();
-      spotifyService.on('playback:changed', handler);
-      mockExecFileSuccess('');
       await spotifyService.pause();
-      expect(handler).toHaveBeenCalledWith({ state: 'paused' });
+      await spotifyService.stop();
+      await spotifyService.next();
+      await spotifyService.previous();
+      expect(handler).not.toHaveBeenCalled();
     });
 
-    it('should emit playback:changed on stop', async () => {
+    it('should NOT emit volume:changed from setVolume (monitor is sole authority)', async () => {
       const handler = jest.fn();
-      spotifyService.on('playback:changed', handler);
+      spotifyService.on('volume:changed', handler);
       mockExecFileSuccess('');
-      await spotifyService.stop();
-      expect(handler).toHaveBeenCalledWith({ state: 'stopped' });
+      await spotifyService.setVolume(50);
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 
@@ -774,52 +759,32 @@ describe('SpotifyService', () => {
     });
   });
 
-  describe('track:changed after transport', () => {
-    it('should emit playback:changed AFTER metadata refresh on next()', async () => {
+  describe('command-monitor separation', () => {
+    it('should NOT call _refreshMetadata from transport commands', async () => {
       mockExecFileSuccess('');
-      // _refreshMetadata updates track — simulate it
-      jest.spyOn(spotifyService, '_refreshMetadata').mockImplementation(async () => {
-        spotifyService.track = { title: 'New Song', artist: 'New Artist' };
-        return true;
-      });
-
-      let trackAtEmitTime = null;
-      spotifyService.on('playback:changed', () => {
-        trackAtEmitTime = spotifyService.track;
-      });
-
-      await spotifyService.next();
-
-      // Track should be the NEW track at emission time, not null/old
-      expect(trackAtEmitTime).toEqual({ title: 'New Song', artist: 'New Artist' });
-    });
-
-    it('should await metadata refresh after next()', async () => {
-      mockExecFileSuccess('');
-      const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
-      await spotifyService.next();
-      // Metadata should be called synchronously (awaited), not deferred
-      expect(spy).toHaveBeenCalled();
-    });
-
-    it('should await metadata refresh after play()', async () => {
-      mockExecFileSuccess('');
-      const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
+      const spy = jest.spyOn(spotifyService, '_refreshMetadata');
       await spotifyService.play();
-      expect(spy).toHaveBeenCalled();
-    });
-
-    it('should NOT refresh metadata after pause()', async () => {
-      mockExecFileSuccess('');
-      const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
+      await spotifyService.next();
+      await spotifyService.previous();
       await spotifyService.pause();
+      // D-Bus monitor handles metadata detection — commands just send D-Bus calls
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('should propagate metadata refresh failure to caller', async () => {
+    it('should NOT update this.state from transport commands', async () => {
       mockExecFileSuccess('');
-      jest.spyOn(spotifyService, '_refreshMetadata').mockRejectedValue(new Error('fail'));
-      await expect(spotifyService.next()).rejects.toThrow('fail');
+      spotifyService.state = 'stopped';
+      await spotifyService.play();
+      // State unchanged — monitor is sole authority
+      expect(spotifyService.state).toBe('stopped');
+    });
+
+    it('should NOT update this.volume from setVolume', async () => {
+      mockExecFileSuccess('');
+      spotifyService.volume = 100;
+      await spotifyService.setVolume(50);
+      // Volume unchanged — monitor is sole authority
+      expect(spotifyService.volume).toBe(100);
     });
   });
 
@@ -1175,6 +1140,36 @@ describe('SpotifyService', () => {
       feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
 
       jest.advanceTimersByTime(500);
+    });
+
+    it('should merge properties from rapid signals during debounce window', (done) => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.state = 'paused';
+      spotifyService.volume = 100;
+
+      // Expect BOTH playback and volume changes to be detected from merged signals
+      const playbackHandler = jest.fn();
+      const volumeHandler = jest.fn();
+      spotifyService.on('playback:changed', playbackHandler);
+      spotifyService.on('volume:changed', volumeHandler);
+
+      spotifyService.startPlaybackMonitor();
+
+      // D-Bus sends PlaybackStatus and Volume as separate rapid signals
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+      feedMprisPropertyChange(mockProc, 'Volume', 'double', '0.75');
+
+      jest.advanceTimersByTime(500);
+
+      // Both properties should have been merged and processed
+      expect(playbackHandler).toHaveBeenCalledWith({ state: 'playing' });
+      expect(volumeHandler).toHaveBeenCalledWith({ volume: 75 });
+      jest.useRealTimers();
+      done();
     });
   });
 });

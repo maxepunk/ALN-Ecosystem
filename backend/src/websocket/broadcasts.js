@@ -775,7 +775,7 @@ function setupBroadcastListeners(io, services) {
 
   // Spotify broadcasts
   if (spotifyService) {
-    const SPOTIFY_EVENTS = ['playback:changed', 'volume:changed', 'playlist:changed', 'track:changed'];
+    const SPOTIFY_EVENTS = ['playback:changed', 'volume:changed', 'track:changed'];
     for (const event of SPOTIFY_EVENTS) {
       addTrackedListener(spotifyService, event, () => {
         emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());

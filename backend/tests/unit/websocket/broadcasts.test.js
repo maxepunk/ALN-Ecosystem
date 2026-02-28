@@ -999,21 +999,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       });
     });
 
-    it('should broadcast spotify:status on playlist:changed', () => {
-      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
-
-      mockSpotifyService.emit('playlist:changed', { uri: 'spotify:playlist:act2' });
-
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'spotify:status',
-        expect.objectContaining({
-          event: 'spotify:status',
-          data: expect.objectContaining({ connected: true, state: 'playing' })
-        })
-      );
-    });
-
     it('should broadcast spotify:status on track:changed', () => {
       mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
 

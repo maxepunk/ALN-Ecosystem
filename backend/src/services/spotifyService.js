@@ -50,6 +50,7 @@ class SpotifyService extends EventEmitter {
     this._playbackMonitor = null;
     this._mprisSignalParser = null;
     this._signalDebounceTimer = null;
+    this._pendingSignal = null;
   }
 
   /**
@@ -279,35 +280,29 @@ class SpotifyService extends EventEmitter {
    * @param {boolean} [opts.clearPausedFlag=false] - Reset _pausedByGameClock
    * @param {boolean} [opts.refreshMetadata=false] - Refresh track metadata after transport
    */
-  async _transport(method, newState, { clearPausedFlag = false, refreshMetadata = false } = {}) {
+  async _transport(method, { clearPausedFlag = false } = {}) {
     await this._ensureConnection();
     await this._dbusCall(`${PLAYER_IFACE}.${method}`);
-    this.state = newState;
+    // Internal flags only — D-Bus monitor is sole authority for state/events
     if (clearPausedFlag) this._pausedByGameClock = false;
-    if (refreshMetadata) {
-      await this._refreshMetadata();
-    }
-    this.emit('playback:changed', { state: newState });
   }
 
-  async play() { await this._transport('Play', 'playing', { clearPausedFlag: true, refreshMetadata: true }); }
-  async pause() { await this._transport('Pause', 'paused'); }
-  async stop() { await this._transport('Stop', 'stopped', { clearPausedFlag: true }); }
-  async next() { await this._transport('Next', 'playing', { refreshMetadata: true }); }
-  async previous() { await this._transport('Previous', 'playing', { refreshMetadata: true }); }
+  async play() { await this._transport('Play', { clearPausedFlag: true }); }
+  async pause() { await this._transport('Pause'); }
+  async stop() { await this._transport('Stop', { clearPausedFlag: true }); }
+  async next() { await this._transport('Next'); }
+  async previous() { await this._transport('Previous'); }
 
   async setPlaylist(uri) {
     await this._dbusCall(`${PLAYER_IFACE}.OpenUri`, [`string:${uri}`]);
-    this.emit('playlist:changed', { uri });
-    await this._refreshMetadata();
+    // D-Bus monitor will detect the resulting track/playback changes
   }
 
   async setVolume(vol) {
     const clamped = Math.max(0, Math.min(100, vol));
     const normalized = clamped / 100;
     await this._dbusSetProperty(PLAYER_IFACE, 'Volume', 'double', normalized);
-    this.volume = clamped;
-    this.emit('volume:changed', { volume: clamped });
+    // D-Bus monitor will detect the volume change and emit
   }
 
   async pauseForGameClock() {
@@ -436,11 +431,12 @@ class SpotifyService extends EventEmitter {
 
   /** Stop the MPRIS D-Bus playback monitor. Pending incomplete signals are discarded. */
   stopPlaybackMonitor() {
-    // Clear debounce timer first to prevent flush-triggered timers outliving cleanup
+    // Clear debounce state first to prevent timers outliving cleanup
     if (this._signalDebounceTimer) {
       clearTimeout(this._signalDebounceTimer);
       this._signalDebounceTimer = null;
     }
+    this._pendingSignal = null;
 
     if (this._playbackMonitor) {
       this._playbackMonitor.stop();
@@ -452,11 +448,25 @@ class SpotifyService extends EventEmitter {
   }
 
   /**
-   * Handle a parsed MPRIS D-Bus signal. Debounces rapid signals during track transitions.
+   * Handle a parsed MPRIS D-Bus signal. Debounces rapid signals during track
+   * transitions by MERGING properties (not replacing). During a track change,
+   * D-Bus sends PlaybackStatus and Metadata in separate signals — both must
+   * be captured.
    * @private
    */
   _handleMprisSignal(signal) {
     if (signal.changedInterface !== 'org.mpris.MediaPlayer2.Player') return;
+
+    // Accumulate properties across rapid signals during debounce window
+    if (!this._pendingSignal) {
+      this._pendingSignal = { properties: {}, raw: '' };
+    }
+    if (signal.properties) {
+      Object.assign(this._pendingSignal.properties, signal.properties);
+    }
+    if (signal.raw) {
+      this._pendingSignal.raw += (this._pendingSignal.raw ? '\n' : '') + signal.raw;
+    }
 
     if (this._signalDebounceTimer) {
       clearTimeout(this._signalDebounceTimer);
@@ -464,15 +474,18 @@ class SpotifyService extends EventEmitter {
 
     this._signalDebounceTimer = setTimeout(() => {
       this._signalDebounceTimer = null;
-      this._processExternalStateChange(signal);
+      const merged = this._pendingSignal;
+      this._pendingSignal = null;
+      this._processStateChange(merged);
     }, SIGNAL_DEBOUNCE_MS);
   }
 
   /**
-   * Process debounced MPRIS property changes and emit events on delta.
+   * Process debounced MPRIS property changes — sole authority for state and events.
+   * Commands send D-Bus calls but do NOT update state or emit; this method does both.
    * @private
    */
-  _processExternalStateChange(signal) {
+  _processStateChange(signal) {
     const properties = signal.properties || {};
 
     // Auto-recover health: receiving an MPRIS signal means spotifyd is alive
@@ -491,7 +504,7 @@ class SpotifyService extends EventEmitter {
         const oldState = this.state;
         this.state = newState;
         this.emit('playback:changed', { state: newState });
-        logger.info('[Spotify] External playback state change', { from: oldState, to: newState });
+        logger.info('[Spotify] Playback state changed', { from: oldState, to: newState });
       }
     }
 
@@ -501,7 +514,7 @@ class SpotifyService extends EventEmitter {
       if (newVolume !== this.volume) {
         this.volume = newVolume;
         this.emit('volume:changed', { volume: newVolume });
-        logger.info('[Spotify] External volume change', { volume: newVolume });
+        logger.info('[Spotify] Volume changed', { volume: newVolume });
       }
     }
 
@@ -511,7 +524,7 @@ class SpotifyService extends EventEmitter {
       if (newTrack && JSON.stringify(newTrack) !== JSON.stringify(this.track)) {
         this.track = newTrack;
         this.emit('track:changed', { track: newTrack });
-        logger.info('[Spotify] External track change', { track: newTrack });
+        logger.info('[Spotify] Track changed', { track: newTrack });
       }
     }
   }
