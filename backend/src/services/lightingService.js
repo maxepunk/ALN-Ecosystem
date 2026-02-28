@@ -124,6 +124,8 @@ class LightingService extends EventEmitter {
    */
   async getScenes() {
     try {
+      // Short-circuit to fallback only when BOTH conditions are true (no token AND unhealthy).
+      // When only one is true, the axios call below will fail and the catch block handles fallback.
       if (!registry.isHealthy('lighting') && !config.lighting.homeAssistantToken) {
         return this._loadFallbackScenes();
       }

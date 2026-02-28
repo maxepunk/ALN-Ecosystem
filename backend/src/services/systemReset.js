@@ -15,6 +15,8 @@
  * This ensures consistent reset behavior across production and test environments.
  */
 
+const fs = require('fs').promises;
+const path = require('path');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 const serviceHealthRegistry = require('./serviceHealthRegistry');
@@ -181,8 +183,6 @@ async function performSystemReset(io, services) {
   // Re-load ducking rules from routing config (cleared by audioRoutingService.reset())
   if (audioRoutingService) {
     try {
-      const fs = require('fs').promises;
-      const path = require('path');
       const routingPath = path.join(__dirname, '../../config/environment/routing.json');
       const routingData = await fs.readFile(routingPath, 'utf8');
       const routingConfig = JSON.parse(routingData);

@@ -314,12 +314,15 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
+  // DRY helper: get current video queue length (safe if queue is null)
+  const getQueueLength = () => (videoQueueService.queue || []).length;
+
   // Video events (contract-compliant)
   addTrackedListener(videoQueueService, 'video:loading', (data) => {
     const payload = {
       status: 'loading',
       tokenId: data.tokenId,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);
@@ -333,7 +336,7 @@ function setupBroadcastListeners(io, services) {
       duration: data.duration,
       expectedEndTime: data.expectedEndTime,
       progress: 0,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);
@@ -345,7 +348,7 @@ function setupBroadcastListeners(io, services) {
       status: 'completed',
       tokenId: queueItem.tokenId,
       progress: 100,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);
@@ -360,7 +363,7 @@ function setupBroadcastListeners(io, services) {
       status: 'error',
       tokenId: queueItem.tokenId,
       error: queueItem.error,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);
@@ -372,7 +375,7 @@ function setupBroadcastListeners(io, services) {
       status: 'paused',
       tokenId: queueItem?.tokenId || null,
       progress: queueItem?.progress || 0,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);
@@ -384,7 +387,7 @@ function setupBroadcastListeners(io, services) {
       status: 'idle',
       tokenId: null,
       progress: 0,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);
@@ -397,7 +400,7 @@ function setupBroadcastListeners(io, services) {
       status: 'playing', // Resume returns to playing state
       tokenId: queueItem?.tokenId || null,
       progress: queueItem?.progress || 0,
-      queueLength: (videoQueueService.queue || []).length
+      queueLength: getQueueLength()
     };
 
     emitToRoom(io, 'gm', 'video:status', payload);

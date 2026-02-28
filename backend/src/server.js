@@ -148,7 +148,7 @@ function setupServiceListeners(ioInstance) {
 
   // Note: transaction:added is already handled by stateService.js which properly
   // manages recentTransactions updates. We don't need a duplicate listener here.
-  // Scores are updated via transactionService's score:updated event.
+  // Scores are included in transaction:accepted events (teamScore field).
 }
 
 // Graceful shutdown handling

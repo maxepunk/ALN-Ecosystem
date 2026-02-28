@@ -78,6 +78,7 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkActive = false;
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
+    this._combineSinkModuleId = null;
 
     // Shutdown guard — prevents monitor close handler from restarting after cleanup
     this._shuttingDown = false;
@@ -273,7 +274,7 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Set the sink for a named stream and persist.
-   * @param {string} stream - Stream name (Phase 0: only 'video')
+   * @param {string} stream - Stream name ('video', 'spotify', or 'sound')
    * @param {string} sink - Target sink: 'hdmi', 'bluetooth', or specific sink name
    * @returns {Promise<void>}
    */
@@ -1134,7 +1135,7 @@ class AudioRoutingService extends EventEmitter {
   // ── Private helpers ──
 
   /**
-   * Validate stream name (Phase 0: only 'video')
+   * Validate stream name against VALID_STREAMS.
    * @param {string} stream
    * @throws {Error} If stream name is invalid
    * @private
@@ -1234,10 +1235,7 @@ class AudioRoutingService extends EventEmitter {
       const match = name.match(/bluez_output\.([0-9A-F_]+)(\.\d+)?$/);
       if (match && match[1]) {
         const macPart = match[1].replace(/_/g, ':');
-        // Show first 2 and last 2 bytes for brevity? Or full? 
-        // Let's just show the last 2 bytes for brevity if it's long, 
-        // but user usually wants to identify specific speakers.
-        // Let's use last 2 bytes: XX:XX
+        // Show last 2 bytes of MAC address for speaker identification
         const parts = macPart.split(':');
         if (parts.length >= 2) {
           return `BT Speaker (${parts.slice(-2).join(':')})`;

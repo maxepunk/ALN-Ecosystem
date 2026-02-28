@@ -86,13 +86,13 @@ router.post('/', async (req, res) => {
 
     // Persist player scan to session BEFORE broadcasting
     // This ensures scan data survives restarts and is included in sync:full
-    // Token fields come from tokenService transformation (see tokenService.js:102-135)
-    const tokenData = token ? {
+    // Token fields come from tokenService transformation (see loadTokens() in tokenService.js)
+    const tokenData = {
       SF_MemoryType: token.memoryType,
       SF_ValueRating: token.metadata.rating,
       SF_Group: token.metadata.group || null,
       summary: token.metadata.summary || null
-    } : null;
+    };
 
     const playerScan = await sessionService.addPlayerScan({
       tokenId: scanRequest.tokenId,
@@ -111,8 +111,8 @@ router.post('/', async (req, res) => {
         scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        videoQueued: token && token.hasVideo(),
-        memoryType: token ? token.memoryType : null,
+        videoQueued: token.hasVideo(),
+        memoryType: token.memoryType,
         timestamp: playerScan.timestamp,
         tokenData
       });
@@ -120,12 +120,12 @@ router.post('/', async (req, res) => {
         scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        videoQueued: token && token.hasVideo()
+        videoQueued: token.hasVideo()
       });
     }
 
     // Check if token has video
-    if (token && token.hasVideo()) {
+    if (token.hasVideo()) {
       // Check if system can accept a new video (VLC health + queue state)
       const videoCheck = videoQueueService.canAcceptVideo();
       if (!videoCheck.available) {
@@ -157,7 +157,7 @@ router.post('/', async (req, res) => {
         status: 'accepted',
         message: 'Scan logged',
         tokenId: scanRequest.tokenId,
-        mediaAssets: token ? (token.mediaAssets || {}) : {},
+        mediaAssets: token.mediaAssets || {},
         videoQueued: false
       });
     }
@@ -269,7 +269,7 @@ router.post('/batch', async (req, res) => {
       }
 
       // Process video if applicable
-      if (token && token.hasVideo()) {
+      if (token.hasVideo()) {
         const videoCheck = videoQueueService.canAcceptVideo();
         if (videoCheck.available) {
           videoQueueService.addToQueue(token, scanRequest.deviceId);

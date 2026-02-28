@@ -1,7 +1,10 @@
 /**
  * Sync Full Payload Helpers
- * Builds the common sync:full payload used by gmAuth.js (initial connect)
- * and broadcasts.js (offline:queue:processed).
+ * Builds the common sync:full payload used by:
+ * - gmAuth.js (initial GM connect)
+ * - broadcasts.js (offline:queue:processed, scores:reset)
+ * - server.js (sync:request handler)
+ * - stateRoutes.js (GET /api/state HTTP endpoint)
  *
  * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
  */

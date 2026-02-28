@@ -4,8 +4,8 @@
  * Loads cue definitions, evaluates standing cues (event-triggered and clock-triggered),
  * fires simple cues (commands array) and compound cues (timeline) via executeCommand().
  *
- * Phase 1: Simple cues (commands array).
- * Phase 2: Compound cues (timeline) with nesting, cascading stop, video sync.
+ * Supports simple cues (commands array) and compound cues (timeline with
+ * nesting, cascading stop, video sync).
  */
 
 'use strict';
@@ -435,7 +435,7 @@ class CueEngineService extends EventEmitter {
   }
 
   // ============================================================
-  // Compound Cue Timeline Engine (Phase 2)
+  // Compound Cue Timeline Engine
   // ============================================================
 
   /**
@@ -832,7 +832,7 @@ class CueEngineService extends EventEmitter {
    *
    * @param {string} cueId - The compound cue ID to pause
    */
-  async pauseCue(cueId) {
+  pauseCue(cueId) {
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue || activeCue.state !== 'running') {
       logger.info(`[CueEngine] pauseCue: "${cueId}" not running, ignoring`);
@@ -859,7 +859,7 @@ class CueEngineService extends EventEmitter {
    *
    * @param {string} cueId - The compound cue ID to resume
    */
-  async resumeCue(cueId) {
+  resumeCue(cueId) {
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue || activeCue.state !== 'paused') {
       logger.info(`[CueEngine] resumeCue: "${cueId}" not paused, ignoring`);
@@ -882,7 +882,7 @@ class CueEngineService extends EventEmitter {
   }
 
   // ============================================================
-  // Held Cue System (Phase 3)
+  // Held Cue System (service health + video contention)
   // ============================================================
 
   /**
