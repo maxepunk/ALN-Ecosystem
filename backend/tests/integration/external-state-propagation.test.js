@@ -143,8 +143,8 @@ describe('External State Propagation', () => {
 
       // Simulate what VLC checkConnection() state delta does
       vlcService.emit('state:changed', {
-        previous: { state: 'stopped', filename: null, volume: 256 },
-        current: { state: 'playing', filename: 'intro.mp4', volume: 256 },
+        previous: { state: 'stopped', filename: null },
+        current: { state: 'playing', filename: 'intro.mp4' },
       });
 
       const data = await eventPromise;

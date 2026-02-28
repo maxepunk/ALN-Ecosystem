@@ -419,6 +419,11 @@ class BluetoothService extends EventEmitter {
   startDeviceMonitor() {
     if (this._deviceMonitor) return;
 
+    // Pre-seed device state cache (non-blocking) so the first signal
+    // per device doesn't require a bluetoothctl info shell-out for name resolution.
+    // Fire-and-forget: monitor starts immediately, cache populates async (~10ms).
+    this._preSeedDeviceCache();
+
     const matchRule = "type='signal',sender='org.bluez',interface='org.freedesktop.DBus.Properties',member='PropertiesChanged'";
 
     this._deviceMonitor = new ProcessMonitor({
@@ -438,24 +443,49 @@ class BluetoothService extends EventEmitter {
     });
 
     this._deviceMonitor.start();
-    logger.info('BlueZ D-Bus device monitor started');
+    logger.info('BlueZ D-Bus device monitor started', {
+      preSeedDevices: this._cachedDeviceStates.size,
+    });
   }
 
-  /** Stop the D-Bus device monitor and flush pending signals. */
+  /**
+   * Pre-seed device state cache from paired devices (async, non-blocking).
+   * Called from startDeviceMonitor() as fire-and-forget.
+   * @private
+   */
+  async _preSeedDeviceCache() {
+    try {
+      const paired = await this.getPairedDevices();
+      for (const device of paired) {
+        // Only seed if not already set (manual pre-seed in tests takes priority)
+        if (!this._cachedDeviceStates.has(device.address)) {
+          this._cachedDeviceStates.set(device.address, {
+            connected: device.connected || false,
+            paired: true,
+            name: device.name || null,
+          });
+        }
+      }
+    } catch {
+      // Non-fatal — cache starts empty, names resolved on first signal
+    }
+  }
+
+  /** Stop the D-Bus device monitor. Pending incomplete signals are discarded. */
   stopDeviceMonitor() {
+    // Clear debounce timers first to prevent flush-triggered timers outliving cleanup
+    for (const timer of this._deviceDebounceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this._deviceDebounceTimers.clear();
+
     if (this._deviceMonitor) {
       this._deviceMonitor.stop();
       this._deviceMonitor = null;
     }
     if (this._deviceSignalParser) {
-      this._deviceSignalParser.flush();
       this._deviceSignalParser = null;
     }
-    // Clear debounce timers
-    for (const timer of this._deviceDebounceTimers.values()) {
-      clearTimeout(timer);
-    }
-    this._deviceDebounceTimers.clear();
   }
 
   /**
@@ -509,10 +539,9 @@ class BluetoothService extends EventEmitter {
       cached.paired = properties.Paired;
       changed = true;
 
-      if (properties.Paired) {
-        this.emit('device:paired', { address, name });
-        logger.info('BlueZ monitor: device:paired', { address, name });
-      }
+      const eventType = properties.Paired ? 'device:paired' : 'device:unpaired';
+      this.emit(eventType, { address, name });
+      logger.info(`BlueZ monitor: ${eventType}`, { address, name });
     }
 
     if (changed) {

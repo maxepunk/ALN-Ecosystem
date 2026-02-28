@@ -434,19 +434,20 @@ class SpotifyService extends EventEmitter {
     logger.info('[Spotify] MPRIS D-Bus monitor started');
   }
 
-  /** Stop the MPRIS D-Bus playback monitor. */
+  /** Stop the MPRIS D-Bus playback monitor. Pending incomplete signals are discarded. */
   stopPlaybackMonitor() {
+    // Clear debounce timer first to prevent flush-triggered timers outliving cleanup
+    if (this._signalDebounceTimer) {
+      clearTimeout(this._signalDebounceTimer);
+      this._signalDebounceTimer = null;
+    }
+
     if (this._playbackMonitor) {
       this._playbackMonitor.stop();
       this._playbackMonitor = null;
     }
     if (this._mprisSignalParser) {
-      this._mprisSignalParser.flush();
       this._mprisSignalParser = null;
-    }
-    if (this._signalDebounceTimer) {
-      clearTimeout(this._signalDebounceTimer);
-      this._signalDebounceTimer = null;
     }
   }
 

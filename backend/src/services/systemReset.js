@@ -115,6 +115,11 @@ async function performSystemReset(io, services) {
     soundService.reset();
   }
 
+  // Clear VLC state delta cache (don't call full reset — VLC connection should persist)
+  if (vlcService) {
+    vlcService._previousState = null;
+  }
+
   // Reset Phase 2 services
   if (spotifyService) {
     spotifyService.reset();

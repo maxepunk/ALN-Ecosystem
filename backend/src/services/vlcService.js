@@ -132,7 +132,6 @@ class VlcService extends EventEmitter {
         const currentState = {
           state: data.state || null,
           filename: data.information?.category?.meta?.filename || null,
-          volume: data.volume || 0,
         };
 
         if (this._previousState &&

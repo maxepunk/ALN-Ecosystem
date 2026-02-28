@@ -1194,6 +1194,27 @@ describe('BluetoothService', () => {
       jest.advanceTimersByTime(1000);
     });
 
+    it('should emit device:unpaired when Paired changes to false', (done) => {
+      jest.useFakeTimers();
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: false, paired: true, name: 'Test Speaker' }],
+      ]);
+
+      bluetoothService.on('device:unpaired', (data) => {
+        expect(data.address).toBe('AA:BB:CC:DD:EE:FF');
+        jest.useRealTimers();
+        done();
+      });
+
+      bluetoothService.startDeviceMonitor();
+      feedDevicePropertyChange(mockProc, 'AA:BB:CC:DD:EE:FF', 'Paired', 'boolean', 'false');
+
+      jest.advanceTimersByTime(1000);
+    });
+
     it('should NOT emit when Connected unchanged', () => {
       jest.useFakeTimers();
       const mockProc = createMockSpawnProc();

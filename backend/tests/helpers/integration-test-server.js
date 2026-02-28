@@ -241,6 +241,8 @@ async function cleanupIntegrationTestServer(context) {
   const gameClockService = require('../../src/services/gameClockService');
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
+  const spotifyService = require('../../src/services/spotifyService');
+  const vlcService = require('../../src/services/vlcService');
 
   await sessionService.reset();
   await transactionService.reset();
@@ -256,6 +258,10 @@ async function cleanupIntegrationTestServer(context) {
   gameClockService.reset();
   cueEngineService.reset();
   soundService.reset();
+
+  // Reset Phase 2+ services (monitors, state caches)
+  spotifyService.reset();
+  vlcService.reset();
 
   // Remove remaining event listeners
   sessionService.removeAllListeners();

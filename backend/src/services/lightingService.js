@@ -69,12 +69,16 @@ class LightingService extends EventEmitter {
       });
     }
 
-    // Start periodic reconnect when disconnected
+    // Start periodic reconnect when disconnected (HTTP fallback).
+    // Defense-in-depth: WebSocket is primary for real-time events, but
+    // HTTP polling acts as a slow fallback if the WS connection fails
+    // silently (e.g., proxy drops without close frame). 30s interval
+    // is slow enough to avoid health status flicker with WS lifecycle.
     if (!registry.isHealthy('lighting')) {
       this._startReconnect();
     }
 
-    // Start WebSocket connection for real-time event monitoring
+    // Start WebSocket connection for real-time event monitoring (primary)
     this._connectWebSocket();
   }
 
@@ -262,6 +266,7 @@ class LightingService extends EventEmitter {
       this._wsReconnectTimer = null;
     }
     this._wsReconnectAttempts = 0;
+    this._wsMessageId = 0;
   }
 
   // ── Scene management ──
