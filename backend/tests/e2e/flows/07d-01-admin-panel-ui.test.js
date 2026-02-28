@@ -126,7 +126,7 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
       const videoSection = await page.locator('.admin-section h3:has-text("Video Controls")');
       await expect(videoSection).toBeVisible();
 
-      const systemSection = await page.locator('.admin-section h3:has-text("System Status")');
+      const systemSection = await page.locator('.admin-section h3:has-text("Service Health")');
       await expect(systemSection).toBeVisible();
 
       const scoresSection = await page.locator('.admin-section h3:has-text("Team Scores")');
@@ -142,8 +142,8 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
       const videoInfo = await page.locator('#admin-current-video');
       expect(await videoInfo.count()).toBe(1);
 
-      const orchestratorStatus = await page.locator('#orchestrator-status');
-      expect(await orchestratorStatus.count()).toBe(1);
+      const healthDashboard = await page.locator('#health-dashboard');
+      expect(await healthDashboard.count()).toBe(1);
 
       console.log('✓ Admin panel initialized successfully without errors');
 

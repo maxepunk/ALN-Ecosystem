@@ -14,7 +14,7 @@
 
 ---
 
-## Implementation Status (Updated 2026-02-27)
+## Implementation Status (Updated 2026-02-28)
 
 | Phase | Status | Tasks | Notes |
 |-------|--------|-------|-------|
@@ -22,11 +22,15 @@
 | Phase 0 | **COMPLETE** | 13/13 | All preserved bug fixes + contract updates |
 | Phase 1 | **COMPLETE** | 12/12 | Registry operational, all 8 services reporting, pragmatic deviations documented below |
 | Phase 2 | **COMPLETE** | 5/5 | Honest services — all simulation removed, per-command cue tracking, stateService cleanup |
-| Phase 3 | Not started | 0/8 | Gated execution |
-| Phase 4 | Not started | 0/11 | GM visibility |
-| Phase 5 | Not started | 0/6 | Documentation + cleanup |
+| Phase 3 | **COMPLETE** | 8/8 | Gated execution — all tasks complete, code review fixes applied |
+| Phase 4 | **COMPLETE** | 12/12 | GM visibility — unified held:*, HealthRenderer, HeldItemsRenderer |
+| Phase 5 | **COMPLETE** | 6/6 | Documentation, cleanup, e2e tests written and passing |
 
-**Test baselines after Phase 2:** Backend unit+contract: 1196 tests (2 todo), 67 suites. Integration: 256 tests, 30 suites. ALNScanner unit: 974.
+**Test baselines after Phase 3h:** Backend unit+contract: 1302 tests (1 todo), 68 suites. Integration: 255 tests, 30 suites. ALNScanner unit: 991 tests, 54 suites.
+
+**Test baselines after Phase 4:** Backend unit+contract: 1303 tests (1 todo), 68 suites. Integration: 255 tests, 30 suites. ALNScanner unit: 1007 tests, 56 suites.
+
+**Test baselines after Phase 5:** Backend unit+contract: 1303 tests (1 todo), 68 suites. Integration: 255 tests, 30 suites. ALNScanner unit: 1007 tests, 56 suites. E2E: 122 passed, 28 skipped (service-dependent), 0 failed. New e2e test files: `07d-03-admin-show-control.test.js` (9 tests), `07d-04-admin-environment-control.test.js` (6 tests), `22-player-video-lifecycle.test.js` (3 tests).
 
 ### Phase 1 Deviations from Plan
 
@@ -46,7 +50,47 @@ These are intentional pragmatic choices made during implementation:
 
 1. **Contract test `scan.test.js` "should return 409 when video already playing" → `it.todo`.** Removing VLC simulation means videos fail immediately when VLC is down instead of entering "playing" state. The 409 path (`videoQueueService.isPlaying()` in scanRoutes.js) is only reachable when VLC is healthy. This test relied on simulation to fake the precondition. Converted to `it.todo` — **re-enable in Phase 3c** when `canAcceptVideo()` gates the scan route.
 
-2. **`lightingService._usingFallback` is now dead code.** `activateScene()` was the only reader of this flag (via `if (this._usingFallback || ...)`). After removing the simulation check, `_usingFallback` is set in `getScenes()`/`_loadFallbackScenes()`/`reset()` but never read. **Remove in Phase 5** (cleanup).
+2. ~~**`lightingService._usingFallback` is now dead code.**~~ **Resolved in code review (post-Phase 3).** Removed all 3 dead writes of `_usingFallback`.
+
+### Phase 3 Deviations from Plan
+
+1. **Held cue auto-discard timeout is 10s, not 30s.** Plan didn't specify a timeout. 10s chosen as a reasonable default — long enough for the GM to notice, short enough to not block the queue indefinitely.
+
+2. **`held:release`/`held:discard` routes by ID prefix, not payload `type` field.** Plan said to route based on `type` field in payload. Instead, the held ID prefix (`held-cue-*` vs `held-video-*`) is used for routing. This avoids requiring the GM Scanner to know the item type — the ID is self-describing.
+
+3. **Video held broadcasts use raw event names (`video:held`, `video:released`, `video:discarded`), not unified `held:*` names.** Plan suggested mapping to `held:added`/`held:released`/`held:discarded`. Kept raw names for now to match the cue pattern (`cue:held`, `cue:released`, `cue:discarded`). Unification to `held:*` names deferred to Phase 4 when the HeldItemsRenderer needs a single event stream.
+
+4. **`cue:verify-all` command not implemented.** Listed in the plan's new gm:command actions table but belongs to Phase 4 (pre-show verification UI). `validateCommand()` infrastructure exists (task 3b) but the bulk verify-all endpoint is deferred.
+
+5. **`video:recoverable` broadcast not wired.** Plan listed this as a broadcast from videoQueueService when VLC recovers and held items exist. The event is emitted by videoQueueService but no broadcast listener forwards it yet. Deferred to Phase 4 when the Health Dashboard needs "recoverable" indicators.
+
+6. **`serviceCheck` in domEventBindings.js routes through SpotifyController.** The `admin.serviceCheck` data-action routes all service checks through `spotifyController.checkService()`, which sends the generic `service:check` command. Semantically confusing but functionally correct. Will be cleaned up in Phase 4 when the Health Dashboard adds per-service "Check Now" buttons.
+
+### Phase 4 Deviations from Plan
+
+1. **Added `syncServiceHealth()` bulk method to UnifiedDataManager.** Plan only specified `updateServiceHealth()` for individual events. Code review found that sync:full was calling `updateServiceHealth()` N times (once per service), causing N re-renders. Added `syncServiceHealth(healthMap)` as a single-dispatch bulk method for sync:full payloads.
+
+2. **HeldItemsRenderer uses stateful incremental pattern, not idempotent render.** Unlike other renderers that receive full state and render from scratch, HeldItemsRenderer maintains an internal `_items` Map and processes incremental events (held/released/discarded). Documented as intentional design choice — held items arrive as incremental events, not full state snapshots.
+
+3. **SpotifyRenderer disabled-controls approach instead of removing disconnected template.** Plan said to remove `_renderDisconnected()`. Instead, the renderer now renders connected UI with `disabled` attribute on buttons when disconnected, so controls are visible but non-functional. HealthRenderer shows the service status.
+
+4. **Browser mocks (`browser-mocks.js`) needed Phase 4 methods.** Not mentioned in plan — integration tests use `MockDataManager` which needed `updateServiceHealth()` and `syncServiceHealth()` added to avoid `TypeError` in networkedSession.js.
+
+5. **Phase 3 deviation #3 (raw event names) resolved.** broadcasts.js now translates `cue:held`/`video:held` → `held:added`, `cue:released`/`video:released` → `held:released`, etc. The unified `held:*` namespace is fully operational.
+
+6. **Phase 3 deviation #5 (`video:recoverable` not wired) resolved.** broadcasts.js now translates `video:recoverable` → `held:recoverable`, forwarding to GM Scanner for "Try Again" indicators.
+
+### Phase 5 Deviations from Plan
+
+1. **SessionRenderer clock cache restore (production fix).** E2E clock tests revealed that `gameclock:status` arrives BEFORE `session:update`, causing `render()` to swap the template and wipe the clock display set by `renderGameClock()`. Fixed by caching `_lastElapsed`/`_clockState` and restoring after template re-render.
+
+2. **AsyncAPI envelope wrapping required `data.data?.field` in e2e test predicates.** All WebSocket `waitForEvent` predicates needed to navigate into the envelope's `data` property. This affected all three new e2e test files (07d-03, 07d-04, 22-player).
+
+3. **Simple cue events fire in ~1-2ms — both listeners must be registered before trigger.** Quick-fire cue test initially registered `cue:completed` listener after `cue:fired` resolved. Fixed by registering both listeners before clicking the button (same pattern as ducking test).
+
+4. **07d-01-admin-panel-ui.test.js needed "System Status" → "Service Health" locator update.** Phase 4 renamed the admin panel section heading but the existing test wasn't updated.
+
+5. **Three new e2e test files written beyond original plan scope.** Plan only called for "E2E test verification" (running existing tests). Implementation added 18 new e2e tests across 3 files covering show control, environment control, and video lifecycle.
 
 ### Additional Work Done Beyond Plan
 
@@ -57,6 +101,24 @@ These items were identified during code review and fixed during Phase 1:
 - **Dead `offlineQueueService` params**: Removed from `broadcasts.js` (2 calls) and `server.js` (1 call) — passed to `buildSyncFullPayload()` which doesn't use it.
 - **`soundService.init()`**: Refactored from raw `child_process.execFile` to shared `execFileAsync` from `utils/execHelper.js`.
 - **Dead VLC listeners in `app.js`**: Removed `connected`/`disconnected` listeners that updated `stateService` — those events no longer exist.
+- **`systemReset.js` missing `serviceHealthRegistry.reset()`**: Plan gap — the registry has a `reset()` method but `performSystemReset()` never called it. After system reset, stale health state persisted from the previous session. Fixed: added `require('./serviceHealthRegistry')` and `serviceHealthRegistry.reset()` in Step 4 (after service resets, before infrastructure re-init). Exposed a real test gap in `video-orchestration.test.js` — after registry reset marks VLC as 'down', the test's mock VLC needs an explicit `checkConnection()` to re-establish health.
+
+**Phase 3 additional work:**
+- **`scanRoutes.js` migrated from `isPlaying()` to `canAcceptVideo()`.** The Phase 2 todo test ("should return 409 when video already playing") was re-enabled using `canAcceptVideo()` as the gate, replacing the old simulation-dependent `isPlaying()` approach.
+- **`SpotifyRenderer.renderDucking()`**: Added ducking status indicator to SpotifyRenderer (from original audit plan Task 10). Shows which sources triggered ducking with hide/show toggle.
+- **`MonitoringDisplay` audio-state:updated → SpotifyRenderer ducking**: Wired `audio-state:updated` handler to forward ducking state to SpotifyRenderer.
+- **Video held broadcast wiring (code review fix)**: `video:held`, `video:released`, `video:discarded` broadcasts added to `broadcasts.js` — identified by code review as missing from the original batch 3 implementation.
+- **`held:release`/`held:discard` video routing (code review fix)**: Commands now route by held ID prefix to either cueEngineService or videoQueueService — original implementation only routed to cueEngineService.
+- **`held:release-all`/`held:discard-all` commands (code review fix)**: Added missing bulk release/discard commands — identified by code review as listed in plan but not implemented.
+- **CLAUDE.md updates**: Fixed stale `cue:conflict` references → `cue:held`/`cue:released`/`cue:discarded` across root, backend, and ALNScanner CLAUDE.md files. Fixed held cue auto-cancel timeout documentation (30s → 10s).
+
+**Post-Phase 3 code review fixes:**
+- **`video:held` event payload**: Changed from emitting raw `queueItem` to emitting structured held record (matching `cue:held` pattern). Updated test assertion.
+- **`asyncapi.yaml` video held events**: Added `VideoHeld`, `VideoReleased`, `VideoDiscarded` channel definitions. Added `heldItems` array to `sync:full` schema.
+- **`lightingService._usingFallback` dead code removed**: 3 dead writes removed (set but never read after Phase 2 refactor).
+- **`cueengine` service:check registry sync**: Health check now calls `registry.report()` to keep registry in sync with probe result (matching all other service health checks).
+- **`displayControlService` honest failure**: Removed simulation fallback in `_doPlayVideo()` — now throws when VLC unavailable instead of silently succeeding. Updated test.
+- **VLC test timer leak**: Added `afterAll` cleanup in `vlcService.test.js` to clear lingering healthCheckInterval/reconnectTimer.
 
 ---
 
@@ -241,18 +303,21 @@ const SERVICE_DEPENDENCIES = {
   'video:stop': 'vlc',
   'video:skip': 'vlc',
   'video:queue:add': 'vlc',
-  'video:queue:reorder': 'vlc',
-  'video:queue:clear': 'vlc',
+  // video:queue:reorder and video:queue:clear intentionally UNGATED —
+  // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
   'spotify:play': 'spotify',
   'spotify:pause': 'spotify',
   'spotify:stop': 'spotify',
   'spotify:next': 'spotify',
   'spotify:previous': 'spotify',
-  // Note: spotify:reconnect removed (subsumed by service:check)
+  'spotify:playlist': 'spotify',
+  'spotify:volume': 'spotify',
+  // spotify:reconnect removed (subsumed by service:check)
+  // spotify:cache:verify intentionally UNGATED — cache check, no D-Bus needed
   'sound:play': 'sound',
   'sound:stop': 'sound',
   'lighting:scene:activate': 'lighting',
-  'lighting:scene:refresh': 'lighting',
+  'lighting:scenes:refresh': 'lighting',
   'bluetooth:pair': 'bluetooth',
   'bluetooth:unpair': 'bluetooth',
   'bluetooth:connect': 'bluetooth',
@@ -737,7 +802,7 @@ Tasks 8 and 11 from the original plan are superseded by this architecture:
 
 | Suite | Command | Baseline | Notes |
 |-------|---------|----------|-------|
-| Backend unit+contract | `cd backend && npm test` | **1188** (1 todo), 67 suites | Was 1134 pre-Phase 1 |
+| Backend unit+contract | `cd backend && npm test` | **1200** (2 todo), 67 suites | Was 1134 pre-Phase 1 |
 | Backend integration | `cd backend && npm run test:integration` | **256**, 30 suites | Sequential (~5 min) |
 | ALNScanner unit | `cd ALNScanner && npm test` | 974 | Fast feedback (~15s) |
 | ALNScanner integration | `cd ALNScanner && npx jest tests/integration/` | 21 | Quick (~5s) |
@@ -828,7 +893,7 @@ Additional files modified during Phase 1 (review fixes):
 
 **Verification:** `cd backend && npm test` + `cd backend && npm run test:integration`. All green. Confirm no tests depend on fake success events.
 
-### Phase 3: Gated Execution (Layer 3) — NOT STARTED
+### Phase 3: Gated Execution (Layer 3) — COMPLETE
 
 | Task | Files | Dependencies |
 |------|-------|-------------|
@@ -852,7 +917,13 @@ Additional files modified during Phase 1 (review fixes):
 
 **Verification:** `cd backend && npm test` + `cd backend && npm run test:integration` + `cd ALNScanner && npm test`. All green. `cue:conflict` fully removed from both codebases.
 
-### Phase 4: GM Visibility (Layer 4) — NOT STARTED
+### Phase 4: GM Visibility (Layer 4) — COMPLETE
+
+**Deferred from Phase 3 into Phase 4:**
+- **`cue:verify-all` command**: `validateCommand()` infrastructure exists (3b) but the bulk verify endpoint is not implemented.
+- **`video:recoverable` broadcast**: Event emitted by videoQueueService but not forwarded via broadcasts.js. Wire when Health Dashboard needs "recoverable" indicators.
+- **Unified `held:*` event names**: Currently cue and video held events use raw names (`cue:held`, `video:held`). The GM Scanner HeldItemsRenderer may want a unified `held:added` event stream — unify in 4g/4i.
+- **`serviceCheck` routing cleanup**: `admin.serviceCheck` data-action currently routes through SpotifyController. Move to a service-agnostic path when building the Health Dashboard.
 
 | Task | Files | Dependencies |
 |------|-------|-------------|
@@ -874,18 +945,18 @@ Additional files modified during Phase 1 (review fixes):
   - `ALNScanner/tests/unit/AdminController.test.js` — remove SystemMonitor mock/assertions (~6 locations)
   - `ALNScanner/tests/integration/service-wiring.test.js` — remove SystemMonitor mock (~lines 43-44, 93-94)
   - `ALNScanner/tests/app/app.test.js` — remove SystemMonitor mock (~lines 150-151)
-- 4b/4g: `orchestratorClient.test.js` — update `messageTypes` array: remove `'cue:conflict'`, add `'service:health'`, `'held:added'`, `'held:released'`, `'held:discarded'`, `'video:recoverable'`
-- 4b/4g: `networkedSession.test.js` — remove `cue:conflict` handler test (mock at line 68), add tests for `service:health`, `held:added`, etc.
-- 4f: `MonitoringDisplay-phase2.test.js` — delete `cue:conflict` describe block (~lines 136-175+), delete `_handleCueConflict` toast handler tests
+- 4b/4g: `orchestratorClient.test.js` — add `'service:health'`, `'video:held'`, `'video:released'`, `'video:discarded'`, `'video:recoverable'` to `messageTypes` array. Note: `'cue:conflict'` was already replaced with `'cue:held'`, `'cue:released'`, `'cue:discarded'` in Phase 3f.
+- 4b/4g: `networkedSession.test.js` — add tests for `service:health`, `video:held`, etc. Note: `cue:conflict` handler test already removed in Phase 3f.
+- 4f: `MonitoringDisplay-phase2.test.js` — delete `_handleCueConflict` toast handler tests if any remain
 - 4f: `adminModule.test.js` — fix `systemStatus.vlc` fixture (line 589) to use `serviceHealth` shape
-- 4f: `SpotifyRenderer.test.js` — update for removed disconnected template, add ducking indicator tests
+- 4f: `SpotifyRenderer.test.js` — update for removed disconnected template (ducking indicator tests already added in Phase 3)
 - 4f: `EnvironmentRenderer.test.js` — update for removed `#lighting-not-connected`
 - New: `ALNScanner/tests/unit/ui/renderers/HealthRenderer.test.js` — unit tests for health dashboard (4d)
 - New: `ALNScanner/tests/unit/ui/renderers/HeldItemsRenderer.test.js` — unit tests for held items queue (4i)
 
 **Verification:** All suites: `cd backend && npm test` + `cd backend && npm run test:integration` + `cd ALNScanner && npm test` + `cd ALNScanner && npx jest tests/integration/`. All green.
 
-### Phase 5: Documentation + Cleanup — NOT STARTED
+### Phase 5: Documentation + Cleanup — COMPLETE
 
 | Task | Files | Dependencies |
 |------|-------|-------------|

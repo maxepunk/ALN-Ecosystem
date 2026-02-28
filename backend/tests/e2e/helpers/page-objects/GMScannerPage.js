@@ -137,9 +137,8 @@ class GMScannerPage {
     this.videoProgressFill = page.locator('#video-progress-fill');
     this.videoProgressTime = page.locator('#video-progress-time');
 
-    // Connection status indicators (system status)
-    this.orchestratorStatus = page.locator('#orchestrator-status');
-    this.vlcStatus = page.locator('#vlc-status');
+    // Health Dashboard (Phase 4 — replaces System Status)
+    this.healthDashboard = page.locator('#health-dashboard');
     this.deviceCount = page.locator('#device-count');
     this.deviceList = page.locator('#device-list');
     this.deviceItems = page.locator('#device-list .device-item');
@@ -648,12 +647,11 @@ class GMScannerPage {
 
     // Wait for initial data loaded (DOM-based detection)
     // MonitoringDisplay._requestInitialState() triggers sync:full
-    // Backend responds → MonitoringDisplay.updateSystemDisplay() updates #orchestrator-status
-    // Green dot (status-dot--connected class) indicates connection confirmed
+    // Backend responds → HealthRenderer populates #health-dashboard
     await this.page.waitForFunction(() => {
-      const statusDot = document.querySelector('#orchestrator-status');
-      // Status dot has 'status-dot--connected' class when orchestrator connection confirmed
-      return statusDot && statusDot.classList.contains('status-dot--connected');
+      const dashboard = document.querySelector('#health-dashboard');
+      // Dashboard has content when HealthRenderer has rendered service health
+      return dashboard && dashboard.children.length > 0;
     }, { timeout: 10000 });  // Longer timeout for network request + processing
 
     console.log('✓ Admin panel navigation complete - data loaded');
@@ -1372,21 +1370,12 @@ class GMScannerPage {
   // ============================================
 
   /**
-   * Check if orchestrator is connected
+   * Check if health dashboard is rendered
    * @returns {Promise<boolean>}
    */
-  async isOrchestratorConnected() {
-    const classAttr = await this.orchestratorStatus.getAttribute('class');
-    return classAttr?.includes('status-dot--connected') ?? false;
-  }
-
-  /**
-   * Check if VLC is connected
-   * @returns {Promise<boolean>}
-   */
-  async isVlcConnected() {
-    const classAttr = await this.vlcStatus.getAttribute('class');
-    return classAttr?.includes('status-dot--connected') ?? false;
+  async hasHealthDashboard() {
+    const count = await this.healthDashboard.locator(':scope > *').count();
+    return count > 0;
   }
 
   /**

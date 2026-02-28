@@ -74,7 +74,7 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
                 const resp = await fetch(`${url}/api/state`, { method: 'GET' });
                 return resp.json();
             }, orchestratorInfo.url);
-            if (stateResp?.systemStatus?.vlc !== 'connected') {
+            if (stateResp?.serviceHealth?.vlc?.status !== 'healthy') {
                 test.skip('VLC not connected to orchestrator - skipping video reactivity test');
                 return;
             }

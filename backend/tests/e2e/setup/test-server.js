@@ -83,8 +83,7 @@ const TEST_ENV = {
   ENABLE_HTTPS: process.env.TEST_HTTPS || 'false',
   SSL_KEY_PATH: './ssl/key.pem',
   SSL_CERT_PATH: './ssl/cert.pem',
-  // Disable discovery service in tests (UDP broadcast conflicts)
-  DISCOVERY_ENABLED: 'false',
+  // Discovery is disabled by hardcoded NODE_ENV !== 'test' check in server.js
   // Disable idle loop for faster tests
   FEATURE_IDLE_LOOP: 'false',
   // E2E tests default to memory storage for speed and isolation

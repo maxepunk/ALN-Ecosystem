@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2026-02-19
+Last verified: 2026-02-27
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -220,6 +220,8 @@ The GM Scanner is NOT just for scanning tokens - it's the **game command center*
 | **Scoring** | Manual adjustments, Reset all scores, Delete transactions |
 | **Environment** | Bluetooth speaker pairing, Audio routing (HDMI/BT), Per-stream volume, Lighting scenes (Home Assistant) |
 | **Show Control** | Game clock, Manual/standing cues, Compound cue timelines, Sound playback, Spotify control |
+| **Service Health** | Per-service health dashboard (8 services), "Check Now" probes, Pre-show verification |
+| **Held Items** | Cues/videos blocked by service outage or video conflict, Release/Discard/Release All actions |
 | **Game Activity** | Unified view of player discoveries + GM transactions, Device status, Active cues, Now Playing |
 
 All admin commands use WebSocket `gm:command` events. See 'ALNScanner/CLAUDE.md' for implementation details.
@@ -243,14 +245,16 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - Admin score adjustments emit `score:adjusted` (separate from transactions)
 - `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
 - `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
-- `sync:full` includes `playerScans` array, `gameClock`, `cueEngine`, and `spotify` state for session restoration
+- `sync:full` includes `playerScans` array, `gameClock`, `cueEngine`, `spotify`, `serviceHealth` (8-service registry snapshot), and `heldItems` (blocked cues/videos) for session restoration
 - `videoEvents.js` was deleted (confirmed dead code) — ALL video control goes through `gm:command` actions in `adminEvents.js`
 - Environment control broadcasts: `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `audio:routing:fallback`, `lighting:scene`, `lighting:status`
 - Phase 1 broadcasts: `gameclock:status`, `cue:fired`, `cue:completed`, `cue:error`, `sound:status`
-- Phase 2 broadcasts: `cue:status` (compound cue lifecycle), `cue:conflict` (video conflict), `spotify:status` (playback state)
+- Phase 2 broadcasts: `cue:status` (compound cue lifecycle), `spotify:status` (playback state)
+- Phase 4 broadcasts: `held:added`/`held:released`/`held:discarded`/`held:recoverable` (unified held item lifecycle), `service:health` (individual service health updates)
 - Phase 3 broadcasts: `audio:ducking:status` (ducking state change). Phase 3 features: combine-bt virtual sink (dual BT speakers), ducking engine (auto-duck Spotify for video/sound), routing inheritance (command > cue > global target resolution)
 - Session lifecycle: `setup` → `active` → `paused` ↔ `active` → `ended` (sessions created in setup, `session:start` transitions to active)
-- `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine)
+- `serviceHealthRegistry.js` is a centralized singleton tracking health of 8 services (`vlc`, `spotify`, `sound`, `bluetooth`, `audio`, `lighting`, `gameclock`, `cueengine`). Services push state via `report()`, consumers read via `isHealthy()`/`getSnapshot()`. Individual service connection events (`vlcService: connected/disconnected`, `lightingService: connection:changed`, `spotifyService: connection:changed`) are consolidated into the registry — no service maintains its own `this.connected` boolean.
+- `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine). Has `SERVICE_DEPENDENCIES` map for gated execution — commands are rejected with clean error messages before touching the service if its dependency is down. `validateCommand()` checks service health AND resource existence (sound files, video files, lighting scenes, audio sinks) for pre-show verification.
 - `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`). Phase 2 adds video progress/lifecycle forwarding and spotifyService forwarding.
 - **CRITICAL**: `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video (requires token with video field). Do not confuse these.
 - **CRITICAL**: GM scanner token scans do NOT trigger video playback (`transactionService.js` explicitly skips video for GM). Video playback is triggered by: (1) player scanner scanning a video token, or (2) admin panel queue controls (`video:queue:add`).
