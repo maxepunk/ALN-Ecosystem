@@ -49,6 +49,12 @@ class ProcessMonitor extends EventEmitter {
     if (this._proc) return;
 
     this._stopped = false;
+
+    // Clean up previous exit handler if any (from restart — prevents listener accumulation)
+    if (this._processExitHandler) {
+      process.removeListener('exit', this._processExitHandler);
+    }
+
     this._proc = spawn(this._command, this._args, { stdio: ['ignore', 'pipe', 'pipe'] });
     logger.info(`${this._label} monitor started`, { pid: this._proc.pid });
 

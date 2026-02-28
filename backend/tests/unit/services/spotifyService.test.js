@@ -1151,5 +1151,30 @@ describe('SpotifyService', () => {
 
       expect(mockProc.kill).toHaveBeenCalled();
     });
+
+    it('should recover health when signal received while marked down', (done) => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      // Mark as down
+      registry.report('spotify', 'down', 'Test');
+      expect(registry.isHealthy('spotify')).toBe(false);
+
+      spotifyService.state = 'stopped';
+
+      spotifyService.on('playback:changed', () => {
+        // Health should be restored
+        expect(registry.isHealthy('spotify')).toBe(true);
+        jest.useRealTimers();
+        done();
+      });
+
+      spotifyService.startPlaybackMonitor();
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+
+      jest.advanceTimersByTime(500);
+    });
   });
 });

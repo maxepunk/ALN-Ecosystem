@@ -474,6 +474,15 @@ class SpotifyService extends EventEmitter {
   _processExternalStateChange(signal) {
     const properties = signal.properties || {};
 
+    // Auto-recover health: receiving an MPRIS signal means spotifyd is alive
+    if (!registry.isHealthy('spotify')) {
+      this._dbusDest = null;
+      this._dbusCacheTime = 0;
+      this._spotifydDest = null;
+      this._spotifydCacheTime = 0;
+      registry.report('spotify', 'healthy', 'MPRIS signal received');
+    }
+
     // PlaybackStatus: string → compare with this.state
     if ('PlaybackStatus' in properties) {
       const newState = properties.PlaybackStatus.toLowerCase();
@@ -503,16 +512,6 @@ class SpotifyService extends EventEmitter {
         this.emit('track:changed', { track: newTrack });
         logger.info('[Spotify] External track change', { track: newTrack });
       }
-    }
-
-    // Clear D-Bus destination caches on any signal — spotifyd may have restarted
-    // (PID suffix changes but path-based match rule still catches new instance)
-    if (!registry.isHealthy('spotify')) {
-      this._dbusDest = null;
-      this._dbusCacheTime = 0;
-      this._spotifydDest = null;
-      this._spotifydCacheTime = 0;
-      registry.report('spotify', 'healthy', 'MPRIS signal received');
     }
   }
 

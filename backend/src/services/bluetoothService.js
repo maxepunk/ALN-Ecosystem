@@ -501,7 +501,7 @@ class BluetoothService extends EventEmitter {
       changed = true;
 
       const eventType = properties.Connected ? 'device:connected' : 'device:disconnected';
-      this.emit(eventType, { device: { address, name, connected: properties.Connected } });
+      this.emit(eventType, { address, name });
       logger.info(`BlueZ monitor: ${eventType}`, { address, name });
     }
 
@@ -510,7 +510,7 @@ class BluetoothService extends EventEmitter {
       changed = true;
 
       if (properties.Paired) {
-        this.emit('device:paired', { device: { address, name, paired: true } });
+        this.emit('device:paired', { address, name });
         logger.info('BlueZ monitor: device:paired', { address, name });
       }
     }

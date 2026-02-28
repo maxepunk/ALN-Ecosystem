@@ -1139,8 +1139,8 @@ describe('BluetoothService', () => {
       ]);
 
       bluetoothService.on('device:connected', (data) => {
-        expect(data.device.address).toBe('AA:BB:CC:DD:EE:FF');
-        expect(data.device.name).toBe('Test Speaker');
+        expect(data.address).toBe('AA:BB:CC:DD:EE:FF');
+        expect(data.name).toBe('Test Speaker');
         jest.useRealTimers();
         done();
       });
@@ -1162,7 +1162,7 @@ describe('BluetoothService', () => {
       ]);
 
       bluetoothService.on('device:disconnected', (data) => {
-        expect(data.device.address).toBe('AA:BB:CC:DD:EE:FF');
+        expect(data.address).toBe('AA:BB:CC:DD:EE:FF');
         jest.useRealTimers();
         done();
       });
@@ -1183,7 +1183,7 @@ describe('BluetoothService', () => {
       ]);
 
       bluetoothService.on('device:paired', (data) => {
-        expect(data.device.address).toBe('AA:BB:CC:DD:EE:FF');
+        expect(data.address).toBe('AA:BB:CC:DD:EE:FF');
         jest.useRealTimers();
         done();
       });
@@ -1331,7 +1331,7 @@ describe('BluetoothService', () => {
       jest.spyOn(bluetoothService, '_getDeviceName').mockResolvedValue('Looked Up Speaker');
 
       bluetoothService.on('device:connected', (data) => {
-        expect(data.device.name).toBe('Looked Up Speaker');
+        expect(data.name).toBe('Looked Up Speaker');
         jest.useRealTimers();
         done();
       });
