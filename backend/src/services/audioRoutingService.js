@@ -8,7 +8,7 @@
  * routing between HDMI and Bluetooth sinks.
  *
  * Uses execFile (not exec) to prevent shell injection.
- * Uses spawn for long-running pactl subscribe.
+ * Uses spawn for pw-loopback (combine-sink) and ProcessMonitor for pactl subscribe.
  */
 
 const EventEmitter = require('events');
@@ -17,6 +17,7 @@ const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 const { execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
+const ProcessMonitor = require('../utils/processMonitor');
 
 /** Valid stream names for Phase 1 */
 const VALID_STREAMS = ['video', 'spotify', 'sound'];
@@ -48,13 +49,6 @@ const FIND_SINK_INPUT_MAX_WAIT = 2000;
 /** Initial retry backoff for findSinkInput (ms) */
 const FIND_SINK_INPUT_BACKOFF = 100;
 
-/** Restart delay for pactl subscribe health check (ms) */
-const MONITOR_RESTART_DELAY = 5000;
-/** Max consecutive monitor failures before giving up (prevents PipeWire connection exhaustion) */
-const MONITOR_MAX_FAILURES = 5;
-/** Backoff multiplier per consecutive failure */
-const MONITOR_BACKOFF_MULTIPLIER = 2;
-
 /** How long to cache sink list (ms) — invalidated immediately on sink events */
 const SINK_CACHE_TTL = 5000;
 
@@ -64,9 +58,7 @@ const BT_SINK_DEBOUNCE = 300;
 class AudioRoutingService extends EventEmitter {
   constructor() {
     super();
-    this._monitorProc = null;
-    this._monitorRestartTimer = null;
-    this._monitorFailures = 0;
+    this._sinkMonitor = null;
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
 
     // Sink list cache (reduces pactl calls — invalidated on sink events)
@@ -79,9 +71,6 @@ class AudioRoutingService extends EventEmitter {
     this._combineSinkPids = [];
     this._combineSinkProcs = [];
     this._combineSinkModuleId = null;
-
-    // Shutdown guard — prevents monitor close handler from restarting after cleanup
-    this._shuttingDown = false;
 
     // Ducking engine state
     this._duckingRules = [];
@@ -101,8 +90,6 @@ class AudioRoutingService extends EventEmitter {
     // cleaned up (e.g., after SIGKILL from pm2 kill). Safe to call before our
     // own monitor starts since init() is called at startup.
     await this._killStaleMonitors();
-
-    this._shuttingDown = false;
 
     // Load persisted routing config
     const persisted = await persistenceService.load(PERSISTENCE_KEY);
@@ -142,25 +129,14 @@ class AudioRoutingService extends EventEmitter {
    * Kill pactl subscribe process, prevent orphaned processes on shutdown.
    */
   cleanup() {
-    this._shuttingDown = true;
-
-    if (this._monitorProc) {
-      this._monitorProc.kill();
-      this._monitorProc = null;
-    }
-    if (this._processExitHandler) {
-      process.removeListener('exit', this._processExitHandler);
-      this._processExitHandler = null;
-    }
-    if (this._monitorRestartTimer) {
-      clearTimeout(this._monitorRestartTimer);
-      this._monitorRestartTimer = null;
+    if (this._sinkMonitor) {
+      this._sinkMonitor.stop();
+      this._sinkMonitor = null;
     }
     if (this._btSinkDebounceTimer) {
       clearTimeout(this._btSinkDebounceTimer);
       this._btSinkDebounceTimer = null;
     }
-    this._monitorFailures = 0;
     this._invalidateSinkCache();
 
     // Tear down combine-sink processes
@@ -187,7 +163,6 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [];
     this._activeDuckingSources = {};
     this._preDuckVolumes = {};
-    this._shuttingDown = false;
 
     registry.report('audio', 'down', 'Reset');
   }
@@ -1051,85 +1026,36 @@ class AudioRoutingService extends EventEmitter {
   /**
    * Start monitoring PipeWire sink additions/removals via `pactl subscribe`.
    * Emits sink:added / sink:removed events.
-   * Auto-restarts on process exit with backoff.
+   * Uses ProcessMonitor for auto-restart with backoff and orphan prevention.
    */
   startSinkMonitor() {
-    if (this._monitorProc) {
+    if (this._sinkMonitor) {
       return;
     }
 
-    // stdio: ['ignore', 'pipe', 'pipe'] — don't inherit stdin (prevents orphan from
-    // holding stdin open), pipe stdout/stderr for event parsing.
-    this._monitorProc = spawn('pactl', ['subscribe'], { stdio: ['ignore', 'pipe', 'pipe'] });
-    logger.info('Sink monitor started', { pid: this._monitorProc.pid });
+    this._sinkMonitor = new ProcessMonitor({
+      command: 'pactl',
+      args: ['subscribe'],
+      label: 'pactl-subscribe',
+    });
 
-    // CRITICAL: Register a process exit handler to kill the monitor on unclean shutdown.
-    // Without this, PM2 restarts orphan the pactl subscribe process (re-parented to PID 1),
-    // each holding a PipeWire-pulse connection slot. Over multiple restarts this exhausts
-    // the max-clients limit (default 64), breaking ALL audio.
-    this._processExitHandler = () => {
-      if (this._monitorProc) {
-        this._monitorProc.kill();
-      }
-    };
-    process.on('exit', this._processExitHandler);
+    this._sinkMonitor.on('line', (line) => {
+      const event = this._parsePactlEvent(line);
+      if (!event) return;
 
-    let buffer = '';
-    let receivedData = false;
-    this._monitorProc.stdout.on('data', (data) => {
-      receivedData = true;
-      buffer += data.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        const event = this._parsePactlEvent(line);
-        if (!event) continue;
-
-        if (event.action === 'new' && event.type === 'sink') {
-          this._invalidateSinkCache();
-          this.emit('sink:added', { id: event.id });
-          this._onSinkAdded(event.id);
-          this._debouncedBtSinkChanged();
-        } else if (event.action === 'remove' && event.type === 'sink') {
-          this._invalidateSinkCache();
-          this.emit('sink:removed', { id: event.id });
-          this._debouncedBtSinkChanged();
-        }
+      if (event.action === 'new' && event.type === 'sink') {
+        this._invalidateSinkCache();
+        this.emit('sink:added', { id: event.id });
+        this._onSinkAdded(event.id);
+        this._debouncedBtSinkChanged();
+      } else if (event.action === 'remove' && event.type === 'sink') {
+        this._invalidateSinkCache();
+        this.emit('sink:removed', { id: event.id });
+        this._debouncedBtSinkChanged();
       }
     });
 
-    this._monitorProc.stderr.on('data', (data) => {
-      logger.debug('pactl subscribe stderr', { data: data.toString() });
-    });
-
-    this._monitorProc.on('close', (code) => {
-      this._monitorProc = null;
-
-      // Don't restart if cleanup() was called (shutdown in progress)
-      if (this._shuttingDown) return;
-
-      if (receivedData) {
-        // Was running successfully, reset failure count
-        this._monitorFailures = 0;
-        logger.info('Sink monitor exited normally, restarting', { exitCode: code });
-      } else {
-        // Failed immediately (PipeWire unavailable)
-        this._monitorFailures++;
-        if (this._monitorFailures >= MONITOR_MAX_FAILURES) {
-          logger.error(`Sink monitor failed ${this._monitorFailures} times, giving up. Restart orchestrator to retry.`);
-          return;
-        }
-        logger.warn('Sink monitor exited', { exitCode: code, failures: this._monitorFailures });
-      }
-
-      const delay = MONITOR_RESTART_DELAY * Math.pow(MONITOR_BACKOFF_MULTIPLIER, this._monitorFailures);
-      this._monitorRestartTimer = setTimeout(() => {
-        this._monitorRestartTimer = null;
-        logger.info('Restarting sink monitor', { delay });
-        this.startSinkMonitor();
-      }, delay);
-    });
+    this._sinkMonitor.start();
   }
 
   // ── Private helpers ──

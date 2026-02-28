@@ -805,20 +805,34 @@ describe('AudioRoutingService', () => {
     it('should give up after max consecutive failures', async () => {
       jest.useFakeTimers();
 
-      audioRoutingService._monitorFailures = 4; // One below max (5)
-      const mockProc = createMockSpawnProc();
-      spawn.mockReturnValueOnce(mockProc);
+      // Simulate 5 consecutive immediate failures (no data received)
+      const procs = [];
+      for (let i = 0; i < 6; i++) {
+        procs.push(createMockSpawnProc());
+      }
+      spawn.mockReturnValueOnce(procs[0])
+        .mockReturnValueOnce(procs[1])
+        .mockReturnValueOnce(procs[2])
+        .mockReturnValueOnce(procs[3])
+        .mockReturnValueOnce(procs[4])
+        .mockReturnValueOnce(procs[5]);
 
       audioRoutingService.startSinkMonitor();
 
-      // Simulate immediate failure (no data received)
-      mockProc.emit('close', 1);
+      // Each proc exits immediately without data → failure count increments
+      for (let i = 0; i < 5; i++) {
+        procs[i].emit('close', 1);
+        await jest.advanceTimersByTimeAsync(600000); // Past any backoff
+      }
 
-      // Advance timer well past any backoff
+      // 5th failure should have triggered gave-up — no 6th spawn
+      // Initial spawn + 4 restarts = 5 total spawn calls
+      // The 5th proc exits and hits maxFailures, so no 6th spawn
+      procs[4].emit('close', 1);
       await jest.advanceTimersByTimeAsync(600000);
 
-      // Should NOT have spawned another process (gave up)
-      expect(spawn).toHaveBeenCalledTimes(1);
+      // Should NOT have spawned a 6th process
+      expect(spawn).toHaveBeenCalledTimes(5);
 
       jest.useRealTimers();
     });
