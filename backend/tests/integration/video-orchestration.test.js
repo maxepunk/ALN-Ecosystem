@@ -94,6 +94,10 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
 
     mockVlc.reset();
 
+    // Re-establish VLC health in registry after system reset
+    // (registry.reset() marks all services as 'down', VLC health poll hasn't fired yet)
+    await vlcService.checkConnection();
+
     // Create test session
     await sessionService.createSession({
       name: 'Video Orchestration Test Session',

@@ -12,6 +12,8 @@ const registry = require('./serviceHealthRegistry');
 const fs = require('fs');
 const path = require('path');
 
+let heldIdCounter = 0;
+
 class VideoQueueService extends EventEmitter {
   constructor() {
     super();
@@ -22,6 +24,14 @@ class VideoQueueService extends EventEmitter {
     this.currentItem = null;
     this.playbackTimer = null;
     this.monitoringDelayTimer = null; // Track VLC monitoring delay timer
+    this._heldVideos = [];
+
+    // Listen for VLC recovery to notify GM about held items
+    registry.on('health:changed', ({ serviceId, status }) => {
+      if (serviceId === 'vlc' && status === 'healthy' && this._heldVideos.length > 0) {
+        this.emit('video:recoverable', { heldCount: this._heldVideos.length });
+      }
+    });
   }
 
   /**
@@ -78,6 +88,15 @@ class VideoQueueService extends EventEmitter {
       // displayControlService handles display restoration via video:idle listener
       this.emit('video:idle');
       return; // Nothing to play
+    }
+
+    // Check VLC health before attempting playback
+    if (!registry.isHealthy('vlc')) {
+      // Guard against duplicate holds (addToQueue triggers processQueue for each item)
+      if (!this._heldVideos.some(h => h.queueItemId === nextItem.id)) {
+        this._holdVideo(nextItem, 'service_down');
+      }
+      return;
     }
 
     try {
@@ -730,6 +749,80 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
+   * Check if the system can accept a new video right now.
+   * Single source of truth for "can we play a video?" — checks VLC health and queue state.
+   * @returns {{available: boolean, reason?: string, message?: string, waitTime?: number}}
+   */
+  canAcceptVideo() {
+    if (!registry.isHealthy('vlc')) {
+      const { message } = registry.getStatus('vlc');
+      return { available: false, reason: 'vlc_down', message: `VLC is offline: ${message}` };
+    }
+    if (this.isPlaying()) {
+      return { available: false, reason: 'video_busy', waitTime: this.getRemainingTime() };
+    }
+    return { available: true };
+  }
+
+  videoFileExists(filename) {
+    const videoDir = path.resolve(__dirname, '../../public/videos');
+    const basename = path.basename(filename);
+    return fs.existsSync(path.resolve(videoDir, basename));
+  }
+
+  // ── Held video management ──
+
+  _holdVideo(queueItem, reason) {
+    const held = {
+      id: `held-video-${++heldIdCounter}`,
+      type: 'video',
+      heldAt: new Date().toISOString(),
+      reason,
+      tokenId: queueItem.tokenId,
+      videoFile: queueItem.videoPath,
+      requestedBy: queueItem.requestedBy,
+      queueItemId: queueItem.id,
+      status: 'held',
+    };
+    this._heldVideos.push(held);
+    logger.info('Video held', { heldId: held.id, tokenId: held.tokenId, reason });
+    this.emit('video:held', held);
+  }
+
+  getHeldVideos() {
+    return [...this._heldVideos];
+  }
+
+  /**
+   * Release a held video for playback.
+   * Note: This triggers processQueue() which plays the next pending item in FIFO order.
+   * If multiple items are held, releasing one allows the queue to resume from the earliest item.
+   */
+  releaseHeld(heldId) {
+    const idx = this._heldVideos.findIndex(h => h.id === heldId);
+    if (idx === -1) throw new Error(`Held video not found: ${heldId}`);
+    if (!registry.isHealthy('vlc')) {
+      throw new Error('Cannot release held video: VLC is still down');
+    }
+    const held = this._heldVideos.splice(idx, 1)[0];
+    held.status = 'released';
+    this.emit('video:released', { heldId: held.id, tokenId: held.tokenId });
+    // Re-trigger queue processing (GM decided to release — plays next FIFO item)
+    setImmediate(() => this.processQueue());
+  }
+
+  discardHeld(heldId) {
+    const idx = this._heldVideos.findIndex(h => h.id === heldId);
+    if (idx === -1) throw new Error(`Held video not found: ${heldId}`);
+    const held = this._heldVideos.splice(idx, 1)[0];
+    held.status = 'discarded';
+    // Remove the specific queue item by ID (not just tokenId — same token could be queued multiple times)
+    const queueIdx = this.queue.findIndex(q => q.id === held.queueItemId);
+    if (queueIdx !== -1) this.queue.splice(queueIdx, 1);
+    this.emit('video:discarded', { heldId: held.id, tokenId: held.tokenId });
+  }
+
+  /**
    * Check if video is currently playing
    * @returns {boolean}
    */
@@ -879,6 +972,8 @@ class VideoQueueService extends EventEmitter {
     // 2. Reset state (but NOT listeners - broadcasts.js listeners must persist)
     this.queue = [];
     this.currentItem = null;
+    this._heldVideos = [];
+    heldIdCounter = 0;
 
     // 3. Log completion
     logger.info('Video queue service reset');

@@ -25,6 +25,11 @@ describe('POST /api/scan', () => {
     await resetAllServices();
     videoQueueService.reset();
 
+    // Report VLC as healthy so video token scans succeed.
+    // canAcceptVideo() checks registry health before allowing video queue.
+    const registry = require('../../../src/services/serviceHealthRegistry');
+    registry.report('vlc', 'healthy', 'Contract test default');
+
     // CRITICAL: Re-load tokens after reset
     const tokens = tokenService.loadTokens();
     await transactionService.init(tokens);
@@ -114,15 +119,27 @@ describe('POST /api/scan', () => {
     expect(typeof response.body.message).toBe('string');
   });
 
-  // Phase 2 (honest services) removed VLC simulation — vlcService.playVideo() now
-  // throws when VLC is down instead of faking success. In this test environment (no VLC),
-  // the first scan queues the video but processQueue() fails immediately, so isPlaying()
-  // is false by the time the second scan arrives. The 409 "video already playing" path
-  // is only reachable when VLC is healthy and a video IS playing.
-  //
-  // Phase 3c (canAcceptVideo + wire to scanRoutes) will add proper VLC health gating
-  // to the scan route. Re-enable this test after Phase 3c is implemented.
-  it.todo('should return 409 when video already playing (requires Phase 3c: canAcceptVideo)');
+  // Phase 3c: canAcceptVideo() gates the scan route. When VLC is down,
+  // scanning a video token returns 409 instead of silently queuing.
+  it('should return 409 when VLC is down and scanning a video token', async () => {
+    const registry = require('../../../src/services/serviceHealthRegistry');
+    registry.report('vlc', 'down', 'VLC offline');
+
+    const response = await request(app.app)
+      .post('/api/scan')
+      .send({
+        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
+        deviceId: 'PLAYER_SCANNER_01',
+        deviceType: 'player',
+        timestamp: new Date().toISOString()
+      })
+      .expect(409);
+
+    expect(response.body.status).toBe('rejected');
+    expect(response.body.message).toBe('Video playback unavailable');
+    expect(response.body.videoQueued).toBe(false);
+    expect(response.body).not.toHaveProperty('waitTime');
+  });
 });
 
 describe('POST /api/scan/batch', () => {

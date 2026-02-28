@@ -725,7 +725,7 @@ function setupBroadcastListeners(io, services) {
   // PHASE 2 BROADCASTS - Compound Cue Lifecycle, Spotify Status
   // ============================================================
 
-  // Compound cue lifecycle broadcasts (cue:started, cue:paused, cue:conflict)
+  // Compound cue lifecycle broadcasts (cue:started, cue:status)
   if (cueEngineService) {
     addTrackedListener(cueEngineService, 'cue:started', (data) => {
       emitToRoom(io, 'gm', 'cue:status', { ...data, state: 'running', progress: 0 });
@@ -737,11 +737,45 @@ function setupBroadcastListeners(io, services) {
       logger.debug('Broadcasted cue:status', { cueId: data.cueId, state: data.state });
     });
 
-    addTrackedListener(cueEngineService, 'cue:conflict', (data) => {
-      emitToRoom(io, 'gm', 'cue:conflict', data);
-      logger.debug('Broadcasted cue:conflict', { cueId: data.cueId });
+    // ============================================================
+    // HELD ITEM BROADCASTS (Phase 4 — unified held:* namespace)
+    // ============================================================
+
+    addTrackedListener(cueEngineService, 'cue:held', (data) => {
+      emitToRoom(io, 'gm', 'held:added', data);
+      logger.debug('Broadcasted held:added (cue)', { cueId: data.cueId, reason: data.reason });
+    });
+
+    addTrackedListener(cueEngineService, 'cue:released', (data) => {
+      emitToRoom(io, 'gm', 'held:released', data);
+      logger.debug('Broadcasted held:released (cue)', { heldId: data.heldId });
+    });
+
+    addTrackedListener(cueEngineService, 'cue:discarded', (data) => {
+      emitToRoom(io, 'gm', 'held:discarded', data);
+      logger.debug('Broadcasted held:discarded (cue)', { heldId: data.heldId });
     });
   }
+
+  addTrackedListener(videoQueueService, 'video:held', (data) => {
+    emitToRoom(io, 'gm', 'held:added', data);
+    logger.debug('Broadcasted held:added (video)', { tokenId: data.tokenId });
+  });
+
+  addTrackedListener(videoQueueService, 'video:released', (data) => {
+    emitToRoom(io, 'gm', 'held:released', data);
+    logger.debug('Broadcasted held:released (video)', { heldId: data.heldId });
+  });
+
+  addTrackedListener(videoQueueService, 'video:discarded', (data) => {
+    emitToRoom(io, 'gm', 'held:discarded', data);
+    logger.debug('Broadcasted held:discarded (video)', { heldId: data.heldId });
+  });
+
+  addTrackedListener(videoQueueService, 'video:recoverable', (data) => {
+    emitToRoom(io, 'gm', 'held:recoverable', data);
+    logger.debug('Broadcasted held:recoverable', { heldCount: data.heldCount });
+  });
 
   // Spotify broadcasts
   if (spotifyService) {

@@ -1,7 +1,7 @@
 /**
  * Unit Tests: Phase 2 Broadcasts - Compound Cue Lifecycle + Spotify Status
  *
- * Tests that Phase 2 cue engine events (cue:started, cue:paused, cue:conflict)
+ * Tests that Phase 2 cue engine events (cue:started, cue:paused, cue:held)
  * and Spotify service events (playback:changed, volume:changed) are correctly
  * wired into the broadcast layer.
  *
@@ -185,29 +185,138 @@ describe('Phase 2 Broadcasts', () => {
       );
     });
 
-    it('should broadcast cue:conflict on cue:conflict', () => {
+    // Phase 4: Unified held:* namespace broadcasts
+    it('should broadcast held:added on cue:held', () => {
       setupBroadcasts();
 
       const data = {
+        id: 'held-cue-1',
         cueId: 'compound-2',
-        reason: 'Video conflict',
+        type: 'cue',
+        reason: 'video_busy',
+        blockedBy: [],
         currentVideo: { tokenId: 'token-1' },
-        autoCancel: true,
-        autoCancelMs: 10000,
       };
-      mockCueEngineService.emit('cue:conflict', data);
+      mockCueEngineService.emit('cue:held', data);
 
       expect(mockIo.to).toHaveBeenCalledWith('gm');
       expect(mockIo.emit).toHaveBeenCalledWith(
-        'cue:conflict',
+        'held:added',
         expect.objectContaining({
-          event: 'cue:conflict',
+          event: 'held:added',
           data: expect.objectContaining({
             cueId: 'compound-2',
-            reason: 'Video conflict',
-            autoCancel: true,
-            autoCancelMs: 10000,
+            type: 'cue',
+            reason: 'video_busy',
           }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast held:released on cue:released', () => {
+      setupBroadcasts();
+
+      const data = { heldId: 'held-cue-1', cueId: 'compound-2', type: 'cue' };
+      mockCueEngineService.emit('cue:released', data);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'held:released',
+        expect.objectContaining({
+          event: 'held:released',
+          data: expect.objectContaining({
+            heldId: 'held-cue-1',
+            type: 'cue',
+          }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast held:discarded on cue:discarded', () => {
+      setupBroadcasts();
+
+      const data = { heldId: 'held-cue-1', cueId: 'compound-2', type: 'cue' };
+      mockCueEngineService.emit('cue:discarded', data);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'held:discarded',
+        expect.objectContaining({
+          event: 'held:discarded',
+          data: expect.objectContaining({
+            heldId: 'held-cue-1',
+            type: 'cue',
+          }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast held:added on video:held', () => {
+      setupBroadcasts();
+
+      const data = { id: 'held-video-1', tokenId: 'token-5', type: 'video', reason: 'vlc_down' };
+      mockVideoQueueService.emit('video:held', data);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'held:added',
+        expect.objectContaining({
+          event: 'held:added',
+          data: expect.objectContaining({ tokenId: 'token-5', type: 'video' }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast held:released on video:released', () => {
+      setupBroadcasts();
+
+      const data = { heldId: 'held-video-1', tokenId: 'token-5', type: 'video' };
+      mockVideoQueueService.emit('video:released', data);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'held:released',
+        expect.objectContaining({
+          event: 'held:released',
+          data: expect.objectContaining({ heldId: 'held-video-1', type: 'video' }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast held:discarded on video:discarded', () => {
+      setupBroadcasts();
+
+      const data = { heldId: 'held-video-1', tokenId: 'token-5', type: 'video' };
+      mockVideoQueueService.emit('video:discarded', data);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'held:discarded',
+        expect.objectContaining({
+          event: 'held:discarded',
+          data: expect.objectContaining({ heldId: 'held-video-1', type: 'video' }),
+          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+        })
+      );
+    });
+
+    it('should broadcast held:recoverable on video:recoverable', () => {
+      setupBroadcasts();
+
+      const data = { heldCount: 2 };
+      mockVideoQueueService.emit('video:recoverable', data);
+
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      expect(mockIo.emit).toHaveBeenCalledWith(
+        'held:recoverable',
+        expect.objectContaining({
+          event: 'held:recoverable',
+          data: expect.objectContaining({ heldCount: 2 }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
       );

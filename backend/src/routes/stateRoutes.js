@@ -101,10 +101,13 @@ router.get('/', async (req, res) => {
       serviceHealth
     };
 
-    // Generate ETag for caching
+    // Generate ETag for caching — exclude volatile timestamps (lastChecked)
+    // so ETag only changes when meaningful state changes, not on every health report
     const etag = crypto
       .createHash('md5')
-      .update(JSON.stringify(gameState))
+      .update(JSON.stringify(gameState, (key, value) =>
+        key === 'lastChecked' ? undefined : value
+      ))
       .digest('hex');
 
     // Set cache headers per contract

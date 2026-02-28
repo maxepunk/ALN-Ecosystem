@@ -10,7 +10,35 @@ jest.mock('../../../src/utils/logger', () => ({
 
 // Mock executeCommand before requiring cueEngineService
 jest.mock('../../../src/services/commandExecutor', () => ({
-  executeCommand: jest.fn().mockResolvedValue({ success: true, message: 'ok' })
+  executeCommand: jest.fn().mockResolvedValue({ success: true, message: 'ok' }),
+  SERVICE_DEPENDENCIES: {
+    'video:play': 'vlc',
+    'video:pause': 'vlc',
+    'video:stop': 'vlc',
+    'video:skip': 'vlc',
+    'video:queue:add': 'vlc',
+    'spotify:play': 'spotify',
+    'spotify:pause': 'spotify',
+    'spotify:stop': 'spotify',
+    'spotify:next': 'spotify',
+    'spotify:previous': 'spotify',
+    'spotify:playlist': 'spotify',
+    'spotify:volume': 'spotify',
+    'sound:play': 'sound',
+    'sound:stop': 'sound',
+    'lighting:scene:activate': 'lighting',
+    'lighting:scenes:refresh': 'lighting',
+    'bluetooth:pair': 'bluetooth',
+    'bluetooth:unpair': 'bluetooth',
+    'bluetooth:connect': 'bluetooth',
+    'bluetooth:disconnect': 'bluetooth',
+    'bluetooth:scan:start': 'bluetooth',
+    'bluetooth:scan:stop': 'bluetooth',
+    'audio:route:set': 'audio',
+    'audio:volume:set': 'audio',
+    'audio:combine:create': 'audio',
+    'audio:combine:destroy': 'audio',
+  },
 }));
 
 // Mock gameClockService
@@ -38,13 +66,47 @@ describe('CueEngineService', () => {
 
     // Re-require after mocks
     jest.mock('../../../src/services/commandExecutor', () => ({
-      executeCommand: jest.fn().mockResolvedValue({ success: true, message: 'ok' })
+      executeCommand: jest.fn().mockResolvedValue({ success: true, message: 'ok' }),
+      SERVICE_DEPENDENCIES: {
+        'video:play': 'vlc',
+        'video:pause': 'vlc',
+        'video:stop': 'vlc',
+        'video:skip': 'vlc',
+        'video:queue:add': 'vlc',
+        'spotify:play': 'spotify',
+        'spotify:pause': 'spotify',
+        'spotify:stop': 'spotify',
+        'spotify:next': 'spotify',
+        'spotify:previous': 'spotify',
+        'spotify:playlist': 'spotify',
+        'spotify:volume': 'spotify',
+        'sound:play': 'sound',
+        'sound:stop': 'sound',
+        'lighting:scene:activate': 'lighting',
+        'lighting:scenes:refresh': 'lighting',
+        'bluetooth:pair': 'bluetooth',
+        'bluetooth:unpair': 'bluetooth',
+        'bluetooth:connect': 'bluetooth',
+        'bluetooth:disconnect': 'bluetooth',
+        'bluetooth:scan:start': 'bluetooth',
+        'bluetooth:scan:stop': 'bluetooth',
+        'audio:route:set': 'audio',
+        'audio:volume:set': 'audio',
+        'audio:combine:create': 'audio',
+        'audio:combine:destroy': 'audio',
+      },
     }));
 
     cueEngineService = require('../../../src/services/cueEngineService');
     gameClockService = require('../../../src/services/gameClockService');
     executeCommand = require('../../../src/services/commandExecutor').executeCommand;
     cueEngineService.reset();
+
+    // Set all services healthy by default (Phase 3: service health checks in fireCue)
+    const registry = require('../../../src/services/serviceHealthRegistry');
+    for (const svc of ['sound', 'lighting', 'vlc', 'spotify', 'bluetooth', 'audio']) {
+      registry.report(svc, 'healthy', 'test default');
+    }
   });
 
   afterEach(() => {
@@ -694,7 +756,7 @@ describe('CueEngineService', () => {
     });
   });
 
-  describe('video conflict detection (D13, D37)', () => {
+  describe('video conflict detection (D13, D37) — unified held system', () => {
     let videoQueueService;
 
     beforeEach(() => {
@@ -707,11 +769,10 @@ describe('CueEngineService', () => {
       videoQueueService = require('../../../src/services/videoQueueService');
     });
 
-    it('should emit cue:conflict when video is already playing', async () => {
-      const conflictHandler = jest.fn();
-      cueEngineService.on('cue:conflict', conflictHandler);
+    it('should emit cue:held with reason video_busy when video is already playing', async () => {
+      const heldHandler = jest.fn();
+      cueEngineService.on('cue:held', heldHandler);
 
-      // Mock videoQueueService.isPlaying() to return true
       videoQueueService.isPlaying.mockReturnValue(true);
       videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
 
@@ -725,13 +786,30 @@ describe('CueEngineService', () => {
 
       await cueEngineService.fireCue('conflict-cue');
 
-      expect(conflictHandler).toHaveBeenCalledWith(expect.objectContaining({
+      expect(heldHandler).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'cue',
         cueId: 'conflict-cue',
-        reason: 'Video conflict',
+        reason: 'video_busy',
         currentVideo: expect.any(Object),
-        autoCancel: true,
-        autoCancelMs: 10000,
+        status: 'held',
       }));
+    });
+
+    it('should store video conflict in getHeldCues()', async () => {
+      videoQueueService.isPlaying.mockReturnValue(true);
+      videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
+
+      cueEngineService.loadCues([{
+        id: 'held-conflict', label: 'Held',
+        timeline: [{ at: 0, action: 'video:play', payload: { file: 'new.mp4' } }]
+      }]);
+
+      await cueEngineService.fireCue('held-conflict');
+
+      const held = cueEngineService.getHeldCues();
+      expect(held).toHaveLength(1);
+      expect(held[0].reason).toBe('video_busy');
+      expect(held[0].cueId).toBe('held-conflict');
     });
 
     it('should start compound cue immediately when no video conflict', async () => {
@@ -752,7 +830,7 @@ describe('CueEngineService', () => {
       );
     });
 
-    it('should auto-cancel conflict after 10 seconds timeout', async () => {
+    it('should auto-discard video_busy held cue after 10 seconds', async () => {
       jest.useFakeTimers();
       videoQueueService.isPlaying.mockReturnValue(true);
       videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
@@ -763,17 +841,19 @@ describe('CueEngineService', () => {
       }]);
 
       await cueEngineService.fireCue('timeout-cue');
+      expect(cueEngineService.getHeldCues()).toHaveLength(1);
 
-      // Advance 10 seconds — should auto-cancel
+      // Advance 10 seconds — should auto-discard
       jest.advanceTimersByTime(10000);
+      expect(cueEngineService.getHeldCues()).toHaveLength(0);
       expect(cueEngineService.getActiveCues()).toHaveLength(0);
 
       jest.useRealTimers();
     });
 
     it('should not check conflict for non-video compound cues', async () => {
-      const conflictHandler = jest.fn();
-      cueEngineService.on('cue:conflict', conflictHandler);
+      const heldHandler = jest.fn();
+      cueEngineService.on('cue:held', heldHandler);
 
       videoQueueService.isPlaying.mockReturnValue(true);
 
@@ -787,54 +867,70 @@ describe('CueEngineService', () => {
 
       await cueEngineService.fireCue('no-video-cue');
 
-      expect(conflictHandler).not.toHaveBeenCalled();
+      expect(heldHandler).not.toHaveBeenCalled();
       expect(executeCommand).toHaveBeenCalled();
     });
 
-    it('should emit cue:status with state cancelled when conflict is cancelled', async () => {
+    it('should emit cue:discarded when video conflict is discarded', async () => {
       videoQueueService.isPlaying.mockReturnValue(true);
       videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
 
       cueEngineService.loadCues([{
-        id: 'cancel-cue', label: 'Cancel Cue',
-        timeline: [
-          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } }
-        ]
+        id: 'discard-conflict', label: 'Discard',
+        timeline: [{ at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } }]
       }]);
 
-      // Fire the cue — will create a pending conflict
-      await cueEngineService.fireCue('cancel-cue');
+      await cueEngineService.fireCue('discard-conflict');
+      const heldId = cueEngineService.getHeldCues()[0].id;
 
-      // Listen for cue:status emission
       const handler = jest.fn();
-      cueEngineService.on('cue:status', handler);
+      cueEngineService.on('cue:discarded', handler);
 
-      // Resolve with cancel
-      await cueEngineService.resolveConflict('cancel-cue', 'cancel');
+      cueEngineService.discardCue(heldId);
 
-      expect(handler).toHaveBeenCalledWith({
-        cueId: 'cancel-cue',
-        state: 'cancelled'
-      });
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+        heldId,
+        cueId: 'discard-conflict',
+      }));
+      expect(cueEngineService.getHeldCues()).toHaveLength(0);
     });
 
-    it('should call skipCurrent (not stopCurrent) when conflict is overridden', async () => {
+    it('should call skipCurrent and re-fire when video_busy cue is released', async () => {
       videoQueueService.isPlaying.mockReturnValue(true);
       videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
 
       cueEngineService.loadCues([{
         id: 'override-cue', label: 'Override Cue',
-        timeline: [
-          { at: 0, action: 'video:queue:add', payload: { videoFile: 'new.mp4' } }
-        ]
+        timeline: [{ at: 0, action: 'video:queue:add', payload: { videoFile: 'new.mp4' } }]
       }]);
 
       await cueEngineService.fireCue('override-cue');
+      const heldId = cueEngineService.getHeldCues()[0].id;
 
-      // Resolve with override — should call skipCurrent
-      await cueEngineService.resolveConflict('override-cue', 'override');
+      // Make video not playing so release succeeds
+      videoQueueService.isPlaying.mockReturnValue(false);
+
+      await cueEngineService.releaseCue(heldId);
 
       expect(videoQueueService.skipCurrent).toHaveBeenCalled();
+      expect(cueEngineService.getHeldCues()).toHaveLength(0);
+    });
+
+    it('should NOT emit cue:conflict (legacy event removed)', async () => {
+      const conflictHandler = jest.fn();
+      cueEngineService.on('cue:conflict', conflictHandler);
+
+      videoQueueService.isPlaying.mockReturnValue(true);
+      videoQueueService.getCurrentVideo.mockReturnValue({ tokenId: 'current.mp4' });
+
+      cueEngineService.loadCues([{
+        id: 'no-legacy', label: 'No Legacy',
+        timeline: [{ at: 0, action: 'video:play', payload: { file: 'test.mp4' } }]
+      }]);
+
+      await cueEngineService.fireCue('no-legacy');
+
+      expect(conflictHandler).not.toHaveBeenCalled();
     });
   });
 
@@ -1063,6 +1159,274 @@ describe('CueEngineService', () => {
       cueEngineService.reset();
 
       expect(registry.isHealthy('cueengine')).toBe(false);
+    });
+  });
+
+  // ── Cue Engine Hold System (Phase 3, Task 3e) ──
+
+  describe('cue hold system', () => {
+    let registry;
+
+    beforeEach(() => {
+      registry = require('../../../src/services/serviceHealthRegistry');
+      // Set all services healthy by default
+      registry.report('sound', 'healthy', 'available');
+      registry.report('lighting', 'healthy', 'available');
+      registry.report('vlc', 'healthy', 'available');
+      registry.report('spotify', 'healthy', 'available');
+      registry.report('bluetooth', 'healthy', 'available');
+      registry.report('audio', 'healthy', 'available');
+    });
+
+    describe('fireCue() — simple cue hold on service down', () => {
+      it('should hold simple cue when required service is down', async () => {
+        registry.report('sound', 'down', 'pw-play not found');
+
+        const heldHandler = jest.fn();
+        cueEngineService.on('cue:held', heldHandler);
+
+        cueEngineService.loadCues([{
+          id: 'sound-cue', label: 'Sound Cue',
+          commands: [{ action: 'sound:play', payload: { file: 'alert.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('sound-cue');
+
+        // Should NOT have executed the command
+        expect(executeCommand).not.toHaveBeenCalled();
+        // Should have emitted cue:held
+        expect(heldHandler).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'cue',
+          cueId: 'sound-cue',
+          reason: 'service_down',
+          status: 'held',
+        }));
+      });
+
+      it('should report all blocked services in blockedBy', async () => {
+        registry.report('sound', 'down', 'unavailable');
+        registry.report('lighting', 'down', 'HA not running');
+
+        const heldHandler = jest.fn();
+        cueEngineService.on('cue:held', heldHandler);
+
+        cueEngineService.loadCues([{
+          id: 'multi-dep', label: 'Multi Deps',
+          commands: [
+            { action: 'sound:play', payload: { file: 'a.wav' } },
+            { action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } },
+          ]
+        }]);
+
+        await cueEngineService.fireCue('multi-dep');
+
+        expect(heldHandler).toHaveBeenCalledWith(expect.objectContaining({
+          blockedBy: expect.arrayContaining(['sound', 'lighting']),
+        }));
+      });
+
+      it('should fire normally when all services are healthy', async () => {
+        // All services set healthy in beforeEach
+        cueEngineService.loadCues([{
+          id: 'healthy-cue', label: 'Healthy',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        const heldHandler = jest.fn();
+        cueEngineService.on('cue:held', heldHandler);
+
+        await cueEngineService.fireCue('healthy-cue');
+
+        expect(executeCommand).toHaveBeenCalled();
+        expect(heldHandler).not.toHaveBeenCalled();
+      });
+
+      it('should fire normally when commands have no service dependency', async () => {
+        // session:create has no entry in SERVICE_DEPENDENCIES
+        cueEngineService.loadCues([{
+          id: 'no-dep', label: 'No Dep',
+          commands: [{ action: 'session:pause', payload: {} }]
+        }]);
+
+        const heldHandler = jest.fn();
+        cueEngineService.on('cue:held', heldHandler);
+
+        await cueEngineService.fireCue('no-dep');
+
+        expect(executeCommand).toHaveBeenCalled();
+        expect(heldHandler).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('fireCue() — compound cue hold on service down', () => {
+      it('should hold compound cue when a timeline command service is down', async () => {
+        registry.report('sound', 'down', 'pw-play not found');
+
+        const heldHandler = jest.fn();
+        cueEngineService.on('cue:held', heldHandler);
+
+        cueEngineService.loadCues([{
+          id: 'compound-hold', label: 'Compound Hold',
+          timeline: [
+            { at: 0, action: 'lighting:scene:activate', payload: { sceneId: 'dim' } },
+            { at: 5, action: 'sound:play', payload: { file: 'hit.wav' } },
+          ]
+        }]);
+
+        await cueEngineService.fireCue('compound-hold');
+
+        expect(executeCommand).not.toHaveBeenCalled();
+        expect(heldHandler).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'cue',
+          cueId: 'compound-hold',
+          reason: 'service_down',
+          blockedBy: ['sound'],
+        }));
+        // Should NOT be in activeCues (not started)
+        expect(cueEngineService.getActiveCues()).toHaveLength(0);
+      });
+    });
+
+    describe('getHeldCues()', () => {
+      it('should return empty array when no cues are held', () => {
+        expect(cueEngineService.getHeldCues()).toEqual([]);
+      });
+
+      it('should return held cue with correct structure', async () => {
+        registry.report('sound', 'down', 'unavailable');
+
+        cueEngineService.loadCues([{
+          id: 'struct-cue', label: 'Structure Test',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('struct-cue');
+
+        const held = cueEngineService.getHeldCues();
+        expect(held).toHaveLength(1);
+        expect(held[0]).toEqual(expect.objectContaining({
+          id: expect.stringMatching(/^held-cue-/),
+          type: 'cue',
+          heldAt: expect.any(String),
+          blockedBy: ['sound'],
+          reason: 'service_down',
+          cueId: 'struct-cue',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+          status: 'held',
+        }));
+      });
+    });
+
+    describe('releaseCue()', () => {
+      it('should release held cue and re-fire it', async () => {
+        registry.report('sound', 'down', 'unavailable');
+
+        cueEngineService.loadCues([{
+          id: 'release-cue', label: 'Release',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('release-cue');
+        expect(cueEngineService.getHeldCues()).toHaveLength(1);
+        const heldId = cueEngineService.getHeldCues()[0].id;
+
+        // Fix the service
+        registry.report('sound', 'healthy', 'available');
+        executeCommand.mockClear();
+
+        // Release — should re-fire
+        await cueEngineService.releaseCue(heldId);
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+        expect(executeCommand).toHaveBeenCalled();
+      });
+
+      it('should emit cue:released event', async () => {
+        registry.report('sound', 'down', 'unavailable');
+
+        cueEngineService.loadCues([{
+          id: 'released-event', label: 'Released Event',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('released-event');
+        const heldId = cueEngineService.getHeldCues()[0].id;
+
+        registry.report('sound', 'healthy', 'available');
+
+        const handler = jest.fn();
+        cueEngineService.on('cue:released', handler);
+
+        await cueEngineService.releaseCue(heldId);
+        expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+          heldId,
+          cueId: 'released-event',
+        }));
+      });
+
+      it('should throw when service is still down', async () => {
+        registry.report('sound', 'down', 'unavailable');
+
+        cueEngineService.loadCues([{
+          id: 'still-down', label: 'Still Down',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('still-down');
+        const heldId = cueEngineService.getHeldCues()[0].id;
+
+        // Service still down — release should throw
+        await expect(cueEngineService.releaseCue(heldId)).rejects.toThrow(/still down/i);
+      });
+
+      it('should throw when held cue not found', async () => {
+        await expect(cueEngineService.releaseCue('held-cue-999')).rejects.toThrow(/not found/i);
+      });
+    });
+
+    describe('discardCue()', () => {
+      it('should remove held cue and emit cue:discarded', async () => {
+        registry.report('sound', 'down', 'unavailable');
+
+        cueEngineService.loadCues([{
+          id: 'discard-cue', label: 'Discard',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('discard-cue');
+        const heldId = cueEngineService.getHeldCues()[0].id;
+
+        const handler = jest.fn();
+        cueEngineService.on('cue:discarded', handler);
+
+        cueEngineService.discardCue(heldId);
+
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+        expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+          heldId,
+          cueId: 'discard-cue',
+        }));
+      });
+
+      it('should throw when held cue not found', () => {
+        expect(() => cueEngineService.discardCue('held-cue-999')).toThrow(/not found/i);
+      });
+    });
+
+    describe('reset() clears held cues', () => {
+      it('should clear heldCues on reset', async () => {
+        registry.report('sound', 'down', 'unavailable');
+
+        cueEngineService.loadCues([{
+          id: 'reset-held', label: 'Reset Held',
+          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+        }]);
+
+        await cueEngineService.fireCue('reset-held');
+        expect(cueEngineService.getHeldCues()).toHaveLength(1);
+
+        cueEngineService.reset();
+        expect(cueEngineService.getHeldCues()).toHaveLength(0);
+      });
     });
   });
 });

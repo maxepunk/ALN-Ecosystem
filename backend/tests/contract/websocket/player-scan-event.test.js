@@ -44,6 +44,10 @@ describe('Player Scan Event - Contract Validation', () => {
     const videoQueueService = require('../../../src/services/videoQueueService');
     videoQueueService.reset();  // Reset video queue to clear any playing videos
 
+    // Report VLC as healthy so video token scans succeed (canAcceptVideo checks registry)
+    const registry = require('../../../src/services/serviceHealthRegistry');
+    registry.report('vlc', 'healthy', 'Contract test default');
+
     // Create session (player scans require active session for persistence)
     await sessionService.createSession({
       name: 'Player Scan Test Session',

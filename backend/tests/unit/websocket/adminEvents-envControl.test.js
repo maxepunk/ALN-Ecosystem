@@ -32,6 +32,15 @@ jest.mock('../../../src/services/lightingService', () => ({
   refreshScenes: jest.fn().mockResolvedValue(),
 }));
 
+// Mock health registry — all services healthy by default
+jest.mock('../../../src/services/serviceHealthRegistry', () => ({
+  isHealthy: jest.fn().mockReturnValue(true),
+  getStatus: jest.fn().mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() }),
+  report: jest.fn(),
+  on: jest.fn(),
+  removeAllListeners: jest.fn(),
+}));
+
 // Mock other services that adminEvents requires
 jest.mock('../../../src/services/sessionService', () => ({
   createSession: jest.fn(),
@@ -153,6 +162,12 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
     jest.clearAllMocks();
     socket = createMockSocket();
     mockIo = { emit: jest.fn(), to: jest.fn().mockReturnThis() };
+
+    // resetMocks: true wipes mock factory defaults between tests —
+    // restore registry healthy state so env commands pass health gate
+    const registry = require('../../../src/services/serviceHealthRegistry');
+    registry.isHealthy.mockReturnValue(true);
+    registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
   });
 
   // ── Bluetooth Scan ──

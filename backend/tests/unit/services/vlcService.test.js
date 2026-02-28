@@ -13,6 +13,12 @@ jest.mock('axios');
 describe('VLCService', () => {
   let mockAxiosInstance;
 
+  afterAll(() => {
+    // Clean up any lingering timers (healthCheckInterval, reconnectTimer)
+    // to prevent Jest force-exit warnings
+    vlcService.reset();
+  });
+
   beforeEach(() => {
     // Reset service state
     if (vlcService.reset) {

@@ -105,6 +105,9 @@ async function buildSyncFullPayload({
   // Phase 2: Spotify state
   const spotify = buildSpotifyState(spotifyService);
 
+  // Phase 3: Held items (blocked by service outage or resource contention)
+  const heldItems = buildHeldItemsState(cueEngineService, videoQueueService);
+
   return {
     session: session ? session.toJSON() : null,
     scores,
@@ -117,6 +120,7 @@ async function buildSyncFullPayload({
     gameClock,
     cueEngine,
     spotify,
+    heldItems,
   };
 }
 
@@ -187,4 +191,32 @@ function buildSpotifyState(spotifyService) {
   }
 }
 
-module.exports = { buildSyncFullPayload };
+/**
+ * Build held items state for sync:full payload.
+ * Combines held videos and held cues into a single array.
+ * Gracefully degrades when services are unavailable.
+ *
+ * @param {Object|null} cueEngineService - CueEngineService instance (Phase 3e)
+ * @param {Object|null} videoQueueService - VideoQueueService instance
+ * @returns {Array} Held items array
+ */
+function buildHeldItemsState(cueEngineService, videoQueueService) {
+  const items = [];
+  try {
+    if (videoQueueService && typeof videoQueueService.getHeldVideos === 'function') {
+      items.push(...videoQueueService.getHeldVideos());
+    }
+  } catch (err) {
+    logger.warn('Failed to gather held video state for sync:full', { error: err.message });
+  }
+  try {
+    if (cueEngineService && typeof cueEngineService.getHeldCues === 'function') {
+      items.push(...cueEngineService.getHeldCues());
+    }
+  } catch (err) {
+    logger.warn('Failed to gather held cue state for sync:full', { error: err.message });
+  }
+  return items;
+}
+
+module.exports = { buildSyncFullPayload, buildHeldItemsState };

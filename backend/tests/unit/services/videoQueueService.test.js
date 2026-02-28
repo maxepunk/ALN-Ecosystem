@@ -192,4 +192,306 @@ describe('VideoQueueService - Queue Management', () => {
       videoQueueService.removeListener('video:idle', idleHandler);
     });
   });
+
+  describe('canAcceptVideo()', () => {
+    const registry = require('../../../src/services/serviceHealthRegistry');
+
+    beforeEach(() => {
+      // Default: VLC healthy
+      registry.report('vlc', 'healthy', 'test');
+    });
+
+    afterEach(() => {
+      registry.reset();
+    });
+
+    it('should return available: true when VLC healthy and not playing', () => {
+      const result = videoQueueService.canAcceptVideo();
+      expect(result).toEqual({ available: true });
+    });
+
+    it('should return available: false with reason vlc_down when VLC unhealthy', () => {
+      registry.report('vlc', 'down', 'VLC offline');
+
+      const result = videoQueueService.canAcceptVideo();
+      expect(result.available).toBe(false);
+      expect(result.reason).toBe('vlc_down');
+      expect(result.message).toMatch(/VLC/i);
+    });
+
+    it('should return available: false with reason video_busy when video is playing', () => {
+      jest.spyOn(videoQueueService, 'isPlaying').mockReturnValue(true);
+      jest.spyOn(videoQueueService, 'getRemainingTime').mockReturnValue(25);
+
+      const result = videoQueueService.canAcceptVideo();
+      expect(result.available).toBe(false);
+      expect(result.reason).toBe('video_busy');
+      expect(result.waitTime).toBe(25);
+    });
+  });
+
+  describe('videoFileExists()', () => {
+    it('should return true when video file exists in public/videos/', () => {
+      const fs = require('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      expect(videoQueueService.videoFileExists('test.mp4')).toBe(true);
+      expect(fs.existsSync).toHaveBeenCalledWith(
+        expect.stringContaining('public/videos/test.mp4')
+      );
+    });
+
+    it('should return false when video file does not exist', () => {
+      const fs = require('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+
+      expect(videoQueueService.videoFileExists('missing.mp4')).toBe(false);
+    });
+
+    it('should handle absolute paths starting with /', () => {
+      const fs = require('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      videoQueueService.videoFileExists('/videos/abs.mp4');
+      const calledPath = fs.existsSync.mock.calls[0][0];
+      expect(calledPath).toContain('public/videos/abs.mp4');
+      expect(calledPath).not.toContain('public/videos//');
+    });
+  });
+
+  describe('Video Queue Hold Behavior', () => {
+    const registry = require('../../../src/services/serviceHealthRegistry');
+
+    beforeEach(() => {
+      // Default: VLC healthy
+      registry.report('vlc', 'healthy', 'test');
+    });
+
+    afterEach(() => {
+      registry.reset();
+    });
+
+    describe('processQueue() with VLC down', () => {
+      it('should emit video:held when VLC is down and pending items exist', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+
+        const heldHandler = jest.fn();
+        videoQueueService.on('video:held', heldHandler);
+
+        await videoQueueService.processQueue();
+
+        expect(heldHandler).toHaveBeenCalledWith(expect.objectContaining({
+          id: expect.stringMatching(/^held-video-/),
+          type: 'video',
+          reason: expect.any(String),
+          tokenId: item.tokenId,
+          videoFile: item.videoPath,
+          requestedBy: item.requestedBy,
+          status: 'held',
+        }));
+        videoQueueService.removeListener('video:held', heldHandler);
+      });
+
+      it('should NOT attempt playback when VLC is down', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+
+        await videoQueueService.processQueue();
+
+        // Item should still be pending (not playing or failed)
+        expect(item.isPending()).toBe(true);
+      });
+
+      it('should still emit video:idle when queue is empty even if VLC is down', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const idleHandler = jest.fn();
+        videoQueueService.on('video:idle', idleHandler);
+
+        await videoQueueService.processQueue();
+
+        expect(idleHandler).toHaveBeenCalled();
+        videoQueueService.removeListener('video:idle', idleHandler);
+      });
+
+      it('should NOT create duplicate held records when processQueue is called multiple times', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item1 = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        const item2 = VideoQueueItem.fromToken(testToken, 'DEVICE_2');
+        videoQueueService.queue.push(item1, item2);
+
+        // Simulate multiple processQueue calls (as addToQueue would trigger)
+        await videoQueueService.processQueue();
+        await videoQueueService.processQueue();
+        await videoQueueService.processQueue();
+
+        // Only one held record for the first pending item
+        expect(videoQueueService.getHeldVideos()).toHaveLength(1);
+        expect(videoQueueService.getHeldVideos()[0].queueItemId).toBe(item1.id);
+      });
+    });
+
+    describe('getHeldVideos()', () => {
+      it('should return empty array when no held items', () => {
+        expect(videoQueueService.getHeldVideos()).toEqual([]);
+      });
+
+      it('should return held items after processQueue holds a video', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+
+        await videoQueueService.processQueue();
+
+        const held = videoQueueService.getHeldVideos();
+        expect(held).toHaveLength(1);
+        expect(held[0]).toEqual(expect.objectContaining({
+          type: 'video',
+          reason: 'service_down',
+          tokenId: 'test_video_token',
+          queueItemId: item.id,
+          status: 'held',
+        }));
+        expect(held[0].id).toBeDefined();
+        expect(held[0].heldAt).toBeDefined();
+      });
+    });
+
+    describe('releaseHeld()', () => {
+      it('should remove item from held list and re-queue for playback', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+        await videoQueueService.processQueue();
+
+        const held = videoQueueService.getHeldVideos();
+        expect(held).toHaveLength(1);
+
+        // VLC recovers — GM can now release
+        registry.report('vlc', 'healthy', 'VLC reconnected');
+
+        const releasedHandler = jest.fn();
+        videoQueueService.on('video:released', releasedHandler);
+
+        videoQueueService.releaseHeld(held[0].id);
+
+        expect(videoQueueService.getHeldVideos()).toHaveLength(0);
+        expect(releasedHandler).toHaveBeenCalledWith(expect.objectContaining({
+          heldId: held[0].id,
+        }));
+        videoQueueService.removeListener('video:released', releasedHandler);
+      });
+
+      it('should throw when VLC is still down', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+        await videoQueueService.processQueue();
+
+        const held = videoQueueService.getHeldVideos();
+        expect(() => videoQueueService.releaseHeld(held[0].id)).toThrow('VLC is still down');
+        // Held item should remain
+        expect(videoQueueService.getHeldVideos()).toHaveLength(1);
+      });
+
+      it('should throw when heldId not found', () => {
+        expect(() => videoQueueService.releaseHeld('nonexistent')).toThrow();
+      });
+    });
+
+    describe('discardHeld()', () => {
+      it('should remove item from held list and remove from queue', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+        await videoQueueService.processQueue();
+
+        const held = videoQueueService.getHeldVideos();
+        expect(held).toHaveLength(1);
+
+        const discardedHandler = jest.fn();
+        videoQueueService.on('video:discarded', discardedHandler);
+
+        videoQueueService.discardHeld(held[0].id);
+
+        expect(videoQueueService.getHeldVideos()).toHaveLength(0);
+        expect(discardedHandler).toHaveBeenCalledWith(expect.objectContaining({
+          heldId: held[0].id,
+        }));
+        videoQueueService.removeListener('video:discarded', discardedHandler);
+      });
+
+      it('should throw when heldId not found', () => {
+        expect(() => videoQueueService.discardHeld('nonexistent')).toThrow();
+      });
+    });
+
+    describe('VLC recovery', () => {
+      it('should emit video:recoverable when VLC changes from down to healthy', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+        await videoQueueService.processQueue();
+
+        const recoverableHandler = jest.fn();
+        videoQueueService.on('video:recoverable', recoverableHandler);
+
+        // VLC recovers
+        registry.report('vlc', 'healthy', 'VLC reconnected');
+
+        expect(recoverableHandler).toHaveBeenCalledWith(
+          expect.objectContaining({ heldCount: 1 })
+        );
+        videoQueueService.removeListener('video:recoverable', recoverableHandler);
+      });
+
+      it('should NOT emit video:recoverable when no held items exist', () => {
+        const recoverableHandler = jest.fn();
+        videoQueueService.on('video:recoverable', recoverableHandler);
+
+        registry.report('vlc', 'down', 'VLC offline');
+        registry.report('vlc', 'healthy', 'VLC reconnected');
+
+        expect(recoverableHandler).not.toHaveBeenCalled();
+        videoQueueService.removeListener('video:recoverable', recoverableHandler);
+      });
+    });
+
+    describe('reset() clears held items', () => {
+      it('should clear held items on reset', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+        await videoQueueService.processQueue();
+
+        expect(videoQueueService.getHeldVideos()).toHaveLength(1);
+
+        videoQueueService.reset();
+
+        expect(videoQueueService.getHeldVideos()).toEqual([]);
+      });
+
+      it('should reset held ID counter so new session starts from held-video-1', async () => {
+        registry.report('vlc', 'down', 'VLC offline');
+        const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+        videoQueueService.queue.push(item);
+        await videoQueueService.processQueue();
+
+        const heldBefore = videoQueueService.getHeldVideos();
+        expect(heldBefore[0].id).toMatch(/^held-video-/);
+
+        videoQueueService.reset();
+        registry.report('vlc', 'down', 'VLC offline');
+
+        const item2 = VideoQueueItem.fromToken(testToken, 'DEVICE_2');
+        videoQueueService.queue.push(item2);
+        await videoQueueService.processQueue();
+
+        const heldAfter = videoQueueService.getHeldVideos();
+        expect(heldAfter[0].id).toBe('held-video-1');
+      });
+    });
+  });
 });

@@ -735,4 +735,30 @@ describe('LightingService', () => {
       });
     });
   });
+
+  describe('sceneExists()', () => {
+    it('should return true when sceneId is in cached scenes', () => {
+      // Populate cache directly
+      lightingService._scenes = [
+        { id: 'scene.game_start', name: 'Game Start' },
+        { id: 'scene.intermission', name: 'Intermission' },
+      ];
+
+      expect(lightingService.sceneExists('scene.game_start')).toBe(true);
+    });
+
+    it('should return false when sceneId is not in cached scenes', () => {
+      lightingService._scenes = [
+        { id: 'scene.game_start', name: 'Game Start' },
+      ];
+
+      expect(lightingService.sceneExists('scene.nonexistent')).toBe(false);
+    });
+
+    it('should return false when scene cache is empty', () => {
+      lightingService._scenes = [];
+
+      expect(lightingService.sceneExists('scene.test')).toBe(false);
+    });
+  });
 });

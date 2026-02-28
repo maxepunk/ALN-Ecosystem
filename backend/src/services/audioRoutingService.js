@@ -123,6 +123,21 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
+   * On-demand health check. Probes pactl info and reports to registry.
+   * @returns {Promise<boolean>} true if PipeWire/PulseAudio is reachable
+   */
+  async checkHealth() {
+    try {
+      await this._execFile('pactl', ['info']);
+      registry.report('audio', 'healthy', 'PipeWire reachable');
+      return true;
+    } catch {
+      registry.report('audio', 'down', 'PipeWire unreachable');
+      return false;
+    }
+  }
+
+  /**
    * Kill pactl subscribe process, prevent orphaned processes on shutdown.
    */
   cleanup() {
@@ -211,6 +226,11 @@ class AudioRoutingService extends EventEmitter {
   _invalidateSinkCache() {
     this._sinkCache = null;
     this._sinkCacheTime = 0;
+  }
+
+  sinkExists(sinkName) {
+    if (!this._sinkCache) return false;
+    return this._sinkCache.some((s) => s.name === sinkName);
   }
 
   /**

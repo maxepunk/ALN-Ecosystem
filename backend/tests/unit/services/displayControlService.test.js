@@ -189,14 +189,16 @@ describe('DisplayControlService - State Machine', () => {
       expect(status.previousMode).toBe(DisplayMode.SCOREBOARD);
     });
 
-    it('should handle graceful degradation when VLC not connected', async () => {
+    it('should fail honestly when VLC not connected', async () => {
       mockVlcService.isConnected.mockReturnValue(false);
 
       const result = await displayControlService.playVideo('test_video.mp4');
 
-      // Should still succeed (graceful degradation)
-      expect(result.success).toBe(true);
-      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
+      // No silent simulation — reports failure when VLC unavailable
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/VLC not connected/);
+      // Mode reverts to previous on failure
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.IDLE_LOOP);
     });
   });
 

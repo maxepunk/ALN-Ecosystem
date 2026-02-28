@@ -2210,5 +2210,55 @@ describe('AudioRoutingService', () => {
 
       expect(registry.isHealthy('audio')).toBe(false);
     });
+
+    it('checkHealth should report healthy when pactl info succeeds', async () => {
+      mockExecFileSuccess('Server Name: PulseAudio (on PipeWire)\nServer Version: 1.0\n');
+
+      const result = await audioRoutingService.checkHealth();
+
+      expect(result).toBe(true);
+      expect(registry.isHealthy('audio')).toBe(true);
+    });
+
+    it('checkHealth should report down when pactl info fails', async () => {
+      mockExecFileError('Connection refused');
+
+      const result = await audioRoutingService.checkHealth();
+
+      expect(result).toBe(false);
+      expect(registry.isHealthy('audio')).toBe(false);
+    });
+
+    it('checkHealth should return boolean (not throw)', async () => {
+      mockExecFileError('timeout');
+
+      const result = await audioRoutingService.checkHealth();
+      expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('sinkExists()', () => {
+    it('should return true when sink name is in cache', () => {
+      audioRoutingService._sinkCache = [
+        { id: 1, name: 'alsa_output.hdmi', driver: 'PipeWire', state: 'IDLE' },
+        { id: 2, name: 'bluez_output.AA_BB', driver: 'PipeWire', state: 'RUNNING' },
+      ];
+
+      expect(audioRoutingService.sinkExists('bluez_output.AA_BB')).toBe(true);
+    });
+
+    it('should return false when sink name is not in cache', () => {
+      audioRoutingService._sinkCache = [
+        { id: 1, name: 'alsa_output.hdmi', driver: 'PipeWire', state: 'IDLE' },
+      ];
+
+      expect(audioRoutingService.sinkExists('nonexistent_sink')).toBe(false);
+    });
+
+    it('should return false when sink cache is null (not yet populated)', () => {
+      audioRoutingService._sinkCache = null;
+
+      expect(audioRoutingService.sinkExists('any_sink')).toBe(false);
+    });
   });
 });

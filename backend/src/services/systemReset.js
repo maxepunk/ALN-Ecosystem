@@ -17,6 +17,7 @@
 
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
+const serviceHealthRegistry = require('./serviceHealthRegistry');
 const listenerRegistry = require('../websocket/listenerRegistry');
 const { cleanupBroadcastListeners, setupBroadcastListeners } = require('../websocket/broadcasts');
 
@@ -116,6 +117,9 @@ async function performSystemReset(io, services) {
   if (spotifyService) {
     spotifyService.reset();
   }
+
+  // Reset health registry (clears stale health state from previous session)
+  serviceHealthRegistry.reset();
 
   logger.debug('All services reset');
 

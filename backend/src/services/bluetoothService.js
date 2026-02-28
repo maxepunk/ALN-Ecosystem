@@ -54,6 +54,20 @@ class BluetoothService extends EventEmitter {
   }
 
   /**
+   * On-demand health check. Re-probes adapter availability and reports to registry.
+   * @returns {Promise<boolean>} true if adapter is powered on
+   */
+  async checkHealth() {
+    const available = await this.isAvailable();
+    if (available) {
+      registry.report('bluetooth', 'healthy', 'Adapter available');
+    } else {
+      registry.report('bluetooth', 'down', 'No adapter or adapter powered off');
+    }
+    return available;
+  }
+
+  /**
    * Check if a Bluetooth adapter is available and powered on
    * @returns {Promise<boolean>}
    */

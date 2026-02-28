@@ -103,7 +103,10 @@ channels:
           - $ref: '#/components/messages/CueStatus'
           - $ref: '#/components/messages/CueCompleted'
           - $ref: '#/components/messages/CueError'
-          - $ref: '#/components/messages/CueConflict'
+          - $ref: '#/components/messages/HeldAdded'
+          - $ref: '#/components/messages/HeldReleased'
+          - $ref: '#/components/messages/HeldDiscarded'
+          - $ref: '#/components/messages/HeldRecoverable'
           - $ref: '#/components/messages/SoundStatus'
           - $ref: '#/components/messages/SpotifyStatus'
           - $ref: '#/components/messages/Error'
@@ -572,6 +575,53 @@ components:
                 example:
                   vlc: { status: "healthy", message: "Connected to VLC", lastChecked: "2025-10-15T19:00:30.000Z" }
                   spotify: { status: "down", message: "Not yet checked", lastChecked: null }
+              heldItems:
+                type: array
+                description: Items held due to service outage or resource contention (Phase 3). Combines held cues and held videos.
+                items:
+                  type: object
+                  required:
+                    - id
+                    - type
+                    - reason
+                    - status
+                  properties:
+                    id:
+                      type: string
+                      description: Unique held item identifier (prefixed with held-cue- or held-video-)
+                      example: "held-cue-1"
+                    type:
+                      type: string
+                      enum: [cue, video]
+                      description: Type of held item
+                      example: "cue"
+                    reason:
+                      type: string
+                      description: Why the item was held
+                      example: "service_down"
+                    status:
+                      type: string
+                      const: held
+                      description: Current status (always 'held' in sync:full)
+                    cueId:
+                      type: string
+                      description: Cue ID (present for cue type only)
+                      example: "interrogation-scene-2"
+                    tokenId:
+                      type: string
+                      description: Token ID (present for video type only)
+                      example: "534e2b03"
+                    videoFile:
+                      type: string
+                      description: Video filename (present for video type only)
+                      example: "534e2b03.mp4"
+                    blockedBy:
+                      type: array
+                      items:
+                        type: string
+                      description: Services that are down (for service_down reason)
+                      example: ["vlc"]
+                example: []
           timestamp:
             type: string
             format: date-time
@@ -2053,7 +2103,10 @@ components:
                   - cue:resume
                   - cue:enable
                   - cue:disable
-                  - cue:conflict:resolve
+                  - held:release
+                  - held:discard
+                  - held:release-all
+                  - held:discard-all
                   - sound:play
                   - sound:stop
                   - spotify:play
@@ -2064,6 +2117,7 @@ components:
                   - spotify:volume
                   - spotify:playlist
                   - spotify:cache:verify
+                  - service:check
                 example: "video:skip"
               payload:
                 type: object
@@ -2953,18 +3007,15 @@ components:
             description: Event timestamp
             example: "2025-10-15T20:12:00.000Z"
 
-    CueConflict:
-      name: cue:conflict
-      title: Video Conflict Prompt (Phase 2)
-      summary: Video conflict prompt for GM decision
+    HeldAdded:
+      name: held:added
+      title: Held Item Added (Phase 4 — unified)
+      summary: Item held due to service health or resource contention
       description: |
-        Broadcast when a compound cue attempts to play video while another video is active.
+        Broadcast when a cue or video cannot proceed because a required service is down
+        or a video is already playing (video_busy). Unified from Phase 3 cue:held/video:held.
 
-        **Phase 2 Feature**: GM must decide whether to interrupt current video or cancel cue.
-
-        **Auto-Cancel Behavior**: If GM doesn't respond within autoCancelMs, cue automatically cancels.
-
-        **GM Response**: GM sends gm:command with action=cue:conflict:resolve and payload={cueId, decision: 'interrupt'|'cancel'}
+        **GM Response**: GM sends gm:command with action=held:release or held:discard and payload={heldId}
       payload:
         type: object
         required:
@@ -2974,42 +3025,162 @@ components:
         properties:
           event:
             type: string
-            const: cue:conflict
+            const: held:added
             description: Event name
           data:
             type: object
             required:
-              - cueId
+              - id
+              - type
               - reason
-              - currentVideo
             properties:
-              cueId:
+              id:
                 type: string
-                description: Cue ID requesting video playback
-                example: "interrogation-scene-2"
+                description: Unique held item identifier
+                example: "held-cue-1"
+              type:
+                type: string
+                enum: [cue, video]
+                description: Held item type (cue or video)
+                example: "cue"
               reason:
                 type: string
-                description: Conflict reason
-                example: "Video already playing"
+                enum: [service_down, video_busy, vlc_down]
+                description: Why the item was held
+                example: "video_busy"
+              cueId:
+                type: string
+                description: Cue ID (when type=cue)
+                example: "interrogation-scene-2"
+              tokenId:
+                type: string
+                description: Token ID (when type=video)
+                example: "534e2b03"
+              blockedBy:
+                type: array
+                items:
+                  type: string
+                description: Services that are down (cue type)
+                example: ["vlc"]
               currentVideo:
                 type: string
-                description: Currently playing video filename
+                description: Currently playing video (cue type, video_busy reason)
                 example: "test_30sec.mp4"
-              autoCancel:
-                type: boolean
-                description: Whether cue will auto-cancel on timeout
-                default: true
-                example: true
-              autoCancelMs:
-                type: number
-                description: Auto-cancel timeout in milliseconds
-                default: 10000
-                example: 10000
+              videoFile:
+                type: string
+                description: Video filename (video type)
+                example: "534e2b03.mp4"
           timestamp:
             type: string
             format: date-time
             description: Event timestamp
             example: "2025-10-15T20:12:00.000Z"
+
+    HeldReleased:
+      name: held:released
+      title: Held Item Released (Phase 4 — unified)
+      summary: Held item released for execution/playback
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: held:released
+          data:
+            type: object
+            required:
+              - heldId
+            properties:
+              heldId:
+                type: string
+                description: Held item identifier
+                example: "held-cue-1"
+              type:
+                type: string
+                enum: [cue, video]
+                description: Held item type
+              cueId:
+                type: string
+                description: Cue ID (when type=cue)
+                example: "interrogation-scene-2"
+              tokenId:
+                type: string
+                description: Token ID (when type=video)
+                example: "534e2b03"
+          timestamp:
+            type: string
+            format: date-time
+
+    HeldDiscarded:
+      name: held:discarded
+      title: Held Item Discarded (Phase 4 — unified)
+      summary: Held item discarded (cancelled without executing)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: held:discarded
+          data:
+            type: object
+            required:
+              - heldId
+            properties:
+              heldId:
+                type: string
+                description: Held item identifier
+                example: "held-cue-1"
+              type:
+                type: string
+                enum: [cue, video]
+                description: Held item type
+              cueId:
+                type: string
+                description: Cue ID (when type=cue)
+                example: "interrogation-scene-2"
+              tokenId:
+                type: string
+                description: Token ID (when type=video)
+                example: "534e2b03"
+          timestamp:
+            type: string
+            format: date-time
+
+    HeldRecoverable:
+      name: held:recoverable
+      title: Held Items Recoverable (Phase 4)
+      summary: Held items can now be retried (service recovered)
+      description: |
+        Broadcast when a previously down service (e.g., VLC) comes back online,
+        indicating that held items of the corresponding type can be retried.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: held:recoverable
+          data:
+            type: object
+            properties:
+              heldCount:
+                type: integer
+                description: Number of held items that are now recoverable
+                example: 2
+          timestamp:
+            type: string
+            format: date-time
 
     SoundStatus:
       name: sound:status

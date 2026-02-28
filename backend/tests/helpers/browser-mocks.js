@@ -562,8 +562,8 @@ class MockDataManager extends EventTarget {
     this.dispatchEvent(new CustomEvent('cue-state:updated', { detail: payload }));
   }
 
-  reportCueConflict(payload) {
-    this.dispatchEvent(new CustomEvent('cue:conflict', { detail: payload }));
+  updateHeldItems(payload, action) {
+    this.dispatchEvent(new CustomEvent('held-items:updated', { detail: { ...payload, action } }));
   }
 
   getCueState() {
@@ -583,8 +583,8 @@ class MockDataManager extends EventTarget {
     this.dispatchEvent(new CustomEvent('cue-state:updated', { detail: payload }));
   }
 
-  handleCueConflict(payload) {
-    this.dispatchEvent(new CustomEvent('cue:conflict', { detail: payload }));
+  updateHeldItems_compat(payload, action) {
+    this.dispatchEvent(new CustomEvent('held-items:updated', { detail: { ...payload, action } }));
   }
 
   updateAudioDucking(payload) {
@@ -609,6 +609,28 @@ class MockDataManager extends EventTarget {
   // Called by networkedSession.js for spotify:status events and sync:full spotify state
   updateSpotifyState(payload) {
     this.dispatchEvent(new CustomEvent('spotify-state:updated', { detail: payload }));
+  }
+
+  // Phase 4: Called by networkedSession.js for individual service:health events
+  updateServiceHealth(data) {
+    if (!this.serviceHealth) this.serviceHealth = {};
+    this.serviceHealth[data.serviceId] = {
+      status: data.status,
+      message: data.message,
+      timestamp: data.timestamp || new Date().toISOString()
+    };
+    this.dispatchEvent(new CustomEvent('service-health:updated', {
+      detail: { serviceHealth: this.serviceHealth }
+    }));
+  }
+
+  // Phase 4: Called by networkedSession.js for bulk sync:full serviceHealth
+  syncServiceHealth(healthMap) {
+    if (!this.serviceHealth) this.serviceHealth = {};
+    Object.assign(this.serviceHealth, healthMap);
+    this.dispatchEvent(new CustomEvent('service-health:updated', {
+      detail: { serviceHealth: this.serviceHealth }
+    }));
   }
 }
 

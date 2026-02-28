@@ -20,6 +20,11 @@ jest.mock('../../../src/websocket/broadcasts', () => ({
 jest.mock('../../../src/services/cueEngineWiring', () => ({
   setupCueEngineForwarding: jest.fn(),
 }));
+jest.mock('../../../src/services/serviceHealthRegistry', () => ({
+  reset: jest.fn(),
+  on: jest.fn(),
+  removeAllListeners: jest.fn(),
+}));
 
 describe('performSystemReset', () => {
   let performSystemReset;
@@ -28,6 +33,7 @@ describe('performSystemReset', () => {
   let broadcasts;
   let cueEngineWiring;
   let listenerRegistry;
+  let serviceHealthRegistry;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -35,6 +41,7 @@ describe('performSystemReset', () => {
     broadcasts = require('../../../src/websocket/broadcasts');
     cueEngineWiring = require('../../../src/services/cueEngineWiring');
     listenerRegistry = require('../../../src/websocket/listenerRegistry');
+    serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
     ({ performSystemReset } = require('../../../src/services/systemReset'));
 
     mockIo = { emit: jest.fn() };
@@ -144,6 +151,25 @@ describe('performSystemReset', () => {
 
     // Phase 2 services
     expect(mockServices.spotifyService.reset).toHaveBeenCalled();
+  });
+
+  it('should reset serviceHealthRegistry during system reset', async () => {
+    await performSystemReset(mockIo, mockServices);
+
+    expect(serviceHealthRegistry.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reset serviceHealthRegistry before re-initializing broadcast listeners', async () => {
+    const callOrder = [];
+    serviceHealthRegistry.reset.mockImplementation(() => callOrder.push('registryReset'));
+    broadcasts.setupBroadcastListeners.mockImplementation(() => callOrder.push('setupBroadcast'));
+
+    await performSystemReset(mockIo, mockServices);
+
+    const registryIdx = callOrder.indexOf('registryReset');
+    const broadcastIdx = callOrder.indexOf('setupBroadcast');
+    expect(registryIdx).toBeGreaterThanOrEqual(0);
+    expect(registryIdx).toBeLessThan(broadcastIdx);
   });
 
   it('should reset spotifyService before re-initializing infrastructure', async () => {

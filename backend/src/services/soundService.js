@@ -37,6 +37,21 @@ class SoundService extends EventEmitter {
     }
   }
 
+  /**
+   * On-demand health check. Re-probes pw-play availability and reports to registry.
+   * @returns {Promise<boolean>} true if pw-play is available
+   */
+  async checkHealth() {
+    try {
+      await execFileAsync('which', ['pw-play'], 3000);
+      registry.report('sound', 'healthy', 'pw-play available');
+      return true;
+    } catch {
+      registry.report('sound', 'down', 'pw-play not found');
+      return false;
+    }
+  }
+
   play({ file, target, volume }) {
     const filePath = path.resolve(this.audioDir, file);
 
@@ -96,6 +111,13 @@ class SoundService extends EventEmitter {
     return Array.from(this.processes.values()).map(({ file, target, volume, pid }) => ({
       file, target, volume, pid
     }));
+  }
+
+  fileExists(filename) {
+    const resolved = path.resolve(this.audioDir, filename);
+    // Ensure path stays within audio directory (supports subdirs but not traversal)
+    if (!resolved.startsWith(this.audioDir)) return false;
+    return fs.existsSync(resolved);
   }
 
   reset() {

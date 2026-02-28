@@ -190,4 +190,66 @@ describe('SoundService', () => {
       expect(registry.isHealthy('sound')).toBe(false);
     });
   });
+
+  describe('checkHealth()', () => {
+    it('should report healthy when pw-play is available', async () => {
+      const { execFileAsync } = require('../../../src/utils/execHelper');
+      execFileAsync.mockResolvedValue('/usr/bin/pw-play\n');
+
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      const result = await soundService.checkHealth();
+
+      expect(result).toBe(true);
+      expect(registry.isHealthy('sound')).toBe(true);
+    });
+
+    it('should report down when pw-play is not found', async () => {
+      const { execFileAsync } = require('../../../src/utils/execHelper');
+      execFileAsync.mockRejectedValue(new Error('not found'));
+
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      const result = await soundService.checkHealth();
+
+      expect(result).toBe(false);
+      expect(registry.isHealthy('sound')).toBe(false);
+    });
+
+    it('should return boolean (not throw)', async () => {
+      const { execFileAsync } = require('../../../src/utils/execHelper');
+      execFileAsync.mockRejectedValue(new Error('timeout'));
+
+      const result = await soundService.checkHealth();
+      expect(typeof result).toBe('boolean');
+    });
+  });
+
+  describe('fileExists()', () => {
+    it('should return true when file exists in audio directory', () => {
+      fs.existsSync.mockReturnValue(true);
+      expect(soundService.fileExists('alert.wav')).toBe(true);
+      expect(fs.existsSync).toHaveBeenCalledWith(
+        expect.stringContaining('alert.wav')
+      );
+    });
+
+    it('should return false when file does not exist', () => {
+      fs.existsSync.mockReturnValue(false);
+      expect(soundService.fileExists('missing.wav')).toBe(false);
+    });
+
+    it('should resolve path against audioDir', () => {
+      fs.existsSync.mockReturnValue(true);
+      fs.existsSync.mockClear();
+      soundService.fileExists('subdir/sound.wav');
+      const calledPath = fs.existsSync.mock.calls[0][0];
+      expect(calledPath).toContain('public/audio');
+      expect(calledPath).toContain('subdir/sound.wav');
+    });
+
+    it('should reject path traversal attempts', () => {
+      fs.existsSync.mockReturnValue(true);
+      // Path traversal resolves outside audioDir — should return false without checking fs
+      expect(soundService.fileExists('../../etc/passwd')).toBe(false);
+    });
+  });
 });

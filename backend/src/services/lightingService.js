@@ -141,7 +141,6 @@ class LightingService extends EventEmitter {
         }));
 
       this._scenes = scenes;
-      this._usingFallback = false;
       return scenes;
     } catch (err) {
       logger.warn('Failed to fetch scenes from Home Assistant — using fallback fixtures', {
@@ -167,7 +166,6 @@ class LightingService extends EventEmitter {
       const scenes = JSON.parse(data);
 
       this._scenes = scenes;
-      this._usingFallback = true;
       logger.info('Loaded fallback lighting scenes', { count: scenes.length });
       return scenes;
     } catch (err) {
@@ -182,6 +180,10 @@ class LightingService extends EventEmitter {
    */
   getCachedScenes() {
     return this._scenes;
+  }
+
+  sceneExists(sceneId) {
+    return this._scenes.some((s) => s.id === sceneId);
   }
 
   /**
@@ -262,7 +264,6 @@ class LightingService extends EventEmitter {
     this._clearReconnect();
     this.removeAllListeners();
     registry.report('lighting', 'down', 'Reset');
-    this._usingFallback = false;
     this._scenes = [];
     this._activeScene = null;
     this._containerStartedByUs = false;

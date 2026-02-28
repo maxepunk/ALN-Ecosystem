@@ -330,9 +330,11 @@ describe('Environment Control Integration', () => {
   // ── 7. HA unreachable -> lighting shows disconnected ──
 
   describe('graceful degradation: Home Assistant unreachable', () => {
-    it('should show lighting.connected:false when HA token not configured', async () => {
-      // lightingService.isConnected() checks config.lighting.homeAssistantToken
-      // In test environment, HA_TOKEN is empty -> isConnected returns false
+    it('should show lighting.connected:false when HA is unreachable', async () => {
+      // lightingService.isConnected() delegates to registry.isHealthy('lighting')
+      // (after checking token). Mark lighting as down to simulate HA unreachable.
+      const registry = require('../../src/services/serviceHealthRegistry');
+      registry.report('lighting', 'down', 'HA unreachable');
       mockBluetoothUnavailable();
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_050');

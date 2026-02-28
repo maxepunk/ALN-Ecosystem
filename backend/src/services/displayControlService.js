@@ -224,12 +224,10 @@ class DisplayControlService extends EventEmitter {
 
     try {
       // Play video via VLC
-      if (this.vlcService && this.vlcService.isConnected()) {
-        await this.vlcService.playVideo(videoFile);
-      } else {
-        // Graceful degradation - emit event even without VLC
-        logger.warn('[DisplayControl] VLC not connected - video play simulated');
+      if (!this.vlcService || !this.vlcService.isConnected()) {
+        throw new Error('VLC not connected — cannot play video');
       }
+      await this.vlcService.playVideo(videoFile);
 
       this.emit('display:mode:changed', {
         mode: DisplayMode.VIDEO,

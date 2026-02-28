@@ -20,6 +20,41 @@ const bluetoothService = require('./bluetoothService');
 const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
+const registry = require('./serviceHealthRegistry');
+
+// Service dependency map for pre-dispatch health checks
+const SERVICE_DEPENDENCIES = {
+  'video:play': 'vlc',
+  'video:pause': 'vlc',
+  'video:stop': 'vlc',
+  'video:skip': 'vlc',
+  'video:queue:add': 'vlc',
+  // video:queue:reorder and video:queue:clear intentionally UNGATED —
+  // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
+  'spotify:play': 'spotify',
+  'spotify:pause': 'spotify',
+  'spotify:stop': 'spotify',
+  'spotify:next': 'spotify',
+  'spotify:previous': 'spotify',
+  'spotify:playlist': 'spotify',
+  'spotify:volume': 'spotify',
+  // spotify:cache:verify intentionally UNGATED — cache check, no D-Bus needed
+  // service:check intentionally UNGATED — health probe bypasses health gate
+  'sound:play': 'sound',
+  'sound:stop': 'sound',
+  'lighting:scene:activate': 'lighting',
+  'lighting:scenes:refresh': 'lighting',
+  'bluetooth:pair': 'bluetooth',
+  'bluetooth:unpair': 'bluetooth',
+  'bluetooth:connect': 'bluetooth',
+  'bluetooth:disconnect': 'bluetooth',
+  'bluetooth:scan:start': 'bluetooth',
+  'bluetooth:scan:stop': 'bluetooth',
+  'audio:route:set': 'audio',
+  'audio:volume:set': 'audio',
+  'audio:combine:create': 'audio',
+  'audio:combine:destroy': 'audio',
+};
 
 // Lookup tables for command dispatch
 const SPOTIFY_TRANSPORT = {
@@ -47,6 +82,17 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
 
   try {
+    // Pre-dispatch health check: reject commands when required service is down
+    const requiredService = SERVICE_DEPENDENCIES[action];
+    if (requiredService && !registry.isHealthy(requiredService)) {
+      const { status, message } = registry.getStatus(requiredService);
+      return {
+        success: false,
+        message: `${requiredService} is ${status}: ${message}`,
+        source
+      };
+    }
+
     let resultMessage = '';
     let resultData = null;
 
@@ -487,14 +533,61 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
-      case 'cue:conflict:resolve': {
-        const cueEngineService = getCueEngine();
-        const { cueId, decision } = payload;
-        if (!cueId) throw new Error('cueId required');
-        if (!decision) throw new Error('decision required');
-        await cueEngineService.resolveConflict(cueId, decision);
-        resultMessage = `Conflict resolved (${decision}): ${cueId}`;
-        logger.info('Cue conflict resolved', { source, deviceId, cueId, decision });
+      case 'held:release': {
+        const { heldId } = payload;
+        if (!heldId) throw new Error('heldId required');
+        if (heldId.startsWith('held-cue-')) {
+          await getCueEngine().releaseCue(heldId);
+        } else if (heldId.startsWith('held-video-')) {
+          require('./videoQueueService').releaseHeld(heldId);
+        } else {
+          throw new Error(`Unknown held item type: ${heldId}`);
+        }
+        resultMessage = `Held item released: ${heldId}`;
+        logger.info('Held item released', { source, deviceId, heldId });
+        break;
+      }
+
+      case 'held:discard': {
+        const { heldId } = payload;
+        if (!heldId) throw new Error('heldId required');
+        if (heldId.startsWith('held-cue-')) {
+          getCueEngine().discardCue(heldId);
+        } else if (heldId.startsWith('held-video-')) {
+          require('./videoQueueService').discardHeld(heldId);
+        } else {
+          throw new Error(`Unknown held item type: ${heldId}`);
+        }
+        resultMessage = `Held item discarded: ${heldId}`;
+        logger.info('Held item discarded', { source, deviceId, heldId });
+        break;
+      }
+
+      case 'held:release-all': {
+        const cueEngine = getCueEngine();
+        const videoQueue = require('./videoQueueService');
+        for (const held of cueEngine.getHeldCues()) {
+          await cueEngine.releaseCue(held.id);
+        }
+        for (const held of videoQueue.getHeldVideos()) {
+          videoQueue.releaseHeld(held.id);
+        }
+        resultMessage = 'All held items released';
+        logger.info('All held items released', { source, deviceId });
+        break;
+      }
+
+      case 'held:discard-all': {
+        const cueEngine = getCueEngine();
+        const videoQueue = require('./videoQueueService');
+        for (const held of cueEngine.getHeldCues()) {
+          cueEngine.discardCue(held.id);
+        }
+        for (const held of videoQueue.getHeldVideos()) {
+          videoQueue.discardHeld(held.id);
+        }
+        resultMessage = 'All held items discarded';
+        logger.info('All held items discarded', { source, deviceId });
         break;
       }
 
@@ -533,21 +626,65 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
-      case 'spotify:reconnect': {
-        const spotifyService = require('./spotifyService');
-        const connected = await spotifyService.activate();
-        resultData = { connected };
-        resultMessage = connected ? 'Spotify connected' : 'Spotify not available';
-        logger.info('Spotify reconnect', { source, deviceId, connected });
-        break;
-      }
-
       case 'spotify:cache:verify': {
         const spotifyService = require('./spotifyService');
         const status = await spotifyService.verifyCacheStatus();
         resultData = status;
         resultMessage = 'Cache verification complete';
         logger.info('Spotify cache verified', { source, deviceId, status: status.status });
+        break;
+      }
+
+      // --- Service health check (Phase 3) ---
+
+      case 'service:check': {
+        const HEALTH_CHECKS = {
+          vlc: () => require('./vlcService').checkConnection(),
+          spotify: () => require('./spotifyService').checkConnection(),
+          lighting: () => lightingService.checkConnection(),
+          bluetooth: () => bluetoothService.isAvailable(),
+          audio: () => audioRoutingService.checkHealth(),
+          sound: () => soundService.checkHealth(),
+          gameclock: () => true,
+          cueengine: () => {
+            const hasCues = getCueEngine().getCues().length > 0;
+            registry.report('cueengine', hasCues ? 'healthy' : 'down',
+              hasCues ? 'Cues loaded' : 'No cues loaded');
+            return hasCues;
+          },
+        };
+
+        const { serviceId } = payload;
+
+        if (serviceId) {
+          // Check single service
+          const check = HEALTH_CHECKS[serviceId];
+          if (!check) {
+            throw new Error(`Unknown service: ${serviceId}`);
+          }
+          let checkResult;
+          try {
+            checkResult = await check();
+          } catch {
+            checkResult = false;
+          }
+          resultData = { [serviceId]: !!checkResult };
+          resultMessage = `Health check: ${serviceId} = ${checkResult ? 'healthy' : 'down'}`;
+        } else {
+          // Check all services
+          const results = {};
+          for (const [id, check] of Object.entries(HEALTH_CHECKS)) {
+            try {
+              results[id] = !!(await check());
+            } catch {
+              results[id] = false;
+            }
+          }
+          resultData = results;
+          const healthy = Object.values(results).filter(Boolean).length;
+          resultMessage = `Health check: ${healthy}/${Object.keys(results).length} services healthy`;
+        }
+        logger.info('Service health check', { source, deviceId, serviceId: serviceId || 'all', results: resultData });
         break;
       }
 
@@ -586,4 +723,36 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   }
 }
 
-module.exports = { executeCommand };
+async function validateCommand(action, payload = {}) {
+  const requiredService = SERVICE_DEPENDENCIES[action];
+  const errors = [];
+
+  // 1. Check service health
+  if (requiredService && !registry.isHealthy(requiredService)) {
+    errors.push({ type: 'service', service: requiredService, status: registry.getStatus(requiredService) });
+  }
+
+  // 2. Check resource existence
+  switch (action) {
+    case 'sound:play':
+      if (!soundService.fileExists(payload.file))
+        errors.push({ type: 'resource', message: `Sound file not found: ${payload.file}` });
+      break;
+    case 'video:queue:add':
+      if (!videoQueueService.videoFileExists(payload.videoFile))
+        errors.push({ type: 'resource', message: `Video file not found: ${payload.videoFile}` });
+      break;
+    case 'lighting:scene:activate':
+      if (!lightingService.sceneExists(payload.sceneId))
+        errors.push({ type: 'resource', message: `Scene not found: ${payload.sceneId}` });
+      break;
+    case 'audio:route:set':
+      if (!audioRoutingService.sinkExists(payload.sink))
+        errors.push({ type: 'resource', message: `Audio sink not found: ${payload.sink}` });
+      break;
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+module.exports = { executeCommand, validateCommand, SERVICE_DEPENDENCIES };

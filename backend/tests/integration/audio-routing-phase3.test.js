@@ -20,11 +20,27 @@ const cueEngineService = require('../../src/services/cueEngineService');
 const mockExecuteCommand = jest.fn().mockResolvedValue({ success: true, broadcasts: [] });
 jest.mock('../../src/services/commandExecutor', () => ({
   executeCommand: (...args) => mockExecuteCommand(...args),
+  SERVICE_DEPENDENCIES: {
+    'video:play': 'vlc',
+    'video:queue:add': 'vlc',
+    'spotify:play': 'spotify',
+    'sound:play': 'sound',
+    'sound:stop': 'sound',
+    'lighting:scene:activate': 'lighting',
+    'audio:route:set': 'audio',
+    'audio:volume:set': 'audio',
+  },
 }));
+
+const registry = require('../../src/services/serviceHealthRegistry');
 
 describe('Audio Routing Phase 3 Integration', () => {
 
   beforeEach(() => {
+    // Set all services healthy (Phase 3: fireCue checks service health)
+    for (const svc of ['sound', 'lighting', 'vlc', 'spotify', 'audio']) {
+      registry.report(svc, 'healthy', 'test default');
+    }
     // Reset ducking state
     audioRoutingService.loadDuckingRules([]);
     // Reset stream volumes

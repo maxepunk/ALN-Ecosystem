@@ -24,6 +24,22 @@
 const mockExecuteCommand = jest.fn().mockResolvedValue({ success: true, broadcasts: [] });
 jest.mock('../../src/services/commandExecutor', () => ({
     executeCommand: (...args) => mockExecuteCommand(...args),
+    SERVICE_DEPENDENCIES: {
+        'video:play': 'vlc',
+        'video:pause': 'vlc',
+        'video:stop': 'vlc',
+        'video:skip': 'vlc',
+        'video:queue:add': 'vlc',
+        'spotify:play': 'spotify',
+        'spotify:pause': 'spotify',
+        'spotify:stop': 'spotify',
+        'sound:play': 'sound',
+        'sound:stop': 'sound',
+        'lighting:scene:activate': 'lighting',
+        'lighting:scenes:refresh': 'lighting',
+        'audio:route:set': 'audio',
+        'audio:volume:set': 'audio',
+    },
 }));
 
 const mockIsPlaying = jest.fn().mockReturnValue(false);
@@ -72,6 +88,8 @@ function makeSimpleCue(id, commands, overrides = {}) {
 
 // --- Test suites ---
 
+const registry = require('../../src/services/serviceHealthRegistry');
+
 describe('Compound Cue Integration (Phase 2)', () => {
     beforeEach(() => {
         // Reset cue engine state
@@ -83,6 +101,11 @@ describe('Compound Cue Integration (Phase 2)', () => {
         mockSkipCurrent.mockClear();
         mockGetCurrentVideo.mockReturnValue(null);
         mockGetElapsed.mockReturnValue(0);
+
+        // Set all services healthy (Phase 3: fireCue checks service health)
+        for (const svc of ['sound', 'lighting', 'vlc', 'spotify', 'bluetooth', 'audio']) {
+            registry.report(svc, 'healthy', 'test default');
+        }
 
         // Use fake timers for auto-cancel tests
         jest.useFakeTimers();
@@ -155,16 +178,16 @@ describe('Compound Cue Integration (Phase 2)', () => {
     });
 
     // ============================================================
-    // 2. Video Conflict Detection
+    // 2. Video Conflict Detection (unified held system)
     // ============================================================
 
-    describe('Video Conflict Detection', () => {
-        it('should emit cue:conflict when video is already playing', async () => {
+    describe('Video Conflict Detection (held system)', () => {
+        it('should emit cue:held with reason video_busy when video is already playing', async () => {
             mockIsPlaying.mockReturnValue(true);
             mockGetCurrentVideo.mockReturnValue('drm007.mp4');
 
             const events = [];
-            cueEngineService.on('cue:conflict', (p) => events.push(p));
+            cueEngineService.on('cue:held', (p) => events.push(p));
 
             const cue = makeCompoundCue('video-cue', [
                 { at: 0, action: 'video:play', payload: { filename: 'jaw001.mp4' } },
@@ -175,15 +198,15 @@ describe('Compound Cue Integration (Phase 2)', () => {
 
             expect(events).toHaveLength(1);
             expect(events[0]).toMatchObject({
+                type: 'cue',
                 cueId: 'video-cue',
-                reason: 'Video conflict',
+                reason: 'video_busy',
                 currentVideo: 'drm007.mp4',
-                autoCancel: true,
-                autoCancelMs: 10000,
+                status: 'held',
             });
         });
 
-        it('should NOT register cue as active during conflict', async () => {
+        it('should NOT register cue as active during video conflict', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('video-cue', [
@@ -193,11 +216,10 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('video-cue', 'test');
 
-            const activeCues = cueEngineService.getActiveCues();
-            expect(activeCues).toHaveLength(0);
+            expect(cueEngineService.getActiveCues()).toHaveLength(0);
         });
 
-        it('should stash conflict in pendingConflicts', async () => {
+        it('should store video conflict in getHeldCues()', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('video-cue', [
@@ -207,18 +229,18 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('video-cue', 'test');
 
-            expect(cueEngineService.pendingConflicts.has('video-cue')).toBe(true);
-            const pending = cueEngineService.pendingConflicts.get('video-cue');
-            expect(pending.cue).toMatchObject({ id: 'video-cue' });
+            const held = cueEngineService.getHeldCues();
+            expect(held).toHaveLength(1);
+            expect(held[0].cueId).toBe('video-cue');
+            expect(held[0].reason).toBe('video_busy');
         });
 
         it('should NOT detect conflict for cues without video entries', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const events = [];
-            cueEngineService.on('cue:conflict', (p) => events.push(p));
+            cueEngineService.on('cue:held', (p) => events.push(p));
 
-            // Use a delayed entry so cue stays active (not instant-complete)
             const cue = makeCompoundCue('sound-only', [
                 { at: 0, action: 'sound:play', payload: { file: 'beep.wav' } },
                 { at: 10, action: 'sound:play', payload: { file: 'delayed.wav' } },
@@ -233,15 +255,14 @@ describe('Compound Cue Integration (Phase 2)', () => {
     });
 
     // ============================================================
-    // 3. Conflict Resolution — Override
+    // 3. Held Cue Release (replaces Override)
     // ============================================================
 
-    describe('Conflict Resolution (Override)', () => {
-        it('should stop current video and start the cue on override', async () => {
+    describe('Held Cue Release (video_busy)', () => {
+        it('should skip current video and start the cue on releaseCue', async () => {
             mockIsPlaying.mockReturnValue(true);
             mockGetCurrentVideo.mockReturnValue('drm007.mp4');
 
-            // Use a delayed entry so cue stays active after override
             const cue = makeCompoundCue('override-cue', [
                 { at: 0, action: 'video:play', payload: { filename: 'jaw001.mp4' } },
                 { at: 30, action: 'sound:play', payload: { file: 'end.wav' } },
@@ -250,24 +271,20 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('override-cue', 'test');
 
-            // Cue is now pending
-            expect(cueEngineService.pendingConflicts.has('override-cue')).toBe(true);
+            const held = cueEngineService.getHeldCues();
+            expect(held).toHaveLength(1);
 
-            // After override, video is no longer playing
             mockIsPlaying.mockReturnValue(false);
+            await cueEngineService.releaseCue(held[0].id);
 
-            await cueEngineService.resolveConflict('override-cue', 'override');
-
-            // Video should be stopped
             expect(mockSkipCurrent).toHaveBeenCalledTimes(1);
 
-            // Cue should now be active
             const activeCues = cueEngineService.getActiveCues();
             expect(activeCues).toHaveLength(1);
             expect(activeCues[0].cueId).toBe('override-cue');
         });
 
-        it('should clear pendingConflicts and conflictTimers after override', async () => {
+        it('should clear held cues and conflict timers after release', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('override-cue', [
@@ -277,14 +294,16 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('override-cue', 'test');
 
-            mockIsPlaying.mockReturnValue(false);
-            await cueEngineService.resolveConflict('override-cue', 'override');
+            const heldId = cueEngineService.getHeldCues()[0].id;
 
-            expect(cueEngineService.pendingConflicts.has('override-cue')).toBe(false);
+            mockIsPlaying.mockReturnValue(false);
+            await cueEngineService.releaseCue(heldId);
+
+            expect(cueEngineService.getHeldCues()).toHaveLength(0);
             expect(cueEngineService.conflictTimers.has('override-cue')).toBe(false);
         });
 
-        it('should fire at:0 entries when override starts the cue', async () => {
+        it('should fire at:0 entries when release starts the cue', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('override-entries', [
@@ -295,22 +314,23 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('override-entries', 'test');
 
+            const heldId = cueEngineService.getHeldCues()[0].id;
+
             mockExecuteCommand.mockClear();
             mockIsPlaying.mockReturnValue(false);
 
-            await cueEngineService.resolveConflict('override-entries', 'override');
+            await cueEngineService.releaseCue(heldId);
 
-            // Both at:0 entries should fire
             expect(mockExecuteCommand).toHaveBeenCalledTimes(2);
         });
     });
 
     // ============================================================
-    // 4. Conflict Resolution — Cancel
+    // 4. Held Cue Discard (replaces Cancel)
     // ============================================================
 
-    describe('Conflict Resolution (Cancel)', () => {
-        it('should NOT start the cue on cancel', async () => {
+    describe('Held Cue Discard (video_busy)', () => {
+        it('should NOT start the cue on discardCue', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('cancel-cue', [
@@ -320,13 +340,14 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('cancel-cue', 'test');
 
-            await cueEngineService.resolveConflict('cancel-cue', 'cancel');
+            const heldId = cueEngineService.getHeldCues()[0].id;
+            cueEngineService.discardCue(heldId);
 
             expect(cueEngineService.getActiveCues()).toHaveLength(0);
             expect(mockSkipCurrent).not.toHaveBeenCalled();
         });
 
-        it('should clean up pendingConflicts and conflictTimers on cancel', async () => {
+        it('should clean up held cues and conflict timers on discard', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('cancel-cue', [
@@ -336,40 +357,23 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('cancel-cue', 'test');
 
-            await cueEngineService.resolveConflict('cancel-cue', 'cancel');
+            const heldId = cueEngineService.getHeldCues()[0].id;
+            cueEngineService.discardCue(heldId);
 
-            expect(cueEngineService.pendingConflicts.has('cancel-cue')).toBe(false);
-            expect(cueEngineService.conflictTimers.has('cancel-cue')).toBe(false);
+            expect(cueEngineService.getHeldCues()).toHaveLength(0);
         });
 
-        it('should throw on invalid decision', async () => {
-            mockIsPlaying.mockReturnValue(true);
-
-            const cue = makeCompoundCue('bad-decision', [
-                { at: 0, action: 'video:play', payload: { filename: 'jaw001.mp4' } },
-            ]);
-
-            cueEngineService.loadCues([cue]);
-            await cueEngineService.fireCue('bad-decision', 'test');
-
-            await expect(
-                cueEngineService.resolveConflict('bad-decision', 'invalid')
-            ).rejects.toThrow('Invalid conflict decision');
-        });
-
-        it('should throw when resolving non-existent conflict', async () => {
-            await expect(
-                cueEngineService.resolveConflict('no-such-cue', 'override')
-            ).rejects.toThrow('No pending conflict');
+        it('should throw when discarding non-existent held cue', () => {
+            expect(() => cueEngineService.discardCue('held-cue-999')).toThrow(/not found/i);
         });
     });
 
     // ============================================================
-    // 5. Conflict Auto-Cancel Timer
+    // 5. Video Conflict Auto-Discard Timer
     // ============================================================
 
-    describe('Conflict Auto-Cancel Timer', () => {
-        it('should clear pendingConflicts after 10 seconds', async () => {
+    describe('Video Conflict Auto-Discard Timer', () => {
+        it('should auto-discard held cue after 10 seconds', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('auto-cancel-cue', [
@@ -379,17 +383,16 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('auto-cancel-cue', 'test');
 
-            expect(cueEngineService.pendingConflicts.has('auto-cancel-cue')).toBe(true);
+            expect(cueEngineService.getHeldCues()).toHaveLength(1);
             expect(cueEngineService.conflictTimers.has('auto-cancel-cue')).toBe(true);
 
-            // Advance timers past 10s auto-cancel
             jest.advanceTimersByTime(10001);
 
-            expect(cueEngineService.pendingConflicts.has('auto-cancel-cue')).toBe(false);
+            expect(cueEngineService.getHeldCues()).toHaveLength(0);
             expect(cueEngineService.conflictTimers.has('auto-cancel-cue')).toBe(false);
         });
 
-        it('should NOT auto-cancel if resolved before timer expires', async () => {
+        it('should NOT auto-discard if released before timer expires', async () => {
             mockIsPlaying.mockReturnValue(true);
 
             const cue = makeCompoundCue('resolved-early', [
@@ -399,13 +402,13 @@ describe('Compound Cue Integration (Phase 2)', () => {
             cueEngineService.loadCues([cue]);
             await cueEngineService.fireCue('resolved-early', 'test');
 
-            // Resolve before timer
-            await cueEngineService.resolveConflict('resolved-early', 'cancel');
+            const heldId = cueEngineService.getHeldCues()[0].id;
+            cueEngineService.discardCue(heldId);
 
-            // Advance timers — should not throw or re-delete
+            // Advance timers — should not throw
             jest.advanceTimersByTime(10001);
 
-            expect(cueEngineService.pendingConflicts.has('resolved-early')).toBe(false);
+            expect(cueEngineService.getHeldCues()).toHaveLength(0);
         });
     });
 

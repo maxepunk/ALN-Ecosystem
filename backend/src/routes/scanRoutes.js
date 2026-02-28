@@ -126,17 +126,18 @@ router.post('/', async (req, res) => {
 
     // Check if token has video
     if (token && token.hasVideo()) {
-      // Check if video is already playing
-      if (videoQueueService.isPlaying()) {
-        // Video already playing - inform scanner
-        const waitTime = videoQueueService.getRemainingTime();
+      // Check if system can accept a new video (VLC health + queue state)
+      const videoCheck = videoQueueService.canAcceptVideo();
+      if (!videoCheck.available) {
         return res.status(409).json({
           status: 'rejected',
-          message: 'Video already playing, please wait',
+          message: videoCheck.reason === 'vlc_down'
+            ? 'Video playback unavailable'
+            : 'Video already playing, please wait',
           tokenId: scanRequest.tokenId,
           mediaAssets: token.mediaAssets || {},
           videoQueued: false,
-          waitTime: waitTime || 30
+          ...(videoCheck.reason === 'video_busy' && { waitTime: videoCheck.waitTime || 30 })
         });
       }
 
@@ -269,7 +270,8 @@ router.post('/batch', async (req, res) => {
 
       // Process video if applicable
       if (token && token.hasVideo()) {
-        if (!videoQueueService.isPlaying()) {
+        const videoCheck = videoQueueService.canAcceptVideo();
+        if (videoCheck.available) {
           videoQueueService.addToQueue(token, scanRequest.deviceId);
           results.push({
             ...scanRequest,
@@ -281,7 +283,9 @@ router.post('/batch', async (req, res) => {
             ...scanRequest,
             status: 'processed',
             videoQueued: false,
-            message: 'Video already playing'
+            message: videoCheck.reason === 'vlc_down'
+              ? 'Video playback unavailable'
+              : 'Video already playing'
           });
         }
       } else {

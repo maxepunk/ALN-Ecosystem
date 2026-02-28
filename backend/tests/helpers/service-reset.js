@@ -287,6 +287,16 @@ async function resetAllServicesForTesting(io, services, options = {}) {
 
   await performSystemReset(io, fullServices);
 
+  // After reset, report all services as healthy (mirrors production init flow).
+  // performSystemReset() calls registry.reset() which marks everything 'down'.
+  // In production, services re-init and report healthy. In tests, we skip init,
+  // so we restore healthy state here. Tests needing unhealthy service scenarios
+  // can call registry.report(serviceId, 'down', ...) after setup.
+  const registry = require('../../src/services/serviceHealthRegistry');
+  for (const serviceId of ['vlc', 'spotify', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine']) {
+    registry.report(serviceId, 'healthy', 'Integration test default');
+  }
+
   // Capture AFTER state for diagnostics
   if (enableDiagnostics) {
     const afterCounts = {

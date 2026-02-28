@@ -1024,6 +1024,37 @@ describe('BluetoothService', () => {
       expect(registry.isHealthy('bluetooth')).toBe(false);
     });
 
+    it('checkHealth should report healthy when adapter available', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(null, 'Controller XX:XX\n\tPowered: yes\n', '');
+      });
+
+      const result = await bluetoothService.checkHealth();
+
+      expect(result).toBe(true);
+      expect(registry.isHealthy('bluetooth')).toBe(true);
+    });
+
+    it('checkHealth should report down when adapter unavailable', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('No default controller'), '', '');
+      });
+
+      const result = await bluetoothService.checkHealth();
+
+      expect(result).toBe(false);
+      expect(registry.isHealthy('bluetooth')).toBe(false);
+    });
+
+    it('checkHealth should return boolean (not throw)', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('timeout'), '', '');
+      });
+
+      const result = await bluetoothService.checkHealth();
+      expect(typeof result).toBe('boolean');
+    });
+
     it('should report down on reset', async () => {
       // First make it healthy
       execFile.mockImplementation((cmd, args, opts, cb) => {

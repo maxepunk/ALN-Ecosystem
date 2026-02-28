@@ -12,7 +12,7 @@
 
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
-const { executeCommand } = require('./commandExecutor');
+const { executeCommand, SERVICE_DEPENDENCIES } = require('./commandExecutor');
 const registry = require('./serviceHealthRegistry');
 
 /**
@@ -82,6 +82,8 @@ function parseClockTime(clockStr) {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
+let heldIdCounter = 0;
+
 class CueEngineService extends EventEmitter {
   constructor() {
     super();
@@ -98,24 +100,20 @@ class CueEngineService extends EventEmitter {
     /** @type {Set<string>} Clock cue IDs that have already fired (prevents re-fire) */
     this.firedClockCues = new Set();
 
-    // Clear conflict timers before replacing the Map (prevent leaked timeouts)
+    // Clear conflict/hold timers before replacing the Map (prevent leaked timeouts)
     if (this.conflictTimers) {
       for (const timer of this.conflictTimers.values()) {
         clearTimeout(timer);
       }
     }
 
-    // Clear pending conflicts
-    if (this.pendingConflicts) {
-      this.pendingConflicts.clear();
-    }
-
     /** @type {Map<string, Object>} Running compound cues indexed by cue ID */
     this.activeCues = new Map();
-    /** @type {Map<string, NodeJS.Timeout>} Auto-cancel timers for conflicted cues */
+    /** @type {Map<string, NodeJS.Timeout>} Auto-discard timers for video_busy held cues */
     this.conflictTimers = new Map();
-    /** @type {Map<string, Object>} Stashed cue/trigger/parentChain for conflicted cues */
-    this.pendingConflicts = new Map();
+    /** @type {Array<Object>} Cues held due to service health or video contention */
+    this._heldCues = [];
+    heldIdCounter = 0;
   }
 
   /**
@@ -266,6 +264,21 @@ class CueEngineService extends EventEmitter {
         position: null,
         error: `Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) exceeded`,
       });
+      return;
+    }
+
+    // Service health check: hold cue if any required service is down
+    const cmds = cue.timeline ? cue.timeline : cue.commands;
+    const blockedServices = [];
+    for (const cmd of cmds) {
+      const dep = SERVICE_DEPENDENCIES[cmd.action];
+      if (dep && !registry.isHealthy(dep) && !blockedServices.includes(dep)) {
+        blockedServices.push(dep);
+      }
+    }
+    if (blockedServices.length > 0) {
+      const held = this._holdCue(cue, trigger, parentChain, blockedServices);
+      this.emit('cue:held', held);
       return;
     }
 
@@ -449,33 +462,28 @@ class CueEngineService extends EventEmitter {
         const currentVideo = videoQueueService.getCurrentVideo();
         logger.warn(`[CueEngine] Video conflict for cue "${cueId}": video already playing`);
 
-        // Emit conflict event
-        this.emit('cue:conflict', {
-          cueId,
-          reason: 'Video conflict',
-          currentVideo,
-          autoCancel: true,
-          autoCancelMs: 10000,
-        });
+        // Hold the cue with video_busy reason (unified held system)
+        const held = this._holdCue(cue, trigger, parentChain, [], 'video_busy');
+        held.currentVideo = currentVideo;
+        this.emit('cue:held', held);
 
-        // Set auto-cancel timer (10 seconds)
+        // Set auto-discard timer (10 seconds) — only for video_busy, not service_down
         const autoCancelTimer = setTimeout(() => {
-          logger.info(`[CueEngine] Auto-canceled conflicted cue: ${cueId}`);
-          // Clear the timer reference
+          logger.info(`[CueEngine] Auto-discarded video_busy held cue: ${cueId}`);
           if (this.conflictTimers && this.conflictTimers.has(cueId)) {
             this.conflictTimers.delete(cueId);
           }
-          // Clear the pending conflict context
-          if (this.pendingConflicts) {
-            this.pendingConflicts.delete(cueId);
+          // Auto-discard the held cue (ignore errors if already released/discarded)
+          try {
+            this.discardCue(held.id);
+          } catch {
+            // Already released or discarded — no-op
           }
         }, 10000);
 
-        // Store timer reference and conflict context for GM resolution
         this.conflictTimers.set(cueId, autoCancelTimer);
-        this.pendingConflicts.set(cueId, { cue, trigger, parentChain });
 
-        // Do NOT start the compound cue yet - wait for GM override or auto-cancel
+        // Do NOT start the compound cue yet - wait for GM release or auto-discard
         return;
       }
     }
@@ -873,39 +881,96 @@ class CueEngineService extends EventEmitter {
     }
   }
 
+  // ============================================================
+  // Held Cue System (Phase 3)
+  // ============================================================
+
   /**
-   * Resolve a video conflict for a pending compound cue.
-   * GM can either override (stop current video, start the cue) or cancel.
-   *
-   * @param {string} cueId - The conflicted cue ID
-   * @param {string} decision - 'override' (stop video, start cue) or 'cancel' (discard cue)
-   * @throws {Error} If cueId has no pending conflict or decision is invalid
+   * Hold a cue that cannot fire due to service health or resource contention.
+   * @param {Object} cue - Cue definition
+   * @param {string} trigger - Trigger provenance
+   * @param {Set<string>} parentChain - Parent chain for cycle detection
+   * @param {string[]} blockedServices - Services that are down
+   * @param {string} [reason='service_down'] - Why the cue is held
+   * @returns {Object} The held item record
    */
-  async resolveConflict(cueId, decision) {
-    const pending = this.pendingConflicts.get(cueId);
-    if (!pending) {
-      throw new Error(`No pending conflict for cue "${cueId}"`);
-    }
+  _holdCue(cue, trigger, parentChain, blockedServices, reason = 'service_down') {
+    const held = {
+      id: `held-cue-${++heldIdCounter}`,
+      type: 'cue',
+      heldAt: new Date().toISOString(),
+      blockedBy: blockedServices,
+      reason,
+      cueId: cue.id,
+      trigger: trigger || null,
+      commands: cue.commands || undefined,
+      timeline: cue.timeline || undefined,
+      parentChain: parentChain || null,
+      status: 'held',
+    };
+    this._heldCues.push(held);
+    logger.info('[CueEngine] Cue held', { heldId: held.id, cueId: cue.id, blockedBy: blockedServices });
+    return held;
+  }
 
-    // Clear auto-cancel timer (same pattern as stopCue lines 770-773)
-    if (this.conflictTimers.has(cueId)) {
-      clearTimeout(this.conflictTimers.get(cueId));
-      this.conflictTimers.delete(cueId);
-    }
-    this.pendingConflicts.delete(cueId);
+  /**
+   * Get all currently held cues.
+   * @returns {Array<Object>} Held cue records
+   */
+  getHeldCues() {
+    return [...this._heldCues];
+  }
 
-    if (decision === 'override') {
-      // Stop current video, then start the conflicted cue
+  /**
+   * Release a held cue and re-fire it.
+   * Throws if the blocked services are still down, or if the held cue is not found.
+   * @param {string} heldId - The held item ID
+   * @returns {Promise<void>}
+   */
+  async releaseCue(heldId) {
+    const idx = this._heldCues.findIndex(h => h.id === heldId);
+    if (idx === -1) throw new Error(`Held cue not found: ${heldId}`);
+
+    const held = this._heldCues[idx];
+
+    if (held.reason === 'video_busy') {
+      // Video conflict release: skip the current video first
       const videoQueueService = require('./videoQueueService');
       await videoQueueService.skipCurrent();
-      await this._startCompoundCue(pending.cue, pending.trigger, pending.parentChain);
-      logger.info(`[CueEngine] Conflict resolved (override): ${cueId}`);
-    } else if (decision === 'cancel') {
-      logger.info(`[CueEngine] Conflict resolved (cancel): ${cueId}`);
-      this.emit('cue:status', { cueId, state: 'cancelled' });
     } else {
-      throw new Error(`Invalid conflict decision: "${decision}" (expected "override" or "cancel")`);
+      // Service down release: check if blocked services are now healthy
+      const stillDown = held.blockedBy.filter(svc => !registry.isHealthy(svc));
+      if (stillDown.length > 0) {
+        throw new Error(`Cannot release held cue: services still down: ${stillDown.join(', ')}`);
+      }
     }
+
+    // Clear auto-cancel timer if one exists
+    if (this.conflictTimers.has(held.cueId)) {
+      clearTimeout(this.conflictTimers.get(held.cueId));
+      this.conflictTimers.delete(held.cueId);
+    }
+
+    this._heldCues.splice(idx, 1);
+    held.status = 'released';
+    this.emit('cue:released', { heldId: held.id, cueId: held.cueId });
+
+    // Re-fire the cue
+    await this.fireCue(held.cueId, held.trigger, held.parentChain || undefined);
+  }
+
+  /**
+   * Discard a held cue (abandon it without firing).
+   * @param {string} heldId - The held item ID
+   */
+  discardCue(heldId) {
+    const idx = this._heldCues.findIndex(h => h.id === heldId);
+    if (idx === -1) throw new Error(`Held cue not found: ${heldId}`);
+
+    const held = this._heldCues.splice(idx, 1)[0];
+    held.status = 'discarded';
+    this.emit('cue:discarded', { heldId: held.id, cueId: held.cueId });
+    logger.info('[CueEngine] Cue discarded', { heldId: held.id, cueId: held.cueId });
   }
 
   /**
