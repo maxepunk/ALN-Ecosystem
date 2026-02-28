@@ -181,7 +181,7 @@ const sessionCreateSchema = Joi.object({
 });
 
 const sessionUpdateSchema = Joi.object({
-  status: Joi.string().valid('active', 'paused', 'completed', 'archived').optional(),
+  status: Joi.string().valid('setup', 'active', 'paused', 'ended').optional(),
   name: Joi.string().min(1).max(100).optional(),
 }).min(1).unknown(false); // At least one field required, reject unknown fields
 

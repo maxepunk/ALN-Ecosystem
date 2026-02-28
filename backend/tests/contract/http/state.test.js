@@ -1,6 +1,8 @@
 /**
  * Contract Tests: State Routes (GET /api/state)
- * Validates state endpoint matches OpenAPI specification
+ * Validates state endpoint matches OpenAPI specification.
+ *
+ * Response shape delegates to buildSyncFullPayload() so it matches sync:full exactly.
  */
 
 const request = require('supertest');
@@ -62,7 +64,7 @@ describe('GET /api/state', () => {
     expect(response.body).toHaveProperty('scores');
     expect(response.body).toHaveProperty('recentTransactions');
     expect(response.body).toHaveProperty('videoStatus');
-    expect(response.body).toHaveProperty('devices');  // Per OpenAPI contract
+    expect(response.body).toHaveProperty('devices');
     expect(response.body).toHaveProperty('serviceHealth');
 
     // Type validation
@@ -72,6 +74,28 @@ describe('GET /api/state', () => {
     expect(typeof response.body.videoStatus).toBe('object');
     expect(Array.isArray(response.body.devices)).toBe(true);
     expect(typeof response.body.serviceHealth).toBe('object');
+  });
+
+  it('should return sync:full additional fields from buildSyncFullPayload', async () => {
+    const response = await request(app.app)
+      .get('/api/state')
+      .expect(200);
+
+    // Fields added by buildSyncFullPayload (aligns HTTP with sync:full)
+    expect(response.body).toHaveProperty('playerScans');
+    expect(response.body).toHaveProperty('environment');
+    expect(response.body).toHaveProperty('gameClock');
+    expect(response.body).toHaveProperty('cueEngine');
+    expect(response.body).toHaveProperty('spotify');
+    expect(response.body).toHaveProperty('heldItems');
+
+    // Type validation
+    expect(Array.isArray(response.body.playerScans)).toBe(true);
+    expect(typeof response.body.environment).toBe('object');
+    expect(typeof response.body.gameClock).toBe('object');
+    expect(typeof response.body.cueEngine).toBe('object');
+    expect(typeof response.body.spotify).toBe('object');
+    expect(Array.isArray(response.body.heldItems)).toBe(true);
   });
 
   it('should support ETag caching with If-None-Match', async () => {

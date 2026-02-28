@@ -423,27 +423,28 @@ paths:
                 type: object
                 required:
                   - status
-                  - message
-                  - tokenId
+                  - queued
                   - offlineMode
-                  - queuePosition
+                  - transactionId
+                  - message
                 properties:
                   status:
                     type: string
                     enum: [queued]
-                  message:
-                    type: string
-                    example: "Scan queued for processing when system comes online"
-                  tokenId:
-                    type: string
-                    example: "534e2b03"
+                  queued:
+                    type: boolean
+                    description: Always true for queued scans
+                    example: true
                   offlineMode:
                     type: boolean
                     example: true
-                  queuePosition:
-                    type: integer
-                    description: Position in offline queue
-                    example: 3
+                  transactionId:
+                    type: string
+                    description: Transaction ID assigned to the queued scan
+                    example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
+                  message:
+                    type: string
+                    example: "Scan queued for processing when system comes online"
         '409':
           description: Video already playing (conflict)
           content:
@@ -1342,6 +1343,113 @@ components:
               status: "down"
               message: "Not yet checked"
               lastChecked: null
+        playerScans:
+          type: array
+          description: Player scanner scan records persisted to session (Phase 1). Included in sync:full for Game Activity tracking.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              tokenId:
+                type: string
+              deviceId:
+                type: string
+              deviceType:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+              tokenData:
+                type: object
+                nullable: true
+        environment:
+          type: object
+          description: Venue environment state snapshot (Phase 0). Contains bluetooth, audio routing, and lighting sub-objects.
+          properties:
+            bluetooth:
+              type: object
+              description: Bluetooth speaker state (paired devices, scan status)
+            audio:
+              type: object
+              description: Audio routing state (per-stream routes, available sinks, combine-sink)
+            lighting:
+              type: object
+              description: Lighting state (Home Assistant connection, available scenes)
+        gameClock:
+          type: object
+          description: Game clock state (Phase 1). Tracks elapsed time for the 2-hour session.
+          properties:
+            status:
+              type: string
+              enum: [running, paused, stopped]
+              description: Current game clock state
+            elapsed:
+              type: integer
+              description: Elapsed time in seconds
+            expectedDuration:
+              type: integer
+              description: Expected session duration in seconds (default 7200)
+        cueEngine:
+          type: object
+          description: Cue engine state (Phase 1-2). Contains loaded cues, active compound cues, and disabled standing cues.
+          properties:
+            loaded:
+              type: boolean
+              description: Whether cues have been loaded
+            cues:
+              type: array
+              description: Summary of all loaded cues
+              items:
+                type: object
+            activeCues:
+              type: array
+              description: Currently executing compound cues
+              items:
+                type: object
+            disabledCues:
+              type: array
+              description: Disabled standing cue IDs
+              items:
+                type: string
+        spotify:
+          type: object
+          description: Spotify playback state (Phase 2). Background music integration via D-Bus MPRIS.
+          properties:
+            connected:
+              type: boolean
+              description: Whether spotifyd is reachable
+            state:
+              type: string
+              enum: [playing, paused, stopped]
+              description: Current playback state
+            volume:
+              type: integer
+              description: Current volume (0-100)
+              minimum: 0
+              maximum: 100
+            pausedByGameClock:
+              type: boolean
+              description: Whether Spotify was paused by game clock cascade
+        heldItems:
+          type: array
+          description: Items held due to service outage or resource contention (Phase 4). Combines held cues and held videos.
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                description: Unique held item identifier
+              type:
+                type: string
+                enum: [cue, video]
+              reason:
+                type: string
+                description: Why the item was held (service_down, video_busy, vlc_down)
+              status:
+                type: string
+                description: Current status (always 'held' in state snapshot)
 
   responses:
     ValidationError:

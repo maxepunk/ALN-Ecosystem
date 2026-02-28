@@ -109,6 +109,9 @@ channels:
           - $ref: '#/components/messages/HeldRecoverable'
           - $ref: '#/components/messages/SoundStatus'
           - $ref: '#/components/messages/SpotifyStatus'
+          - $ref: '#/components/messages/VideoProgress'
+          - $ref: '#/components/messages/VideoQueueUpdate'
+          - $ref: '#/components/messages/AudioSinks'
           - $ref: '#/components/messages/Error'
     publish:
       summary: Send events to orchestrator
@@ -1143,6 +1146,128 @@ components:
             description: Event timestamp
             example: "2025-10-15T20:15:45.000Z"
 
+    VideoProgress:
+      name: video:progress
+      title: Video Playback Progress Update
+      summary: Broadcast video playback progress to GM stations
+      description: |
+        Periodic progress update during video playback (emitted every ~1 second).
+
+        Provides real-time position tracking for the GM admin panel video controls.
+        Unlike video:status which broadcasts lifecycle changes, this event provides
+        continuous progress during active playback.
+
+        **Audience**: GM room only
+        **Frequency**: Every ~1 second during active playback
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: video:progress
+            description: Event name
+          data:
+            type: object
+            required:
+              - tokenId
+              - progress
+              - position
+              - duration
+            properties:
+              tokenId:
+                type: string
+                nullable: true
+                description: Currently playing token ID
+                example: "534e2b03"
+              progress:
+                type: number
+                description: Playback progress percentage (0-100)
+                minimum: 0
+                maximum: 100
+                example: 45.5
+              position:
+                type: integer
+                description: Current playback position in seconds
+                minimum: 0
+                example: 14
+              duration:
+                type: integer
+                description: Total video duration in seconds
+                minimum: 0
+                example: 30
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:45.000Z"
+
+    VideoQueueUpdate:
+      name: video:queue:update
+      title: Video Queue Update Broadcast
+      summary: Broadcast video queue changes to GM stations
+      description: |
+        Broadcast when the video queue changes (item added, removed, reordered, or video completes).
+
+        Provides the current list of pending videos so the GM admin panel can display
+        the queue and manage upcoming playback.
+
+        **Audience**: GM room only
+        **When Sent**: After queue:added, queue:cleared, queue:reordered, queue:pending-cleared,
+        queue:reset, video:started, video:completed events
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: video:queue:update
+            description: Event name
+          data:
+            type: object
+            required:
+              - items
+              - length
+            properties:
+              items:
+                type: array
+                description: Pending video queue items
+                items:
+                  type: object
+                  required:
+                    - tokenId
+                  properties:
+                    tokenId:
+                      type: string
+                      description: Token ID for the queued video
+                      example: "534e2b03"
+                    duration:
+                      type: number
+                      description: Video duration in seconds (0 if unknown)
+                      example: 30
+                    requestedBy:
+                      type: string
+                      description: Device that requested the video
+                      example: "PLAYER_SCANNER_01"
+              length:
+                type: integer
+                description: Number of pending items in queue
+                minimum: 0
+                example: 2
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:15:45.000Z"
+
     # ============================================================================
     # DISPLAY CONTROL (2 events)
     # Phase 4.2: HDMI Display Control state machine
@@ -1726,6 +1851,99 @@ components:
               activeSources: ["video", "sound"]
               restoredVolume: 80
             timestamp: "2025-10-15T20:30:15.000Z"
+
+    AudioSinks:
+      name: audio:sinks
+      title: Audio Sinks Update Broadcast
+      summary: Broadcast when audio sinks are added or removed
+      description: |
+        Broadcast audio sink changes to all GM Scanners when PipeWire sinks
+        are added or removed (e.g., Bluetooth speaker connects/disconnects).
+
+        Includes the full list of available sinks so the GM admin panel can
+        refresh its audio routing dropdown without a separate API call.
+
+        **Phase 0**: Environment Control - Audio sink discovery
+        **Audience**: GM room only
+
+        **When Sent**:
+        - PipeWire sink added (e.g., Bluetooth speaker connected)
+        - PipeWire sink removed (e.g., Bluetooth speaker disconnected)
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: audio:sinks
+            description: Event name
+          data:
+            type: object
+            required:
+              - type
+              - sinkId
+              - availableSinks
+            properties:
+              type:
+                type: string
+                enum: [added, removed]
+                description: Whether the sink was added or removed
+                example: "added"
+              sinkId:
+                type: string
+                description: PipeWire sink identifier that changed
+                example: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              availableSinks:
+                type: array
+                description: Full list of currently available PipeWire sinks
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      description: Sink identifier
+                    name:
+                      type: string
+                      description: Human-readable sink name
+                    type:
+                      type: string
+                      description: Sink type (hdmi, bluetooth, other)
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:06:00.000Z"
+      examples:
+        - name: Bluetooth Speaker Added
+          payload:
+            event: audio:sinks
+            data:
+              type: added
+              sinkId: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              availableSinks:
+                - id: "alsa_output.platform-fef00700.hdmi.hdmi-stereo"
+                  name: "HDMI"
+                  type: "hdmi"
+                - id: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+                  name: "Beats Pill"
+                  type: "bluetooth"
+            timestamp: "2025-10-15T19:06:00.000Z"
+        - name: Bluetooth Speaker Removed
+          payload:
+            event: audio:sinks
+            data:
+              type: removed
+              sinkId: "bluez_output.AA_BB_CC_DD_EE_FF.1"
+              availableSinks:
+                - id: "alsa_output.platform-fef00700.hdmi.hdmi-stereo"
+                  name: "HDMI"
+                  type: "hdmi"
+            timestamp: "2025-10-15T19:08:00.000Z"
 
     LightingScene:
       name: lighting:scene
