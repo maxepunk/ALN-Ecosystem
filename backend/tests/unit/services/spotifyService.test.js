@@ -1,7 +1,9 @@
+const EventEmitter = require('events');
+
 jest.mock('child_process');
 
 describe('SpotifyService', () => {
-  let spotifyService, execFile, registry;
+  let spotifyService, execFile, spawn, registry;
 
   /**
    * Helper: mock execFile to resolve with given stdout
@@ -21,11 +23,24 @@ describe('SpotifyService', () => {
     });
   }
 
+  /** Default mock spawn proc for D-Bus monitor (started by init) */
+  function createDefaultMockSpawnProc() {
+    const proc = new EventEmitter();
+    proc.stdout = new EventEmitter();
+    proc.stderr = new EventEmitter();
+    proc.kill = jest.fn();
+    proc.pid = 88888;
+    return proc;
+  }
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
     const cp = require('child_process');
     execFile = cp.execFile;
+    spawn = cp.spawn;
+    // Default spawn mock for playback monitor started by init()
+    spawn.mockReturnValue(createDefaultMockSpawnProc());
     spotifyService = require('../../../src/services/spotifyService');
     registry = require('../../../src/services/serviceHealthRegistry');
     spotifyService.reset();
@@ -934,6 +949,207 @@ describe('SpotifyService', () => {
       );
 
       await expect(spotifyService.play()).rejects.toThrow('Spotify not connected');
+    });
+  });
+
+  // ── D-Bus Playback Monitor ──
+
+  describe('D-Bus playback monitor', () => {
+    function createMockSpawnProc() {
+      const proc = new EventEmitter();
+      proc.stdout = new EventEmitter();
+      proc.stderr = new EventEmitter();
+      proc.kill = jest.fn();
+      proc.pid = 99999;
+      return proc;
+    }
+
+    function feedMprisPropertyChange(mockProc, propName, propType, propValue) {
+      const lines = [
+        "signal time=1234567890.123 sender=:1.5 -> destination=(null destination) serial=42 path=/org/mpris/MediaPlayer2; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged",
+        '   string "org.mpris.MediaPlayer2.Player"',
+        '   array [',
+        '      dict entry(',
+        `         string "${propName}"`,
+        `         variant             ${propType} ${propValue}`,
+        '      )',
+        '   ]',
+        '   array [',
+        '   ]',
+        // Next signal boundary to flush
+        "signal time=1234567891.000 sender=:1.5 -> destination=(null destination) serial=43 path=/other; interface=org.test; member=Foo",
+      ];
+      for (const line of lines) {
+        mockProc.stdout.emit('data', Buffer.from(line + '\n'));
+      }
+    }
+
+    it('should start dbus-monitor with correct session match rule', () => {
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.startPlaybackMonitor();
+
+      expect(spawnMock).toHaveBeenCalledWith(
+        'dbus-monitor',
+        expect.arrayContaining(['--session', '--monitor']),
+        expect.any(Object)
+      );
+
+      spotifyService.stopPlaybackMonitor();
+    });
+
+    it('should emit playback:changed when PlaybackStatus changes externally', (done) => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.state = 'stopped';
+
+      spotifyService.on('playback:changed', (data) => {
+        expect(data.state).toBe('playing');
+        jest.useRealTimers();
+        done();
+      });
+
+      spotifyService.startPlaybackMonitor();
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+
+      jest.advanceTimersByTime(500);
+    });
+
+    it('should NOT emit when PlaybackStatus unchanged', () => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.state = 'playing';
+
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+
+      spotifyService.startPlaybackMonitor();
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+
+      jest.advanceTimersByTime(500);
+      expect(handler).not.toHaveBeenCalled();
+      jest.useRealTimers();
+    });
+
+    it('should emit volume:changed when Volume changes externally', (done) => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.volume = 100;
+
+      spotifyService.on('volume:changed', (data) => {
+        expect(data.volume).toBe(75);
+        jest.useRealTimers();
+        done();
+      });
+
+      spotifyService.startPlaybackMonitor();
+      feedMprisPropertyChange(mockProc, 'Volume', 'double', '0.75');
+
+      jest.advanceTimersByTime(500);
+    });
+
+    it('should emit track:changed when Metadata changes externally', (done) => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.track = null;
+
+      spotifyService.on('track:changed', (data) => {
+        expect(data.track.title).toBe('New Song');
+        jest.useRealTimers();
+        done();
+      });
+
+      spotifyService.startPlaybackMonitor();
+
+      // Feed Metadata signal with raw body containing xesam:title
+      const lines = [
+        "signal time=1234567890.123 sender=:1.5 -> destination=(null destination) serial=42 path=/org/mpris/MediaPlayer2; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged",
+        '   string "org.mpris.MediaPlayer2.Player"',
+        '   array [',
+        '      dict entry(',
+        '         string "Metadata"',
+        '         variant             array [',
+        '            dict entry(',
+        '               string "xesam:title"',
+        '               variant                   string "New Song"',
+        '            )',
+        '            dict entry(',
+        '               string "xesam:artist"',
+        '               variant                   array [',
+        '                  string "Test Artist"',
+        '               ]',
+        '            )',
+        '         ]',
+        '      )',
+        '   ]',
+        '   array [',
+        '   ]',
+        // Next signal boundary
+        "signal time=1234567891.000 sender=:1.5 -> destination=(null destination) serial=43 path=/other; interface=org.test; member=Foo",
+      ];
+      for (const line of lines) {
+        mockProc.stdout.emit('data', Buffer.from(line + '\n'));
+      }
+
+      jest.advanceTimersByTime(500);
+    });
+
+    it('should debounce rapid signals', () => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.state = 'stopped';
+      const handler = jest.fn();
+      spotifyService.on('playback:changed', handler);
+
+      spotifyService.startPlaybackMonitor();
+
+      // Send same signal 3 times rapidly
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+
+      jest.advanceTimersByTime(500);
+      expect(handler).toHaveBeenCalledTimes(1);
+      jest.useRealTimers();
+    });
+
+    it('should stop monitor on stopPlaybackMonitor()', () => {
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.startPlaybackMonitor();
+      spotifyService.stopPlaybackMonitor();
+
+      expect(mockProc.kill).toHaveBeenCalled();
+    });
+
+    it('should stop monitor on reset()', () => {
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      spotifyService.startPlaybackMonitor();
+      spotifyService.reset();
+
+      expect(mockProc.kill).toHaveBeenCalled();
     });
   });
 });

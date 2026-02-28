@@ -6,6 +6,8 @@ const path = require('path');
 const os = require('os');
 const logger = require('../utils/logger');
 const registry = require('./serviceHealthRegistry');
+const ProcessMonitor = require('../utils/processMonitor');
+const DbusSignalParser = require('../utils/dbusSignalParser');
 
 // Wrap execFile to always return {stdout, stderr} (Node's custom promisify
 // is lost when jest.mock('child_process') auto-mocks the module)
@@ -27,6 +29,9 @@ const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
 const SPOTIFYD_IFACE = 'rs.spotifyd.Controls';
 const SPOTIFYD_PATH = '/rs/spotifyd/Controls';
 
+/** Debounce delay for MPRIS signals during track transitions (ms) */
+const SIGNAL_DEBOUNCE_MS = 300;
+
 class SpotifyService extends EventEmitter {
   constructor() {
     super();
@@ -40,6 +45,11 @@ class SpotifyService extends EventEmitter {
     this._spotifydCacheTime = 0;
     this._recovering = false; // Prevents infinite recursion in reactive recovery
     this.cachePath = process.env.SPOTIFY_CACHE_PATH || path.join(os.homedir(), '.cache', 'spotifyd');
+
+    // D-Bus playback monitor
+    this._playbackMonitor = null;
+    this._mprisSignalParser = null;
+    this._signalDebounceTimer = null;
   }
 
   /**
@@ -157,6 +167,7 @@ class SpotifyService extends EventEmitter {
     const activated = await this.activate();
     if (activated) {
       logger.info('[Spotify] Initialized via TransferPlayback activation');
+      this.startPlaybackMonitor();
       return;
     }
     // Activation failed (no native interface), try passive MPRIS check
@@ -166,6 +177,8 @@ class SpotifyService extends EventEmitter {
     } else {
       logger.warn('[Spotify] Not available at startup (will retry on reconnect command)');
     }
+    // Start monitor regardless — it catches external spotifyd start
+    this.startPlaybackMonitor();
   }
 
   _buildDbusArgs(dest, method, args = []) {
@@ -390,7 +403,121 @@ class SpotifyService extends EventEmitter {
     };
   }
 
+  // ── D-Bus Playback Monitor ──
+
+  /**
+   * Start monitoring MPRIS property changes via dbus-monitor.
+   * Detects external playback state, track, and volume changes.
+   */
+  startPlaybackMonitor() {
+    if (this._playbackMonitor) return;
+
+    const matchRule = "type='signal',interface='org.freedesktop.DBus.Properties',path='/org/mpris/MediaPlayer2'";
+
+    this._playbackMonitor = new ProcessMonitor({
+      command: 'dbus-monitor',
+      args: ['--session', '--monitor', matchRule],
+      label: 'spotify-dbus-monitor',
+    });
+
+    this._mprisSignalParser = new DbusSignalParser();
+
+    this._playbackMonitor.on('line', (line) => {
+      this._mprisSignalParser.feedLine(line);
+    });
+
+    this._mprisSignalParser.on('signal', (signal) => {
+      this._handleMprisSignal(signal);
+    });
+
+    this._playbackMonitor.start();
+    logger.info('[Spotify] MPRIS D-Bus monitor started');
+  }
+
+  /** Stop the MPRIS D-Bus playback monitor. */
+  stopPlaybackMonitor() {
+    if (this._playbackMonitor) {
+      this._playbackMonitor.stop();
+      this._playbackMonitor = null;
+    }
+    if (this._mprisSignalParser) {
+      this._mprisSignalParser.flush();
+      this._mprisSignalParser = null;
+    }
+    if (this._signalDebounceTimer) {
+      clearTimeout(this._signalDebounceTimer);
+      this._signalDebounceTimer = null;
+    }
+  }
+
+  /**
+   * Handle a parsed MPRIS D-Bus signal. Debounces rapid signals during track transitions.
+   * @private
+   */
+  _handleMprisSignal(signal) {
+    if (signal.changedInterface !== 'org.mpris.MediaPlayer2.Player') return;
+
+    if (this._signalDebounceTimer) {
+      clearTimeout(this._signalDebounceTimer);
+    }
+
+    this._signalDebounceTimer = setTimeout(() => {
+      this._signalDebounceTimer = null;
+      this._processExternalStateChange(signal);
+    }, SIGNAL_DEBOUNCE_MS);
+  }
+
+  /**
+   * Process debounced MPRIS property changes and emit events on delta.
+   * @private
+   */
+  _processExternalStateChange(signal) {
+    const properties = signal.properties || {};
+
+    // PlaybackStatus: string → compare with this.state
+    if ('PlaybackStatus' in properties) {
+      const newState = properties.PlaybackStatus.toLowerCase();
+      if (newState !== this.state) {
+        const oldState = this.state;
+        this.state = newState;
+        this.emit('playback:changed', { state: newState });
+        logger.info('[Spotify] External playback state change', { from: oldState, to: newState });
+      }
+    }
+
+    // Volume: double 0.0-1.0 → convert to 0-100
+    if ('Volume' in properties) {
+      const newVolume = Math.round(properties.Volume * 100);
+      if (newVolume !== this.volume) {
+        this.volume = newVolume;
+        this.emit('volume:changed', { volume: newVolume });
+        logger.info('[Spotify] External volume change', { volume: newVolume });
+      }
+    }
+
+    // Metadata: complex dict → parse from raw signal body via _parseMetadata
+    if (signal.raw && signal.raw.includes('xesam:title')) {
+      const newTrack = this._parseMetadata(signal.raw);
+      if (newTrack && JSON.stringify(newTrack) !== JSON.stringify(this.track)) {
+        this.track = newTrack;
+        this.emit('track:changed', { track: newTrack });
+        logger.info('[Spotify] External track change', { track: newTrack });
+      }
+    }
+
+    // Clear D-Bus destination caches on any signal — spotifyd may have restarted
+    // (PID suffix changes but path-based match rule still catches new instance)
+    if (!registry.isHealthy('spotify')) {
+      this._dbusDest = null;
+      this._dbusCacheTime = 0;
+      this._spotifydDest = null;
+      this._spotifydCacheTime = 0;
+      registry.report('spotify', 'healthy', 'MPRIS signal received');
+    }
+  }
+
   reset() {
+    this.stopPlaybackMonitor();
     registry.report('spotify', 'down', 'Reset');
     this.state = 'stopped';
     this.volume = 100;
