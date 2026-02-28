@@ -20,6 +20,7 @@ const bluetoothService = require('./bluetoothService');
 const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
+const spotifyService = require('./spotifyService');
 const registry = require('./serviceHealthRegistry');
 
 // Service dependency map for pre-dispatch health checks
@@ -96,7 +97,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
     let resultMessage = '';
     let resultData = null;
 
-    // Lazy getter for circular dependency (cueEngineService imports commandExecutor)
+    // Lazy require: circular dependency (commandExecutor ↔ cueEngineService)
     let _cueEngine;
     const getCueEngine = () => {
       if (!_cueEngine) _cueEngine = require('./cueEngineService');
@@ -478,6 +479,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Cue commands ---
 
       case 'cue:fire': {
+        if (!payload.cueId) throw new Error('cueId required');
         const cueEngineService = getCueEngine();
         await cueEngineService.fireCue(payload.cueId);
         resultMessage = `Cue fired: ${payload.cueId}`;
@@ -486,6 +488,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'cue:enable': {
+        if (!payload.cueId) throw new Error('cueId required');
         const cueEngineService = getCueEngine();
         cueEngineService.enableCue(payload.cueId);
         resultMessage = `Cue enabled: ${payload.cueId}`;
@@ -494,6 +497,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'cue:disable': {
+        if (!payload.cueId) throw new Error('cueId required');
         const cueEngineService = getCueEngine();
         cueEngineService.disableCue(payload.cueId);
         resultMessage = `Cue disabled: ${payload.cueId}`;
@@ -539,7 +543,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         if (heldId.startsWith('held-cue-')) {
           await getCueEngine().releaseCue(heldId);
         } else if (heldId.startsWith('held-video-')) {
-          require('./videoQueueService').releaseHeld(heldId);
+          videoQueueService.releaseHeld(heldId);
         } else {
           throw new Error(`Unknown held item type: ${heldId}`);
         }
@@ -554,7 +558,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         if (heldId.startsWith('held-cue-')) {
           getCueEngine().discardCue(heldId);
         } else if (heldId.startsWith('held-video-')) {
-          require('./videoQueueService').discardHeld(heldId);
+          videoQueueService.discardHeld(heldId);
         } else {
           throw new Error(`Unknown held item type: ${heldId}`);
         }
@@ -565,12 +569,11 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       case 'held:release-all': {
         const cueEngine = getCueEngine();
-        const videoQueue = require('./videoQueueService');
         for (const held of cueEngine.getHeldCues()) {
           await cueEngine.releaseCue(held.id);
         }
-        for (const held of videoQueue.getHeldVideos()) {
-          videoQueue.releaseHeld(held.id);
+        for (const held of videoQueueService.getHeldVideos()) {
+          videoQueueService.releaseHeld(held.id);
         }
         resultMessage = 'All held items released';
         logger.info('All held items released', { source, deviceId });
@@ -579,12 +582,11 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       case 'held:discard-all': {
         const cueEngine = getCueEngine();
-        const videoQueue = require('./videoQueueService');
         for (const held of cueEngine.getHeldCues()) {
           cueEngine.discardCue(held.id);
         }
-        for (const held of videoQueue.getHeldVideos()) {
-          videoQueue.discardHeld(held.id);
+        for (const held of videoQueueService.getHeldVideos()) {
+          videoQueueService.discardHeld(held.id);
         }
         resultMessage = 'All held items discarded';
         logger.info('All held items discarded', { source, deviceId });
@@ -598,7 +600,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'spotify:stop':
       case 'spotify:next':
       case 'spotify:previous': {
-        const spotifyService = require('./spotifyService');
         const method = SPOTIFY_TRANSPORT[action];
         await spotifyService[method]();
         resultMessage = `Spotify: ${method}`;
@@ -607,7 +608,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'spotify:playlist': {
-        const spotifyService = require('./spotifyService');
         const { uri } = payload;
         if (!uri) throw new Error('uri required');
         await spotifyService.setPlaylist(uri);
@@ -617,7 +617,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'spotify:volume': {
-        const spotifyService = require('./spotifyService');
         const { volume } = payload;
         if (volume === undefined) throw new Error('volume required');
         await spotifyService.setVolume(volume);
@@ -627,7 +626,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'spotify:cache:verify': {
-        const spotifyService = require('./spotifyService');
         const status = await spotifyService.verifyCacheStatus();
         resultData = status;
         resultMessage = 'Cache verification complete';
@@ -640,7 +638,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'service:check': {
         const HEALTH_CHECKS = {
           vlc: () => require('./vlcService').checkConnection(),
-          spotify: () => require('./spotifyService').checkConnection(),
+          spotify: () => spotifyService.checkConnection(),
           lighting: () => lightingService.checkConnection(),
           bluetooth: () => bluetoothService.isAvailable(),
           audio: () => audioRoutingService.checkHealth(),

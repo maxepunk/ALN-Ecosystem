@@ -903,8 +903,6 @@ class CueEngineService extends EventEmitter {
       reason,
       cueId: cue.id,
       trigger: trigger || null,
-      commands: cue.commands || undefined,
-      timeline: cue.timeline || undefined,
       parentChain: parentChain || null,
       status: 'held',
     };

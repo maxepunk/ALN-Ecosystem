@@ -43,12 +43,10 @@ class BluetoothService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async init() {
-    const available = await this.isAvailable();
+    const available = await this.checkHealth();
     if (available) {
-      registry.report('bluetooth', 'healthy', 'Adapter available');
       logger.info('Bluetooth service initialized — adapter available');
     } else {
-      registry.report('bluetooth', 'down', 'No adapter or adapter powered off');
       logger.warn('Bluetooth service initialized — no adapter or adapter powered off');
     }
   }
@@ -199,9 +197,6 @@ class BluetoothService extends EventEmitter {
 
   /**
    * Stop an active scan
-   */
-  /**
-   * Stop an active scan
    * @returns {Promise<void>}
    */
   async stopScan() {
@@ -256,11 +251,6 @@ class BluetoothService extends EventEmitter {
    * eviction — discovered devices are flushed when scan exits, so scan +
    * pair + trust must happen within the same process.
    *
-   * @param {string} address - MAC address
-   * @returns {Promise<void>}
-   */
-  /**
-   * Pair with a Bluetooth device
    * @param {string} address - Bluetooth MAC address
    * @returns {Promise<void>}
    */

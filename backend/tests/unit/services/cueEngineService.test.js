@@ -1311,9 +1311,11 @@ describe('CueEngineService', () => {
           blockedBy: ['sound'],
           reason: 'service_down',
           cueId: 'struct-cue',
-          commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
           status: 'held',
         }));
+        // commands/timeline are NOT stored on held records (dead data removed)
+        expect(held[0].commands).toBeUndefined();
+        expect(held[0].timeline).toBeUndefined();
       });
     });
 

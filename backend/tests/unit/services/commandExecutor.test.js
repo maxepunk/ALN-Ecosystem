@@ -846,6 +846,9 @@ describe('commandExecutor', () => {
     beforeEach(() => {
       jest.resetModules();
       cueEngineService = {
+        fireCue: jest.fn().mockResolvedValue(),
+        enableCue: jest.fn(),
+        disableCue: jest.fn(),
         stopCue: jest.fn().mockResolvedValue(),
         pauseCue: jest.fn().mockResolvedValue(),
         resumeCue: jest.fn().mockResolvedValue(),
@@ -855,6 +858,78 @@ describe('commandExecutor', () => {
 
     afterEach(() => {
       jest.dontMock('../../../src/services/cueEngineService');
+    });
+
+    it('should execute cue:fire', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({
+        action: 'cue:fire',
+        payload: { cueId: 'opening' },
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening');
+    });
+
+    it('should reject cue:fire without cueId', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({
+        action: 'cue:fire',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('cueId required');
+    });
+
+    it('should execute cue:enable', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({
+        action: 'cue:enable',
+        payload: { cueId: 'standing-1' },
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(cueEngineService.enableCue).toHaveBeenCalledWith('standing-1');
+    });
+
+    it('should reject cue:enable without cueId', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({
+        action: 'cue:enable',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('cueId required');
+    });
+
+    it('should execute cue:disable', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({
+        action: 'cue:disable',
+        payload: { cueId: 'standing-1' },
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(cueEngineService.disableCue).toHaveBeenCalledWith('standing-1');
+    });
+
+    it('should reject cue:disable without cueId', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      const result = await executeCommand({
+        action: 'cue:disable',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('cueId required');
     });
 
     it('should execute cue:stop', async () => {

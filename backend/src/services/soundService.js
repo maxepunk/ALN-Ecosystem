@@ -27,12 +27,10 @@ class SoundService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async init() {
-    try {
-      await execFileAsync('which', ['pw-play'], 3000);
-      registry.report('sound', 'healthy', 'pw-play available');
+    const available = await this.checkHealth();
+    if (available) {
       logger.info('[Sound] Service initialized — pw-play available');
-    } catch {
-      registry.report('sound', 'down', 'pw-play not found');
+    } else {
       logger.warn('[Sound] Service initialized — pw-play not available');
     }
   }

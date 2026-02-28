@@ -64,20 +64,32 @@ class SpotifyService extends EventEmitter {
     }
   }
 
-  async _discoverDbusDest() {
-    if (this._dbusDest && (Date.now() - this._dbusCacheTime) < DBUS_DEST_CACHE_TTL) {
-      return this._dbusDest;
+  /**
+   * Shared discovery helper — check cache TTL, call _findDbusDest, update cache.
+   * @param {string} cacheField - Instance field name for cached dest (e.g., '_dbusDest')
+   * @param {string} cacheTimeField - Instance field name for cache timestamp
+   * @param {string} pattern - Regex pattern for _findDbusDest
+   * @param {string} label - Label for debug logging
+   * @returns {Promise<string|null>}
+   */
+  async _discoverDest(cacheField, cacheTimeField, pattern, label) {
+    if (this[cacheField] && (Date.now() - this[cacheTimeField]) < DBUS_DEST_CACHE_TTL) {
+      return this[cacheField];
     }
-    const dest = await this._findDbusDest('org\\.mpris\\.MediaPlayer2\\.spotifyd');
+    const dest = await this._findDbusDest(pattern);
     if (dest) {
-      this._dbusDest = dest;
-      this._dbusCacheTime = Date.now();
-      logger.debug(`[Spotify] Discovered MPRIS dest: ${this._dbusDest}`);
+      this[cacheField] = dest;
+      this[cacheTimeField] = Date.now();
+      logger.debug(`[Spotify] Discovered ${label} dest: ${dest}`);
     } else {
-      this._dbusDest = null;
-      this._dbusCacheTime = 0;
+      this[cacheField] = null;
+      this[cacheTimeField] = 0;
     }
-    return this._dbusDest;
+    return this[cacheField];
+  }
+
+  async _discoverDbusDest() {
+    return this._discoverDest('_dbusDest', '_dbusCacheTime', 'org\\.mpris\\.MediaPlayer2\\.spotifyd', 'MPRIS');
   }
 
   /**
@@ -86,19 +98,7 @@ class SpotifyService extends EventEmitter {
    * @returns {Promise<string|null>}
    */
   async _discoverSpotifydDest() {
-    if (this._spotifydDest && (Date.now() - this._spotifydCacheTime) < DBUS_DEST_CACHE_TTL) {
-      return this._spotifydDest;
-    }
-    const dest = await this._findDbusDest('rs\\.spotifyd\\.');
-    if (dest) {
-      this._spotifydDest = dest;
-      this._spotifydCacheTime = Date.now();
-      logger.debug(`[Spotify] Discovered native dest: ${this._spotifydDest}`);
-    } else {
-      this._spotifydDest = null;
-      this._spotifydCacheTime = 0;
-    }
-    return this._spotifydDest;
+    return this._discoverDest('_spotifydDest', '_spotifydCacheTime', 'rs\\.spotifyd\\.', 'native');
   }
 
   /**
