@@ -22,9 +22,14 @@ function detectPlatform() {
 }
 
 /**
- * Get VLC hardware acceleration flags for the current platform.
+ * Get VLC platform-specific flags.
+ *
+ * Pi 4: v4l2_m2m hardware decode.
+ * Pi 5: --vout=gl forces OpenGL rendering through X11/Xorg. Without this,
+ *   VLC auto-selects drm_vout which competes with Xorg for DRM planes,
+ *   causing intermittent HDMI signal loss (projector shows "no signal").
  */
-function getVlcHwArgs() {
+function getVlcPlatformArgs() {
   if (process.env.VLC_HW_ACCEL !== undefined) {
     return process.env.VLC_HW_ACCEL;
   }
@@ -33,6 +38,7 @@ function getVlcHwArgs() {
     case 'pi4':
       return '--codec=avcodec --avcodec-hw=v4l2_m2m';
     case 'pi5':
+      return '--vout=gl';
     case 'pi-other':
     case 'generic':
     default:
@@ -41,7 +47,7 @@ function getVlcHwArgs() {
 }
 
 const VLC_BASE_ARGS = '--no-loop --intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 -A pulse --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd';
-const vlcHwArgs = getVlcHwArgs();
+const vlcHwArgs = getVlcPlatformArgs();
 const VLC_ARGS = vlcHwArgs ? `${VLC_BASE_ARGS} ${vlcHwArgs}` : VLC_BASE_ARGS;
 
 module.exports = {
