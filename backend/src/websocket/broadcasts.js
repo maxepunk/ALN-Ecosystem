@@ -190,16 +190,6 @@ function setupBroadcastListeners(io, services) {
     }
   });
 
-  // Full sync event (contract compliant)
-  addTrackedListener(stateService, 'sync:full', (fullState) => {
-    emitWrapped(io, 'sync:full', fullState);
-    logger.info('Broadcasted sync:full', {
-      hasSession: !!fullState.session,
-      hasState: !!fullState.state,
-      hasQueue: !!fullState.queue
-    });
-  });
-
   // Transaction/Score events - broadcast to GM stations only
   if (transactionService) {
     // DRY helper: broadcast score:updated from any source

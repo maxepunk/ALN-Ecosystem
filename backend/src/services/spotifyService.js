@@ -271,10 +271,10 @@ class SpotifyService extends EventEmitter {
     await this._dbusCall(`${PLAYER_IFACE}.${method}`);
     this.state = newState;
     if (clearPausedFlag) this._pausedByGameClock = false;
-    this.emit('playback:changed', { state: newState });
     if (refreshMetadata) {
       await this._refreshMetadata();
     }
+    this.emit('playback:changed', { state: newState });
   }
 
   async play() { await this._transport('Play', 'playing', { clearPausedFlag: true, refreshMetadata: true }); }

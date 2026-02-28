@@ -760,6 +760,25 @@ describe('SpotifyService', () => {
   });
 
   describe('track:changed after transport', () => {
+    it('should emit playback:changed AFTER metadata refresh on next()', async () => {
+      mockExecFileSuccess('');
+      // _refreshMetadata updates track — simulate it
+      jest.spyOn(spotifyService, '_refreshMetadata').mockImplementation(async () => {
+        spotifyService.track = { title: 'New Song', artist: 'New Artist' };
+        return true;
+      });
+
+      let trackAtEmitTime = null;
+      spotifyService.on('playback:changed', () => {
+        trackAtEmitTime = spotifyService.track;
+      });
+
+      await spotifyService.next();
+
+      // Track should be the NEW track at emission time, not null/old
+      expect(trackAtEmitTime).toEqual({ title: 'New Song', artist: 'New Artist' });
+    });
+
     it('should await metadata refresh after next()', async () => {
       mockExecFileSuccess('');
       const spy = jest.spyOn(spotifyService, '_refreshMetadata').mockResolvedValue(true);
