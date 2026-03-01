@@ -123,22 +123,42 @@ describe('POST /api/scan', () => {
   // scanning a video token returns 409 instead of silently queuing.
   it('should return 409 when VLC is down and scanning a video token', async () => {
     const registry = require('../../../src/services/serviceHealthRegistry');
+
+    // Drain pending setImmediate callbacks from prior tests' video queue
+    // processing (addToQueue → setImmediate(processQueue) → playVideo →
+    // checkConnection → registry.report('vlc', 'healthy')), which can race
+    // with this test's VLC 'down' setup.
+    await new Promise(r => setImmediate(r));
+
     registry.report('vlc', 'down', 'VLC offline');
 
-    const response = await request(app.app)
-      .post('/api/scan')
-      .send({
-        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
-        deviceId: 'PLAYER_SCANNER_01',
-        deviceType: 'player',
-        timestamp: new Date().toISOString()
-      })
-      .expect(409);
+    // Lock VLC health to 'down' for the duration of this request.
+    // Real VLC may be running on this machine, and its D-Bus monitor or
+    // stale processQueue callbacks can report VLC as 'healthy' mid-request.
+    const origReport = registry.report.bind(registry);
+    registry.report = (serviceId, status, message) => {
+      if (serviceId === 'vlc') return; // Block VLC health changes
+      origReport(serviceId, status, message);
+    };
 
-    expect(response.body.status).toBe('rejected');
-    expect(response.body.message).toBe('Video playback unavailable');
-    expect(response.body.videoQueued).toBe(false);
-    expect(response.body).not.toHaveProperty('waitTime');
+    try {
+      const response = await request(app.app)
+        .post('/api/scan')
+        .send({
+          tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
+          deviceId: 'PLAYER_SCANNER_01',
+          deviceType: 'player',
+          timestamp: new Date().toISOString()
+        })
+        .expect(409);
+
+      expect(response.body.status).toBe('rejected');
+      expect(response.body.message).toBe('Video playback unavailable');
+      expect(response.body.videoQueued).toBe(false);
+      expect(response.body).not.toHaveProperty('waitTime');
+    } finally {
+      registry.report = origReport;
+    }
   });
 });
 
