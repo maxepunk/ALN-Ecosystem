@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2026-02-27
+Last verified: 2026-03-01
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -556,7 +556,7 @@ ffmpeg -i INPUT.mp4 \
 **Debug:**
 1. `dbus-send --session --dest=org.mpris.MediaPlayer2.vlc --print-reply /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping` - VLC D-Bus check
 2. `ls -lh public/videos/[filename].mp4` - File exists
-3. Monitor `video:status` events in GM scanner
+3. Monitor `service:state` events (domain `video`) in GM scanner
 4. Check VLC logs: `npm run prod:logs | grep vlc`
 
 **Key Files:** `src/services/videoQueueService.js`, `src/services/vlcMprisService.js`
