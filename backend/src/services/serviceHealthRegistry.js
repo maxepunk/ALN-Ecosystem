@@ -79,6 +79,14 @@ class ServiceHealthRegistry extends EventEmitter {
   }
 
   /**
+   * Get current health state snapshot. Alias for getSnapshot().
+   * @returns {Object} Health state keyed by service ID
+   */
+  getState() {
+    return this.getSnapshot();
+  }
+
+  /**
    * Get snapshot of all service health for sync:full payloads.
    * Returns a plain object (not Map) for JSON serialization.
    */

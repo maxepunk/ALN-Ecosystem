@@ -384,6 +384,26 @@ class BluetoothService extends EventEmitter {
   }
 
   /**
+   * Get current bluetooth state snapshot.
+   * Uses cached device state (sync) to avoid shelling out to bluetoothctl.
+   * @returns {{scanning: boolean, pairedDevices: Array, connectedDevices: Array}}
+   */
+  getState() {
+    const pairedDevices = [];
+    const connectedDevices = [];
+    for (const [address, state] of this._cachedDeviceStates) {
+      const device = { address, name: state.name || address, connected: state.connected };
+      if (state.paired) pairedDevices.push(device);
+      if (state.connected) connectedDevices.push(device);
+    }
+    return {
+      scanning: this.isScanning(),
+      pairedDevices,
+      connectedDevices,
+    };
+  }
+
+  /**
    * Kill active scan process, prevent orphaned processes on shutdown
    */
   cleanup() {

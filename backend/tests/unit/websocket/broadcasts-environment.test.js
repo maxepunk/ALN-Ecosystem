@@ -65,12 +65,24 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     mockVideoQueueService = new EventEmitter();
     mockOfflineQueueService = new EventEmitter();
     mockBluetoothService = new EventEmitter();
+    mockBluetoothService.getState = jest.fn().mockReturnValue({
+      scanning: false, pairedDevices: [], connectedDevices: [],
+    });
     mockAudioRoutingService = new EventEmitter();
     mockAudioRoutingService.handleDuckingEvent = jest.fn();
+    mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+      routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+    });
     mockLightingService = new EventEmitter();
+    mockLightingService.getState = jest.fn().mockReturnValue({
+      connected: false, activeScene: null, scenes: [],
+    });
 
     // Methods needed by broadcast handlers
     mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
+    mockVideoQueueService.getState = jest.fn().mockReturnValue({
+      status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+    });
     mockTransactionService.getToken = jest.fn().mockReturnValue(null);
     mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
     mockSessionService.getCurrentSession = jest.fn().mockReturnValue({

@@ -85,13 +85,25 @@ describe('Phase 1 Broadcasts', () => {
     mockStateService = new EventEmitter();
     mockVideoQueueService = new EventEmitter();
     mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
+    mockVideoQueueService.getState = jest.fn().mockReturnValue({
+      status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+    });
     mockOfflineQueueService = new EventEmitter();
 
     // Mock environment services (Phase 0)
     mockBluetoothService = new EventEmitter();
+    mockBluetoothService.getState = jest.fn().mockReturnValue({
+      scanning: false, pairedDevices: [], connectedDevices: [],
+    });
     mockAudioRoutingService = new EventEmitter();
     mockAudioRoutingService.handleDuckingEvent = jest.fn();
+    mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+      routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+    });
     mockLightingService = new EventEmitter();
+    mockLightingService.getState = jest.fn().mockReturnValue({
+      connected: false, activeScene: null, scenes: [],
+    });
 
     // Mock Phase 1 services
     mockGameClockService = new EventEmitter();
@@ -111,9 +123,13 @@ describe('Phase 1 Broadcasts', () => {
       { id: 'cue-1', name: 'Test Cue', type: 'simple' }
     ]);
     mockCueEngineService.getActiveCues = jest.fn().mockReturnValue([]);
+    mockCueEngineService.getState = jest.fn().mockReturnValue({
+      cues: [{ id: 'cue-1', name: 'Test Cue', type: 'simple' }], activeCues: [], disabledCues: [],
+    });
 
     mockSoundService = new EventEmitter();
     mockSoundService.getPlaying = jest.fn().mockReturnValue([]);
+    mockSoundService.getState = jest.fn().mockReturnValue({ playing: [] });
   });
 
   afterEach(() => {
@@ -394,6 +410,58 @@ describe('Phase 1 Broadcasts', () => {
       expect(payload.gameClock.status).toBe('stopped');
       expect(payload.gameClock.elapsed).toBe(0);
       expect(payload.gameClock.expectedDuration).toBe(7200);
+    });
+  });
+
+  describe('service:state dual-emit (unified state architecture)', () => {
+    it('should emit service:state with domain gameclock on gameclock:started', () => {
+      setupBroadcasts();
+      mockGameClockService.emit('gameclock:started', { gameStartTime: Date.now() });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'gameclock', state: mockGameClockService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain gameclock on gameclock:paused', () => {
+      setupBroadcasts();
+      mockGameClockService.emit('gameclock:paused', { elapsed: 300 });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'gameclock', state: mockGameClockService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain gameclock on gameclock:resumed', () => {
+      setupBroadcasts();
+      mockGameClockService.emit('gameclock:resumed', { elapsed: 450 });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'gameclock', state: mockGameClockService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain sound on sound:started', () => {
+      setupBroadcasts();
+      mockSoundService.emit('sound:started', { file: 'test.wav' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'sound', state: mockSoundService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain cueengine on cue:fired', () => {
+      setupBroadcasts();
+      mockCueEngineService.emit('cue:fired', { cueId: 'cue-1' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'cueengine', state: mockCueEngineService.getState() },
+      }));
     });
   });
 });

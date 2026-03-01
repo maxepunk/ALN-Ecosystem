@@ -332,6 +332,18 @@ class LightingService extends EventEmitter {
   }
 
   /**
+   * Get current lighting state snapshot (sync).
+   * @returns {{connected: boolean, activeScene: string|null, scenes: Array}}
+   */
+  getState() {
+    return {
+      connected: this.isConnected(),
+      activeScene: this._activeScene,
+      scenes: this._scenes,
+    };
+  }
+
+  /**
    * Return cached scene list without making an HTTP call.
    * @returns {Array<{id: string, name: string}>}
    */

@@ -420,6 +420,7 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 | `held:recoverable` | `{heldCount}` | Held items may be recoverable (service restored) |
 | `service:health` | `{serviceId, status, message}` | Individual service health update |
 | `spotify:status` | `{connected, state, volume, pausedByGameClock}` | Spotify playback state |
+| `service:state` | `{domain, state}` | Unified state push (dual-emit alongside discrete events) |
 
 **`sync:full` Phase 2 Additions:**
 - `spotify`: `{connected, state, volume, pausedByGameClock}` via `buildSpotifyState()`
@@ -431,6 +432,15 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 - `heldItems`: `[{id, type, cueId?, reason, ...}]` via `buildHeldItemsState()`
 
 **CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`). Missing a service = silent state desync. Bug has recurred in `scores:reset`, `offline:queue:processed`, and `integration-test-server.js` — audit ALL emission points (including test helpers) when adding new services.
+
+**Unified `service:state` Pattern (Dual-Emit):**
+- Every service has a sync `getState()` method returning a full state snapshot
+- `broadcasts.js` `pushServiceState(domain, service)` emits `service:state` with `{domain, state: service.getState()}` to GM room
+- 9 domains: `spotify`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`
+- `video` domain is owned by `videoQueueService.getState()` — composes VLC connection state from `vlcMprisService.getState()`
+- Dual-emit: old discrete events (`spotify:status`, `gameclock:status`, etc.) AND `service:state` fire on the same trigger
+- No post-command state push: state pushes triggered ONLY by service events (D-Bus monitors, service lifecycle)
+- Tests: `tests/unit/services/getState.test.js` (19 tests), `tests/integration/service-state-push.test.js` (13 tests), broadcast unit tests (10 tests)
 
 **CRITICAL Gotchas:**
 - `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.

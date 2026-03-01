@@ -523,6 +523,54 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
+   * Get current video domain state snapshot.
+   * This is the canonical source for the 'video' service:state domain.
+   * Includes queue state AND current playback state (reads from vlcMprisService).
+   * @returns {{status: string, currentVideo: Object|null, queue: Array, queueLength: number, connected: boolean}}
+   */
+  getState() {
+    const vlcState = vlcService.getState();
+    const current = this.currentItem;
+    let currentVideo = null;
+    let status = 'idle';
+
+    if (current) {
+      if (current.isPlaying()) {
+        status = 'playing';
+      } else if (current.isPending()) {
+        status = 'loading';
+      } else if (current.hasFailed()) {
+        status = 'error';
+      }
+      currentVideo = {
+        tokenId: current.tokenId,
+        filename: current.videoFile,
+      };
+      if (current.isPlaying()) {
+        try {
+          const duration = this.getVideoDuration(current.tokenId);
+          const elapsed = (Date.now() - new Date(current.playbackStart).getTime()) / 1000;
+          currentVideo.position = Math.min(elapsed / duration, 1);
+          currentVideo.duration = duration;
+        } catch {
+          // Duration not available yet
+        }
+      }
+    }
+    const pendingItems = this.queue.filter(item => item.isPending());
+    return {
+      status,
+      currentVideo,
+      queue: pendingItems.map(item => ({
+        tokenId: item.tokenId,
+        filename: item.videoFile,
+      })),
+      queueLength: pendingItems.length,
+      connected: vlcState.connected,
+    };
+  }
+
+  /**
    * Get current queue status
    * @returns {Object}
    */

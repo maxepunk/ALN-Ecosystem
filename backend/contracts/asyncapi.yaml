@@ -112,6 +112,7 @@ channels:
           - $ref: '#/components/messages/VideoProgress'
           - $ref: '#/components/messages/VideoQueueUpdate'
           - $ref: '#/components/messages/AudioSinks'
+          - $ref: '#/components/messages/ServiceState'
           - $ref: '#/components/messages/Error'
     publish:
       summary: Send events to orchestrator
@@ -2918,6 +2919,64 @@ components:
                 enum: [healthy, down]
                 description: Previous health status
                 example: "down"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T19:00:30.200Z"
+
+    # ============================================================================
+    # UNIFIED SERVICE STATE (1 event, replaces domain-specific events over time)
+    # ============================================================================
+
+    ServiceState:
+      name: service:state
+      title: Unified Service State Push
+      summary: Full state snapshot for a service domain
+      description: |
+        Emitted when any service domain's state changes. Carries a full state
+        snapshot (not delta) wrapped in a `{domain, state}` envelope.
+
+        **Dual-emit period**: During the transition, both old discrete events
+        (e.g., `spotify:status`, `gameclock:status`) AND this unified event fire
+        on the same trigger. Consumers can migrate incrementally.
+
+        **Domains**: spotify, video, health, bluetooth, audio, lighting, sound, gameclock, cueengine
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: service:state
+            description: Event name
+          data:
+            type: object
+            required:
+              - domain
+              - state
+            properties:
+              domain:
+                type: string
+                enum: [spotify, video, health, bluetooth, audio, lighting, sound, gameclock, cueengine]
+                description: Service domain identifier
+                example: "spotify"
+              state:
+                type: object
+                description: |
+                  Full state snapshot for the domain. Shape varies by domain:
+                  - **spotify**: `{connected, state, volume, track, pausedByGameClock}`
+                  - **video**: `{status, currentVideo, queue[], queueLength, connected}`
+                  - **health**: `{vlc: {status, message, lastChecked}, spotify: {...}, ...}` (all 8 services)
+                  - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
+                  - **audio**: `{routes, defaultSink, combineSinkActive, ducking}`
+                  - **lighting**: `{connected, activeScene, scenes[]}`
+                  - **sound**: `{playing[]}`
+                  - **gameclock**: `{status, elapsed, startTime, totalPausedMs}`
+                  - **cueengine**: `{cues[], activeCues[], disabledCues[]}`
           timestamp:
             type: string
             format: date-time

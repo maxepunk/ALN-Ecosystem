@@ -792,6 +792,89 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
+  // ============================================================
+  // UNIFIED service:state BROADCASTS (Dual-emit alongside existing events)
+  // ============================================================
+
+  /**
+   * Push unified service:state event with full state snapshot.
+   * Dual-emit: old discrete events still fire above; this adds
+   * the new envelope that the frontend StateStore will consume.
+   */
+  function pushServiceState(domain, service) {
+    emitToRoom(io, 'gm', 'service:state', { domain, state: service.getState() });
+  }
+
+  // Spotify → service:state { domain: 'spotify' }
+  if (spotifyService) {
+    for (const event of ['playback:changed', 'volume:changed', 'track:changed']) {
+      addTrackedListener(spotifyService, event, () => pushServiceState('spotify', spotifyService));
+    }
+  }
+
+  // Video — VLC state changes AND video lifecycle events both push video domain
+  if (vlcService) {
+    addTrackedListener(vlcService, 'state:changed', () => pushServiceState('video', videoQueueService));
+  }
+  const VIDEO_LIFECYCLE_EVENTS = [
+    'video:started', 'video:completed', 'video:paused', 'video:resumed',
+    'video:loading', 'video:idle', 'video:failed',
+  ];
+  for (const event of VIDEO_LIFECYCLE_EVENTS) {
+    addTrackedListener(videoQueueService, event, () => pushServiceState('video', videoQueueService));
+  }
+  const QUEUE_EVENTS = ['queue:added', 'queue:cleared', 'queue:reordered', 'queue:pending-cleared', 'queue:reset'];
+  for (const event of QUEUE_EVENTS) {
+    addTrackedListener(videoQueueService, event, () => pushServiceState('video', videoQueueService));
+  }
+
+  // Health → service:state { domain: 'health' }
+  addTrackedListener(serviceHealthRegistry, 'health:changed', () => {
+    pushServiceState('health', serviceHealthRegistry);
+  });
+
+  // Bluetooth → service:state { domain: 'bluetooth' }
+  if (bluetoothService) {
+    for (const event of ['device:connected', 'device:disconnected', 'device:paired', 'device:unpaired', 'device:discovered', 'scan:started', 'scan:stopped']) {
+      addTrackedListener(bluetoothService, event, () => pushServiceState('bluetooth', bluetoothService));
+    }
+  }
+
+  // Audio → service:state { domain: 'audio' }
+  if (audioRoutingService) {
+    for (const event of ['routing:changed', 'routing:applied', 'routing:fallback', 'sink:added', 'sink:removed', 'ducking:changed', 'combine-sink:created', 'combine-sink:destroyed']) {
+      addTrackedListener(audioRoutingService, event, () => pushServiceState('audio', audioRoutingService));
+    }
+  }
+
+  // Lighting → service:state { domain: 'lighting' }
+  if (lightingService) {
+    for (const event of ['scene:activated', 'scenes:refreshed']) {
+      addTrackedListener(lightingService, event, () => pushServiceState('lighting', lightingService));
+    }
+  }
+
+  // Sound → service:state { domain: 'sound' }
+  if (soundService) {
+    for (const event of ['sound:started', 'sound:completed', 'sound:stopped', 'sound:error']) {
+      addTrackedListener(soundService, event, () => pushServiceState('sound', soundService));
+    }
+  }
+
+  // Game Clock → service:state { domain: 'gameclock' }
+  if (gameClockService) {
+    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed']) {
+      addTrackedListener(gameClockService, event, () => pushServiceState('gameclock', gameClockService));
+    }
+  }
+
+  // Cue Engine → service:state { domain: 'cueengine' }
+  if (cueEngineService) {
+    for (const event of ['cue:fired', 'cue:completed', 'cue:started', 'cue:status']) {
+      addTrackedListener(cueEngineService, event, () => pushServiceState('cueengine', cueEngineService));
+    }
+  }
+
   // Error events
   const handleServiceError = (service, error) => {
     emitWrapped(io, 'error', {

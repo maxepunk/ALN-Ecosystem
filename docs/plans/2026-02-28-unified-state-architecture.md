@@ -1,7 +1,7 @@
 # Unified State Architecture Design
 
 **Date:** 2026-02-28
-**Status:** Implementation in progress — Phase 1 (MprisPlayerBase), Phase 2 (Spotify refactor), and Phase 3 (VLC MPRIS Migration) complete
+**Status:** Implementation in progress — Phase 1 (MprisPlayerBase), Phase 2 (Spotify refactor), Phase 3 (VLC MPRIS Migration), and Phase 4 (Backend getState() + service:state broadcast) complete
 **Scope:** Backend service control/monitoring + Frontend state management + Renderer pipeline
 
 ## Problem Statement

@@ -48,6 +48,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
     // Add methods needed by broadcast handlers
     mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
+    mockVideoQueueService.getState = jest.fn().mockReturnValue({
+      status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+    });
 
     // Mock transactionService.getToken (needed by transaction:added handler)
     mockTransactionService.getToken = jest.fn().mockReturnValue({
@@ -587,6 +590,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
     beforeEach(() => {
       mockBluetoothService = new EventEmitter();
+      mockBluetoothService.getState = jest.fn().mockReturnValue({
+        scanning: false, pairedDevices: [], connectedDevices: [],
+      });
       mockAudioRoutingService = new EventEmitter();
       mockAudioRoutingService.handleDuckingEvent = jest.fn();
       mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({
@@ -594,7 +600,13 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         defaultSink: 'hdmi',
         availableSinks: [{ id: '1', name: 'hdmi' }]
       });
+      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+        routes: { video: 'hdmi' }, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+      });
       mockLightingService = new EventEmitter();
+      mockLightingService.getState = jest.fn().mockReturnValue({
+        connected: false, activeScene: null, scenes: [],
+      });
     });
 
     /**
@@ -1061,6 +1073,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       // Stub getRoutingStatus so sink:added/removed handlers don't fail
       mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
       mockAudioRoutingService.handleDuckingEvent = jest.fn();
+      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+        routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+      });
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
@@ -1102,6 +1117,9 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
       mockAudioRoutingService.handleDuckingEvent = jest.fn();
       mockAudioRoutingService.applyRouting = jest.fn().mockResolvedValue();
+      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+        routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+      });
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
@@ -1162,6 +1180,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     beforeEach(() => {
       mockSoundService = new EventEmitter();
       mockSoundService.getPlaying = jest.fn().mockReturnValue([]);
+      mockSoundService.getState = jest.fn().mockReturnValue({ playing: [] });
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
@@ -1181,6 +1200,113 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
           error: expect.objectContaining({ file: 'missing.wav' })
         }),
         timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
+      }));
+    });
+  });
+
+  describe('service:state dual-emit (unified state architecture)', () => {
+    let mockBluetoothService;
+    let mockAudioRoutingService;
+    let mockLightingService;
+    let mockSpotifyService;
+    let mockVlcService;
+
+    beforeEach(() => {
+      mockBluetoothService = new EventEmitter();
+      mockBluetoothService.getState = jest.fn().mockReturnValue({
+        scanning: false, pairedDevices: [], connectedDevices: [],
+      });
+      mockAudioRoutingService = new EventEmitter();
+      mockAudioRoutingService.handleDuckingEvent = jest.fn();
+      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+        routes: { video: 'hdmi' }, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+      });
+      mockLightingService = new EventEmitter();
+      mockLightingService.getState = jest.fn().mockReturnValue({
+        connected: true, activeScene: 'scene.test', scenes: [{ id: 'scene.test', name: 'Test' }],
+      });
+      mockSpotifyService = new EventEmitter();
+      mockSpotifyService.getState = jest.fn().mockReturnValue({
+        connected: true, state: 'playing', volume: 80, track: { title: 'Test' },
+      });
+      mockVlcService = new EventEmitter();
+      mockVlcService.getState = jest.fn().mockReturnValue({
+        connected: true, state: 'playing', volume: 100, track: {},
+      });
+    });
+
+    function setupWithAllServices() {
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        bluetoothService: mockBluetoothService,
+        audioRoutingService: mockAudioRoutingService,
+        lightingService: mockLightingService,
+        spotifyService: mockSpotifyService,
+        vlcService: mockVlcService,
+      });
+    }
+
+    it('should emit service:state with domain bluetooth on device:connected', () => {
+      setupWithAllServices();
+      mockBluetoothService.emit('device:connected', { address: 'AA:BB', name: 'Speaker' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'bluetooth', state: mockBluetoothService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain audio on routing:changed', () => {
+      setupWithAllServices();
+      mockAudioRoutingService.emit('routing:changed', { stream: 'video', sink: 'hdmi' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'audio', state: mockAudioRoutingService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain lighting on scene:activated', () => {
+      setupWithAllServices();
+      mockLightingService.emit('scene:activated', { sceneId: 'scene.test' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'lighting', state: mockLightingService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain spotify on playback:changed', () => {
+      setupWithAllServices();
+      mockSpotifyService.emit('playback:changed', { state: 'playing' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'spotify', state: mockSpotifyService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain video on video:loading', () => {
+      setupWithAllServices();
+      mockVideoQueueService.emit('video:loading', { tokenId: 'test' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'video', state: mockVideoQueueService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain video on VLC state:changed', () => {
+      setupWithAllServices();
+      mockVlcService.emit('state:changed', { current: { state: 'Stopped', filename: null }, previous: {} });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'video', state: mockVideoQueueService.getState() },
       }));
     });
   });

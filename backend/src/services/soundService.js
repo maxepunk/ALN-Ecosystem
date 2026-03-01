@@ -105,6 +105,14 @@ class SoundService extends EventEmitter {
     }
   }
 
+  /**
+   * Get current sound state snapshot.
+   * @returns {{playing: Array<{file: string, target: string, volume: number, pid: number}>}}
+   */
+  getState() {
+    return { playing: this.getPlaying() };
+  }
+
   getPlaying() {
     return Array.from(this.processes.values()).map(({ file, target, volume, pid }) => ({
       file, target, volume, pid

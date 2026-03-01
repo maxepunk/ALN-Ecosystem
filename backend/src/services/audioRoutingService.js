@@ -278,6 +278,23 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
+   * Get current audio routing state snapshot (sync).
+   * @returns {{routes: Object, defaultSink: string, combineSinkActive: boolean, ducking: Object}}
+   */
+  getState() {
+    const routes = {};
+    for (const [stream, route] of Object.entries(this._routingData.routes)) {
+      routes[stream] = typeof route === 'object' ? route.sink : route;
+    }
+    return {
+      routes,
+      defaultSink: this._routingData.defaultSink,
+      combineSinkActive: this._combineSinkActive,
+      ducking: { ...this._activeDuckingSources },
+    };
+  }
+
+  /**
    * Get full routing status for sync:full payloads.
    * @returns {Object} Full routing state
    */

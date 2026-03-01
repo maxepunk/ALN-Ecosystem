@@ -90,13 +90,25 @@ describe('Phase 2 Broadcasts', () => {
     mockStateService = new EventEmitter();
     mockVideoQueueService = new EventEmitter();
     mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
+    mockVideoQueueService.getState = jest.fn().mockReturnValue({
+      status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+    });
     mockOfflineQueueService = new EventEmitter();
 
     // Mock environment services (Phase 0)
     mockBluetoothService = new EventEmitter();
+    mockBluetoothService.getState = jest.fn().mockReturnValue({
+      scanning: false, pairedDevices: [], connectedDevices: [],
+    });
     mockAudioRoutingService = new EventEmitter();
     mockAudioRoutingService.handleDuckingEvent = jest.fn();
+    mockAudioRoutingService.getState = jest.fn().mockReturnValue({
+      routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+    });
     mockLightingService = new EventEmitter();
+    mockLightingService.getState = jest.fn().mockReturnValue({
+      connected: false, activeScene: null, scenes: [],
+    });
 
     // Mock Phase 1 services
     mockGameClockService = new EventEmitter();
@@ -116,9 +128,13 @@ describe('Phase 2 Broadcasts', () => {
     mockCueEngineService.getCues = jest.fn().mockReturnValue([
       { id: 'cue-1', label: 'Test Cue', quickFire: false }
     ]);
+    mockCueEngineService.getState = jest.fn().mockReturnValue({
+      cues: [{ id: 'cue-1', label: 'Test Cue', quickFire: false }], activeCues: [], disabledCues: [],
+    });
 
     mockSoundService = new EventEmitter();
     mockSoundService.getPlaying = jest.fn().mockReturnValue([]);
+    mockSoundService.getState = jest.fn().mockReturnValue({ playing: [] });
 
     // Mock Phase 2 service: Spotify
     mockSpotifyService = new EventEmitter();

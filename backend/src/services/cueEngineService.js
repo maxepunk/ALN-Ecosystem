@@ -156,6 +156,18 @@ class CueEngineService extends EventEmitter {
   }
 
   /**
+   * Get current cue engine state snapshot.
+   * @returns {{cues: Array, activeCues: Array, disabledCues: Array}}
+   */
+  getState() {
+    return {
+      cues: this.getCueSummaries(),
+      activeCues: this.getActiveCues(),
+      disabledCues: this.getDisabledCues(),
+    };
+  }
+
+  /**
    * Get all loaded cue definitions.
    * @returns {Array<Object>} Array of cue objects
    */
