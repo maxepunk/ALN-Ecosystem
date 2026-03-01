@@ -488,10 +488,10 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
     });
   });
 
-  // ── gm:command:ack data field ──
+  // ── gm:command:ack simplified payload ──
 
-  describe('gm:command:ack data field', () => {
-    it('should include result.data in ack when present', async () => {
+  describe('gm:command:ack payload', () => {
+    it('should only include action, success, message (no data field)', async () => {
       const displayControlService = require('../../../src/services/displayControlService');
       displayControlService.getStatus.mockReturnValue({
         currentMode: 'IDLE_LOOP',
@@ -509,22 +509,8 @@ describe('adminEvents.js - Environment Control gm:command Actions', () => {
       const ack = getAck();
       expect(ack).not.toBeNull();
       expect(ack.success).toBe(true);
-      expect(ack.data).toBeDefined();
-      expect(ack.data.displayStatus).toBeDefined();
-      expect(ack.data.displayStatus.currentMode).toBe('IDLE_LOOP');
-    });
-
-    it('should not include data field when result.data is null', async () => {
-      // bluetooth:scan:start returns no data
-      await handleGmCommand(
-        socket,
-        createCommand('bluetooth:scan:start'),
-        mockIo
-      );
-
-      const ack = getAck();
-      expect(ack).not.toBeNull();
-      expect(ack.success).toBe(true);
+      expect(ack.action).toBe('display:status');
+      expect(ack.message).toBeDefined();
       expect(ack.data).toBeUndefined();
     });
   });

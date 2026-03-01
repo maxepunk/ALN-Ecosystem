@@ -178,97 +178,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
-  describe('Video Events - Manual Wrapping → Helper Usage', () => {
-    it('should use emitToRoom for video:loading (GM stations only)', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService
-      });
-
-      mockVideoQueueService.emit('video:loading', { tokenId: '534e2b03' });
-
-      // Assert: io.to called with gm room
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-
-      // Assert: emit called with wrapped structure
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'video:status',
-        expect.objectContaining({
-          event: 'video:status',
-          data: expect.objectContaining({
-            status: 'loading',
-            tokenId: '534e2b03'
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-
-    it('should use emitToRoom for video:started (GM stations only)', () => {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService
-      });
-
-      mockVideoQueueService.emit('video:started', {
-        queueItem: { tokenId: '534e2b03' },
-        duration: 120,
-        expectedEndTime: new Date().toISOString()
-      });
-
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'video:status',
-        expect.objectContaining({
-          event: 'video:status',
-          data: expect.objectContaining({
-            status: 'playing',
-            tokenId: '534e2b03',
-            duration: 120
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-  });
-
-  describe('Video Queue Broadcast Listeners', () => {
-    beforeEach(() => {
-      mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService
-      });
-    });
-
-    it('should broadcast queue update on queue:reordered', () => {
-      mockVideoQueueService.emit('queue:reordered', { fromIndex: 0, toIndex: 1 });
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith('video:queue:update', expect.any(Object));
-    });
-
-    it('should broadcast queue update on queue:pending-cleared', () => {
-      mockVideoQueueService.emit('queue:pending-cleared', { itemsCleared: 3 });
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith('video:queue:update', expect.any(Object));
-    });
-
-    it('should broadcast queue update on queue:reset', () => {
-      mockVideoQueueService.emit('queue:reset');
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith('video:queue:update', expect.any(Object));
-    });
-  });
-
   describe('Score Events - Manual Wrapping → Helper Usage', () => {
     it('should broadcast score:updated from transaction:accepted (Slice 4)', () => {
       setupBroadcastListeners(mockIo, {
@@ -579,533 +488,18 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
-  // ============================================================
-  // ENVIRONMENT CONTROL BROADCASTS (Phase 0)
-  // ============================================================
-
-  describe('Environment Control Broadcasts (Phase 0)', () => {
-    let mockBluetoothService;
-    let mockAudioRoutingService;
-    let mockLightingService;
-
-    beforeEach(() => {
-      mockBluetoothService = new EventEmitter();
-      mockBluetoothService.getState = jest.fn().mockReturnValue({
-        scanning: false, pairedDevices: [], connectedDevices: [],
-      });
-      mockAudioRoutingService = new EventEmitter();
-      mockAudioRoutingService.handleDuckingEvent = jest.fn();
-      mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({
-        routes: { video: 'hdmi' },
-        defaultSink: 'hdmi',
-        availableSinks: [{ id: '1', name: 'hdmi' }]
-      });
-      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-        routes: { video: 'hdmi' }, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
-      });
-      mockLightingService = new EventEmitter();
-      mockLightingService.getState = jest.fn().mockReturnValue({
-        connected: false, activeScene: null, scenes: [],
-      });
-    });
-
-    /**
-     * Helper to setup broadcast listeners with environment services included
-     */
-    function setupWithEnvServices() {
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService
-      });
-    }
-
-    describe('Bluetooth Events', () => {
-      it('should broadcast bluetooth:device with type connected on device:connected', () => {
-        setupWithEnvServices();
-
-        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', profile: 'a2dp_sink' };
-        mockBluetoothService.emit('device:connected', device);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:device',
-          expect.objectContaining({
-            event: 'bluetooth:device',
-            data: expect.objectContaining({
-              type: 'connected',
-              device
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast bluetooth:device with type disconnected on device:disconnected', () => {
-        setupWithEnvServices();
-
-        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker' };
-        mockBluetoothService.emit('device:disconnected', device);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:device',
-          expect.objectContaining({
-            event: 'bluetooth:device',
-            data: expect.objectContaining({
-              type: 'disconnected',
-              device
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast bluetooth:device with type paired on device:paired', () => {
-        setupWithEnvServices();
-
-        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker' };
-        mockBluetoothService.emit('device:paired', device);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:device',
-          expect.objectContaining({
-            event: 'bluetooth:device',
-            data: expect.objectContaining({
-              type: 'paired',
-              device
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast bluetooth:device with type unpaired on device:unpaired', () => {
-        setupWithEnvServices();
-
-        const device = { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker' };
-        mockBluetoothService.emit('device:unpaired', device);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:device',
-          expect.objectContaining({
-            event: 'bluetooth:device',
-            data: expect.objectContaining({
-              type: 'unpaired',
-              device
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast bluetooth:device with type discovered on device:discovered', () => {
-        setupWithEnvServices();
-
-        const device = { address: '11:22:33:44:55:66', name: 'New Speaker', rssi: -45 };
-        mockBluetoothService.emit('device:discovered', device);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:device',
-          expect.objectContaining({
-            event: 'bluetooth:device',
-            data: expect.objectContaining({
-              type: 'discovered',
-              device
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast bluetooth:scan with scanning true on scan:started', () => {
-        setupWithEnvServices();
-
-        const data = { duration: 30000 };
-        mockBluetoothService.emit('scan:started', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:scan',
-          expect.objectContaining({
-            event: 'bluetooth:scan',
-            data: expect.objectContaining({
-              scanning: true,
-              duration: 30000
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast bluetooth:scan with scanning false on scan:stopped', () => {
-        setupWithEnvServices();
-
-        const data = { reason: 'timeout' };
-        mockBluetoothService.emit('scan:stopped', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'bluetooth:scan',
-          expect.objectContaining({
-            event: 'bluetooth:scan',
-            data: expect.objectContaining({
-              scanning: false,
-              reason: 'timeout'
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-    });
-
-    describe('Audio Routing Events', () => {
-      it('should broadcast audio:routing on routing:changed', () => {
-        setupWithEnvServices();
-
-        const data = { zone: 'main', sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink', previous: 'default' };
-        mockAudioRoutingService.emit('routing:changed', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'audio:routing',
-          expect.objectContaining({
-            event: 'audio:routing',
-            data: expect.objectContaining({
-              zone: 'main',
-              sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink',
-              previous: 'default'
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast audio:routing on routing:applied', () => {
-        setupWithEnvServices();
-
-        const data = { zone: 'main', sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink', success: true };
-        mockAudioRoutingService.emit('routing:applied', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'audio:routing',
-          expect.objectContaining({
-            event: 'audio:routing',
-            data: expect.objectContaining({
-              zone: 'main',
-              sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink',
-              success: true
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast audio:routing:fallback on routing:fallback', () => {
-        setupWithEnvServices();
-
-        const data = { zone: 'main', originalSink: 'bluetooth', fallbackSink: 'default', reason: 'device_disconnected' };
-        mockAudioRoutingService.emit('routing:fallback', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'audio:routing:fallback',
-          expect.objectContaining({
-            event: 'audio:routing:fallback',
-            data: expect.objectContaining({
-              zone: 'main',
-              originalSink: 'bluetooth',
-              fallbackSink: 'default',
-              reason: 'device_disconnected'
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-    });
-
-    describe('Lighting Events', () => {
-      it('should broadcast lighting:scene on scene:activated', () => {
-        setupWithEnvServices();
-
-        const data = { sceneId: 'scene-001', sceneName: 'Dramatic Red', entityId: 'light.stage' };
-        mockLightingService.emit('scene:activated', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'lighting:scene',
-          expect.objectContaining({
-            event: 'lighting:scene',
-            data: expect.objectContaining({
-              sceneId: 'scene-001',
-              sceneName: 'Dramatic Red',
-              entityId: 'light.stage'
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast lighting:status with type refreshed on scenes:refreshed', () => {
-        setupWithEnvServices();
-
-        const data = { scenes: ['scene.dramatic_red', 'scene.cool_blue'], count: 2 };
-        mockLightingService.emit('scenes:refreshed', data);
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'lighting:status',
-          expect.objectContaining({
-            event: 'lighting:status',
-            data: expect.objectContaining({
-              type: 'refreshed',
-              scenes: ['scene.dramatic_red', 'scene.cool_blue'],
-              count: 2
-            }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-    });
-
-    describe('Graceful degradation without environment services', () => {
-      it('should work without environment services (backward compatible)', () => {
-        // Setup without any environment services - should not throw
-        expect(() => {
-          setupBroadcastListeners(mockIo, {
-            sessionService: mockSessionService,
-            transactionService: mockTransactionService,
-            stateService: mockStateService,
-            videoQueueService: mockVideoQueueService,
-            offlineQueueService: mockOfflineQueueService
-          });
-        }).not.toThrow();
-      });
-    });
-
-    describe('audio sink events', () => {
-      it('should broadcast audio:sinks when sink:added fires', async () => {
-        setupWithEnvServices();
-
-        mockAudioRoutingService.emit('sink:added', { id: '42' });
-
-        // Handler is async (calls getRoutingStatus), wait for it
-        await new Promise(r => setImmediate(r));
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'audio:sinks',
-          expect.objectContaining({
-            event: 'audio:sinks',
-            data: expect.objectContaining({ type: 'added' }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should broadcast audio:sinks when sink:removed fires', async () => {
-        setupWithEnvServices();
-
-        mockAudioRoutingService.emit('sink:removed', { id: '42' });
-
-        // Handler is async (calls getRoutingStatus), wait for it
-        await new Promise(r => setImmediate(r));
-
-        expect(mockIo.to).toHaveBeenCalledWith('gm');
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'audio:sinks',
-          expect.objectContaining({
-            event: 'audio:sinks',
-            data: expect.objectContaining({ type: 'removed' }),
-            timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-          })
-        );
-      });
-
-      it('should include availableSinks from getRoutingStatus in broadcast', async () => {
-        const mockSinks = [
-          { id: '1', name: 'hdmi' },
-          { id: '2', name: 'bluez_output.XX' }
-        ];
-        mockAudioRoutingService.getRoutingStatus.mockResolvedValue({
-          routes: { video: 'hdmi' },
-          defaultSink: 'hdmi',
-          availableSinks: mockSinks
+  describe('Graceful degradation without environment services', () => {
+    it('should work without environment services (backward compatible)', () => {
+      // Setup without any environment services - should not throw
+      expect(() => {
+        setupBroadcastListeners(mockIo, {
+          sessionService: mockSessionService,
+          transactionService: mockTransactionService,
+          stateService: mockStateService,
+          videoQueueService: mockVideoQueueService,
+          offlineQueueService: mockOfflineQueueService
         });
-
-        setupWithEnvServices();
-
-        mockAudioRoutingService.emit('sink:added', { id: '2' });
-
-        await new Promise(r => setImmediate(r));
-
-        expect(mockIo.emit).toHaveBeenCalledWith(
-          'audio:sinks',
-          expect.objectContaining({
-            data: expect.objectContaining({
-              type: 'added',
-              sinkId: '2',
-              availableSinks: mockSinks
-            })
-          })
-        );
-      });
-    });
-
-    describe('Cleanup includes environment service listeners', () => {
-      it('should remove all environment service listeners on cleanup', () => {
-        setupWithEnvServices();
-
-        // Verify listeners registered
-        expect(mockBluetoothService.listenerCount('device:connected')).toBeGreaterThan(0);
-        expect(mockBluetoothService.listenerCount('device:disconnected')).toBeGreaterThan(0);
-        expect(mockBluetoothService.listenerCount('scan:started')).toBeGreaterThan(0);
-        expect(mockAudioRoutingService.listenerCount('routing:changed')).toBeGreaterThan(0);
-        expect(mockAudioRoutingService.listenerCount('routing:applied')).toBeGreaterThan(0);
-        expect(mockAudioRoutingService.listenerCount('routing:fallback')).toBeGreaterThan(0);
-        expect(mockLightingService.listenerCount('scene:activated')).toBeGreaterThan(0);
-        expect(mockLightingService.listenerCount('scenes:refreshed')).toBeGreaterThan(0);
-
-        // Cleanup
-        cleanupBroadcastListeners();
-
-        // Verify all removed
-        expect(mockBluetoothService.listenerCount('device:connected')).toBe(0);
-        expect(mockBluetoothService.listenerCount('device:disconnected')).toBe(0);
-        expect(mockBluetoothService.listenerCount('scan:started')).toBe(0);
-        expect(mockAudioRoutingService.listenerCount('routing:changed')).toBe(0);
-        expect(mockAudioRoutingService.listenerCount('routing:applied')).toBe(0);
-        expect(mockAudioRoutingService.listenerCount('routing:fallback')).toBe(0);
-        expect(mockLightingService.listenerCount('scene:activated')).toBe(0);
-        expect(mockLightingService.listenerCount('scenes:refreshed')).toBe(0);
-      });
-    });
-  });
-
-  describe('Spotify broadcast listeners', () => {
-    let mockSpotifyService;
-
-    beforeEach(() => {
-      mockSpotifyService = new EventEmitter();
-      mockSpotifyService.getState = jest.fn().mockReturnValue({
-        connected: true, state: 'playing', volume: 80, pausedByGameClock: false,
-        track: { title: 'Test Song', artist: 'Test Artist' }
-      });
-
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        spotifyService: mockSpotifyService,
-      });
-    });
-
-    it('should broadcast spotify:status on track:changed', () => {
-      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
-
-      mockSpotifyService.emit('track:changed', { track: { title: 'New Song', artist: 'Artist' } });
-
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'spotify:status',
-        expect.objectContaining({
-          event: 'spotify:status',
-          data: expect.objectContaining({
-            connected: true,
-            track: { title: 'Test Song', artist: 'Test Artist' }
-          })
-        })
-      );
-    });
-  });
-
-  describe('service:health broadcast', () => {
-    const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
-
-    beforeEach(() => {
-      serviceHealthRegistry.reset();
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-      });
-    });
-
-    it('should broadcast service:health to gm room on health:changed', () => {
-      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
-
-      serviceHealthRegistry.report('vlc', 'healthy', 'Connected');
-
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'service:health',
-        expect.objectContaining({
-          event: 'service:health',
-          data: expect.objectContaining({
-            serviceId: 'vlc',
-            status: 'healthy',
-            message: 'Connected'
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-  });
-
-  describe('ducking:changed broadcast', () => {
-    let mockAudioRoutingService;
-
-    beforeEach(() => {
-      mockAudioRoutingService = new EventEmitter();
-      // Stub getRoutingStatus so sink:added/removed handlers don't fail
-      mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
-      mockAudioRoutingService.handleDuckingEvent = jest.fn();
-      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-        routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
-      });
-
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        audioRoutingService: mockAudioRoutingService,
-      });
-    });
-
-    it('should broadcast audio:ducking:status on ducking:changed', () => {
-      mockIo.sockets.adapter.rooms.set('gm', new Set(['socket1']));
-
-      const duckingData = {
-        stream: 'spotify',
-        ducked: true,
-        volume: 20,
-        activeSources: ['video'],
-      };
-      mockAudioRoutingService.emit('ducking:changed', duckingData);
-
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'audio:ducking:status',
-        expect.objectContaining({
-          event: 'audio:ducking:status',
-          data: expect.objectContaining({ stream: 'spotify', ducked: true }),
-        })
-      );
+      }).not.toThrow();
     });
   });
 
@@ -1174,37 +568,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
-  describe('Sound Error Broadcast', () => {
-    let mockSoundService;
-
-    beforeEach(() => {
-      mockSoundService = new EventEmitter();
-      mockSoundService.getPlaying = jest.fn().mockReturnValue([]);
-      mockSoundService.getState = jest.fn().mockReturnValue({ playing: [] });
-      setupBroadcastListeners(mockIo, {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        stateService: mockStateService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        soundService: mockSoundService,
-      });
-    });
-
-    it('should broadcast sound:status on sound:error', () => {
-      mockSoundService.emit('sound:error', { file: 'missing.wav', error: 'File not found' });
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith('sound:status', expect.objectContaining({
-        event: 'sound:status',
-        data: expect.objectContaining({
-          error: expect.objectContaining({ file: 'missing.wav' })
-        }),
-        timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-      }));
-    });
-  });
-
-  describe('service:state dual-emit (unified state architecture)', () => {
+  describe('service:state (unified state architecture)', () => {
     let mockBluetoothService;
     let mockAudioRoutingService;
     let mockLightingService;
@@ -1307,6 +671,47 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
         data: { domain: 'video', state: mockVideoQueueService.getState() },
+      }));
+    });
+
+    it('should emit service:state with domain health on health:changed', () => {
+      const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
+      const originalGetState = serviceHealthRegistry.getState;
+      serviceHealthRegistry.getState = jest.fn().mockReturnValue({
+        vlc: { status: 'healthy' }, spotify: { status: 'down' },
+      });
+
+      setupWithAllServices();
+      serviceHealthRegistry.emit('health:changed', { serviceId: 'vlc' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'health', state: serviceHealthRegistry.getState() },
+      }));
+
+      serviceHealthRegistry.getState = originalGetState;
+    });
+
+    it('should emit service:state with domain held on cue:held', () => {
+      const mockCueEngineService = new EventEmitter();
+      mockCueEngineService.getState = jest.fn().mockReturnValue({ cues: [], activeCues: [] });
+      mockCueEngineService.getHeldCues = jest.fn().mockReturnValue([{ id: 'held-1', type: 'cue' }]);
+      mockVideoQueueService.getHeldVideos = jest.fn().mockReturnValue([]);
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        stateService: mockStateService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        cueEngineService: mockCueEngineService,
+      });
+
+      mockCueEngineService.emit('cue:held', { cueId: 'test-cue' });
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'held', state: { items: [{ id: 'held-1', type: 'cue' }] } },
       }));
     });
   });

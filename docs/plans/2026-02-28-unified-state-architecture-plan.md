@@ -933,13 +933,14 @@ cd backend && npm run test:e2e                                  # E2E pass
 - `updateServiceHealth()`, `syncServiceHealth()`
 - `updateSpotifyState()`, `getSpotifyState()`
 - `updateLightingState()`, `updateAudioState()`, `updateAudioDucking()`, `updateBluetoothScan()`, `updateBluetoothDevice()`, `updateBluetoothState()`
-- `updateSessionState()`
+- ~~`updateSessionState()`~~ **KEPT** — session is NOT a service domain (see Decision #2). Called by networkedSession for session:update and sync:full. getSessionData() depends on sessionState.
 - All associated event emission (`spotify-state:updated`, `video-state:updated`, etc.)
 
-**Keep:** Transaction/scoring methods (addTransaction, getTeamScores, etc.) — these are part of the storage strategy pattern. **This is an intentional architectural boundary:** service state lives in StateStore (snapshot semantics), session/transaction state lives in UDM + strategies (list/accumulator semantics). See Review Decision #2.
+**Keep:** Transaction/scoring methods (addTransaction, getTeamScores, etc.) AND `updateSessionState()` / `getSessionData()` — these are part of the storage strategy pattern. **This is an intentional architectural boundary:** service state lives in StateStore (snapshot semantics), session/transaction state lives in UDM + strategies (list/accumulator semantics). See Review Decision #2.
 
 **Remove ephemeral state properties from constructor:**
-- `videoState`, `cueState`, `spotifyState`, `environmentState`, `serviceHealth`, `sessionState`
+- `videoState`, `cueState`, `spotifyState`, `environmentState`, `serviceHealth`
+- ~~`sessionState`~~ **KEPT** — session is NOT a service domain
 
 **Tests to update:**
 - `ALNScanner/tests/unit/core/UnifiedDataManager-cue.test.js` — DELETE (cue state now in store)

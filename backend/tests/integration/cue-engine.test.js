@@ -27,11 +27,20 @@ const TestTokens = require('../fixtures/test-tokens');
  * @param {string} name - Session name
  * @param {string[]} teams - Team names
  */
+/** Helper: wait for service:state with a specific domain */
+function waitForServiceState(socket, domain, predicate) {
+  return waitForEvent(socket, 'service:state', (data) => {
+    const payload = data.data || data;
+    if (payload.domain !== domain) return false;
+    return predicate ? predicate(payload.state) : true;
+  });
+}
+
 async function createAndStartSession(socket, name, teams) {
   sendGmCommand(socket, 'session:create', { name, teams });
   await waitForEvent(socket, 'session:update');
   sendGmCommand(socket, 'session:start', {});
-  await waitForEvent(socket, 'gameclock:status');
+  await waitForServiceState(socket, 'gameclock');
 }
 
 /**
@@ -111,13 +120,13 @@ describe('Cue Engine Integration', () => {
       expect(session1.status).toBe('setup');
 
       // Start game (should transition to active and start game clock)
-      const gameClockPromise = waitForEvent(gm1, 'gameclock:status');
+      const gameClockPromise = waitForServiceState(gm1, 'gameclock', (s) => s.status === 'running');
       sendGmCommand(gm1, 'session:start', {});
 
-      // Wait for gameclock:status event with state: 'running'
+      // Wait for service:state gameclock with status: 'running'
       const clockStatus = await gameClockPromise;
-      expect(clockStatus.data.state).toBe('running');
-      expect(clockStatus.data.elapsed).toBe(0);
+      expect(clockStatus.data.state.status).toBe('running');
+      expect(clockStatus.data.state.elapsed).toBe(0);
 
       // Verify session is now active
       const session2 = sessionService.getCurrentSession();
@@ -213,13 +222,13 @@ describe('Cue Engine Integration', () => {
       expect(gameClockService.status).toBe('running');
 
       // Pause session
-      const pauseClockPromise = waitForEvent(gm1, 'gameclock:status', (data) => data.data.state === 'paused');
+      const pauseClockPromise = waitForServiceState(gm1, 'gameclock', (s) => s.status === 'paused');
       sendGmCommand(gm1, 'session:pause', {});
 
-      // Wait for gameclock:status with state: 'paused'
+      // Wait for service:state gameclock with status: 'paused'
       const pausedClock = await pauseClockPromise;
-      expect(pausedClock.data.state).toBe('paused');
-      expect(pausedClock.data.elapsed).toBeGreaterThanOrEqual(0);
+      expect(pausedClock.data.state.status).toBe('paused');
+      expect(pausedClock.data.state.elapsed).toBeGreaterThanOrEqual(0);
 
       // Verify game clock is paused
       expect(gameClockService.status).toBe('paused');
@@ -244,16 +253,16 @@ describe('Cue Engine Integration', () => {
       await createAndStartSession(gm1, 'Resume Test Session', ['Team Alpha']);
 
       sendGmCommand(gm1, 'session:pause', {});
-      await waitForEvent(gm1, 'gameclock:status', (data) => data.data.state === 'paused');
+      await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'paused');
 
       // Resume session
-      const resumeClockPromise = waitForEvent(gm1, 'gameclock:status', (data) => data.data.state === 'running');
+      const resumeClockPromise = waitForServiceState(gm1, 'gameclock', (s) => s.status === 'running');
       sendGmCommand(gm1, 'session:resume', {});
 
-      // Wait for gameclock:status with state: 'running'
+      // Wait for service:state gameclock with status: 'running'
       const resumedClock = await resumeClockPromise;
-      expect(resumedClock.data.state).toBe('running');
-      expect(resumedClock.data.elapsed).toBeGreaterThanOrEqual(0);
+      expect(resumedClock.data.state.status).toBe('running');
+      expect(resumedClock.data.state.elapsed).toBeGreaterThanOrEqual(0);
 
       // Verify game clock is running
       expect(gameClockService.status).toBe('running');

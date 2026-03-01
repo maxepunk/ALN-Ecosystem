@@ -98,16 +98,12 @@ async function handleGmCommand(socket, data, io) {
       deviceType: socket.deviceType
     });
 
-    // Send AsyncAPI-compliant ack
-    const ackPayload = {
+    // Send AsyncAPI-compliant ack (action + success/message only; state comes via service:state)
+    emitWrapped(socket, 'gm:command:ack', {
       action: action,
       success: result.success,
       message: result.message
-    };
-    if (result.data !== undefined && result.data !== null) {
-      ackPayload.data = result.data;
-    }
-    emitWrapped(socket, 'gm:command:ack', ackPayload);
+    });
   } catch (error) {
     const commandData = data.data || data;
     const action = commandData.action;

@@ -2,17 +2,17 @@
  * External State Propagation Integration Tests
  *
  * Verifies the full event chain: service emits domain event →
- * broadcasts.js forwards to WebSocket → connected GM client receives event.
+ * broadcasts.js forwards via service:state → connected GM client receives event.
  *
  * These tests exercise Layers 2-4 of the event pipeline:
  *   Layer 2: Service EventEmitter emission
- *   Layer 3: broadcasts.js listener → WebSocket broadcast
+ *   Layer 3: broadcasts.js listener → service:state WebSocket broadcast
  *   Layer 4: Socket.IO delivery to GM client
  *
  * Layer 1 (external monitor parsing) is unit-tested per service.
  *
  * Pattern: emit directly on service singletons (simulating what monitors do),
- * verify the GM client receives the correctly-shaped WebSocket event.
+ * verify the GM client receives service:state with the correct domain and state.
  */
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
@@ -31,6 +31,14 @@ const lightingService = require('../../src/services/lightingService');
 const vlcService = require('../../src/services/vlcMprisService');
 const spotifyService = require('../../src/services/spotifyService');
 const serviceHealthRegistry = require('../../src/services/serviceHealthRegistry');
+
+/** Helper: wait for service:state with a specific domain */
+function waitForServiceState(socket, domain) {
+  return waitForEvent(socket, 'service:state', (data) => {
+    const payload = data.data || data;
+    return payload.domain === domain;
+  });
+}
 
 describe('External State Propagation', () => {
   let testContext;
@@ -75,10 +83,9 @@ describe('External State Propagation', () => {
   // ── Bluetooth ──
 
   describe('Bluetooth', () => {
-    it('should broadcast bluetooth:device when speaker auto-connects', async () => {
-      const eventPromise = waitForEvent(gm1, 'bluetooth:device');
+    it('should push service:state bluetooth when speaker auto-connects', async () => {
+      const eventPromise = waitForServiceState(gm1, 'bluetooth');
 
-      // Simulate what the BT D-Bus monitor does when a speaker connects
       bluetoothService.emit('device:connected', {
         address: 'AA:BB:CC:DD:EE:FF',
         name: 'JBL Flip 6',
@@ -86,13 +93,12 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.type).toBe('connected');
-      expect(payload.device.address).toBe('AA:BB:CC:DD:EE:FF');
-      expect(payload.device.name).toBe('JBL Flip 6');
+      expect(payload.domain).toBe('bluetooth');
+      expect(payload.state).toBeDefined();
     });
 
-    it('should broadcast bluetooth:device when speaker disconnects', async () => {
-      const eventPromise = waitForEvent(gm1, 'bluetooth:device');
+    it('should push service:state bluetooth when speaker disconnects', async () => {
+      const eventPromise = waitForServiceState(gm1, 'bluetooth');
 
       bluetoothService.emit('device:disconnected', {
         address: 'AA:BB:CC:DD:EE:FF',
@@ -101,28 +107,27 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.type).toBe('disconnected');
-      expect(payload.device.address).toBe('AA:BB:CC:DD:EE:FF');
+      expect(payload.domain).toBe('bluetooth');
+      expect(payload.state).toBeDefined();
     });
   });
 
   // ── Spotify ──
 
   describe('Spotify', () => {
-    it('should broadcast spotify:status when playback state changes externally', async () => {
-      const eventPromise = waitForEvent(gm1, 'spotify:status');
+    it('should push service:state spotify when playback state changes externally', async () => {
+      const eventPromise = waitForServiceState(gm1, 'spotify');
 
-      // Simulate what the Spotify D-Bus monitor does when playback starts externally
       spotifyService.emit('playback:changed', { state: 'playing' });
 
       const data = await eventPromise;
       const payload = data.data || data;
-      // spotify:status broadcasts the full getState() result
-      expect(payload).toHaveProperty('state');
+      expect(payload.domain).toBe('spotify');
+      expect(payload.state).toHaveProperty('state');
     });
 
-    it('should broadcast spotify:status when track changes externally', async () => {
-      const eventPromise = waitForEvent(gm1, 'spotify:status');
+    it('should push service:state spotify when track changes externally', async () => {
+      const eventPromise = waitForServiceState(gm1, 'spotify');
 
       spotifyService.emit('track:changed', {
         title: 'New Song',
@@ -131,17 +136,17 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload).toHaveProperty('connected');
+      expect(payload.domain).toBe('spotify');
+      expect(payload.state).toHaveProperty('connected');
     });
   });
 
   // ── VLC ──
 
   describe('VLC', () => {
-    it('should broadcast video:status when VLC state changes externally', async () => {
-      const eventPromise = waitForEvent(gm1, 'video:status');
+    it('should push service:state video when VLC state changes externally', async () => {
+      const eventPromise = waitForServiceState(gm1, 'video');
 
-      // Simulate what VLC checkConnection() state delta does
       vlcService.emit('state:changed', {
         previous: { state: 'stopped', filename: null },
         current: { state: 'playing', filename: 'intro.mp4' },
@@ -149,19 +154,17 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.status).toBe('playing');
-      expect(payload.currentItem).toBe('intro.mp4');
-      expect(payload.vlcDelta).toBe(true);
+      expect(payload.domain).toBe('video');
+      expect(payload.state).toBeDefined();
     });
   });
 
   // ── Lighting ──
 
   describe('Lighting', () => {
-    it('should broadcast lighting:scene when scene activated externally', async () => {
-      const eventPromise = waitForEvent(gm1, 'lighting:scene');
+    it('should push service:state lighting when scene activated externally', async () => {
+      const eventPromise = waitForServiceState(gm1, 'lighting');
 
-      // Simulate what HA WebSocket monitor does when scene activated
       lightingService.emit('scene:activated', {
         sceneId: 'scene.game_night',
         sceneName: 'Game Night',
@@ -169,24 +172,16 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.sceneId).toBe('scene.game_night');
+      expect(payload.domain).toBe('lighting');
+      expect(payload.state).toBeDefined();
     });
   });
 
   // ── Audio ──
 
   describe('Audio', () => {
-    it('should broadcast audio:sinks when PipeWire sink added', async () => {
-      // Mock getRoutingStatus to return sink list (broadcasts.js reads this)
-      jest.spyOn(audioRoutingService, 'getRoutingStatus').mockReturnValue({
-        routes: { video: 'hdmi', spotify: 'hdmi', sound: 'hdmi' },
-        availableSinks: [
-          { name: 'alsa_output.hdmi', description: 'HDMI', type: 'hdmi' },
-          { name: 'bluez_sink.AA_BB', description: 'JBL Flip 6', type: 'bluetooth' },
-        ],
-      });
-
-      const eventPromise = waitForEvent(gm1, 'audio:sinks');
+    it('should push service:state audio when PipeWire sink added', async () => {
+      const eventPromise = waitForServiceState(gm1, 'audio');
 
       audioRoutingService.emit('sink:added', {
         name: 'bluez_sink.AA_BB',
@@ -195,19 +190,12 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.availableSinks).toBeDefined();
-      expect(payload.availableSinks.length).toBeGreaterThanOrEqual(1);
+      expect(payload.domain).toBe('audio');
+      expect(payload.state).toBeDefined();
     });
 
-    it('should broadcast audio:sinks when PipeWire sink removed', async () => {
-      jest.spyOn(audioRoutingService, 'getRoutingStatus').mockReturnValue({
-        routes: { video: 'hdmi', spotify: 'hdmi', sound: 'hdmi' },
-        availableSinks: [
-          { name: 'alsa_output.hdmi', description: 'HDMI', type: 'hdmi' },
-        ],
-      });
-
-      const eventPromise = waitForEvent(gm1, 'audio:sinks');
+    it('should push service:state audio when PipeWire sink removed', async () => {
+      const eventPromise = waitForServiceState(gm1, 'audio');
 
       audioRoutingService.emit('sink:removed', {
         name: 'bluez_sink.AA_BB',
@@ -216,47 +204,37 @@ describe('External State Propagation', () => {
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.availableSinks).toBeDefined();
+      expect(payload.domain).toBe('audio');
+      expect(payload.state).toBeDefined();
     });
   });
 
   // ── Service Health ──
 
   describe('Service Health', () => {
-    it('should broadcast service:health when service goes down', async () => {
-      const isDown = (data) => {
-        const p = data.data || data;
-        return p.serviceId === 'vlc' && p.status === 'down';
-      };
-      const eventPromise = waitForEvent(gm1, 'service:health', isDown);
+    it('should push service:state health when service goes down', async () => {
+      const eventPromise = waitForServiceState(gm1, 'health');
 
-      // Simulate external detection of service failure
       serviceHealthRegistry.report('vlc', 'down', 'VLC process crashed');
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.serviceId).toBe('vlc');
-      expect(payload.status).toBe('down');
-      expect(payload.message).toBe('VLC process crashed');
+      expect(payload.domain).toBe('health');
+      expect(payload.state).toBeDefined();
     });
 
-    it('should broadcast service:health when service recovers', async () => {
+    it('should push service:state health when service recovers', async () => {
       // First mark it down
       serviceHealthRegistry.report('vlc', 'down', 'VLC crashed');
 
-      const isHealthy = (data) => {
-        const p = data.data || data;
-        return p.serviceId === 'vlc' && p.status === 'healthy';
-      };
-      const eventPromise = waitForEvent(gm1, 'service:health', isHealthy);
+      const eventPromise = waitForServiceState(gm1, 'health');
 
-      // Simulate recovery
       serviceHealthRegistry.report('vlc', 'healthy', 'VLC reconnected');
 
       const data = await eventPromise;
       const payload = data.data || data;
-      expect(payload.serviceId).toBe('vlc');
-      expect(payload.status).toBe('healthy');
+      expect(payload.domain).toBe('health');
+      expect(payload.state).toBeDefined();
     });
   });
 });

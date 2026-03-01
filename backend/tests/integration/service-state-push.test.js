@@ -4,9 +4,6 @@
  * Verifies the unified service:state broadcast pattern:
  * Service event → broadcasts.js pushServiceState() → WebSocket 'service:state'
  * with { domain, state } envelope delivered to GM clients.
- *
- * These tests verify the dual-emit period: old discrete events AND new
- * service:state events fire on the same service events.
  */
 
 require('../helpers/browser-mocks');
@@ -90,22 +87,17 @@ describe('service:state Push Integration', () => {
       expect(payload.state).toHaveProperty('pausedByGameClock');
     });
 
-    it('should dual-emit: old spotify:status AND new service:state', async () => {
-      const oldEventPromise = waitForEvent(gm1, 'spotify:status');
-      const newEventPromise = waitForEvent(gm1, 'service:state',
+    it('should emit service:state spotify on track:changed', async () => {
+      const statePromise = waitForEvent(gm1, 'service:state',
         (data) => (data.data || data).domain === 'spotify');
 
       spotifyService.emit('track:changed', { title: 'Test', artist: 'Test' });
 
-      const [oldEvent, newEvent] = await Promise.all([oldEventPromise, newEventPromise]);
-
-      // Old event carries state directly
-      expect((oldEvent.data || oldEvent)).toHaveProperty('connected');
-
-      // New event wraps in { domain, state } envelope
-      const newPayload = newEvent.data || newEvent;
-      expect(newPayload.domain).toBe('spotify');
-      expect(newPayload.state).toHaveProperty('connected');
+      const event = await statePromise;
+      const payload = event.data || event;
+      expect(payload.domain).toBe('spotify');
+      expect(payload.state).toHaveProperty('connected');
+      expect(payload.state).toHaveProperty('state');
     });
   });
 

@@ -12,7 +12,6 @@
  *   - transaction:result
  *   - transaction:new
  *   - score:updated
- *   - video:status
  *   - session:update
  *   - gm:command:ack
  *   - offline:queue:processed
@@ -472,53 +471,6 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
       expect(() => {
         validateWebSocketEvent(event, 'score:updated');
       }).not.toThrow();
-    });
-  });
-
-  describe('video:status - Video Playback Status Broadcast', () => {
-
-    it('should validate video:status with queueLength field (Decision #5)', () => {
-      const event = {
-        event: 'video:status',
-        data: {
-          status: 'playing',
-          queueLength: 2, // REQUIRED field per Decision #5
-          tokenId: '534e2b03',
-          duration: 30,
-          progress: 45,
-          expectedEndTime: new Date(Date.now() + 30000).toISOString(),
-          error: null
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      expect(() => {
-        validateWebSocketEvent(event, 'video:status');
-      }).not.toThrow();
-    });
-
-    it('should validate all video status values', () => {
-      const statuses = ['idle', 'loading', 'playing', 'paused', 'completed', 'error'];
-
-      statuses.forEach(status => {
-        const event = {
-          event: 'video:status',
-          data: {
-            status: status,
-            queueLength: 1,
-            tokenId: status === 'idle' ? null : 'test',
-            duration: null,
-            progress: null,
-            expectedEndTime: null,
-            error: status === 'error' ? 'Test error' : null
-          },
-          timestamp: new Date().toISOString()
-        };
-
-        expect(() => {
-          validateWebSocketEvent(event, 'video:status');
-        }).not.toThrow();
-      });
     });
   });
 

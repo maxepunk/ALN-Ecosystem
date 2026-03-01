@@ -338,26 +338,32 @@ describe('Error Propagation Integration', () => {
       }
     });
 
-    it('should broadcast video:failed on video playback errors', async () => {
+    it('should broadcast service:state video on video playback errors', async () => {
+      // Helper for service:state filtering
+      function waitForVideoState(socket, predicate) {
+        return waitForEvent(socket, 'service:state', (data) => {
+          const payload = data.data || data;
+          return payload.domain === 'video' && (!predicate || predicate(payload.state));
+        });
+      }
+
       // CRITICAL: Set up listener BEFORE triggering error
-      const failedPromise = waitForEvent(gmSocket, 'video:status');
+      const failedPromise = waitForVideoState(gmSocket);
 
       // Trigger: Simulate video playback failure
       videoQueueService.emit('video:failed', {
-        tokenId: '534e2b03',  // Real token with video asset
+        tokenId: '534e2b03',
         error: 'Video file not found'
       });
 
-      // Wait: For video:status with status='error'
+      // Wait: For service:state video push (triggered by video:failed listener in broadcasts.js)
       const failedEvent = await failedPromise;
 
-      // Validate: Error status broadcast
-      expect(failedEvent.data.status).toBe('error');
-      expect(failedEvent.data.tokenId).toBe('534e2b03');
-      expect(failedEvent.data.error).toContain('Video file not found');
-
-      // Validate: Contract compliance
-      validateWebSocketEvent(failedEvent, 'video:status');
+      // Validate: service:state envelope shape
+      expect(failedEvent.data.domain).toBe('video');
+      expect(failedEvent.data.state).toHaveProperty('status');
+      expect(failedEvent.data.state).toHaveProperty('queueLength');
+      expect(failedEvent.data.state).toHaveProperty('connected');
     });
   });
 

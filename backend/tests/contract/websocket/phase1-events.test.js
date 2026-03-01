@@ -2,33 +2,7 @@
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 
-describe('Phase 1 AsyncAPI Contract - New Events', () => {
-
-  describe('gameclock:status', () => {
-    it('should validate running status', () => {
-      validateWebSocketEvent({
-        event: 'gameclock:status',
-        data: { state: 'running', elapsed: 3600 },
-        timestamp: new Date().toISOString()
-      }, 'gameclock:status');
-    });
-
-    it('should validate paused status', () => {
-      validateWebSocketEvent({
-        event: 'gameclock:status',
-        data: { state: 'paused', elapsed: 1800 },
-        timestamp: new Date().toISOString()
-      }, 'gameclock:status');
-    });
-
-    it('should validate stopped status', () => {
-      validateWebSocketEvent({
-        event: 'gameclock:status',
-        data: { state: 'stopped', elapsed: 0 },
-        timestamp: new Date().toISOString()
-      }, 'gameclock:status');
-    });
-  });
+describe('Phase 1 AsyncAPI Contract - Events', () => {
 
   describe('cue:fired', () => {
     it('should validate cue fired event', () => {
@@ -41,19 +15,6 @@ describe('Phase 1 AsyncAPI Contract - New Events', () => {
         },
         timestamp: new Date().toISOString()
       }, 'cue:fired');
-    });
-  });
-
-  describe('cue:status', () => {
-    it('should validate active cue status', () => {
-      validateWebSocketEvent({
-        event: 'cue:status',
-        data: {
-          cueId: 'opening-sequence',
-          state: 'running'
-        },
-        timestamp: new Date().toISOString()
-      }, 'cue:status');
     });
   });
 
@@ -86,19 +47,6 @@ describe('Phase 1 AsyncAPI Contract - New Events', () => {
     });
   });
 
-  describe('sound:status', () => {
-    it('should validate sound status event', () => {
-      validateWebSocketEvent({
-        event: 'sound:status',
-        data: {
-          playing: [
-            { file: 'fanfare.wav', target: 'combine-bt' }
-          ]
-        },
-        timestamp: new Date().toISOString()
-      }, 'sound:status');
-    });
-  });
 });
 
 describe('Phase 1 AsyncAPI Contract - gm:command actions', () => {

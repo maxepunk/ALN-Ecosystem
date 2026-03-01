@@ -267,7 +267,7 @@ WebSocket command interface for session management:
 
 Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused), cue engine (suspended), and Spotify (`pauseForGameClock()`). Resuming restores Spotify only if it was paused by the game clock (preserves user-paused state).
 
-**Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, data?, source}`. Has `SERVICE_DEPENDENCIES` map — commands are rejected pre-dispatch if their service dependency is down (gated execution). `validateCommand()` checks health AND resource existence for pre-show verification. Services emit their own domain events (EventEmitter) which `broadcasts.js` forwards to WebSocket clients.
+**Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, source}`. Has `SERVICE_DEPENDENCIES` map — commands are rejected pre-dispatch if their service dependency is down (gated execution). `validateCommand()` checks health AND resource existence for pre-show verification. Services emit their own domain events (EventEmitter) which `broadcasts.js` forwards as `service:state` to WebSocket clients.
 
 **Circular Dependency:** `commandExecutor.js` ↔ `cueEngineService.js` — cueEngineService imports commandExecutor at module load, so commandExecutor MUST use lazy `require('./cueEngineService')` inside case blocks (not top-level). Other services like `soundService` can use top-level requires.
 
@@ -304,16 +304,7 @@ GM Scanner admin panel controls venue environment (audio, lighting, Bluetooth) v
 | `audioRoutingService` | `pactl` | PipeWire | Route VLC audio to HDMI or BT sink |
 | `lightingService` | Home Assistant REST API | axios | Scene activation (Docker lifecycle) |
 
-**WebSocket Events (Server → Client):**
-
-| Event | Payload | Source |
-|-------|---------|--------|
-| `bluetooth:device` | `{type, device}` | pair/unpair/connect/disconnect/discovered |
-| `bluetooth:scan` | `{scanning, ...}` | scan start/stop |
-| `audio:routing` | `{stream, sink}` | route changed/applied |
-| `audio:routing:fallback` | `{stream, actualSink}` | BT unavailable, fell back to HDMI |
-| `lighting:scene` | `{sceneId}` | scene activated |
-| `lighting:status` | `{connected, scenes}` | HA connection/scene refresh |
+**State Delivery:** All environment service state is delivered via unified `service:state` events with domains: `bluetooth`, `audio`, `lighting`. Each push contains the full `getState()` snapshot. See "Unified `service:state` Pattern" section below.
 
 **Key Helper Files:**
 - `src/websocket/environmentHelpers.js` - Builds environment state for `sync:full` payloads
@@ -376,11 +367,11 @@ Automated show control: standing cues fire on game events, manual cues fired via
 
 | Event | Payload | Source |
 |-------|---------|--------|
-| `gameclock:status` | `{state, elapsed}` | clock started/paused/resumed |
 | `cue:fired` | `{cueId, source, trigger, commands}` | cue evaluation or manual fire |
 | `cue:completed` | `{cueId}` | all cue commands executed |
 | `cue:error` | `{cueId, error}` | cue execution error |
-| `sound:status` | `{type, file, ...}` | sound started/completed/stopped |
+
+Game clock and sound state delivered via `service:state` domains `gameclock` and `sound`.
 
 **Config Files:** `config/environment/cues.json` (cue definitions, wrapper format `{"cues": [...]}`), `config/environment/routing.json` (audio stream routes). `app.js` handles both wrapper and plain array formats.
 
@@ -411,16 +402,7 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 
 **WebSocket Events (Server → Client, Phase 2):**
 
-| Event | Payload | Source |
-|-------|---------|--------|
-| `cue:status` | `{cueId, state, progress, duration}` | Compound cue lifecycle (running/paused/stopped) |
-| `held:added` | `{id, type, cueId?, reason, blockedBy?, currentVideo?}` | Held item added (cue or video conflict/service down) |
-| `held:released` | `{heldId, type, cueId?}` | Held item released and executing |
-| `held:discarded` | `{heldId, type, cueId?}` | Held item discarded (auto-cancel or manual) |
-| `held:recoverable` | `{heldCount}` | Held items may be recoverable (service restored) |
-| `service:health` | `{serviceId, status, message}` | Individual service health update |
-| `spotify:status` | `{connected, state, volume, pausedByGameClock}` | Spotify playback state |
-| `service:state` | `{domain, state}` | Unified state push (dual-emit alongside discrete events) |
+All service domain state (cue status, held items, health, spotify, video) is delivered via unified `service:state` events. See "Unified `service:state` Pattern" section below.
 
 **`sync:full` Phase 2 Additions:**
 - `spotify`: `{connected, state, volume, pausedByGameClock}` via `buildSpotifyState()`
@@ -433,14 +415,16 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 
 **CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`). Missing a service = silent state desync. Bug has recurred in `scores:reset`, `offline:queue:processed`, and `integration-test-server.js` — audit ALL emission points (including test helpers) when adding new services.
 
-**Unified `service:state` Pattern (Dual-Emit):**
+**Unified `service:state` Pattern (Sole Push Mechanism):**
 - Every service has a sync `getState()` method returning a full state snapshot
 - `broadcasts.js` `pushServiceState(domain, service)` emits `service:state` with `{domain, state: service.getState()}` to GM room
-- 9 domains: `spotify`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`
+- 10 domains: `spotify`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`, `held`
 - `video` domain is owned by `videoQueueService.getState()` — composes VLC connection state from `vlcMprisService.getState()`
-- Dual-emit: old discrete events (`spotify:status`, `gameclock:status`, etc.) AND `service:state` fire on the same trigger
+- `held` domain aggregates held cues + videos via `buildHeldItemsState()`, pushed via `pushHeldState()`
+- **CRITICAL**: `service:state` is the SOLE mechanism for service domain state delivery. Old discrete events (`spotify:status`, `gameclock:status`, `video:status`, `bluetooth:device`, `lighting:scene`, etc.) have been removed. Only discrete game events remain (`cue:fired`, `cue:completed`, `cue:error`, `transaction:new`, `session:update`, `display:mode`)
+- `gm:command:ack` payload simplified to `{action, success, message}` — no more `result.data` forwarding. State comes via `service:state` events
 - No post-command state push: state pushes triggered ONLY by service events (D-Bus monitors, service lifecycle)
-- Tests: `tests/unit/services/getState.test.js` (19 tests), `tests/integration/service-state-push.test.js` (13 tests), broadcast unit tests (10 tests)
+- Tests: `tests/unit/services/getState.test.js` (19 tests), `tests/integration/service-state-push.test.js` (13 tests), broadcast unit tests
 
 **CRITICAL Gotchas:**
 - `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.
@@ -466,12 +450,6 @@ Extends Phase 0 audio routing with PipeWire combine-sink management, event-drive
 | `audio:combine:create` | `{}` | Create combine-bt virtual sink from paired BT speakers |
 | `audio:combine:destroy` | `{}` | Destroy combine-bt virtual sink |
 
-**WebSocket Events (Server → Client, Phase 3):**
-
-| Event | Payload | Source |
-|-------|---------|--------|
-| `audio:ducking:status` | `{stream, ducked, volume, activeSources[]}` | Ducking state change |
-
 **Config:** `config/environment/routing.json` — `ducking` array:
 ```json
 [
@@ -480,7 +458,7 @@ Extends Phase 0 audio routing with PipeWire combine-sink management, event-drive
 ]
 ```
 
-**Note:** `audio:ducking:status` is forwarded to GM Scanner (in `orchestratorClient.js` messageTypes) and displayed via `SpotifyRenderer.renderDucking()`. Ducking is fully automated on the backend — no GM intervention needed, but the indicator gives the GM visibility into active ducking.
+**Note:** Ducking state is delivered via `service:state` domain `audio` (included in `audioRoutingService.getState().ducking`). Ducking is fully automated on the backend — no GM intervention needed, but the indicator gives the GM visibility into active ducking.
 
 **Key Files:** `src/services/audioRoutingService.js` (combine-sink + ducking), `src/services/cueEngineService.js` (`_resolveRouting`), `config/environment/routing.json`
 

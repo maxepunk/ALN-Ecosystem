@@ -23,7 +23,15 @@ require('../helpers/browser-mocks');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } =
   require('../helpers/integration-test-server');
 const { createPlayerScanner, connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
-const { validateWebSocketEvent } = require('../helpers/contract-validator');
+
+/** Helper: wait for service:state with a specific domain */
+function waitForServiceState(socket, domain, predicate) {
+  return waitForEvent(socket, 'service:state', (data) => {
+    const payload = data.data || data;
+    if (payload.domain !== domain) return false;
+    return predicate ? predicate(payload.state) : true;
+  });
+}
 
 const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
@@ -165,8 +173,18 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
 
   describe('Player Scan → Video Queue → VLC Playback', () => {
     it('should queue and play video from player scan using REAL Player Scanner', async () => {
-      // Setup: Listen for video:status events
-      const loadingPromise = waitForEvent(gmSocket, 'video:status');
+      // Collect all video state events to verify full lifecycle
+      const videoStates = [];
+      gmSocket.on('service:state', (event) => {
+        const payload = event.data || event;
+        if (payload.domain === 'video') {
+          videoStates.push(payload.state);
+        }
+      });
+
+      // Also wait for final playing state
+      const playingPromise = waitForServiceState(gmSocket, 'video',
+        (s) => s.status === 'playing');
 
       // Trigger: REAL Player Scanner scans token
       const response = await playerScanner.scanToken('534e2b03', null);
@@ -176,31 +194,17 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       expect(response.videoQueued).toBe(true);
       expect(response.tokenId).toBe('534e2b03');
 
-      // Wait: For video:loading broadcast
-      const loadingEvent = await loadingPromise;
-
-      // Validate: video:status with status=loading
-      expect(loadingEvent.event).toBe('video:status');
-      expect(loadingEvent.data.status).toBe('loading');
-      expect(loadingEvent.data.tokenId).toBe('534e2b03');
-      expect(loadingEvent.data.queueLength).toBeGreaterThanOrEqual(0);
-
-      // Validate: Contract compliance
-      validateWebSocketEvent(loadingEvent, 'video:status');
-
-      // Wait: For video:playing event (VLC starts playback)
-      const playingPromise = waitForEvent(gmSocket, 'video:status', (data) => data.data?.status === 'playing');
+      // Wait: For video playing state
       const playingEvent = await playingPromise;
 
-      // Validate: video:status with status=playing
-      expect(playingEvent.event).toBe('video:status');
-      expect(playingEvent.data.status).toBe('playing');
-      expect(playingEvent.data.tokenId).toBe('534e2b03');
-      expect(playingEvent.data.duration).toBe(30); // test_30sec.mp4
-      expect(playingEvent.data.queueLength).toBeDefined();
+      // Validate: service:state video with playing status
+      expect(playingEvent.data.domain).toBe('video');
+      expect(playingEvent.data.state.status).toBe('playing');
+      expect(playingEvent.data.state.currentVideo?.tokenId).toBe('534e2b03');
+      expect(playingEvent.data.state.queueLength).toBeDefined();
 
-      // Validate: Contract compliance
-      validateWebSocketEvent(playingEvent, 'video:status');
+      // Validate: received multiple video state transitions
+      expect(videoStates.length).toBeGreaterThanOrEqual(1);
 
       // Verify: VLC service received play command
       expect(vlcService.playVideo).toHaveBeenCalledWith('test_30sec.mp4');
@@ -209,10 +213,13 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
 
   describe('Queue Management - Sequential Playback', () => {
     it('should track queue length accurately during transitions', async () => {
-      // Listen for all video:status events
+      // Listen for all service:state video events
       const statusEvents = [];
-      gmSocket.on('video:status', (event) => {
-        statusEvents.push(event);
+      gmSocket.on('service:state', (event) => {
+        const payload = event.data || event;
+        if (payload.domain === 'video') {
+          statusEvents.push(payload);
+        }
       });
 
       // Queue video using REAL Player Scanner
@@ -221,12 +228,12 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       // Wait for events to propagate
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Validate: queueLength present in all events
+      // Validate: queueLength present in all video state events
       expect(statusEvents.length).toBeGreaterThan(0);
-      statusEvents.forEach(event => {
-        expect(event.data.queueLength).toBeDefined();
-        expect(typeof event.data.queueLength).toBe('number');
-        expect(event.data.queueLength).toBeGreaterThanOrEqual(0);
+      statusEvents.forEach(stateEvent => {
+        expect(stateEvent.state.queueLength).toBeDefined();
+        expect(typeof stateEvent.state.queueLength).toBe('number');
+        expect(stateEvent.state.queueLength).toBeGreaterThanOrEqual(0);
       });
     });
   });
@@ -236,23 +243,20 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       // Override playVideo to fail on next call
       vlcService.playVideo.mockRejectedValueOnce(new Error('VLC connection lost'));
 
-      // Listen for error event with predicate (skip loading event)
-      const errorPromise = waitForEvent(gmSocket, 'video:status', (data) => data.data?.status === 'error');
+      // Listen for service:state video with error status (skip loading event)
+      const errorPromise = waitForServiceState(gmSocket, 'video',
+        (s) => s.status === 'error');
 
       // Trigger: REAL Player Scanner scans video
       await playerScanner.scanToken('534e2b03', null);
 
-      // Wait for error broadcast
+      // Wait for error state push
       const errorEvent = await errorPromise;
 
-      // Validate: video:status with status=error
-      expect(errorEvent.event).toBe('video:status');
-      expect(errorEvent.data.status).toBe('error');
-      expect(errorEvent.data.tokenId).toBe('534e2b03');
-      expect(errorEvent.data.error).toBeDefined();
-
-      // Validate: Contract compliance
-      validateWebSocketEvent(errorEvent, 'video:status');
+      // Validate: service:state video with error status
+      expect(errorEvent.data.domain).toBe('video');
+      expect(errorEvent.data.state.status).toBe('error');
+      expect(errorEvent.data.state.currentVideo?.tokenId).toBe('534e2b03');
     });
 
     it('should handle invalid video tokens gracefully', async () => {
@@ -270,10 +274,13 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       // Inject into transactionService for this test only
       transactionService.tokens.set('bad_video_token', badVideoToken);
 
-      // CRITICAL: Collect ALL video:status events to avoid race condition
-      const videoStatusEvents = [];
-      gmSocket.on('video:status', (event) => {
-        videoStatusEvents.push(event);
+      // CRITICAL: Collect ALL service:state video events to avoid race condition
+      const videoStateEvents = [];
+      gmSocket.on('service:state', (event) => {
+        const payload = event.data || event;
+        if (payload.domain === 'video') {
+          videoStateEvents.push(payload);
+        }
       });
 
       // Trigger: REAL Player Scanner scans with token that has invalid video
@@ -286,17 +293,14 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       // Wait for all events to arrive (loading + error + idle)
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Validate: Should have received multiple video:status events
-      expect(videoStatusEvents.length).toBeGreaterThan(0);
+      // Validate: Should have received multiple video state events
+      expect(videoStateEvents.length).toBeGreaterThan(0);
 
-      // Find the error event
-      const errorEvent = videoStatusEvents.find(e => e.data.status === 'error');
+      // Find the error state event
+      const errorState = videoStateEvents.find(e => e.state.status === 'error');
 
-      // Validate: Error handling
-      expect(errorEvent).toBeDefined();
-      expect(errorEvent.data.error).toBeDefined();
-      expect(errorEvent.data.error).toContain('not found');
-      validateWebSocketEvent(errorEvent, 'video:status');
+      // Validate: Error handling — getState() reflects error status
+      expect(errorState).toBeDefined();
 
       // Cleanup: Remove test token
       transactionService.tokens.delete('bad_video_token');
@@ -306,17 +310,15 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
   describe('Video State Transitions', () => {
     it('should broadcast idle status when queue is empty', async () => {
       // System should start in idle state or transition to idle
-      const idlePromise = waitForEvent(gmSocket, 'video:status', 2000);
+      const idlePromise = waitForServiceState(gmSocket, 'video');
 
       try {
         const idleEvent = await idlePromise;
 
-        // Validate: idle status
-        expect(idleEvent.data.status).toBe('idle');
-        expect(idleEvent.data.tokenId).toBeNull();
-        expect(idleEvent.data.queueLength).toBe(0);
-
-        validateWebSocketEvent(idleEvent, 'video:status');
+        // Validate: idle status via service:state
+        expect(idleEvent.data.state.status).toBe('idle');
+        expect(idleEvent.data.state.currentVideo).toBeNull();
+        expect(idleEvent.data.state.queueLength).toBe(0);
       } catch (error) {
         // If no idle event received, system may not broadcast idle status
         console.warn('ISSUE: No idle status broadcast on empty queue');

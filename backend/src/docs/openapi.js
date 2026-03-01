@@ -463,11 +463,8 @@ const openApiSpec = {
       'session:new': 'New session created',
       'session:update': 'Session updated',
       'transaction:new': 'New transaction added',
-      'state:update': 'State update (delta)',
-      'state:sync': 'Full state sync',
       'sync:full': 'Complete sync with all data',
-      'video:status': 'Video playback status',
-      'video:queued': 'Video added to queue',
+      'service:state': 'Unified service domain state push',
       'device:connected': 'Device connected',
       'device:disconnected': 'Device disconnected',
       'error': 'Error notification'

@@ -1,8 +1,8 @@
 /**
- * Unit Tests: Phase 1 Broadcasts - Game Clock, Cue Engine, Sound Service
+ * Unit Tests: Cue Engine Discrete Events + sync:full + service:state
  *
- * Tests that new Phase 1 services are correctly wired into the broadcast layer.
- * Follows the same pattern as broadcasts.test.js for consistency.
+ * Tests cue:fired/completed/error broadcasts, sync:full payload structure,
+ * and service:state push for gameclock/cueengine/sound domains.
  */
 
 'use strict';
@@ -136,71 +136,6 @@ describe('Phase 1 Broadcasts', () => {
     cleanupBroadcastListeners();
   });
 
-  describe('Game Clock Broadcasts', () => {
-    it('should broadcast gameclock:status on gameclock:started', () => {
-      setupBroadcasts();
-
-      // Trigger gameclock:started event
-      mockGameClockService.emit('gameclock:started', { gameStartTime: 1234567890 });
-
-      // Assert: emitToRoom called for GM room with gameclock:status event
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'gameclock:status',
-        expect.objectContaining({
-          event: 'gameclock:status',
-          data: expect.objectContaining({
-            state: 'running',
-            elapsed: 0
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-
-    it('should broadcast gameclock:status on gameclock:paused', () => {
-      setupBroadcasts();
-
-      // Trigger gameclock:paused event
-      mockGameClockService.emit('gameclock:paused', { elapsed: 300 });
-
-      // Assert: emitToRoom called for GM room with gameclock:status event
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'gameclock:status',
-        expect.objectContaining({
-          event: 'gameclock:status',
-          data: expect.objectContaining({
-            state: 'paused',
-            elapsed: 300
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-
-    it('should broadcast gameclock:status on gameclock:resumed', () => {
-      setupBroadcasts();
-
-      // Trigger gameclock:resumed event
-      mockGameClockService.emit('gameclock:resumed', { elapsed: 450 });
-
-      // Assert: emitToRoom called for GM room with gameclock:status event
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'gameclock:status',
-        expect.objectContaining({
-          event: 'gameclock:status',
-          data: expect.objectContaining({
-            state: 'running',
-            elapsed: 450
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-  });
-
   describe('Cue Engine Broadcasts', () => {
     it('should broadcast cue:fired on cueEngineService cue:fired', () => {
       setupBroadcasts();
@@ -251,68 +186,6 @@ describe('Phase 1 Broadcasts', () => {
         expect.objectContaining({
           event: 'cue:error',
           data: errorData,
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-  });
-
-  describe('Sound Service Broadcasts', () => {
-    it('should broadcast sound:status on soundService sound:started', () => {
-      setupBroadcasts();
-
-      // Configure getPlaying to return current playing list
-      const playingList = [{ file: 'test.wav', target: 'default', volume: 100, pid: 1234 }];
-      mockSoundService.getPlaying.mockReturnValue(playingList);
-
-      mockSoundService.emit('sound:started', { file: 'test.wav' });
-
-      // Assert: emitToRoom called for GM room with sound:status event
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'sound:status',
-        expect.objectContaining({
-          event: 'sound:status',
-          data: { playing: playingList },
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-
-    it('should broadcast sound:status on soundService sound:completed', () => {
-      setupBroadcasts();
-
-      // After completion, getPlaying returns empty list
-      mockSoundService.getPlaying.mockReturnValue([]);
-
-      mockSoundService.emit('sound:completed', { file: 'test.wav' });
-
-      // Assert: emitToRoom called for GM room with sound:status event
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'sound:status',
-        expect.objectContaining({
-          event: 'sound:status',
-          data: { playing: [] },
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
-    });
-
-    it('should broadcast sound:status on soundService sound:stopped', () => {
-      setupBroadcasts();
-
-      mockSoundService.getPlaying.mockReturnValue([]);
-
-      mockSoundService.emit('sound:stopped', { file: 'test.wav', reason: 'killed' });
-
-      // Assert: emitToRoom called for GM room with sound:status event
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'sound:status',
-        expect.objectContaining({
-          event: 'sound:status',
-          data: { playing: [] },
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })
       );

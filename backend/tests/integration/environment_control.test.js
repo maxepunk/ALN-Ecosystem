@@ -28,6 +28,15 @@ const bluetoothService = require('../../src/services/bluetoothService');
 const audioRoutingService = require('../../src/services/audioRoutingService');
 const lightingService = require('../../src/services/lightingService');
 
+/** Helper: wait for service:state with a specific domain */
+function waitForServiceState(socket, domain, predicate) {
+  return waitForEvent(socket, 'service:state', (data) => {
+    const payload = data.data || data;
+    if (payload.domain !== domain) return false;
+    return predicate ? predicate(payload.state) : true;
+  });
+}
+
 /** Mock bluetooth service as unavailable (most tests need this) */
 function mockBluetoothUnavailable() {
   jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(false);
@@ -135,10 +144,11 @@ describe('Environment Control Integration', () => {
   // ── 2. bluetooth:scan:start -> bluetooth:scan broadcast ──
 
   describe('bluetooth:scan:start', () => {
-    it('should broadcast bluetooth:scan with scanning:true when scan starts', async () => {
+    it('should broadcast service:state bluetooth with scanning:true when scan starts', async () => {
       // Mock startScan to NOT spawn a real process but still emit the event
       jest.spyOn(bluetoothService, 'startScan').mockImplementation((timeout) => {
-        // Simulate what the real startScan does: emit scan:started
+        // Simulate what the real startScan does: set _scanProc and emit scan:started
+        bluetoothService._scanProc = { kill: jest.fn() };
         bluetoothService.emit('scan:started', { timeout: timeout || 15 });
       });
 
@@ -147,22 +157,21 @@ describe('Environment Control Integration', () => {
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_010');
 
-      // Listen for the broadcast
-      const scanPromise = waitForEvent(gm1, 'bluetooth:scan');
+      // Listen for service:state bluetooth broadcast
+      const scanPromise = waitForServiceState(gm1, 'bluetooth', (s) => s.scanning === true);
 
       // Send gm:command to start scan
       sendGmCommand(gm1, 'bluetooth:scan:start', {});
 
-      const scanData = await scanPromise;
-      const payload = scanData.data || scanData;
-      expect(payload.scanning).toBe(true);
+      const scanEvent = await scanPromise;
+      expect(scanEvent.data.state.scanning).toBe(true);
     });
   });
 
   // ── 3. bluetooth:scan:stop -> bluetooth:scan broadcast ──
 
   describe('bluetooth:scan:stop', () => {
-    it('should broadcast bluetooth:scan with scanning:false when scan stops', async () => {
+    it('should broadcast service:state bluetooth with scanning:false when scan stops', async () => {
       // Mock startScan to set up a fake scan state that stopScan can work with
       jest.spyOn(bluetoothService, 'startScan').mockImplementation(() => {
         bluetoothService._scanProc = { kill: jest.fn() };
@@ -181,22 +190,21 @@ describe('Environment Control Integration', () => {
 
       // Start scan first
       sendGmCommand(gm1, 'bluetooth:scan:start', {});
-      await waitForEvent(gm1, 'bluetooth:scan');
+      await waitForServiceState(gm1, 'bluetooth', (s) => s.scanning === true);
 
       // Now listen for scan stop
-      const stopPromise = waitForEvent(gm1, 'bluetooth:scan');
+      const stopPromise = waitForServiceState(gm1, 'bluetooth', (s) => s.scanning === false);
       sendGmCommand(gm1, 'bluetooth:scan:stop', {});
 
-      const stopData = await stopPromise;
-      const payload = stopData.data || stopData;
-      expect(payload.scanning).toBe(false);
+      const stopEvent = await stopPromise;
+      expect(stopEvent.data.state.scanning).toBe(false);
     });
   });
 
   // ── 4. audio:route:set -> audio:routing broadcast ──
 
   describe('audio:route:set', () => {
-    it('should broadcast audio:routing when stream route is changed', async () => {
+    it('should broadcast service:state audio when stream route is changed', async () => {
       // setStreamRoute is fine to call (internal state + emit), but it calls persistenceService.save()
       // which is OK in tests. Mock applyRouting since it calls pactl.
       jest.spyOn(audioRoutingService, 'applyRouting').mockImplementation(async (stream) => {
@@ -212,18 +220,16 @@ describe('Environment Control Integration', () => {
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_020');
 
-      // We expect TWO audio:routing events: one from routing:changed (setStreamRoute),
-      // one from routing:applied (applyRouting). We'll wait for the first one.
-      const routingPromise = waitForEvent(gm1, 'audio:routing');
+      // Wait for service:state audio with video route changed to bluetooth
+      const routingPromise = waitForServiceState(gm1, 'audio',
+        (s) => s.routes?.video === 'bluetooth');
 
       sendGmCommand(gm1, 'audio:route:set', { stream: 'video', sink: 'bluetooth' });
 
-      const routingData = await routingPromise;
-      const payload = routingData.data || routingData;
+      const routingEvent = await routingPromise;
 
-      // The first broadcast comes from routing:changed (setStreamRoute)
-      expect(payload.stream).toBe('video');
-      expect(payload.sink).toBe('bluetooth');
+      // Verify the audio state snapshot shows the new route
+      expect(routingEvent.data.state.routes.video).toBe('bluetooth');
     });
 
     it('should receive gm:command:ack after successful audio route change', async () => {
@@ -247,7 +253,7 @@ describe('Environment Control Integration', () => {
   // ── 5. lighting:scene:activate -> lighting:scene broadcast ──
 
   describe('lighting:scene:activate', () => {
-    it('should broadcast lighting:scene when scene is activated', async () => {
+    it('should broadcast service:state lighting when scene is activated', async () => {
       // Mock activateScene to skip axios POST to HA but still emit event
       jest.spyOn(lightingService, 'activateScene').mockImplementation(async (sceneId) => {
         lightingService._activeScene = sceneId;
@@ -258,13 +264,13 @@ describe('Environment Control Integration', () => {
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_030');
 
-      const scenePromise = waitForEvent(gm1, 'lighting:scene');
+      const scenePromise = waitForServiceState(gm1, 'lighting',
+        (s) => s.activeScene === 'scene.game_start');
 
       sendGmCommand(gm1, 'lighting:scene:activate', { sceneId: 'scene.game_start' });
 
-      const sceneData = await scenePromise;
-      const payload = sceneData.data || sceneData;
-      expect(payload.sceneId).toBe('scene.game_start');
+      const sceneEvent = await scenePromise;
+      expect(sceneEvent.data.state.activeScene).toBe('scene.game_start');
     });
 
     it('should receive gm:command:ack after successful scene activation', async () => {
@@ -372,7 +378,7 @@ describe('Environment Control Integration', () => {
   // ── Additional edge case tests ──
 
   describe('bluetooth:device broadcasts', () => {
-    it('should broadcast bluetooth:device when a device is discovered during scan', async () => {
+    it('should broadcast service:state bluetooth when a device is discovered during scan', async () => {
       jest.spyOn(bluetoothService, 'startScan').mockImplementation(() => {
         bluetoothService.emit('scan:started', { timeout: 15 });
         // Simulate a device discovered after a short delay
@@ -388,15 +394,22 @@ describe('Environment Control Integration', () => {
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_060');
 
-      const devicePromise = waitForEvent(gm1, 'bluetooth:device');
+      // Wait for bluetooth service:state (device:discovered triggers bluetooth state push)
+      // We need to skip the initial scan:started state and wait for the discovered device state
+      const btStates = [];
+      const devicePromise = waitForServiceState(gm1, 'bluetooth', (s) => {
+        btStates.push(s);
+        // Wait until we see more than the initial scan state push
+        return btStates.length >= 2;
+      });
 
       sendGmCommand(gm1, 'bluetooth:scan:start', {});
 
-      const deviceData = await devicePromise;
-      const payload = deviceData.data || deviceData;
-      expect(payload.type).toBe('discovered');
-      expect(payload.device.address).toBe('11:22:33:44:55:66');
-      expect(payload.device.name).toBe('JBL Flip 6');
+      const btEvent = await devicePromise;
+      // Verify bluetooth state snapshot was pushed
+      expect(btEvent.data.domain).toBe('bluetooth');
+      expect(btEvent.data.state).toHaveProperty('scanning');
+      expect(btEvent.data.state).toHaveProperty('pairedDevices');
     });
   });
 

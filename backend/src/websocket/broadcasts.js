@@ -6,7 +6,7 @@
 const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
-const { buildSyncFullPayload } = require('./syncHelpers');
+const { buildSyncFullPayload, buildHeldItemsState } = require('./syncHelpers');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 
 // Module-level listener tracking for cleanup
@@ -321,160 +321,6 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
-  // DRY helper: get current video queue length (safe if queue is null)
-  const getQueueLength = () => (videoQueueService.queue || []).length;
-
-  // Video events (contract-compliant)
-  addTrackedListener(videoQueueService, 'video:loading', (data) => {
-    const payload = {
-      status: 'loading',
-      tokenId: data.tokenId,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.info('Broadcasted video:loading to GM stations', { tokenId: data.tokenId });
-  });
-
-  addTrackedListener(videoQueueService, 'video:started', (data) => {
-    const payload = {
-      status: 'playing',
-      tokenId: data.queueItem.tokenId,
-      duration: data.duration,
-      expectedEndTime: data.expectedEndTime,
-      progress: 0,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.info('Broadcasted video:started to GM stations', { tokenId: data.queueItem.tokenId });
-  });
-
-  addTrackedListener(videoQueueService, 'video:completed', (queueItem) => {
-    const payload = {
-      status: 'completed',
-      tokenId: queueItem.tokenId,
-      progress: 100,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.info('Broadcasted video:completed to GM stations', { tokenId: queueItem.tokenId });
-
-    // Also update queue display (queue length changes after video completes)
-    broadcastQueueUpdate();
-  });
-
-  addTrackedListener(videoQueueService, 'video:failed', (queueItem) => {
-    const payload = {
-      status: 'error',
-      tokenId: queueItem.tokenId,
-      error: queueItem.error,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.error('Broadcasted video:failed to GM stations', { tokenId: queueItem.tokenId, error: queueItem.error });
-  });
-
-  addTrackedListener(videoQueueService, 'video:paused', (queueItem) => {
-    const payload = {
-      status: 'paused',
-      tokenId: queueItem?.tokenId || null,
-      progress: queueItem?.progress || 0,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.info('Broadcasted video:paused to GM stations', { tokenId: queueItem?.tokenId });
-  });
-
-  addTrackedListener(videoQueueService, 'video:idle', () => {
-    const payload = {
-      status: 'idle',
-      tokenId: null,
-      progress: 0,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.info('Broadcasted video:idle to GM stations');
-  });
-
-  // Handle video resumed event
-  addTrackedListener(videoQueueService, 'video:resumed', (queueItem) => {
-    const payload = {
-      status: 'playing', // Resume returns to playing state
-      tokenId: queueItem?.tokenId || null,
-      progress: queueItem?.progress || 0,
-      queueLength: getQueueLength()
-    };
-
-    emitToRoom(io, 'gm', 'video:status', payload);
-    logger.info('Broadcasted video:resumed as playing to GM stations');
-  });
-
-  // Handle video progress updates (emitted every 1s during playback)
-  addTrackedListener(videoQueueService, 'video:progress', (data) => {
-    const payload = {
-      tokenId: data.queueItem?.tokenId || null,
-      progress: data.progress || 0,
-      position: Math.round((data.position || 0) * (data.duration || 0)), // Convert decimal to seconds
-      duration: Math.round(data.duration || 0)
-    };
-
-    emitToRoom(io, 'gm', 'video:progress', payload);
-    // Don't log every progress update (too verbose)
-  });
-
-  // Broadcast queue updates to GM stations
-  function broadcastQueueUpdate() {
-    const queue = videoQueueService.getQueueItems();
-    const pendingItems = queue
-      .filter(item => item.isPending())
-      .map(item => ({
-        tokenId: item.tokenId,
-        duration: item.duration || 0,
-        requestedBy: item.requestedBy
-      }));
-
-    const payload = {
-      items: pendingItems,
-      length: pendingItems.length
-    };
-
-    emitToRoom(io, 'gm', 'video:queue:update', payload);
-    logger.debug('Broadcasted queue update to GM stations', { queueLength: pendingItems.length });
-  }
-
-  // Listen for queue changes and broadcast updates
-  addTrackedListener(videoQueueService, 'queue:added', () => {
-    broadcastQueueUpdate();
-  });
-
-  addTrackedListener(videoQueueService, 'queue:cleared', () => {
-    broadcastQueueUpdate();
-  });
-
-  addTrackedListener(videoQueueService, 'queue:reordered', () => {
-    broadcastQueueUpdate();
-  });
-
-  addTrackedListener(videoQueueService, 'queue:pending-cleared', () => {
-    broadcastQueueUpdate();
-  });
-
-  addTrackedListener(videoQueueService, 'queue:reset', () => {
-    broadcastQueueUpdate();
-  });
-
-  // NOTE: video:completed queue update handled in main video:completed handler above
-  // to avoid duplicate listener registration (causes listener accumulation in tests)
-
-  addTrackedListener(videoQueueService, 'video:started', () => {
-    broadcastQueueUpdate(); // Update queue display with real duration from VLC
-  });
-
   // Offline queue events
   if (offlineQueueService) {
     addTrackedListener(offlineQueueService, 'offline:queue:processed', async (eventData) => {
@@ -513,98 +359,8 @@ function setupBroadcastListeners(io, services) {
   }
 
   // ============================================================
-  // SERVICE HEALTH BROADCASTS
+  // INTER-SERVICE COORDINATION (not broadcasts — service-to-service)
   // ============================================================
-
-  addTrackedListener(serviceHealthRegistry, 'health:changed', (data) => {
-    emitToRoom(io, 'gm', 'service:health', data);
-    logger.debug('Broadcasted service:health', { serviceId: data.serviceId, status: data.status });
-  });
-
-  // ============================================================
-  // ENVIRONMENT CONTROL BROADCASTS (Phase 0)
-  // ============================================================
-
-  // Bluetooth events
-  if (bluetoothService) {
-    addTrackedListener(bluetoothService, 'device:connected', (device) => {
-      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'connected', device });
-      logger.debug('Broadcasted bluetooth:device connected', { address: device?.address });
-    });
-    addTrackedListener(bluetoothService, 'device:disconnected', (device) => {
-      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'disconnected', device });
-      logger.debug('Broadcasted bluetooth:device disconnected', { address: device?.address });
-    });
-    addTrackedListener(bluetoothService, 'device:paired', (device) => {
-      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'paired', device });
-      logger.debug('Broadcasted bluetooth:device paired', { address: device?.address });
-    });
-    addTrackedListener(bluetoothService, 'device:unpaired', (device) => {
-      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'unpaired', device });
-      logger.debug('Broadcasted bluetooth:device unpaired', { address: device?.address });
-    });
-    addTrackedListener(bluetoothService, 'device:discovered', (device) => {
-      emitToRoom(io, 'gm', 'bluetooth:device', { type: 'discovered', device });
-    });
-    addTrackedListener(bluetoothService, 'scan:started', (data) => {
-      emitToRoom(io, 'gm', 'bluetooth:scan', { scanning: true, ...data });
-      logger.debug('Broadcasted bluetooth:scan started');
-    });
-    addTrackedListener(bluetoothService, 'scan:stopped', (data) => {
-      emitToRoom(io, 'gm', 'bluetooth:scan', { scanning: false, ...data });
-      logger.debug('Broadcasted bluetooth:scan stopped');
-    });
-  }
-
-  // Audio routing events
-  if (audioRoutingService) {
-    addTrackedListener(audioRoutingService, 'routing:changed', (data) => {
-      emitToRoom(io, 'gm', 'audio:routing', data);
-      logger.debug('Broadcasted audio:routing changed', { stream: data?.stream, sink: data?.sink });
-    });
-    addTrackedListener(audioRoutingService, 'routing:applied', (data) => {
-      emitToRoom(io, 'gm', 'audio:routing', data);
-      logger.debug('Broadcasted audio:routing applied', { stream: data?.stream, sink: data?.sink });
-    });
-    addTrackedListener(audioRoutingService, 'routing:fallback', (data) => {
-      emitToRoom(io, 'gm', 'audio:routing:fallback', data);
-      logger.info('Broadcasted audio:routing:fallback', { stream: data?.stream, actualSink: data?.actualSink });
-    });
-    addTrackedListener(audioRoutingService, 'ducking:changed', (data) => {
-      emitToRoom(io, 'gm', 'audio:ducking:status', data);
-      logger.debug('Broadcasted audio:ducking:status', {
-        stream: data?.stream, ducked: data?.ducked, volume: data?.volume
-      });
-    });
-
-    // Sink add/remove events — refresh GM dropdown sink list
-    addTrackedListener(audioRoutingService, 'sink:added', async (data) => {
-      try {
-        const status = await audioRoutingService.getRoutingStatus();
-        emitToRoom(io, 'gm', 'audio:sinks', {
-          type: 'added',
-          sinkId: data.id,
-          availableSinks: status.availableSinks,
-        });
-        logger.debug('Broadcasted audio:sinks (added)', { sinkId: data.id });
-      } catch (err) {
-        logger.warn('Failed to broadcast sink:added', { error: err.message });
-      }
-    });
-    addTrackedListener(audioRoutingService, 'sink:removed', async (data) => {
-      try {
-        const status = await audioRoutingService.getRoutingStatus();
-        emitToRoom(io, 'gm', 'audio:sinks', {
-          type: 'removed',
-          sinkId: data.id,
-          availableSinks: status.availableSinks,
-        });
-        logger.debug('Broadcasted audio:sinks (removed)', { sinkId: data.id });
-      } catch (err) {
-        logger.warn('Failed to broadcast sink:removed', { error: err.message });
-      }
-    });
-  }
 
   // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService
   if (audioRoutingService && videoQueueService) {
@@ -635,51 +391,9 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
-  // VLC external state change detection
-  if (vlcService) {
-    addTrackedListener(vlcService, 'state:changed', (data) => {
-      emitToRoom(io, 'gm', 'video:status', {
-        status: data.current.state,
-        currentItem: data.current.filename,
-        vlcDelta: true,
-      });
-      logger.debug('Broadcasted video:status (VLC state delta)', {
-        state: data.current.state, filename: data.current.filename,
-      });
-    });
-  }
-
-  // Lighting events
-  if (lightingService) {
-    addTrackedListener(lightingService, 'scene:activated', (data) => {
-      emitToRoom(io, 'gm', 'lighting:scene', data);
-      logger.debug('Broadcasted lighting:scene activated', { sceneId: data?.sceneId });
-    });
-    addTrackedListener(lightingService, 'scenes:refreshed', (data) => {
-      emitToRoom(io, 'gm', 'lighting:status', { type: 'refreshed', ...data });
-      logger.debug('Broadcasted lighting:status refreshed', { sceneCount: data?.scenes?.length });
-    });
-  }
-
   // ============================================================
-  // PHASE 1 BROADCASTS - Game Clock, Cue Engine, Sound Service
+  // DISCRETE GAME EVENTS (NOT service state — these are action events)
   // ============================================================
-
-  // Game Clock events
-  if (gameClockService) {
-    addTrackedListener(gameClockService, 'gameclock:started', () => {
-      emitToRoom(io, 'gm', 'gameclock:status', { state: 'running', elapsed: 0 });
-      logger.debug('Broadcasted gameclock:status started');
-    });
-    addTrackedListener(gameClockService, 'gameclock:paused', (data) => {
-      emitToRoom(io, 'gm', 'gameclock:status', { state: 'paused', elapsed: data.elapsed });
-      logger.debug('Broadcasted gameclock:status paused', { elapsed: data.elapsed });
-    });
-    addTrackedListener(gameClockService, 'gameclock:resumed', (data) => {
-      emitToRoom(io, 'gm', 'gameclock:status', { state: 'running', elapsed: data.elapsed });
-      logger.debug('Broadcasted gameclock:status resumed', { elapsed: data.elapsed });
-    });
-  }
 
   // Cue Engine events
   if (cueEngineService) {
@@ -697,93 +411,6 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
-  // Sound Service events
-  if (soundService) {
-    addTrackedListener(soundService, 'sound:started', () => {
-      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
-      logger.debug('Broadcasted sound:status (started)');
-    });
-    addTrackedListener(soundService, 'sound:completed', () => {
-      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
-      logger.debug('Broadcasted sound:status (completed)');
-    });
-    addTrackedListener(soundService, 'sound:stopped', () => {
-      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying() });
-      logger.debug('Broadcasted sound:status (stopped)');
-    });
-    addTrackedListener(soundService, 'sound:error', (data) => {
-      emitToRoom(io, 'gm', 'sound:status', { playing: soundService.getPlaying(), error: data });
-      logger.error('Broadcasted sound:status (error)', { file: data?.file });
-    });
-  }
-
-  // ============================================================
-  // PHASE 2 BROADCASTS - Compound Cue Lifecycle, Spotify Status
-  // ============================================================
-
-  // Compound cue lifecycle broadcasts (cue:started, cue:status)
-  if (cueEngineService) {
-    addTrackedListener(cueEngineService, 'cue:started', (data) => {
-      emitToRoom(io, 'gm', 'cue:status', { ...data, state: 'running', progress: 0 });
-      logger.debug('Broadcasted cue:status (started)', { cueId: data.cueId });
-    });
-
-    addTrackedListener(cueEngineService, 'cue:status', (data) => {
-      emitToRoom(io, 'gm', 'cue:status', data);
-      logger.debug('Broadcasted cue:status', { cueId: data.cueId, state: data.state });
-    });
-
-    // ============================================================
-    // HELD ITEM BROADCASTS (Phase 4 — unified held:* namespace)
-    // ============================================================
-
-    addTrackedListener(cueEngineService, 'cue:held', (data) => {
-      emitToRoom(io, 'gm', 'held:added', data);
-      logger.debug('Broadcasted held:added (cue)', { cueId: data.cueId, reason: data.reason });
-    });
-
-    addTrackedListener(cueEngineService, 'cue:released', (data) => {
-      emitToRoom(io, 'gm', 'held:released', data);
-      logger.debug('Broadcasted held:released (cue)', { heldId: data.heldId });
-    });
-
-    addTrackedListener(cueEngineService, 'cue:discarded', (data) => {
-      emitToRoom(io, 'gm', 'held:discarded', data);
-      logger.debug('Broadcasted held:discarded (cue)', { heldId: data.heldId });
-    });
-  }
-
-  addTrackedListener(videoQueueService, 'video:held', (data) => {
-    emitToRoom(io, 'gm', 'held:added', data);
-    logger.debug('Broadcasted held:added (video)', { tokenId: data.tokenId });
-  });
-
-  addTrackedListener(videoQueueService, 'video:released', (data) => {
-    emitToRoom(io, 'gm', 'held:released', data);
-    logger.debug('Broadcasted held:released (video)', { heldId: data.heldId });
-  });
-
-  addTrackedListener(videoQueueService, 'video:discarded', (data) => {
-    emitToRoom(io, 'gm', 'held:discarded', data);
-    logger.debug('Broadcasted held:discarded (video)', { heldId: data.heldId });
-  });
-
-  addTrackedListener(videoQueueService, 'video:recoverable', (data) => {
-    emitToRoom(io, 'gm', 'held:recoverable', data);
-    logger.debug('Broadcasted held:recoverable', { heldCount: data.heldCount });
-  });
-
-  // Spotify broadcasts
-  if (spotifyService) {
-    const SPOTIFY_EVENTS = ['playback:changed', 'volume:changed', 'track:changed'];
-    for (const event of SPOTIFY_EVENTS) {
-      addTrackedListener(spotifyService, event, () => {
-        emitToRoom(io, 'gm', 'spotify:status', spotifyService.getState());
-        logger.debug(`Broadcasted spotify:status (${event})`);
-      });
-    }
-  }
-
   // Display mode events
   if (displayControlService) {
     addTrackedListener(displayControlService, 'display:mode:changed', (data) => {
@@ -793,13 +420,13 @@ function setupBroadcastListeners(io, services) {
   }
 
   // ============================================================
-  // UNIFIED service:state BROADCASTS (Dual-emit alongside existing events)
+  // UNIFIED service:state BROADCASTS (sole push mechanism for service domains)
   // ============================================================
 
   /**
    * Push unified service:state event with full state snapshot.
-   * Dual-emit: old discrete events still fire above; this adds
-   * the new envelope that the frontend StateStore will consume.
+   * This is the sole broadcast mechanism for service domain state.
+   * Frontend StateStore consumes these events via store subscriptions.
    */
   function pushServiceState(domain, service) {
     emitToRoom(io, 'gm', 'service:state', { domain, state: service.getState() });
@@ -869,10 +496,27 @@ function setupBroadcastListeners(io, services) {
   }
 
   // Cue Engine → service:state { domain: 'cueengine' }
+  // NOTE: cue:fired/cue:completed also emit as discrete game events above.
+  // They're included here because they change cueEngine.getState() (activeCues list).
   if (cueEngineService) {
     for (const event of ['cue:fired', 'cue:completed', 'cue:started', 'cue:status']) {
       addTrackedListener(cueEngineService, event, () => pushServiceState('cueengine', cueEngineService));
     }
+  }
+
+  // Held Items → service:state { domain: 'held' }
+  // Aggregates held cues + held videos from both services
+  function pushHeldState() {
+    const items = buildHeldItemsState(cueEngineService, videoQueueService);
+    emitToRoom(io, 'gm', 'service:state', { domain: 'held', state: { items } });
+  }
+  if (cueEngineService) {
+    for (const event of ['cue:held', 'cue:released', 'cue:discarded']) {
+      addTrackedListener(cueEngineService, event, pushHeldState);
+    }
+  }
+  for (const event of ['video:held', 'video:released', 'video:discarded', 'video:recoverable']) {
+    addTrackedListener(videoQueueService, event, pushHeldState);
   }
 
   // Error events

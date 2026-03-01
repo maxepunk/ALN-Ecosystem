@@ -188,47 +188,19 @@ describe('Display Events - Contract Validation', () => {
   });
 
   describe('display:status via ack', () => {
-    it('should include display status in gm:command:ack data', async () => {
-      // display:status is now returned via gm:command:ack data field (not a separate broadcast)
+    it('should acknowledge display:status command with success', async () => {
+      // display:status returns success ack; actual display state comes via service:state
       const ackPromise = waitForEvent(socket, 'gm:command:ack');
 
-      // Trigger: Send display:status command
       sendGmCommand(socket, 'display:status', {});
 
-      // Wait: For ack response
       const ack = await ackPromise;
 
-      // Validate: Ack structure
       expect(ack).toHaveProperty('event', 'gm:command:ack');
       expect(ack).toHaveProperty('data');
       expect(ack.data.success).toBe(true);
       expect(ack.data.action).toBe('display:status');
-
-      // Validate: Display status in ack data
-      expect(ack.data.data).toBeDefined();
-      expect(ack.data.data.displayStatus).toBeDefined();
-      expect(ack.data.data.displayStatus).toHaveProperty('currentMode');
-      expect(ack.data.data.displayStatus).toHaveProperty('previousMode');
-      expect(ack.data.data.displayStatus).toHaveProperty('timestamp');
-      expect(['IDLE_LOOP', 'SCOREBOARD', 'VIDEO']).toContain(ack.data.data.displayStatus.currentMode);
-      expect(['IDLE_LOOP', 'SCOREBOARD', 'VIDEO']).toContain(ack.data.data.displayStatus.previousMode);
-    });
-
-    it('should return correct status after mode changes', async () => {
-      // Switch to SCOREBOARD first
-      await displayControlService.setScoreboard();
-
-      const ackPromise = waitForEvent(socket, 'gm:command:ack');
-
-      // Trigger: Send display:status command
-      sendGmCommand(socket, 'display:status', {});
-
-      const ack = await ackPromise;
-
-      // Validate: Current mode is SCOREBOARD
-      expect(ack.data.data.displayStatus.currentMode).toBe('SCOREBOARD');
-      expect(ack.data.data.displayStatus.previousMode).toBe('IDLE_LOOP');
-      expect(ack.data.data.displayStatus.pendingVideo).toBeNull();
+      expect(ack.data.message).toBeDefined();
     });
   });
 });
