@@ -86,10 +86,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     console.log('\n╔══════════════════════════════════════════╗');
     console.log('║  E2E SERVICE STATUS                      ║');
     for (const [name, info] of Object.entries(serviceStatus)) {
-      const status = info.type === 'real' ? 'REAL'
-        : info.type === 'mock' ? 'MOCK'
-          : 'UNAVAILABLE';
-      const marker = info.type === 'real' ? '  ' : info.type === 'mock' ? ' !' : ' X';
+      const status = info.type === 'real' ? 'REAL' : 'UNAVAILABLE';
+      const marker = info.type === 'real' ? '  ' : ' X';
       const reason = info.reason ? ` (${info.reason})` : '';
       console.log(`║  ${name.padEnd(10)} ${(status + reason).padEnd(29)}${marker}║`);
     }

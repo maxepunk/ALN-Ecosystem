@@ -87,7 +87,7 @@ test.describe('E2E Infrastructure Smoke Test', () => {
 
     // 2. Start VLC (mock or real)
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode on port ${vlcInfo.port}`);
+    console.log(`VLC started: ${vlcInfo.type} mode`);
 
     // 3. Start orchestrator with HTTPS
     orchestratorInfo = await startOrchestrator({

@@ -37,7 +37,7 @@ const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
 const spotifyService = require('./services/spotifyService');
-const vlcService = require('./services/vlcService');
+const vlcService = require('./services/vlcMprisService');
 const displayControlService = require('./services/displayControlService');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order

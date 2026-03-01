@@ -28,7 +28,7 @@ const offlineQueueService = require('../../src/services/offlineQueueService');
 const bluetoothService = require('../../src/services/bluetoothService');
 const audioRoutingService = require('../../src/services/audioRoutingService');
 const lightingService = require('../../src/services/lightingService');
-const vlcService = require('../../src/services/vlcService');
+const vlcService = require('../../src/services/vlcMprisService');
 const spotifyService = require('../../src/services/spotifyService');
 const serviceHealthRegistry = require('../../src/services/serviceHealthRegistry');
 

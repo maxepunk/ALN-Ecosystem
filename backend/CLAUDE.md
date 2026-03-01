@@ -85,7 +85,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `stateService` | Global state (computed on-demand from session) | `new StateService()` |
 | `transactionService` | Token scan processing and scoring | `new TransactionService()` |
 | `videoQueueService` | Video playback queue | `new VideoQueueService()` |
-| `vlcService` | VLC HTTP interface control | `new VlcService()` |
+| `vlcService` | VLC D-Bus MPRIS control (extends MprisPlayerBase) | `new VlcMprisService()` |
 | `discoveryService` | UDP broadcast (port 8888) | Class export (instantiated by caller) |
 | `tokenService` | Token data loading | Function exports (no class) |
 | `offlineQueueService` | Offline scan management | `new OfflineQueueService()` |
@@ -98,7 +98,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `gameClockService` | Game clock (start/pause/resume/tick) | `new GameClockService()` |
 | `cueEngineService` | Standing + manual cue evaluation and firing | `new CueEngineService()` |
 | `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
-| `spotifyService` | D-Bus MPRIS wrapper for spotifyd playback | `new SpotifyService()` |
+| `spotifyService` | D-Bus MPRIS wrapper for spotifyd playback (extends MprisPlayerBase) | `new SpotifyService()` |
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
@@ -148,7 +148,7 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
 - `spotifyService`: `playback:changed`, `volume:changed`, `playlist:changed`, `track:changed`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
-- `vlcService`: `state:changed` (emitted by health poll when playback state or filename changes)
+- `vlcService`: `state:changed` (emitted by D-Bus MPRIS monitor when playback state or filename changes)
 
 **DEPRECATED Internal Event:**
 - `score:updated` - The internal `transaction:accepted` event now includes `teamScore`. The WebSocket broadcast `transaction:new` also carries the score. Note: `score:updated` is still broadcast via WebSocket by `broadcasts.js` for score adjustments and group bonuses.
@@ -202,7 +202,7 @@ displayControlService (State Machine)
 - Scoreboard URL uses auto-detected local IP (not localhost) for CDN resources
 - Browser process killed before VLC starts; VLC stopped before browser launches
 
-**Key Files:** `src/services/displayControlService.js`, `src/utils/displayDriver.js`, `src/services/vlcService.js`
+**Key Files:** `src/services/displayControlService.js`, `src/utils/displayDriver.js`, `src/services/vlcMprisService.js`
 
 ### Scoreboard Architecture
 
@@ -344,7 +344,7 @@ Services that wrap external systems use persistent monitors to detect state chan
 | `audioRoutingService` | `ProcessMonitor` + `pactl subscribe` | PipeWire sink add/remove |
 | `bluetoothService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --system` | Device connect/disconnect/pair |
 | `spotifyService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --session` | Playback/track/volume changes |
-| `vlcService` | Extended health poll (3s interval) | Playback state/filename delta |
+| `vlcService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --session` | Playback state/filename/volume changes |
 | `lightingService` | WebSocket client (`ws://host:8123/api/websocket`) | HA scene activations |
 
 **Reusable Utilities:**
@@ -396,7 +396,9 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 
 **Cue Hold System:** When a cue command requires a service that's down or a video is already playing, the cue is held (not discarded). Emits `cue:held` with reason (`video_busy` or `service_down`). Held cues auto-cancel after 10s or can be released/discarded via `held:release`/`held:discard` commands. `cue:released`/`cue:discarded` events emitted on resolution.
 
-**Spotify Service:** D-Bus MPRIS wrapper for `spotifyd`. Uses `dbus-send` CLI (no compiled bindings). D-Bus destination discovered dynamically (PID suffix changes on restart). Methods: `play()`, `pause()`, `stop()`, `next()`, `previous()`, `setVolume()`, `setPlaylist()`, `checkConnection()`, `getState()`, `reset()`. `resumeFromGameClock()` only resumes if `_pausedByGameClock === true`.
+**Spotify Service:** Extends `MprisPlayerBase` (shared D-Bus MPRIS foundation). Uses `dbus-send` CLI (no compiled bindings). D-Bus destination discovered dynamically (PID suffix changes on restart). Overrides `_dbusCall()` for reactive recovery (activate + retry), `_processStateChange()` for Spotify-specific signal handling, `checkConnection()` for metadata refresh. Methods: `play()`, `pause()`, `stop()`, `next()`, `previous()`, `setVolume()`, `setPlaylist()`, `checkConnection()`, `getState()`, `reset()`. `resumeFromGameClock()` only resumes if `_pausedByGameClock === true`.
+
+**MprisPlayerBase:** Shared base class (`src/services/mprisPlayerBase.js`) for D-Bus MPRIS media player services. Provides: `_buildDbusArgs()`, `_dbusCall()` (overrideable), `_dbusGetProperty/SetProperty`, `_transport()`, `startPlaybackMonitor/stopPlaybackMonitor` (ProcessMonitor + DbusSignalParser), signal debounce+merge, `checkConnection()`, `getState()`, `reset()/cleanup()`. Subclasses override `_processStateChange()`, `_parseMetadata()`, optionally `_dbusCall()` (recovery) and `_getDestination()` (dynamic discovery).
 
 **Audio Stream Volume:** `audioRoutingService.setStreamVolume(stream, volume)` / `getStreamVolume(stream)`. Valid streams: `['video', 'spotify', 'sound']`.
 
@@ -480,7 +482,6 @@ Extends Phase 0 audio routing with PipeWire combine-sink management, event-drive
 ```env
 NODE_ENV=development|production
 PORT=3000
-VLC_PASSWORD=vlc              # MUST be exactly "vlc"
 FEATURE_VIDEO_PLAYBACK=true
 HOST=0.0.0.0                  # For network access
 DISCOVERY_UDP_PORT=8888       # UDP broadcast
@@ -496,7 +497,7 @@ HTTP_REDIRECT_PORT=8000
 ```
 
 **Critical Gotchas:**
-- `VLC_PASSWORD` must be exactly `vlc`, not `vlc-password`
+- VLC controlled via D-Bus MPRIS (no HTTP interface needed)
 - `ADMIN_PASSWORD` must match hardcoded value in `public/scoreboard.html`
 
 ### HTTPS Architecture
@@ -539,14 +540,13 @@ ffmpeg -i INPUT.mp4 \
 
 **PM2 Ecosystem:**
 - `aln-orchestrator`: Node.js server (2GB restart threshold)
-- `vlc-http`: VLC with HTTP interface
+- `vlc`: VLC media player (controlled via D-Bus MPRIS)
 
 **Network URLs:**
 - Orchestrator: `https://[IP]:3000`
 - GM Scanner: `https://[IP]:3000/gm-scanner/`
 - Player Scanner: `https://[IP]:3000/player-scanner/`
 - Scoreboard: `https://[IP]:3000/scoreboard`
-- VLC Control: `http://[IP]:8080` (password: vlc, internal only)
 
 ## Debugging
 
@@ -566,12 +566,12 @@ ffmpeg -i INPUT.mp4 \
 **Symptoms:** Videos queue but don't play, idle loop doesn't resume
 
 **Debug:**
-1. `curl http://localhost:8080/requests/status.json -u :vlc` - VLC connection
+1. `dbus-send --session --dest=org.mpris.MediaPlayer2.vlc --print-reply /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping` - VLC D-Bus check
 2. `ls -lh public/videos/[filename].mp4` - File exists
 3. Monitor `video:status` events in GM scanner
 4. Check VLC logs: `npm run prod:logs | grep vlc`
 
-**Key Files:** `src/services/videoQueueService.js`, `src/services/vlcService.js`
+**Key Files:** `src/services/videoQueueService.js`, `src/services/vlcMprisService.js`
 
 ### WebSocket Issues
 **Symptoms:** Connects but no state updates

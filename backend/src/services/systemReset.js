@@ -117,7 +117,7 @@ async function performSystemReset(io, services) {
 
   // Clear VLC state delta cache (don't call full reset — VLC connection should persist)
   if (vlcService) {
-    vlcService._previousState = null;
+    vlcService._previousDelta = null;
   }
 
   // Reset Phase 2 services

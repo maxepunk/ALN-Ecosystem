@@ -57,7 +57,7 @@ jest.mock('../../../src/services/videoQueueService', () => ({
   videoFileExists: jest.fn(),
 }));
 
-jest.mock('../../../src/services/vlcService', () => ({
+jest.mock('../../../src/services/vlcMprisService', () => ({
   resume: jest.fn(),
   pause: jest.fn(),
   stop: jest.fn(),
@@ -131,7 +131,7 @@ describe('commandExecutor', () => {
   const sessionService = require('../../../src/services/sessionService');
   const transactionService = require('../../../src/services/transactionService');
   const videoQueueService = require('../../../src/services/videoQueueService');
-  const vlcService = require('../../../src/services/vlcService');
+  const vlcService = require('../../../src/services/vlcMprisService');
   const displayControlService = require('../../../src/services/displayControlService');
   const bluetoothService = require('../../../src/services/bluetoothService');
   const audioRoutingService = require('../../../src/services/audioRoutingService');
@@ -758,7 +758,7 @@ describe('commandExecutor', () => {
 
     it('should check a single service by serviceId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const vlcService = require('../../../src/services/vlcService');
+      const vlcService = require('../../../src/services/vlcMprisService');
       vlcService.checkConnection.mockResolvedValue(true);
 
       const result = await executeCommand({
@@ -773,7 +773,7 @@ describe('commandExecutor', () => {
 
     it('should check all services when no serviceId given', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const vlcService = require('../../../src/services/vlcService');
+      const vlcService = require('../../../src/services/vlcMprisService');
       const spotifyService = require('../../../src/services/spotifyService');
       const lightingService = require('../../../src/services/lightingService');
       const bluetoothService = require('../../../src/services/bluetoothService');
@@ -817,7 +817,7 @@ describe('commandExecutor', () => {
 
     it('should handle check failure gracefully', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const vlcService = require('../../../src/services/vlcService');
+      const vlcService = require('../../../src/services/vlcMprisService');
       vlcService.checkConnection.mockRejectedValue(new Error('connection refused'));
 
       const result = await executeCommand({

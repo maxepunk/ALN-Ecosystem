@@ -157,7 +157,7 @@ describe('VideoQueueService - Queue Management', () => {
 
     beforeEach(() => {
       // Access the vlcService that videoQueueService uses internally
-      vlcService = require('../../../src/services/vlcService');
+      vlcService = require('../../../src/services/vlcMprisService');
       // Spy on returnToIdleLoop (may not exist as mock, so create spy)
       if (!jest.isMockFunction(vlcService.returnToIdleLoop)) {
         jest.spyOn(vlcService, 'returnToIdleLoop').mockResolvedValue(true);

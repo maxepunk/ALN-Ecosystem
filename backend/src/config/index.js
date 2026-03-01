@@ -43,15 +43,6 @@ const config = {
     httpRedirectPort: parseInt(process.env.HTTP_REDIRECT_PORT || '8000', 10),
   },
 
-  // VLC Configuration
-  vlc: {
-    host: process.env.VLC_HOST || 'localhost',
-    port: parseInt(process.env.VLC_PORT || '8080', 10),
-    password: process.env.VLC_PASSWORD || 'vlc',
-    reconnectInterval: parseInt(process.env.VLC_RECONNECT_INTERVAL || '5000', 10),
-    maxRetries: parseInt(process.env.VLC_MAX_RETRIES || '3', 10),
-  },
-
   // Session Configuration
   session: {
     maxPlayers: parseInt(process.env.MAX_PLAYERS || '10', 10),

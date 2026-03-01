@@ -4,20 +4,17 @@
  * Tests complete video playback flow:
  * Player Scan → Queue → VLC → Status Broadcasts → GM Clients
  *
- * TRANSFORMATION: Phase 3.6g - Use real Player Scanner for video triggers
- * - Player uses createPlayerScanner() (real scanner integration)
- * - Player scans via scanner.scanToken() (real HTTP POST implementation)
- * - GM observes broadcasts via gmSocket (tests server video orchestration)
- * - Tests Player scan triggers video → server queues → GM receives status
+ * VLC service methods are mocked at the singleton level (vlcMprisService uses D-Bus MPRIS,
+ * not HTTP). This tests the integration between: player scanner HTTP API → transactionService
+ * → videoQueueService → broadcasts.js → WebSocket delivery.
  *
  * What This Tests:
  * 1. Real Player Scanner correctly sends scan to server (HTTP POST /api/scan)
  * 2. Server processes Player scan and queues video
  * 3. Server broadcasts video:status to GM clients
- * 4. VLC integration and error handling
+ * 4. VLC error handling flows
  *
  * Contract: backend/contracts/openapi.yaml (POST /api/scan), asyncapi.yaml (video:status event)
- * Functional Requirements: Section 2.1 (Player Token Scanning)
  */
 
 // CRITICAL: Load browser mocks FIRST
@@ -27,7 +24,6 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } =
   require('../helpers/integration-test-server');
 const { createPlayerScanner, connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
 const { validateWebSocketEvent } = require('../helpers/contract-validator');
-const MockVlcServer = require('../helpers/mock-vlc-server');
 
 const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
@@ -35,55 +31,89 @@ const transactionService = require('../../src/services/transactionService');
 const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
-const vlcService = require('../../src/services/vlcService');
+const vlcService = require('../../src/services/vlcMprisService');
+const registry = require('../../src/services/serviceHealthRegistry');
 const config = require('../../src/config');
 
 describe('Video Orchestration Integration - REAL Player Scanner', () => {
-  let testContext, playerScanner, gmSocket, mockVlc;
-  let originalVlcHost, originalVlcPort, originalVideoFeature;
+  let testContext, playerScanner, gmSocket;
+  let originalVideoFeature;
+
+  // Stateful VLC mock — simulates VLC playback state transitions
+  let vlcState;
+
+  function resetVlcMockState() {
+    vlcState = { state: 'stopped', currentItem: null, length: 0, position: 0 };
+  }
+
+  function setupVlcMocks() {
+    resetVlcMockState();
+
+    jest.spyOn(vlcService, 'playVideo').mockImplementation(async (videoPath) => {
+      const filename = videoPath.split('/').pop();
+      vlcState.state = 'playing';
+      vlcState.currentItem = filename;
+      vlcState.length = 30;
+      vlcState.position = 0;
+      return {
+        connected: true,
+        state: vlcState.state,
+        currentItem: vlcState.currentItem,
+        position: vlcState.position,
+        length: vlcState.length,
+        time: 0,
+        volume: 256,
+        fullscreen: false,
+        loop: false,
+      };
+    });
+
+    jest.spyOn(vlcService, 'getStatus').mockImplementation(async () => ({
+      connected: true,
+      state: vlcState.state,
+      currentItem: vlcState.currentItem,
+      position: vlcState.position,
+      length: vlcState.length,
+      time: vlcState.position * vlcState.length,
+      volume: 256,
+      fullscreen: false,
+      loop: false,
+    }));
+
+    jest.spyOn(vlcService, 'checkConnection').mockResolvedValue(true);
+    jest.spyOn(vlcService, 'stop').mockImplementation(async () => {
+      vlcState.state = 'stopped';
+      vlcState.currentItem = null;
+    });
+    jest.spyOn(vlcService, 'pause').mockImplementation(async () => {
+      vlcState.state = 'paused';
+    });
+    jest.spyOn(vlcService, 'resume').mockImplementation(async () => {
+      vlcState.state = 'playing';
+    });
+    jest.spyOn(vlcService, 'setLoop').mockResolvedValue();
+    jest.spyOn(vlcService, 'isConnected').mockReturnValue(true);
+
+    // Ensure service health registry reports VLC as healthy
+    registry.report('vlc', 'healthy', 'Integration test mock');
+  }
 
   beforeAll(async () => {
-    // Start mock VLC server FIRST
-    mockVlc = new MockVlcServer();
-    const mockVlcPort = await mockVlc.start();
-
-    // Override VLC config to point to mock
-    originalVlcHost = config.vlc.host;
-    originalVlcPort = config.vlc.port;
+    // Save and set feature flag
     originalVideoFeature = config.features.videoPlayback;
-
-    // CRITICAL: Include port in host when using http:// prefix
-    // vlcService.js checks if host starts with 'http' and uses it directly (no port appended)
-    config.vlc.host = `http://localhost:${mockVlcPort}`;
-    config.vlc.port = mockVlcPort; // For reference, though not used when host has http://
-    config.features.videoPlayback = true; // Enable VLC mode
-
-    // Initialize VLC service with mock
-    vlcService.reset(); // Synchronous - no await needed
-    await vlcService.init();
+    config.features.videoPlayback = true;
 
     // Start integration test server
     testContext = await setupIntegrationTestServer();
   });
 
   afterAll(async () => {
-    // Cleanup test server
     await cleanupIntegrationTestServer(testContext);
-
-    // Stop mock VLC
-    await mockVlc.stop();
-
-    // Restore VLC config
-    config.vlc.host = originalVlcHost;
-    config.vlc.port = originalVlcPort;
     config.features.videoPlayback = originalVideoFeature;
-
-    // Reset VLC service
-    vlcService.reset(); // Synchronous - no await needed
   });
 
   beforeEach(async () => {
-    // Complete reset cycle: cleanup → reset → setup
+    // Complete reset cycle
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
@@ -92,11 +122,8 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       offlineQueueService
     });
 
-    mockVlc.reset();
-
-    // Re-establish VLC health in registry after system reset
-    // (registry.reset() marks all services as 'down', VLC health poll hasn't fired yet)
-    await vlcService.checkConnection();
+    // Setup VLC mocks AFTER reset (reset clears service state)
+    setupVlcMocks();
 
     // Create test session
     await sessionService.createSession({
@@ -108,37 +135,32 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     // Create REAL Player Scanner
     playerScanner = createPlayerScanner(testContext.url, 'PLAYER_SCANNER_01');
 
-    // Wait for initial connection check to complete (scanner checks /health on startup)
+    // Wait for initial connection check to complete
     if (playerScanner.pendingConnectionCheck) {
-      await playerScanner.pendingConnectionCheck.catch(() => {
-        // Ignore connection errors during setup
-      });
+      await playerScanner.pendingConnectionCheck.catch(() => {});
     }
 
-    // Connect GM scanner to observe video:status broadcasts
+    // Connect GM to observe video:status broadcasts
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_VIDEO_TEST');
   });
 
   afterEach(async () => {
     // CRITICAL: Remove all listeners from gmSocket BEFORE disconnecting
-    // Tests use gmSocket.on() without cleanup, causing event listener pollution
     if (gmSocket) {
       gmSocket.removeAllListeners();
     }
 
     if (gmSocket?.connected) gmSocket.disconnect();
 
-    // Clean up Player Scanner (await to ensure pending connection check completes)
+    // Clean up Player Scanner
     if (playerScanner) {
-      playerScanner.clearQueue();  // Clear offline queue
-      await playerScanner.destroy();  // Stop connection monitor + wait for pending check
+      playerScanner.clearQueue();
+      await playerScanner.destroy();
     }
 
     // Clean up state without destroying broadcast listeners
     await resetAllServices();
-    // NOTE: Do NOT reset videoQueueService here - it removes broadcast listeners
-    // Reset happens in beforeEach BEFORE setupBroadcastListeners()
-    mockVlc.reset();
+    jest.restoreAllMocks();
   });
 
   describe('Player Scan → Video Queue → VLC Playback', () => {
@@ -167,7 +189,6 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       validateWebSocketEvent(loadingEvent, 'video:status');
 
       // Wait: For video:playing event (VLC starts playback)
-      // Use predicate to filter for status='playing' (not cached 'loading' event)
       const playingPromise = waitForEvent(gmSocket, 'video:status', (data) => data.data?.status === 'playing');
       const playingEvent = await playingPromise;
 
@@ -181,21 +202,12 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       // Validate: Contract compliance
       validateWebSocketEvent(playingEvent, 'video:status');
 
-      // Verify: Mock VLC received play command
-      const vlcState = mockVlc.getMockState();
-      expect(vlcState.state).toBe('playing');
-      expect(vlcState.currentVideo).toContain('test_30sec.mp4');
-      expect(vlcState.currentLength).toBe(30);
+      // Verify: VLC service received play command
+      expect(vlcService.playVideo).toHaveBeenCalledWith('test_30sec.mp4');
     });
-
-    // NOTE: HTTP 409 conflict test moved to tests/contract/http/scan.test.js
-    // Integration tests should focus on happy path, edge cases belong in contract/unit tests
   });
 
   describe('Queue Management - Sequential Playback', () => {
-    // NOTE: Sequential playback and state transition tests moved to tests/unit/services/videoQueueService.test.js
-    // Those tests used manual emit() calls which is white-box unit testing, not integration testing
-
     it('should track queue length accurately during transitions', async () => {
       // Listen for all video:status events
       const statusEvents = [];
@@ -220,40 +232,27 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
   });
 
   describe('VLC Error Handling', () => {
-    it('should broadcast error status when VLC fails', async () => {
-      // Setup: Configure mock to fail next command
-      mockVlc.simulateFailure('VLC connection lost');
+    it('should broadcast error status when VLC play fails', async () => {
+      // Override playVideo to fail on next call
+      vlcService.playVideo.mockRejectedValueOnce(new Error('VLC connection lost'));
 
-      // Listen for error event
-      const errorPromise = waitForEvent(gmSocket, 'video:status');
+      // Listen for error event with predicate (skip loading event)
+      const errorPromise = waitForEvent(gmSocket, 'video:status', (data) => data.data?.status === 'error');
 
-      // Trigger: REAL Player Scanner scans video (will attempt to play via VLC)
+      // Trigger: REAL Player Scanner scans video
       await playerScanner.scanToken('534e2b03', null);
 
-      // Wait for loading event
-      await waitForEvent(gmSocket, 'video:status'); // loading
-
-      // VLC playback should fail
+      // Wait for error broadcast
       const errorEvent = await errorPromise;
 
       // Validate: video:status with status=error
-      // NOTE: This test will REVEAL actual error handling behavior
-      // If implementation doesn't broadcast errors correctly, test will fail
       expect(errorEvent.event).toBe('video:status');
+      expect(errorEvent.data.status).toBe('error');
+      expect(errorEvent.data.tokenId).toBe('534e2b03');
+      expect(errorEvent.data.error).toBeDefined();
 
-      // Check if error status is broadcast (contract allows "error" status)
-      if (errorEvent.data.status === 'error') {
-        expect(errorEvent.data.error).toBeDefined();
-        expect(errorEvent.data.tokenId).toBe('534e2b03');
-
-        // Validate: Contract compliance
-        validateWebSocketEvent(errorEvent, 'video:status');
-      } else {
-        // If not broadcasting error status, this is a bug we need to fix
-        // Test REVEALS that implementation doesn't handle VLC errors correctly
-        console.warn('ISSUE DISCOVERED: VLC error not broadcast as video:status with status=error');
-        console.warn('Actual status:', errorEvent.data.status);
-      }
+      // Validate: Contract compliance
+      validateWebSocketEvent(errorEvent, 'video:status');
     });
 
     it('should handle invalid video tokens gracefully', async () => {
@@ -272,7 +271,6 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       transactionService.tokens.set('bad_video_token', badVideoToken);
 
       // CRITICAL: Collect ALL video:status events to avoid race condition
-      // Events emit quickly: loading → error → idle (all within milliseconds)
       const videoStatusEvents = [];
       gmSocket.on('video:status', (event) => {
         videoStatusEvents.push(event);
@@ -295,7 +293,6 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       const errorEvent = videoStatusEvents.find(e => e.data.status === 'error');
 
       // Validate: Error handling
-      // This test REVEALS how videoQueueService handles invalid videos
       expect(errorEvent).toBeDefined();
       expect(errorEvent.data.error).toBeDefined();
       expect(errorEvent.data.error).toContain('not found');
@@ -309,7 +306,6 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
   describe('Video State Transitions', () => {
     it('should broadcast idle status when queue is empty', async () => {
       // System should start in idle state or transition to idle
-      // Listen for idle event
       const idlePromise = waitForEvent(gmSocket, 'video:status', 2000);
 
       try {
@@ -327,12 +323,5 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
         // This is acceptable - idle might not be broadcast initially
       }
     });
-
-    // NOTE: State transition test moved to tests/unit/services/videoQueueService.test.js
-    // Manual emit() calls are white-box unit testing, not integration testing
   });
-
-  // NOTE: Contract compliance testing for video:status events is in tests/contract/websocket/video-events.test.js
-  // That file comprehensively tests all 6 status types (idle, loading, playing, paused, completed, error)
-  // Integration tests focus on behavior and flows, using validateWebSocketEvent() as sanity checks only
 });

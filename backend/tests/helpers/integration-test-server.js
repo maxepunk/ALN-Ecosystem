@@ -159,7 +159,7 @@ async function setupIntegrationTestServer() {
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
   const spotifyService = require('../../src/services/spotifyService');
-  const vlcService = require('../../src/services/vlcService');
+  const vlcService = require('../../src/services/vlcMprisService');
 
   setupBroadcastListeners(io, {
     sessionService,
@@ -242,7 +242,7 @@ async function cleanupIntegrationTestServer(context) {
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
   const spotifyService = require('../../src/services/spotifyService');
-  const vlcService = require('../../src/services/vlcService');
+  const vlcService = require('../../src/services/vlcMprisService');
 
   await sessionService.reset();
   await transactionService.reset();

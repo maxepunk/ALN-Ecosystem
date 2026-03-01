@@ -84,7 +84,7 @@ jest.mock('../../../src/services/videoQueueService', () => ({
   removeListener: jest.fn(),
 }));
 
-jest.mock('../../../src/services/vlcService', () => ({
+jest.mock('../../../src/services/vlcMprisService', () => ({
   resume: jest.fn(),
   pause: jest.fn(),
   stop: jest.fn(),

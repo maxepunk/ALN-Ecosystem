@@ -76,7 +76,6 @@ const TEST_ENV = {
   NODE_ENV: 'test',
   PORT: process.env.TEST_PORT || '3000',
   HOST: '0.0.0.0',
-  VLC_PASSWORD: 'vlc',
   FEATURE_VIDEO_PLAYBACK: 'true',
   ADMIN_PASSWORD: process.env.TEST_ADMIN_PASSWORD || '@LN-c0nn3ct',
   LOG_LEVEL: 'warn', // Reduce noise in test output

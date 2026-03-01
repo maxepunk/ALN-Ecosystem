@@ -33,7 +33,7 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
         await clearSessionData();
         // VLC must be set up BEFORE orchestrator starts (vlcService connects on startup)
         vlcInfo = await setupVLC();
-        console.log(`VLC started: ${vlcInfo.type} mode on port ${vlcInfo.port}`);
+        console.log(`VLC started: ${vlcInfo.type} mode`);
         orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
         browser = await chromium.launch({
             headless: true,

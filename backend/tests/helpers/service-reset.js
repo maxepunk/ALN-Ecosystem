@@ -282,7 +282,7 @@ async function resetAllServicesForTesting(io, services, options = {}) {
   const fullServices = {
     ...services,
     displayControlService: services.displayControlService || require('../../src/services/displayControlService'),
-    vlcService: services.vlcService || require('../../src/services/vlcService')
+    vlcService: services.vlcService || require('../../src/services/vlcMprisService')
   };
 
   await performSystemReset(io, fullServices);

@@ -637,7 +637,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       case 'service:check': {
         const HEALTH_CHECKS = {
-          vlc: () => require('./vlcService').checkConnection(),
+          vlc: () => require('./vlcMprisService').checkConnection(),
           spotify: () => spotifyService.checkConnection(),
           lighting: () => lightingService.checkConnection(),
           bluetooth: () => bluetoothService.isAvailable(),

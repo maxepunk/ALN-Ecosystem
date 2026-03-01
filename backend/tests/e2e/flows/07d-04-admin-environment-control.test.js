@@ -76,7 +76,7 @@ test.describe('GM Scanner - Environment Control', () => {
   test.beforeAll(async () => {
     await clearSessionData();
     vlcInfo = await setupVLC();
-    console.log(`VLC started: ${vlcInfo.type} mode on port ${vlcInfo.port}`);
+    console.log(`VLC started: ${vlcInfo.type} mode`);
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
     browser = await chromium.launch({
       headless: true,
