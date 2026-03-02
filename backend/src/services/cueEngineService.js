@@ -896,10 +896,14 @@ class CueEngineService extends EventEmitter {
     // Cascade stop to video AFTER deleting from activeCues
     // (prevents feedback loop: skipCurrent→video:completed→handleVideoLifecycleEvent→cue not found→no-op)
     if (activeCue.hasVideo && activeCue.videoStarted) {
-      const videoQueueService = require('./videoQueueService');
-      await videoQueueService.skipCurrent();
-      videoQueueService.clearQueue();
-      logger.info(`[CueEngine] Cascaded stop to video for cue: ${cueId}`);
+      try {
+        const videoQueueService = require('./videoQueueService');
+        await videoQueueService.skipCurrent();
+        videoQueueService.clearQueue();
+        logger.info(`[CueEngine] Cascaded stop to video for cue: ${cueId}`);
+      } catch (err) {
+        logger.error(`[CueEngine] Failed to cascade stop to video for cue: ${cueId}`, err.message);
+      }
     }
 
     this.emit('cue:status', { cueId, state: 'stopped' });
@@ -924,8 +928,12 @@ class CueEngineService extends EventEmitter {
     // Cascade pause to video (AFTER setting state='paused' to prevent feedback loop:
     // pauseCurrent→video:paused→handleVideoPaused→guard activeCue.state!=='running'→skips)
     if (activeCue.hasVideo && activeCue.videoStarted) {
-      const videoQueueService = require('./videoQueueService');
-      await videoQueueService.pauseCurrent();
+      try {
+        const videoQueueService = require('./videoQueueService');
+        await videoQueueService.pauseCurrent();
+      } catch (err) {
+        logger.error(`[CueEngine] Failed to cascade pause to video for cue: ${cueId}`, err.message);
+      }
     }
 
     // Cascade pause to children (same pattern as stopCue)
@@ -958,8 +966,12 @@ class CueEngineService extends EventEmitter {
     // Cascade resume to video (AFTER setting state='running' to prevent feedback loop:
     // resumeCurrent→video:resumed→handleVideoResumed→guard activeCue.state!=='paused'→skips)
     if (activeCue.hasVideo && activeCue.videoStarted) {
-      const videoQueueService = require('./videoQueueService');
-      await videoQueueService.resumeCurrent();
+      try {
+        const videoQueueService = require('./videoQueueService');
+        await videoQueueService.resumeCurrent();
+      } catch (err) {
+        logger.error(`[CueEngine] Failed to cascade resume to video for cue: ${cueId}`, err.message);
+      }
     }
 
     // Cascade resume to children
