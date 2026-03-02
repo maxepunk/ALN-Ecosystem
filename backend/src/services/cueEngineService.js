@@ -892,6 +892,16 @@ class CueEngineService extends EventEmitter {
     logger.info(`[CueEngine] Stopping compound cue: ${cueId}`);
     activeCue.state = 'stopped';
     this.activeCues.delete(cueId);
+
+    // Cascade stop to video AFTER deleting from activeCues
+    // (prevents feedback loop: skipCurrent→video:completed→handleVideoLifecycleEvent→cue not found→no-op)
+    if (activeCue.hasVideo && activeCue.videoStarted) {
+      const videoQueueService = require('./videoQueueService');
+      await videoQueueService.skipCurrent();
+      videoQueueService.clearQueue();
+      logger.info(`[CueEngine] Cascaded stop to video for cue: ${cueId}`);
+    }
+
     this.emit('cue:status', { cueId, state: 'stopped' });
   }
 

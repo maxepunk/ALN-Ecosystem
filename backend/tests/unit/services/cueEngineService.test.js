@@ -1165,6 +1165,98 @@ describe('CueEngineService', () => {
     });
   });
 
+  describe('video cascade (cue→video lifecycle)', () => {
+    let videoQueueService;
+
+    beforeEach(() => {
+      jest.mock('../../../src/services/videoQueueService', () => ({
+        isPlaying: jest.fn().mockReturnValue(false),
+        getCurrentVideo: jest.fn().mockReturnValue(null),
+        skipCurrent: jest.fn().mockResolvedValue(true),
+        pauseCurrent: jest.fn().mockResolvedValue(true),
+        resumeCurrent: jest.fn().mockResolvedValue(true),
+        clearQueue: jest.fn(),
+      }));
+      videoQueueService = require('../../../src/services/videoQueueService');
+    });
+
+    it('should cascade stop to video for video-driven cue with videoStarted', async () => {
+      cueEngineService.loadCues([{
+        id: 'stop-video-cue', label: 'Stop Video',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'endgame.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'mid.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('stop-video-cue');
+
+      // Simulate video started
+      const activeCue = cueEngineService.activeCues.get('stop-video-cue');
+      activeCue.videoStarted = true;
+
+      await cueEngineService.stopCue('stop-video-cue');
+
+      expect(videoQueueService.skipCurrent).toHaveBeenCalled();
+      expect(videoQueueService.clearQueue).toHaveBeenCalled();
+      expect(cueEngineService.activeCues.has('stop-video-cue')).toBe(false);
+    });
+
+    it('should NOT cascade stop to video when videoStarted is false', async () => {
+      cueEngineService.loadCues([{
+        id: 'stop-no-video-started', label: 'No Video Yet',
+        timeline: [
+          { at: 60, action: 'video:queue:add', payload: { videoFile: 'later.mp4' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('stop-no-video-started');
+
+      // videoStarted is false (video entry at t=60 hasn't fired)
+      await cueEngineService.stopCue('stop-no-video-started');
+
+      expect(videoQueueService.skipCurrent).not.toHaveBeenCalled();
+    });
+
+    it('should NOT cascade stop to video for non-video cue', async () => {
+      cueEngineService.loadCues([{
+        id: 'stop-no-video', label: 'No Video',
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'start.wav' } },
+          { at: 60, action: 'lighting:scene:activate', payload: { sceneId: 'dim' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('stop-no-video');
+      await cueEngineService.stopCue('stop-no-video');
+
+      expect(videoQueueService.skipCurrent).not.toHaveBeenCalled();
+    });
+
+    it('should delete from activeCues BEFORE video cascade (feedback loop prevention)', async () => {
+      cueEngineService.loadCues([{
+        id: 'stop-order', label: 'Stop Order',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('stop-order');
+      const activeCue = cueEngineService.activeCues.get('stop-order');
+      activeCue.videoStarted = true;
+
+      // When skipCurrent is called, verify cue is already deleted from activeCues
+      videoQueueService.skipCurrent.mockImplementation(async () => {
+        // At this point in stopCue, activeCues should already be cleared
+        expect(cueEngineService.activeCues.has('stop-order')).toBe(false);
+        return true;
+      });
+
+      await cueEngineService.stopCue('stop-order');
+    });
+  });
+
   describe('reset() — compound cue state cleanup', () => {
     it('should clear activeCues map on reset', () => {
       // Manually add an active cue entry
