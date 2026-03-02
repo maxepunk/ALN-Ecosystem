@@ -877,6 +877,86 @@ describe('CueEngineService', () => {
       expect(result[0].duration).toBe(120);     // maxAt (videoDuration is 0)
       expect(result[0].progress).toBe(0.5);     // 60/120 = 0.5
     });
+
+    it('should NOT complete video-driven cue via _checkCompoundCueCompletion', async () => {
+      const completedHandler = jest.fn();
+      cueEngineService.on('cue:completed', completedHandler);
+
+      cueEngineService.loadCues([{
+        id: 'vd-no-elapsed-complete', label: 'VD No Elapsed',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 541, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-no-elapsed-complete');
+      completedHandler.mockClear();
+
+      // Set videoStarted and advance past maxAt
+      const activeCue = cueEngineService.activeCues.get('vd-no-elapsed-complete');
+      activeCue.videoStarted = true;
+      activeCue.elapsed = 600;  // past maxAt of 541
+      activeCue.firedEntries = new Set([0, 1]);
+
+      // This should NOT complete the cue (video hasn't completed yet)
+      cueEngineService._checkCompoundCueCompletion('vd-no-elapsed-complete');
+
+      expect(completedHandler).not.toHaveBeenCalled();
+      expect(cueEngineService.activeCues.has('vd-no-elapsed-complete')).toBe(true);
+    });
+
+    it('should complete video-driven cue on handleVideoLifecycleEvent completed', async () => {
+      const completedHandler = jest.fn();
+      cueEngineService.on('cue:completed', completedHandler);
+
+      cueEngineService.loadCues([{
+        id: 'vd-video-complete', label: 'VD Video Complete',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 30, action: 'sound:play', payload: { file: 'mid.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-video-complete');
+      completedHandler.mockClear();
+
+      // Simulate video started
+      const activeCue = cueEngineService.activeCues.get('vd-video-complete');
+      activeCue.videoStarted = true;
+      activeCue.completedCommands = [{ action: 'video:queue:add' }, { action: 'sound:play' }];
+
+      // Simulate video:completed lifecycle event
+      cueEngineService.handleVideoLifecycleEvent('completed', {});
+
+      expect(completedHandler).toHaveBeenCalledWith(expect.objectContaining({
+        cueId: 'vd-video-complete',
+      }));
+      expect(cueEngineService.activeCues.has('vd-video-complete')).toBe(false);
+    });
+
+    it('should NOT complete cue on video:completed if videoStarted is false', async () => {
+      const completedHandler = jest.fn();
+      cueEngineService.on('cue:completed', completedHandler);
+
+      cueEngineService.loadCues([{
+        id: 'vd-not-started', label: 'VD Not Started',
+        timeline: [
+          { at: 60, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 120, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-not-started');
+      completedHandler.mockClear();
+
+      // videoStarted is false (video entry is at t=60, hasn't fired yet)
+      // An unrelated video:completed should NOT affect this cue
+      cueEngineService.handleVideoLifecycleEvent('completed', {});
+
+      expect(completedHandler).not.toHaveBeenCalled();
+      expect(cueEngineService.activeCues.has('vd-not-started')).toBe(true);
+    });
   });
 
   describe('timeline error handling (D36)', () => {

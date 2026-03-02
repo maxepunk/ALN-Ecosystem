@@ -693,6 +693,9 @@ class CueEngineService extends EventEmitter {
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue || activeCue.state !== 'running') return;
 
+    // Video-driven cues complete via handleVideoLifecycleEvent('completed'), not elapsed check
+    if (activeCue.hasVideo && activeCue.videoStarted) return;
+
     const { timeline, firedEntries, maxAt, elapsed } = activeCue;
 
     // All entries must be fired AND elapsed must be >= max(at)
@@ -851,10 +854,13 @@ class CueEngineService extends EventEmitter {
       } else if (eventType === 'resumed') {
         this.handleVideoResumed(cueId);
       } else if (eventType === 'completed') {
-        // Video completed - cue should complete naturally via _checkCompoundCueCompletion
-        // Just ensure the cue advances to the end position
-        const maxAt = activeCue.maxAt || 0;
-        this.handleVideoProgress(cueId, maxAt);
+        // Guard: ignore video:completed from unrelated videos
+        if (!activeCue.videoStarted) continue;
+        // Video IS the cue's spine — video end = cue complete
+        const { completedCommands, failedCommands } = activeCue;
+        logger.info(`[CueEngine] Video-driven cue completed: ${cueId}`);
+        this.activeCues.delete(cueId);
+        this.emit('cue:completed', { cueId, completedCommands, failedCommands });
       }
     }
   }
