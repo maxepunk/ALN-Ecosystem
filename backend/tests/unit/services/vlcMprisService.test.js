@@ -362,20 +362,21 @@ describe('VlcMprisService', () => {
 
   describe('getStatus', () => {
     it('should return backward-compatible status shape', async () => {
-      // Set internal state as if D-Bus monitor has been running
-      vlcMprisService.state = 'playing';
       vlcMprisService.volume = 50; // internal 0-100
       vlcMprisService._rawVolume = 0.5; // raw MPRIS value for lossless 0-256 conversion
-      vlcMprisService.track = {
-        url: 'file:///path/to/video.mp4',
-        filename: 'video.mp4',
-        length: 120,
-      };
       vlcMprisService._loopEnabled = false;
 
-      // Mock Position property read: 60 seconds = 60000000 microseconds
+      // Mock D-Bus property reads: PlaybackStatus, Metadata, Position
       execFile.mockImplementation((cmd, args, opts, cb) => {
-        cb(null, '   variant       int64 60000000\n', '');
+        const argsStr = args.join(' ');
+        if (argsStr.includes('PlaybackStatus')) {
+          cb(null, '   variant       string "Playing"\n', '');
+        } else if (argsStr.includes('Metadata')) {
+          cb(null, '   variant       array [\n      dict entry(\n         string "xesam:url"\n         variant             string "file:///path/to/video.mp4"\n      )\n      dict entry(\n         string "mpris:length"\n         variant             int64 120000000\n      )\n   ]\n', '');
+        } else {
+          // Position: 60 seconds = 60000000 microseconds
+          cb(null, '   variant       int64 60000000\n', '');
+        }
       });
 
       const status = await vlcMprisService.getStatus();
@@ -387,7 +388,7 @@ describe('VlcMprisService', () => {
         position: 0.5,   // 60/120 = 0.5 ratio
         length: 120,      // seconds
         time: 60,         // seconds
-        volume: 128,      // 50 * 256/100 ≈ 128
+        volume: 128,      // 0.5 * 256 = 128
         fullscreen: false,
         loop: false,
       }));
@@ -398,7 +399,15 @@ describe('VlcMprisService', () => {
       vlcMprisService.track = null;
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
-        cb(null, '   variant       int64 0\n', '');
+        const argsStr = args.join(' ');
+        if (argsStr.includes('PlaybackStatus')) {
+          cb(null, '   variant       string "Stopped"\n', '');
+        } else if (argsStr.includes('Metadata')) {
+          // Empty metadata — no xesam:url
+          cb(null, '   variant       array [\n   ]\n', '');
+        } else {
+          cb(null, '   variant       int64 0\n', '');
+        }
       });
 
       const status = await vlcMprisService.getStatus();
