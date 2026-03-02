@@ -782,6 +782,61 @@ describe('CueEngineService', () => {
       const activeCue = cueEngineService.activeCues.get('vd-no-overwrite');
       expect(activeCue.videoDuration).toBe(660); // First value kept
     });
+
+    it('should emit cue:status from handleVideoProgress for UI updates', async () => {
+      const statusHandler = jest.fn();
+      cueEngineService.on('cue:status', statusHandler);
+
+      cueEngineService.loadCues([{
+        id: 'vd-progress', label: 'VD Progress',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'mid.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-progress');
+      statusHandler.mockClear(); // Clear the cue:started status emission
+
+      // Set videoDuration on the activeCue (normally set by handleVideoProgressEvent)
+      const activeCue = cueEngineService.activeCues.get('vd-progress');
+      activeCue.videoDuration = 660;
+
+      // Call handleVideoProgress directly with 330 seconds
+      cueEngineService.handleVideoProgress('vd-progress', 330);
+
+      expect(statusHandler).toHaveBeenCalledWith(expect.objectContaining({
+        cueId: 'vd-progress',
+        state: 'running',
+        progress: 50,  // 330/660 * 100 = 50
+        duration: 660,
+      }));
+    });
+
+    it('should use maxAt for progress when videoDuration is 0', async () => {
+      const statusHandler = jest.fn();
+      cueEngineService.on('cue:status', statusHandler);
+
+      cueEngineService.loadCues([{
+        id: 'vd-maxat', label: 'VD MaxAt',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 100, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-maxat');
+      statusHandler.mockClear();
+
+      // videoDuration is 0 (no progress event yet), maxAt is 100
+      cueEngineService.handleVideoProgress('vd-maxat', 50);
+
+      expect(statusHandler).toHaveBeenCalledWith(expect.objectContaining({
+        cueId: 'vd-maxat',
+        progress: 50,  // 50/100 * 100 = 50
+        duration: 100,  // Falls back to maxAt
+      }));
+    });
   });
 
   describe('timeline error handling (D36)', () => {

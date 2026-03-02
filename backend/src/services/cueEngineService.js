@@ -754,6 +754,16 @@ class CueEngineService extends EventEmitter {
 
     activeCue.elapsed = position;
 
+    // Emit progress for UI (video-driven cues skip _tickActiveCompoundCues)
+    const videoDuration = activeCue.videoDuration || activeCue.maxAt;
+    const progress = videoDuration > 0 ? Math.min(100, (position / videoDuration) * 100) : 0;
+    this.emit('cue:status', {
+      cueId,
+      state: activeCue.state,
+      progress,
+      duration: videoDuration,
+    });
+
     this._fireTimelineEntries(cueId, position).catch(err => {
       logger.error(`[CueEngine] Error advancing video-driven cue "${cueId}":`, err.message);
     });
