@@ -726,6 +726,23 @@ describe('CueEngineService', () => {
       cueEngineService.handleVideoPaused('video-pause-cue');
       expect(cueEngineService.getActiveCues()[0].state).toBe('paused');
     });
+
+    it('should initialize videoDuration to 0 in activeCue', async () => {
+      cueEngineService.loadCues([{
+        id: 'vd-init', label: 'VD Init',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 60, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-init');
+
+      const activeCue = cueEngineService.activeCues.get('vd-init');
+      expect(activeCue).toBeDefined();
+      expect(activeCue.videoDuration).toBe(0);
+      expect(activeCue.videoStarted).toBe(false);
+    });
   });
 
   describe('timeline error handling (D36)', () => {

@@ -143,7 +143,7 @@ class CueEngineService extends EventEmitter {
       newCues.set(cue.id, {
         ...cue,
         commands: cue.commands || [],
-        conditions: cue.conditions || [],
+        conditions: cue.trigger?.conditions || cue.conditions || [],
         once: cue.once || false,
         quickFire: cue.quickFire || false,
         icon: cue.icon || null,
@@ -317,12 +317,14 @@ class CueEngineService extends EventEmitter {
 
     for (const cmd of cue.commands) {
       try {
-        await executeCommand({
+        const result = await executeCommand({
           action: cmd.action,
           payload: cmd.payload || {},
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
+        // Await completion if command provides one (e.g., sound:play waits for pw-play exit)
+        if (result.data?.completion) await result.data.completion;
         completedCommands.push({ action: cmd.action });
       } catch (err) {
         logger.error(`[CueEngine] Command failed in cue "${cueId}": ${cmd.action}`, err.message);
@@ -415,6 +417,34 @@ class CueEngineService extends EventEmitter {
       this.fireCue(cue.id, `event:${eventName}`).catch(err => {
         logger.error(`[CueEngine] Failed to fire cue "${cue.id}" from event "${eventName}":`, err.message);
       });
+    }
+  }
+
+  /**
+   * Fire all matching event-triggered standing cues and AWAIT their completion.
+   * Unlike handleGameEvent() (fire-and-forget), this blocks until all matched cues finish.
+   * Does NOT check this.active — pre-play hooks are playback UX, not game state.
+   *
+   * @param {string} eventName - The internal event name (e.g., 'video:loading')
+   * @param {Object} payload - The raw event payload
+   */
+  async fireEventCuesAndWait(eventName, payload) {
+    const normalizer = EVENT_NORMALIZERS[eventName];
+    const context = normalizer ? normalizer(payload) : payload;
+
+    const matchingCues = this.getStandingCues().filter(cue => {
+      if (!cue.trigger.event) return false;
+      if (cue.trigger.event !== eventName) return false;
+      if (this.disabledCues.has(cue.id)) return false;
+      return this.evaluateConditions(cue.conditions, context);
+    });
+
+    for (const cue of matchingCues) {
+      try {
+        await this.fireCue(cue.id, `event:${eventName}`);
+      } catch (err) {
+        logger.error(`[CueEngine] fireEventCuesAndWait: cue "${cue.id}" failed:`, err.message);
+      }
     }
   }
 
@@ -533,6 +563,8 @@ class CueEngineService extends EventEmitter {
       spawnedBy,
       children: new Set(),
       hasVideo,
+      videoStarted: false,
+      videoDuration: 0,    // Actual video duration (set by handleVideoProgressEvent)
       parentChain: chain,
     };
 
@@ -684,7 +716,7 @@ class CueEngineService extends EventEmitter {
   _tickActiveCompoundCues(elapsed) {
     for (const [cueId, activeCue] of this.activeCues) {
       if (activeCue.state !== 'running') continue;
-      if (activeCue.hasVideo) continue; // Video-driven cues use handleVideoProgress
+      if (activeCue.hasVideo && activeCue.videoStarted) continue; // Video-driven cues use handleVideoProgress once started
 
       const relativeElapsed = elapsed - activeCue.startElapsed;
       activeCue.elapsed = relativeElapsed;
@@ -779,6 +811,10 @@ class CueEngineService extends EventEmitter {
     // Forward to all active video-driven cues
     for (const [cueId, activeCue] of this.activeCues) {
       if (activeCue.hasVideo && activeCue.state === 'running') {
+        if (!activeCue.videoStarted) {
+          activeCue.videoStarted = true;
+          logger.info(`[CueEngine] Video progress received, switching to video-driven: ${cueId}`);
+        }
         this.handleVideoProgress(cueId, positionSeconds);
       }
     }
@@ -994,7 +1030,7 @@ class CueEngineService extends EventEmitter {
       result.push({
         cueId,
         state: activeCue.state,
-        progress: activeCue.elapsed,
+        progress: activeCue.maxAt > 0 ? activeCue.elapsed / activeCue.maxAt : 0,
         duration: activeCue.maxAt,
       });
     }
