@@ -140,24 +140,26 @@ describe('configManager', () => {
   });
 
   describe('assets', () => {
-    it('lists sound files', () => {
+    it('lists sound files with duration', async () => {
       fs.writeFileSync(path.join(tmpDir, 'sounds', 'test.wav'), 'fake');
-      const sounds = configManager.listSounds();
+      const sounds = await configManager.listSounds();
       assert.strictEqual(sounds.length, 1);
       assert.strictEqual(sounds[0].name, 'test.wav');
+      assert.strictEqual(sounds[0].duration, null); // fake file has no valid duration
     });
 
-    it('lists video files', () => {
+    it('lists video files with duration', async () => {
       fs.writeFileSync(path.join(tmpDir, 'videos', 'test.mp4'), 'fake');
-      const videos = configManager.listVideos();
+      const videos = await configManager.listVideos();
       assert.strictEqual(videos.length, 1);
       assert.strictEqual(videos[0].name, 'test.mp4');
+      assert.strictEqual(videos[0].duration, null); // fake file has no valid duration
     });
 
-    it('deletes an asset', () => {
+    it('deletes an asset', async () => {
       fs.writeFileSync(path.join(tmpDir, 'sounds', 'delete-me.wav'), 'fake');
       configManager.deleteAsset('sounds', 'delete-me.wav');
-      assert.strictEqual(configManager.listSounds().length, 0);
+      assert.strictEqual((await configManager.listSounds()).length, 0);
     });
 
     it('prevents path traversal in delete', () => {

@@ -3,7 +3,7 @@
  * Visual timeline for compound cues with drag-to-reposition and inline editing.
  */
 import { el } from '../utils/formatting.js';
-import { ACTION_DEFS, buildPayloadField, ensureAssets } from './commandForm.js';
+import { ACTION_DEFS, buildPayloadField, ensureAssets, getAssetDuration } from './commandForm.js';
 
 const CATEGORY_COLORS = {
   sound: '#4285f4',
@@ -57,11 +57,11 @@ export function renderTimelineView(container, cue, allCues, editorCtx) {
       refreshTimeline();
     },
   });
+  const autoLabel = el('span', { style: { fontSize: '11px', color: 'var(--text-muted)' } }, '');
   durationRow.append(
     el('span', { style: { fontSize: '12px', color: 'var(--text-muted)' } }, 'Duration (s):'),
     durInput,
-    el('span', { style: { fontSize: '11px', color: 'var(--text-muted)' } },
-      `Auto: ${getMaxAt(cue)}s`),
+    autoLabel,
   );
   card.appendChild(durationRow);
 
@@ -76,11 +76,13 @@ export function renderTimelineView(container, cue, allCues, editorCtx) {
   container.appendChild(card);
 
   function refreshTimeline() {
+    const autoEnd = Math.round(getTimelineEnd(cue) * 10) / 10;
+    autoLabel.textContent = `Auto: ${autoEnd}s`;
     renderVisualTimeline(timelineOuter, cue, editorCtx, refreshTimeline);
     renderEntryList(entryListDiv, cue, allCues, editorCtx, refreshTimeline);
   }
 
-  // Load assets for pickers, then render
+  // Load assets for pickers, then render (auto label updates with durations)
   ensureAssets().then(() => refreshTimeline());
 }
 
@@ -105,18 +107,28 @@ function buildZoomSlider(onChange) {
   return slider;
 }
 
-function getMaxAt(cue) {
+function getTimelineEnd(cue) {
   if (!cue.timeline || cue.timeline.length === 0) return 0;
-  return Math.max(...cue.timeline.map(e => e.at));
+  return Math.max(...cue.timeline.map(e => e.at + getEntryDuration(e)));
 }
 
 function getDuration(cue) {
-  return cue.duration || (getMaxAt(cue) + 1);
+  return cue.duration || Math.ceil(getTimelineEnd(cue)) || 1;
 }
 
 function getCategoryForAction(action) {
   const def = ACTION_DEFS[action];
   return def ? def.category : 'display';
+}
+
+function getEntryDuration(entry) {
+  if (entry.action === 'sound:play' && entry.payload?.file) {
+    return getAssetDuration('sound:play', entry.payload.file) || 1;
+  }
+  if (entry.action === 'video:queue:add' && entry.payload?.videoFile) {
+    return getAssetDuration('video:queue:add', entry.payload.videoFile) || 1;
+  }
+  return 1;
 }
 
 function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
@@ -126,6 +138,10 @@ function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
     return;
   }
 
+  const rulerHeight = 28;
+  const rowHeight = 32;
+  const bottomPad = 8;
+
   const duration = getDuration(cue);
   const totalWidth = duration * pxPerSec;
 
@@ -134,12 +150,12 @@ function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
       position: 'relative',
       width: `${totalWidth}px`,
       minHeight: '80px',
-      padding: '28px 0 8px',
+      padding: `${rulerHeight}px 0 ${bottomPad}px`,
     },
   });
 
   // Ruler
-  const ruler = el('div', { className: 'timeline-ruler', style: { width: `${totalWidth}px` } });
+  const ruler = el('div', { className: 'timeline-ruler', style: { width: `${totalWidth}px`, position: 'absolute', top: '0', left: '0' } });
   for (let t = 0; t <= duration; t++) {
     const tick = el('div', {
       style: {
@@ -158,31 +174,50 @@ function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
   }
   canvas.appendChild(ruler);
 
-  // Place blocks — simple stacking (row per block for now)
+  // Sort entries by start time
   const sorted = cue.timeline
-    .map((entry, i) => ({ entry, originalIndex: i }))
+    .map((entry, i) => ({ entry, originalIndex: i, blockDuration: getEntryDuration(entry) }))
     .sort((a, b) => a.entry.at - b.entry.at);
 
-  sorted.forEach(({ entry, originalIndex }, row) => {
+  // Lane packing: assign each entry to the first lane where it doesn't overlap
+  const lanes = []; // each lane: array of { end } intervals
+  for (const item of sorted) {
+    const start = item.entry.at;
+    const end = start + item.blockDuration;
+    let assigned = -1;
+    for (let l = 0; l < lanes.length; l++) {
+      const fits = lanes[l].every(interval => start >= interval.end || end <= interval.start);
+      if (fits) { assigned = l; break; }
+    }
+    if (assigned === -1) {
+      assigned = lanes.length;
+      lanes.push([]);
+    }
+    lanes[assigned].push({ start, end });
+    item.lane = assigned;
+  }
+
+  const laneCount = Math.max(lanes.length, 1);
+
+  sorted.forEach(({ entry, originalIndex, blockDuration, lane }) => {
     const cat = getCategoryForAction(entry.action);
-    const color = CATEGORY_COLORS[cat] || CATEGORY_COLORS.display;
     const def = ACTION_DEFS[entry.action];
     const label = def ? def.label : entry.action;
+    const blockWidth = blockDuration * pxPerSec;
 
     const block = el('div', {
       className: `timeline-block timeline-block--${cat}`,
       style: {
         left: `${entry.at * pxPerSec}px`,
-        top: `${28 + row * 32}px`,
-        minWidth: `${Math.max(pxPerSec * 0.8, 60)}px`,
+        top: `${rulerHeight + lane * rowHeight}px`,
+        width: `${blockWidth}px`,
+        minWidth: `${Math.min(blockWidth, 60)}px`,
       },
     }, label);
 
     // Drag to reposition
     block.draggable = true;
-    let dragStartX = 0;
     block.addEventListener('dragstart', (e) => {
-      dragStartX = e.clientX;
       e.dataTransfer.setData('text/plain', String(originalIndex));
       block.style.opacity = '0.5';
     });
@@ -207,7 +242,7 @@ function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
   });
 
   // Adjust container height
-  canvas.style.minHeight = `${28 + sorted.length * 32 + 8}px`;
+  canvas.style.minHeight = `${rulerHeight + laneCount * rowHeight + bottomPad}px`;
 
   timelineOuter.appendChild(canvas);
 }

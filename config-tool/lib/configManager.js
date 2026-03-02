@@ -1,6 +1,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const { execFile } = require('child_process');
 const { readEnv, writeEnv } = require('./envParser');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
@@ -80,16 +81,35 @@ class ConfigManager {
     return this._listFiles(this._getVideosDir(), ['.mp4']);
   }
 
-  _listFiles(dir, extensions) {
+  async _listFiles(dir, extensions) {
     if (!fs.existsSync(dir)) return [];
     const results = [];
     for (const f of fs.readdirSync(dir)) {
       if (!extensions.includes(path.extname(f).toLowerCase())) continue;
       const stat = fs.statSync(path.join(dir, f));
       if (!stat.isFile()) continue;
-      results.push({ name: f, size: stat.size, modified: stat.mtime.toISOString() });
+      const duration = await this._getFileDuration(path.join(dir, f));
+      results.push({ name: f, size: stat.size, modified: stat.mtime.toISOString(), duration });
     }
     return results;
+  }
+
+  _getFileDuration(filePath) {
+    return new Promise((resolve) => {
+      execFile('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_format', filePath],
+        { timeout: 5000 },
+        (err, stdout) => {
+          if (err) return resolve(null);
+          try {
+            const data = JSON.parse(stdout);
+            const dur = parseFloat(data.format?.duration);
+            resolve(Number.isFinite(dur) ? dur : null);
+          } catch {
+            resolve(null);
+          }
+        }
+      );
+    });
   }
 
   deleteAsset(type, filename) {

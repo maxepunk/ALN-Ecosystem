@@ -64,9 +64,9 @@ function createRouter(configManager) {
 
   // -- Assets --
 
-  router.get('/assets/sounds', (req, res) => {
+  router.get('/assets/sounds', async (req, res) => {
     try {
-      const sounds = configManager.listSounds();
+      const sounds = await configManager.listSounds();
       const cues = configManager.readAll().cues;
       const usage = buildAssetUsageMap(cues, 'sound:play', 'file');
       res.json(sounds.map(s => ({ ...s, usedBy: usage[s.name] || [] })));
@@ -75,9 +75,9 @@ function createRouter(configManager) {
     }
   });
 
-  router.get('/assets/videos', (req, res) => {
+  router.get('/assets/videos', async (req, res) => {
     try {
-      const videos = configManager.listVideos();
+      const videos = await configManager.listVideos();
       const cues = configManager.readAll().cues;
       const usage = buildAssetUsageMap(cues, 'video:queue:add', 'videoFile');
       res.json(videos.map(v => ({ ...v, usedBy: usage[v.name] || [] })));

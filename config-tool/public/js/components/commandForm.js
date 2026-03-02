@@ -81,6 +81,19 @@ export function invalidateAssetCache() {
   scenesCache = null;
 }
 
+export function getAssetDuration(action, filename) {
+  if (!filename) return null;
+  if (action === 'sound:play') {
+    const asset = soundsCache?.find(a => a.name === filename);
+    return asset?.duration ?? null;
+  }
+  if (action === 'video:queue:add') {
+    const asset = videosCache?.find(a => a.name === filename);
+    return asset?.duration ?? null;
+  }
+  return null;
+}
+
 export function renderCommandList(container, cue, allCues, editorCtx) {
   const card = el('div', { className: 'card' },
     el('div', { className: 'card__header' },
