@@ -6,7 +6,13 @@
       "icon": "alert",
       "trigger": {
         "event": "video:loading",
-        "conditions": []
+        "conditions": [
+          {
+            "field": "tokenId",
+            "op": "neq",
+            "value": "policesequencewoverlay"
+          }
+        ]
       },
       "commands": [
         {
@@ -18,7 +24,7 @@
         {
           "action": "lighting:scene:activate",
           "payload": {
-            "sceneId": "scene.game"
+            "sceneId": "scene.video"
           }
         }
       ]
@@ -29,13 +35,19 @@
       "icon": "alert",
       "trigger": {
         "event": "video:completed",
-        "conditions": []
+        "conditions": [
+          {
+            "field": "tokenId",
+            "op": "neq",
+            "value": "policesequencewoverlay"
+          }
+        ]
       },
       "commands": [
         {
           "action": "lighting:scene:activate",
           "payload": {
-            "sceneId": "scene.party"
+            "sceneId": "scene.game"
           }
         }
       ]
@@ -74,38 +86,105 @@
           }
         },
         {
-          "at": 3,
+          "at": 4,
           "action": "sound:play",
           "payload": {
-            "file": "attention.wav"
+            "file": "tension.wav"
           }
         },
         {
-          "at": 4,
+          "at": 4.5,
           "action": "lighting:scene:activate",
           "payload": {
-            "sceneId": "scene.party"
+            "sceneId": "scene.off"
           }
         }
       ],
-      "duration": 5
+      "duration": 7
     },
     {
-      "id": "e2e-video-compound",
-      "label": "E2E Video Compound",
+      "id": "cue-1772422843217",
+      "label": "90min WARNING",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "90min.wav"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cue-1772422894866",
+      "label": "60min WARNING",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "60min.wav"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cue-1772422917681",
+      "label": "30min WARNING",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "30min.wav"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cue-1772422984913",
+      "label": "15min WARNING",
+      "quickFire": true,
+      "commands": [
+        {
+          "action": "sound:play",
+          "payload": {
+            "file": "15min.wav"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cue-1772423004537",
+      "label": "ENDGAME",
+      "quickFire": true,
       "timeline": [
         {
-          "at": 0,
+          "at": 1,
           "action": "video:queue:add",
           "payload": {
-            "videoFile": "jaw011.mp4"
+            "videoFile": "policesequencewoverlay.mp4"
+          }
+        },
+        {
+          "at": 300,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.off"
+          }
+        },
+        {
+          "at": 541,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.game"
           }
         },
         {
           "at": 1,
-          "action": "sound:play",
+          "action": "lighting:scene:activate",
           "payload": {
-            "file": "attention.wav"
+            "sceneId": "scene.video"
           }
         }
       ]

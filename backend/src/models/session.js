@@ -269,6 +269,8 @@ class Session {
       startTime: this.startTime,
       endTime: this.endTime || null,
       status: this.status,
+      gameStartTime: this.gameStartTime || null,
+      gameClock: this.gameClock || null,
       teams: this.scores.map(score => score.teamId),
       transactions: this.transactions,
       playerScans: this.playerScans,

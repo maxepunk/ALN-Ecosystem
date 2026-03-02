@@ -2,7 +2,7 @@
  * Timeline View Component
  * Visual timeline for compound cues with drag-to-reposition and inline editing.
  */
-import { el } from '../utils/formatting.js';
+import { el, formatTime, parseTime } from '../utils/formatting.js';
 import { ACTION_DEFS, buildPayloadField, ensureAssets, getAssetDuration } from './commandForm.js';
 
 const CATEGORY_COLORS = {
@@ -46,20 +46,21 @@ export function renderTimelineView(container, cue, allCues, editorCtx) {
     style: { padding: '0 12px 8px', display: 'flex', gap: '8px', alignItems: 'center' },
   });
   const durInput = el('input', {
-    type: 'number', value: String(cue.duration || ''), min: '0', step: '1',
-    style: { width: '80px' },
+    type: 'text', value: cue.duration ? formatTime(cue.duration) : '',
+    style: { width: '80px', fontFamily: 'var(--font-mono)', fontSize: '12px' },
     placeholder: 'auto',
-    onInput: () => {
-      const val = parseInt(durInput.value);
-      if (val > 0) cue.duration = val;
-      else delete cue.duration;
+    onBlur: () => {
+      const val = parseTime(durInput.value);
+      if (val > 0) { cue.duration = val; durInput.value = formatTime(val); }
+      else { delete cue.duration; durInput.value = ''; }
       editorCtx.markDirty();
       refreshTimeline();
     },
+    onKeydown: (e) => { if (e.key === 'Enter') durInput.blur(); },
   });
   const autoLabel = el('span', { style: { fontSize: '11px', color: 'var(--text-muted)' } }, '');
   durationRow.append(
-    el('span', { style: { fontSize: '12px', color: 'var(--text-muted)' } }, 'Duration (s):'),
+    el('span', { style: { fontSize: '12px', color: 'var(--text-muted)' } }, 'Duration:'),
     durInput,
     autoLabel,
   );
@@ -76,8 +77,7 @@ export function renderTimelineView(container, cue, allCues, editorCtx) {
   container.appendChild(card);
 
   function refreshTimeline() {
-    const autoEnd = Math.round(getTimelineEnd(cue) * 10) / 10;
-    autoLabel.textContent = `Auto: ${autoEnd}s`;
+    autoLabel.textContent = `Auto: ${formatTime(getTimelineEnd(cue))}`;
     renderVisualTimeline(timelineOuter, cue, editorCtx, refreshTimeline);
     renderEntryList(entryListDiv, cue, allCues, editorCtx, refreshTimeline);
   }
@@ -154,9 +154,11 @@ function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
     },
   });
 
-  // Ruler
+  // Ruler — adaptive tick interval so labels don't crowd
+  const tickIntervals = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  const tickInterval = tickIntervals.find(i => i * pxPerSec >= 60) || 600;
   const ruler = el('div', { className: 'timeline-ruler', style: { width: `${totalWidth}px`, position: 'absolute', top: '0', left: '0' } });
-  for (let t = 0; t <= duration; t++) {
+  for (let t = 0; t <= duration; t += tickInterval) {
     const tick = el('div', {
       style: {
         position: 'absolute',
@@ -169,7 +171,7 @@ function renderVisualTimeline(timelineOuter, cue, editorCtx, refreshFn) {
         paddingLeft: '3px',
         paddingTop: '2px',
       },
-    }, `${t}s`);
+    }, formatTime(t));
     ruler.appendChild(tick);
   }
   canvas.appendChild(ruler);
@@ -260,7 +262,7 @@ function renderEntryList(entryListDiv, cue, allCues, editorCtx, refreshFn) {
   const table = el('table', { className: 'data-table', style: { margin: '8px 0' } },
     el('thead', {},
       el('tr', {},
-        el('th', { style: { width: '60px' } }, 'At (s)'),
+        el('th', { style: { width: '70px' } }, 'At'),
         el('th', {}, 'Action'),
         el('th', {}, 'Payload'),
         el('th', { style: { width: '60px' } }, ''),
@@ -274,15 +276,17 @@ function renderEntryList(entryListDiv, cue, allCues, editorCtx, refreshFn) {
 
     // At input
     const atInput = el('input', {
-      type: 'number', value: String(entry.at), min: '0', step: '0.5',
-      style: { width: '55px' },
-      onInput: () => {
-        entry.at = parseFloat(atInput.value) || 0;
+      type: 'text', value: formatTime(entry.at),
+      style: { width: '70px', fontFamily: 'var(--font-mono)', fontSize: '12px' },
+      onBlur: () => {
+        entry.at = Math.max(0, parseTime(atInput.value));
+        atInput.value = formatTime(entry.at);
         editorCtx.markDirty();
         renderVisualTimeline(
           entryListDiv.previousElementSibling, cue, editorCtx, refreshFn
         );
       },
+      onKeydown: (e) => { if (e.key === 'Enter') atInput.blur(); },
     });
 
     // Action select

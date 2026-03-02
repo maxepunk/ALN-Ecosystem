@@ -29,6 +29,37 @@ export function formatDate(isoString) {
 }
 
 /**
+ * Format seconds as M:SS or H:MM:SS (with optional .d fractional).
+ */
+export function formatTime(totalSeconds) {
+  const abs = Math.abs(totalSeconds);
+  const h = Math.floor(abs / 3600);
+  const m = Math.floor((abs % 3600) / 60);
+  const s = abs % 60;
+  const whole = Math.floor(s);
+  const frac = Math.round((s - whole) * 10);
+  let sStr = String(whole).padStart(2, '0');
+  if (frac > 0) sStr += '.' + frac;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${sStr}`;
+  return `${m}:${sStr}`;
+}
+
+/**
+ * Parse M:SS, H:MM:SS, or bare seconds into a float.
+ */
+export function parseTime(str) {
+  str = String(str).trim();
+  const parts = str.split(':');
+  if (parts.length === 3) {
+    return (parseInt(parts[0]) || 0) * 3600 + (parseInt(parts[1]) || 0) * 60 + (parseFloat(parts[2]) || 0);
+  }
+  if (parts.length === 2) {
+    return (parseInt(parts[0]) || 0) * 60 + (parseFloat(parts[1]) || 0);
+  }
+  return parseFloat(str) || 0;
+}
+
+/**
  * Create a DOM element with attributes and children.
  */
 export function el(tag, attrs = {}, ...children) {

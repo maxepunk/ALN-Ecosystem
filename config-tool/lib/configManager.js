@@ -126,7 +126,10 @@ class ConfigManager {
   _getVideosDir() {
     try {
       const env = readEnv(this.paths.envPath).values;
-      if (env.VIDEO_DIR) return path.resolve(path.dirname(this.paths.envPath), env.VIDEO_DIR);
+      if (env.VIDEO_DIR) {
+        const resolved = path.resolve(path.dirname(this.paths.envPath), env.VIDEO_DIR);
+        if (fs.existsSync(resolved)) return resolved;
+      }
     } catch { /* fall through */ }
     return this.paths.videosDir;
   }
