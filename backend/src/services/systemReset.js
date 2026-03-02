@@ -203,6 +203,78 @@ async function performSystemReset(io, services) {
 
   logger.debug('Cross-service listeners re-initialized');
 
+  // Step 6: Re-initialize service availability
+  // serviceHealthRegistry.reset() cleared all health status. Re-probe services
+  // so the registry reflects actual system state. Each wrapped in try/catch to
+  // prevent one service failure from blocking others.
+
+  // GameClock: in-process timer, always available (its own reset reports healthy
+  // but serviceHealthRegistry.reset() wipes it immediately after)
+  if (gameClockService) {
+    serviceHealthRegistry.report('gameclock', 'healthy', 'In-process timer');
+  }
+
+  // Sound: re-probe pw-play availability
+  if (soundService) {
+    try { await soundService.checkHealth(); } catch (err) {
+      logger.warn('Sound health re-probe failed after reset:', err.message);
+    }
+  }
+
+  // Cue engine: reload definitions from config (also reports healthy when loaded)
+  if (cueEngineService) {
+    try {
+      const cuesPath = path.join(__dirname, '../../config/environment/cues.json');
+      const cuesData = JSON.parse(await fs.readFile(cuesPath, 'utf8'));
+      const cuesArray = Array.isArray(cuesData) ? cuesData : cuesData.cues || [];
+      cueEngineService.loadCues(cuesArray);
+    } catch (err) {
+      logger.warn('Failed to reload cues after system reset:', err.message);
+    }
+  }
+
+  // Bluetooth: re-discover adapter, restart D-Bus device monitor
+  if (bluetoothService) {
+    try { await bluetoothService.init(); } catch (err) {
+      logger.warn('Bluetooth re-init failed after reset:', err.message);
+    }
+  }
+
+  // Audio: re-discover sinks, restart pactl monitor, load persisted routes
+  if (audioRoutingService) {
+    try { await audioRoutingService.init(); } catch (err) {
+      logger.warn('Audio routing re-init failed after reset:', err.message);
+    }
+  }
+
+  // Lighting: re-connect to HA, re-fetch scenes, restart WebSocket monitor
+  if (lightingService) {
+    try { await lightingService.init(); } catch (err) {
+      logger.warn('Lighting re-init failed after reset:', err.message);
+    }
+  }
+
+  // VLC: force health re-check (D-Bus monitor still running, registry was cleared)
+  if (vlcService && typeof vlcService.checkConnection === 'function') {
+    try { await vlcService.checkConnection(); } catch (err) {
+      logger.debug('VLC health re-check failed after reset:', err.message);
+    }
+  }
+
+  // Spotify: re-check connection and restart D-Bus monitor (stopped by reset)
+  if (spotifyService) {
+    if (typeof spotifyService.checkConnection === 'function') {
+      try { await spotifyService.checkConnection(); } catch (err) {
+        logger.debug('Spotify health re-check failed after reset:', err.message);
+      }
+    }
+    if (typeof spotifyService.startPlaybackMonitor === 'function') {
+      spotifyService.startPlaybackMonitor();
+    }
+  }
+
+  logger.debug('Service health re-initialized');
+
   logger.info('System reset complete - ready for new session');
 }
 

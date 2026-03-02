@@ -141,6 +141,20 @@ class LightingService extends EventEmitter {
       return;
     }
 
+    // Cancel any pending reconnect timer to prevent duplicate connections
+    if (this._wsReconnectTimer) {
+      clearTimeout(this._wsReconnectTimer);
+      this._wsReconnectTimer = null;
+    }
+
+    // Close existing connection if still open (e.g., re-init after reset)
+    if (this._ws) {
+      this._wsStopped = true; // Prevent close handler from scheduling reconnect
+      this._ws.close();
+      this._ws = null;
+      this._wsStopped = false;
+    }
+
     const wsUrl = config.lighting.homeAssistantUrl.replace(/^http/, 'ws') + '/api/websocket';
 
     try {

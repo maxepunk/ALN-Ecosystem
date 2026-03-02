@@ -22,6 +22,7 @@ jest.mock('../../../src/services/cueEngineWiring', () => ({
 }));
 jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   reset: jest.fn(),
+  report: jest.fn(),
   on: jest.fn(),
   removeAllListeners: jest.fn(),
 }));
@@ -71,12 +72,16 @@ describe('performSystemReset', () => {
         reset: jest.fn(),
         init: jest.fn(),
       },
-      vlcService: {},
+      vlcService: {
+        checkConnection: jest.fn().mockResolvedValue(true),
+      },
       bluetoothService: {
         reset: jest.fn(),
+        init: jest.fn().mockResolvedValue(),
       },
       audioRoutingService: {
         reset: jest.fn(),
+        init: jest.fn().mockResolvedValue(),
         loadDuckingRules: jest.fn(),
       },
       lightingService: {
@@ -87,12 +92,16 @@ describe('performSystemReset', () => {
       },
       cueEngineService: {
         reset: jest.fn(),
+        loadCues: jest.fn(),
       },
       soundService: {
         reset: jest.fn(),
+        checkHealth: jest.fn().mockResolvedValue(true),
       },
       spotifyService: {
         reset: jest.fn(),
+        checkConnection: jest.fn().mockResolvedValue(true),
+        startPlaybackMonitor: jest.fn(),
       },
     };
   });
