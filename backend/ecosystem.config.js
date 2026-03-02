@@ -132,14 +132,15 @@ module.exports = {
       },
     },
 
-    // VLC HTTP Interface Process (with video output, clean kiosk mode)
+    // VLC Process (with video output, clean kiosk mode)
+    // Wrapper script kills stale VLC processes before starting, then exec's cvlc.
     {
       name: 'vlc-http',
-      script: '/usr/bin/cvlc',
+      script: './scripts/vlc-managed.sh',
       // Platform-aware: Pi 4 uses v4l2_m2m hw decode, Pi 5+ uses auto-detect.
       // Override with VLC_HW_ACCEL env var (e.g., VLC_HW_ACCEL='' to force software decode).
       args: VLC_ARGS,
-      interpreter: 'none', // Not a Node.js process
+      interpreter: 'none', // Shebang handles bash; exec replaces shell with cvlc for PM2 PID tracking
       exec_mode: 'fork',
 
       // Process management
