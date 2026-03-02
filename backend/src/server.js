@@ -67,15 +67,9 @@ function setupWebSocketHandlers(ioInstance) {
   ioInstance.on('connection', async (socket) => {
   logger.info('WebSocket connection established', { socketId: socket.id });
 
-  // PHASE 2.1 (P1.3): Authentication now handled by Socket.io middleware
-  // If socket is pre-authenticated (GM station), automatically trigger identification
-  if (socket.isAuthenticated && socket.deviceType === 'gm') {
-    await handleGmIdentify(socket, {
-      deviceId: socket.deviceId,
-      version: socket.version,
-      token: socket.handshake.auth.token
-    }, ioInstance);
-  }
+  // Register ALL event handlers BEFORE any async work.
+  // If handlers are registered after an await, events arriving during
+  // the async gap are silently dropped (no listener exists yet).
 
   // State sync request — uses shared payload builder (includes gameClock, cueEngine, spotify)
   socket.on('sync:request', async () => {
@@ -98,12 +92,12 @@ function setupWebSocketHandlers(ioInstance) {
       logger.error('sync:request handler error', { error: error.message, deviceId: socket.deviceId });
     }
   });
-  
+
   // State request (contract compliant)
   socket.on('state:request', () => {
     handleStateRequest(socket);
   });
-  
+
   // GM-specific events
   socket.on('gm:command', async (data) => {
     await handleGmCommand(socket, data, ioInstance);
@@ -117,7 +111,17 @@ function setupWebSocketHandlers(ioInstance) {
   // Disconnection handling
   socket.on('disconnect', async () => {
     await handleDisconnect(socket, ioInstance);
-    });
+  });
+
+  // PHASE 2.1 (P1.3): Authentication now handled by Socket.io middleware
+  // If socket is pre-authenticated (GM station), automatically trigger identification
+  if (socket.isAuthenticated && socket.deviceType === 'gm') {
+    await handleGmIdentify(socket, {
+      deviceId: socket.deviceId,
+      version: socket.version,
+      token: socket.handshake.auth.token
+    }, ioInstance);
+  }
   });
 
   // PHASE 1.3 (P0.3): Transition state after handlers are set up

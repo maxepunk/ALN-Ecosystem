@@ -119,17 +119,20 @@ function setupEventCaching(socket) {
   socket.lastTransactionNew = null;
   socket.lastGroupCompletion = null;
   socket.lastSessionUpdate = null;
-  socket.lastVideoStatus = null;
   socket.lastScoresReset = null;
   socket.lastTransactionDeleted = null;
   socket.lastGmCommandAck = null;
+  socket.lastServiceState = {};  // keyed by domain
 
   // Persistent listeners
   socket.on('score:updated', (data) => { socket.lastScoreUpdate = data; });
   socket.on('transaction:new', (data) => { socket.lastTransactionNew = data; });
   socket.on('group:completed', (data) => { socket.lastGroupCompletion = data; });
   socket.on('session:update', (data) => { socket.lastSessionUpdate = data; });
-  socket.on('video:status', (data) => { socket.lastVideoStatus = data; });
+  socket.on('service:state', (data) => {
+    const payload = data.data || data;
+    if (payload.domain) socket.lastServiceState[payload.domain] = data;
+  });
   socket.on('scores:reset', (data) => { socket.lastScoresReset = data; });
   socket.on('transaction:deleted', (data) => { socket.lastTransactionDeleted = data; });
   socket.on('gm:command:ack', (data) => { socket.lastGmCommandAck = data; });
@@ -194,7 +197,6 @@ function getCachedEvent(socket, eventName) {
     'transaction:new': socket.lastTransactionNew,
     'group:completed': socket.lastGroupCompletion,
     'session:update': socket.lastSessionUpdate,
-    'video:status': socket.lastVideoStatus,
     'scores:reset': socket.lastScoresReset,
     'transaction:deleted': socket.lastTransactionDeleted,
     'gm:command:ack': socket.lastGmCommandAck
@@ -212,10 +214,10 @@ function clearEventCache(socket) {
   socket.lastTransactionNew = null;
   socket.lastGroupCompletion = null;
   socket.lastSessionUpdate = null;
-  socket.lastVideoStatus = null;
   socket.lastScoresReset = null;
   socket.lastTransactionDeleted = null;
   socket.lastGmCommandAck = null;
+  socket.lastServiceState = {};
 }
 
 /**

@@ -145,8 +145,8 @@ async function waitForScoreValue(page, teamId, socket, expectedScore, timeout = 
 async function waitForVideoState(socket, expectedState, timeout = 30000) {
   return await waitForEvent(
     socket,
-    'video:status',
-    (data) => data.status === expectedState,
+    'service:state',
+    (data) => data.data?.domain === 'video' && data.data?.state?.status === expectedState,
     timeout
   );
 }

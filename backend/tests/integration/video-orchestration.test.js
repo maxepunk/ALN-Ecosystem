@@ -11,10 +11,10 @@
  * What This Tests:
  * 1. Real Player Scanner correctly sends scan to server (HTTP POST /api/scan)
  * 2. Server processes Player scan and queues video
- * 3. Server broadcasts video:status to GM clients
+ * 3. Server broadcasts service:state (video domain) to GM clients
  * 4. VLC error handling flows
  *
- * Contract: backend/contracts/openapi.yaml (POST /api/scan), asyncapi.yaml (video:status event)
+ * Contract: backend/contracts/openapi.yaml (POST /api/scan), asyncapi.yaml (service:state event)
  */
 
 // CRITICAL: Load browser mocks FIRST
@@ -148,7 +148,7 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
       await playerScanner.pendingConnectionCheck.catch(() => {});
     }
 
-    // Connect GM to observe video:status broadcasts
+    // Connect GM to observe service:state (video domain) broadcasts
     gmSocket = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_VIDEO_TEST');
   });
 

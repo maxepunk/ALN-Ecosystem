@@ -23,7 +23,7 @@ describe('Server Lifecycle Integration (Phase 1.4)', () => {
       session: sessionService.listenerCount('session:created'),
       state: stateService.listenerCount('state:updated'),
       transaction: transactionService.listenerCount('transaction:new'),
-      video: videoQueueService.listenerCount('video:status'),
+      video: videoQueueService.listenerCount('video:started'),
       offline: offlineQueueService.listenerCount('offline:queue:processed')
     };
 
@@ -39,7 +39,7 @@ describe('Server Lifecycle Integration (Phase 1.4)', () => {
       session: sessionService.listenerCount('session:created'),
       state: stateService.listenerCount('state:updated'),
       transaction: transactionService.listenerCount('transaction:new'),
-      video: videoQueueService.listenerCount('video:status'),
+      video: videoQueueService.listenerCount('video:started'),
       offline: offlineQueueService.listenerCount('offline:queue:processed')
     };
 

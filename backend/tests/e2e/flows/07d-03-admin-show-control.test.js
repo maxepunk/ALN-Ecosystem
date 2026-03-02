@@ -324,7 +324,7 @@ test.describe('GM Scanner - Show Control', () => {
       await gmScanner.pauseSession();
 
       // Wait for pause to take effect — template re-renders (active→paused),
-      // then gameclock:status updates the display. Wait for valid time.
+      // then service:state (gameclock domain) updates the display. Wait for valid time.
       await page.waitForFunction(
         () => /\d+:\d+/.test(document.getElementById('game-clock-display')?.textContent || ''),
         { timeout: 5000 }
@@ -360,7 +360,7 @@ test.describe('GM Scanner - Show Control', () => {
       await gmScanner.pauseSession();
 
       // Wait for pause to take effect — template re-renders (active→paused),
-      // then gameclock:status updates the display. Wait for valid time.
+      // then service:state (gameclock domain) updates the display. Wait for valid time.
       const clockDisplay = page.locator('#game-clock-display');
       await page.waitForFunction(
         () => /\d+:\d+/.test(document.getElementById('game-clock-display')?.textContent || ''),

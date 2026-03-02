@@ -295,8 +295,8 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // --- BLUETOOTH SCAN: Command round-trip (bluetooth:scan:start) ---
     // Click Scan → gm:command bluetooth:scan:start → backend starts bluetoothctl
-    // Broadcasts bluetooth:scan {scanning:true} → button becomes "Stop Scan"
-    // Without BT adapter: scan exits immediately → bluetooth:scan {scanning:false}
+    // Pushes service:state {domain:'bluetooth', state:{scanning:true}} → button becomes "Stop Scan"
+    // Without BT adapter: scan exits immediately → service:state {scanning:false}
     // With adapter: scan runs for timeout period then stops
 
     const btUnavailable = await gmScanner1.isBtUnavailable();
@@ -342,7 +342,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // --- LIGHTING: Graceful degradation check ---
     // Lighting section starts hidden (display:none in HTML).
-    // It becomes visible only when lighting:status arrives via sync:full.
+    // It becomes visible only when service:state (lighting domain) arrives via sync:full.
     // If HA is not configured, section may stay hidden entirely — that's correct.
 
     const lightingVisible = await gmScanner1.isLightingSectionVisible();

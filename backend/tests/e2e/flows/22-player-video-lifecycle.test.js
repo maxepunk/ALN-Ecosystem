@@ -164,11 +164,11 @@ test.describe('Player Video Lifecycle', () => {
         expect(scanResult.body.videoQueued).toBe(true);
         console.log('Player scan accepted, video queued');
 
-        // Wait for video:status event with status 'playing'
+        // Wait for service:state event with video domain status 'playing'
         // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
-        const videoPlaying = await waitForEvent(wsSocket, 'video:status',
-          (data) => data.data?.status === 'playing', 15000);
-        expect(videoPlaying.data.status).toBe('playing');
+        const videoPlaying = await waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+        expect(videoPlaying.data.state.status).toBe('playing');
         console.log('Video playing confirmed via WebSocket');
 
         // Verify GM admin panel shows the video
@@ -286,8 +286,8 @@ test.describe('Player Video Lifecycle', () => {
         await playerScan(orchestratorInfo.url, videoToken.SF_RFID, `e2e-player-restore-${Date.now()}`);
 
         // Wait for video to start
-        await waitForEvent(wsSocket, 'video:status',
-          (data) => data.data?.status === 'playing', 15000);
+        await waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
         console.log('Video started playing');
 
         // Wait for video to complete and restore cue to fire

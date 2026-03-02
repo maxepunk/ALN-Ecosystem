@@ -314,8 +314,8 @@ test.describe('GM Scanner - Environment Control', () => {
       // Ensure Spotify is playing (ducking requires active Spotify playback)
       await sendGMCommand(orchestratorInfo.url, 'spotify:play');
 
-      // Connect WebSocket listener for ducking events
-      // audio:ducking:status is NOT cached — listener must be registered before trigger
+      // Connect WebSocket listener for service:state (audio domain) events
+      // service:state for audio is NOT cached — listener must be registered before trigger
       const wsSocket = await connectWithAuth(
         orchestratorInfo.url, ADMIN_PASSWORD,
         `DUCKING_LISTENER_${Date.now()}`, 'gm'
@@ -323,16 +323,19 @@ test.describe('GM Scanner - Environment Control', () => {
 
       try {
         // Register BOTH ducking listeners BEFORE triggering video.
-        // audio:ducking:status is NOT cached — both listeners must exist before
+        // service:state for audio domain is NOT cached — both listeners must exist before
         // the trigger to avoid a race if the video is very short.
         // Concurrent listeners on the same event work because waitForEvent uses
-        // predicate filtering: duckingOnPromise matches ducked=true, duckingOffPromise
-        // skips ducked=true and waits for ducked=false.
-        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
-        const duckingOnPromise = waitForEvent(wsSocket, 'audio:ducking:status',
-          (data) => data.data?.ducked === true, 20000);
-        const duckingOffPromise = waitForEvent(wsSocket, 'audio:ducking:status',
-          (data) => data.data?.ducked === false, 120000); // Videos can be long
+        // predicate filtering: duckingOnPromise matches ducking active, duckingOffPromise
+        // skips active state and waits for ducking sources to clear.
+        // Events arrive wrapped in AsyncAPI envelope: {event, data: {domain, state}, timestamp}
+        const duckingOnPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'audio' &&
+            data.data?.state?.ducking?.spotify?.length > 0, 20000);
+        const duckingOffPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'audio' &&
+            Array.isArray(data.data?.state?.ducking?.spotify) &&
+            data.data.state.ducking.spotify.length === 0, 120000); // Videos can be long
 
         // Queue video via admin command (triggers VLC playback + ducking)
         await sendGMCommand(orchestratorInfo.url, 'video:queue:add', {
@@ -342,12 +345,12 @@ test.describe('GM Scanner - Environment Control', () => {
 
         // Wait for ducking to activate
         const duckingActive = await duckingOnPromise;
-        expect(duckingActive.data.ducked).toBe(true);
-        console.log(`Spotify ducked to volume ${duckingActive.data.volume}`);
+        expect(duckingActive.data.state.ducking.spotify).toContain('video');
+        console.log(`Spotify ducked by: ${duckingActive.data.state.ducking.spotify.join(', ')}`);
 
         // Wait for ducking to deactivate after video completes
         const duckingOff = await duckingOffPromise;
-        expect(duckingOff.data.ducked).toBe(false);
+        expect(duckingOff.data.state.ducking.spotify).toHaveLength(0);
         console.log('Ducking restored after video completion');
 
       } finally {
@@ -379,8 +382,8 @@ test.describe('GM Scanner - Environment Control', () => {
       // Ensure Spotify is playing before we pause the session
       await sendGMCommand(orchestratorInfo.url, 'spotify:play');
 
-      // Connect WebSocket listener for spotify:status events
-      // spotify:status is NOT cached — listener must be registered before trigger
+      // Connect WebSocket listener for service:state (spotify domain) events
+      // service:state is NOT cached — listener must be registered before trigger
       const wsSocket = await connectWithAuth(
         orchestratorInfo.url, ADMIN_PASSWORD,
         `SPOTIFY_LISTENER_${Date.now()}`, 'gm'
@@ -388,9 +391,10 @@ test.describe('GM Scanner - Environment Control', () => {
 
       try {
         // Register listener for Spotify paused-by-game-clock BEFORE pausing
-        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
-        const spotifyPausedPromise = waitForEvent(wsSocket, 'spotify:status',
-          (data) => data.data?.pausedByGameClock === true, 10000);
+        // Events arrive wrapped in AsyncAPI envelope: {event, data: {domain, state}, timestamp}
+        const spotifyPausedPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'spotify' &&
+            data.data?.state?.pausedByGameClock === true, 10000);
 
         // Pause session — should cascade to Spotify
         await gmScanner.pauseSession();
@@ -398,12 +402,13 @@ test.describe('GM Scanner - Environment Control', () => {
 
         // Wait for Spotify to report pausedByGameClock
         const spotifyPaused = await spotifyPausedPromise;
-        expect(spotifyPaused.data.pausedByGameClock).toBe(true);
+        expect(spotifyPaused.data.state.pausedByGameClock).toBe(true);
         console.log('Spotify paused by game clock cascade');
 
         // Register listener for resume BEFORE resuming session
-        const spotifyResumedPromise = waitForEvent(wsSocket, 'spotify:status',
-          (data) => data.data?.pausedByGameClock === false, 10000);
+        const spotifyResumedPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'spotify' &&
+            data.data?.state?.pausedByGameClock === false, 10000);
 
         // Resume session — should cascade to Spotify
         await gmScanner.resumeSession();
@@ -411,7 +416,7 @@ test.describe('GM Scanner - Environment Control', () => {
 
         // Wait for Spotify to report resumed
         const spotifyResumed = await spotifyResumedPromise;
-        expect(spotifyResumed.data.pausedByGameClock).toBe(false);
+        expect(spotifyResumed.data.state.pausedByGameClock).toBe(false);
         console.log('Spotify resumed after game clock cascade');
 
       } finally {

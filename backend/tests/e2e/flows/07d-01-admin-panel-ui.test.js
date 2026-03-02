@@ -139,8 +139,8 @@ test.describe('GM Scanner Admin Panel - UI & Navigation', () => {
       const sessionContainer = await page.locator('#session-status-container');
       expect(await sessionContainer.count()).toBe(1);
 
-      const videoInfo = await page.locator('#admin-current-video');
-      expect(await videoInfo.count()).toBe(1);
+      const videoPanel = await page.locator('#video-control-panel');
+      expect(await videoPanel.count()).toBe(1);
 
       const healthDashboard = await page.locator('#health-dashboard');
       expect(await healthDashboard.count()).toBe(1);

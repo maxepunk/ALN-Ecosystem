@@ -544,7 +544,7 @@ class VideoQueueService extends EventEmitter {
       }
       currentVideo = {
         tokenId: current.tokenId,
-        filename: current.videoFile,
+        filename: current.videoPath,
       };
       if (current.isPlaying()) {
         try {
@@ -563,7 +563,7 @@ class VideoQueueService extends EventEmitter {
       currentVideo,
       queue: pendingItems.map(item => ({
         tokenId: item.tokenId,
-        filename: item.videoFile,
+        filename: item.videoPath,
       })),
       queueLength: pendingItems.length,
       connected: vlcState.connected,

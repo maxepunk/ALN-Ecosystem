@@ -750,26 +750,21 @@ test.describe('Player Scanner Networked Scanning', () => {
       route.abort('failed');
     });
 
-    // Set up promise to wait for batch request (will fail due to route interception)
-    const batchRequestPromise = page.waitForRequest(
-      request => request.url().includes('/api/scan/batch') && request.method() === 'POST',
-      { timeout: 10000 }
-    );
+    // Wait for the batch request to be attempted and fail (route intercept aborts it).
+    // requestfailed is the proper condition — fired when our route.abort() kills the request.
+    const batchFailedPromise = page.waitForEvent('requestfailed', {
+      predicate: request => request.url().includes('/api/scan/batch'),
+      timeout: 30000
+    });
 
     // Restore connection
     await context.setOffline(false);
     await scanner.waitForOrchestratorConnected();
 
-    // Wait for batch attempt (condition-based: wait for actual request, not arbitrary timeout)
-    try {
-      await batchRequestPromise;
-    } catch (e) {
-      // Request may have already been made before we started waiting
-      console.log('Note: Batch request may have completed before interception');
-    }
+    // Wait for the actual failed batch request (not a magic timeout)
+    await batchFailedPromise;
 
-    // Give a moment for re-queue to complete after failed batch
-    // This is a small grace period for async re-queue operation (processOfflineQueue line 196)
+    // Now wait for re-queue to complete — nearly instant after the request fails
     await page.waitForFunction(
       () => window.orchestrator && window.orchestrator.offlineQueue.length === 1,
       { timeout: 2000, polling: 50 }
