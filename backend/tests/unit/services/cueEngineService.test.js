@@ -743,6 +743,45 @@ describe('CueEngineService', () => {
       expect(activeCue.videoDuration).toBe(0);
       expect(activeCue.videoStarted).toBe(false);
     });
+
+    it('should store video duration from first progress event', async () => {
+      cueEngineService.loadCues([{
+        id: 'vd-duration', label: 'VD Duration',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-duration');
+
+      // Simulate video progress with duration (VLC position=0.0-1.0, duration=seconds)
+      cueEngineService.handleVideoProgressEvent({ position: 0.05, duration: 660 });
+
+      const activeCue = cueEngineService.activeCues.get('vd-duration');
+      expect(activeCue.videoDuration).toBe(660);
+      expect(activeCue.videoStarted).toBe(true);
+    });
+
+    it('should not overwrite videoDuration once set', async () => {
+      cueEngineService.loadCues([{
+        id: 'vd-no-overwrite', label: 'VD No Overwrite',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-no-overwrite');
+
+      // First progress sets duration
+      cueEngineService.handleVideoProgressEvent({ position: 0.05, duration: 660 });
+      // Second progress has different duration (VLC metadata correction)
+      cueEngineService.handleVideoProgressEvent({ position: 0.10, duration: 650 });
+
+      const activeCue = cueEngineService.activeCues.get('vd-no-overwrite');
+      expect(activeCue.videoDuration).toBe(660); // First value kept
+    });
   });
 
   describe('timeline error handling (D36)', () => {

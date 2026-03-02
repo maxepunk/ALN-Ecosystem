@@ -815,6 +815,10 @@ class CueEngineService extends EventEmitter {
           activeCue.videoStarted = true;
           logger.info(`[CueEngine] Video progress received, switching to video-driven: ${cueId}`);
         }
+        // Store video duration for accurate progress calculations
+        if (duration > 0 && !activeCue.videoDuration) {
+          activeCue.videoDuration = duration;
+        }
         this.handleVideoProgress(cueId, positionSeconds);
       }
     }
