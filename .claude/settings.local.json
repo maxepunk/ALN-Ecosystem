@@ -51,7 +51,9 @@
       "Skill(superpowers:subagent-driven-development)",
       "Skill(superpowers:writing-plans)",
       "Bash(git -C /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem rev-parse HEAD)",
-      "Skill(claude-md-management:revise-claude-md)"
+      "Skill(claude-md-management:revise-claude-md)",
+      "mcp__plugin_episodic-memory_episodic-memory__read",
+      "Bash(pactl list:*)"
     ],
     "deny": [],
     "ask": []
