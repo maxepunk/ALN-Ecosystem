@@ -24,6 +24,7 @@ class VideoQueueService extends EventEmitter {
     this.currentItem = null;
     this.playbackTimer = null;
     this._heldVideos = [];
+    this._prePlayHooks = [];
 
     // Listen for VLC recovery to notify GM about held items
     registry.on('health:changed', ({ serviceId, status }) => {
@@ -31,6 +32,15 @@ class VideoQueueService extends EventEmitter {
         this.emit('video:recoverable', { heldCount: this._heldVideos.length });
       }
     });
+  }
+
+  /**
+   * Register a pre-play hook that runs BEFORE video starts (blocking).
+   * Used by cue engine to fire video:loading cues before VLC begins playback.
+   * @param {Function} fn - Async function receiving {queueItem, tokenId}
+   */
+  registerPrePlayHook(fn) {
+    this._prePlayHooks.push(fn);
   }
 
   /**
@@ -120,6 +130,15 @@ class VideoQueueService extends EventEmitter {
    * @private
    */
   async playVideo(queueItem) {
+    // Run pre-play hooks (blocking — e.g., attention sound completes before video)
+    for (const hook of this._prePlayHooks) {
+      try {
+        await hook({ queueItem, tokenId: queueItem.tokenId });
+      } catch (err) {
+        logger.warn('[VideoQueue] Pre-play hook failed:', err.message);
+      }
+    }
+
     // Emit loading status first
     logger.debug('Emitting video:loading for', { tokenId: queueItem.tokenId });
     this.emit('video:loading', {
@@ -158,7 +177,7 @@ class VideoQueueService extends EventEmitter {
         const status = await this.waitForVlcLoaded(
           expectedFilename,
           'VLC to load and play new video',
-          5000  // 5 second timeout (generous for Pi 4)
+          30000  // 30s — Pi 4 needs time to buffer large video files (e.g., 1.6GB ENDGAME)
         );
 
         // VLC is now playing - duration is reliable
@@ -383,12 +402,14 @@ class VideoQueueService extends EventEmitter {
     // Start monitoring
     this.progressTimer = setInterval(checkStatus, checkInterval);
 
-    // Fallback timeout in case monitoring fails
+    // Fallback timeout in case monitoring fails.
+    // Use 30 min ceiling for unknown durations (standalone videos where VLC hasn't reported length).
+    const fallbackDuration = expectedDuration > 0 ? expectedDuration + 5 : 1800;
     this.playbackTimer = setTimeout(() => {
       clearInterval(this.progressTimer);
       this.progressTimer = null;
       this.completePlayback(queueItem);
-    }, (expectedDuration + 5) * 1000); // Add 5 seconds buffer
+    }, fallbackDuration * 1000);
   }
 
   /**
@@ -482,7 +503,7 @@ class VideoQueueService extends EventEmitter {
 
       // Restart monitoring
       const status = await vlcService.getStatus();
-      const remaining = status.length ? (status.length / 1000) * (1 - status.position) : 30;
+      const remaining = status.length ? status.length * (1 - status.position) : 30;
       this.monitorVlcPlayback(this.currentItem, remaining);
     } else {
       // Test mode - calculate remaining time
@@ -546,15 +567,10 @@ class VideoQueueService extends EventEmitter {
         tokenId: current.tokenId,
         filename: current.videoPath,
       };
-      if (current.isPlaying()) {
-        try {
-          const duration = this.getVideoDuration(current.tokenId);
-          const elapsed = (Date.now() - new Date(current.playbackStart).getTime()) / 1000;
-          currentVideo.position = Math.min(elapsed / duration, 1);
-          currentVideo.duration = duration;
-        } catch {
-          // Duration not available yet
-        }
+      if (current.isPlaying() && current.duration > 0) {
+        const elapsed = (Date.now() - new Date(current.playbackStart).getTime()) / 1000;
+        currentVideo.position = Math.min(elapsed / current.duration, 1);
+        currentVideo.duration = current.duration;
       }
     }
     const pendingItems = this.queue.filter(item => item.isPending());
@@ -645,21 +661,26 @@ class VideoQueueService extends EventEmitter {
       }
     }
 
-    if (!token || !tokenId) {
-      throw new Error(`No token found with video: ${videoFile}`);
+    let queueItem;
+    if (token && tokenId && token.mediaAssets?.video) {
+      // Token-linked video: use token metadata
+      queueItem = new VideoQueueItem({
+        tokenId: tokenId,
+        videoPath: token.mediaAssets.video,
+        requestedBy: requestedBy || 'ADMIN',
+        duration: token.getVideoDuration(),
+      });
+    } else {
+      // Standalone video (no token association, e.g., ENDGAME sequence)
+      // Use filename as tokenId; duration discovered by VLC at playback
+      queueItem = new VideoQueueItem({
+        tokenId: potentialTokenId,
+        videoPath: videoFile,
+        requestedBy: requestedBy || 'ADMIN',
+        duration: 0,
+      });
+      logger.info('Standalone video queued (no token)', { videoFile, tokenId: potentialTokenId });
     }
-
-    if (!token.mediaAssets?.video) {
-      throw new Error(`Token ${tokenId} does not have a video asset`);
-    }
-
-    // Create queue item with duration from token
-    const queueItem = new VideoQueueItem({
-      tokenId: tokenId,
-      videoPath: token.mediaAssets.video,
-      requestedBy: requestedBy || 'ADMIN',
-      duration: token.getVideoDuration(),
-    });
 
     this.queue.push(queueItem);
 
@@ -953,6 +974,7 @@ class VideoQueueService extends EventEmitter {
     this.queue = [];
     this.currentItem = null;
     this._heldVideos = [];
+    this._prePlayHooks = [];
     heldIdCounter = 0;
 
     // 3. Log completion

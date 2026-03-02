@@ -58,6 +58,22 @@ class DisplayControlService extends EventEmitter {
       this.videoQueueService.on('video:idle', this._boundVideoIdleHandler);
     }
 
+    // Enter VIDEO mode for ALL video triggers (player scan, compound cue, manual)
+    if (this.videoQueueService) {
+      this.videoQueueService.registerPrePlayHook(async () => {
+        if (this.currentMode !== DisplayMode.VIDEO) {
+          this.previousMode = this.currentMode;
+          if (this.currentMode === DisplayMode.SCOREBOARD) {
+            await displayDriver.hideScoreboard();
+          }
+          this.currentMode = DisplayMode.VIDEO;
+          logger.info('[DisplayControl] Pre-play hook: entered VIDEO mode', {
+            previousMode: this.previousMode
+          });
+        }
+      });
+    }
+
     this._initialized = true;
     logger.info('[DisplayControl] Initialized', { mode: this.currentMode });
   }

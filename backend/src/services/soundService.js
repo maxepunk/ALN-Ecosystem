@@ -69,6 +69,13 @@ class SoundService extends EventEmitter {
     const entry = { file, target: target || 'default', volume: volume || 100, pid: proc.pid };
     this.processes.set(proc.pid, { ...entry, process: proc });
 
+    // Completion promise: resolves when pw-play exits (callers decide whether to await)
+    entry.completion = new Promise(resolve => {
+      proc.on('close', (code) => {
+        resolve({ file, completed: code === 0 });
+      });
+    });
+
     proc.on('close', (code) => {
       this.processes.delete(proc.pid);
       if (code === 0) {

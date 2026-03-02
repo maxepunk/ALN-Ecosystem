@@ -31,7 +31,8 @@ describe('DisplayControlService - State Machine', () => {
     // Create mock video queue service
     mockVideoQueueService = {
       on: jest.fn(),
-      removeListener: jest.fn()
+      removeListener: jest.fn(),
+      registerPrePlayHook: jest.fn()
     };
 
     // Initialize with mocks

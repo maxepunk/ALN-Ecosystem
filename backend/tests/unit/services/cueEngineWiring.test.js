@@ -36,11 +36,14 @@ describe('cueEngineWiring', () => {
     it('should forward spotify track:changed to cue engine as spotify:track:changed', () => {
       const mockSpotifyService = new EventEmitter();
 
+      const mockVideoQueueService = new EventEmitter();
+      mockVideoQueueService.registerPrePlayHook = jest.fn();
+
       setupCueEngineForwarding({
         listenerRegistry,
         gameClockService: new EventEmitter(),
         transactionService: new EventEmitter(),
-        videoQueueService: new EventEmitter(),
+        videoQueueService: mockVideoQueueService,
         sessionService: new EventEmitter(),
         soundService: new EventEmitter(),
         cueEngineService,
@@ -56,12 +59,15 @@ describe('cueEngineWiring', () => {
     });
 
     it('should not fail when spotifyService is not provided', () => {
+      const mockVideoQueueService = new EventEmitter();
+      mockVideoQueueService.registerPrePlayHook = jest.fn();
+
       expect(() => {
         setupCueEngineForwarding({
           listenerRegistry,
           gameClockService: new EventEmitter(),
           transactionService: new EventEmitter(),
-          videoQueueService: new EventEmitter(),
+          videoQueueService: mockVideoQueueService,
           sessionService: new EventEmitter(),
           cueEngineService,
         });

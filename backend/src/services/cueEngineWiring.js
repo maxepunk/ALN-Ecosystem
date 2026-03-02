@@ -47,8 +47,14 @@ function setupCueEngineForwarding({
     cueEngineService.handleGameEvent('group:completed', data);
   }, 'transactionService->cueEngineService');
 
+  // Pre-play hook: fire video:loading cues BEFORE video starts (blocking)
+  // video:loading is NOT in the EventEmitter forwarding list below — it's handled via hook
+  videoQueueService.registerPrePlayHook(data =>
+    cueEngineService.fireEventCuesAndWait('video:loading', data)
+  );
+
   // Video events (for standing cue evaluation)
-  for (const event of ['video:loading', 'video:started', 'video:completed', 'video:paused', 'video:resumed']) {
+  for (const event of ['video:started', 'video:completed', 'video:paused', 'video:resumed']) {
     listenerRegistry.addTrackedListener(videoQueueService, event, (data) => {
       cueEngineService.handleGameEvent(event, data);
     }, `videoQueueService->${event}->cueEngineService`);
