@@ -1255,6 +1255,61 @@ describe('CueEngineService', () => {
 
       await cueEngineService.stopCue('stop-order');
     });
+
+    it('should cascade pause to video for video-driven cue', async () => {
+      cueEngineService.loadCues([{
+        id: 'pause-video-cue', label: 'Pause Video',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'mid.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('pause-video-cue');
+      const activeCue = cueEngineService.activeCues.get('pause-video-cue');
+      activeCue.videoStarted = true;
+
+      await cueEngineService.pauseCue('pause-video-cue');
+
+      expect(videoQueueService.pauseCurrent).toHaveBeenCalled();
+      expect(cueEngineService.getActiveCues()[0].state).toBe('paused');
+    });
+
+    it('should cascade resume to video for video-driven cue', async () => {
+      cueEngineService.loadCues([{
+        id: 'resume-video-cue', label: 'Resume Video',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 300, action: 'sound:play', payload: { file: 'mid.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('resume-video-cue');
+      const activeCue = cueEngineService.activeCues.get('resume-video-cue');
+      activeCue.videoStarted = true;
+      activeCue.state = 'paused';
+
+      await cueEngineService.resumeCue('resume-video-cue');
+
+      expect(videoQueueService.resumeCurrent).toHaveBeenCalled();
+      expect(cueEngineService.getActiveCues()[0].state).toBe('running');
+    });
+
+    it('should NOT cascade pause to video when videoStarted is false', async () => {
+      cueEngineService.loadCues([{
+        id: 'pause-no-video', label: 'No Video',
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'start.wav' } },
+          { at: 60, action: 'video:queue:add', payload: { videoFile: 'later.mp4' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('pause-no-video');
+      // hasVideo=true but videoStarted=false
+      await cueEngineService.pauseCue('pause-no-video');
+
+      expect(videoQueueService.pauseCurrent).not.toHaveBeenCalled();
+    });
   });
 
   describe('reset() — compound cue state cleanup', () => {

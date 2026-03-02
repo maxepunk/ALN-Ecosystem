@@ -910,7 +910,7 @@ class CueEngineService extends EventEmitter {
    *
    * @param {string} cueId - The compound cue ID to pause
    */
-  pauseCue(cueId) {
+  async pauseCue(cueId) {
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue || activeCue.state !== 'running') {
       logger.info(`[CueEngine] pauseCue: "${cueId}" not running, ignoring`);
@@ -920,6 +920,13 @@ class CueEngineService extends EventEmitter {
     activeCue.state = 'paused';
     logger.info(`[CueEngine] Paused compound cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'paused' });
+
+    // Cascade pause to video (AFTER setting state='paused' to prevent feedback loop:
+    // pauseCurrent→video:paused→handleVideoPaused→guard activeCue.state!=='running'→skips)
+    if (activeCue.hasVideo && activeCue.videoStarted) {
+      const videoQueueService = require('./videoQueueService');
+      await videoQueueService.pauseCurrent();
+    }
 
     // Cascade pause to children (same pattern as stopCue)
     for (const childId of activeCue.children) {
@@ -937,7 +944,7 @@ class CueEngineService extends EventEmitter {
    *
    * @param {string} cueId - The compound cue ID to resume
    */
-  resumeCue(cueId) {
+  async resumeCue(cueId) {
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue || activeCue.state !== 'paused') {
       logger.info(`[CueEngine] resumeCue: "${cueId}" not paused, ignoring`);
@@ -947,6 +954,13 @@ class CueEngineService extends EventEmitter {
     activeCue.state = 'running';
     logger.info(`[CueEngine] Resumed compound cue: ${cueId}`);
     this.emit('cue:status', { cueId, state: 'running' });
+
+    // Cascade resume to video (AFTER setting state='running' to prevent feedback loop:
+    // resumeCurrent→video:resumed→handleVideoResumed→guard activeCue.state!=='paused'→skips)
+    if (activeCue.hasVideo && activeCue.videoStarted) {
+      const videoQueueService = require('./videoQueueService');
+      await videoQueueService.resumeCurrent();
+    }
 
     // Cascade resume to children
     for (const childId of activeCue.children) {
