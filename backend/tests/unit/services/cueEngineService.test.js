@@ -837,6 +837,46 @@ describe('CueEngineService', () => {
         duration: 100,  // Falls back to maxAt
       }));
     });
+
+    it('should use videoDuration in getActiveCues() when available', async () => {
+      cueEngineService.loadCues([{
+        id: 'vd-active', label: 'VD Active',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { videoFile: 'test.mp4' } },
+          { at: 541, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('vd-active');
+
+      // Set videoDuration (longer than maxAt, as in ENDGAME)
+      const activeCue = cueEngineService.activeCues.get('vd-active');
+      activeCue.videoDuration = 660;
+      activeCue.elapsed = 330;
+
+      const result = cueEngineService.getActiveCues();
+      expect(result[0].duration).toBe(660);     // videoDuration, not maxAt (541)
+      expect(result[0].progress).toBe(0.5);     // 330/660 = 0.5
+    });
+
+    it('should fall back to maxAt in getActiveCues() for non-video cues', async () => {
+      cueEngineService.loadCues([{
+        id: 'clock-active', label: 'Clock Active',
+        timeline: [
+          { at: 0, action: 'sound:play', payload: { file: 'start.wav' } },
+          { at: 120, action: 'sound:play', payload: { file: 'end.wav' } },
+        ]
+      }]);
+
+      await cueEngineService.fireCue('clock-active');
+
+      const activeCue = cueEngineService.activeCues.get('clock-active');
+      activeCue.elapsed = 60;
+
+      const result = cueEngineService.getActiveCues();
+      expect(result[0].duration).toBe(120);     // maxAt (videoDuration is 0)
+      expect(result[0].progress).toBe(0.5);     // 60/120 = 0.5
+    });
   });
 
   describe('timeline error handling (D36)', () => {

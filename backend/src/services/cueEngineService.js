@@ -1041,11 +1041,12 @@ class CueEngineService extends EventEmitter {
   getActiveCues() {
     const result = [];
     for (const [cueId, activeCue] of this.activeCues) {
+      const effectiveDuration = activeCue.videoDuration || activeCue.maxAt;
       result.push({
         cueId,
         state: activeCue.state,
-        progress: activeCue.maxAt > 0 ? activeCue.elapsed / activeCue.maxAt : 0,
-        duration: activeCue.maxAt,
+        progress: effectiveDuration > 0 ? activeCue.elapsed / effectiveDuration : 0,
+        duration: effectiveDuration,
       });
     }
     return result;
