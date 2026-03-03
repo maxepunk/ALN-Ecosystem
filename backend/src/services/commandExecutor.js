@@ -461,11 +461,22 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Sound commands ---
 
       case 'sound:play': {
+        // Resolve routing target if not explicitly provided
+        if (!payload.target) {
+          const route = audioRoutingService.getStreamRoute('sound');
+          if (route && route !== 'hdmi') {
+            const sinks = await audioRoutingService.getAvailableSinks();
+            const sink = sinks.find(s => s.name === route) || sinks.find(s => s.type === route);
+            if (sink) {
+              payload = { ...payload, target: sink.name };
+            }
+          }
+        }
         const entry = soundService.play(payload);
         if (!entry) throw new Error(`Failed to play ${payload.file}`);
         resultData = entry;
         resultMessage = `Playing ${payload.file}`;
-        logger.info('Sound play requested', { source, deviceId, file: payload.file });
+        logger.info('Sound play requested', { source, deviceId, file: payload.file, target: payload.target || 'default' });
         break;
       }
 
