@@ -68,6 +68,7 @@ class ProcessMonitor extends EventEmitter {
     let receivedData = false;
 
     this._proc.stdout.on('data', (data) => {
+      if (this._stopped) return;
       receivedData = true;
       buffer += data.toString();
       const lines = buffer.split('\n');

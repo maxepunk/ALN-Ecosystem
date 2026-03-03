@@ -256,6 +256,21 @@ describe('ProcessMonitor', () => {
     it('should be safe to call without start', () => {
       monitor.stop(); // Should not throw
     });
+
+    it('should not emit line events after stop (race condition guard)', () => {
+      monitor.start();
+      const lines = [];
+      monitor.on('line', (line) => lines.push(line));
+
+      // Stop the monitor — sets _stopped = true and kills process
+      monitor.stop();
+
+      // Simulate buffered stdout data arriving AFTER stop (Node.js event loop race)
+      // The data handler closure still references the stdout stream
+      mockProc.stdout.emit('data', Buffer.from('late arriving data\n'));
+
+      expect(lines).toEqual([]);
+    });
   });
 
   describe('orphan prevention', () => {

@@ -339,6 +339,15 @@ describe('Environment Control Integration', () => {
     it('should show lighting.connected:false when HA is unreachable', async () => {
       // lightingService.isConnected() delegates to registry.isHealthy('lighting')
       // (after checking token). Mark lighting as down to simulate HA unreachable.
+      // Must close the WebSocket and clear cached state — performSystemReset calls
+      // init() which fetches scenes and starts an async WS connection to HA. If HA
+      // is running, the auth_ok handler races with our manual report and overrides
+      // it with 'healthy'. Clear scenes to simulate what happens when HA is down
+      // from the start (init would have failed, leaving scenes empty).
+      lightingService._closeWebSocket();
+      lightingService._wsStopped = true;
+      lightingService._scenes = [];
+
       const registry = require('../../src/services/serviceHealthRegistry');
       registry.report('lighting', 'down', 'HA unreachable');
       mockBluetoothUnavailable();
