@@ -24,7 +24,7 @@ For cross-cutting concerns (scoring logic, operation modes, game modes, token sc
 ### Development
 ```bash
 npm run dev              # Interactive mode selector
-npm run dev:full         # VLC + orchestrator (hot reload)
+npm run dev:full         # Orchestrator with VLC (hot reload, VLC auto-spawned)
 npm run dev:no-video     # Orchestrator only
 npm run lint             # ESLint
 ```
@@ -62,7 +62,6 @@ npm run health            # Full system health check
 ```bash
 node start-session.js     # CLI to create test session
 npm run health:api        # Check orchestrator only
-npm run health:vlc        # Check VLC only
 ```
 
 **Critical Testing Notes:**
@@ -528,7 +527,7 @@ ffmpeg -i INPUT.mp4 \
 
 **PM2 Ecosystem:**
 - `aln-orchestrator`: Node.js server (2GB restart threshold)
-- `vlc`: VLC media player (controlled via D-Bus MPRIS)
+- VLC is spawned by `vlcMprisService.init()` (not PM2). `reset()` preserves VLC process, `cleanup()` kills it.
 
 **Network URLs:**
 - Orchestrator: `https://[IP]:3000`

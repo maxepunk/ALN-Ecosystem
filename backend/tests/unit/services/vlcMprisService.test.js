@@ -16,7 +16,7 @@ const EventEmitter = require('events');
 jest.mock('child_process');
 
 describe('VlcMprisService', () => {
-  let vlcMprisService, execFile, spawn, registry;
+  let vlcMprisService, execFile, execFileSync, spawn, registry;
 
   function mockExecFileSuccess(stdout = '') {
     execFile.mockImplementation((cmd, args, opts, cb) => {
@@ -44,8 +44,9 @@ describe('VlcMprisService', () => {
     jest.resetModules();
     const cp = require('child_process');
     execFile = cp.execFile;
+    execFileSync = cp.execFileSync;
     spawn = cp.spawn;
-    spawn.mockReturnValue(createMockSpawnProc());
+    spawn.mockImplementation(() => createMockSpawnProc());
     vlcMprisService = require('../../../src/services/vlcMprisService');
     registry = require('../../../src/services/serviceHealthRegistry');
     vlcMprisService.reset();
@@ -77,21 +78,21 @@ describe('VlcMprisService', () => {
   // ── Init ──
 
   describe('init', () => {
-    it('should check connection via D-Bus', async () => {
-      mockExecFileSuccess('variant       string "Stopped"\n');
+    beforeEach(() => {
+      // Mock VLC process spawn to prevent side effects
+      vlcMprisService._spawnVlcProcess = jest.fn();
+      vlcMprisService._waitForVlcReady = jest.fn().mockResolvedValue(true);
+    });
+
+    it('should spawn VLC process and wait for D-Bus', async () => {
       vlcMprisService._idleLoopExists = jest.fn().mockReturnValue(false);
       await vlcMprisService.init();
 
-      expect(execFile).toHaveBeenCalledWith(
-        'dbus-send',
-        expect.arrayContaining(['org.freedesktop.DBus.Properties.Get']),
-        expect.any(Object),
-        expect.any(Function)
-      );
+      expect(vlcMprisService._spawnVlcProcess).toHaveBeenCalled();
+      expect(vlcMprisService._waitForVlcReady).toHaveBeenCalled();
     });
 
     it('should start playback monitor', async () => {
-      mockExecFileSuccess('variant       string "Stopped"\n');
       vlcMprisService._idleLoopExists = jest.fn().mockReturnValue(false);
       await vlcMprisService.init();
 
@@ -103,10 +104,11 @@ describe('VlcMprisService', () => {
     });
 
     it('should handle connection failure gracefully', async () => {
-      mockExecFileError('org.freedesktop.DBus.Error.ServiceUnknown');
+      vlcMprisService._waitForVlcReady = jest.fn().mockResolvedValue(false);
+      vlcMprisService._idleLoopExists = jest.fn().mockReturnValue(false);
       await vlcMprisService.init();
-      expect(vlcMprisService.isConnected()).toBe(false);
-      // Monitor starts regardless — catches when VLC starts later
+
+      // Monitor starts regardless — catches when VLC is ready
       expect(spawn).toHaveBeenCalled();
     });
   });
@@ -846,6 +848,199 @@ describe('VlcMprisService', () => {
       expect(vlcMprisService.volume).toBe(100);
       expect(vlcMprisService._previousDelta).toBeNull();
       expect(vlcMprisService._loopEnabled).toBe(false);
+    });
+  });
+
+  // ── VLC Process Spawn ──
+
+  describe('_spawnVlcProcess', () => {
+    it('should spawn cvlc with platform args', () => {
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      expect(spawn).toHaveBeenCalledWith(
+        'cvlc',
+        expect.arrayContaining(['--fullscreen', '--no-osd', '-A', 'pulse']),
+        expect.objectContaining({
+          env: expect.objectContaining({ DISPLAY: expect.any(String) }),
+        })
+      );
+    });
+
+    it('should not spawn if already running', () => {
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+      const firstCallCount = spawn.mock.calls.length;
+
+      vlcMprisService._spawnVlcProcess(); // second call — should no-op
+      expect(spawn.mock.calls.length).toBe(firstCallCount);
+    });
+
+    it('should schedule restart on process exit', () => {
+      jest.useFakeTimers();
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      const proc = spawn.mock.results[spawn.mock.results.length - 1].value;
+      const spawnCountBefore = spawn.mock.calls.length;
+
+      // Simulate VLC exiting
+      proc.emit('close', 1, null);
+
+      // Should schedule restart
+      expect(vlcMprisService._vlcRestartTimer).not.toBeNull();
+
+      // After 3s, should respawn
+      jest.advanceTimersByTime(3000);
+      expect(spawn.mock.calls.length).toBe(spawnCountBefore + 1);
+
+      jest.useRealTimers();
+    });
+
+    it('should remove stale process.on(exit) handler before registering new one', () => {
+      jest.useFakeTimers();
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      const firstHandler = vlcMprisService._processExitHandler;
+      const removeListenerSpy = jest.spyOn(process, 'removeListener');
+
+      // Simulate VLC crash + restart
+      const proc = spawn.mock.results[spawn.mock.results.length - 1].value;
+      proc.emit('close', 1, null);
+      jest.advanceTimersByTime(3000);
+
+      // Should have removed the old handler before adding new one
+      expect(removeListenerSpy).toHaveBeenCalledWith('exit', firstHandler);
+      expect(vlcMprisService._processExitHandler).not.toBe(firstHandler);
+
+      removeListenerSpy.mockRestore();
+      jest.useRealTimers();
+    });
+
+    it('should kill stale VLC before spawning', () => {
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      expect(execFileSync).toHaveBeenCalledWith('pkill', ['-x', 'cvlc']);
+    });
+
+    it('should NOT restart when _vlcStopped is true', () => {
+      jest.useFakeTimers();
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      vlcMprisService._vlcStopped = true;
+      const proc = spawn.mock.results[spawn.mock.results.length - 1].value;
+      const spawnCountBefore = spawn.mock.calls.length;
+
+      proc.emit('close', 0, 'SIGTERM');
+
+      jest.advanceTimersByTime(5000);
+      expect(spawn.mock.calls.length).toBe(spawnCountBefore); // No new spawn
+
+      jest.useRealTimers();
+    });
+  });
+
+  // ── _stopVlcProcess ──
+
+  describe('_stopVlcProcess', () => {
+    it('should kill VLC process and set stopped flag', () => {
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      const proc = spawn.mock.results[spawn.mock.results.length - 1].value;
+      vlcMprisService._stopVlcProcess();
+
+      expect(proc.kill).toHaveBeenCalledWith('SIGTERM');
+      expect(vlcMprisService._vlcStopped).toBe(true);
+      expect(vlcMprisService._vlcProc).toBeNull();
+    });
+
+    it('should clear pending restart timer', () => {
+      jest.useFakeTimers();
+      vlcMprisService._vlcRestartTimer = setTimeout(() => {}, 3000);
+      vlcMprisService._stopVlcProcess();
+      expect(vlcMprisService._vlcRestartTimer).toBeNull();
+      jest.useRealTimers();
+    });
+  });
+
+  // ── _waitForVlcReady ──
+
+  describe('_waitForVlcReady', () => {
+    it('should resolve true when checkConnection succeeds', async () => {
+      mockExecFileSuccess('variant       string "Stopped"\n');
+      const result = await vlcMprisService._waitForVlcReady(1000);
+      expect(result).toBe(true);
+    });
+
+    it('should resolve false after timeout when VLC never connects', async () => {
+      mockExecFileError('org.freedesktop.DBus.Error.ServiceUnknown');
+      const result = await vlcMprisService._waitForVlcReady(600); // short timeout
+      expect(result).toBe(false);
+    });
+  });
+
+  // ── cleanup ──
+
+  describe('cleanup', () => {
+    it('should stop VLC process', () => {
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      const proc = spawn.mock.results[spawn.mock.results.length - 1].value;
+      vlcMprisService.cleanup();
+
+      expect(proc.kill).toHaveBeenCalledWith('SIGTERM');
+    });
+
+    it('should remove all listeners', () => {
+      vlcMprisService.on('test-event', () => {});
+      expect(vlcMprisService.listenerCount('test-event')).toBe(1);
+
+      vlcMprisService.cleanup();
+      expect(vlcMprisService.listenerCount('test-event')).toBe(0);
+    });
+  });
+
+  // ── Platform Detection ──
+
+  describe('_getHwAccelArgs', () => {
+    const originalEnv = process.env.VLC_HW_ACCEL;
+
+    afterEach(() => {
+      if (originalEnv !== undefined) {
+        process.env.VLC_HW_ACCEL = originalEnv;
+      } else {
+        delete process.env.VLC_HW_ACCEL;
+      }
+    });
+
+    it('should return [] when VLC_HW_ACCEL is empty string', () => {
+      process.env.VLC_HW_ACCEL = '';
+      expect(vlcMprisService._getHwAccelArgs()).toEqual([]);
+    });
+
+    it('should split VLC_HW_ACCEL by spaces', () => {
+      process.env.VLC_HW_ACCEL = '--vout=gl --extra';
+      expect(vlcMprisService._getHwAccelArgs()).toEqual(['--vout=gl', '--extra']);
+    });
+  });
+
+  // ── reset preserves VLC process ──
+
+  describe('reset (VLC process preservation)', () => {
+    it('should NOT kill VLC process on reset', () => {
+      vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
+      vlcMprisService._spawnVlcProcess();
+
+      const proc = spawn.mock.results[spawn.mock.results.length - 1].value;
+      vlcMprisService.reset();
+
+      expect(proc.kill).not.toHaveBeenCalled();
+      expect(vlcMprisService._vlcProc).not.toBeNull();
     });
   });
 });

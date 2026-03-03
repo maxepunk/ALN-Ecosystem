@@ -229,7 +229,6 @@ async function initializeServices() {
 
       try {
         await vlcService.init();
-        // Initialize idle loop after VLC is connected
         await vlcService.initializeIdleLoop();
 
         // Initialize display control service with VLC and video queue dependencies

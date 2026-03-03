@@ -4,52 +4,6 @@
  * Optimized for Raspberry Pi (8GB RAM)
  */
 
-const fs = require('fs');
-
-/**
- * Detect Raspberry Pi model from device tree.
- */
-function detectPlatform() {
-  try {
-    const model = fs.readFileSync('/proc/device-tree/model', 'utf8').trim();
-    if (model.includes('Raspberry Pi 5')) return 'pi5';
-    if (model.includes('Raspberry Pi 4')) return 'pi4';
-    if (model.includes('Raspberry Pi')) return 'pi-other';
-  } catch {
-    // Not a Pi (dev machine, CI, etc.)
-  }
-  return 'generic';
-}
-
-/**
- * Get VLC platform-specific flags.
- *
- * Pi 4: v4l2_m2m hardware decode.
- * Pi 5: --vout=gl forces OpenGL rendering through X11/Xorg. Without this,
- *   VLC auto-selects drm_vout which competes with Xorg for DRM planes,
- *   causing intermittent HDMI signal loss (projector shows "no signal").
- */
-function getVlcPlatformArgs() {
-  if (process.env.VLC_HW_ACCEL !== undefined) {
-    return process.env.VLC_HW_ACCEL;
-  }
-  const platform = detectPlatform();
-  switch (platform) {
-    case 'pi4':
-      return '--codec=avcodec --avcodec-hw=v4l2_m2m';
-    case 'pi5':
-      return '--vout=gl';
-    case 'pi-other':
-    case 'generic':
-    default:
-      return '';
-  }
-}
-
-const VLC_BASE_ARGS = '--no-loop --intf http --http-password vlc --http-host 0.0.0.0 --http-port 8080 -A pulse --fullscreen --video-on-top --no-video-title-show --no-video-deco --no-osd';
-const vlcHwArgs = getVlcPlatformArgs();
-const VLC_ARGS = vlcHwArgs ? `${VLC_BASE_ARGS} ${vlcHwArgs}` : VLC_BASE_ARGS;
-
 module.exports = {
   apps: [
     {
@@ -131,41 +85,7 @@ module.exports = {
         max_failures: 3,
       },
     },
-
-    // VLC Process (with video output, clean kiosk mode)
-    // Wrapper script kills stale VLC processes before starting, then exec's cvlc.
-    {
-      name: 'vlc-http',
-      script: './scripts/vlc-managed.sh',
-      // Platform-aware: Pi 4 uses v4l2_m2m hw decode, Pi 5+ uses auto-detect.
-      // Override with VLC_HW_ACCEL env var (e.g., VLC_HW_ACCEL='' to force software decode).
-      args: VLC_ARGS,
-      interpreter: 'none', // Shebang handles bash; exec replaces shell with cvlc for PM2 PID tracking
-      exec_mode: 'fork',
-
-      // Process management
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '500M',
-      max_restarts: 10,
-      min_uptime: '10s',
-
-      // Logging
-      error_file: './logs/vlc-error.log',
-      out_file: './logs/vlc-out.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
-
-      // Environment
-      env: {
-        DISPLAY: ':0', // For GUI support in WSL2/X11
-      },
-
-      // Graceful shutdown
-      kill_timeout: 5000,
-
-      // Disable features not needed for VLC
-      vizion: false,
-    },
+    // vlc-http REMOVED — VLC process managed by vlcMprisService.init()
   ],
 
   // Deploy configuration (optional)

@@ -48,7 +48,7 @@ else
     HEALTH_STATUS=1
 fi
 
-if pgrep -f "vlc.*http.*8080" > /dev/null; then
+if pgrep -x cvlc > /dev/null; then
     echo -e "${GREEN}✅${NC} VLC process: Running"
 else
     echo -e "${YELLOW}⚠️${NC}  VLC process: Not found (video playback unavailable)"
@@ -59,7 +59,6 @@ echo ""
 echo "2. Service Endpoints"
 echo "───────────────────"
 check_service "Orchestrator API" "http://localhost:3000/health" ""
-check_service "VLC HTTP Interface" "http://localhost:8080/requests/status.json" ":vlc"
 echo ""
 
 # Check integration status
@@ -67,9 +66,9 @@ echo "3. Integration Status"
 echo "────────────────────"
 HEALTH_JSON=$(curl -s http://localhost:3000/health 2>/dev/null)
 if [ -n "$HEALTH_JSON" ]; then
-    # Check if VLC is connected to orchestrator
-    if echo "$HEALTH_JSON" | grep -q '"vlc":true'; then
-        echo -e "${GREEN}✅${NC} VLC Integration: Connected"
+    # Check VLC D-Bus availability
+    if dbus-send --session --dest=org.mpris.MediaPlayer2.vlc --print-reply /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping > /dev/null 2>&1; then
+        echo -e "${GREEN}✅${NC} VLC Integration: Connected (D-Bus MPRIS)"
     else
         echo -e "${YELLOW}⚠️${NC}  VLC Integration: Not connected (degraded mode)"
     fi
@@ -94,12 +93,6 @@ if lsof -i :3000 > /dev/null 2>&1; then
 else
     echo -e "${RED}❌${NC} Port 3000: Not in use"
     HEALTH_STATUS=1
-fi
-
-if lsof -i :8080 > /dev/null 2>&1; then
-    echo -e "${GREEN}✅${NC} Port 8080: In use (VLC)"
-else
-    echo -e "${YELLOW}⚠️${NC}  Port 8080: Not in use"
 fi
 
 if lsof -i :8888 > /dev/null 2>&1; then

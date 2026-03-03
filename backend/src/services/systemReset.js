@@ -115,9 +115,9 @@ async function performSystemReset(io, services) {
     soundService.reset();
   }
 
-  // Clear VLC state delta cache (don't call full reset — VLC connection should persist)
+  // Reset VLC state (preserves VLC process — reset() doesn't touch it)
   if (vlcService) {
-    vlcService._previousDelta = null;
+    vlcService.reset();
   }
 
   // Reset Phase 2 services
@@ -254,11 +254,12 @@ async function performSystemReset(io, services) {
     }
   }
 
-  // VLC: force health re-check (D-Bus monitor still running, registry was cleared)
-  if (vlcService && typeof vlcService.checkConnection === 'function') {
+  // VLC: re-check connection and restart D-Bus monitor (stopped by reset)
+  if (vlcService) {
     try { await vlcService.checkConnection(); } catch (err) {
       logger.debug('VLC health re-check failed after reset:', err.message);
     }
+    vlcService.startPlaybackMonitor();
   }
 
   // Spotify: re-check connection and restart D-Bus monitor (stopped by reset)

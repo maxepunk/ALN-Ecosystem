@@ -30,9 +30,9 @@ ${colors.blue}${colors.bright}━━━━━━━━━━━━━━━━�
 
 Select your development configuration:
 
-  ${colors.green}1)${colors.reset} ${colors.bright}Full System${colors.reset} (Orchestrator + VLC with video)
+  ${colors.green}1)${colors.reset} ${colors.bright}Full System${colors.reset} (Orchestrator with video)
      Best for: Testing complete functionality
-     Starts: VLC GUI + Orchestrator with hot reload
+     Starts: Orchestrator with hot reload (VLC auto-spawned)
 
   ${colors.green}2)${colors.reset} ${colors.bright}Orchestrator Only${colors.reset} (no video playback)
      Best for: API development, scanner integration
@@ -40,11 +40,7 @@ Select your development configuration:
 
   ${colors.green}3)${colors.reset} ${colors.bright}PM2 Managed${colors.reset} (production-like)
      Best for: Testing production configuration
-     Starts: Both processes via PM2
-
-  ${colors.green}4)${colors.reset} ${colors.bright}Headless Mode${colors.reset} (CI/testing)
-     Best for: Automated testing, CI environments
-     Starts: VLC without GUI + Orchestrator
+     Starts: Orchestrator via PM2
 
   ${colors.yellow}h)${colors.reset} Health Check
   ${colors.yellow}q)${colors.reset} Quit
@@ -87,11 +83,9 @@ function askQuestion() {
 
         switch(choice) {
             case '1':
-                console.log(`\n${colors.blue}Starting full system with video output...${colors.reset}`);
+                console.log(`\n${colors.blue}Starting full system with video...${colors.reset}`);
                 runCommand(
-                    'npx concurrently -n "VLC,ORCH" -c "blue,green" ' +
-                    '"./scripts/vlc-gui.sh" ' +
-                    '"nodemon src/server.js"',
+                    'nodemon src/server.js',
                     'Full Development System'
                 );
                 break;
@@ -109,16 +103,6 @@ function askQuestion() {
                 runCommand(
                     'pm2 start ecosystem.config.js && pm2 logs',
                     'PM2 Managed Mode'
-                );
-                break;
-
-            case '4':
-                console.log(`\n${colors.blue}Starting headless mode (no GUI)...${colors.reset}`);
-                runCommand(
-                    'npx concurrently -n "VLC,ORCH" -c "blue,green" ' +
-                    '"./scripts/vlc-headless.sh" ' +
-                    '"nodemon src/server.js"',
-                    'Headless Development Mode'
                 );
                 break;
 

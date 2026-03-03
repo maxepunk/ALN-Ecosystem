@@ -73,7 +73,9 @@ describe('performSystemReset', () => {
         init: jest.fn(),
       },
       vlcService: {
+        reset: jest.fn(),
         checkConnection: jest.fn().mockResolvedValue(true),
+        startPlaybackMonitor: jest.fn(),
       },
       bluetoothService: {
         reset: jest.fn(),
@@ -191,5 +193,38 @@ describe('performSystemReset', () => {
     const spotifyIdx = callOrder.indexOf('spotifyReset');
     const broadcastIdx = callOrder.indexOf('setupBroadcast');
     expect(spotifyIdx).toBeLessThan(broadcastIdx);
+  });
+
+  it('should call vlcService.reset() during step 4 (service reset)', async () => {
+    await performSystemReset(mockIo, mockServices);
+
+    expect(mockServices.vlcService.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it('should re-check VLC connection and restart D-Bus monitor during step 6', async () => {
+    await performSystemReset(mockIo, mockServices);
+
+    expect(mockServices.vlcService.checkConnection).toHaveBeenCalledTimes(1);
+    expect(mockServices.vlcService.startPlaybackMonitor).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reset VLC before re-checking connection', async () => {
+    const callOrder = [];
+    mockServices.vlcService.reset = jest.fn(() => callOrder.push('vlcReset'));
+    mockServices.vlcService.checkConnection = jest.fn(() => {
+      callOrder.push('vlcCheckConnection');
+      return Promise.resolve(true);
+    });
+    mockServices.vlcService.startPlaybackMonitor = jest.fn(() => callOrder.push('vlcStartMonitor'));
+
+    await performSystemReset(mockIo, mockServices);
+
+    expect(callOrder.indexOf('vlcReset')).toBeLessThan(callOrder.indexOf('vlcCheckConnection'));
+    expect(callOrder.indexOf('vlcCheckConnection')).toBeLessThan(callOrder.indexOf('vlcStartMonitor'));
+  });
+
+  it('should not throw when vlcService is not provided', async () => {
+    const { vlcService, ...servicesWithout } = mockServices;
+    await expect(performSystemReset(mockIo, servicesWithout)).resolves.not.toThrow();
   });
 });

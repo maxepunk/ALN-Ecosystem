@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const registry = require('./serviceHealthRegistry');
+const { spawn, execFileSync } = require('child_process');
 const MprisPlayerBase = require('./mprisPlayerBase');
 
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
@@ -18,32 +19,172 @@ class VlcMprisService extends MprisPlayerBase {
     this._previousDelta = null;
     this._loopEnabled = false;
     this._rawVolume = 1.0; // MPRIS 0.0-1.0 — avoids lossy 256→100→256 round-trip
+    this._vlcProc = null;
+    this._vlcRestartTimer = null;
+    this._vlcStopped = false;      // Flag to prevent restart after intentional stop
+    this._processExitHandler = null; // For orphan prevention
+  }
+
+  // ── VLC Process Management ──
+
+  /**
+   * Spawn the VLC process with platform-appropriate args.
+   * Simple restart-on-exit wrapper — always restarts after 3s unless stopped.
+   * NOT using ProcessMonitor: its receivedData heuristic checks stdout,
+   * but VLC writes to stderr, causing false maxFailures give-up.
+   */
+  _spawnVlcProcess() {
+    if (this._vlcProc) return; // Already running
+
+    // Remove stale exit handler from previous spawn (prevents listener leak on crash/restart cycles)
+    if (this._processExitHandler) {
+      process.removeListener('exit', this._processExitHandler);
+      this._processExitHandler = null;
+    }
+
+    // Kill any orphaned VLC from a previous crash (prevents D-Bus name conflict
+    // where the stale instance holds org.mpris.MediaPlayer2.vlc and our new
+    // spawn gets a PID-suffixed name that _destination won't find)
+    try { execFileSync('pkill', ['-x', 'cvlc']); } catch { /* none running */ }
+
+    const args = this._buildVlcArgs();
+    const env = { ...process.env, DISPLAY: process.env.DISPLAY || ':0' };
+
+    logger.info('[VLC] Spawning process', { args: args.join(' ') });
+    this._vlcProc = spawn('cvlc', args, {
+      env,
+      stdio: ['ignore', 'ignore', 'pipe'], // stderr only (for error logging)
+    });
+
+    this._vlcProc.stderr.on('data', (data) => {
+      // Log VLC errors but don't treat as health signal
+      const msg = data.toString().trim();
+      if (msg) logger.debug('[VLC] stderr:', msg);
+    });
+
+    this._vlcProc.on('close', (code, signal) => {
+      logger.warn('[VLC] Process exited', { code, signal });
+      this._vlcProc = null;
+      this._setConnected(false);
+
+      if (!this._vlcStopped) {
+        logger.info('[VLC] Scheduling restart in 3s');
+        this._vlcRestartTimer = setTimeout(() => {
+          this._vlcRestartTimer = null;
+          this._spawnVlcProcess();
+        }, 3000);
+      }
+    });
+
+    // Orphan prevention: kill VLC if Node exits unexpectedly
+    this._processExitHandler = () => {
+      if (this._vlcProc) {
+        this._vlcProc.kill('SIGTERM');
+      }
+    };
+    process.on('exit', this._processExitHandler);
+  }
+
+  /**
+   * Stop VLC process and prevent restart.
+   */
+  _stopVlcProcess() {
+    this._vlcStopped = true;
+
+    if (this._vlcRestartTimer) {
+      clearTimeout(this._vlcRestartTimer);
+      this._vlcRestartTimer = null;
+    }
+
+    if (this._processExitHandler) {
+      process.removeListener('exit', this._processExitHandler);
+      this._processExitHandler = null;
+    }
+
+    if (this._vlcProc) {
+      this._vlcProc.kill('SIGTERM');
+      this._vlcProc = null;
+    }
+  }
+
+  /**
+   * Wait for VLC to become reachable on D-Bus after spawn.
+   * Polls checkConnection() every 500ms for up to timeoutMs.
+   * Returns true if connected, false if timed out (non-fatal — D-Bus monitor will catch later).
+   * @param {number} [timeoutMs=5000]
+   * @returns {Promise<boolean>}
+   */
+  async _waitForVlcReady(timeoutMs = 5000) {
+    const interval = 500;
+    const maxAttempts = Math.ceil(timeoutMs / interval);
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const connected = await this.checkConnection();
+      if (connected) return true;
+      await new Promise(r => setTimeout(r, interval));
+    }
+
+    return false;
+  }
+
+  /**
+   * Build cvlc command-line arguments.
+   * @returns {string[]}
+   */
+  _buildVlcArgs() {
+    const baseArgs = [
+      '--no-loop', '-A', 'pulse', '--fullscreen',
+      '--video-on-top', '--no-video-title-show',
+      '--no-video-deco', '--no-osd',
+    ];
+    const hwArgs = this._getHwAccelArgs();
+    return hwArgs.length > 0 ? [...baseArgs, ...hwArgs] : baseArgs;
+  }
+
+  /**
+   * Detect Raspberry Pi model and return hardware acceleration flags.
+   * Pi 4: v4l2_m2m hardware decode.
+   * Pi 5: --vout=gl (prevents HDMI signal loss from DRM plane conflicts with Xorg).
+   * VLC_HW_ACCEL env var overrides auto-detection.
+   * @returns {string[]}
+   */
+  _getHwAccelArgs() {
+    if (process.env.VLC_HW_ACCEL !== undefined) {
+      return process.env.VLC_HW_ACCEL ? process.env.VLC_HW_ACCEL.split(' ') : [];
+    }
+    try {
+      const model = fs.readFileSync('/proc/device-tree/model', 'utf8').trim();
+      if (model.includes('Raspberry Pi 5')) return ['--vout=gl'];
+      if (model.includes('Raspberry Pi 4')) return ['--codec=avcodec', '--avcodec-hw=v4l2_m2m'];
+    } catch {
+      // Not a Pi (dev machine, CI)
+    }
+    return [];
   }
 
   // ── Init ──
 
   /**
    * Initialize VLC MPRIS service.
-   * Checks D-Bus connection, starts playback monitor, initializes idle loop.
+   * Spawns VLC process, waits for D-Bus registration, starts playback monitor.
    */
   async init() {
     logger.info('[VLC] Initializing MPRIS service');
-    try {
-      const connected = await this.checkConnection();
-      if (connected) {
-        logger.info('[VLC] D-Bus connection established');
-      } else {
-        logger.warn('[VLC] Not available at startup (will detect via D-Bus monitor)');
-      }
-    } catch (err) {
-      logger.warn('[VLC] Init connection check failed:', err.message);
+
+    // Spawn VLC process (backend owns VLC lifecycle now)
+    this._vlcStopped = false;
+    this._spawnVlcProcess();
+
+    // Wait for VLC to register on D-Bus
+    const ready = await this._waitForVlcReady();
+    if (ready) {
+      logger.info('[VLC] D-Bus connection established');
+    } else {
+      logger.warn('[VLC] Not ready after spawn (D-Bus monitor will detect when available)');
     }
 
-    // Start monitor regardless — catches when VLC starts later
+    // Start D-Bus monitor regardless — catches state changes
     this.startPlaybackMonitor();
-
-    // Initialize idle loop (non-blocking — errors caught internally)
-    await this.initializeIdleLoop();
   }
 
   // ── Video Playback ──
@@ -372,12 +513,23 @@ class VlcMprisService extends MprisPlayerBase {
 
   /**
    * Reset VLC-specific state plus base class cleanup.
+   * Preserves VLC process — system reset should not kill VLC.
    */
   reset() {
-    super.reset();
+    super.reset(); // stops D-Bus monitor, reports health down, resets state
     this._previousDelta = null;
     this._loopEnabled = false;
     this._rawVolume = 1.0;
+    // VLC process intentionally preserved (same as Spotify's spotifyd)
+  }
+
+  /**
+   * Full cleanup — stop VLC process and remove all listeners.
+   * Called on server shutdown (not on system reset).
+   */
+  cleanup() {
+    this._stopVlcProcess();
+    super.cleanup(); // calls reset() + removeAllListeners()
   }
 }
 

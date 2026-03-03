@@ -181,6 +181,7 @@ async function shutdown(signal) {
     });
 
     // Cleanup services
+    vlcService.cleanup();
     bluetoothService.cleanup();
     audioRoutingService.cleanup();
     await lightingService.cleanup();
