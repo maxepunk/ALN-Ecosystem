@@ -105,6 +105,11 @@ class VlcMprisService extends MprisPlayerBase {
       this._vlcProc.kill('SIGTERM');
       this._vlcProc = null;
     }
+
+    // Belt-and-suspenders: pkill catches cases where SIGTERM is ignored
+    // or the child was reparented before SIGTERM was processed (Node exits
+    // immediately after kill(), VLC becomes orphan under init).
+    try { execFileSync('pkill', ['-x', 'cvlc']); } catch { /* none running */ }
   }
 
   /**
