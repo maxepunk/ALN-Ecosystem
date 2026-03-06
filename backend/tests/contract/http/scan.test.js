@@ -51,7 +51,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
+        tokenId: 'rem001',  // Valid token with video from ALN-TokenData
         teamId: 'Team Alpha',
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required for device-type-specific behavior
@@ -66,7 +66,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
+        tokenId: 'rem001',  // Valid token with video from ALN-TokenData
         teamId: 'Team Alpha',  // TODO Phase 2: Make optional per contract
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required for device-type-specific behavior
@@ -83,7 +83,7 @@ describe('POST /api/scan', () => {
     const response = await request(app.app)
       .post('/api/scan')
       .send({
-        tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
+        tokenId: 'rem001',  // Valid token with video from ALN-TokenData
         deviceId: 'PLAYER_SCANNER_01',
         deviceType: 'player',  // P0.1: Required for device-type-specific behavior
         teamId: 'Team Alpha',
@@ -145,7 +145,7 @@ describe('POST /api/scan', () => {
       const response = await request(app.app)
         .post('/api/scan')
         .send({
-          tokenId: 'jaw011',  // Valid token with video from ALN-TokenData
+          tokenId: 'rem001',  // Valid token with video from ALN-TokenData
           deviceId: 'PLAYER_SCANNER_01',
           deviceType: 'player',
           timestamp: new Date().toISOString()
@@ -197,12 +197,12 @@ describe('POST /api/scan/batch', () => {
         batchId: 'test-batch-001',  // PHASE 1.2 (P0.2): batchId required
         transactions: [
           {
-            tokenId: 'jaw011',  // Valid video token from ALN-TokenData
+            tokenId: 'rem001',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           },
           {
-            tokenId: 'tac001',  // Valid non-video token
+            tokenId: 'fli001',  // Valid non-video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             teamId: 'Team Alpha',
             timestamp: new Date().toISOString()
@@ -221,7 +221,7 @@ describe('POST /api/scan/batch', () => {
         batchId: `test-batch-${Date.now()}`,  // PHASE 1.2 (P0.2): batchId required (unique per test)
         transactions: [
           {
-            tokenId: 'jaw011',  // Valid video token from ALN-TokenData
+            tokenId: 'rem001',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
             timestamp: new Date().toISOString()
           }
