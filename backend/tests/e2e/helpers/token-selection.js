@@ -97,23 +97,44 @@ async function selectTestTokens(orchestratorUrl) {
   const tokens = await fetchTokenDatabase(orchestratorUrl);
   let availableTokens = Object.values(tokens);
 
-  // Find tokens by memory type and rating
-  const personalTokens = availableTokens.filter(t => t.SF_MemoryType === 'Personal');
-  const businessTokens = availableTokens.filter(t => t.SF_MemoryType === 'Business');
-  const technicalTokens = availableTokens.filter(t => t.SF_MemoryType === 'Technical');
+  // Filter to only scoreable tokens (those with valid MemoryType and ValueRating)
+  const scoreableTokens = availableTokens.filter(t =>
+    t.SF_MemoryType && t.SF_ValueRating
+  );
+
+  // Select tokens by MULTIPLIER TIER, not specific type name.
+  // This makes E2E tests resilient to type distribution shifts.
+  // Tier 1 (1x): Personal
+  // Tier 3 (3x): Business, Mention
+  // Tier 5 (5x): Technical, Party
+  const TIER_1_TYPES = ['Personal'];
+  const TIER_3_TYPES = ['Business', 'Mention'];
+  const TIER_5_TYPES = ['Technical', 'Party'];
+
+  const tier1Tokens = scoreableTokens.filter(t => TIER_1_TYPES.includes(t.SF_MemoryType));
+  const tier3Tokens = scoreableTokens.filter(t => TIER_3_TYPES.includes(t.SF_MemoryType));
+  const tier5Tokens = scoreableTokens.filter(t => TIER_5_TYPES.includes(t.SF_MemoryType));
 
   // Find video tokens (have non-null video field)
   const videoTokens = availableTokens.filter(t => t.video && t.video !== '');
 
-  // Validation: Ensure minimum required tokens exist
-  if (personalTokens.length === 0) {
-    throw new Error('No Personal tokens found in database. Cannot run E2E tests.');
+  // Validation: Need at least 2 tiers with tokens for meaningful scoring tests.
+  // If only 1 tier exists, scoring parity tests can't verify differentiation.
+  const populatedTiers = [tier1Tokens, tier3Tokens, tier5Tokens].filter(t => t.length > 0);
+  if (populatedTiers.length < 2) {
+    throw new Error(
+      `Need tokens in at least 2 multiplier tiers for scoring tests. ` +
+      `Found: Tier1(1x)=${tier1Tokens.length}, Tier3(3x)=${tier3Tokens.length}, Tier5(5x)=${tier5Tokens.length}. ` +
+      `Check tokens.json has tokens with valid SF_MemoryType values.`
+    );
   }
-  if (businessTokens.length === 0) {
-    throw new Error('No Business tokens found in database. Cannot run E2E tests.');
-  }
-  if (technicalTokens.length === 0) {
-    throw new Error('No Technical tokens found in database. Cannot run E2E tests.');
+
+  // Need at least 3 total scoreable tokens for multi-scan tests
+  if (scoreableTokens.length < 3) {
+    throw new Error(
+      `Need at least 3 scoreable tokens. Found ${scoreableTokens.length}. ` +
+      `Check tokens.json has tokens with valid SF_MemoryType and SF_ValueRating.`
+    );
   }
 
   const selected = {};
@@ -133,24 +154,35 @@ async function selectTestTokens(orchestratorUrl) {
     availableTokens = availableTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
   }
 
-  // 2. ALLOCATE INDIVIDUAL TOKENS from remaining pool (excluding group members)
-  const availablePersonal = personalTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
-  const availableBusiness = businessTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
-  const availableTechnical = technicalTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+  // 2. ALLOCATE TIER TOKENS from remaining pool (excluding group members)
+  // These are exposed as personalToken/businessToken/technicalToken for
+  // backward compatibility with existing E2E tests. The names are labels
+  // for multiplier tiers, not type requirements.
+  const availableTier1 = tier1Tokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+  const availableTier3 = tier3Tokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+  const availableTier5 = tier5Tokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+  const availableScoreable = scoreableTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
 
-  // Basic scan test: any low-value Personal token (2-star)
+  // personalToken = Tier 1 (1x) preferred, fallback to any scoreable
   selected.personalToken = allocateToken(
-    availablePersonal.find(t => t.SF_ValueRating === 2) || availablePersonal[0]
+    (availableTier1.find(t => t.SF_ValueRating === 2) || availableTier1[0])
+    || availableScoreable[0]
   );
 
-  // Type multiplier test: Business token (3x multiplier)
+  // businessToken = Tier 3 (3x) preferred, fallback to any scoreable
+  const remainingTier3 = availableTier3.filter(t => !usedTokenIds.has(t.SF_RFID));
+  const remainingScoreable = availableScoreable.filter(t => !usedTokenIds.has(t.SF_RFID));
   selected.businessToken = allocateToken(
-    availableBusiness.find(t => t.SF_ValueRating === 3) || availableBusiness[0]
+    (remainingTier3.find(t => t.SF_ValueRating === 3) || remainingTier3[0])
+    || remainingScoreable[0]
   );
 
-  // High-value Technical token (5x multiplier)
+  // technicalToken = Tier 5 (5x) preferred, fallback to any scoreable
+  const remainingTier5 = availableTier5.filter(t => !usedTokenIds.has(t.SF_RFID));
+  const remainingScoreable2 = remainingScoreable.filter(t => !usedTokenIds.has(t.SF_RFID));
   selected.technicalToken = allocateToken(
-    availableTechnical.find(t => t.SF_ValueRating === 5) || availableTechnical[0]
+    (remainingTier5.find(t => t.SF_ValueRating === 5) || remainingTier5[0])
+    || remainingScoreable2[0]
   );
 
   // Video token (for video alert testing) - exclude already used tokens AND verify video file exists
@@ -160,13 +192,13 @@ async function selectTestTokens(orchestratorUrl) {
     const videoPath = path.join(VIDEOS_DIR, t.video);
     const exists = fs.existsSync(videoPath);
     if (!exists) {
-      console.log(`  → Skipping video token ${t.SF_RFID}: video file "${t.video}" not found`);
+      console.log(`  -> Skipping video token ${t.SF_RFID}: video file "${t.video}" not found`);
     }
     return exists;
   });
   if (availableVideo.length > 0) {
     selected.videoToken = allocateToken(availableVideo[0]);
-    console.log(`  → Video token verified: ${selected.videoToken.video} exists at ${VIDEOS_DIR}`);
+    console.log(`  -> Video token verified: ${selected.videoToken.video} exists at ${VIDEOS_DIR}`);
   } else {
     selected.videoToken = null;
   }
@@ -177,23 +209,30 @@ async function selectTestTokens(orchestratorUrl) {
   // All tokens (for reference)
   selected.allTokens = Object.values(tokens);
 
-  // Log selected tokens for debugging
+  // Log selected tokens for debugging (with tier info)
+  const tierLabel = (type) => {
+    if (TIER_1_TYPES.includes(type)) return '1x';
+    if (TIER_3_TYPES.includes(type)) return '3x';
+    if (TIER_5_TYPES.includes(type)) return '5x';
+    return '?x';
+  };
   console.log('Token Selection Summary:');
-  console.log(`  → Personal token: ${selected.personalToken.SF_RFID} (${selected.personalToken.SF_ValueRating}⭐)`);
-  console.log(`  → Business token: ${selected.businessToken.SF_RFID} (${selected.businessToken.SF_ValueRating}⭐)`);
-  console.log(`  → Technical token: ${selected.technicalToken.SF_RFID} (${selected.technicalToken.SF_ValueRating}⭐)`);
-  console.log(`  → Video token: ${selected.videoToken ? selected.videoToken.SF_RFID : 'NONE FOUND'}`);
-  console.log(`  → Group tokens: ${selected.groupTokens.length > 0 ? selected.groupTokens.map(t => t.SF_RFID).join(', ') : 'NONE FOUND'}`);
-  console.log(`  → Unique tokens: ${selected.uniqueTokens.slice(0, 3).map(t => t.SF_RFID).join(', ')}... (${selected.uniqueTokens.length} total)`);
+  console.log(`  -> personalToken (tier1): ${selected.personalToken.SF_RFID} (${selected.personalToken.SF_MemoryType} ${tierLabel(selected.personalToken.SF_MemoryType)}, ${selected.personalToken.SF_ValueRating}*)`);
+  console.log(`  -> businessToken (tier3): ${selected.businessToken.SF_RFID} (${selected.businessToken.SF_MemoryType} ${tierLabel(selected.businessToken.SF_MemoryType)}, ${selected.businessToken.SF_ValueRating}*)`);
+  console.log(`  -> technicalToken (tier5): ${selected.technicalToken.SF_RFID} (${selected.technicalToken.SF_MemoryType} ${tierLabel(selected.technicalToken.SF_MemoryType)}, ${selected.technicalToken.SF_ValueRating}*)`);
+  console.log(`  -> Video token: ${selected.videoToken ? selected.videoToken.SF_RFID : 'NONE FOUND'}`);
+  console.log(`  -> Group tokens: ${selected.groupTokens.length > 0 ? selected.groupTokens.map(t => t.SF_RFID).join(', ') : 'NONE FOUND'}`);
+  console.log(`  -> Unique tokens: ${selected.uniqueTokens.slice(0, 3).map(t => t.SF_RFID).join(', ')}... (${selected.uniqueTokens.length} total)`);
+  console.log(`  -> Scoreable: ${scoreableTokens.length}, Null-scoring: ${availableTokens.length - scoreableTokens.length}`);
 
   // Validation: Warn if group tokens not found
   if (selected.groupTokens.length < 2) {
-    console.warn('⚠️  Warning: No group with 2+ tokens found. Group completion bonus tests will be skipped.');
+    console.warn('Warning: No group with 2+ tokens found. Group completion bonus tests will be skipped.');
   }
 
   // Validation: Warn if video tokens not found
   if (!selected.videoToken) {
-    console.warn('⚠️  Warning: No video token found. Video alert tests will be skipped.');
+    console.warn('Warning: No video token found. Video alert tests will be skipped.');
   }
 
   // Validation: Check for overlap (should never happen with exclusive allocation)
@@ -207,7 +246,7 @@ async function selectTestTokens(orchestratorUrl) {
   ];
   const uniqueSelections = new Set(allSelections);
   if (allSelections.length !== uniqueSelections.size) {
-    console.warn('⚠️  WARNING: Token overlap detected in selection! This violates exclusivity.');
+    console.warn('WARNING: Token overlap detected in selection! This violates exclusivity.');
   }
 
   return selected;
