@@ -39,7 +39,7 @@
 
             /* Layout */
             --header-height: 80px;
-            --ticker-height: 100px;
+            --ticker-height: 120px;
             --content-padding: 2rem;
             --card-gap: 1.5rem;
 
@@ -47,8 +47,7 @@
             --load-vignette: 0ms;
             --load-scanlines: 200ms;
             --load-header: 400ms;
-            --load-hero: 800ms;
-            --load-cards: 1200ms;
+            --load-content: 800ms;
             --load-ticker: 2000ms;
         }
 
@@ -162,7 +161,7 @@
 
         /* ============================================
            MAIN LAYOUT STRUCTURE
-           Header | Content (Hero + Feed) | Ticker
+           Header | Content (Evidence Pages) | Ticker
            ============================================ */
         .evidence-board {
             display: flex;
@@ -280,260 +279,186 @@
         }
 
         .timestamp .colon {
+            opacity: 1;
+        }
+
+        /* Countdown visual states */
+        .countdown--running .colon {
             animation: colonBlink 1s step-end infinite;
         }
 
+        .countdown--paused {
+            animation: fullBlink 1s step-end infinite;
+        }
+
+        .countdown--overtime {
+            color: var(--evidence-red) !important;
+            animation: fullBlink 0.5s step-end infinite;
+        }
+
         @keyframes colonBlink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        @keyframes fullBlink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0.3; }
         }
 
         /* ============================================
            MAIN CONTENT AREA
-           Hero Evidence + Feed Grid
+           Character-grouped evidence pages
            ============================================ */
         .evidence-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: var(--content-padding);
-            padding-bottom: 0;
+            height: calc(100vh - var(--header-height) - var(--ticker-height));
             overflow: hidden;
-            gap: var(--card-gap);
+            position: relative;
+            padding: var(--content-padding);
         }
 
         /* ============================================
-           HERO EVIDENCE CARD - "Latest Discovery"
+           CHARACTER GROUP CARDS - "Pinned Documents"
            ============================================ */
-        .hero-evidence {
+        .character-group {
             background:
                 url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)' opacity='0.03'/%3E%3C/svg%3E"),
                 linear-gradient(to bottom, var(--paper-cream) 0%, var(--paper-dark) 100%);
-            border: 1px solid var(--paper-shadow);
-            box-shadow:
-                4px 4px 0 var(--ink-black),
-                0 20px 40px rgba(0, 0, 0, 0.4);
-            transform: rotate(-0.3deg);
+            border-left: 4px solid var(--evidence-red);
+            padding: 1.2rem 1.5rem;
+            margin-bottom: var(--card-gap);
             position: relative;
-            padding: 2rem 2.5rem;
-            min-height: 200px;
-            opacity: 0;
-            animation: evidenceIncoming 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-            animation-delay: var(--load-hero);
-        }
-
-        @keyframes evidenceIncoming {
-            0% {
-                opacity: 0;
-                transform: translateY(-50px) rotate(-5deg);
-            }
-            60% {
-                transform: translateY(10px) rotate(1deg);
-            }
-            80% {
-                transform: translateY(-5px) rotate(-0.5deg);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0) rotate(-0.3deg);
-            }
-        }
-
-        /* Red tape label */
-        .hero-evidence::before {
-            content: 'LATEST EVIDENCE';
-            position: absolute;
-            top: -12px;
-            left: 30px;
-            background: var(--evidence-red);
-            color: white;
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            font-weight: 700;
-            padding: 6px 16px;
-            letter-spacing: 0.15em;
-            transform: rotate(-2deg);
-            box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            box-shadow: 2px 3px 8px rgba(0,0,0,0.3);
         }
 
         /* Pushpin decoration */
-        .hero-evidence::after {
+        .character-group::before {
             content: '';
             position: absolute;
-            top: -8px;
-            right: 40px;
-            width: 16px;
-            height: 16px;
+            top: 12px;
+            left: -12px;
+            width: 20px;
+            height: 20px;
             background: radial-gradient(circle at 30% 30%, #dc3545 0%, var(--evidence-red-dark) 100%);
             border-radius: 50%;
-            box-shadow:
-                0 3px 6px rgba(0, 0, 0, 0.4),
-                inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+            box-shadow: inset -2px -2px 3px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3);
         }
 
-        .hero-evidence__header {
+        .character-group__header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
+            align-items: center;
+            margin-bottom: 0.8rem;
+            border-bottom: 1px solid var(--paper-shadow);
+            padding-bottom: 0.5rem;
         }
 
-        .hero-evidence__team {
-            font-family: var(--font-mono);
-            font-size: 0.875rem;
-            color: var(--evidence-red);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: 600;
-        }
-
-        .hero-evidence__time {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            color: rgba(26, 26, 26, 0.6);
-        }
-
-        .hero-evidence__summary {
+        .character-group__name {
             font-family: var(--font-typewriter);
-            font-size: clamp(1.5rem, 3vw, 2.25rem);
+            font-size: clamp(1rem, 2vw, 1.4rem);
+            text-transform: uppercase;
+            color: var(--ink-black);
+            letter-spacing: 0.05em;
+        }
+
+        .character-group__pips {
+            display: flex;
+            gap: 4px;
+        }
+
+        .pip {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid var(--evidence-red-dark);
+            transition: background-color 500ms ease;
+        }
+
+        .pip--filled {
+            background-color: var(--evidence-red);
+        }
+
+        .character-group__entry {
+            font-family: var(--font-body);
+            font-size: clamp(0.85rem, 1.5vw, 1.05rem);
             color: var(--ink-black);
             line-height: 1.5;
-            overflow: hidden;
+            margin-bottom: 0.6rem;
+            padding-left: 0.5rem;
         }
 
-        .hero-evidence__summary .typewriter-text {
+        .character-group__entry::before {
+            content: '';
             display: inline-block;
-            overflow: hidden;
-            white-space: nowrap;
-            animation: typewriter 2s steps(60) forwards;
-            animation-delay: calc(var(--load-hero) + 400ms);
-            width: 0;
+            width: 6px;
+            height: 6px;
+            background: var(--evidence-red);
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            vertical-align: middle;
         }
 
-        @keyframes typewriter {
-            from { width: 0; }
-            to { width: 100%; }
+        .character-group__timestamp {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: #666;
+            margin-right: 0.5rem;
         }
 
-        /* Empty state for hero */
-        .hero-evidence.empty {
+        /* Page dots */
+        .page-dots {
+            position: absolute;
+            bottom: 1rem;
+            right: 1.5rem;
+            display: flex;
+            gap: 6px;
+        }
+
+        .page-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            transition: background 300ms;
+        }
+
+        .page-dot--active {
+            background: var(--terminal-green);
+        }
+
+        /* Evidence arrival animation */
+        .character-group--new {
+            animation: evidenceDrop 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes evidenceDrop {
+            0% { opacity: 0; transform: translateY(-30px) rotate(-1deg); }
+            60% { transform: translateY(5px) rotate(0.5deg); }
+            100% { opacity: 1; transform: translateY(0) rotate(0deg); }
+        }
+
+        /* Page transition */
+        .evidence-page--transitioning {
+            animation: pageCut 400ms ease;
+        }
+
+        @keyframes pageCut {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        /* Empty evidence state */
+        .evidence-empty {
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 180px;
-        }
-
-        .hero-evidence.empty .empty-message {
+            height: 100%;
             font-family: var(--font-mono);
             font-size: 1rem;
-            color: rgba(26, 26, 26, 0.4);
+            color: rgba(255, 255, 255, 0.3);
             text-transform: uppercase;
             letter-spacing: 0.2em;
-        }
-
-        /* ============================================
-           EVIDENCE FEED - Accumulated Cards
-           ============================================ */
-        .evidence-feed {
-            flex: 1;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: var(--card-gap);
-            overflow: hidden;
-            align-content: start;
-        }
-
-        @media (max-width: 1400px) {
-            .evidence-feed {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (max-width: 1000px) {
-            .evidence-feed {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        .evidence-card {
-            background: var(--paper-cream);
-            border-left: 4px solid var(--evidence-red);
-            padding: 1.25rem;
-            position: relative;
-            transform: rotate(var(--rotation, 0deg));
-            box-shadow:
-                2px 2px 0 var(--ink-black),
-                0 8px 20px rgba(0, 0, 0, 0.2);
-            opacity: 0;
-            animation: cardCascade 0.5s ease-out forwards;
-        }
-
-        @keyframes cardCascade {
-            from {
-                opacity: 0;
-                transform: translateY(-30px) rotate(var(--rotation, 0deg));
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) rotate(var(--rotation, 0deg));
-            }
-        }
-
-        /* Pushpin on each card */
-        .evidence-card::after {
-            content: '';
-            position: absolute;
-            top: -6px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 12px;
-            height: 12px;
-            background: radial-gradient(circle at 30% 30%, #dc3545 0%, var(--evidence-red-dark) 100%);
-            border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .evidence-card__header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.75rem;
-        }
-
-        .evidence-card__team {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            color: var(--evidence-red);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: 600;
-        }
-
-        .evidence-card__time {
-            font-family: var(--font-mono);
-            font-size: 0.625rem;
-            color: rgba(26, 26, 26, 0.5);
-        }
-
-        .evidence-card__text {
-            font-family: var(--font-body);
-            font-size: clamp(0.875rem, 1.5vw, 1.1rem);
-            color: var(--ink-black);
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-
-        /* New evidence flash effect */
-        .evidence-card.new-evidence {
-            animation: cardCascade 0.5s ease-out forwards, evidenceFlash 0.3s ease-out;
-        }
-
-        @keyframes evidenceFlash {
-            0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.8); }
-            100% { box-shadow: 2px 2px 0 var(--ink-black), 0 8px 20px rgba(0, 0, 0, 0.2); }
         }
 
         /* Screen flash for new evidence */
@@ -559,35 +484,17 @@
             100% { opacity: 0; }
         }
 
-        /* Empty feed state */
-        .evidence-feed-empty {
-            grid-column: 1 / -1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px;
-            font-family: var(--font-mono);
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.3);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-        }
-
         /* ============================================
-           SCORE TICKER - "Terminal Readout"
+           SCORE TICKER - "Scrolling Marquee"
            ============================================ */
         .score-ticker {
             height: var(--ticker-height);
-            background: var(--redaction-black);
-            border-top: 1px solid var(--terminal-green);
-            font-family: var(--font-mono);
-            color: var(--terminal-green);
-            display: flex;
-            align-items: center;
-            padding: 0 var(--content-padding);
-            gap: 3rem;
+            background: linear-gradient(180deg, rgba(10,9,8,0.95), rgba(10,9,8,0.98));
+            border-top: 2px solid var(--evidence-red-dark);
             overflow: hidden;
             position: relative;
+            display: flex;
+            align-items: center;
             z-index: 100;
             opacity: 0;
             animation: tickerSlideUp 0.6s ease-out forwards;
@@ -609,77 +516,71 @@
             display: none;
         }
 
-        .ticker-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            color: rgba(0, 255, 65, 0.6);
-            white-space: nowrap;
-        }
-
-        .ticker-entries {
-            display: flex;
-            flex: 1;
-            gap: 3rem;
+        .ticker-track {
+            width: 100%;
             overflow: hidden;
         }
 
-        .score-entry {
+        .ticker-content {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            flex-shrink: 0;
+            white-space: nowrap;
+            animation: tickerScroll var(--ticker-duration, 30s) linear infinite;
         }
 
-        .score-entry__rank {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--terminal-amber);
-            min-width: 2rem;
+        .ticker-content.paused {
+            animation-play-state: paused;
         }
 
-        .score-entry__team {
-            font-size: 0.875rem;
+        @keyframes tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .ticker-entry {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 0.5rem;
+            padding: 0 1.5rem;
+            font-family: var(--font-mono);
             color: var(--terminal-green);
-            min-width: 80px;
+            transition: color 300ms;
         }
 
-        .score-entry__amount {
-            font-size: 1.25rem;
+        .ticker-entry--flash {
+            color: var(--terminal-amber);
+        }
+
+        .ticker-entry__rank {
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            font-weight: 700;
+            opacity: 0.7;
+        }
+
+        .ticker-entry__name {
+            font-size: clamp(1.25rem, 2.5vw, 2rem);
             font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            letter-spacing: 0.05em;
-            min-width: 100px;
+            font-family: var(--font-typewriter);
+            color: var(--paper-cream);
         }
 
-        .score-entry__amount.updating {
-            animation: scoreFlash 0.5s ease-out;
+        .ticker-entry__score {
+            font-size: clamp(1.25rem, 2.5vw, 2rem);
+            font-weight: 700;
         }
 
-        @keyframes scoreFlash {
-            0%, 100% { color: var(--terminal-green); }
-            50% { color: var(--terminal-amber); }
+        .ticker-separator {
+            color: var(--evidence-red);
+            font-size: 1.5rem;
+            padding: 0 0.5rem;
+            opacity: 0.5;
         }
 
-        .score-entry__bar {
-            width: 120px;
-            height: 8px;
-            background: rgba(0, 255, 65, 0.2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .score-entry__bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--terminal-green) 0%, var(--terminal-amber) 100%);
-            transition: width 0.5s ease-out;
-        }
-
-        /* Empty ticker state */
         .ticker-empty {
-            font-size: 0.875rem;
-            color: rgba(0, 255, 65, 0.4);
-            letter-spacing: 0.1em;
+            font-family: var(--font-mono);
+            color: rgba(255,255,255,0.3);
+            font-size: 1.2rem;
+            padding: 0 2rem;
         }
 
         /* ============================================
@@ -733,6 +634,7 @@
         }
 
         body.mode-detective .evidence-content {
+            height: calc(100vh - var(--header-height));
             padding-bottom: var(--content-padding);
         }
 
@@ -796,31 +698,23 @@
                 </div>
                 <span class="rec-indicator">REC</span>
                 <span class="timestamp" id="timestamp">
-                    <span class="hours">00</span><span class="colon">:</span><span class="minutes">00</span><span class="colon">:</span><span class="seconds">00</span>
+                    <span class="hours">--</span><span class="colon">:</span><span class="minutes">--</span><span class="colon">:</span><span class="seconds">--</span>
                 </span>
             </div>
         </header>
 
         <!-- Evidence Content Area -->
-        <main class="evidence-content">
-            <!-- Hero Evidence Card -->
-            <article class="hero-evidence empty" id="heroEvidence">
-                <span class="empty-message">Awaiting evidence...</span>
-            </article>
-
-            <!-- Evidence Feed Grid -->
-            <div class="evidence-feed" id="evidenceFeed">
-                <div class="evidence-feed-empty">
-                    Investigation in progress...
-                </div>
-            </div>
+        <main class="evidence-content" id="evidenceContent">
+            <div class="evidence-page" id="evidencePage"></div>
+            <div class="page-dots" id="pageDots"></div>
         </main>
 
         <!-- Score Ticker -->
         <footer class="score-ticker" id="scoreTicker">
-            <span class="ticker-label">STANDINGS</span>
-            <div class="ticker-entries" id="tickerEntries">
-                <span class="ticker-empty">No scores recorded</span>
+            <div class="ticker-track" id="tickerTrack">
+                <div class="ticker-content" id="tickerContent">
+                    <span class="ticker-empty">No scores recorded</span>
+                </div>
             </div>
         </footer>
     </div>
@@ -858,13 +752,11 @@
             }
 
             // For networked browsers, generate unique suffix
-            // Use sessionStorage to maintain consistency within a browser tab
             let storedId = sessionStorage.getItem('scoreboard_device_id');
             if (storedId) {
                 return storedId;
             }
 
-            // Generate new unique ID with timestamp suffix
             const uniqueId = `${baseId}_${Date.now().toString(36).toUpperCase()}`;
             sessionStorage.setItem('scoreboard_device_id', uniqueId);
             return uniqueId;
@@ -879,24 +771,31 @@
             apiUrl: window.location.origin,
             reconnectDelay: 2000,
             tokenRefreshInterval: 23 * 60 * 60 * 1000,
-            maxFeedCards: 8,
-            heroDisplayDuration: 15000, // Time before hero moves to feed
         };
 
         // ============================================
-        // STATE
+        // STATE (Task 8: New state model)
         // ============================================
         const state = {
             socket: null,
             token: null,
             isConnected: false,
-            teamScores: new Map(),
-            evidenceLog: [],        // All evidence entries (accumulating)
-            heroEvidence: null,     // Current hero card
-            heroTimeout: null,      // Timer for hero rotation
+            sessionId: null,                  // Track current session for boundary detection
+            teamScores: new Map(),            // teamId -> score object
+            evidenceByOwner: new Map(),       // owner -> {entries: [], lastExposed: Date}
+            ownerTotalTokens: new Map(),      // owner -> total token count (from /api/tokens)
+            pages: [],                        // Array of arrays of owner names per page
+            currentPage: 0,                   // Current page index
+            pageCycleTimer: null,             // setInterval ID for page cycling
             displayMode: 'SCOREBOARD',
             kioskMode: false,
-            viewMode: 'blackmarket', // 'blackmarket' or 'detective'
+            countdown: {                      // Game countdown state
+                status: 'stopped',            // stopped | running | paused
+                elapsed: 0,                   // Seconds elapsed (from server)
+                expectedDuration: 7200,       // Seconds total (from server)
+                tickInterval: null,           // setInterval ID for client-side tick
+                lastSyncTime: null,           // Date.now() of last server sync
+            },
         };
 
         // ============================================
@@ -905,10 +804,12 @@
         const elements = {
             connectionStatus: document.getElementById('connectionStatus'),
             statusText: document.getElementById('statusText'),
-            heroEvidence: document.getElementById('heroEvidence'),
-            evidenceFeed: document.getElementById('evidenceFeed'),
+            evidenceContent: document.getElementById('evidenceContent'),
+            evidencePage: document.getElementById('evidencePage'),
+            pageDots: document.getElementById('pageDots'),
             scoreTicker: document.getElementById('scoreTicker'),
-            tickerEntries: document.getElementById('tickerEntries'),
+            tickerTrack: document.getElementById('tickerTrack'),
+            tickerContent: document.getElementById('tickerContent'),
             flashOverlay: document.getElementById('flashOverlay'),
             displayModeOverlay: document.getElementById('displayModeOverlay'),
             loadingIndicator: document.getElementById('loadingIndicator'),
@@ -928,35 +829,94 @@
                 .replace(/'/g, "&#039;");
         }
 
-        function formatTime(date) {
-            return new Date(date).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            });
-        }
-
         function getRandomRotation() {
             const rotations = [-1.5, -1, -0.5, 0.5, 1, 1.5];
             return rotations[Math.floor(Math.random() * rotations.length)];
         }
 
         // ============================================
-        // TIMESTAMP CLOCK
+        // COUNTDOWN TIMER (Task 13 - replaces wall clock)
         // ============================================
-        function updateTimestamp() {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
+        function formatCountdown(remainingSeconds) {
+            if (remainingSeconds <= 0) return { hours: '00', minutes: '00', seconds: '00' };
+            const h = String(Math.floor(remainingSeconds / 3600)).padStart(2, '0');
+            const m = String(Math.floor((remainingSeconds % 3600) / 60)).padStart(2, '0');
+            const s = String(Math.floor(remainingSeconds % 60)).padStart(2, '0');
+            return { hours: h, minutes: m, seconds: s };
+        }
+
+        function renderCountdown() {
+            const cd = state.countdown;
+
+            if (cd.status === 'stopped') {
+                elements.timestamp.querySelector('.hours').textContent = '--';
+                elements.timestamp.querySelector('.minutes').textContent = '--';
+                elements.timestamp.querySelector('.seconds').textContent = '--';
+                elements.timestamp.classList.remove('countdown--running', 'countdown--paused', 'countdown--overtime');
+                return;
+            }
+
+            // Calculate current elapsed (server elapsed + client drift since last sync)
+            let currentElapsed = cd.elapsed;
+            if (cd.status === 'running' && cd.lastSyncTime) {
+                const drift = (Date.now() - cd.lastSyncTime) / 1000;
+                currentElapsed = cd.elapsed + drift;
+            }
+
+            const remaining = Math.max(0, cd.expectedDuration - currentElapsed);
+            const { hours, minutes, seconds } = formatCountdown(remaining);
 
             elements.timestamp.querySelector('.hours').textContent = hours;
             elements.timestamp.querySelector('.minutes').textContent = minutes;
             elements.timestamp.querySelector('.seconds').textContent = seconds;
+
+            // Visual states
+            elements.timestamp.classList.remove('countdown--running', 'countdown--paused', 'countdown--overtime');
+            if (remaining <= 0) {
+                elements.timestamp.classList.add('countdown--overtime');
+            } else if (cd.status === 'paused') {
+                elements.timestamp.classList.add('countdown--paused');
+            } else {
+                elements.timestamp.classList.add('countdown--running');
+            }
         }
 
-        setInterval(updateTimestamp, 1000);
-        updateTimestamp();
+        function syncCountdown(gameClock) {
+            const cd = state.countdown;
+            cd.status = gameClock.status || 'stopped';
+            cd.elapsed = gameClock.elapsed || 0;
+            cd.expectedDuration = gameClock.expectedDuration || 7200;
+            cd.lastSyncTime = Date.now();
+
+            if (cd.status === 'running') {
+                startCountdownTick();
+            } else {
+                stopCountdownTick();
+            }
+
+            renderCountdown();
+        }
+
+        function startCountdownTick() {
+            stopCountdownTick();
+            state.countdown.tickInterval = setInterval(renderCountdown, 1000);
+        }
+
+        function stopCountdownTick() {
+            if (state.countdown.tickInterval) {
+                clearInterval(state.countdown.tickInterval);
+                state.countdown.tickInterval = null;
+            }
+        }
+
+        function stopCountdown() {
+            stopCountdownTick();
+            state.countdown.status = 'stopped';
+            renderCountdown();
+        }
+
+        // Initial render (shows --:--:--)
+        renderCountdown();
 
         // ============================================
         // MODE INITIALIZATION
@@ -982,7 +942,6 @@
             // View mode (detective hides ticker)
             const modeParam = urlParams.get('mode');
             if (modeParam === 'detective') {
-                state.viewMode = 'detective';
                 document.body.classList.add('mode-detective');
                 console.log('[Scoreboard] Detective mode - ticker hidden');
             }
@@ -1020,7 +979,7 @@
         }
 
         // ============================================
-        // EVIDENCE RENDERING
+        // EVIDENCE RENDERING (Task 10: Character-grouped)
         // ============================================
         function triggerFlash() {
             elements.flashOverlay.classList.add('active');
@@ -1029,201 +988,326 @@
             }, 400);
         }
 
-        function renderHeroEvidence() {
-            const hero = elements.heroEvidence;
+        function renderEvidence() {
+            // Sort character groups by most recent exposure
+            const sortedOwners = [...state.evidenceByOwner.entries()]
+                .sort((a, b) => (b[1].lastExposed || 0) - (a[1].lastExposed || 0));
 
-            if (!state.heroEvidence) {
-                hero.classList.add('empty');
-                hero.innerHTML = '<span class="empty-message">Awaiting evidence...</span>';
+            if (sortedOwners.length === 0) {
+                elements.evidencePage.innerHTML = '<div class="evidence-empty">Awaiting evidence...</div>';
+                elements.pageDots.innerHTML = '';
+                stopPageCycling();
                 return;
             }
 
-            const evidence = state.heroEvidence;
-            hero.classList.remove('empty');
-            hero.innerHTML = `
-                <div class="hero-evidence__header">
-                    <span class="hero-evidence__team">${escapeHtml(evidence.teamId)}</span>
-                    <span class="hero-evidence__time">${formatTime(evidence.timestamp)}</span>
-                </div>
-                <div class="hero-evidence__summary">
-                    ${escapeHtml(evidence.summary || evidence.tokenId)}
-                </div>
-            `;
+            // Calculate pages based on available height
+            state.pages = calculatePages(sortedOwners);
 
-            // Reset animation
-            hero.style.animation = 'none';
-            hero.offsetHeight; // Trigger reflow
-            hero.style.animation = '';
+            // Clamp current page
+            if (state.currentPage >= state.pages.length) {
+                state.currentPage = 0;
+            }
+
+            // Render current page
+            renderPage(state.currentPage);
+            renderPageDots();
+            startPageCycling();
         }
 
-        function renderEvidenceFeed() {
-            const feed = elements.evidenceFeed;
+        function calculatePages(sortedOwners) {
+            // Estimate available height
+            const headerHeight = 80;   // var(--header-height)
+            const tickerHeight = 120;  // var(--ticker-height)
+            const padding = 64;        // 2rem * 2
+            const availableHeight = window.innerHeight - headerHeight - tickerHeight - padding;
 
-            // Get evidence excluding current hero
-            const feedEvidence = state.evidenceLog
-                .filter(e => !state.heroEvidence || e.id !== state.heroEvidence.id)
-                .slice(0, CONFIG.maxFeedCards);
+            const pages = [];
+            let currentPageOwners = [];
+            let currentHeight = 0;
 
-            if (feedEvidence.length === 0) {
-                feed.innerHTML = '<div class="evidence-feed-empty">Investigation in progress...</div>';
-                return;
+            for (const [owner, group] of sortedOwners) {
+                // Estimate group height: header (~50px) + entries (~40px each) + margins (~30px)
+                const groupHeight = 50 + (group.entries.length * 40) + 30;
+
+                if (currentHeight + groupHeight > availableHeight && currentPageOwners.length > 0) {
+                    // Start new page
+                    pages.push(currentPageOwners);
+                    currentPageOwners = [];
+                    currentHeight = 0;
+                }
+
+                currentPageOwners.push(owner);
+                currentHeight += groupHeight;
             }
 
-            const cardsHtml = feedEvidence.map((evidence, index) => {
-                const rotation = getRandomRotation();
-                const delay = index * 100;
+            if (currentPageOwners.length > 0) {
+                pages.push(currentPageOwners);
+            }
 
-                return `
-                    <article class="evidence-card"
-                             style="--rotation: ${rotation}deg; animation-delay: ${delay}ms;"
-                             data-id="${evidence.id}">
-                        <div class="evidence-card__header">
-                            <span class="evidence-card__team">${escapeHtml(evidence.teamId)}</span>
-                            <span class="evidence-card__time">${formatTime(evidence.timestamp)}</span>
-                        </div>
-                        <div class="evidence-card__text">
-                            ${escapeHtml(evidence.summary || evidence.tokenId)}
-                        </div>
-                    </article>
-                `;
+            return pages;
+        }
+
+        function renderPage(pageIndex) {
+            if (!state.pages[pageIndex]) return;
+
+            const owners = state.pages[pageIndex];
+            const html = owners.map(owner => {
+                const group = state.evidenceByOwner.get(owner);
+                if (!group) return '';
+
+                const totalTokens = state.ownerTotalTokens.get(owner) || 0;
+                const exposedCount = group.entries.length;
+
+                // Build pips
+                const pipsHtml = totalTokens > 0
+                    ? Array.from({ length: totalTokens }, (_, i) =>
+                        `<span class="pip ${i < exposedCount ? 'pip--filled' : ''}"></span>`
+                    ).join('')
+                    : `<span class="pip pip--filled"></span>`.repeat(exposedCount);
+
+                // Build entries (chronological)
+                const entriesHtml = group.entries.map(entry => {
+                    const time = new Date(entry.timestamp).toLocaleTimeString('en-US', {
+                        hour: '2-digit', minute: '2-digit', hour12: false
+                    });
+                    return `<div class="character-group__entry">
+                        <span class="character-group__timestamp">${time}</span>
+                        ${escapeHtml(entry.summary)}
+                    </div>`;
+                }).join('');
+
+                const rotation = getRandomRotation();
+                return `<div class="character-group" style="transform: rotate(${rotation}deg)" data-owner="${escapeHtml(owner)}">
+                    <div class="character-group__header">
+                        <span class="character-group__name">${escapeHtml(owner)}</span>
+                        <div class="character-group__pips">${pipsHtml}</div>
+                    </div>
+                    ${entriesHtml}
+                </div>`;
             }).join('');
 
-            feed.innerHTML = cardsHtml;
+            elements.evidencePage.innerHTML = html;
+        }
+
+        function renderPageDots() {
+            if (state.pages.length <= 1) {
+                elements.pageDots.innerHTML = '';
+                return;
+            }
+            elements.pageDots.innerHTML = state.pages.map((_, i) =>
+                `<span class="page-dot ${i === state.currentPage ? 'page-dot--active' : ''}"></span>`
+            ).join('');
         }
 
         function addEvidence(transaction) {
-            // Only show detective mode scans in evidence section
-            if (transaction.mode !== 'detective') {
-                console.log('[Scoreboard] Skipping non-detective transaction:', transaction.tokenId, 'mode:', transaction.mode);
-                return;
+            if (transaction.mode !== 'detective') return;
+
+            const owner = transaction.owner || 'Unknown';
+            if (!state.evidenceByOwner.has(owner)) {
+                state.evidenceByOwner.set(owner, { entries: [], lastExposed: null });
             }
 
-            // Create evidence entry
-            const evidence = {
-                id: transaction.id || `${transaction.tokenId}-${transaction.teamId}-${Date.now()}`,
+            const group = state.evidenceByOwner.get(owner);
+            const entryId = transaction.id || `${transaction.tokenId}-${transaction.teamId}-${Date.now()}`;
+
+            // Duplicate check
+            if (group.entries.some(e => e.id === entryId)) return;
+
+            group.entries.push({
+                id: entryId,
                 tokenId: transaction.tokenId,
-                teamId: transaction.teamId,
                 timestamp: transaction.timestamp || new Date().toISOString(),
-                summary: transaction.summary || null,
-            };
+                summary: transaction.summary || transaction.tokenId,
+            });
+            group.lastExposed = new Date(transaction.timestamp || Date.now());
 
-            // Check for duplicates
-            if (state.evidenceLog.some(e => e.id === evidence.id)) {
-                return;
-            }
-
-            // Flash effect for new evidence
+            // Flash effect
             triggerFlash();
 
-            // Move current hero to feed if exists
-            if (state.heroEvidence) {
-                // Add old hero to front of feed
-                state.evidenceLog.unshift(state.heroEvidence);
+            // Recalculate pages and jump to the page containing this character
+            renderEvidence();
+
+            // Find which page this owner is on and jump to it
+            const targetPage = state.pages.findIndex(p => p.includes(owner));
+            if (targetPage >= 0 && targetPage !== state.currentPage) {
+                transitionToPage(targetPage);
             }
-
-            // Set new evidence as hero
-            state.heroEvidence = evidence;
-
-            // Render updates
-            renderHeroEvidence();
-            renderEvidenceFeed();
-
-            // Trim evidence log to prevent memory issues
-            if (state.evidenceLog.length > 100) {
-                state.evidenceLog = state.evidenceLog.slice(0, 100);
-            }
-
-            console.log('[Scoreboard] Evidence added:', evidence.tokenId, 'for team', evidence.teamId);
         }
 
         function removeEvidence(transactionId, tokenId, teamId) {
             let removed = false;
-
-            // Check if hero evidence matches
-            if (state.heroEvidence) {
-                const heroMatches = state.heroEvidence.id === transactionId ||
-                    (state.heroEvidence.tokenId === tokenId && state.heroEvidence.teamId === teamId);
-
-                if (heroMatches) {
-                    console.log('[Scoreboard] Removing hero evidence:', transactionId || tokenId);
-                    // Promote next evidence from log to hero
-                    state.heroEvidence = state.evidenceLog.shift() || null;
-                    removed = true;
+            for (const [owner, group] of state.evidenceByOwner) {
+                const before = group.entries.length;
+                group.entries = group.entries.filter(e => {
+                    const matches = e.id === transactionId || e.tokenId === tokenId;
+                    return !matches;
+                });
+                if (group.entries.length < before) removed = true;
+                if (group.entries.length === 0) {
+                    state.evidenceByOwner.delete(owner);
                 }
             }
-
-            // Remove from evidence log
-            const beforeLength = state.evidenceLog.length;
-            state.evidenceLog = state.evidenceLog.filter(e => {
-                const matches = e.id === transactionId ||
-                    (e.tokenId === tokenId && e.teamId === teamId);
-                return !matches;
-            });
-
-            if (state.evidenceLog.length < beforeLength) {
-                removed = true;
-            }
-
-            if (removed) {
-                console.log('[Scoreboard] Evidence removed:', transactionId || tokenId, 'for team', teamId);
-                renderHeroEvidence();
-                renderEvidenceFeed();
-            } else {
-                console.log('[Scoreboard] Evidence not found for removal:', transactionId || tokenId);
-            }
+            if (removed) renderEvidence();
         }
 
         // ============================================
-        // SCORE RENDERING
+        // PAGE CYCLING (Task 11)
         // ============================================
-        function renderScoreboard() {
-            // Show all teams with any score activity (transactions OR adjustments)
+        function startPageCycling() {
+            stopPageCycling();
+            if (state.pages.length <= 1) return;
+
+            // Adaptive interval: 2-3 pages = 18s, 4+ = 12s
+            const interval = state.pages.length <= 3 ? 18000 : 12000;
+
+            state.pageCycleTimer = setInterval(() => {
+                const nextPage = (state.currentPage + 1) % state.pages.length;
+                transitionToPage(nextPage);
+            }, interval);
+        }
+
+        function stopPageCycling() {
+            if (state.pageCycleTimer) {
+                clearInterval(state.pageCycleTimer);
+                state.pageCycleTimer = null;
+            }
+        }
+
+        function transitionToPage(pageIndex) {
+            if (pageIndex === state.currentPage) return;
+
+            // Fade-to-black transition
+            elements.evidencePage.classList.add('evidence-page--transitioning');
+
+            setTimeout(() => {
+                state.currentPage = pageIndex;
+                renderPage(pageIndex);
+                renderPageDots();
+            }, 200);  // Halfway through 400ms animation
+
+            setTimeout(() => {
+                elements.evidencePage.classList.remove('evidence-page--transitioning');
+            }, 400);
+
+            // Reset cycle timer so this page gets full display time
+            startPageCycling();
+        }
+
+        // Recalculate pages on resize
+        window.addEventListener('resize', () => {
+            const sortedOwners = [...state.evidenceByOwner.entries()]
+                .sort((a, b) => (b[1].lastExposed || 0) - (a[1].lastExposed || 0));
+            if (sortedOwners.length > 0) {
+                state.pages = calculatePages(sortedOwners);
+                if (state.currentPage >= state.pages.length) {
+                    state.currentPage = 0;
+                }
+                renderPage(state.currentPage);
+                renderPageDots();
+            }
+        });
+
+        // ============================================
+        // SCORE TICKER RENDERING (Task 12)
+        // ============================================
+        function renderTicker() {
             const scores = Array.from(state.teamScores.values())
-                .filter(team => team.currentScore > 0 || team.tokensScanned > 0 || (team.adminAdjustments && team.adminAdjustments.length > 0))
+                .filter(team => team.currentScore > 0 || team.tokensScanned > 0 ||
+                    (team.adminAdjustments && team.adminAdjustments.length > 0))
                 .sort((a, b) => b.currentScore - a.currentScore);
 
             if (scores.length === 0) {
-                elements.tickerEntries.innerHTML = '<span class="ticker-empty">No scores recorded</span>';
+                elements.tickerContent.innerHTML = '<span class="ticker-empty">No scores recorded</span>';
+                elements.tickerContent.style.removeProperty('--ticker-duration');
                 return;
             }
 
-            const maxScore = scores[0]?.currentScore || 1;
-
-            const entriesHtml = scores.slice(0, 6).map((team, index) => {
+            const buildEntries = (scores) => scores.map((team, index) => {
                 const rank = index + 1;
-                const barWidth = (team.currentScore / maxScore) * 100;
-
-                return `
-                    <div class="score-entry" data-team="${team.teamId}">
-                        <span class="score-entry__rank">${rank}</span>
-                        <span class="score-entry__team">${escapeHtml(team.teamId)}</span>
-                        <span class="score-entry__amount">$${team.currentScore.toLocaleString()}</span>
-                        <div class="score-entry__bar">
-                            <div class="score-entry__bar-fill" style="width: ${barWidth}%"></div>
-                        </div>
-                    </div>
-                `;
+                return `<span class="ticker-entry" data-team="${escapeHtml(team.teamId)}">
+                    <span class="ticker-entry__rank">#${rank}</span>
+                    <span class="ticker-entry__name">${escapeHtml(team.teamId)}</span>
+                    <span class="ticker-entry__score">$${team.currentScore.toLocaleString()}</span>
+                </span>
+                <span class="ticker-separator">&bull;</span>`;
             }).join('');
 
-            elements.tickerEntries.innerHTML = entriesHtml;
+            const entriesHtml = buildEntries(scores);
+
+            if (scores.length <= 3) {
+                // Few teams: no scroll, center content
+                elements.tickerContent.innerHTML = entriesHtml;
+                elements.tickerContent.classList.add('paused');
+                elements.tickerContent.style.justifyContent = 'center';
+            } else {
+                // Duplicate content for seamless loop
+                elements.tickerContent.innerHTML = entriesHtml + entriesHtml;
+                elements.tickerContent.classList.remove('paused');
+                elements.tickerContent.style.justifyContent = '';
+
+                // Adaptive scroll duration based on content width
+                const duration = Math.max(15, (scores.length * 300) / 80);
+                elements.tickerContent.style.setProperty('--ticker-duration', `${duration}s`);
+            }
+        }
+
+        function flashTickerEntry(teamId) {
+            const entries = document.querySelectorAll(`.ticker-entry[data-team="${teamId}"]`);
+            entries.forEach(entry => {
+                entry.classList.add('ticker-entry--flash');
+                setTimeout(() => entry.classList.remove('ticker-entry--flash'), 1500);
+            });
         }
 
         function updateTeamScore(scoreData) {
-            const existingScore = state.teamScores.get(scoreData.teamId);
+            const existing = state.teamScores.get(scoreData.teamId);
             state.teamScores.set(scoreData.teamId, scoreData);
 
-            // Animate score change
-            if (existingScore && existingScore.currentScore !== scoreData.currentScore) {
-                setTimeout(() => {
-                    const entry = document.querySelector(`.score-entry[data-team="${scoreData.teamId}"] .score-entry__amount`);
-                    if (entry) {
-                        entry.classList.add('updating');
-                        setTimeout(() => entry.classList.remove('updating'), 500);
-                    }
-                }, 100);
-            }
+            renderTicker();
 
-            renderScoreboard();
+            if (existing && existing.currentScore !== scoreData.currentScore) {
+                setTimeout(() => flashTickerEntry(scoreData.teamId), 100);
+            }
+        }
+
+        // ============================================
+        // SESSION BOUNDARY DETECTION (Task 9)
+        // ============================================
+        function handleSessionBoundary(newSessionId) {
+            if (state.sessionId && state.sessionId !== newSessionId) {
+                console.log('[Scoreboard] Session boundary detected:', state.sessionId, '->', newSessionId);
+                // Clear all session-scoped data
+                state.evidenceByOwner.clear();
+                state.teamScores.clear();
+                state.pages = [];
+                state.currentPage = 0;
+                stopPageCycling();
+                stopCountdown();
+            }
+            state.sessionId = newSessionId;
+        }
+
+        // ============================================
+        // TOKEN TOTALS FETCH (Task 8)
+        // ============================================
+        async function fetchTokenTotals() {
+            try {
+                const response = await fetch(`${CONFIG.apiUrl}/api/tokens`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                const tokens = data.data?.tokens || data.tokens || {};
+
+                state.ownerTotalTokens.clear();
+                for (const [, token] of Object.entries(tokens)) {
+                    const owner = token.owner;
+                    if (owner) {
+                        state.ownerTotalTokens.set(owner, (state.ownerTotalTokens.get(owner) || 0) + 1);
+                    }
+                }
+                console.log('[Scoreboard] Token totals loaded:', state.ownerTotalTokens.size, 'characters');
+            } catch (error) {
+                console.error('[Scoreboard] Failed to fetch token totals:', error);
+            }
         }
 
         // ============================================
@@ -1349,30 +1433,44 @@
                 state.socket.emit('sync:request');
             });
 
-            // Score updates
+            // ---- EVENT HANDLERS ----
+
+            // Score updates (backward compat with score:updated)
             state.socket.on('score:updated', (eventData) => {
                 const scoreData = eventData.data;
-                console.log('[Scoreboard] Score updated:', scoreData);
-                updateTeamScore(scoreData);
+                if (scoreData) updateTeamScore(scoreData);
+            });
+
+            // Score adjustments (Task 14: admin score changes)
+            state.socket.on('score:adjusted', (eventData) => {
+                const data = eventData.data;
+                if (data?.teamScore) {
+                    console.log('[Scoreboard] Score adjusted:', data.teamScore.teamId);
+                    updateTeamScore(data.teamScore);
+                }
             });
 
             // Group completions
             state.socket.on('group:completed', (eventData) => {
                 const data = eventData.data;
                 console.log('[Scoreboard] Group completed:', data);
-                // Could add special visual effect here
             });
 
-            // Transaction events (for evidence log)
+            // Transaction events (Task 14: enriched with owner + teamScore)
             state.socket.on('transaction:new', (eventData) => {
-                const transaction = eventData.data?.transaction;
+                const data = eventData.data;
+                const transaction = data?.transaction;
                 if (transaction) {
-                    console.log('[Scoreboard] New transaction:', transaction);
+                    console.log('[Scoreboard] New transaction:', transaction.tokenId, 'owner:', transaction.owner);
                     addEvidence(transaction);
+                }
+                // Update ticker from teamScore if present
+                if (data?.teamScore) {
+                    updateTeamScore(data.teamScore);
                 }
             });
 
-            // Transaction deleted (remove from evidence log)
+            // Transaction deleted
             state.socket.on('transaction:deleted', (eventData) => {
                 const data = eventData.data;
                 if (data) {
@@ -1381,109 +1479,116 @@
                 }
             });
 
-            // Session updates (team additions, session lifecycle)
+            // Session updates (Task 9: boundary detection)
             state.socket.on('session:update', (eventData) => {
                 const data = eventData.data;
                 console.log('[Scoreboard] Session update:', data);
 
-                // Initialize any new teams from session
+                // Detect new session by ID comparison
+                if (data.id && data.id !== state.sessionId) {
+                    handleSessionBoundary(data.id);
+                    renderEvidence();
+                    renderTicker();
+                }
+
+                // Handle session ended
+                if (data.status === 'ended') {
+                    stopPageCycling();
+                    stopCountdown();
+                }
+
+                // Initialize any new teams
                 if (data.teams && Array.isArray(data.teams)) {
                     data.teams.forEach(teamId => {
                         if (!state.teamScores.has(teamId)) {
-                            // Initialize team with zero score
                             state.teamScores.set(teamId, {
-                                teamId: teamId,
-                                currentScore: 0,
-                                baseScore: 0,
-                                bonusPoints: 0,
-                                tokensScanned: 0,
-                                completedGroups: [],
-                                adminAdjustments: []
+                                teamId, currentScore: 0, baseScore: 0, bonusPoints: 0,
+                                tokensScanned: 0, completedGroups: [], adminAdjustments: []
                             });
-                            console.log('[Scoreboard] Initialized new team:', teamId);
                         }
                     });
-                    renderScoreboard();
+                    renderTicker();
                 }
             });
 
-            // Scores reset (admin bulk operation)
+            // Scores reset
             state.socket.on('scores:reset', (eventData) => {
-                const data = eventData.data;
-                console.log('[Scoreboard] Scores reset:', data);
+                console.log('[Scoreboard] Scores reset');
 
                 // Clear all scores but keep teams
                 state.teamScores.forEach((score, teamId) => {
                     state.teamScores.set(teamId, {
-                        teamId: teamId,
-                        currentScore: 0,
-                        baseScore: 0,
-                        bonusPoints: 0,
-                        tokensScanned: 0,
-                        completedGroups: [],
-                        adminAdjustments: []
+                        teamId, currentScore: 0, baseScore: 0, bonusPoints: 0,
+                        tokensScanned: 0, completedGroups: [], adminAdjustments: []
                     });
                 });
 
-                // Clear evidence log
-                state.evidenceLog = [];
-                state.heroEvidence = null;
+                // Clear evidence
+                state.evidenceByOwner.clear();
+                state.pages = [];
+                state.currentPage = 0;
+                stopPageCycling();
 
-                renderScoreboard();
-                renderHeroEvidence();
-                renderEvidenceFeed();
+                renderEvidence();
+                renderTicker();
             });
 
-            // Full sync
+            // Full sync (Task 9: REPLACE not append)
             state.socket.on('sync:full', (eventData) => {
                 const data = eventData.data;
-                console.log('[Scoreboard] Full sync received:', data);
+                console.log('[Scoreboard] Full sync received');
 
-                // Update scores
-                if (data.scores && Array.isArray(data.scores)) {
-                    data.scores.forEach(updateTeamScore);
+                // Session boundary detection
+                const sessionId = data.session?.id;
+                if (sessionId) {
+                    handleSessionBoundary(sessionId);
                 }
-                renderScoreboard();
 
-                // Load recent transactions for evidence log (DETECTIVE MODE ONLY)
-                if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
-                    // Filter to detective mode only, then sort by timestamp descending
-                    const detectiveTransactions = data.recentTransactions
-                        .filter(tx => tx.mode === 'detective');
-
-                    const sorted = [...detectiveTransactions].sort((a, b) =>
-                        new Date(b.timestamp) - new Date(a.timestamp)
-                    );
-
-                    console.log('[Scoreboard] Detective transactions:', sorted.length, 'of', data.recentTransactions.length, 'total');
-
-                    // Set most recent detective transaction as hero
-                    if (sorted.length > 0) {
-                        state.heroEvidence = {
-                            id: sorted[0].id || `${sorted[0].tokenId}-${sorted[0].teamId}`,
-                            tokenId: sorted[0].tokenId,
-                            teamId: sorted[0].teamId,
-                            timestamp: sorted[0].timestamp,
-                            summary: sorted[0].summary || null,
-                        };
-                    }
-
-                    // Add rest to feed
-                    sorted.slice(1).forEach(tx => {
-                        const evidence = {
-                            id: tx.id || `${tx.tokenId}-${tx.teamId}`,
-                            tokenId: tx.tokenId,
-                            teamId: tx.teamId,
-                            timestamp: tx.timestamp,
-                            summary: tx.summary || null,
-                        };
-                        if (!state.evidenceLog.some(e => e.id === evidence.id)) {
-                            state.evidenceLog.push(evidence);
-                        }
+                // REPLACE scores (not append)
+                state.teamScores.clear();
+                if (data.scores && Array.isArray(data.scores)) {
+                    data.scores.forEach(score => {
+                        state.teamScores.set(score.teamId, score);
                     });
+                }
 
-                    renderHeroEvidence();
-                    renderEvidenceFeed();
+                // REPLACE evidence (not append) -- fixes stale data bug
+                state.evidenceByOwner.clear();
+                if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
+                    data.recentTransactions
+                        .filter(tx => tx.mode === 'detective')
+                        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))  // Chronological
+                        .forEach(tx => {
+                            const owner = tx.owner || 'Unknown';
+                            if (!state.evidenceByOwner.has(owner)) {
+                                state.evidenceByOwner.set(owner, { entries: [], lastExposed: null });
+                            }
+                            const group = state.evidenceByOwner.get(owner);
+                            group.entries.push({
+                                id: tx.id || `${tx.tokenId}-${tx.teamId}`,
+                                tokenId: tx.tokenId,
+                                timestamp: tx.timestamp,
+                                summary: tx.summary || tx.tokenId,
+                            });
+                            group.lastExposed = new Date(tx.timestamp);
+                        });
+                }
+
+                // Sync countdown from gameClock
+                if (data.gameClock) {
+                    syncCountdown(data.gameClock);
+                }
+
+                // Render everything
+                renderEvidence();
+                renderTicker();
+            });
+
+            // Game clock updates via service:state
+            state.socket.on('service:state', (eventData) => {
+                const data = eventData.data;
+                if (data?.domain === 'gameclock' && data.state) {
+                    syncCountdown(data.state);
                 }
             });
 
@@ -1500,14 +1605,12 @@
         // ============================================
         async function initialize() {
             console.log('[Scoreboard] Initializing Evidence Board...');
-
             initModes();
 
             const authenticated = await authenticate();
-            if (!authenticated) {
-                return;
-            }
+            if (!authenticated) return;
 
+            await fetchTokenTotals();
             await connectWebSocket();
 
             // Token refresh cycle
