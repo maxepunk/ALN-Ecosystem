@@ -95,10 +95,10 @@ describe('Player Scanner - Standalone Mode (No Orchestrator)', () => {
         expect(token).toHaveProperty('SF_MemoryType');
         expect(token).toHaveProperty('SF_Group');
 
-        // Field types
+        // Field types (SF_ValueRating and SF_MemoryType can be null for non-scoring tokens)
         expect(typeof token.SF_RFID).toBe('string');
-        expect(typeof token.SF_ValueRating).toBe('number');
-        expect(typeof token.SF_MemoryType).toBe('string');
+        expect(token.SF_ValueRating === null || typeof token.SF_ValueRating === 'number').toBe(true);
+        expect(token.SF_MemoryType === null || typeof token.SF_MemoryType === 'string').toBe(true);
         expect(typeof token.SF_Group).toBe('string');
       });
     });
