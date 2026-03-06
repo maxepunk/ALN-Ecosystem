@@ -96,7 +96,7 @@ with open('test-tokens.json', 'r') as f:
     tokens = json.load(f)
 
 required_fields = ['image', 'audio', 'video', 'processingImage', 'SF_RFID', 'SF_ValueRating', 'SF_MemoryType', 'SF_Group']
-media_types = {'Personal', 'Business', 'Technical'}
+media_types = {'Personal', 'Business', 'Technical', 'Mention', 'Party'}
 
 errors = []
 for token_id, token in tokens.items():

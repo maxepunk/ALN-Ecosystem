@@ -16,7 +16,7 @@ const tokenSchema = Joi.object({
   id: Joi.string().required().min(1).max(100),  // Database lookup validates token existence
   name: Joi.string().required().min(1).max(200),
   value: Joi.number().integer().min(0).required(),
-  memoryType: Joi.string().valid('Technical', 'Business', 'Personal').required(),  // AsyncAPI contract values (Decision #4)
+  memoryType: Joi.string().required(),
   groupId: Joi.string().optional().allow(null),
   mediaAssets: Joi.object({
     image: Joi.string().optional().allow(null),

@@ -100,7 +100,7 @@ this.isStandalone = !pathname.startsWith('/player-scanner/');
 tokenScore = BASE_VALUES[rating] × TYPE_MULTIPLIERS[type]
 
 BASE_VALUES: {1: $10000, 2: $25000, 3: $50000, 4: $75000, 5: $150000}
-TYPE_MULTIPLIERS: {Personal: 1x, Business: 3x, Technical: 5x, UNKNOWN: 0x}
+TYPE_MULTIPLIERS: {Personal: 1x, Mention: 3x, Business: 3x, Party: 5x, Technical: 5x, UNKNOWN: 0x}
 ```
 
 **Shared Scoring Config:**
@@ -129,7 +129,7 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
     "processingImage": "assets/images/{tokenId}.bmp" | null,
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
-    "SF_MemoryType": "Personal" | "Business" | "Technical",
+    "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party",
     "SF_Group": "Group Name (xN)" | "",
     "summary": "Optional summary text",
     "owner": "CHARACTER_NAME" | null
@@ -153,7 +153,7 @@ Notion Elements DB → sync_notion_to_tokens.py → ALN-TokenData/tokens.json
 **SF_* Fields (Notion Source of Truth):**
 - `SF_RFID`: Token identifier (matches filename)
 - `SF_ValueRating`: 1-5 star rating
-- `SF_MemoryType`: Personal, Business, or Technical
+- `SF_MemoryType`: Personal, Business, Technical, Mention, or Party
 - `SF_Group`: Group name with multiplier, e.g., "Server Logs (x5)"
 
 ## deviceType Duplicate Detection (Cross-Cutting)
@@ -357,7 +357,7 @@ Display text goes here
 
 SF_RFID: [tokenId]
 SF_ValueRating: [1-5]
-SF_MemoryType: [Personal|Business|Technical]
+SF_MemoryType: [Personal|Business|Technical|Mention|Party]
 SF_Group: [Group Name (xN)]
 SF_Summary: [Optional summary]
 ```

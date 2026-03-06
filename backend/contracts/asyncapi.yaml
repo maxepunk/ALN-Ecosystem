@@ -462,7 +462,7 @@ components:
                       example: "2025-10-15T20:15:30.000Z"
                     memoryType:
                       type: string
-                      enum: [Technical, Business, Personal]
+                      description: Token memory type (Personal, Business, Technical, Mention, Party, or UNKNOWN)
                       example: "Technical"
                     valueRating:
                       type: integer
@@ -822,8 +822,7 @@ components:
                     example: "2025-10-15T20:15:30.000Z"
                   memoryType:
                     type: string
-                    enum: [Technical, Business, Personal]
-                    description: Token memory type (from tokens.json)
+                    description: Token memory type (Personal, Business, Technical, Mention, Party, or UNKNOWN)
                     example: "Technical"
                   valueRating:
                     type: integer

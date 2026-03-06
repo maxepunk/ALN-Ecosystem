@@ -363,7 +363,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
     });
 
     it('should validate all memory types', () => {
-      const memoryTypes = ['Technical', 'Business', 'Personal'];
+      const memoryTypes = ['Technical', 'Business', 'Personal', 'Mention', 'Party'];
 
       memoryTypes.forEach(memoryType => {
         const event = {

@@ -14,7 +14,7 @@ describe('configManager', () => {
     fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
       version: '1.0',
       baseValues: { '1': 10000, '2': 25000 },
-      typeMultipliers: { Personal: 1, Business: 3, Technical: 5, UNKNOWN: 0 }
+      typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
     fs.writeFileSync(path.join(tmpDir, 'routing.json'), JSON.stringify({

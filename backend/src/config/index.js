@@ -20,7 +20,7 @@ try {
   console.warn('Failed to load shared scoring config, using defaults:', e.message);
   sharedScoringConfig = {
     baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
-    typeMultipliers: { Personal: 1, Business: 3, Technical: 5, UNKNOWN: 0 }
+    typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
   };
 }
 
@@ -74,13 +74,11 @@ const config = {
       Object.entries(sharedScoringConfig.baseValues).map(([k, v]) => [parseInt(k, 10), v])
     ),
 
-    // Type multipliers (from shared scoring-config.json)
-    typeMultipliers: {
-      personal: sharedScoringConfig.typeMultipliers.Personal,
-      business: sharedScoringConfig.typeMultipliers.Business,
-      technical: sharedScoringConfig.typeMultipliers.Technical,
-      unknown: sharedScoringConfig.typeMultipliers.UNKNOWN || 0,
-    },
+    // Type multipliers - dynamically mapped from shared config (lowercase keys)
+    typeMultipliers: Object.fromEntries(
+      Object.entries(sharedScoringConfig.typeMultipliers)
+        .map(([k, v]) => [k.toLowerCase(), v])
+    ),
   },
 
   // Security Configuration

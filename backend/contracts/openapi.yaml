@@ -167,7 +167,7 @@ paths:
         **Token Metadata Includes**:
         - SF_RFID (token ID)
         - SF_ValueRating (1-5, scoring weight)
-        - SF_MemoryType ("Technical", "Business", "Personal")
+        - SF_MemoryType ("Technical", "Business", "Personal", "Mention", "Party")
         - SF_Group (group completion bonuses)
         - Media paths (image, audio, video)
       operationId: getTokens
@@ -1007,8 +1007,6 @@ components:
       type: object
       required:
         - SF_RFID
-        - SF_ValueRating
-        - SF_MemoryType
         - SF_Group
       properties:
         image:
@@ -1043,8 +1041,7 @@ components:
           example: 3
         SF_MemoryType:
           type: string
-          enum: [Technical, Business, Personal]
-          description: Memory category
+          description: Memory category (scoring multiplier varies by type)
           example: "Technical"
         SF_Group:
           type: string
@@ -1225,8 +1222,7 @@ components:
                 example: "2025-10-15T20:15:30.000Z"
               memoryType:
                 type: string
-                enum: [Technical, Business, Personal]
-                description: Token memory type (from tokens.json)
+                description: Token memory type (Personal, Business, Technical, Mention, Party, or UNKNOWN)
                 example: "Technical"
               valueRating:
                 type: integer

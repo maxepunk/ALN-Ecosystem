@@ -31,7 +31,9 @@ describe('Shared Scoring Config', () => {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
     expect(config.typeMultipliers['Personal']).toBe(1);
+    expect(config.typeMultipliers['Mention']).toBe(3);
     expect(config.typeMultipliers['Business']).toBe(3);
+    expect(config.typeMultipliers['Party']).toBe(5);
     expect(config.typeMultipliers['Technical']).toBe(5);
     expect(config.typeMultipliers['UNKNOWN']).toBe(0);
   });

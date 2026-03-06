@@ -45,15 +45,15 @@ const validateSummary = (summary, tokenId) => {
 /**
  * Calculate token value based on rating and type
  * @param {number} rating - SF_ValueRating (1-5)
- * @param {string} type - SF_MemoryType (Personal, Business, Technical)
+ * @param {string} type - SF_MemoryType
  * @returns {number} Calculated point value
  */
 const calculateTokenValue = (rating, type) => {
   // Get base value from rating map
-  const baseValue = config.game.valueRatingMap[rating] || config.game.valueRatingMap[1];
+  const baseValue = config.game.valueRatingMap[rating] || 0;
 
   // Get type multiplier
-  const typeKey = (type || 'personal').toLowerCase();
+  const typeKey = (type || 'unknown').toLowerCase();
   const multiplier = config.game.typeMultipliers[typeKey] || config.game.typeMultipliers.unknown || 0;
 
   // Return calculated value
@@ -115,7 +115,7 @@ const loadTokens = () => {
       id: id,
       name: token.SF_Group || `Memory ${id}`,
       value: calculatedValue,
-      memoryType: token.SF_MemoryType || 'Personal',  // AsyncAPI contract requires capitalized (Decision #4)
+      memoryType: token.SF_MemoryType || 'UNKNOWN',
       groupId: groupName,
       groupMultiplier: groupMultiplier,
       mediaAssets: {
@@ -139,20 +139,9 @@ const loadTokens = () => {
   return tokensArray;
 };
 
-const getTestTokens = () => [
-  { id: 'MEM_001', name: 'First Memory', value: 10, memoryType: 'visual', mediaAssets: {}, metadata: {} },
-  { id: 'MEM_002', name: 'Second Memory', value: 20, memoryType: 'audio', mediaAssets: {}, metadata: {} },
-  { id: 'MEM_VIDEO_001', name: 'Video Memory', value: 30, memoryType: 'mixed',
-    mediaAssets: { video: '/videos/sample.mp4' }, metadata: { duration: 30 } },
-  { id: 'MEM_VIDEO_002', name: 'Second Video Memory', value: 25, memoryType: 'mixed',
-    mediaAssets: { video: '/videos/sample2.mp4' }, metadata: { duration: 30 } },
-  { id: 'MEM_REGULAR_001', name: 'Regular Memory', value: 15, memoryType: 'visual', mediaAssets: {}, metadata: {} }
-];
-
 module.exports = {
   loadTokens,
   loadRawTokens,
-  getTestTokens,
   parseGroupMultiplier,
   extractGroupName,
   calculateTokenValue

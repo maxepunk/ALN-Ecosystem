@@ -79,8 +79,7 @@ describe('TokenService - Utility Functions', () => {
 
   describe('calculateTokenValue', () => {
     // These tests depend on config.game.valueRatingMap and typeMultipliers
-    // Assuming standard config: valueRatingMap = {1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000}
-    // Assuming typeMultipliers = {personal: 1.0, business: 3.0, technical: 5.0}
+    // Values loaded dynamically from ALN-TokenData/scoring-config.json
 
     it('should calculate value with rating 1 and Personal type', () => {
       // Base: 10000, Multiplier: 1.0 = 10000
@@ -109,9 +108,19 @@ describe('TokenService - Utility Functions', () => {
       expect(value2).toBe(value3);
     });
 
-    it('should default to rating 1 value for invalid rating', () => {
+    it('should default to $0 for invalid rating', () => {
       const value = tokenService.calculateTokenValue(999, 'Personal');
-      expect(value).toBe(10000); // Defaults to rating 1
+      expect(value).toBe(0); // Missing/invalid rating = $0 base
+    });
+
+    it('should calculate value for Mention type (3x multiplier)', () => {
+      const value = tokenService.calculateTokenValue(2, 'Mention');
+      expect(value).toBe(calcExpected(2, 'Business')); // Both are 3x
+    });
+
+    it('should calculate value for Party type (5x multiplier)', () => {
+      const value = tokenService.calculateTokenValue(3, 'Party');
+      expect(value).toBe(calcExpected(3, 'Technical')); // Both are 5x
     });
 
     it('should use unknown multiplier (0) for unknown type', () => {
@@ -120,14 +129,12 @@ describe('TokenService - Utility Functions', () => {
       expect(value).toBe(0); // Base value * 0 = 0 (security: unknown tokens score nothing)
     });
 
-    it('should handle null or undefined type', () => {
-      // Should default to 'personal' (lowercase) with 1.0 multiplier
+    it('should handle null or undefined type (scores $0)', () => {
+      // Empty type defaults to 'unknown' (0x multiplier) = $0
       const value1 = tokenService.calculateTokenValue(2, null);
       const value2 = tokenService.calculateTokenValue(2, undefined);
-      // DRY: Use actual rating 2 base value with 1.0 multiplier
-      const expectedRating2 = calcExpected(2, 'Personal');
-      expect(value1).toBe(expectedRating2);
-      expect(value2).toBe(expectedRating2);
+      expect(value1).toBe(0);
+      expect(value2).toBe(0);
     });
 
     it('should floor decimal results', () => {
@@ -322,9 +329,44 @@ describe('TokenService - Token Loading', () => {
       const tokens = tokenService.loadTokens();
       const incomplete = tokens[0];
 
-      expect(incomplete.memoryType).toBe('Personal'); // Default
+      expect(incomplete.memoryType).toBe('UNKNOWN'); // Was 'Personal'
+      expect(incomplete.value).toBe(0); // UNKNOWN = 0x multiplier
       expect(incomplete.groupId).toBe(null);
       expect(incomplete.groupMultiplier).toBe(1);
+    });
+
+    it('should load tokens with Mention memory type', () => {
+      const mentionToken = {
+        'mention001': {
+          SF_RFID: 'mention001',
+          SF_ValueRating: 3,
+          SF_MemoryType: 'Mention',
+          SF_Group: ''
+        }
+      };
+
+      fs.readFileSync.mockReturnValue(JSON.stringify(mentionToken));
+      const tokens = tokenService.loadTokens();
+
+      expect(tokens[0].memoryType).toBe('Mention');
+      expect(tokens[0].value).toBe(calcExpected(3, 'Mention'));
+    });
+
+    it('should load tokens with Party memory type', () => {
+      const partyToken = {
+        'party001': {
+          SF_RFID: 'party001',
+          SF_ValueRating: 4,
+          SF_MemoryType: 'Party',
+          SF_Group: ''
+        }
+      };
+
+      fs.readFileSync.mockReturnValue(JSON.stringify(partyToken));
+      const tokens = tokenService.loadTokens();
+
+      expect(tokens[0].memoryType).toBe('Party');
+      expect(tokens[0].value).toBe(calcExpected(4, 'Party'));
     });
 
     it('should use Memory {id} as fallback name when no group', () => {
@@ -344,33 +386,4 @@ describe('TokenService - Token Loading', () => {
     });
   });
 
-  describe('getTestTokens', () => {
-    it('should return array of test tokens', () => {
-      const testTokens = tokenService.getTestTokens();
-
-      expect(Array.isArray(testTokens)).toBe(true);
-      expect(testTokens.length).toBeGreaterThan(0);
-    });
-
-    it('should return tokens with required structure', () => {
-      const testTokens = tokenService.getTestTokens();
-
-      testTokens.forEach(token => {
-        expect(token).toHaveProperty('id');
-        expect(token).toHaveProperty('name');
-        expect(token).toHaveProperty('value');
-        expect(token).toHaveProperty('memoryType');
-        expect(token).toHaveProperty('mediaAssets');
-        expect(token).toHaveProperty('metadata');
-      });
-    });
-
-    it('should include tokens with video assets', () => {
-      const testTokens = tokenService.getTestTokens();
-      const videoToken = testTokens.find(t => t.mediaAssets.video);
-
-      expect(videoToken).toBeDefined();
-      expect(videoToken.mediaAssets.video).toBeTruthy();
-    });
-  });
 });

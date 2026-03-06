@@ -1,6 +1,6 @@
 # ALN Scoring Logic - Single Source of Truth
 
-Last verified: 2025-12-16
+Last verified: 2026-03-05
 
 ## Overview
 
@@ -21,9 +21,15 @@ This document defines the scoring system for ALN (About Last Night) Black Market
 | Type | Multiplier |
 |------|------------|
 | Personal | 1x |
+| Mention | 3x |
 | Business | 3x |
+| Party | 5x |
 | Technical | 5x |
-| UNKNOWN | 0x (no points) |
+| UNKNOWN / empty | 0x (no points) |
+
+**Empty Field Handling:**
+- Missing/empty `SF_MemoryType` defaults to UNKNOWN (0x multiplier = $0)
+- Missing/empty `SF_ValueRating` defaults to $0 base value
 
 ## Token Score Formula
 
