@@ -15,6 +15,9 @@ const activeListeners = [];
 // Idempotency guard flag
 let broadcastListenersActive = false;
 
+// Stash teamScore from transaction:accepted for enriching transaction:new
+const teamScoreStash = new Map();
+
 /**
  * Helper function to add and track event listeners
  * @param {EventEmitter} service - Service instance
@@ -59,6 +62,7 @@ function setupBroadcastListeners(io, services) {
   const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
     bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
     spotifyService, vlcService, displayControlService } = services;
+
 
   // Session events - session:update replaces session:new/paused/resumed/ended
   // Per AsyncAPI contract and Decision #7 (send FULL resource, not deltas)
@@ -172,6 +176,10 @@ function setupBroadcastListeners(io, services) {
     // Enrich transaction with token data for frontend display
     const token = transactionService.getToken(transaction.tokenId);
 
+    // Retrieve stashed teamScore (from transaction:accepted that fires first)
+    const stashedTeamScore = teamScoreStash.get(transaction.id);
+    teamScoreStash.delete(transaction.id);
+
     // Prepare payload per AsyncAPI contract (nested transaction object)
     const payload = {
       transaction: {
@@ -188,8 +196,10 @@ function setupBroadcastListeners(io, services) {
         valueRating: token?.metadata?.rating || 0,
         group: token?.metadata?.group || token?.groupId || 'No Group',
         summary: transaction.summary || null,  // Summary from transaction (complete persisted record)
-        isUnknown: !token  // Frontend needs this to avoid marking valid tokens as unknown
-      }
+        isUnknown: !token,  // Frontend needs this to avoid marking valid tokens as unknown
+        owner: token?.metadata?.owner || null
+      },
+      teamScore: stashedTeamScore || null
     };
 
     // Per contract: broadcast to session room only
@@ -233,12 +243,25 @@ function setupBroadcastListeners(io, services) {
 
     // Score updates from new transactions
     addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
+      // Stash teamScore for upcoming transaction:new broadcast
+      if (payload.transaction?.id && payload.teamScore) {
+        teamScoreStash.set(payload.transaction.id, payload.teamScore);
+      }
       broadcastScoreUpdate(payload.teamScore, 'transaction:accepted');
     });
 
     // Score updates from admin adjustments
     addTrackedListener(transactionService, 'score:adjusted', (payload) => {
+      // Existing: broadcast as score:updated (for GM Scanner compatibility)
       broadcastScoreUpdate(payload.teamScore, 'score:adjusted');
+
+      // New: broadcast score:adjusted to session room for scoreboard
+      const session = sessionService.getCurrentSession();
+      if (session && payload.teamScore) {
+        emitToRoom(io, `session:${session.id}`, 'score:adjusted', {
+          teamScore: payload.teamScore
+        });
+      }
     });
 
     addTrackedListener(transactionService, 'transaction:deleted', (data) => {
@@ -635,6 +658,9 @@ function cleanupBroadcastListeners() {
 
   // Also cleanup registry
   listenerRegistry.cleanup();
+
+  // Clear teamScore stash to prevent state leaking between resets
+  teamScoreStash.clear();
 
   // Reset flag to allow re-setup
   broadcastListenersActive = false;

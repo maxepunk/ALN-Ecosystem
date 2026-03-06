@@ -129,7 +129,8 @@ const loadTokens = () => {
         group: token.SF_Group,
         originalType: token.SF_MemoryType,
         rating: token.SF_ValueRating,
-        summary: validateSummary(token.summary, token.SF_RFID)
+        summary: validateSummary(token.summary, token.SF_RFID),
+        owner: token.owner || null
       }
     };
   });

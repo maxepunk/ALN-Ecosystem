@@ -43,7 +43,8 @@ module.exports = {
           rfid: 'rat001',
           group: 'Marcus Sucks(x2)',
           originalType: 'Business',
-          rating: 4
+          rating: 4,
+          owner: null
         }
       },
       {
@@ -63,7 +64,8 @@ module.exports = {
           rfid: 'asm001',
           group: 'Marcus Sucks (x2)',
           originalType: 'Personal',
-          rating: 3
+          rating: 3,
+          owner: null
         }
       }
     ]
@@ -92,7 +94,8 @@ module.exports = {
           rfid: 'test_srv001',
           group: 'Server Logs (x3)',
           originalType: 'Technical',
-          rating: 2
+          rating: 2,
+          owner: null
         }
       },
       {
@@ -112,7 +115,8 @@ module.exports = {
           rfid: 'test_srv002',
           group: 'Server Logs (x3)',
           originalType: 'Technical',
-          rating: 3
+          rating: 3,
+          owner: null
         }
       }
     ]
@@ -137,7 +141,8 @@ module.exports = {
         rfid: '534e2b02',
         group: '',
         originalType: 'Technical',
-        rating: 3
+        rating: 3,
+        owner: null
       }
     },
     {
@@ -157,7 +162,8 @@ module.exports = {
         rfid: '534e2b03',
         group: '',
         originalType: 'Technical',
-        rating: 3
+        rating: 3,
+        owner: null
       }
     },
     {
@@ -177,7 +183,8 @@ module.exports = {
         rfid: 'hos001',
         group: '',
         originalType: 'Business',
-        rating: 3
+        rating: 3,
+        owner: null
       }
     }
   ],
@@ -200,7 +207,8 @@ module.exports = {
       rfid: 'jaw001',
       group: '',
       originalType: 'Personal',
-      rating: 5
+      rating: 5,
+      owner: null
     }
   },
 
@@ -221,7 +229,8 @@ module.exports = {
       rfid: 'tac001',
       group: '',
       originalType: 'Personal',
-      rating: 1
+      rating: 1,
+      owner: 'Taylor Chase'
     }
   },
 
@@ -242,7 +251,8 @@ module.exports = {
       rfid: 'fli001',
       group: '',
       originalType: 'Personal',
-      rating: 1
+      rating: 1,
+      owner: null
     }
   },
 
@@ -265,7 +275,8 @@ module.exports = {
       group: '',
       originalType: 'Technical',
       rating: 2,
-      summary: 'Security footage from warehouse district - timestamp 23:47'
+      summary: 'Security footage from warehouse district - timestamp 23:47',
+      owner: 'Derek Thorn'
     }
   },
 
@@ -287,7 +298,8 @@ module.exports = {
       group: '',
       originalType: 'Technical',
       rating: 3,
-      summary: null
+      summary: null,
+      owner: 'Alex Reeves'
     }
   },
 
@@ -309,7 +321,8 @@ module.exports = {
       group: '',
       originalType: 'Technical',
       rating: 2,
-      summary: '<script>alert("XSS")</script> Test & "special" \'chars\''
+      summary: '<script>alert("XSS")</script> Test & "special" \'chars\'',
+      owner: null
     }
   },
 

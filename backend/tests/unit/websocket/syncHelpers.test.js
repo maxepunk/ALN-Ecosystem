@@ -1,11 +1,104 @@
 /**
  * Unit tests for syncHelpers
- * Tests buildHeldItemsState() graceful degradation
+ * Tests buildHeldItemsState() graceful degradation and recentTransactions enrichment
  */
 
 'use strict';
 
-const { buildHeldItemsState } = require('../../../src/websocket/syncHelpers');
+const { buildSyncFullPayload, buildHeldItemsState } = require('../../../src/websocket/syncHelpers');
+
+describe('buildSyncFullPayload recentTransactions enrichment', () => {
+  function makeMinimalServices({ transactions = [], token = null } = {}) {
+    const session = {
+      id: 'test-session',
+      transactions,
+      connectedDevices: [],
+      playerScans: [],
+      toJSON: () => ({ id: 'test-session', teams: [], status: 'active' }),
+    };
+    return {
+      sessionService: { getCurrentSession: () => session },
+      transactionService: {
+        getTeamScores: () => [],
+        getToken: () => token,
+      },
+      videoQueueService: {
+        currentStatus: 'idle',
+        queue: [],
+        currentVideo: null,
+      },
+    };
+  }
+
+  it('should include owner, group, and isUnknown in recentTransactions', async () => {
+    const tx = {
+      id: 'tx-1', tokenId: 'tok1', teamId: 'Team A', deviceId: 'gm-1',
+      mode: 'blackmarket', status: 'accepted', points: 100,
+      timestamp: new Date().toISOString(), summary: null,
+    };
+    const token = {
+      memoryType: 'Technical',
+      metadata: { rating: 3, group: 'Server Logs (x3)', owner: 'Alex Reeves' },
+      groupId: 'Server Logs',
+    };
+    const services = makeMinimalServices({ transactions: [tx], token });
+    const payload = await buildSyncFullPayload(services);
+
+    expect(payload.recentTransactions).toHaveLength(1);
+    const enriched = payload.recentTransactions[0];
+    expect(enriched).toHaveProperty('owner', 'Alex Reeves');
+    expect(enriched).toHaveProperty('group', 'Server Logs (x3)');
+    expect(enriched).toHaveProperty('isUnknown', false);
+  });
+
+  it('should set isUnknown true and owner null for unknown tokens', async () => {
+    const tx = {
+      id: 'tx-2', tokenId: 'unknown-xyz', teamId: 'Team B', deviceId: 'gm-1',
+      mode: 'blackmarket', status: 'accepted', points: 0,
+      timestamp: new Date().toISOString(), summary: null,
+    };
+    const services = makeMinimalServices({ transactions: [tx], token: null });
+    const payload = await buildSyncFullPayload(services);
+
+    const enriched = payload.recentTransactions[0];
+    expect(enriched.isUnknown).toBe(true);
+    expect(enriched.owner).toBeNull();
+    expect(enriched.group).toBe('No Group');
+  });
+});
+
+describe('buildGameClockState expectedDuration', () => {
+  it('should derive expectedDuration from SESSION_TIMEOUT config', async () => {
+    // Save original
+    const originalTimeout = process.env.SESSION_TIMEOUT;
+    process.env.SESSION_TIMEOUT = '90';  // 90 minutes
+
+    // Re-require to pick up new env
+    jest.resetModules();
+    const { buildSyncFullPayload: freshBuild } = require('../../../src/websocket/syncHelpers');
+
+    const session = {
+      id: 'test', transactions: [], connectedDevices: [], playerScans: [],
+      toJSON: () => ({ id: 'test', teams: [], status: 'active' }),
+    };
+    const payload = await freshBuild({
+      sessionService: { getCurrentSession: () => session },
+      transactionService: { getTeamScores: () => [], getToken: () => null },
+      videoQueueService: { currentStatus: 'idle', queue: [], currentVideo: null },
+      gameClockService: null,  // null triggers fallback path
+    });
+
+    expect(payload.gameClock.expectedDuration).toBe(5400);  // 90 * 60
+
+    // Restore
+    if (originalTimeout !== undefined) {
+      process.env.SESSION_TIMEOUT = originalTimeout;
+    } else {
+      delete process.env.SESSION_TIMEOUT;
+    }
+    jest.resetModules();
+  });
+});
 
 describe('buildHeldItemsState()', () => {
   it('should return empty array when no held items exist', () => {

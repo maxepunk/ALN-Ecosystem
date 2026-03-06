@@ -82,6 +82,7 @@ channels:
           - $ref: '#/components/messages/TransactionNew'
           - $ref: '#/components/messages/TransactionDeleted'
           - $ref: '#/components/messages/ScoreUpdated'
+          - $ref: '#/components/messages/ScoreAdjusted'
           - $ref: '#/components/messages/ScoresReset'
           - $ref: '#/components/messages/SessionUpdate'
           - $ref: '#/components/messages/SessionOvertime'
@@ -839,6 +840,44 @@ components:
                     description: Brief summary of memory content for detective mode (custom from transaction or default from tokens.json, optional)
                     maxLength: 350
                     example: "Security footage from warehouse district - timestamp 23:47"
+                  status:
+                    type: string
+                    enum: [accepted, duplicate, error]
+                    description: Transaction processing result
+                    example: "accepted"
+                  isUnknown:
+                    type: boolean
+                    description: True if token ID not found in database
+                    example: false
+                  owner:
+                    type: [string, "null"]
+                    description: Character who owns this memory (from tokens.json, null if unknown)
+                    example: "Alex Reeves"
+              teamScore:
+                type: [object, "null"]
+                description: Team score after this transaction (null if unavailable)
+                properties:
+                  teamId:
+                    type: string
+                  currentScore:
+                    type: integer
+                  baseScore:
+                    type: integer
+                  bonusPoints:
+                    type: integer
+                  tokensScanned:
+                    type: integer
+                  completedGroups:
+                    type: array
+                    items:
+                      type: string
+                  adminAdjustments:
+                    type: array
+                    items:
+                      type: object
+                  lastUpdate:
+                    type: string
+                    format: date-time
           timestamp:
             type: string
             format: date-time
@@ -993,6 +1032,71 @@ components:
             format: date-time
             description: Event timestamp
             example: "2025-10-15T20:15:30.100Z"
+
+    ScoreAdjusted:
+      name: score:adjusted
+      title: Admin Score Adjustment Broadcast
+      summary: Broadcast admin score adjustment to session room
+      description: |
+        Broadcast when an admin adjusts a team's score manually. Sent to session room
+        so scoreboard can update its ticker without relying on score:updated.
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: score:adjusted
+            description: Event name
+          data:
+            type: object
+            required:
+              - teamScore
+            properties:
+              teamScore:
+                type: object
+                required:
+                  - teamId
+                  - currentScore
+                  - baseScore
+                  - bonusPoints
+                  - tokensScanned
+                  - completedGroups
+                  - adminAdjustments
+                  - lastUpdate
+                properties:
+                  teamId:
+                    type: string
+                    description: Team ID
+                    example: "Team Alpha"
+                  currentScore:
+                    type: integer
+                    description: Total score
+                    example: 16500
+                  baseScore:
+                    type: integer
+                  bonusPoints:
+                    type: integer
+                  tokensScanned:
+                    type: integer
+                  completedGroups:
+                    type: array
+                    items:
+                      type: string
+                  adminAdjustments:
+                    type: array
+                    items:
+                      type: object
+                  lastUpdate:
+                    type: string
+                    format: date-time
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
 
     ScoresReset:
       name: scores:reset

@@ -149,7 +149,8 @@ describe('TokenService - Token Loading', () => {
       image: '/assets/images/token001.jpg',
       audio: null,
       video: '/videos/token001.mp4',
-      processingImage: null
+      processingImage: null,
+      owner: 'Alex Reeves'
     },
     'token002': {
       SF_RFID: 'token002',
@@ -159,7 +160,8 @@ describe('TokenService - Token Loading', () => {
       image: null,
       audio: '/assets/audio/token002.mp3',
       video: null,
-      processingImage: null
+      processingImage: null,
+      owner: 'Ashe Motoko'
     },
     'token003': {
       SF_RFID: 'token003',
@@ -170,6 +172,7 @@ describe('TokenService - Token Loading', () => {
       audio: null,
       video: null,
       processingImage: null
+      // No owner field — should default to null
     }
   };
 
@@ -277,7 +280,7 @@ describe('TokenService - Token Loading', () => {
       });
     });
 
-    it('should include metadata structure', () => {
+    it('should include metadata structure with owner', () => {
       const tokens = tokenService.loadTokens();
       const token001 = tokens.find(t => t.id === 'token001');
 
@@ -286,8 +289,16 @@ describe('TokenService - Token Loading', () => {
         group: 'Alpha Group (x2)',
         originalType: 'Technical',
         rating: 3,
-        summary: null
+        summary: null,
+        owner: 'Alex Reeves'
       });
+    });
+
+    it('should default owner to null when not present in token data', () => {
+      const tokens = tokenService.loadTokens();
+      const token003 = tokens.find(t => t.id === 'token003');
+
+      expect(token003.metadata.owner).toBeNull();
     });
 
     it('should handle empty group field', () => {

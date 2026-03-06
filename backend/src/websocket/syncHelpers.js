@@ -9,6 +9,7 @@
  * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
  */
 
+const config = require('../config');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 const { buildEnvironmentState } = require('./environmentHelpers');
 const logger = require('../utils/logger');
@@ -70,7 +71,10 @@ async function buildSyncFullPayload({
       timestamp: transaction.timestamp,
       memoryType: token?.memoryType || 'UNKNOWN',
       valueRating: token?.metadata?.rating || 0,
+      group: token?.metadata?.group || token?.groupId || 'No Group',
       summary: transaction.summary || null,
+      isUnknown: !token,
+      owner: token?.metadata?.owner || null,
     };
   });
 
@@ -135,19 +139,20 @@ async function buildSyncFullPayload({
  * @returns {Object} Game clock state
  */
 function buildGameClockState(gameClockService) {
+  const expectedDuration = config.session.sessionTimeout * 60;
   try {
     if (!gameClockService) {
-      return { status: 'stopped', elapsed: 0, expectedDuration: 7200 };
+      return { status: 'stopped', elapsed: 0, expectedDuration };
     }
     const state = gameClockService.getState();
     return {
       status: state.status,
       elapsed: state.elapsed,
-      expectedDuration: 7200  // 2 hours default; make configurable later
+      expectedDuration
     };
   } catch (err) {
     logger.warn('Failed to gather game clock state for sync:full', { error: err.message });
-    return { status: 'stopped', elapsed: 0, expectedDuration: 7200 };
+    return { status: 'stopped', elapsed: 0, expectedDuration };
   }
 }
 

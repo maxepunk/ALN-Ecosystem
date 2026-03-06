@@ -8,6 +8,7 @@ const { connectAndIdentify, waitForEvent } = require('../../helpers/websocket-he
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../../helpers/integration-test-server');
 const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
+const transactionService = require('../../../src/services/transactionService');
 
 describe('Transaction Events - Contract Validation', () => {
   let testContext;
@@ -124,6 +125,9 @@ describe('Transaction Events - Contract Validation', () => {
       expect(event).toHaveProperty('timestamp');
       expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
+      // Validate: owner field present (tac001 owner = 'Taylor Chase')
+      expect(event.data.transaction).toHaveProperty('owner', 'Taylor Chase');
+
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'transaction:new');
     });
@@ -208,6 +212,65 @@ describe('Transaction Events - Contract Validation', () => {
 
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'transaction:new');
+    });
+
+    it('should include teamScore from transaction:accepted', async () => {
+      // Setup: Listen for transaction:new BEFORE submitting
+      const broadcastPromise = waitForEvent(socket, 'transaction:new');
+
+      // Trigger: Submit blackmarket transaction
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'hos001',  // Business, rating=3
+          teamId: 'Team Alpha',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      // Wait: For transaction:new broadcast
+      const event = await broadcastPromise;
+
+      // Validate: teamScore is a sibling of transaction (not nested inside)
+      expect(event.data).toHaveProperty('teamScore');
+      expect(event.data.teamScore).toHaveProperty('teamId', 'Team Alpha');
+      expect(event.data.teamScore).toHaveProperty('currentScore');
+      expect(typeof event.data.teamScore.currentScore).toBe('number');
+      expect(event.data.teamScore.currentScore).toBeGreaterThan(0);
+    });
+  });
+
+  describe('score:adjusted broadcast', () => {
+    it('should broadcast score:adjusted event on admin score adjustment', async () => {
+      // First process a token so the team has a score
+      const txPromise = waitForEvent(socket, 'transaction:new');
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: '534e2b03',
+          teamId: 'Team Alpha',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'blackmarket'
+        },
+        timestamp: new Date().toISOString()
+      });
+      await txPromise;
+
+      // Now listen for score:adjusted and trigger admin adjustment
+      const adjustPromise = waitForEvent(socket, 'score:adjusted');
+      transactionService.adjustTeamScore('Team Alpha', 5000, 'bonus', 'GM_CONTRACT_TEST');
+
+      const event = await adjustPromise;
+      expect(event).toHaveProperty('event', 'score:adjusted');
+      expect(event).toHaveProperty('data');
+      expect(event.data).toHaveProperty('teamScore');
+      expect(event.data.teamScore).toHaveProperty('teamId', 'Team Alpha');
+      expect(event.data.teamScore).toHaveProperty('currentScore');
+      expect(typeof event.data.teamScore.currentScore).toBe('number');
     });
   });
 });
