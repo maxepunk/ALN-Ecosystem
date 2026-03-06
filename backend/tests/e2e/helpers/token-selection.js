@@ -137,6 +137,7 @@ async function selectTestTokens(orchestratorUrl) {
     );
   }
 
+  const totalTokenCount = availableTokens.length;
   const selected = {};
   const usedTokenIds = new Set();
 
@@ -163,27 +164,28 @@ async function selectTestTokens(orchestratorUrl) {
   const availableTier5 = tier5Tokens.filter(t => !usedTokenIds.has(t.SF_RFID));
   const availableScoreable = scoreableTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
 
+  // Helper to pick best token from a tier with fallback to any scoreable
+  const pickFromTier = (tierTokens, preferredRating) => {
+    const available = tierTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+    const fallback = scoreableTokens.filter(t => !usedTokenIds.has(t.SF_RFID));
+    const pick = (available.find(t => t.SF_ValueRating === preferredRating) || available[0]) || fallback[0];
+    if (!pick) {
+      throw new Error(
+        `No scoreable tokens remaining for allocation. ` +
+        `Groups consumed too many tokens. Scoreable: ${scoreableTokens.length}, Used: ${usedTokenIds.size}`
+      );
+    }
+    return allocateToken(pick);
+  };
+
   // personalToken = Tier 1 (1x) preferred, fallback to any scoreable
-  selected.personalToken = allocateToken(
-    (availableTier1.find(t => t.SF_ValueRating === 2) || availableTier1[0])
-    || availableScoreable[0]
-  );
+  selected.personalToken = pickFromTier(availableTier1, 2);
 
   // businessToken = Tier 3 (3x) preferred, fallback to any scoreable
-  const remainingTier3 = availableTier3.filter(t => !usedTokenIds.has(t.SF_RFID));
-  const remainingScoreable = availableScoreable.filter(t => !usedTokenIds.has(t.SF_RFID));
-  selected.businessToken = allocateToken(
-    (remainingTier3.find(t => t.SF_ValueRating === 3) || remainingTier3[0])
-    || remainingScoreable[0]
-  );
+  selected.businessToken = pickFromTier(availableTier3, 3);
 
   // technicalToken = Tier 5 (5x) preferred, fallback to any scoreable
-  const remainingTier5 = availableTier5.filter(t => !usedTokenIds.has(t.SF_RFID));
-  const remainingScoreable2 = remainingScoreable.filter(t => !usedTokenIds.has(t.SF_RFID));
-  selected.technicalToken = allocateToken(
-    (remainingTier5.find(t => t.SF_ValueRating === 5) || remainingTier5[0])
-    || remainingScoreable2[0]
-  );
+  selected.technicalToken = pickFromTier(availableTier5, 5);
 
   // Video token (for video alert testing) - exclude already used tokens AND verify video file exists
   const availableVideo = videoTokens.filter(t => {
@@ -223,7 +225,7 @@ async function selectTestTokens(orchestratorUrl) {
   console.log(`  -> Video token: ${selected.videoToken ? selected.videoToken.SF_RFID : 'NONE FOUND'}`);
   console.log(`  -> Group tokens: ${selected.groupTokens.length > 0 ? selected.groupTokens.map(t => t.SF_RFID).join(', ') : 'NONE FOUND'}`);
   console.log(`  -> Unique tokens: ${selected.uniqueTokens.slice(0, 3).map(t => t.SF_RFID).join(', ')}... (${selected.uniqueTokens.length} total)`);
-  console.log(`  -> Scoreable: ${scoreableTokens.length}, Null-scoring: ${availableTokens.length - scoreableTokens.length}`);
+  console.log(`  -> Scoreable: ${scoreableTokens.length}, Null-scoring: ${totalTokenCount - scoreableTokens.length}`);
 
   // Validation: Warn if group tokens not found
   if (selected.groupTokens.length < 2) {
