@@ -299,9 +299,13 @@ test.describe('E2E Infrastructure Smoke Test', () => {
     expect(testTokens.personalToken.SF_MemoryType).toBeDefined();
 
     expect(testTokens.businessToken).toBeDefined();
+    expect(testTokens.businessToken.SF_ValueRating).toBeGreaterThanOrEqual(1);
+    expect(testTokens.businessToken.SF_ValueRating).toBeLessThanOrEqual(5);
     expect(testTokens.businessToken.SF_MemoryType).toBeDefined();
 
     expect(testTokens.technicalToken).toBeDefined();
+    expect(testTokens.technicalToken.SF_ValueRating).toBeGreaterThanOrEqual(1);
+    expect(testTokens.technicalToken.SF_ValueRating).toBeLessThanOrEqual(5);
     expect(testTokens.technicalToken.SF_MemoryType).toBeDefined();
 
     // Verify allTokens array has production data
