@@ -326,6 +326,31 @@ module.exports = {
     }
   },
 
+  // Token with null scoring fields (no Black Market value)
+  // Represents tokens that exist in gameplay but have no score
+  NULL_SCORING_TOKEN: {
+    id: 'null001',
+    name: 'Memory null001',
+    value: 0,  // null rating + UNKNOWN type = $0
+    memoryType: 'UNKNOWN',
+    groupId: null,
+    groupMultiplier: 1,
+    mediaAssets: {
+      image: 'assets/images/null001.bmp',
+      audio: null,
+      video: null,
+      processingImage: null
+    },
+    metadata: {
+      rfid: 'null001',
+      group: '',
+      originalType: null,
+      rating: null,
+      summary: 'A token with no scoring value',
+      owner: 'Test Character'
+    }
+  },
+
   /**
    * Get all tokens as an object keyed by ID (matches ALN-TokenData format)
    * Usage: TokenManager.database = TestTokens.getAllAsObject()
@@ -357,6 +382,9 @@ module.exports = {
     tokens[this.DETECTIVE_TOKEN_WITH_SUMMARY.id] = this.DETECTIVE_TOKEN_WITH_SUMMARY;
     tokens[this.DETECTIVE_TOKEN_WITHOUT_SUMMARY.id] = this.DETECTIVE_TOKEN_WITHOUT_SUMMARY;
     tokens[this.DETECTIVE_TOKEN_WITH_HTML.id] = this.DETECTIVE_TOKEN_WITH_HTML;
+
+    // Add null-scoring token
+    tokens[this.NULL_SCORING_TOKEN.id] = this.NULL_SCORING_TOKEN;
 
     return tokens;
   },

@@ -335,6 +335,33 @@ describe('TokenService - Token Loading', () => {
       expect(incomplete.groupMultiplier).toBe(1);
     });
 
+    it('should handle token with both null SF_ValueRating and null SF_MemoryType', () => {
+      const nullScoringToken = {
+        'scoreless001': {
+          SF_RFID: 'scoreless001',
+          SF_ValueRating: null,
+          SF_MemoryType: null,
+          SF_Group: '',
+          image: 'assets/images/scoreless001.bmp',
+          audio: null,
+          video: null,
+          processingImage: null,
+          owner: 'Test Character'
+        }
+      };
+
+      fs.readFileSync.mockReturnValue(JSON.stringify(nullScoringToken));
+      const tokens = tokenService.loadTokens();
+      const token = tokens[0];
+
+      expect(token.memoryType).toBe('UNKNOWN');
+      expect(token.value).toBe(0);
+      expect(token.metadata.rating).toBeNull();
+      expect(token.metadata.originalType).toBeNull();
+      expect(token.metadata.owner).toBe('Test Character');
+      expect(token.id).toBe('scoreless001');
+    });
+
     it('should load tokens with Mention memory type', () => {
       const mentionToken = {
         'mention001': {
