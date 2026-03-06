@@ -30,7 +30,7 @@ const tokenSchema = Joi.object({
     rfid: Joi.string().optional().allow(null),
     group: Joi.string().optional().allow(null, ''),  // Allow empty string for tokens without groups
     originalType: Joi.string().optional().allow(null),
-    rating: Joi.number().integer().min(1).max(5).optional(),
+    rating: Joi.number().integer().min(1).max(5).optional().allow(null),
     owner: Joi.string().optional().allow(null),
   }).required(),
 });
