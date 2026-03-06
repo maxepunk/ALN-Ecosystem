@@ -1034,14 +1034,18 @@ components:
           description: Token ID (RFID identifier)
           example: "534e2b02"
         SF_ValueRating:
-          type: integer
+          type:
+            - integer
+            - "null"
           minimum: 1
           maximum: 5
-          description: Scoring weight (1=lowest, 5=highest value)
+          description: Scoring weight (1=lowest, 5=highest value). Null for tokens with no Black Market score.
           example: 3
         SF_MemoryType:
-          type: string
-          description: Memory category (scoring multiplier varies by type)
+          type:
+            - string
+            - "null"
+          description: Memory category (scoring multiplier varies by type). Null for tokens with no Black Market score.
           example: "Technical"
         SF_Group:
           type: string
