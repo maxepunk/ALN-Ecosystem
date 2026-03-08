@@ -219,43 +219,16 @@ function setupBroadcastListeners(io, services) {
 
   // Transaction/Score events - broadcast to GM stations only
   if (transactionService) {
-    // DRY helper: broadcast score:updated from any source
-    function broadcastScoreUpdate(teamScore, source) {
-      if (!teamScore) return;
-
-      const scorePayload = {
-        teamId: teamScore.teamId,
-        currentScore: teamScore.currentScore,
-        baseScore: teamScore.baseScore,
-        bonusPoints: teamScore.bonusPoints || 0,
-        tokensScanned: teamScore.tokensScanned,
-        completedGroups: teamScore.completedGroups || [],
-        adminAdjustments: teamScore.adminAdjustments || [],
-        lastUpdate: teamScore.lastUpdate
-      };
-
-      emitToRoom(io, 'gm', 'score:updated', scorePayload);
-      logger.info(`Broadcasted score:updated from ${source}`, {
-        teamId: teamScore.teamId,
-        score: teamScore.currentScore
-      });
-    }
-
-    // Score updates from new transactions
+    // Score stash for transaction:new enrichment
     addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
-      // Stash teamScore for upcoming transaction:new broadcast
+      // Stash teamScore for enriching the upcoming transaction:new broadcast
       if (payload.transaction?.id && payload.teamScore) {
         teamScoreStash.set(payload.transaction.id, payload.teamScore);
       }
-      broadcastScoreUpdate(payload.teamScore, 'transaction:accepted');
     });
 
-    // Score updates from admin adjustments
+    // Admin score adjustments — broadcast to session room
     addTrackedListener(transactionService, 'score:adjusted', (payload) => {
-      // Existing: broadcast as score:updated (for GM Scanner compatibility)
-      broadcastScoreUpdate(payload.teamScore, 'score:adjusted');
-
-      // New: broadcast score:adjusted to session room for scoreboard
       const session = sessionService.getCurrentSession();
       if (session && payload.teamScore) {
         emitToRoom(io, `session:${session.id}`, 'score:adjusted', {
@@ -290,9 +263,6 @@ function setupBroadcastListeners(io, services) {
           teamId: data.teamId
         });
       }
-
-      // Broadcast updated score (for black market mode scoreboard)
-      broadcastScoreUpdate(data.updatedTeamScore, 'transaction:deleted');
     });
 
     addTrackedListener(transactionService, 'group:completed', (data) => {

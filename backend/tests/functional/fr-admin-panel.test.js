@@ -308,7 +308,7 @@ describe('FR Section 4: Admin Panel', () => {
   describe('FR 4.2.4: Score Adjustment Commands', () => {
     it('should support score:adjust command with positive delta', async () => {
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
-      const scorePromise = waitForEvent(scanner.socket, 'score:updated');
+      const scorePromise = waitForEvent(scanner.socket, 'score:adjusted');
 
       scanner.socket.emit('gm:command', {
         event: 'gm:command',
@@ -326,13 +326,13 @@ describe('FR Section 4: Admin Panel', () => {
       const [ack, scoreUpdate] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
-      expect(scoreUpdate.data.currentScore).toBeGreaterThanOrEqual(1000);
+      expect(scoreUpdate.data.teamScore.teamId).toBe('Team Alpha');
+      expect(scoreUpdate.data.teamScore.currentScore).toBeGreaterThanOrEqual(1000);
     });
 
     it('should support score:adjust command with negative delta (penalties)', async () => {
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
-      const scorePromise = waitForEvent(scanner.socket, 'score:updated');
+      const scorePromise = waitForEvent(scanner.socket, 'score:adjusted');
 
       scanner.socket.emit('gm:command', {
         event: 'gm:command',
@@ -350,7 +350,7 @@ describe('FR Section 4: Admin Panel', () => {
       const [ack, scoreUpdate] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreUpdate.data.teamId).toBe('Detectives');
+      expect(scoreUpdate.data.teamScore.teamId).toBe('Detectives');
     });
   });
 

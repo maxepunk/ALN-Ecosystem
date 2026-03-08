@@ -157,8 +157,8 @@ function setupEventListener(socket, eventName, handler) {
  * // Wait for specific team score update
  * const scoreEvent = await waitForEvent(
  *   socket,
- *   'score:updated',
- *   (data) => data.teamId === 'Team Alpha',
+ *   'score:adjusted',
+ *   (data) => data.teamScore?.teamId === 'Team Alpha',
  *   5000
  * );
  */

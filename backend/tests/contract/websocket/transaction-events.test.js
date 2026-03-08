@@ -1,6 +1,6 @@
 /**
  * Transaction Events - Contract Validation Tests
- * Tests transaction:submit, transaction:result, transaction:new, and score:updated events
+ * Tests transaction:submit, transaction:result, transaction:new, and score:adjusted events
  */
 
 const { validateWebSocketEvent } = require('../../helpers/contract-validator');

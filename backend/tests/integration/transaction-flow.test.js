@@ -72,7 +72,6 @@ describe('Transaction Flow Integration', () => {
       // Listen for expected events on scanner's socket
       const resultPromise = waitForEvent(gmScanner.socket, 'transaction:result');
       const newPromise = waitForEvent(gmScanner.socket, 'transaction:new');
-      const scorePromise = waitForEvent(gmScanner.socket, 'score:updated');
 
       // Set team (how real scanner does it)
       gmScanner.App.currentTeamId = 'Team Alpha';
@@ -82,10 +81,9 @@ describe('Transaction Flow Integration', () => {
       gmScanner.App.processNFCRead({id: '534e2b03'});
 
       // Wait: For all events to propagate
-      const [resultEvent, newEvent, scoreEvent] = await Promise.all([
+      const [resultEvent, newEvent] = await Promise.all([
         resultPromise,
-        newPromise,
-        scorePromise
+        newPromise
       ]);
 
       // Validate: transaction:result (sent to submitter only)
@@ -115,18 +113,15 @@ describe('Transaction Flow Integration', () => {
       // Validate: Contract compliance for transaction:new
       validateWebSocketEvent(newEvent, 'transaction:new');
 
-      // Validate: score:updated (broadcast to all GMs)
-      expect(scoreEvent.event).toBe('score:updated');
-      expect(scoreEvent.data.teamId).toBe('Team Alpha');
-      expect(scoreEvent.data.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
-      expect(scoreEvent.data.baseScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
-      expect(scoreEvent.data.bonusPoints).toBe(0);
-      expect(scoreEvent.data.tokensScanned).toBe(1);
-      expect(scoreEvent.data.completedGroups).toEqual([]);
-      expect(scoreEvent.data.lastUpdate).toBeDefined();
-
-      // Validate: Contract compliance for score:updated
-      validateWebSocketEvent(scoreEvent, 'score:updated');
+      // Validate: teamScore carried in transaction:new (replaces score:updated)
+      expect(newEvent.data.teamScore).toBeDefined();
+      expect(newEvent.data.teamScore.teamId).toBe('Team Alpha');
+      expect(newEvent.data.teamScore.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
+      expect(newEvent.data.teamScore.baseScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
+      expect(newEvent.data.teamScore.bonusPoints).toBe(0);
+      expect(newEvent.data.teamScore.tokensScanned).toBe(1);
+      expect(newEvent.data.teamScore.completedGroups).toEqual([]);
+      expect(newEvent.data.teamScore.lastUpdate).toBeDefined();
 
       // Validate: Service state consistency
       const teamScore = transactionService.teamScores.get('Team Alpha');
@@ -144,11 +139,7 @@ describe('Transaction Flow Integration', () => {
       const resultPromise = waitForEvent(gmScanner.socket, 'transaction:result');
       const newPromise = waitForEvent(gmScanner.socket, 'transaction:new');
 
-      // NOTE: We do NOT expect score:updated for detective mode
-      let scoreEventReceived = false;
-      gmScanner.socket.once('score:updated', () => {
-        scoreEventReceived = true;
-      });
+      // NOTE: We do NOT expect teamScore in transaction:new for detective mode
 
       // Set team
       gmScanner.App.currentTeamId = 'Detectives';
@@ -161,9 +152,6 @@ describe('Transaction Flow Integration', () => {
         resultPromise,
         newPromise
       ]);
-
-      // Wait a bit to ensure no score:updated arrives
-      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Validate: transaction:result received by submitter
       expect(resultEvent.event).toBe('transaction:result');
@@ -188,8 +176,8 @@ describe('Transaction Flow Integration', () => {
       // Validate: Contract compliance
       validateWebSocketEvent(newEvent, 'transaction:new');
 
-      // Validate: NO score:updated event for detective mode
-      expect(scoreEventReceived).toBe(false);
+      // Validate: No teamScore in detective mode transaction:new
+      expect(newEvent.data.teamScore).toBeNull();
 
       // Validate: Team score UNCHANGED (detective mode doesn't score)
       const teamScore = transactionService.teamScores.get('Detectives');

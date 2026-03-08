@@ -78,7 +78,7 @@ describe('FR Section 3: Transaction Processing', () => {
   describe('FR 3.2: Blackmarket Mode Scoring', () => {
     it('should calculate and assign scores in blackmarket mode', async () => {
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
-      const scorePromise = waitForEvent(scanner.socket, 'score:updated');
+      const scorePromise = waitForEvent(scanner.socket, 'transaction:new');
 
       scanner.Settings.mode = 'blackmarket';
       scanner.App.currentTeamId = 'Team Alpha';
@@ -92,13 +92,13 @@ describe('FR Section 3: Transaction Processing', () => {
       expect(result.data.status).toBe('accepted');
       expect(result.data.points).toBeGreaterThan(0);
 
-      // Score update broadcast
-      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
-      expect(scoreUpdate.data.currentScore).toBeGreaterThan(0);
+      // Score delivered via transaction:new.teamScore (replaces score:updated)
+      expect(scoreUpdate.data.teamScore.teamId).toBe('Team Alpha');
+      expect(scoreUpdate.data.teamScore.currentScore).toBeGreaterThan(0);
     });
 
     it('should assign points to correct team', async () => {
-      const scorePromise = waitForEvent(scanner.socket, 'score:updated');
+      const scorePromise = waitForEvent(scanner.socket, 'transaction:new');
 
       scanner.Settings.mode = 'blackmarket';
       scanner.App.currentTeamId = 'Detectives'; // Team 002
@@ -107,7 +107,7 @@ describe('FR Section 3: Transaction Processing', () => {
 
       const scoreUpdate = await scorePromise;
 
-      expect(scoreUpdate.data.teamId).toBe('Detectives');
+      expect(scoreUpdate.data.transaction.teamId).toBe('Detectives');
     });
   });
 

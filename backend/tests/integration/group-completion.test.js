@@ -96,7 +96,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       const groupCompletedPromise = waitForEvent(gmScanner.socket, 'group:completed');
 
       // Scan first token - set up listener before scanning
-      const firstScorePromise = waitForEvent(gmScanner.socket, 'score:updated');
+      const firstScorePromise = waitForEvent(gmScanner.socket, 'transaction:new');
 
       // Set team for scanner
       gmScanner.App.currentTeamId = 'Team Alpha';
@@ -118,8 +118,8 @@ describe('Group Completion Integration - REAL Scanner', () => {
 
       // Scan second token in group (asm001 - Personal, rating 3, value 1000)
       // This should COMPLETE the group and award bonus
-      // NOTE (Slice 3): New architecture emits ONE score:updated with complete score including bonus
-      const scoreUpdatedPromise = waitForEvent(gmScanner.socket, 'score:updated');
+      // Score now carried in transaction:new.teamScore (replaces score:updated)
+      const scoreUpdatedPromise = waitForEvent(gmScanner.socket, 'transaction:new');
 
       // Use REAL scanner API - scan asm001 (completes group)
       gmScanner.App.processNFCRead({ id: 'asm001' });
@@ -144,15 +144,15 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // Validate: Contract compliance
       validateWebSocketEvent(groupEvent, 'group:completed');
 
-      // Validate: score:updated includes bonus
+      // Validate: transaction:new.teamScore includes bonus
       const asm001Points = TestTokens.getExpectedPoints('asm001');
       const expectedBaseScore = rat001Points + asm001Points;
       const expectedTotalScore = expectedBaseScore + expectedGroupBonus;
-      expect(scoreEvent.data.teamId).toBe('Team Alpha');
-      expect(scoreEvent.data.currentScore).toBe(expectedTotalScore);
-      expect(scoreEvent.data.baseScore).toBe(expectedBaseScore);
-      expect(scoreEvent.data.bonusPoints).toBe(expectedGroupBonus);
-      expect(scoreEvent.data.completedGroups).toContain('Marcus Sucks');
+      expect(scoreEvent.data.teamScore.teamId).toBe('Team Alpha');
+      expect(scoreEvent.data.teamScore.currentScore).toBe(expectedTotalScore);
+      expect(scoreEvent.data.teamScore.baseScore).toBe(expectedBaseScore);
+      expect(scoreEvent.data.teamScore.bonusPoints).toBe(expectedGroupBonus);
+      expect(scoreEvent.data.teamScore.completedGroups).toContain('Marcus Sucks');
 
       // Validate: Service state matches broadcasts
       scores = transactionService.getTeamScores();
@@ -165,7 +165,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
     it('should not award bonus for incomplete group', async () => {
       // CRITICAL: Set up listeners BEFORE scanning to avoid race condition
       const resultPromise = waitForEvent(gmScanner.socket, 'transaction:result');
-      const scorePromise = waitForEvent(gmScanner.socket, 'score:updated');
+      const txNewPromise = waitForEvent(gmScanner.socket, 'transaction:new');
 
       // Set team
       gmScanner.App.currentTeamId = 'Team Alpha';
@@ -174,7 +174,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       gmScanner.App.processNFCRead({ id: 'rat001' });
 
       await resultPromise;
-      await scorePromise;
+      await txNewPromise;
 
       // Verify: NO group completion (only 1 of 2 tokens)
       const scores = transactionService.getTeamScores();
@@ -190,7 +190,7 @@ describe('Group Completion Integration - REAL Scanner', () => {
       // CRITICAL: Set up ALL listeners BEFORE any transactions
       const groupCompletedPromise = waitForEvent(gmScanner.socket, 'group:completed');
       const result1Promise = waitForEvent(gmScanner.socket, 'transaction:result');
-      const score1Promise = waitForEvent(gmScanner.socket, 'score:updated');
+      const score1Promise = waitForEvent(gmScanner.socket, 'transaction:new');
 
       // Set team
       gmScanner.App.currentTeamId = 'Team Alpha';

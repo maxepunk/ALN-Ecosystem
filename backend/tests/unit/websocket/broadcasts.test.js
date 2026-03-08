@@ -178,8 +178,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
   });
 
-  describe('Score Events - Manual Wrapping → Helper Usage', () => {
-    it('should broadcast score:updated from transaction:accepted (Slice 4)', () => {
+  describe('Score Events', () => {
+    it('should stash teamScore from transaction:accepted for transaction:new enrichment', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
@@ -188,39 +188,47 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         offlineQueueService: mockOfflineQueueService
       });
 
-      // New event format from Slice 3: transaction:accepted with teamScore
+      const teamScore = {
+        teamId: 'Team Alpha',
+        currentScore: 100,
+        baseScore: 80,
+        bonusPoints: 20,
+        tokensScanned: 5,
+        completedGroups: ['GROUP_A'],
+        adminAdjustments: [],
+        lastUpdate: new Date().toISOString()
+      };
+
+      // Emit transaction:accepted (should stash, NOT broadcast score:updated)
       mockTransactionService.emit('transaction:accepted', {
         transaction: { id: 'tx1', tokenId: 'token1', teamId: 'Team Alpha', status: 'accepted' },
-        teamScore: {
-          teamId: 'Team Alpha',
-          currentScore: 100,
-          baseScore: 80,
-          bonusPoints: 20,
-          tokensScanned: 5,
-          completedGroups: ['GROUP_A'],
-          adminAdjustments: [],
-          lastUpdate: new Date().toISOString()
-        },
+        teamScore,
         deviceTracking: { deviceId: 'gm-1', tokenId: 'token1' }
       });
 
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
-      expect(mockIo.emit).toHaveBeenCalledWith(
-        'score:updated',
-        expect.objectContaining({
-          event: 'score:updated',
-          data: expect.objectContaining({
-            teamId: 'Team Alpha',
-            currentScore: 100,
-            baseScore: 80,
-            bonusPoints: 20
-          }),
-          timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
-        })
-      );
+      // score:updated should NOT be emitted
+      const scoreUpdatedCalls = mockIo.emit.mock.calls.filter(c => c[0] === 'score:updated');
+      expect(scoreUpdatedCalls).toHaveLength(0);
+
+      // Now emit transaction:added and verify teamScore is carried in transaction:new
+      mockSessionService.emit('transaction:added', {
+        id: 'tx1',
+        tokenId: 'token1',
+        teamId: 'Team Alpha',
+        deviceId: 'gm-1',
+        mode: 'blackmarket',
+        status: 'accepted',
+        points: 100,
+        timestamp: new Date().toISOString()
+      });
+
+      // Verify transaction:new carries teamScore
+      const txNewCalls = mockIo.emit.mock.calls.filter(c => c[0] === 'transaction:new');
+      expect(txNewCalls).toHaveLength(1);
+      expect(txNewCalls[0][1].data.teamScore).toEqual(teamScore);
     });
 
-    it('should broadcast score:updated from score:adjusted (Slice 4)', () => {
+    it('should broadcast score:adjusted to session room (not score:updated)', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
@@ -245,14 +253,21 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         isAdminAction: true
       });
 
-      expect(mockIo.to).toHaveBeenCalledWith('gm');
+      // score:updated should NOT be emitted
+      const scoreUpdatedCalls = mockIo.emit.mock.calls.filter(c => c[0] === 'score:updated');
+      expect(scoreUpdatedCalls).toHaveLength(0);
+
+      // score:adjusted should be emitted to session room
+      expect(mockIo.to).toHaveBeenCalledWith('session:session-123');
       expect(mockIo.emit).toHaveBeenCalledWith(
-        'score:updated',
+        'score:adjusted',
         expect.objectContaining({
-          event: 'score:updated',
+          event: 'score:adjusted',
           data: expect.objectContaining({
-            teamId: 'Team Beta',
-            currentScore: 500
+            teamScore: expect.objectContaining({
+              teamId: 'Team Beta',
+              currentScore: 500
+            })
           }),
           timestamp: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/)
         })

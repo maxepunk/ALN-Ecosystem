@@ -11,7 +11,6 @@
  *   - sync:full
  *   - transaction:result
  *   - transaction:new
- *   - score:updated
  *   - session:update
  *   - gm:command:ack
  *   - offline:queue:processed
@@ -419,60 +418,8 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
     });
   });
 
-  describe('score:updated - Team Score Update Broadcast', () => {
-
-    it('should validate score:updated event with all 8 required fields', () => {
-      const event = {
-        event: 'score:updated',
-        data: {
-          teamId: 'Team Alpha',
-          currentScore: 11500,
-          baseScore: 11000,
-          bonusPoints: 500,
-          tokensScanned: 8,
-          completedGroups: ['jaw_group'],
-          adminAdjustments: [],
-          lastUpdate: new Date().toISOString()
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      // Verify all 8 fields present (contract requirement)
-      expect(event.data).toHaveProperty('teamId');
-      expect(event.data).toHaveProperty('currentScore');
-      expect(event.data).toHaveProperty('baseScore');
-      expect(event.data).toHaveProperty('bonusPoints');
-      expect(event.data).toHaveProperty('tokensScanned');
-      expect(event.data).toHaveProperty('completedGroups');
-      expect(event.data).toHaveProperty('adminAdjustments');
-      expect(event.data).toHaveProperty('lastUpdate');
-
-      expect(() => {
-        validateWebSocketEvent(event, 'score:updated');
-      }).not.toThrow();
-    });
-
-    it('should validate empty completedGroups array', () => {
-      const event = {
-        event: 'score:updated',
-        data: {
-          teamId: 'Detectives',
-          currentScore: 1000,
-          baseScore: 1000,
-          bonusPoints: 0,
-          tokensScanned: 2,
-          completedGroups: [], // No completions yet
-          adminAdjustments: [],
-          lastUpdate: new Date().toISOString()
-        },
-        timestamp: new Date().toISOString()
-      };
-
-      expect(() => {
-        validateWebSocketEvent(event, 'score:updated');
-      }).not.toThrow();
-    });
-  });
+  // NOTE: score:updated tests removed — event eliminated in Layer 2 cleanup.
+  // Scores now delivered via transaction:new.teamScore and score:adjusted.
 
   describe('session:update - Session State Change Broadcast', () => {
 
@@ -698,18 +645,20 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           }
         },
         {
-          name: 'score:updated',
+          name: 'score:adjusted',
           event: {
-            event: 'score:updated',
+            event: 'score:adjusted',
             data: {
-              teamId: 'Team Alpha',
-              currentScore: 1000,
-              baseScore: 1000,
-              bonusPoints: 0,
-              tokensScanned: 1,
-              completedGroups: [],
-              adminAdjustments: [],
-              lastUpdate: new Date().toISOString()
+              teamScore: {
+                teamId: 'Team Alpha',
+                currentScore: 1000,
+                baseScore: 1000,
+                bonusPoints: 0,
+                tokensScanned: 1,
+                completedGroups: [],
+                adminAdjustments: [{ delta: 500, reason: 'bonus' }],
+                lastUpdate: new Date().toISOString()
+              }
             },
             timestamp: new Date().toISOString()
           }

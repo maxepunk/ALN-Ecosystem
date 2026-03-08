@@ -120,7 +120,7 @@ function assertSessionStructure(session) {
 /**
  * Assert score object structure
  *
- * @param {Object} score - Score object from sync:full or score:updated
+ * @param {Object} score - Score object from sync:full or score:adjusted
  */
 function assertScoreStructure(score) {
   // All 8 fields REQUIRED per AsyncAPI contract

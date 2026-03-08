@@ -115,7 +115,7 @@ async function connectWithAuth(baseUrl, password, deviceId, deviceType, options 
  */
 function setupEventCaching(socket) {
   // Initialize cache properties
-  socket.lastScoreUpdate = null;
+  socket.lastScoreAdjusted = null;
   socket.lastTransactionNew = null;
   socket.lastGroupCompletion = null;
   socket.lastSessionUpdate = null;
@@ -125,7 +125,7 @@ function setupEventCaching(socket) {
   socket.lastServiceState = {};  // keyed by domain
 
   // Persistent listeners
-  socket.on('score:updated', (data) => { socket.lastScoreUpdate = data; });
+  socket.on('score:adjusted', (data) => { socket.lastScoreAdjusted = data; });
   socket.on('transaction:new', (data) => { socket.lastTransactionNew = data; });
   socket.on('group:completed', (data) => { socket.lastGroupCompletion = data; });
   socket.on('session:update', (data) => { socket.lastSessionUpdate = data; });
@@ -193,7 +193,7 @@ async function waitForEvent(socket, eventOrEvents, predicate = null, timeout = 5
 function getCachedEvent(socket, eventName) {
   const cacheMap = {
     'sync:full': socket.lastSyncFull,
-    'score:updated': socket.lastScoreUpdate,
+    'score:adjusted': socket.lastScoreAdjusted,
     'transaction:new': socket.lastTransactionNew,
     'group:completed': socket.lastGroupCompletion,
     'session:update': socket.lastSessionUpdate,
@@ -210,7 +210,7 @@ function getCachedEvent(socket, eventName) {
  */
 function clearEventCache(socket) {
   socket.lastSyncFull = null;
-  socket.lastScoreUpdate = null;
+  socket.lastScoreAdjusted = null;
   socket.lastTransactionNew = null;
   socket.lastGroupCompletion = null;
   socket.lastSessionUpdate = null;

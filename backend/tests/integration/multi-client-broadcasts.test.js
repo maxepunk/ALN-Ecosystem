@@ -121,41 +121,41 @@ describe('Multi-Client Broadcast Validation', () => {
       expect(event1.data.transaction.teamId).toBe('Team Alpha');
     });
 
-    it('should broadcast score:updated to all clients after transaction', async () => {
-      // Listen on all 3 clients
+    it('should include teamScore in transaction:new broadcast to all clients', async () => {
+      // Listen on all 3 clients for transaction:new (which now carries teamScore)
       const promises = [
-        waitForEvent(gm1, 'score:updated'),
-        waitForEvent(gm2, 'score:updated'),
-        waitForEvent(gm3, 'score:updated')
+        waitForEvent(gm1, 'transaction:new'),
+        waitForEvent(gm2, 'transaction:new'),
+        waitForEvent(gm3, 'transaction:new')
       ];
 
       // Trigger transaction
       gm1.emit('transaction:submit', {
         event: 'transaction:submit',
         data: {
-          tokenId: '534e2b03',  // Technical rating 3 = 30 points (value field in test fixtures)
+          tokenId: '534e2b03',  // Technical rating 3
           teamId: 'Team Alpha',
           deviceId: 'GM_MULTI_1',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
+          deviceType: 'gm',
           mode: 'blackmarket'
         },
         timestamp: new Date().toISOString()
       });
 
-      const [score1, score2, score3] = await Promise.all(promises);
+      const [tx1, tx2, tx3] = await Promise.all(promises);
 
-      // Validate: All receive identical score update
-      expect(score1.data).toEqual(score2.data);
-      expect(score2.data).toEqual(score3.data);
+      // Validate: All receive identical teamScore in transaction:new
+      expect(tx1.data.teamScore).toEqual(tx2.data.teamScore);
+      expect(tx2.data.teamScore).toEqual(tx3.data.teamScore);
 
-      // Validate: Score data is correct
-      expect(score1.data.teamId).toBe('Team Alpha');
-      expect(score1.data.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
+      // Validate: teamScore data is correct
+      expect(tx1.data.teamScore.teamId).toBe('Team Alpha');
+      expect(tx1.data.teamScore.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
 
       // Validate: Contract compliance
-      validateWebSocketEvent(score1, 'score:updated');
-      validateWebSocketEvent(score2, 'score:updated');
-      validateWebSocketEvent(score3, 'score:updated');
+      validateWebSocketEvent(tx1, 'transaction:new');
+      validateWebSocketEvent(tx2, 'transaction:new');
+      validateWebSocketEvent(tx3, 'transaction:new');
     });
   });
 

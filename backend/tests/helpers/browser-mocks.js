@@ -482,7 +482,7 @@ class MockDataManager extends EventTarget {
     this.backendScores.clear();
   }
 
-  // Called by OrchestratorClient when score:updated event received
+  // Called by OrchestratorClient when score:adjusted event received
   updateTeamScoreFromBackend(scoreData) {
     if (scoreData && scoreData.teamId) {
       this.backendScores.set(scoreData.teamId, scoreData);

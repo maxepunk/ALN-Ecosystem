@@ -8,7 +8,7 @@
  * - GM uses createAuthenticatedScanner() (real scanner integration)
  * - GM sends admin commands via scanner.socket.emit('gm:command') (Admin Panel integrated per FR 4.2)
  * - GM scans via scanner.App.processNFCRead() (real scanner API)
- * - GM receives broadcasts via scanner.socket (session:update, score:updated)
+ * - GM receives broadcasts via scanner.socket (session:update, score:adjusted, transaction:new)
  * - Tests single-GM integration (GM experiences its own admin actions)
  *
  * What This Tests:
@@ -347,8 +347,8 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_ADJUST_TEST', 'blackmarket');
 
-      // Listen for score:updated broadcast
-      const scoreUpdatedPromise = waitForEvent(scanner.socket, 'score:updated');
+      // Listen for score:adjusted broadcast
+      const scoreAdjustedPromise = waitForEvent(scanner.socket, 'score:adjusted');
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       // Trigger: GM sends score:adjust command (penalty per AsyncAPI example line 1136)
@@ -365,7 +365,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         timestamp: new Date().toISOString()
       });
 
-      const [ack, scoreUpdate] = await Promise.all([ackPromise, scoreUpdatedPromise]);
+      const [ack, scoreUpdate] = await Promise.all([ackPromise, scoreAdjustedPromise]);
 
       // Validate: Command ack
       expect(ack.data.action).toBe('score:adjust');
@@ -374,10 +374,10 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       // Validate: Score ADJUSTED by delta, NOT reset to 0
       const adjustmentDelta = -500;
-      expect(scoreUpdate.event).toBe('score:updated');
-      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
-      expect(scoreUpdate.data.currentScore).toBe(expectedTeam1Score + adjustmentDelta);
-      validateWebSocketEvent(scoreUpdate, 'score:updated');
+      expect(scoreUpdate.event).toBe('score:adjusted');
+      expect(scoreUpdate.data.teamScore.teamId).toBe('Team Alpha');
+      expect(scoreUpdate.data.teamScore.currentScore).toBe(expectedTeam1Score + adjustmentDelta);
+      validateWebSocketEvent(scoreUpdate, 'score:adjusted');
 
       // Validate: Team 002 score UNCHANGED
       scores = transactionService.getTeamScores();
@@ -418,7 +418,7 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
 
       scanner = await createAuthenticatedScanner(testContext.url, 'GM_SCORE_BONUS_TEST', 'blackmarket');
 
-      const scoreUpdatedPromise = waitForEvent(scanner.socket, 'score:updated');
+      const scoreAdjustedPromise = waitForEvent(scanner.socket, 'score:adjusted');
 
       // Trigger: GM sends score:adjust command (bonus)
       scanner.socket.emit('gm:command', {
@@ -434,11 +434,11 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
         timestamp: new Date().toISOString()
       });
 
-      const scoreUpdate = await scoreUpdatedPromise;
+      const scoreUpdate = await scoreAdjustedPromise;
 
       // Validate: Score increased by delta
-      expect(scoreUpdate.data.teamId).toBe('Team Alpha');
-      expect(scoreUpdate.data.currentScore).toBe(expectedTokenScore + bonusDelta);
+      expect(scoreUpdate.data.teamScore.teamId).toBe('Team Alpha');
+      expect(scoreUpdate.data.teamScore.currentScore).toBe(expectedTokenScore + bonusDelta);
     });
   });
 });

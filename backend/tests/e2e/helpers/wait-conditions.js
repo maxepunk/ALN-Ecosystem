@@ -68,24 +68,24 @@ async function waitForConnectionStatus(page, status, timeout = 10000) {
 }
 
 /**
- * Wait for score update for specific team
+ * Wait for score adjustment for specific team
  * @param {Socket} socket - Socket.io client
  * @param {string} teamId - Team to watch
  * @param {number} [timeout=10000] - Timeout in ms
- * @returns {Promise<Object>} Score update data
+ * @returns {Promise<Object>} Score adjusted data
  */
 async function waitForScoreUpdate(socket, teamId, timeout = 10000) {
   // Check cache first (event may have already fired)
-  if (socket.lastScoreUpdate &&
-      socket.lastScoreUpdate.data?.teamId === teamId) {
-    return socket.lastScoreUpdate;
+  if (socket.lastScoreAdjusted &&
+      socket.lastScoreAdjusted.data?.teamScore?.teamId === teamId) {
+    return socket.lastScoreAdjusted;
   }
 
   // If not cached, wait for next event
   return await waitForEvent(
     socket,
-    'score:updated',
-    (event) => event.data.teamId === teamId, // Event envelope: { event, data, timestamp }
+    'score:adjusted',
+    (event) => event.data.teamScore?.teamId === teamId, // Event envelope: { event, data, timestamp }
     timeout
   );
 }

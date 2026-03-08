@@ -90,15 +90,9 @@ describe('Admin Intervention Integration', () => {
       // CRITICAL: Set up listeners BEFORE command to avoid race condition
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
-      // CRITICAL: Wait for score:updated event with ADJUSTED score (not setup transaction score)
+      // Wait for score:adjusted event with ADJUSTED score (not setup transaction score)
       const expectedAfterAdjust = rat001Value - 500;
-      const scorePromise = new Promise((resolve) => {
-        gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === expectedAfterAdjust) {
-            resolve(event);
-          }
-        });
-      });
+      const scorePromise = waitForEvent(gmObserver.socket, 'score:adjusted');
 
       // Trigger: Admin adjusts score (penalty)
       gmAdmin.socket.emit('gm:command', {
@@ -126,16 +120,17 @@ describe('Admin Intervention Integration', () => {
       // Validate: Contract compliance for ack
       validateWebSocketEvent(ack, 'gm:command:ack');
 
-      // Validate: Score updated broadcast reached observer
-      expect(scoreEvent.data.teamId).toBe('Team Alpha');
-      expect(scoreEvent.data.currentScore).toBe(expectedAfterAdjust);
+      // Validate: Score adjusted broadcast reached observer
+      expect(scoreEvent.event).toBe('score:adjusted');
+      expect(scoreEvent.data.teamScore.teamId).toBe('Team Alpha');
+      expect(scoreEvent.data.teamScore.currentScore).toBe(expectedAfterAdjust);
 
       // Validate: Admin adjustments array populated
-      expect(scoreEvent.data.adminAdjustments).toBeDefined();
-      expect(scoreEvent.data.adminAdjustments).toHaveLength(1);
-      expect(scoreEvent.data.adminAdjustments[0].delta).toBe(-500);
-      expect(scoreEvent.data.adminAdjustments[0].reason).toBe('Rule violation penalty');
-      expect(scoreEvent.data.adminAdjustments[0].gmStation).toContain('GM_ADMIN');
+      expect(scoreEvent.data.teamScore.adminAdjustments).toBeDefined();
+      expect(scoreEvent.data.teamScore.adminAdjustments).toHaveLength(1);
+      expect(scoreEvent.data.teamScore.adminAdjustments[0].delta).toBe(-500);
+      expect(scoreEvent.data.teamScore.adminAdjustments[0].reason).toBe('Rule violation penalty');
+      expect(scoreEvent.data.teamScore.adminAdjustments[0].gmStation).toContain('GM_ADMIN');
 
       // Validate: Service state matches broadcast
       teamScores = transactionService.getTeamScores();
@@ -156,16 +151,10 @@ describe('Admin Intervention Integration', () => {
 
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
-      // Wait for score event with ADJUSTED value
+      // Wait for score:adjusted event
       const asm001Value = TestTokens.getExpectedPoints('asm001');
       const expectedWithBonus = asm001Value + 2000;
-      const scorePromise = new Promise((resolve) => {
-        gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === expectedWithBonus) {
-            resolve(event);
-          }
-        });
-      });
+      const scorePromise = waitForEvent(gmObserver.socket, 'score:adjusted');
 
       // Admin adds bonus points
       gmAdmin.socket.emit('gm:command', {
@@ -184,7 +173,7 @@ describe('Admin Intervention Integration', () => {
       const [ack, scoreEvent] = await Promise.all([ackPromise, scorePromise]);
 
       expect(ack.data.success).toBe(true);
-      expect(scoreEvent.data.currentScore).toBe(expectedWithBonus);
+      expect(scoreEvent.data.teamScore.currentScore).toBe(expectedWithBonus);
 
       const teamScores = transactionService.getTeamScores();
       const teamScore = teamScores.find(s => s.teamId === 'Detectives');
@@ -795,16 +784,10 @@ describe('Admin Intervention Integration', () => {
       // Track events on BOTH clients
       const adminAckPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
-      // Wait for score event with ADJUSTED value
+      // Wait for score:adjusted event
       const rat001Points = TestTokens.getExpectedPoints('rat001');
       const expectedAdjusted = rat001Points - 1000;
-      const observerScorePromise = new Promise((resolve) => {
-        gmObserver.socket.on('score:updated', (event) => {
-          if (event.data.currentScore === expectedAdjusted) {
-            resolve(event);
-          }
-        });
-      });
+      const observerScorePromise = waitForEvent(gmObserver.socket, 'score:adjusted');
 
       // Admin issues command
       gmAdmin.socket.emit('gm:command', {
@@ -829,9 +812,9 @@ describe('Admin Intervention Integration', () => {
       expect(adminAck.event).toBe('gm:command:ack');
       expect(adminAck.data.success).toBe(true);
 
-      // Validate: Observer received score update (side effect)
-      expect(observerScore.event).toBe('score:updated');
-      expect(observerScore.data.currentScore).toBe(expectedAdjusted);
+      // Validate: Observer received score:adjusted (side effect)
+      expect(observerScore.event).toBe('score:adjusted');
+      expect(observerScore.data.teamScore.currentScore).toBe(expectedAdjusted);
 
       // Observer should NOT receive ack (ack is to sender only)
       // We can't easily test "did not receive" without waiting, so we validate timing
