@@ -52,11 +52,12 @@ describe('performSystemReset', () => {
         getCurrentSession: jest.fn().mockReturnValue(null),
         endSession: jest.fn().mockResolvedValue(),
         reset: jest.fn().mockResolvedValue(),
+        setupScoreListeners: jest.fn(),
         setupPersistenceListeners: jest.fn(),
+        setupGameClockListeners: jest.fn(),
       },
       stateService: {
-        reset: jest.fn().mockResolvedValue(),
-        setupTransactionListeners: jest.fn(),
+        // stateService is no longer reset — only passed to broadcasts for error listener
       },
       transactionService: {
         reset: jest.fn(),
@@ -145,7 +146,7 @@ describe('performSystemReset', () => {
 
     // Core services
     expect(mockServices.sessionService.reset).toHaveBeenCalled();
-    expect(mockServices.stateService.reset).toHaveBeenCalled();
+    // stateService.reset() no longer called (no listeners to clean up after Task 1)
     expect(mockServices.transactionService.reset).toHaveBeenCalled();
     expect(mockServices.videoQueueService.reset).toHaveBeenCalled();
     expect(mockServices.offlineQueueService.reset).toHaveBeenCalled();
@@ -226,5 +227,43 @@ describe('performSystemReset', () => {
   it('should not throw when vlcService is not provided', async () => {
     const { vlcService, ...servicesWithout } = mockServices;
     await expect(performSystemReset(mockIo, servicesWithout)).resolves.not.toThrow();
+  });
+
+  it('should register ALL cross-service listeners in post-reset wiring', async () => {
+    await performSystemReset(mockIo, mockServices);
+
+    // All four centralized wiring calls must happen
+    expect(mockServices.transactionService.registerSessionListener).toHaveBeenCalledTimes(1);
+    expect(mockServices.sessionService.setupScoreListeners).toHaveBeenCalledTimes(1);
+    expect(mockServices.sessionService.setupPersistenceListeners).toHaveBeenCalledTimes(1);
+    expect(mockServices.sessionService.setupGameClockListeners).toHaveBeenCalledTimes(1);
+  });
+
+  it('should register cross-service listeners AFTER all services are reset', async () => {
+    const callOrder = [];
+    mockServices.sessionService.reset = jest.fn(() => {
+      callOrder.push('sessionReset');
+      return Promise.resolve();
+    });
+    mockServices.transactionService.reset = jest.fn(() => callOrder.push('transactionReset'));
+    mockServices.transactionService.registerSessionListener = jest.fn(() => callOrder.push('registerSessionListener'));
+    mockServices.sessionService.setupScoreListeners = jest.fn(() => callOrder.push('setupScoreListeners'));
+    mockServices.sessionService.setupPersistenceListeners = jest.fn(() => callOrder.push('setupPersistenceListeners'));
+    mockServices.sessionService.setupGameClockListeners = jest.fn(() => callOrder.push('setupGameClockListeners'));
+
+    await performSystemReset(mockIo, mockServices);
+
+    // All resets must happen before any wiring
+    const lastReset = Math.max(
+      callOrder.indexOf('sessionReset'),
+      callOrder.indexOf('transactionReset')
+    );
+    const firstWiring = Math.min(
+      callOrder.indexOf('registerSessionListener'),
+      callOrder.indexOf('setupScoreListeners'),
+      callOrder.indexOf('setupPersistenceListeners'),
+      callOrder.indexOf('setupGameClockListeners')
+    );
+    expect(lastReset).toBeLessThan(firstWiring);
   });
 });

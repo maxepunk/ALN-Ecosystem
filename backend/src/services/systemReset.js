@@ -29,7 +29,7 @@ const { cleanupBroadcastListeners, setupBroadcastListeners } = require('../webso
  * @param {Server} io - Socket.io server instance
  * @param {Object} services - Service instances
  * @param {Object} services.sessionService - Session management service
- * @param {Object} services.stateService - State aggregation service
+ * @param {Object} services.stateService - State aggregation service (passed to broadcasts for error listener)
  * @param {Object} services.transactionService - Transaction processing service
  * @param {Object} services.videoQueueService - Video queue management service
  * @param {Object} services.offlineQueueService - Offline queue management service
@@ -84,7 +84,6 @@ async function performSystemReset(io, services) {
   // Step 4: Reset all service state
   // Services will call removeAllListeners() to clear their observer lists
   await sessionService.reset();
-  await stateService.reset();
   transactionService.reset();
   videoQueueService.reset();
   await offlineQueueService.reset();
@@ -159,14 +158,15 @@ async function performSystemReset(io, services) {
     logger.debug('Display control service re-initialized');
   }
 
-  // Re-initialize cross-service listeners
-  // Services need to re-register listeners on sessionService (cleared by reset)
+  // ── Centralized cross-service listener wiring ──
+  // ALL cross-service listeners registered here, AFTER all services have been reset.
+  // sessionService.reset() is tear-down only — it does NOT register these.
+  // This prevents the ordering bug where transactionService.reset() destroys
+  // listeners that were registered on it by sessionService.reset().
   transactionService.registerSessionListener();
-
-  // Slice 2: Re-register sessionService persistence listeners
-  // These listeners are ON transactionService and were cleared by transactionService.reset()
-  // They handle transaction:accepted → persist → emit transaction:added → broadcast transaction:new
+  sessionService.setupScoreListeners();
   sessionService.setupPersistenceListeners();
+  sessionService.setupGameClockListeners();
 
   // Phase 1: Re-register cue engine event forwarding
   // These listeners forward game events (transaction:accepted, group:completed, etc.) to cueEngineService
