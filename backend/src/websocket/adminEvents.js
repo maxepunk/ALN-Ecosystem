@@ -273,43 +273,7 @@ async function handleTransactionSubmit(socket, data, _io) {
   }
 }
 
-/**
- * Handle state request from client
- * @param {Socket} socket - Socket.io socket instance
- */
-function handleStateRequest(socket) {
-  try {
-    if (!socket.deviceId) {
-      emitWrapped(socket, 'error', {
-        code: 'AUTH_REQUIRED',
-        message: 'Not identified'
-      });
-      return;
-    }
-
-    const state = stateService.getCurrentState();
-
-    if (state) {
-      emitWrapped(socket, 'state:sync', state.toJSON());
-      logger.debug('State sent to client', { deviceId: socket.deviceId });
-    } else {
-      emitWrapped(socket, 'error', {
-        code: 'SESSION_NOT_FOUND',
-        message: 'No active game state',
-      });
-    }
-  } catch (error) {
-    logger.error('State request error', { error, socketId: socket.id });
-    emitWrapped(socket, 'error', {
-      code: 'SERVER_ERROR',
-      message: 'Failed to retrieve state',
-      details: error.message,
-    });
-  }
-}
-
 module.exports = {
   handleGmCommand,
   handleTransactionSubmit,
-  handleStateRequest,
 };

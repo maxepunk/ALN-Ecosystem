@@ -21,7 +21,7 @@ const { setupBroadcastListeners } = require('./websocket/broadcasts');
 const { handleDisconnect } = require('./websocket/deviceTracking');
 const { buildSyncFullPayload } = require('./websocket/syncHelpers');
 const { emitWrapped } = require('./websocket/eventWrapper');
-const { handleGmCommand, handleTransactionSubmit, handleStateRequest } = require('./websocket/adminEvents');
+const { handleGmCommand, handleTransactionSubmit } = require('./websocket/adminEvents');
 
 // Import services for WebSocket events
 const sessionService = require('./services/sessionService');
@@ -91,11 +91,6 @@ function setupWebSocketHandlers(ioInstance) {
     } catch (error) {
       logger.error('sync:request handler error', { error: error.message, deviceId: socket.deviceId });
     }
-  });
-
-  // State request (contract compliant)
-  socket.on('state:request', () => {
-    handleStateRequest(socket);
   });
 
   // GM-specific events

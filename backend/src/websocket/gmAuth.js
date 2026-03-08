@@ -6,7 +6,6 @@
 const logger = require('../utils/logger');
 const DeviceConnection = require('../models/deviceConnection');
 const sessionService = require('../services/sessionService');
-const stateService = require('../services/stateService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
 const bluetoothService = require('../services/bluetoothService');
@@ -120,9 +119,6 @@ async function handleGmIdentify(socket, data, io) {
     // socket.rooms is a Set in Socket.io v4 and is read-only/getter
     const currentRooms = Array.from(socket.rooms);
 
-    // Get current state
-    const state = stateService.getCurrentState();
-
     // PHASE 2.1 (P1.1): Get device-specific scanned tokens for state restoration
     const deviceScannedTokens = session
       ? Array.from(session.getDeviceScannedTokens(deviceId))
@@ -164,7 +160,6 @@ async function handleGmIdentify(socket, data, io) {
       success: true,
       deviceId: device.id,
       sessionId: session?.id,
-      state: state?.toJSON(),
     });
 
     // Device connection broadcast now handled centrally by broadcasts.js
