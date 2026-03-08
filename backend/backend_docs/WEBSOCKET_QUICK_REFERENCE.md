@@ -12,7 +12,7 @@
 | `session:update` | Global | Session create/pause/resume/end | id, name, status, teams |
 | `transaction:result` | Direct | Transaction processing complete | status, transactionId, points, message |
 | `transaction:new` | gm-stations + session | Transaction added to session | transaction, teamScore, groupBonusInfo |
-| `score:updated` | gm-stations | **DEPRECATED** - Use `transaction:new.teamScore` | teamId, scores, bonuses, adjustments |
+| `score:adjusted` | session | Admin score adjustment | teamScore |
 | `video:status` | gm-stations | Video playback state change | status, queueLength, progress |
 | `group:completed` | gm-stations | Token group bonus earned | teamId, group, bonusPoints |
 | `offline:queue:processed` | gm-stations | Offline batch processed | queueSize, results array |
@@ -26,7 +26,6 @@
 | `transaction:submit` | handleTransactionSubmit | tokenId, teamId, deviceId, mode | transaction:result |
 | `gm:command` | handleGmCommand | action (11 types), payload | gm:command:ack + side effects |
 | `sync:request` | handleSyncRequest | (empty) | sync:full |
-| `state:request` | handleStateRequest | (empty) | state:sync |
 | `heartbeat` | handleHeartbeat | stationId | heartbeat:ack |
 
 ---
@@ -83,7 +82,7 @@ Server broadcasts: transaction:new (to all GMs in session)
 (Optional) Server broadcasts: video:status (if token has video)
 ```
 
-**Note:** `score:updated` is deprecated. Extract score from `transaction:new.teamScore`.
+**Note:** Scores are delivered via `transaction:new.teamScore` (per-transaction), `score:adjusted` (admin adjustments), and `sync:full` (reconnection).
 
 ### Session Creation
 ```
@@ -120,7 +119,6 @@ Broadcasts: sync:full (complete updated state)
 Contains: All connected GM scanners
 Broadcasts:
 - `transaction:new`
-- `score:updated`
 - `video:status`, `video:progress`, `video:queue:update`
 - `group:completed`
 - `offline:queue:processed`
@@ -255,7 +253,7 @@ INTERNAL_ERROR        → Unhandled server error
 | `backend/src/websocket/deviceTracking.js` | Device disconnect & sync request handlers |
 | `backend/src/websocket/eventWrapper.js` | Event envelope wrapping |
 | `backend/src/server.js:40-127` | WebSocket handler setup |
-| `backend/src/services/stateService.js` | State event emission |
+| `backend/src/services/stateService.js` | On-demand state computation (getCurrentState) |
 | `backend/src/middleware/auth.js` | JWT token management |
 
 ---

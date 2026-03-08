@@ -49,8 +49,7 @@ Shows which test file is currently executing.
     - transaction:added: 1
     - device:updated: 1
     - device:removed: 1
-  transactionService: 4 total
-    - score:updated: 1
+  transactionService: 3 total
     - transaction:new: 1
 ```
 

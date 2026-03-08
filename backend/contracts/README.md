@@ -59,11 +59,11 @@ backend/contracts/
 - **GET /api/admin/logs** - System logs (troubleshooting)
 - **GET /health** - Health check
 
-### asyncapi.yaml - WebSocket API (21 events)
+### asyncapi.yaml - WebSocket API (20 events)
 
 **Device Tracking (2)**: device:connected, device:disconnected
 **State Sync (1)**: sync:full
-**Transactions (5)**: transaction:submit, transaction:result, transaction:new, transaction:deleted, score:updated
+**Transactions (4)**: transaction:submit, transaction:result, transaction:new, transaction:deleted
 **Scores (1)**: scores:reset
 **Video (1)**: video:status
 **Display (2)**: display:mode, display:status
@@ -390,7 +390,7 @@ GM Scanner submits token scan for scoring.
 1. Client sends transaction:submit
 2. Server sends transaction:result to submitter
 3. Server broadcasts transaction:new to all GMs
-4. Server broadcasts score:updated to all GMs
+4. Server broadcasts transaction:new (with teamScore) to all GMs
 
 #### video:status (Server → Clients)
 Video playback status updates.
@@ -436,7 +436,7 @@ Unified admin command interface (replaces 11 HTTP admin endpoints).
 - Transaction: `transaction:delete`, `transaction:create`
 - System: `system:reset`
 
-**Response**: Server sends `gm:command:ack` with success/failure, then broadcasts side effects (e.g., video:status, score:updated).
+**Response**: Server sends `gm:command:ack` with success/failure, then broadcasts side effects (e.g., service:state, score:adjusted).
 
 #### scores:reset (Server → Clients)
 Broadcast when all team scores are reset to zero (triggered by `score:reset` command).
@@ -544,6 +544,7 @@ See `MIGRATION-GUIDE.md` for comprehensive migration documentation.
 5. **Eliminated Events**:
    - `state:sync` (use `sync:full`)
    - `state:update` (use domain events)
+   - `score:updated` (use `transaction:new.teamScore`, `score:adjusted`, `transaction:deleted.updatedTeamScore`)
    - `session:new/paused/resumed/ended` (use `session:update` with status)
 
 ---

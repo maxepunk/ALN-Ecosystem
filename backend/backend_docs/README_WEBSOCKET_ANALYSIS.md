@@ -71,7 +71,7 @@ Hands-on testing guide featuring:
 | `sync:full` | Direct | Complete game state | ANALYSIS §6.2 |
 | `device:connected` | Global | New device info | ANALYSIS §2.1 |
 | `transaction:new` | GM-stations + session | Transaction enriched | ANALYSIS §3.1 |
-| `score:updated` | GM-stations | Team score update | ANALYSIS §3.1 |
+| `score:adjusted` | Session | Admin score adjustment | ANALYSIS §3.1 |
 | `video:status` | GM-stations | Video playback state | ANALYSIS §3.1 |
 | `session:update` | Global | Session lifecycle | ANALYSIS §3.2 |
 | `error` | Direct | Error code & message | ANALYSIS §5.2 |

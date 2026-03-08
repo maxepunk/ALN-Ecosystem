@@ -205,10 +205,7 @@ socket.on('gm:command:ack', (eventData) => {
 
 ### Listen for Broadcasts
 ```javascript
-// ⚠️ DEPRECATED: score:updated - Use transaction:new.teamScore instead
-// socket.on('score:updated', (eventData) => { ... });
-
-// PREFERRED: Extract score from transaction:new events
+// Extract score from transaction:new events (score:updated was removed)
 socket.on('transaction:new', (eventData) => {
   console.log('New transaction:', eventData.data.transaction);
   console.log('Updated team score:', eventData.data.teamScore);
@@ -362,7 +359,7 @@ scoreboardSocket.on('sync:full', (data) => {
     .filter(tx => tx.mode === 'detective').length);
 });
 
-// ⚠️ DEPRECATED: score:updated - Use transaction:new.teamScore instead
+// Score delivered via transaction:new.teamScore (score:updated was removed)
 scoreboardSocket.on('transaction:new', (data) => {
   console.log(`Scoreboard updated Team ${data.data.transaction.teamId}: $${data.data.teamScore}`);
 });

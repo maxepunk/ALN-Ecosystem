@@ -81,7 +81,6 @@ channels:
           - $ref: '#/components/messages/TransactionResult'
           - $ref: '#/components/messages/TransactionNew'
           - $ref: '#/components/messages/TransactionDeleted'
-          - $ref: '#/components/messages/ScoreUpdated'
           - $ref: '#/components/messages/ScoreAdjusted'
           - $ref: '#/components/messages/ScoresReset'
           - $ref: '#/components/messages/SessionUpdate'
@@ -632,7 +631,7 @@ components:
         2. Server validates and processes
         3. Server sends transaction:result to submitter
         4. Server broadcasts transaction:new to all GMs in session
-        5. Server broadcasts score:updated to all GMs in session
+        5. Server broadcasts transaction:new (with teamScore) to all GMs in session
       payload:
         type: object
         required:
@@ -926,111 +925,42 @@ components:
                 type: string
                 description: Token ID associated with deleted transaction
                 example: "534e2b03"
+              updatedTeamScore:
+                type: [object, "null"]
+                description: Updated team score after deletion (null if unavailable)
+                properties:
+                  teamId:
+                    type: string
+                  currentScore:
+                    type: integer
+                  baseScore:
+                    type: integer
+                  bonusPoints:
+                    type: integer
+                  tokensScanned:
+                    type: integer
+                  completedGroups:
+                    type: array
+                    items:
+                      type: string
+                  adminAdjustments:
+                    type: array
+                    items:
+                      type: object
+                  lastUpdate:
+                    type: string
+                    format: date-time
           timestamp:
             type: string
             format: date-time
             description: Event timestamp
             example: "2025-10-15T20:16:45.000Z"
 
-    ScoreUpdated:
-      name: score:updated
-      title: Team Score Update Broadcast
-      summary: Broadcast team score update to all GMs
-      description: |
-        Broadcast team score update to all GM Scanners for real-time leaderboard.
-
-        **Functional Requirement**: Section 1.4 (Score Management)
-        **Decisions Applied**: #2 (wrapped envelope)
-
-        **CRITICAL**: All 8 fields REQUIRED with NO fallbacks (scanner expects complete data).
-      payload:
-        type: object
-        required:
-          - event
-          - data
-          - timestamp
-        properties:
-          event:
-            type: string
-            const: score:updated
-            description: Event name
-          data:
-            type: object
-            required:
-              - teamId
-              - currentScore
-              - baseScore
-              - bonusPoints
-              - tokensScanned
-              - completedGroups
-              - adminAdjustments
-              - lastUpdate
-            properties:
-              teamId:
-                type: string
-                description: Team ID
-                example: "Team Alpha"
-              currentScore:
-                type: integer
-                description: Total score (base + bonus)
-                example: 11500
-              baseScore:
-                type: integer
-                description: Base score from token values
-                example: 11000
-              bonusPoints:
-                type: integer
-                description: Bonus points from group completions
-                example: 500
-              tokensScanned:
-                type: integer
-                description: Number of tokens scanned
-                example: 8
-              completedGroups:
-                type: array
-                items:
-                  type: string
-                description: Array of completed group IDs
-                example: ["jaw_group"]
-              adminAdjustments:
-                type: array
-                items:
-                  type: object
-                  required:
-                    - delta
-                    - gmStation
-                    - reason
-                    - timestamp
-                  properties:
-                    delta:
-                      type: integer
-                      description: Score adjustment amount (positive or negative)
-                      example: -500
-                    gmStation:
-                      type: string
-                      description: GM station that made the adjustment
-                      example: "GM_Station_1"
-                    reason:
-                      type: string
-                      description: Reason for adjustment
-                      example: "Rule violation penalty"
-                    timestamp:
-                      type: string
-                      format: date-time
-                      description: When adjustment was made
-                      example: "2025-10-24T10:30:00.000Z"
-                description: Array of admin score adjustments with audit trail
-                example: [{"delta": -500, "gmStation": "GM_Station_1", "reason": "Rule violation penalty", "timestamp": "2025-10-24T10:30:00.000Z"}]
-              lastUpdate:
-                type: string
-                format: date-time
-                description: Last update timestamp
-                example: "2025-10-15T20:15:30.000Z"
-          timestamp:
-            type: string
-            format: date-time
-            description: Event timestamp
-            example: "2025-10-15T20:15:30.100Z"
+    # NOTE: ScoreUpdated (score:updated) was REMOVED — scores are now delivered via:
+    # - transaction:new.teamScore (per-transaction)
+    # - score:adjusted (admin adjustments)
+    # - transaction:deleted.updatedTeamScore (deletions)
+    # - sync:full (reconnection)
 
     ScoreAdjusted:
       name: score:adjusted
@@ -1038,7 +968,7 @@ components:
       summary: Broadcast admin score adjustment to session room
       description: |
         Broadcast when an admin adjusts a team's score manually. Sent to session room
-        so scoreboard can update its ticker without relying on score:updated.
+        so scoreboard and GM Scanner can update scores in real-time.
       payload:
         type: object
         required:
@@ -1594,7 +1524,7 @@ components:
         1. Admin sends gm:command
         2. Server executes command
         3. Server sends gm:command:ack to sender (success/failure)
-        4. Server broadcasts side effects (e.g., service:state, score:updated)
+        4. Server broadcasts side effects (e.g., service:state, score:adjusted)
       payload:
         type: object
         required:

@@ -152,8 +152,8 @@ npm test -- my-websocket-feature.test.js
 - `heartbeat` - Keep-alive signal
 
 **Broadcast by Server:**
-- `transaction:new` - New transaction in session
-- `score:updated` - Team score changed
+- `transaction:new` - New transaction in session (carries teamScore)
+- `score:adjusted` - Admin score adjustment
 - `video:status` - Video playback state
 - `sync:full` - Complete state snapshot
 - `device:connected`/`device:disconnected` - Device tracking
@@ -384,8 +384,7 @@ it('should match AsyncAPI contract', async () => {
 | Scenario | Latency | Notes |
 |----------|---------|-------|
 | transaction:result | 10ms | Direct response |
-| transaction:new | 15ms | After result sent |
-| score:updated | 20ms | After transaction:new |
+| transaction:new | 15ms | After result sent (carries teamScore) |
 | sync:full | 100ms | Complete state rebuild |
 | video:status | 25ms | If token has video |
 

@@ -101,7 +101,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
-**System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services, re-initializes infrastructure (including cue engine event forwarding via `cueEngineWiring.js`).
+**System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services (tear-down only), then re-initializes infrastructure via centralized post-reset wiring: `registerBroadcastListeners()`, `cueEngineWiring.registerCueEngineListeners()`, `sessionService.registerTransactionListeners()`, and `sessionService.registerBroadcastListeners()`.
 
 **transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
@@ -137,7 +137,7 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 **Key Services & Events:**
 - `sessionService`: `session:created`, `session:updated`, `transaction:added`, `player-scan:added`, `device:updated/removed`
 - `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`
-- `stateService`: `sync:full` (NOTE: `state:updated` and `state:sync` were removed as dead code — no consumers)
+- `stateService`: `sync:full` (NOTE: `state:updated`, `state:sync`, and all event listeners removed — `stateService` only provides `getCurrentState()` and `reset()`)
 - `videoQueueService`: `video:*`, `queue:*`
 - `serviceHealthRegistry`: `health:changed` (all service health consolidated here — no per-service connection events)
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
@@ -149,8 +149,9 @@ Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broa
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
 - `vlcService`: `state:changed` (emitted by D-Bus MPRIS monitor when playback state or filename changes)
 
-**DEPRECATED Internal Event:**
-- `score:updated` - The internal `transaction:accepted` event now includes `teamScore`. The WebSocket broadcast `transaction:new` also carries the score. Note: `score:updated` is still broadcast via WebSocket by `broadcasts.js` for score adjustments and group bonuses.
+**Score Delivery (Layer 2→3 Cleanup):**
+- `score:updated` removed — no longer emitted by any service or broadcast
+- Scores delivered via: `transaction:new.teamScore` (per-transaction), `score:adjusted` (admin adjustments), `transaction:deleted.updatedTeamScore` (deletions), `sync:full` (reconnection)
 
 **Transaction Event Flow (SRP Architecture):**
 ```
@@ -174,7 +175,7 @@ Note: Player scan broadcast is handled directly in `scanRoutes.js` (not via broa
 
 Player scans are tracked for Game Activity (token lifecycle visibility) but do not affect scoring.
 
-**Key Files:** `src/services/stateService.js` (`setupTransactionListeners`), `src/websocket/broadcasts.js`
+**Key Files:** `src/services/stateService.js` (`getCurrentState`), `src/websocket/broadcasts.js`
 
 **Layer 2: WebSocket (AsyncAPI)**
 

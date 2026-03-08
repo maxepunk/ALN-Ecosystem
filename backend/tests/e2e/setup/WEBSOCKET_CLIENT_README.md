@@ -73,11 +73,11 @@ Promise-based event waiting with optional predicate filter.
 // Wait for any sync:full event
 const event = await waitForEvent(socket, 'sync:full');
 
-// Wait for specific team score update
+// Wait for specific team score adjustment
 const scoreEvent = await waitForEvent(
   socket,
-  'score:updated',
-  (data) => data.teamId === '001',
+  'score:adjusted',
+  (data) => data.data?.teamScore?.teamId === '001',
   5000
 );
 ```

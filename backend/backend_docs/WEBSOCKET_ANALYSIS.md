@@ -155,7 +155,7 @@ io.connect('http://orchestrator:3000', {
 | **session:update** | session:created or session:updated domain event | All clients | `{ id, name, startTime, endTime, status, teams, metadata }` | AsyncAPI:957-1051 |
 | **transaction:result** | Transaction processing complete | Submitting device only | `{ status, transactionId, tokenId, teamId, points, message, error }` | AsyncAPI:603-673 |
 | **transaction:new** | Transaction added to session | All GMs in gm-stations room | `{ transaction: { id, tokenId, teamId, deviceId, mode, points, timestamp, memoryType, valueRating, group } }` | AsyncAPI:675-764 |
-| **score:updated** | Team score recalculated | All GMs in gm-stations room | `{ teamId, currentScore, baseScore, bonusPoints, tokensScanned, completedGroups, adminAdjustments, lastUpdate }` | AsyncAPI:766-865 |
+| **score:adjusted** | Admin score adjustment | Session room | `{ teamScore: { teamId, currentScore, baseScore, bonusPoints, tokensScanned, completedGroups, adminAdjustments, lastUpdate } }` | AsyncAPI score:adjusted |
 | **video:status** | Video playback state change | All GMs in gm-stations room | `{ status, queueLength, tokenId, duration, progress, expectedEndTime, error }` | AsyncAPI:871-951 |
 | **video:progress** | Emitted every 1s during playback | All GMs in gm-stations room | `{ tokenId, progress, position, duration }` | Internal (broadcasts.js:324-335) |
 | **video:queue:update** | Queue add/clear/complete | All GMs in gm-stations room | `{ items: [], length: 0 }` | Internal (broadcasts.js:338-355) |
@@ -173,7 +173,6 @@ io.connect('http://orchestrator:3000', {
 | **transaction:submit** | GM Scanner | handleTransactionSubmit | `{ tokenId, teamId, deviceId, mode }` | AsyncAPI:544-601 |
 | **gm:command** | Admin/GM Station | handleGmCommand | `{ action, payload }` (11 actions) | AsyncAPI:1057-1149 |
 | **sync:request** | Any client | handleSyncRequest | Empty | Internal |
-| **state:request** | Any client | handleStateRequest | Empty | Internal |
 | **heartbeat** | GM Scanner | handleHeartbeat | `{ stationId }` | Internal |
 | **gm:identify** | GM Scanner (legacy) | handleGmIdentify | `{ deviceId, version, token }` | Internal (auto-called now) |
 

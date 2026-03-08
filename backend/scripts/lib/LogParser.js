@@ -163,7 +163,8 @@ class LogParser {
   }
 
   /**
-   * Extract score:updated broadcast events
+   * Extract score broadcast events from logs
+   * NOTE: Searches for historical score:updated entries (event removed in Layer 3 cleanup)
    * Returns: { teamId, score, bonus } for each broadcast
    * @param {string} startTime - Session start time
    * @param {string} endTime - Session end time

@@ -450,7 +450,6 @@ const openApiSpec = {
       'gm:identify': 'Identify as GM station',
       'heartbeat': 'Send heartbeat',
       'sync:request': 'Request full state sync',
-      'state:request': 'Request current state',
       'gm:command': 'Send GM command',
       'transaction:submit': 'Submit transaction via WebSocket',
       'video:play': 'Play video',

@@ -37,11 +37,12 @@ async function testScoreboardUpdates() {
   await new Promise((resolve) => socket.on('connect', resolve));
   console.log('✅ Connected to WebSocket\n');
 
-  // 3. Listen for score updates
-  console.log('3️⃣  Listening for score:updated events...');
-  socket.on('score:updated', (eventData) => {
-    console.log('📊 Received score:updated event:');
-    console.log(JSON.stringify(eventData, null, 2));
+  // 3. Listen for score updates (via transaction:new.teamScore)
+  console.log('3️⃣  Listening for transaction:new events (with teamScore)...');
+  socket.on('transaction:new', (eventData) => {
+    console.log('📊 Received transaction:new event:');
+    console.log('Transaction:', JSON.stringify(eventData.data?.transaction, null, 2));
+    console.log('Team Score:', JSON.stringify(eventData.data?.teamScore, null, 2));
   });
 
   // 4. Create a test scan to trigger score update
@@ -60,7 +61,7 @@ async function testScoreboardUpdates() {
   console.log('✅ Scan triggered:', scanResult.status);
 
   // Wait for event
-  console.log('\n⏳ Waiting 3 seconds for score:updated event...\n');
+  console.log('\n⏳ Waiting 3 seconds for transaction:new event...\n');
   await new Promise((resolve) => setTimeout(resolve, 3000));
 
   socket.disconnect();

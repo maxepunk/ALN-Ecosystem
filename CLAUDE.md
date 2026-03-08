@@ -243,7 +243,7 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - Primary event is `transaction:accepted` (contains transaction, teamScore, groupBonus, deviceTracking)
 - `sessionService` owns ALL persistence (not transactionService or stateService)
 - Admin score adjustments emit `score:adjusted` (separate from transactions)
-- `score:updated` is deprecated - extract score from `transaction:accepted.teamScore`
+- `score:updated` removed — scores delivered via `transaction:new.teamScore` (per-transaction), `score:adjusted` (admin adjustments), and `sync:full` (reconnection)
 - `state:update` / `state:sync` broadcasts removed (dead code) — no client consumes them. Session state delivered via `session:update` and `sync:full`
 - `player:scan` broadcasts player scanner activity to GM room (persisted to session.playerScans)
 - `sync:full` includes `playerScans` array, `gameClock`, `cueEngine`, `spotify`, `serviceHealth` (8-service registry snapshot), and `heldItems` (blocked cues/videos) for session restoration
