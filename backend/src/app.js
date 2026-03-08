@@ -13,7 +13,6 @@ const logger = require('./utils/logger');
 // Import services
 const persistenceService = require('./services/persistenceService');
 const sessionService = require('./services/sessionService');
-const stateService = require('./services/stateService');
 const transactionService = require('./services/transactionService');
 const videoQueueService = require('./services/videoQueueService');
 const vlcService = require('./services/vlcMprisService');
@@ -155,7 +154,6 @@ async function initializeServices() {
 
     // Initialize other services
     await sessionService.init();
-    await stateService.init();
     await offlineQueueService.init();
 
     // Initialize offline status middleware with the service instance
@@ -242,22 +240,13 @@ async function initializeServices() {
       logger.info('VLC service disabled - video playback feature is off');
     }
     
-    // GameState is now computed - verify it derives correctly
+    // Check for restored session on startup
     const currentSession = sessionService.getCurrentSession();
     if (currentSession) {
-      const currentState = stateService.getCurrentState();
       logger.info('Session loaded on startup', {
         sessionId: currentSession.id,
         status: currentSession.status,
-        hasState: !!currentState
       });
-
-      // Sanity check: state should exist if session exists
-      if (!currentState) {
-        logger.error('CRITICAL: Session exists but GameState failed to derive', {
-          sessionId: currentSession.id
-        });
-      }
     } else {
       logger.info('No previous session - ready for new game');
     }

@@ -1,93 +1,74 @@
 /**
  * StateService Unit Tests
- * Tests aggregator pattern - listens to events, doesn't call other services
+ * Tests computed state view (getCurrentState) and reset behavior.
+ *
+ * NOTE: Event listener tests (setupTransactionListeners, state:updated emission,
+ * debouncing, video state updates) were removed — those methods were dead code
+ * with zero consumers and have been deleted from the service.
  */
 
 const { resetAllServices } = require('../../helpers/service-reset');
 const stateService = require('../../../src/services/stateService');
 const sessionService = require('../../../src/services/sessionService');
-const transactionService = require('../../../src/services/transactionService');
-const offlineQueueService = require('../../../src/services/offlineQueueService');
 
-describe('StateService - Aggregator Pattern', () => {
+describe('StateService - Computed State View', () => {
   beforeEach(async () => {
-    // Reset all services using centralized helper
     await resetAllServices();
-    await stateService.reset();
-
-    // Re-initialize stateService (will set up event listeners)
-    await stateService.init();
   });
 
   afterEach(async () => {
-    // Cleanup
     if (sessionService.currentSession) {
       await sessionService.endSession();
     }
     sessionService.removeAllListeners();
-    transactionService.removeAllListeners();
     stateService.removeAllListeners();
   });
 
-  describe('Aggregator Pattern Compliance', () => {
-    it('should aggregate offline status from offlineQueueService events', async () => {
-      // Setup: Create session first (stateService creates state from session)
+  describe('getCurrentState()', () => {
+    it('should return null when no session exists', () => {
+      const state = stateService.getCurrentState();
+      expect(state).toBeNull();
+    });
+
+    it('should return a GameState when a session exists', async () => {
       await sessionService.createSession({
         name: 'Test Session',
         teams: ['Team Alpha']
       });
 
-      // Verify initial state has offline status
-      const initialState = stateService.getCurrentState();
-      expect(initialState).toBeDefined();
-      expect(initialState.systemStatus).toBeDefined();
-      expect(initialState.systemStatus.offline).toBe(false);
-
-      // Trigger: offlineQueueService emits status change
-      offlineQueueService.emit('status:changed', { offline: true });
-
-      // Wait for state update to propagate
-      await new Promise(resolve => setTimeout(resolve, 150));
-
-      // Verify: State aggregated the offline status without calling offlineQueueService
-      const updatedState = stateService.getCurrentState();
-      expect(updatedState.systemStatus.offline).toBe(true);
+      const state = stateService.getCurrentState();
+      expect(state).toBeDefined();
+      expect(state.systemStatus).toBeDefined();
+      expect(state.systemStatus.offline).toBe(false);
     });
 
-    it('should have event listeners registered for aggregation', () => {
-      // Verify: stateService has listeners registered (aggregator pattern)
-      expect(typeof stateService.on).toBe('function');
-      expect(typeof stateService.emit).toBe('function');
+    it('should reflect cachedOfflineStatus in computed state', async () => {
+      await sessionService.createSession({
+        name: 'Test Session',
+        teams: ['Team Alpha']
+      });
 
-      // The fact that init() completed without errors proves listeners are set up
-      expect(stateService.listenersInitialized).toBe(true);
-    });
+      stateService.cachedOfflineStatus = true;
 
-    it('should initialize with top-level imports (no lazy requires)', () => {
-      // The fact that we can require stateService in beforeEach without errors
-      // and that init() completes successfully proves no lazy require issues
-      expect(stateService).toBeDefined();
-      expect(typeof stateService.init).toBe('function');
+      const state = stateService.getCurrentState();
+      expect(state.systemStatus.offline).toBe(true);
     });
   });
 
-  describe('Event Listener Registration', () => {
-    it('should not register duplicate listeners on repeated init', async () => {
-      // Setup
-      await sessionService.createSession({
-        name: 'Test Session',
-        teams: ['Team Alpha']
-      });
+  describe('reset()', () => {
+    it('should clear cachedOfflineStatus on reset', async () => {
+      stateService.cachedOfflineStatus = true;
 
-      // Get initial listener count
-      const initialListenerCount = stateService.listenerCount('state:updated');
+      await stateService.reset();
 
-      // Call init again
-      await stateService.init();
+      expect(stateService.cachedOfflineStatus).toBe(false);
+    });
 
-      // Verify: No duplicate listeners added
-      const finalListenerCount = stateService.listenerCount('state:updated');
-      expect(finalListenerCount).toBe(initialListenerCount);
+    it('should return null from getCurrentState after reset (no session)', async () => {
+      await stateService.reset();
+
+      const state = stateService.getCurrentState();
+      expect(state).toBeNull();
     });
   });
 });

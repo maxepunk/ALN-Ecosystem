@@ -6,7 +6,6 @@
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 
@@ -21,7 +20,6 @@ describe('Server Lifecycle Integration (Phase 1.4)', () => {
     // Record initial listener counts
     const initialCounts = {
       session: sessionService.listenerCount('session:created'),
-      state: stateService.listenerCount('state:updated'),
       transaction: transactionService.listenerCount('transaction:new'),
       video: videoQueueService.listenerCount('video:started'),
       offline: offlineQueueService.listenerCount('offline:queue:processed')
@@ -37,7 +35,6 @@ describe('Server Lifecycle Integration (Phase 1.4)', () => {
     // Check final listener counts
     const finalCounts = {
       session: sessionService.listenerCount('session:created'),
-      state: stateService.listenerCount('state:updated'),
       transaction: transactionService.listenerCount('transaction:new'),
       video: videoQueueService.listenerCount('video:started'),
       offline: offlineQueueService.listenerCount('offline:queue:processed')
@@ -48,7 +45,6 @@ describe('Server Lifecycle Integration (Phase 1.4)', () => {
     // With Phase 1.4 fix: finalCounts should equal initialCounts
 
     expect(finalCounts.session).toBeLessThanOrEqual(initialCounts.session + 1);
-    expect(finalCounts.state).toBeLessThanOrEqual(initialCounts.state + 1);
     expect(finalCounts.transaction).toBeLessThanOrEqual(initialCounts.transaction + 1);
     expect(finalCounts.video).toBeLessThanOrEqual(initialCounts.video + 1);
     expect(finalCounts.offline).toBeLessThanOrEqual(initialCounts.offline + 1);

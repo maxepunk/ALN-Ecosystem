@@ -161,7 +161,6 @@ async function performSystemReset(io, services) {
 
   // Re-initialize cross-service listeners
   // Services need to re-register listeners on sessionService (cleared by reset)
-  stateService.setupTransactionListeners();
   transactionService.registerSessionListener();
 
   // Slice 2: Re-register sessionService persistence listeners

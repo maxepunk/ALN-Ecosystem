@@ -44,7 +44,6 @@ async function setupIntegrationTestServer() {
 
   // Initialize other services
   await sessionService.init();
-  await stateService.init();
 
   logger.info(`Integration test services initialized with ${testTokens.length} test tokens`);
 
