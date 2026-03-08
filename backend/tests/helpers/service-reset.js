@@ -175,16 +175,18 @@ async function resetAllServices(options = {}) {
     await offlineQueueService.reset(); // Async
   }
 
-  // Re-register cross-service listeners after reset
-  // Services that listen to sessionService must re-register (listeners cleared by reset)
+  // Centralized post-reset wiring (mirrors systemReset.js)
   if (typeof transactionService.registerSessionListener === 'function') {
     transactionService.registerSessionListener();
   }
-
-  // Re-register sessionService persistence listeners (Slice 2)
-  // These listeners are ON transactionService and were cleared by transactionService.reset()
+  if (typeof sessionService.setupScoreListeners === 'function') {
+    sessionService.setupScoreListeners();
+  }
   if (typeof sessionService.setupPersistenceListeners === 'function') {
     sessionService.setupPersistenceListeners();
+  }
+  if (typeof sessionService.setupGameClockListeners === 'function') {
+    sessionService.setupGameClockListeners();
   }
 
   // Capture AFTER state
