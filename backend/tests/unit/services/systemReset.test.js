@@ -77,6 +77,7 @@ describe('performSystemReset', () => {
         reset: jest.fn(),
         checkConnection: jest.fn().mockResolvedValue(true),
         startPlaybackMonitor: jest.fn(),
+        _resolveOwner: jest.fn().mockResolvedValue(undefined),
       },
       bluetoothService: {
         reset: jest.fn(),
@@ -105,6 +106,7 @@ describe('performSystemReset', () => {
         reset: jest.fn(),
         checkConnection: jest.fn().mockResolvedValue(true),
         startPlaybackMonitor: jest.fn(),
+        _resolveOwner: jest.fn().mockResolvedValue(undefined),
       },
     };
   });
@@ -222,6 +224,30 @@ describe('performSystemReset', () => {
 
     expect(callOrder.indexOf('vlcReset')).toBeLessThan(callOrder.indexOf('vlcCheckConnection'));
     expect(callOrder.indexOf('vlcCheckConnection')).toBeLessThan(callOrder.indexOf('vlcStartMonitor'));
+  });
+
+  it('should re-resolve D-Bus owner for VLC after monitor restart', async () => {
+    await performSystemReset(mockIo, mockServices);
+
+    expect(mockServices.vlcService._resolveOwner).toHaveBeenCalledTimes(1);
+  });
+
+  it('should re-resolve D-Bus owner for Spotify after monitor restart', async () => {
+    await performSystemReset(mockIo, mockServices);
+
+    expect(mockServices.spotifyService._resolveOwner).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not throw when VLC _resolveOwner rejects', async () => {
+    mockServices.vlcService._resolveOwner = jest.fn().mockRejectedValue(new Error('D-Bus unavailable'));
+
+    await expect(performSystemReset(mockIo, mockServices)).resolves.not.toThrow();
+  });
+
+  it('should not throw when Spotify _resolveOwner rejects', async () => {
+    mockServices.spotifyService._resolveOwner = jest.fn().mockRejectedValue(new Error('D-Bus unavailable'));
+
+    await expect(performSystemReset(mockIo, mockServices)).resolves.not.toThrow();
   });
 
   it('should not throw when vlcService is not provided', async () => {

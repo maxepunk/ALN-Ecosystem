@@ -259,6 +259,10 @@ async function performSystemReset(io, services) {
       logger.debug('VLC health re-check failed after reset:', err.message);
     }
     vlcService.startPlaybackMonitor();
+    // Re-resolve D-Bus owner for sender filtering (prevents cross-contamination with Spotify)
+    vlcService._resolveOwner().catch(err => {
+      logger.debug('VLC owner re-resolution failed after reset:', err.message);
+    });
   }
 
   // Spotify: re-check connection and restart D-Bus monitor (stopped by reset)
@@ -270,6 +274,12 @@ async function performSystemReset(io, services) {
     }
     if (typeof spotifyService.startPlaybackMonitor === 'function') {
       spotifyService.startPlaybackMonitor();
+    }
+    // Re-resolve D-Bus owner for sender filtering (prevents cross-contamination with VLC)
+    if (typeof spotifyService._resolveOwner === 'function') {
+      spotifyService._resolveOwner().catch(err => {
+        logger.debug('Spotify owner re-resolution failed after reset:', err.message);
+      });
     }
   }
 

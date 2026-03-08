@@ -65,13 +65,21 @@ class VlcMprisService extends MprisPlayerBase {
     this._vlcProc.on('close', (code, signal) => {
       logger.warn('[VLC] Process exited', { code, signal });
       this._vlcProc = null;
+      this._ownerBusName = null; // Stale after crash — new VLC gets new bus name
       this._setConnected(false);
 
       if (!this._vlcStopped) {
         logger.info('[VLC] Scheduling restart in 3s');
-        this._vlcRestartTimer = setTimeout(() => {
+        this._vlcRestartTimer = setTimeout(async () => {
           this._vlcRestartTimer = null;
           this._spawnVlcProcess();
+          // Wait for VLC to register on D-Bus, then re-resolve owner for sender filtering
+          const ready = await this._waitForVlcReady();
+          if (ready) {
+            this._resolveOwner().catch(err => {
+              logger.debug('[VLC] Owner re-resolution failed after crash restart:', err.message);
+            });
+          }
         }, 3000);
       }
     });
@@ -190,6 +198,9 @@ class VlcMprisService extends MprisPlayerBase {
 
     // Start D-Bus monitor regardless — catches state changes
     this.startPlaybackMonitor();
+
+    // Resolve unique bus name for D-Bus signal sender filtering
+    await this._resolveOwner();
   }
 
   // ── Video Playback ──
