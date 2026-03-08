@@ -1435,13 +1435,7 @@
 
             // ---- EVENT HANDLERS ----
 
-            // Score updates (backward compat with score:updated)
-            state.socket.on('score:updated', (eventData) => {
-                const scoreData = eventData.data;
-                if (scoreData) updateTeamScore(scoreData);
-            });
-
-            // Score adjustments (Task 14: admin score changes)
+            // Score adjustments (admin score changes)
             state.socket.on('score:adjusted', (eventData) => {
                 const data = eventData.data;
                 if (data?.teamScore) {
