@@ -814,10 +814,11 @@ class SessionService extends EventEmitter {
     await persistenceService.delete('session:current');
     await persistenceService.delete('gameState:current');
 
-    // Re-setup cross-service listeners (listenerRegistry handles cleanup via cleanup())
-    this.setupScoreListeners();
-    this.setupPersistenceListeners();
-    this.setupGameClockListeners();
+    // Cross-service listeners (setupScoreListeners, setupPersistenceListeners,
+    // setupGameClockListeners) are NOT registered here. They are registered
+    // centrally in systemReset.js and service-reset.js AFTER all services
+    // have been reset — preventing the ordering bug where
+    // transactionService.reset() would destroy listeners registered here.
 
     logger.info('Session service reset');
   }
