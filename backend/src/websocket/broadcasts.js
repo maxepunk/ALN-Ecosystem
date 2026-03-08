@@ -241,7 +241,8 @@ function setupBroadcastListeners(io, services) {
       const payload = {
         transactionId: data.transactionId,
         teamId: data.teamId,
-        tokenId: data.tokenId
+        tokenId: data.tokenId,
+        updatedTeamScore: data.updatedTeamScore || null
       };
 
       // CRITICAL: Use session-scoped broadcast like transaction:new

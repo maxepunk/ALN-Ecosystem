@@ -1470,6 +1470,10 @@
                 if (data) {
                     console.log('[Scoreboard] Transaction deleted:', data);
                     removeEvidence(data.transactionId, data.tokenId, data.teamId);
+                    // Update score after deletion
+                    if (data.updatedTeamScore) {
+                        updateTeamScore(data.updatedTeamScore);
+                    }
                 }
             });
 
