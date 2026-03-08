@@ -11,7 +11,6 @@
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
 const videoQueueService = require('../../src/services/videoQueueService');
-const stateService = require('../../src/services/stateService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 
 // Enable/disable diagnostic logging via environment variable
@@ -36,11 +35,6 @@ const SERVICE_EVENTS = {
     'scores:reset',
     'transaction:deleted'
     // NOTE (Slice 6): score:updated and transaction:new removed - no longer emitted
-  ],
-  stateService: [
-    'state:updated',
-    'state:sync',
-    'state:reset'
   ],
   videoQueueService: [
     'video:queued',
@@ -145,7 +139,6 @@ async function resetAllServices(options = {}) {
   const beforeCounts = {
     sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
     transactionService: getServiceListenerCounts(transactionService, 'transactionService'),
-    stateService: getServiceListenerCounts(stateService, 'stateService'),
     videoQueueService: getServiceListenerCounts(videoQueueService, 'videoQueueService'),
     offlineQueueService: getServiceListenerCounts(offlineQueueService, 'offlineQueueService')
   };
@@ -178,18 +171,12 @@ async function resetAllServices(options = {}) {
   if (typeof videoQueueService.reset === 'function') {
     videoQueueService.reset(); // Synchronous
   }
-  if (typeof stateService.reset === 'function') {
-    await stateService.reset(); // Async
-  }
   if (typeof offlineQueueService.reset === 'function') {
     await offlineQueueService.reset(); // Async
   }
 
   // Re-register cross-service listeners after reset
   // Services that listen to sessionService must re-register (listeners cleared by reset)
-  if (typeof stateService.setupTransactionListeners === 'function') {
-    stateService.setupTransactionListeners();
-  }
   if (typeof transactionService.registerSessionListener === 'function') {
     transactionService.registerSessionListener();
   }
@@ -204,7 +191,6 @@ async function resetAllServices(options = {}) {
   const afterCounts = {
     sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
     transactionService: getServiceListenerCounts(transactionService, 'transactionService'),
-    stateService: getServiceListenerCounts(stateService, 'stateService'),
     videoQueueService: getServiceListenerCounts(videoQueueService, 'videoQueueService'),
     offlineQueueService: getServiceListenerCounts(offlineQueueService, 'offlineQueueService')
   };
@@ -256,7 +242,6 @@ async function resetAllServicesForTesting(io, services, options = {}) {
     beforeCounts = {
       sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
       transactionService: getServiceListenerCounts(transactionService, 'transactionService'),
-      stateService: getServiceListenerCounts(stateService, 'stateService'),
       videoQueueService: getServiceListenerCounts(videoQueueService, 'videoQueueService'),
       offlineQueueService: getServiceListenerCounts(offlineQueueService, 'offlineQueueService')
     };
@@ -302,7 +287,6 @@ async function resetAllServicesForTesting(io, services, options = {}) {
     const afterCounts = {
       sessionService: getServiceListenerCounts(sessionService, 'sessionService'),
       transactionService: getServiceListenerCounts(transactionService, 'transactionService'),
-      stateService: getServiceListenerCounts(stateService, 'stateService'),
       videoQueueService: getServiceListenerCounts(videoQueueService, 'videoQueueService'),
       offlineQueueService: getServiceListenerCounts(offlineQueueService, 'offlineQueueService')
     };
