@@ -118,6 +118,9 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     // Wait for async handler to complete
     await new Promise((resolve) => setTimeout(resolve, 50));
 
+    // Verify sync:full is scoped to gm room (not global)
+    expect(mockIo.to).toHaveBeenCalledWith('gm');
+
     // Find the sync:full emit (second emission after offline:queue:processed)
     const syncFullCall = mockIo.emit.mock.calls.find(
       (call) => call[0] === 'sync:full'

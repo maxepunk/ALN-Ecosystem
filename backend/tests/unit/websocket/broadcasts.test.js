@@ -360,7 +360,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         })
       );
 
-      // Verify sync:full broadcast uses proper payload shape (with session field)
+      // Verify sync:full broadcast is scoped to gm room (not global)
+      expect(mockIo.to).toHaveBeenCalledWith('gm');
       expect(mockIo.emit).toHaveBeenCalledWith(
         'sync:full',
         expect.objectContaining({

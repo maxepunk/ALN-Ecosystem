@@ -305,7 +305,7 @@ function setupBroadcastListeners(io, services) {
         spotifyService,
         deviceFilter: { connectedOnly: true },
       });
-      emitWrapped(io, 'sync:full', syncFullPayload);
+      emitToRoom(io, 'gm', 'sync:full', syncFullPayload);
 
       logger.info('Broadcasted scores:reset + sync:full to session', {
         sessionId: session.id,
@@ -346,7 +346,7 @@ function setupBroadcastListeners(io, services) {
         deviceFilter: { connectedOnly: true },
       });
 
-      emitWrapped(io, 'sync:full', syncFullPayload);
+      emitToRoom(io, 'gm', 'sync:full', syncFullPayload);
       logger.info('Broadcasted sync:full after offline queue processing');
     });
   }
