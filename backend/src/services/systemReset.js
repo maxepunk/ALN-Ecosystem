@@ -29,7 +29,6 @@ const { cleanupBroadcastListeners, setupBroadcastListeners } = require('../webso
  * @param {Server} io - Socket.io server instance
  * @param {Object} services - Service instances
  * @param {Object} services.sessionService - Session management service
- * @param {Object} services.stateService - State aggregation service (passed to broadcasts for error listener)
  * @param {Object} services.transactionService - Transaction processing service
  * @param {Object} services.videoQueueService - Video queue management service
  * @param {Object} services.offlineQueueService - Offline queue management service
@@ -38,7 +37,6 @@ const { cleanupBroadcastListeners, setupBroadcastListeners } = require('../webso
 async function performSystemReset(io, services) {
   const {
     sessionService,
-    stateService,
     transactionService,
     videoQueueService,
     offlineQueueService,
@@ -133,7 +131,6 @@ async function performSystemReset(io, services) {
   // Broadcast listeners must be re-registered after service reset
   setupBroadcastListeners(io, {
     sessionService,
-    stateService,
     videoQueueService,
     offlineQueueService,
     transactionService,
