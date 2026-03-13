@@ -269,8 +269,13 @@ class SpotifyService extends MprisPlayerBase {
 
   async pauseForGameClock() {
     if (this.state === 'playing') {
-      await this.pause();
       this._pausedByGameClock = true;
+      try {
+        await this.pause();
+      } catch (err) {
+        this._pausedByGameClock = false;
+        throw err;
+      }
     }
   }
 
