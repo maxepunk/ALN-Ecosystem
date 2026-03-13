@@ -1177,7 +1177,7 @@ describe('SpotifyService', () => {
       jest.advanceTimersByTime(500);
     });
 
-    it('should call _resolveOwner in auto-recovery', (done) => {
+    it('should call _refreshOwner in auto-recovery', (done) => {
       jest.useFakeTimers();
       const { spawn: spawnMock } = require('child_process');
       const mockProc = createMockSpawnProc();
@@ -1187,10 +1187,10 @@ describe('SpotifyService', () => {
       registry.report('spotify', 'down', 'Test');
       spotifyService.state = 'stopped';
       // Reset the mock from beforeEach to track calls
-      spotifyService._resolveOwner = jest.fn().mockResolvedValue(undefined);
+      spotifyService._refreshOwner = jest.fn().mockResolvedValue(undefined);
 
       spotifyService.on('playback:changed', () => {
-        expect(spotifyService._resolveOwner).toHaveBeenCalled();
+        expect(spotifyService._refreshOwner).toHaveBeenCalled();
         jest.useRealTimers();
         done();
       });

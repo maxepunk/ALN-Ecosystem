@@ -367,7 +367,7 @@ class SpotifyService extends MprisPlayerBase {
       this._spotifydDest = null;
       this._spotifydCacheTime = 0;
       registry.report('spotify', 'healthy', 'MPRIS signal received');
-      this._resolveOwner(); // Fire-and-forget: re-resolve after restart
+      this._refreshOwner(); // Fire-and-forget: re-resolve after restart (preserves old owner on failure)
     }
 
     // PlaybackStatus: string → compare with this.state
