@@ -135,6 +135,32 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('progressTimer cleanup', () => {
+    it('should clear progressTimer on skipCurrent', async () => {
+      // Set up a playing item with a progressTimer
+      videoQueueService.currentItem = {
+        isPlaying: () => true, id: 'test', tokenId: 'tok1',
+        completePlayback: jest.fn(), getPlaybackDuration: () => 5,
+      };
+      videoQueueService.progressTimer = setInterval(() => {}, 1000);
+
+      await videoQueueService.skipCurrent();
+
+      expect(videoQueueService.progressTimer).toBeNull();
+    });
+
+    it('should clear progressTimer on clearQueue', () => {
+      videoQueueService.currentItem = {
+        failPlayback: jest.fn(), isPlaying: () => true,
+      };
+      videoQueueService.progressTimer = setInterval(() => {}, 1000);
+
+      videoQueueService.clearQueue();
+
+      expect(videoQueueService.progressTimer).toBeNull();
+    });
+  });
+
   describe('Event Emission Pattern', () => {
     it('should emit video:idle when no pending items in queue', (done) => {
       videoQueueService.once('video:idle', () => {

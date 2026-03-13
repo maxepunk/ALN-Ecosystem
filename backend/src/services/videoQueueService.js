@@ -459,6 +459,11 @@ class VideoQueueService extends EventEmitter {
       tokenId: this.currentItem.tokenId,
     });
 
+    if (this.progressTimer) {
+      clearInterval(this.progressTimer);
+      this.progressTimer = null;
+    }
+
     if (config.features.videoPlayback) {
       await vlcService.stop();
     }
@@ -740,6 +745,10 @@ class VideoQueueService extends EventEmitter {
     if (this.playbackTimer) {
       clearTimeout(this.playbackTimer);
       this.playbackTimer = null;
+    }
+    if (this.progressTimer) {
+      clearInterval(this.progressTimer);
+      this.progressTimer = null;
     }
 
     if (this.currentItem) {
