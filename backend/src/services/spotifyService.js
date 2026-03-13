@@ -38,7 +38,7 @@ class SpotifyService extends MprisPlayerBase {
     this._dbusCacheTime = 0;
     this._spotifydDest = null; // Native rs.spotifyd D-Bus dest (for TransferPlayback)
     this._spotifydCacheTime = 0;
-    this._recovering = false; // Prevents infinite recursion in reactive recovery
+    this._recoveringPromise = null; // Shared promise serializes concurrent recovery
     this.cachePath = process.env.SPOTIFY_CACHE_PATH || path.join(os.homedir(), '.cache', 'spotifyd');
   }
 
@@ -134,31 +134,40 @@ class SpotifyService extends MprisPlayerBase {
     try {
       return await super._dbusCall(method, args);
     } catch (err) {
-      // Reactive recovery: if not already recovering, try to re-activate
-      if (!this._recovering) {
-        this._recovering = true;
-        logger.warn(`[Spotify] D-Bus call failed, attempting recovery: ${err.message}`);
-        // Clear caches so discovery starts fresh
-        this._dbusDest = null;
-        this._dbusCacheTime = 0;
-        this._spotifydDest = null;
-        this._spotifydCacheTime = 0;
-        this._ownerBusName = null; // Force re-resolution after recovery
-        try {
-          const activated = await this.activate();
-          if (activated) {
-            logger.info('[Spotify] Recovery succeeded, retrying command');
-            // Re-discover after activation (PID may have changed)
-            const retryDest = await this._discoverDbusDest();
-            if (!retryDest) throw new Error('MPRIS interface not found after TransferPlayback recovery');
-            return await super._dbusCall(method, args);
-          }
-        } finally {
-          this._recovering = false;
-        }
+      // Serialize concurrent recovery via shared promise (command-agnostic)
+      if (!this._recoveringPromise) {
+        this._recoveringPromise = this._attemptRecovery()
+          .finally(() => { this._recoveringPromise = null; });
       }
-      throw err;
+      try {
+        await this._recoveringPromise;
+      } catch {
+        // Recovery failed — throw our own original error
+        throw err;
+      }
+      // Recovery succeeded — retry OUR command (not the first caller's)
+      return await super._dbusCall(method, args);
     }
+  }
+
+  /**
+   * Attempt to recover spotifyd via TransferPlayback.
+   * Command-agnostic — just re-activates the connection.
+   * Shared by all concurrent callers via _recoveringPromise.
+   * @private
+   */
+  async _attemptRecovery() {
+    logger.warn('[Spotify] D-Bus call failed, attempting recovery');
+    this._dbusDest = null;
+    this._dbusCacheTime = 0;
+    this._spotifydDest = null;
+    this._spotifydCacheTime = 0;
+    this._ownerBusName = null;
+    const activated = await this.activate();
+    if (!activated) throw new Error('Spotify recovery failed');
+    logger.info('[Spotify] Recovery succeeded, callers will retry');
+    const dest = await this._discoverDbusDest();
+    if (!dest) throw new Error('MPRIS interface not found after recovery');
   }
 
   // ── Activation ──
@@ -439,7 +448,7 @@ class SpotifyService extends MprisPlayerBase {
     this._dbusCacheTime = 0;
     this._spotifydDest = null;
     this._spotifydCacheTime = 0;
-    this._recovering = false;
+    this._recoveringPromise = null;
   }
 }
 

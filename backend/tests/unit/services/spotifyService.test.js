@@ -347,14 +347,14 @@ describe('SpotifyService', () => {
     it('should clear all cached state on reset', () => {
       spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance99';
       spotifyService._spotifydDest = 'rs.spotifyd.instance99';
-      spotifyService._recovering = true;
+      spotifyService._recoveringPromise = Promise.resolve();
       registry.report('spotify', 'healthy');
       spotifyService.state = 'playing';
       spotifyService.track = { title: 'Test', artist: 'Artist' };
       spotifyService.reset();
       expect(spotifyService._dbusDest).toBeNull();
       expect(spotifyService._spotifydDest).toBeNull();
-      expect(spotifyService._recovering).toBe(false);
+      expect(spotifyService._recoveringPromise).toBeNull();
       expect(registry.isHealthy('spotify')).toBe(false);
       expect(spotifyService.state).toBe('stopped');
       expect(spotifyService.track).toBeNull();
@@ -586,7 +586,7 @@ describe('SpotifyService', () => {
       });
       await spotifyService.play();
       expect(spotifyService.state).toBe('playing');
-      expect(spotifyService._recovering).toBe(false);
+      expect(spotifyService._recoveringPromise).toBeNull();
     });
 
     it('should throw if recovery also fails', async () => {
