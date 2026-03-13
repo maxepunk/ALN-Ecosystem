@@ -67,7 +67,11 @@ class SoundService extends EventEmitter {
     const proc = spawn('pw-play', args, { stdio: ['ignore', 'pipe', 'pipe'] });
 
     const entry = { file, target: target || 'default', volume: volume || 100, pid: proc.pid };
-    this.processes.set(proc.pid, { ...entry, process: proc });
+
+    // Guard: spawn can fail with pid=undefined (e.g., binary not found)
+    if (proc.pid) {
+      this.processes.set(proc.pid, { ...entry, process: proc });
+    }
 
     // Completion promise: resolves when pw-play exits (callers decide whether to await)
     entry.completion = new Promise(resolve => {
@@ -91,8 +95,11 @@ class SoundService extends EventEmitter {
       this.emit('sound:error', { file, error: err.message });
     });
 
-    this.emit('sound:started', entry);
-    logger.info(`[Sound] Playing ${file} (pid=${proc.pid}, target=${entry.target})`);
+    if (proc.pid) {
+      this.emit('sound:started', entry);
+      logger.info(`[Sound] Playing ${file} (pid=${proc.pid}, target=${entry.target})`);
+    }
+
     return entry;
   }
 
