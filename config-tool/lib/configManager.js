@@ -38,7 +38,12 @@ class ConfigManager {
   }
 
   _readJson(filePath) {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    try {
+      return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    } catch (err) {
+      if (err.code === 'ENOENT') return {};
+      throw err;
+    }
   }
 
   // -- Writers --
