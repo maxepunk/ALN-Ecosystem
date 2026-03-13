@@ -1740,6 +1740,28 @@ describe('AudioRoutingService', () => {
         );
         expect(audioRoutingService._combineSinkModuleId).toBeNull();
       });
+
+      it('should emit combine-sink:destroyed on loopback exit', async () => {
+        // Pre-set combine sink state
+        audioRoutingService._combineSinkActive = true;
+        audioRoutingService._combineSinkPids = [123, 456];
+        audioRoutingService._combineSinkProcs = [
+          { kill: jest.fn() },
+          { kill: jest.fn() },
+        ];
+        audioRoutingService._combineSinkModuleId = '99';
+
+        // Mock the unload call
+        execFile.mockImplementation((cmd, args, opts, cb) => cb(null, '', ''));
+
+        const handler = jest.fn();
+        audioRoutingService.on('combine-sink:destroyed', handler);
+
+        await audioRoutingService._onCombineLoopbackExit(123);
+
+        expect(handler).toHaveBeenCalled();
+        expect(audioRoutingService._combineSinkActive).toBe(false);
+      });
     });
   });
 

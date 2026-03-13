@@ -701,6 +701,8 @@ class AudioRoutingService extends EventEmitter {
       }
       this._combineSinkModuleId = null;
     }
+
+    this.emit('combine-sink:destroyed');
   }
 
   /**
