@@ -59,7 +59,7 @@ function setupBroadcastListeners(io, services) {
   logger.info('Setting up broadcast listeners');
   broadcastListenersActive = true;
 
-  const { sessionService, stateService, videoQueueService, offlineQueueService, transactionService,
+  const { sessionService, videoQueueService, offlineQueueService, transactionService,
     bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
     spotifyService, vlcService, displayControlService } = services;
 
@@ -524,7 +524,6 @@ function setupBroadcastListeners(io, services) {
   };
 
   addTrackedListener(sessionService, 'error', (error) => handleServiceError('session', error));
-  addTrackedListener(stateService, 'error', (error) => handleServiceError('state', error));
   addTrackedListener(videoQueueService, 'error', (error) => handleServiceError('video', error));
   if (offlineQueueService) {
     addTrackedListener(offlineQueueService, 'error', (error) => handleServiceError('offline', error));
