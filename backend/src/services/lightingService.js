@@ -308,7 +308,7 @@ class LightingService extends EventEmitter {
         .filter((entity) => entity.entity_id.startsWith('scene.'))
         .map((entity) => ({
           id: entity.entity_id,
-          name: entity.attributes.friendly_name,
+          name: entity.attributes?.friendly_name ?? entity.entity_id,
         }));
 
       this._scenes = scenes;
