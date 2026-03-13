@@ -411,6 +411,7 @@ class BluetoothService extends EventEmitter {
     if (this._scanProc) {
       this._scanProc.kill();
       this._scanProc = null;
+      this.emit('scan:stopped', { exitCode: null });
     }
     if (this._pairProc) {
       this._pairProc.kill();

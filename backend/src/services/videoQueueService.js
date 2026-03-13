@@ -113,6 +113,7 @@ class VideoQueueService extends EventEmitter {
     } catch (error) {
       logger.error('Failed to play video', { error, itemId: nextItem.id });
       nextItem.failPlayback(error.message);
+      this.currentItem = null;
       this.emit('video:failed', nextItem);
 
       // Clean up failed items from queue
