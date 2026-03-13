@@ -94,7 +94,10 @@ class SpotifyService extends MprisPlayerBase {
   }
 
   async _discoverDbusDest() {
-    return this._discoverDest('_dbusDest', '_dbusCacheTime', 'org\\.mpris\\.MediaPlayer2\\.spotifyd', 'MPRIS');
+    const dest = await this._discoverDest('_dbusDest', '_dbusCacheTime', 'org\\.mpris\\.MediaPlayer2\\.spotifyd', 'MPRIS');
+    // Resolve unique bus name for signal filtering
+    if (dest) await this._resolveOwner();
+    return dest;
   }
 
   /**
@@ -103,6 +106,20 @@ class SpotifyService extends MprisPlayerBase {
    */
   async _discoverSpotifydDest() {
     return this._discoverDest('_spotifydDest', '_spotifydCacheTime', 'rs\\.spotifyd\\.', 'native');
+  }
+
+  /**
+   * Override: re-discover spotifyd destination before resolving owner.
+   * spotifyd PID changes on restart → new well-known name + new unique bus name.
+   */
+  async _refreshOwner() {
+    const oldOwner = this._ownerBusName;
+    this._dbusDest = null;
+    this._dbusCacheTime = 0;
+    await this._discoverDbusDest(); // Discovers new dest AND calls _resolveOwner()
+    if (!this._ownerBusName && oldOwner) {
+      this._ownerBusName = oldOwner;
+    }
   }
 
   // ── D-Bus Call Override (Recovery Logic) ──
@@ -126,6 +143,7 @@ class SpotifyService extends MprisPlayerBase {
         this._dbusCacheTime = 0;
         this._spotifydDest = null;
         this._spotifydCacheTime = 0;
+        this._ownerBusName = null; // Force re-resolution after recovery
         try {
           const activated = await this.activate();
           if (activated) {
@@ -192,24 +210,21 @@ class SpotifyService extends MprisPlayerBase {
 
   /**
    * Initialize Spotify service at server startup.
-   * Attempts activation first (TransferPlayback), falls back to passive check.
+   * Passive check only — does NOT call TransferPlayback.
+   * TransferPlayback with no playback context corrupts spotifyd state,
+   * causing subsequent Spotify app transfers to fail. The user should
+   * start playback on their phone/tablet first, then transfer to ALN-Pi
+   * via the Spotify app. Our D-Bus monitor auto-detects the transfer.
    */
   async init() {
     logger.info('[Spotify] Initializing');
-    const activated = await this.activate();
-    if (activated) {
-      logger.info('[Spotify] Initialized via TransferPlayback activation');
-      this.startPlaybackMonitor();
-      return;
-    }
-    // Activation failed (no native interface), try passive MPRIS check
     const connected = await this.checkConnection();
     if (connected) {
       logger.info('[Spotify] Initialized via existing MPRIS connection');
     } else {
-      logger.warn('[Spotify] Not available at startup (will retry on reconnect command)');
+      logger.info('[Spotify] Waiting for Spotify Connect transfer from user device');
     }
-    // Start monitor regardless — it catches external spotifyd start
+    // Start monitor regardless — it catches external spotifyd start/transfer
     this.startPlaybackMonitor();
   }
 
@@ -352,6 +367,7 @@ class SpotifyService extends MprisPlayerBase {
       this._spotifydDest = null;
       this._spotifydCacheTime = 0;
       registry.report('spotify', 'healthy', 'MPRIS signal received');
+      this._resolveOwner(); // Fire-and-forget: re-resolve after restart
     }
 
     // PlaybackStatus: string → compare with this.state

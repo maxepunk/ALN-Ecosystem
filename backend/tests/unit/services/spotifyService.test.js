@@ -51,6 +51,8 @@ describe('SpotifyService', () => {
     registry.report('spotify', 'healthy');
     // Mock activation delay to avoid 1.5s real wait per test
     spotifyService._activationDelay = jest.fn().mockResolvedValue(undefined);
+    // Mock owner resolution (tested in mprisPlayerBase.test.js)
+    spotifyService._resolveOwner = jest.fn().mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -1106,6 +1108,39 @@ describe('SpotifyService', () => {
       expect(mockProc.kill).toHaveBeenCalled();
     });
 
+    it('should override _refreshOwner to re-discover destination', async () => {
+      // Simulate spotifyd restarted with new PID
+      spotifyService._ownerBusName = ':1.old';
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance1';
+      spotifyService._dbusCacheTime = Date.now();
+
+      // Mock discovery to find new destination and resolve new owner
+      spotifyService._discoverDbusDest = jest.fn().mockImplementation(async () => {
+        spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance2';
+        spotifyService._ownerBusName = ':1.new';
+      });
+
+      await spotifyService._refreshOwner();
+
+      expect(spotifyService._discoverDbusDest).toHaveBeenCalled();
+      expect(spotifyService._ownerBusName).toBe(':1.new');
+    });
+
+    it('should preserve old owner in _refreshOwner if re-discovery fails', async () => {
+      spotifyService._ownerBusName = ':1.old';
+      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance1';
+
+      // Mock discovery failure (returns null, _resolveOwner sets null)
+      spotifyService._discoverDbusDest = jest.fn().mockImplementation(async () => {
+        spotifyService._dbusDest = null;
+        spotifyService._ownerBusName = null;
+      });
+
+      await spotifyService._refreshOwner();
+
+      expect(spotifyService._ownerBusName).toBe(':1.old');
+    });
+
     it('should stop monitor on reset()', () => {
       const { spawn: spawnMock } = require('child_process');
       const mockProc = createMockSpawnProc();
@@ -1132,6 +1167,30 @@ describe('SpotifyService', () => {
       spotifyService.on('playback:changed', () => {
         // Health should be restored
         expect(registry.isHealthy('spotify')).toBe(true);
+        jest.useRealTimers();
+        done();
+      });
+
+      spotifyService.startPlaybackMonitor();
+      feedMprisPropertyChange(mockProc, 'PlaybackStatus', 'string', '"Playing"');
+
+      jest.advanceTimersByTime(500);
+    });
+
+    it('should call _resolveOwner in auto-recovery', (done) => {
+      jest.useFakeTimers();
+      const { spawn: spawnMock } = require('child_process');
+      const mockProc = createMockSpawnProc();
+      spawnMock.mockReturnValue(mockProc);
+
+      // Mark as down to trigger auto-recovery path
+      registry.report('spotify', 'down', 'Test');
+      spotifyService.state = 'stopped';
+      // Reset the mock from beforeEach to track calls
+      spotifyService._resolveOwner = jest.fn().mockResolvedValue(undefined);
+
+      spotifyService.on('playback:changed', () => {
+        expect(spotifyService._resolveOwner).toHaveBeenCalled();
         jest.useRealTimers();
         done();
       });
