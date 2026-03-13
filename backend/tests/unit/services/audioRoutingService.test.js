@@ -132,6 +132,12 @@ describe('AudioRoutingService', () => {
     it('should return null for unrecognized lines', () => {
       expect(audioRoutingService._parsePactlEvent('some random text')).toBeNull();
     });
+
+    it('should parse card events', () => {
+      expect(audioRoutingService._parsePactlEvent("Event 'change' on card #59")).toEqual({
+        action: 'change', type: 'card', id: '59',
+      });
+    });
   });
 
   describe('_parseSinkInputs with application.process.binary fallback', () => {
@@ -638,9 +644,12 @@ describe('AudioRoutingService', () => {
       expect(spawn).toHaveBeenCalledWith('pactl', ['subscribe'], expect.any(Object));
     });
 
-    it('should emit sink:added on new sink event', () => {
+    it('should emit sink:added on new sink event', async () => {
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
+
+      // Mock the getAvailableSinks call that now runs before emit
+      mockExecFileSuccess('89\tbluez_output.AA_BB.1\tPipeWire\ts16le 2ch 44100Hz\tIDLE');
 
       const handler = jest.fn();
       audioRoutingService.on('sink:added', handler);
@@ -650,14 +659,20 @@ describe('AudioRoutingService', () => {
       // Simulate pactl subscribe output
       mockProc.stdout.emit('data', Buffer.from("Event 'new' on sink #89\n"));
 
+      // Wait for async getAvailableSinks().then() to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       expect(handler).toHaveBeenCalledWith(expect.objectContaining({
         id: '89',
       }));
     });
 
-    it('should emit sink:removed on remove sink event', () => {
+    it('should emit sink:removed on remove sink event', async () => {
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
+
+      // Mock the getAvailableSinks call that now runs before emit
+      mockExecFileSuccess('');
 
       const handler = jest.fn();
       audioRoutingService.on('sink:removed', handler);
@@ -665,6 +680,9 @@ describe('AudioRoutingService', () => {
       audioRoutingService.startSinkMonitor();
 
       mockProc.stdout.emit('data', Buffer.from("Event 'remove' on sink #89\n"));
+
+      // Wait for async getAvailableSinks().then() to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       expect(handler).toHaveBeenCalledWith(expect.objectContaining({
         id: '89',
@@ -1000,6 +1018,73 @@ describe('AudioRoutingService', () => {
         expect.stringContaining('Killing 2 stale pactl subscribe'),
         expect.any(Object)
       );
+    });
+  });
+
+  // ── HDMI card activation ──
+
+  describe('HDMI card activation', () => {
+    it('should activate HDMI cards with off profile on init', async () => {
+      persistenceService.load.mockResolvedValue(null);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (cmd === 'pgrep' || cmd === 'pkill') {
+          cb(new Error('no matches'), '', '');
+          return;
+        }
+        // _activateHdmiCards: list cards short
+        if (cmd === 'pactl' && args[0] === 'list' && args[1] === 'cards') {
+          cb(null,
+            '59\talsa_card.platform-107c701400.hdmi\talsa\n' +
+            '60\talsa_card.platform-107c706400.hdmi\talsa\n' +
+            '80\tbluez_card.AA_BB_CC_DD_EE_FF\tmodule-bluez5-device.c',
+            '');
+          return;
+        }
+        // _activateHdmiCards: set-card-profile
+        if (cmd === 'pactl' && args[0] === 'set-card-profile') {
+          cb(null, '', '');
+          return;
+        }
+        cb(null, '', '');
+      });
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      // Verify set-card-profile was called for both HDMI cards
+      const setCalls = execFile.mock.calls.filter(
+        c => c[0] === 'pactl' && c[1]?.[0] === 'set-card-profile'
+      );
+      expect(setCalls).toHaveLength(2);
+      expect(setCalls[0][1]).toEqual(['set-card-profile', 'alsa_card.platform-107c701400.hdmi', 'output:hdmi-stereo']);
+      expect(setCalls[1][1]).toEqual(['set-card-profile', 'alsa_card.platform-107c706400.hdmi', 'output:hdmi-stereo']);
+    });
+
+    it('should handle HDMI card activation failure gracefully', async () => {
+      persistenceService.load.mockResolvedValue(null);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (cmd === 'pgrep' || cmd === 'pkill') {
+          cb(new Error('no matches'), '', '');
+          return;
+        }
+        if (cmd === 'pactl' && args[0] === 'list' && args[1] === 'cards') {
+          cb(null, '59\talsa_card.platform-107c701400.hdmi\talsa', '');
+          return;
+        }
+        if (cmd === 'pactl' && args[0] === 'set-card-profile') {
+          cb(new Error('Sink not available'), '', '');
+          return;
+        }
+        cb(null, '', '');
+      });
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      // Should not throw
+      await expect(audioRoutingService.init()).resolves.not.toThrow();
     });
   });
 
@@ -2273,6 +2358,48 @@ describe('AudioRoutingService', () => {
       audioRoutingService._sinkCache = null;
 
       expect(audioRoutingService.sinkExists('any_sink')).toBe(false);
+    });
+  });
+
+  // ── getState() ──
+
+  describe('getState()', () => {
+    it('should include availableSinks from cache', () => {
+      // Directly populate sink cache (avoids mock chain issues in full suite)
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'some_hdmi_sink', driver: 'PipeWire', format: 's16le 2ch 48000Hz', state: 'RUNNING', type: 'hdmi', label: 'HDMI' },
+        { id: '2', name: 'bluez_output.AA_BB_CC_DD_EE_FF.1', driver: 'PipeWire', format: 's16le 2ch 44100Hz', state: 'RUNNING', type: 'bluetooth', label: 'BT Speaker (EE:FF)' },
+      ];
+
+      const state = audioRoutingService.getState();
+
+      expect(state.availableSinks).toBeDefined();
+      expect(state.availableSinks).toHaveLength(2);
+      expect(state.availableSinks[0].type).toBe('hdmi');
+      expect(state.availableSinks[1].type).toBe('bluetooth');
+    });
+
+    it('should filter internal sinks and add combine virtual entry', () => {
+      audioRoutingService._sinkCache = [
+        { id: '1', name: 'bluez_output.AA_BB.1', driver: 'PipeWire', format: 's16le 2ch 44100Hz', state: 'RUNNING', type: 'bluetooth', label: 'BT Speaker (AA:BB)' },
+        { id: '2', name: 'aln-combine', driver: 'PipeWire', format: '', state: 'RUNNING', type: 'combine', label: 'aln-combine' },
+        { id: '3', name: 'auto_null', driver: 'PipeWire', format: '', state: 'SUSPENDED', type: 'other', label: 'auto_null' },
+      ];
+      audioRoutingService._combineSinkActive = true;
+
+      const state = audioRoutingService.getState();
+
+      // aln-combine and auto_null filtered out, virtual combine added
+      expect(state.availableSinks).toHaveLength(2);
+      expect(state.availableSinks[0].type).toBe('bluetooth');
+      expect(state.availableSinks[1].name).toBe('aln-combine');
+      expect(state.availableSinks[1].virtual).toBe(true);
+      expect(state.availableSinks[1].label).toBe('All Bluetooth Speakers');
+    });
+
+    it('should return empty availableSinks when cache is empty', () => {
+      const state = audioRoutingService.getState();
+      expect(state.availableSinks).toEqual([]);
     });
   });
 });

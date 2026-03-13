@@ -91,6 +91,9 @@ class AudioRoutingService extends EventEmitter {
     // own monitor starts since init() is called at startup.
     await this._killStaleMonitors();
 
+    // Activate HDMI card profiles (handles boot-without-projector scenario)
+    await this._activateHdmiCards();
+
     // Load persisted routing config
     const persisted = await persistenceService.load(PERSISTENCE_KEY);
     if (persisted && persisted.routes) {
@@ -279,7 +282,7 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Get current audio routing state snapshot (sync).
-   * @returns {{routes: Object, defaultSink: string, combineSinkActive: boolean, ducking: Object}}
+   * @returns {{routes: Object, defaultSink: string, combineSinkActive: boolean, ducking: Object, availableSinks: Array}}
    */
   getState() {
     const routes = {};
@@ -291,6 +294,7 @@ class AudioRoutingService extends EventEmitter {
       defaultSink: this._routingData.defaultSink,
       combineSinkActive: this._combineSinkActive,
       ducking: { ...this._activeDuckingSources },
+      availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || []),
     };
   }
 
@@ -582,24 +586,22 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
-   * Get available sinks including the virtual combine-bt sink if active.
-   * @returns {Promise<Array>} Array of sink objects (real + virtual)
+   * Build the GM-facing available sinks list from a raw sink array.
+   * Filters internal sinks and adds virtual combine entry if active.
+   * Used by both getState() (sync) and getAvailableSinksWithCombine() (async).
+   * @param {Array} rawSinks - Raw sink list (from cache or fresh fetch)
+   * @returns {Array} Filtered sink list for GM consumption
+   * @private
    */
-  async getAvailableSinksWithCombine() {
-    let sinks = await this.getAvailableSinks();
-
-    // Remove internal/virtual sinks that should not appear in GM dropdown:
-    // - aln-combine / combine-bt: raw combine sinks (we add our own virtual entry)
-    // - auto_null: PipeWire dummy sink (appears when no real sinks available)
-    sinks = sinks.filter(s =>
+  _buildAvailableSinksSnapshot(rawSinks) {
+    let sinks = rawSinks.filter(s =>
       s.name !== 'aln-combine' &&
       s.name !== 'combine-bt' &&
       s.name !== 'auto_null'
     );
 
-    // Only add virtual sink if combine is active
     if (this._combineSinkActive) {
-      sinks.push({
+      sinks = [...sinks, {
         id: 'virtual-combine',
         name: 'aln-combine',
         driver: 'module-null-sink',
@@ -608,10 +610,19 @@ class AudioRoutingService extends EventEmitter {
         type: 'combine',
         virtual: true,
         label: 'All Bluetooth Speakers',
-      });
+      }];
     }
 
     return sinks;
+  }
+
+  /**
+   * Get available sinks including the virtual combine-bt sink if active.
+   * @returns {Promise<Array>} Array of sink objects (real + virtual)
+   */
+  async getAvailableSinksWithCombine() {
+    const sinks = await this.getAvailableSinks();
+    return this._buildAvailableSinksSnapshot(sinks);
   }
 
   /**
@@ -1062,13 +1073,31 @@ class AudioRoutingService extends EventEmitter {
 
       if (event.action === 'new' && event.type === 'sink') {
         this._invalidateSinkCache();
-        this.emit('sink:added', { id: event.id });
-        this._onSinkAdded(event.id);
-        this._debouncedBtSinkChanged();
+        // Re-fetch sinks so getState() has fresh data when broadcast listeners fire
+        this.getAvailableSinks().then(() => {
+          this.emit('sink:added', { id: event.id });
+          this._onSinkAdded(event.id);
+          this._debouncedBtSinkChanged();
+        }).catch(err => {
+          logger.warn('Failed to refresh sinks after sink:added', { error: err.message });
+          this.emit('sink:added', { id: event.id });
+          this._debouncedBtSinkChanged();
+        });
       } else if (event.action === 'remove' && event.type === 'sink') {
         this._invalidateSinkCache();
-        this.emit('sink:removed', { id: event.id });
-        this._debouncedBtSinkChanged();
+        this.getAvailableSinks().then(() => {
+          this.emit('sink:removed', { id: event.id });
+          this._debouncedBtSinkChanged();
+        }).catch(err => {
+          logger.warn('Failed to refresh sinks after sink:removed', { error: err.message });
+          this.emit('sink:removed', { id: event.id });
+          this._debouncedBtSinkChanged();
+        });
+      } else if (event.action === 'change' && event.type === 'card') {
+        // Card events — re-activate HDMI if card profile changed (e.g., projector hotplug)
+        this._activateHdmiCards().catch(err => {
+          logger.debug('Card change HDMI activation check failed', { error: err.message });
+        });
       }
     });
 
@@ -1076,6 +1105,44 @@ class AudioRoutingService extends EventEmitter {
   }
 
   // ── Private helpers ──
+
+  /**
+   * Probe PipeWire cards and activate hdmi-stereo profile on any HDMI cards.
+   * Called from init() and on card change events (HDMI hotplug).
+   *
+   * Pi 5 vc4-hdmi only supports IEC958_SUBFRAME_LE format — the ALSA
+   * vc4-hdmi.conf conversion layer (PCM→IEC958) is used by the hdmi-stereo
+   * ACP profile. The pro-audio profile bypasses this and fails.
+   *
+   * If HDMI isn't connected, hdmi-stereo won't exist and this fails
+   * gracefully. On hotplug, PipeWire re-probes and the profile appears.
+   * @private
+   */
+  async _activateHdmiCards() {
+    try {
+      const stdout = await this._execFile('pactl', ['list', 'cards', 'short']);
+      if (!stdout.trim()) return;
+
+      for (const line of stdout.trim().split('\n')) {
+        const parts = line.split('\t');
+        if (parts.length < 2) continue;
+        const cardName = parts[1];
+
+        if (cardName.includes('hdmi')) {
+          try {
+            await this._execFile('pactl', ['set-card-profile', cardName, 'output:hdmi-stereo']);
+            logger.info('Activated HDMI card profile', { cardName, profile: 'output:hdmi-stereo' });
+          } catch (err) {
+            logger.debug('Could not set hdmi-stereo profile (HDMI may not be connected)', {
+              cardName, error: err.message,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn('Failed to probe HDMI cards', { error: err.message });
+    }
+  }
 
   /**
    * Validate stream name against VALID_STREAMS.
@@ -1204,7 +1271,7 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   _parsePactlEvent(line) {
-    const match = line.match(/^Event '(\w+)' on (sink|source|sink-input|source-output) #(\d+)$/);
+    const match = line.match(/^Event '(\w+)' on (sink|source|sink-input|source-output|card) #(\d+)$/);
     if (!match) return null;
 
     return {
