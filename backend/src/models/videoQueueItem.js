@@ -100,9 +100,10 @@ class VideoQueueItem {
    * @param {string} error - Error message
    */
   failPlayback(error) {
+    const wasPlaying = this.status === 'playing';
     this.status = 'failed';
     this.error = error;
-    if (this.status === 'playing' && !this.playbackEnd) {
+    if (wasPlaying && !this.playbackEnd) {
       this.playbackEnd = new Date().toISOString();
     }
   }
