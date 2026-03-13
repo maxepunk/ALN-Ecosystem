@@ -20,6 +20,7 @@ const stateService = require('../../../src/services/stateService');
 const videoQueueService = require('../../../src/services/videoQueueService');
 const offlineQueueService = require('../../../src/services/offlineQueueService');
 const displayControlService = require('../../../src/services/displayControlService');
+const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
 
 describe('Display Events - Contract Validation', () => {
   let testContext;
@@ -41,6 +42,9 @@ describe('Display Events - Contract Validation', () => {
 
     // Reset display control service
     displayControlService.reset();
+
+    // Mark VLC as healthy (required for display:idle-loop SERVICE_DEPENDENCIES gate)
+    serviceHealthRegistry.report('vlc', 'healthy', 'test mock');
 
     // Initialize display control service with mocked VLC
     displayControlService.init({
