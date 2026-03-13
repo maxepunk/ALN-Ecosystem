@@ -31,6 +31,9 @@ class GameClockService extends EventEmitter {
     if (this.status === 'running') {
       throw new Error('Game clock is already running');
     }
+    if (this.status === 'paused') {
+      throw new Error('Game clock is paused — call resume() instead of start()');
+    }
     this.gameStartTime = Date.now();
     this.totalPausedMs = 0;
     this.pauseStartTime = null;

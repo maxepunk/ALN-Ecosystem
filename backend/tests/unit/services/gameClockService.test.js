@@ -53,6 +53,12 @@ describe('GameClockService', () => {
       gameClockService.start();
       expect(() => gameClockService.start()).toThrow(/already running/i);
     });
+
+    it('should throw when called on a paused clock', () => {
+      gameClockService.start();
+      gameClockService.pause();
+      expect(() => gameClockService.start()).toThrow('paused');
+    });
   });
 
   describe('pause()', () => {
