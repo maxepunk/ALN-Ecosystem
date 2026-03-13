@@ -32,13 +32,9 @@ const ENV_GROUPS = [
     ],
   },
   {
-    label: 'VLC', fields: [
-      { key: 'VLC_HOST', label: 'VLC Host', type: 'text' },
-      { key: 'VLC_PORT', label: 'VLC Port', type: 'number' },
-      { key: 'VLC_PASSWORD', label: 'VLC Password', type: 'password' },
-      { key: 'VLC_RECONNECT_INTERVAL', label: 'Reconnect Interval (ms)', type: 'number' },
-      { key: 'VLC_MAX_RETRIES', label: 'Max Retries', type: 'number' },
+    label: 'Video', fields: [
       { key: 'VIDEO_DIR', label: 'Video Directory', type: 'text' },
+      { key: 'VLC_HW_ACCEL', label: 'VLC HW Accel Override', type: 'text', hint: 'auto, vaapi, none' },
     ],
   },
   {
@@ -47,7 +43,6 @@ const ENV_GROUPS = [
       { key: 'MAX_GM_STATIONS', label: 'Max GM Stations', type: 'number' },
       { key: 'DUPLICATE_WINDOW', label: 'Duplicate Window (s)', type: 'number' },
       { key: 'SESSION_TIMEOUT', label: 'Session Timeout (min)', type: 'number' },
-      { key: 'HEARTBEAT_INTERVAL', label: 'Heartbeat Interval (ms)', type: 'number' },
     ],
   },
   {
