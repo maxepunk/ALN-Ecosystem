@@ -513,44 +513,34 @@ describe('SpotifyService', () => {
   });
 
   describe('init', () => {
-    it('should attempt activate first', async () => {
-      spotifyService._spotifydDest = 'rs.spotifyd.instance123';
-      spotifyService._spotifydCacheTime = Date.now();
-      let callCount = 0;
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        callCount++;
-        if (callCount === 1) cb(null, '', '');                    // TransferPlayback
-        else if (callCount === 2) cb(null, mprisListNamesOutput, ''); // MPRIS re-discovery
-        else cb(null, 'variant       string "Playing"', '');      // Properties.Get
-      });
+    it('should check existing connection passively', async () => {
+      // Mock checkConnection returning true
+      spotifyService.checkConnection = jest.fn().mockResolvedValue(true);
+      spotifyService.startPlaybackMonitor = jest.fn();
+
       await spotifyService.init();
-      expect(registry.isHealthy('spotify')).toBe(true);
+
+      expect(spotifyService.checkConnection).toHaveBeenCalled();
+      expect(spotifyService.startPlaybackMonitor).toHaveBeenCalled();
     });
 
-    it('should fall back to checkConnection when activate fails', async () => {
-      spotifyService._spotifydDest = null;
-      spotifyService._dbusDest = 'org.mpris.MediaPlayer2.spotifyd.instance99';
-      let callCount = 0;
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        callCount++;
-        if (callCount === 1) {
-          // Discovery for native dest — not found
-          cb(null, `array [\n  string "org.freedesktop.DBus"\n]`, '');
-        } else {
-          // checkConnection — MPRIS available (dest pre-seeded)
-          cb(null, 'variant       string "Paused"', '');
-        }
-      });
+    it('should start monitor even when not connected', async () => {
+      spotifyService.checkConnection = jest.fn().mockResolvedValue(false);
+      spotifyService.startPlaybackMonitor = jest.fn();
+
       await spotifyService.init();
-      expect(registry.isHealthy('spotify')).toBe(true);
+
+      expect(spotifyService.startPlaybackMonitor).toHaveBeenCalled();
     });
 
-    it('should not throw when both activate and checkConnection fail', async () => {
-      spotifyService._spotifydDest = null;
-      spotifyService._dbusDest = null;
-      mockExecFileError('Connection refused');
+    it('should not call activate on init', async () => {
+      spotifyService.checkConnection = jest.fn().mockResolvedValue(false);
+      spotifyService.startPlaybackMonitor = jest.fn();
+      spotifyService.activate = jest.fn();
+
       await spotifyService.init();
-      expect(registry.isHealthy('spotify')).toBe(false);
+
+      expect(spotifyService.activate).not.toHaveBeenCalled();
     });
   });
 
