@@ -32,6 +32,7 @@ const SERVICE_DEPENDENCIES = {
   'video:queue:add': 'vlc',
   // video:queue:reorder and video:queue:clear intentionally UNGATED —
   // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
+  'display:idle-loop': 'vlc',
   'spotify:play': 'spotify',
   'spotify:pause': 'spotify',
   'spotify:stop': 'spotify',
