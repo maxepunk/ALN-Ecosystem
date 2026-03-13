@@ -923,39 +923,6 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
-   * Check queue health and timeout stuck items
-   */
-  checkQueueHealth() {
-    // Check for stuck playing items
-    if (this.currentItem && this.currentItem.shouldTimeout()) {
-      logger.warn('Video playback timeout', {
-        itemId: this.currentItem.id,
-        tokenId: this.currentItem.tokenId,
-      });
-      this.currentItem.failPlayback('Playback timeout');
-      this.currentItem = null;
-      this.processQueue();
-    }
-
-    // Check for old pending items
-    const maxPendingAge = 5 * 60 * 1000; // 5 minutes
-    const now = Date.now();
-
-    this.queue.forEach(item => {
-      if (item.isPending()) {
-        const age = now - new Date(item.requestTime).getTime();
-        if (age > maxPendingAge) {
-          item.failPlayback('Request timeout');
-          logger.warn('Pending video timeout', {
-            itemId: item.id,
-            age: Math.floor(age / 1000),
-          });
-        }
-      }
-    });
-  }
-
-  /**
    * Update queue from session
    * @param {Array} videoQueue - Video queue from session
    */

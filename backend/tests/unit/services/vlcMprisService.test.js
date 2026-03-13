@@ -328,39 +328,6 @@ describe('VlcMprisService', () => {
     });
   });
 
-  // ── Transport: skip ──
-
-  describe('skip', () => {
-    it('should call MPRIS Stop (not Next — single-item queue)', async () => {
-      mockExecFileSuccess('');
-      await vlcMprisService.skip();
-
-      expect(execFile).toHaveBeenCalledWith(
-        'dbus-send',
-        expect.arrayContaining(['org.mpris.MediaPlayer2.Player.Stop']),
-        expect.any(Object),
-        expect.any(Function)
-      );
-    });
-
-    it('should emit video:skipped event', async () => {
-      mockExecFileSuccess('');
-      const handler = jest.fn();
-      vlcMprisService.on('video:skipped', handler);
-
-      await vlcMprisService.skip();
-
-      expect(handler).toHaveBeenCalled();
-    });
-
-    it('should throw when VLC not connected', async () => {
-      registry.report('vlc', 'down', 'Test');
-      mockExecFileError('D-Bus unreachable');
-
-      await expect(vlcMprisService.skip()).rejects.toThrow();
-    });
-  });
-
   // ── getStatus ──
 
   describe('getStatus', () => {

@@ -264,16 +264,6 @@ class VlcMprisService extends MprisPlayerBase {
     logger.info('[VLC] Video playback resumed');
   }
 
-  /**
-   * Skip current video — MPRIS Stop + emit video:skipped.
-   * videoQueueService handles queue advancement.
-   */
-  async skip() {
-    await this._transport('Stop');
-    this.emit('video:skipped');
-    logger.info('[VLC] Video skipped');
-  }
-
   // ── Status ──
 
   /**
