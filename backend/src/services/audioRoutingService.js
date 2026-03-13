@@ -541,6 +541,13 @@ class AudioRoutingService extends EventEmitter {
         this._onCombineLoopbackExit(proc.pid);
       });
 
+      proc.on('error', (err) => {
+        logger.error('pw-loopback spawn error', { sink: sink.name, error: err.message });
+        // NOTE: 'close' also fires after 'error' on ENOENT — _combineSinkActive guard
+        // in _onCombineLoopbackExit prevents double teardown
+        this._onCombineLoopbackExit(proc.pid);
+      });
+
       procs.push(proc);
       pids.push(proc.pid);
 
