@@ -59,6 +59,10 @@ class MprisPlayerBase extends EventEmitter {
     this._mprisSignalParser = null;
     this._signalDebounceTimer = null;
     this._pendingSignal = null;
+
+    // Unique D-Bus name for sender filtering (prevents cross-contamination)
+    this._ownerBusName = null;
+    this._resolvingOwner = false;
   }
 
   // ── Core D-Bus Methods ──
@@ -257,6 +261,18 @@ class MprisPlayerBase extends EventEmitter {
   _handleMprisSignal(signal) {
     if (signal.changedInterface !== 'org.mpris.MediaPlayer2.Player') return;
 
+    // Filter by sender to prevent cross-contamination between MPRIS players.
+    // If _ownerBusName is null (not yet resolved), process all signals (safe fallback).
+    if (this._ownerBusName && signal.sender && signal.sender !== this._ownerBusName) {
+      // Sender mismatch — could be restarted instance or different player.
+      // Trigger async re-resolution (debounced by flag) and drop this signal.
+      if (!this._resolvingOwner) {
+        this._resolvingOwner = true;
+        this._refreshOwner().finally(() => { this._resolvingOwner = false; });
+      }
+      return;
+    }
+
     if (!this._pendingSignal) {
       this._pendingSignal = { properties: {}, raw: '' };
     }
@@ -277,6 +293,52 @@ class MprisPlayerBase extends EventEmitter {
       this._pendingSignal = null;
       this._processStateChange(merged);
     }, this._signalDebounceMs);
+  }
+
+  // ── D-Bus Owner Resolution ──
+
+  /**
+   * Resolve our well-known D-Bus destination to its unique bus name.
+   * Used for sender filtering in _handleMprisSignal to prevent
+   * cross-contamination between MPRIS players (e.g., VLC vs Spotify).
+   * Non-fatal: if resolution fails, _ownerBusName stays null and
+   * all signals are processed (fallback to pre-filter behavior).
+   */
+  async _resolveOwner() {
+    const dest = this._getDestination();
+    if (!dest) {
+      this._ownerBusName = null;
+      return;
+    }
+    try {
+      const { stdout } = await execFileAsync('dbus-send', [
+        '--session', '--type=method_call', '--print-reply',
+        '--dest=org.freedesktop.DBus', '/org/freedesktop/DBus',
+        'org.freedesktop.DBus.GetNameOwner', `string:${dest}`
+      ], { timeout: 2000 });
+      const match = stdout.match(/string "([^"]+)"/);
+      this._ownerBusName = match ? match[1] : null;
+      if (this._ownerBusName) {
+        logger.debug(`[${this._label}] Resolved D-Bus owner`, {
+          destination: dest, owner: this._ownerBusName,
+        });
+      }
+    } catch {
+      this._ownerBusName = null;
+    }
+  }
+
+  /**
+   * Re-resolve D-Bus owner after sender mismatch.
+   * Default: re-resolve same destination. Spotify overrides to re-discover.
+   * On failure, preserves old _ownerBusName to prevent cross-contamination.
+   */
+  async _refreshOwner() {
+    const oldOwner = this._ownerBusName;
+    await this._resolveOwner();
+    if (!this._ownerBusName && oldOwner) {
+      this._ownerBusName = oldOwner;
+    }
   }
 
   // ── Subclass Hooks (must override) ──
@@ -311,6 +373,8 @@ class MprisPlayerBase extends EventEmitter {
     this.state = 'stopped';
     this.volume = 100;
     this.track = null;
+    this._ownerBusName = null;
+    this._resolvingOwner = false;
   }
 
   /**

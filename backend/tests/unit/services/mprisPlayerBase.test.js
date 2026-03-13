@@ -583,4 +583,158 @@ describe('MprisPlayerBase', () => {
       expect(volumeSpy).toHaveBeenCalledWith({ volume: 60 });
     });
   });
+
+  describe('MPRIS signal sender filtering', () => {
+    it('should ignore signals from unknown senders when owner is resolved', () => {
+      const player = createTestPlayer();
+      player._ownerBusName = ':1.50';
+
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      jest.advanceTimersByTime(100);
+
+      // State should NOT change (signal was from wrong sender)
+      expect(player.state).toBe('stopped');
+    });
+
+    it('should process signals from matching sender', () => {
+      const player = createTestPlayer();
+      player._ownerBusName = ':1.50';
+
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.50',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      jest.advanceTimersByTime(100);
+
+      expect(player.state).toBe('playing');
+    });
+
+    it('should trigger _refreshOwner on sender mismatch', () => {
+      const player = createTestPlayer();
+      player._ownerBusName = ':1.50';
+      player._refreshOwner = jest.fn().mockResolvedValue(undefined);
+
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      expect(player._refreshOwner).toHaveBeenCalledTimes(1);
+      // Signal itself is still dropped (state unchanged)
+      jest.advanceTimersByTime(100);
+      expect(player.state).toBe('stopped');
+    });
+
+    it('should not trigger multiple _refreshOwner calls during resolution', async () => {
+      const player = createTestPlayer();
+      player._ownerBusName = ':1.50';
+      // _refreshOwner that stays pending
+      let resolveRefresh;
+      player._refreshOwner = jest.fn().mockImplementation(
+        () => new Promise(r => { resolveRefresh = r; })
+      );
+
+      // Two rapid mismatched signals
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Paused' },
+        raw: '',
+      });
+
+      expect(player._refreshOwner).toHaveBeenCalledTimes(1);
+      resolveRefresh();
+    });
+
+    it('should accept signals from new sender after successful re-resolution', async () => {
+      const player = createTestPlayer();
+      player._ownerBusName = ':1.50';
+
+      // Mock _refreshOwner to update owner to new sender
+      player._refreshOwner = jest.fn().mockImplementation(async () => {
+        player._ownerBusName = ':1.99';
+        player._resolvingOwner = false;
+      });
+
+      // First signal: mismatch triggers re-resolution, signal dropped
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      // Let _refreshOwner resolve
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Second signal from new sender: should now pass
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      jest.advanceTimersByTime(100);
+      expect(player.state).toBe('playing');
+    });
+
+    it('should preserve old owner if re-resolution fails', async () => {
+      const player = createTestPlayer();
+      player._ownerBusName = ':1.50';
+
+      // Mock _resolveOwner to set null (resolution failure)
+      mockExecFileError('No such name');
+
+      // Trigger mismatch — default _refreshOwner calls _resolveOwner which fails
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      // Let _refreshOwner resolve
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      // Old owner preserved
+      expect(player._ownerBusName).toBe(':1.50');
+    });
+
+    it('should process all signals when owner is not resolved (null)', () => {
+      const player = createTestPlayer();
+      // _ownerBusName defaults to null
+
+      player._handleMprisSignal({
+        changedInterface: 'org.mpris.MediaPlayer2.Player',
+        sender: ':1.99',
+        properties: { PlaybackStatus: 'Playing' },
+        raw: '',
+      });
+
+      jest.advanceTimersByTime(100);
+
+      expect(player.state).toBe('playing');
+    });
+  });
 });
