@@ -890,7 +890,7 @@ describe('VlcMprisService', () => {
       vlcMprisService._getHwAccelArgs = jest.fn().mockReturnValue([]);
       vlcMprisService._spawnVlcProcess();
 
-      expect(execFileSync).toHaveBeenCalledWith('pkill', ['-x', 'cvlc']);
+      expect(execFileSync).toHaveBeenCalledWith('pkill', ['-x', 'vlc']);
     });
 
     it('should clear _ownerBusName on VLC process exit', () => {

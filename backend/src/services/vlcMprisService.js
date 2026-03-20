@@ -42,10 +42,9 @@ class VlcMprisService extends MprisPlayerBase {
       this._processExitHandler = null;
     }
 
-    // Kill any orphaned VLC from a previous crash (prevents D-Bus name conflict
-    // where the stale instance holds org.mpris.MediaPlayer2.vlc and our new
-    // spawn gets a PID-suffixed name that _destination won't find)
-    try { execFileSync('pkill', ['-x', 'cvlc']); } catch { /* none running */ }
+    // Kill any orphaned VLC from a previous crash. cvlc is a shell script
+    // that exec's vlc, so the actual process name is 'vlc', not 'cvlc'.
+    try { execFileSync('pkill', ['-x', 'vlc']); } catch { /* none running */ }
 
     const args = this._buildVlcArgs();
     const env = { ...process.env, DISPLAY: process.env.DISPLAY || ':0' };
@@ -115,9 +114,9 @@ class VlcMprisService extends MprisPlayerBase {
     }
 
     // Belt-and-suspenders: pkill catches cases where SIGTERM is ignored
-    // or the child was reparented before SIGTERM was processed (Node exits
-    // immediately after kill(), VLC becomes orphan under init).
-    try { execFileSync('pkill', ['-x', 'cvlc']); } catch { /* none running */ }
+    // or the child was reparented (Node exits immediately after kill(),
+    // VLC becomes orphan under init). Process name is 'vlc' not 'cvlc'.
+    try { execFileSync('pkill', ['-x', 'vlc']); } catch { /* none running */ }
   }
 
   /**
