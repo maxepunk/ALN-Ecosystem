@@ -488,8 +488,13 @@ class VideoQueueService extends EventEmitter {
       return false;
     }
 
+    // Best-effort VLC pause — timer cleanup and event must happen regardless.
     if (config.features.videoPlayback) {
-      await vlcService.pause();
+      try {
+        await vlcService.pause();
+      } catch (err) {
+        logger.warn('VLC pause failed (VLC may be down)', { error: err.message });
+      }
     }
 
     if (this.playbackTimer) {
@@ -511,12 +516,20 @@ class VideoQueueService extends EventEmitter {
     }
 
     if (config.features.videoPlayback) {
-      await vlcService.resume();
+      try {
+        await vlcService.resume();
 
-      // Restart monitoring
-      const status = await vlcService.getStatus();
-      const remaining = status.length ? status.length * (1 - status.position) : 30;
-      this.monitorVlcPlayback(this.currentItem, remaining);
+        // Restart monitoring
+        const status = await vlcService.getStatus();
+        const remaining = status.length ? status.length * (1 - status.position) : 30;
+        this.monitorVlcPlayback(this.currentItem, remaining);
+      } catch (err) {
+        // VLC down during resume — complete the item so queue isn't stuck.
+        // ProcessMonitor will restart VLC; next queued video gets a fresh process.
+        logger.warn('VLC resume failed, completing queue item to prevent stuck queue', { error: err.message });
+        this.completePlayback(this.currentItem);
+        return true;
+      }
     } else {
       // Test mode - calculate remaining time
       const elapsed = (Date.now() - new Date(this.currentItem.playbackStart).getTime()) / 1000;

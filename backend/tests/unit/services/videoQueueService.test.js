@@ -161,6 +161,67 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('VLC-down resilience (queue must not get stuck)', () => {
+    // Mock vlcService at the interface boundary — not at registry/D-Bus internals.
+    // We're testing videoQueueService's recovery, not vlcService's connection checking.
+    let vlcService;
+
+    beforeEach(() => {
+      vlcService = require('../../../src/services/vlcMprisService');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('skipCurrent should complete queue item even when vlcService.stop() throws', async () => {
+      jest.spyOn(vlcService, 'stop').mockRejectedValue(new Error('VLC not connected'));
+
+      videoQueueService.currentItem = {
+        isPlaying: () => true, id: 'test', tokenId: 'tok1',
+        completePlayback: jest.fn(), getPlaybackDuration: () => 5,
+      };
+      videoQueueService.progressTimer = setInterval(() => {}, 1000);
+
+      const result = await videoQueueService.skipCurrent();
+
+      expect(result).toBe(true);
+      expect(videoQueueService.progressTimer).toBeNull();
+      expect(videoQueueService.currentItem).toBeNull();
+    });
+
+    it('pauseCurrent should emit paused event even when vlcService.pause() throws', async () => {
+      jest.spyOn(vlcService, 'pause').mockRejectedValue(new Error('VLC not connected'));
+
+      videoQueueService.currentItem = {
+        isPlaying: () => true, id: 'test', tokenId: 'tok1',
+      };
+      const handler = jest.fn();
+      videoQueueService.on('video:paused', handler);
+
+      const result = await videoQueueService.pauseCurrent();
+
+      expect(result).toBe(true);
+      expect(handler).toHaveBeenCalled();
+      videoQueueService.removeListener('video:paused', handler);
+    });
+
+    it('resumeCurrent should complete queue item when vlcService.resume() throws (prevents stuck queue)', async () => {
+      jest.spyOn(vlcService, 'resume').mockRejectedValue(new Error('VLC not connected'));
+
+      videoQueueService.currentItem = {
+        isPlaying: () => true, id: 'test', tokenId: 'tok1',
+        completePlayback: jest.fn(), getPlaybackDuration: () => 5,
+      };
+
+      const result = await videoQueueService.resumeCurrent();
+
+      expect(result).toBe(true);
+      // Queue item must be completed — can't leave it in 'playing' with dead VLC
+      expect(videoQueueService.currentItem).toBeNull();
+    });
+  });
+
   describe('Event Emission Pattern', () => {
     it('should emit video:idle when no pending items in queue', (done) => {
       videoQueueService.once('video:idle', () => {

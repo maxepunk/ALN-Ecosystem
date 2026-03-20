@@ -99,6 +99,11 @@ describe('GET /api/state', () => {
   });
 
   it('should support ETag caching with If-None-Match', async () => {
+    // Pause game clock — its tick changes gameClock.elapsed between requests,
+    // which changes the state hash and invalidates the ETag.
+    const gameClockService = require('../../../src/services/gameClockService');
+    gameClockService.pause();
+
     // First request - get ETag
     const firstResponse = await request(app.app)
       .get('/api/state')
