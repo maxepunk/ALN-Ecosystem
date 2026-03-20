@@ -1074,6 +1074,7 @@ class AudioRoutingService extends EventEmitter {
       command: 'pactl',
       args: ['subscribe'],
       label: 'pactl-subscribe',
+      pidFile: '/tmp/aln-pm-pactl-subscribe.pid',
     });
 
     this._sinkMonitor.on('line', (line) => {

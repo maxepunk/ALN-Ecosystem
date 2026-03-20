@@ -451,6 +451,7 @@ class BluetoothService extends EventEmitter {
       command: 'dbus-monitor',
       args: ['--system', '--monitor', matchRule],
       label: 'bluez-dbus-monitor',
+      pidFile: '/tmp/aln-pm-bluez-dbus-monitor.pid',
     });
 
     this._deviceSignalParser = new DbusSignalParser();

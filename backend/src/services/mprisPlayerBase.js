@@ -216,6 +216,7 @@ class MprisPlayerBase extends EventEmitter {
       command: 'dbus-monitor',
       args: ['--session', '--monitor', matchRule],
       label: `${this._label}-dbus-monitor`,
+      pidFile: `/tmp/aln-pm-${this._label.toLowerCase()}-dbus-monitor.pid`,
     });
 
     this._mprisSignalParser = new DbusSignalParser();
