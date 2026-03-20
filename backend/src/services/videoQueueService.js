@@ -465,8 +465,14 @@ class VideoQueueService extends EventEmitter {
       this.progressTimer = null;
     }
 
+    // Best-effort VLC stop — if VLC crashed, there's nothing to stop,
+    // but we must still complete the queue item to avoid a stuck queue.
     if (config.features.videoPlayback) {
-      await vlcService.stop();
+      try {
+        await vlcService.stop();
+      } catch (err) {
+        logger.warn('VLC stop failed during skip (VLC may be down)', { error: err.message });
+      }
     }
 
     this.completePlayback(this.currentItem);
