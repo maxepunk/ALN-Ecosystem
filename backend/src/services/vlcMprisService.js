@@ -521,6 +521,11 @@ class VlcMprisService extends MprisPlayerBase {
    * Preserves VLC process — system reset should not kill VLC.
    */
   reset() {
+    // Clear pending restart timer (prevents orphaned spawn after system reset)
+    if (this._vlcRestartTimer) {
+      clearTimeout(this._vlcRestartTimer);
+      this._vlcRestartTimer = null;
+    }
     super.reset(); // stops D-Bus monitor, reports health down, resets state
     this._previousDelta = null;
     this._loopEnabled = false;

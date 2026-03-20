@@ -817,6 +817,28 @@ describe('VlcMprisService', () => {
       expect(vlcMprisService._previousDelta).toBeNull();
       expect(vlcMprisService._loopEnabled).toBe(false);
     });
+
+    it('should clear pending VLC restart timer', () => {
+      jest.useFakeTimers();
+
+      // Simulate a pending restart timer (VLC crashed, 3s timer scheduled)
+      vlcMprisService._vlcRestartTimer = setTimeout(() => {
+        vlcMprisService._spawnVlcProcess();
+      }, 3000);
+
+      const spawnCountBefore = spawn.mock.calls.length;
+
+      vlcMprisService.reset();
+
+      // Timer should be cleared
+      expect(vlcMprisService._vlcRestartTimer).toBeNull();
+
+      // Advancing time should NOT trigger a spawn (timer was cleared)
+      jest.advanceTimersByTime(5000);
+      expect(spawn.mock.calls.length).toBe(spawnCountBefore);
+
+      jest.useRealTimers();
+    });
   });
 
   // ── VLC Process Spawn ──
