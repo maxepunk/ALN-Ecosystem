@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const registry = require('./serviceHealthRegistry');
-const { spawn, execFileSync } = require('child_process');
+const { execFileSync } = require('child_process');
+const ProcessMonitor = require('../utils/processMonitor');
 const MprisPlayerBase = require('./mprisPlayerBase');
 
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
@@ -19,104 +20,7 @@ class VlcMprisService extends MprisPlayerBase {
     this._previousDelta = null;
     this._loopEnabled = false;
     this._rawVolume = 1.0; // MPRIS 0.0-1.0 — avoids lossy 256→100→256 round-trip
-    this._vlcProc = null;
-    this._vlcRestartTimer = null;
-    this._vlcStopped = false;      // Flag to prevent restart after intentional stop
-    this._processExitHandler = null; // For orphan prevention
-  }
-
-  // ── VLC Process Management ──
-
-  /**
-   * Spawn the VLC process with platform-appropriate args.
-   * Simple restart-on-exit wrapper — always restarts after 3s unless stopped.
-   * NOT using ProcessMonitor: its receivedData heuristic checks stdout,
-   * but VLC writes to stderr, causing false maxFailures give-up.
-   */
-  _spawnVlcProcess() {
-    if (this._vlcProc) return; // Already running
-
-    // Remove stale exit handler from previous spawn (prevents listener leak on crash/restart cycles)
-    if (this._processExitHandler) {
-      process.removeListener('exit', this._processExitHandler);
-      this._processExitHandler = null;
-    }
-
-    // Kill any orphaned VLC from a previous crash. cvlc is a shell script
-    // that exec's vlc, so the actual process name is 'vlc', not 'cvlc'.
-    try { execFileSync('pkill', ['-x', 'vlc']); } catch { /* none running */ }
-
-    const args = this._buildVlcArgs();
-    const env = { ...process.env, DISPLAY: process.env.DISPLAY || ':0' };
-
-    logger.info('[VLC] Spawning process', { args: args.join(' ') });
-    this._vlcProc = spawn('cvlc', args, {
-      env,
-      stdio: ['ignore', 'ignore', 'pipe'], // stderr only (for error logging)
-    });
-
-    this._vlcProc.stderr.on('data', (data) => {
-      // Log VLC errors but don't treat as health signal
-      const msg = data.toString().trim();
-      if (msg) logger.debug('[VLC] stderr:', msg);
-    });
-
-    this._vlcProc.on('close', (code, signal) => {
-      logger.warn('[VLC] Process exited', { code, signal });
-      this._vlcProc = null;
-      this._ownerBusName = null; // Stale after crash — new VLC gets new bus name
-      this._setConnected(false);
-
-      if (!this._vlcStopped) {
-        logger.info('[VLC] Scheduling restart in 3s');
-        this._vlcRestartTimer = setTimeout(async () => {
-          this._vlcRestartTimer = null;
-          this._spawnVlcProcess();
-          // Wait for VLC to register on D-Bus, then re-resolve owner for sender filtering
-          const ready = await this._waitForVlcReady();
-          if (ready) {
-            this._resolveOwner().catch(err => {
-              logger.debug('[VLC] Owner re-resolution failed after crash restart:', err.message);
-            });
-          }
-        }, 3000);
-      }
-    });
-
-    // Orphan prevention: kill VLC if Node exits unexpectedly
-    this._processExitHandler = () => {
-      if (this._vlcProc) {
-        this._vlcProc.kill('SIGTERM');
-      }
-    };
-    process.on('exit', this._processExitHandler);
-  }
-
-  /**
-   * Stop VLC process and prevent restart.
-   */
-  _stopVlcProcess() {
-    this._vlcStopped = true;
-
-    if (this._vlcRestartTimer) {
-      clearTimeout(this._vlcRestartTimer);
-      this._vlcRestartTimer = null;
-    }
-
-    if (this._processExitHandler) {
-      process.removeListener('exit', this._processExitHandler);
-      this._processExitHandler = null;
-    }
-
-    if (this._vlcProc) {
-      this._vlcProc.kill('SIGTERM');
-      this._vlcProc = null;
-    }
-
-    // Belt-and-suspenders: pkill catches cases where SIGTERM is ignored
-    // or the child was reparented (Node exits immediately after kill(),
-    // VLC becomes orphan under init). Process name is 'vlc' not 'cvlc'.
-    try { execFileSync('pkill', ['-x', 'vlc']); } catch { /* none running */ }
+    this._vlcProcessMonitor = null;
   }
 
   /**
@@ -183,9 +87,45 @@ class VlcMprisService extends MprisPlayerBase {
   async init() {
     logger.info('[VLC] Initializing MPRIS service');
 
-    // Spawn VLC process (backend owns VLC lifecycle now)
-    this._vlcStopped = false;
-    this._spawnVlcProcess();
+    // Audit: log any existing VLC processes (helps diagnose leaks in production)
+    try {
+      const result = execFileSync('pgrep', ['-a', 'vlc']);
+      const procs = result.toString().trim();
+      if (procs) {
+        logger.warn('[VLC] Existing VLC processes found at init', { processes: procs });
+      }
+    } catch { /* none running — clean state */ }
+
+    // Create VLC ProcessMonitor
+    this._vlcProcessMonitor = new ProcessMonitor({
+      command: 'cvlc',
+      args: this._buildVlcArgs(),
+      label: 'VLC',
+      pidFile: '/tmp/aln-pm-vlc.pid',
+      stdio: ['ignore', 'ignore', 'pipe'],
+      env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' },
+      restartDelay: 3000,
+      backoffMultiplier: 1,   // Fixed 3s delay (no exponential backoff)
+    });
+
+    // State cleanup on VLC exit (crash or intentional stop)
+    this._vlcProcessMonitor.on('exited', ({ code, signal }) => {
+      logger.warn('[VLC] Process exited', { code, signal });
+      this._ownerBusName = null;
+      this._setConnected(false);
+    });
+
+    // Post-restart: wait for D-Bus registration, re-resolve owner
+    this._vlcProcessMonitor.on('restarted', async () => {
+      const ready = await this._waitForVlcReady();
+      if (ready) {
+        this._resolveOwner().catch(err => {
+          logger.debug('[VLC] Owner re-resolution failed after crash restart:', err.message);
+        });
+      }
+    });
+
+    this._vlcProcessMonitor.start();
 
     // Wait for VLC to register on D-Bus
     const ready = await this._waitForVlcReady();
@@ -521,16 +461,11 @@ class VlcMprisService extends MprisPlayerBase {
    * Preserves VLC process — system reset should not kill VLC.
    */
   reset() {
-    // Clear pending restart timer (prevents orphaned spawn after system reset)
-    if (this._vlcRestartTimer) {
-      clearTimeout(this._vlcRestartTimer);
-      this._vlcRestartTimer = null;
-    }
     super.reset(); // stops D-Bus monitor, reports health down, resets state
     this._previousDelta = null;
     this._loopEnabled = false;
     this._rawVolume = 1.0;
-    // VLC process intentionally preserved (same as Spotify's spotifyd)
+    // VLC ProcessMonitor intentionally NOT stopped (process preserved, same as Spotify's spotifyd)
   }
 
   /**
@@ -538,8 +473,12 @@ class VlcMprisService extends MprisPlayerBase {
    * Called on server shutdown (not on system reset).
    */
   cleanup() {
-    this._stopVlcProcess();
-    super.cleanup(); // calls reset() + removeAllListeners()
+    if (this._vlcProcessMonitor) {
+      this._vlcProcessMonitor.stop();
+      this._vlcProcessMonitor.removeAllListeners();
+      this._vlcProcessMonitor = null;
+    }
+    super.cleanup();
   }
 }
 
