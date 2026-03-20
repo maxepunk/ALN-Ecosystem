@@ -9,6 +9,7 @@
  */
 
 const { spawn } = require('child_process');
+const fs = require('fs');
 const EventEmitter = require('events');
 const logger = require('./logger');
 
@@ -56,6 +57,9 @@ class ProcessMonitor extends EventEmitter {
 
     this._stopped = false;
 
+    // Kill orphaned instance from previous crash (PID file tracking)
+    this._killOrphan();
+
     // Clean up previous exit handler if any (from restart — prevents listener accumulation)
     if (this._processExitHandler) {
       process.removeListener('exit', this._processExitHandler);
@@ -66,6 +70,9 @@ class ProcessMonitor extends EventEmitter {
       ...(this._env && { env: this._env }),
     });
     logger.info(`${this._label} monitor started`, { pid: this._proc.pid });
+
+    // Write PID file for orphan recovery on next boot
+    this._writePidFile();
 
     // Orphan prevention: kill child on parent exit (e.g., PM2 restart)
     this._processExitHandler = () => {
@@ -137,6 +144,7 @@ class ProcessMonitor extends EventEmitter {
       this._proc.kill();
       this._proc = null;
     }
+    this._removePidFile();
     if (this._processExitHandler) {
       process.removeListener('exit', this._processExitHandler);
       this._processExitHandler = null;
@@ -146,6 +154,45 @@ class ProcessMonitor extends EventEmitter {
       this._restartTimer = null;
     }
     this._failures = 0;
+  }
+
+  /**
+   * Kill an orphaned process from a previous server instance.
+   * Reads PID file, verifies /proc/PID/cmdline matches our command
+   * (guards against PID reuse), sends SIGTERM if confirmed.
+   */
+  _killOrphan() {
+    if (!this._pidFile) return;
+    try {
+      const pid = parseInt(fs.readFileSync(this._pidFile, 'utf8').trim(), 10);
+      if (isNaN(pid)) return;
+      const cmdline = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ');
+      if (!cmdline.includes(this._command)) return;
+      process.kill(pid, 'SIGTERM');
+      logger.info(`${this._label}: killed orphan process`, { pid });
+    } catch {
+      // PID file missing, process already dead, or PID reused — all expected
+    }
+  }
+
+  /** Write child PID to file for orphan recovery on next boot. */
+  _writePidFile() {
+    if (!this._pidFile || !this._proc) return;
+    try {
+      fs.writeFileSync(this._pidFile, String(this._proc.pid));
+    } catch (err) {
+      logger.debug(`${this._label}: failed to write PID file`, { error: err.message });
+    }
+  }
+
+  /** Remove PID file (process was stopped cleanly). */
+  _removePidFile() {
+    if (!this._pidFile) return;
+    try {
+      fs.unlinkSync(this._pidFile);
+    } catch {
+      // File doesn't exist or already cleaned up
+    }
   }
 
   /** @returns {boolean} Whether the process is currently running */

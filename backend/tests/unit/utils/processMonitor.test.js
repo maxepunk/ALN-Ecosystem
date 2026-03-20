@@ -10,6 +10,9 @@ const EventEmitter = require('events');
 jest.mock('child_process');
 const { spawn } = require('child_process');
 
+jest.mock('fs');
+const fs = require('fs');
+
 jest.mock('../../../src/utils/logger', () => ({
   info: jest.fn(),
   warn: jest.fn(),
@@ -38,6 +41,12 @@ describe('ProcessMonitor', () => {
     jest.useFakeTimers();
     mockProc = createMockSpawnProc();
     spawn.mockReturnValue(mockProc);
+
+    // Default: no PID file exists (clean boot). Overridden in orphan recovery tests.
+    fs.readFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
+    fs.writeFileSync.mockImplementation(() => {});
+    fs.unlinkSync.mockImplementation(() => {});
+
     monitor = new ProcessMonitor({
       command: 'pactl',
       args: ['subscribe'],
@@ -446,6 +455,102 @@ describe('ProcessMonitor', () => {
       jest.advanceTimersByTime(10000);
 
       expect(procWasRunningWhenRestarted).toBe(true);
+    });
+  });
+
+  // ── 5: Orphan recovery (PID files) ──
+
+  describe('orphan recovery (PID files)', () => {
+    let pidMonitor;
+
+    beforeEach(() => {
+      pidMonitor = new ProcessMonitor({
+        command: 'dbus-monitor',
+        args: ['--session', '--monitor'],
+        label: 'test-monitor',
+        pidFile: '/tmp/aln-pm-test-monitor.pid',
+      });
+    });
+
+    afterEach(() => {
+      pidMonitor.stop();
+    });
+
+    it('should kill orphaned process found in PID file on start', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-test-monitor.pid') return '12345';
+        if (filePath === '/proc/12345/cmdline') return 'dbus-monitor\0--session\0--monitor';
+        throw new Error('ENOENT');
+      });
+
+      pidMonitor.start();
+
+      expect(killSpy).toHaveBeenCalledWith(12345, 'SIGTERM');
+      killSpy.mockRestore();
+    });
+
+    it('should NOT kill process if PID was reused by different command', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-test-monitor.pid') return '12345';
+        if (filePath === '/proc/12345/cmdline') return 'node\0src/server.js';
+        throw new Error('ENOENT');
+      });
+
+      pidMonitor.start();
+
+      expect(killSpy).not.toHaveBeenCalledWith(12345, expect.anything());
+      killSpy.mockRestore();
+    });
+
+    it('should handle missing PID file gracefully (clean boot)', () => {
+      fs.readFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
+
+      expect(() => pidMonitor.start()).not.toThrow();
+      expect(spawn).toHaveBeenCalled();
+    });
+
+    it('should handle dead process gracefully (ESRCH)', () => {
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {
+        throw new Error('ESRCH');
+      });
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-test-monitor.pid') return '12345';
+        if (filePath === '/proc/12345/cmdline') return 'dbus-monitor\0--session\0--monitor';
+        throw new Error('ENOENT');
+      });
+
+      expect(() => pidMonitor.start()).not.toThrow();
+      expect(spawn).toHaveBeenCalled();
+      killSpy.mockRestore();
+    });
+
+    it('should write PID file after spawn', () => {
+      fs.readFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
+
+      pidMonitor.start();
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/tmp/aln-pm-test-monitor.pid',
+        String(mockProc.pid)
+      );
+    });
+
+    it('should remove PID file on stop', () => {
+      fs.readFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
+
+      pidMonitor.start();
+      pidMonitor.stop();
+
+      expect(fs.unlinkSync).toHaveBeenCalledWith('/tmp/aln-pm-test-monitor.pid');
+    });
+
+    it('should NOT write PID file when pidFile option is omitted', () => {
+      fs.readFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
+
+      monitor.start();
+      expect(fs.writeFileSync).not.toHaveBeenCalled();
     });
   });
 });
