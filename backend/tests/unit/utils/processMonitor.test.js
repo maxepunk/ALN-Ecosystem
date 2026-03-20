@@ -327,4 +327,125 @@ describe('ProcessMonitor', () => {
       expect(spawn).toHaveBeenCalledTimes(1);
     });
   });
+
+  // ── 4a: Custom stdio and env ──
+
+  describe('custom stdio and env', () => {
+    it('should pass custom stdio to spawn', () => {
+      const customMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: ['--no-loop'],
+        label: 'vlc',
+        stdio: ['ignore', 'ignore', 'pipe'],
+      });
+      customMonitor.start();
+
+      expect(spawn).toHaveBeenCalledWith('cvlc', ['--no-loop'], {
+        stdio: ['ignore', 'ignore', 'pipe'],
+      });
+      customMonitor.stop();
+    });
+
+    it('should pass custom env to spawn', () => {
+      const customMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: [],
+        label: 'vlc',
+        env: { DISPLAY: ':0', HOME: '/tmp' },
+      });
+      customMonitor.start();
+
+      expect(spawn).toHaveBeenCalledWith('cvlc', [], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: { DISPLAY: ':0', HOME: '/tmp' },
+      });
+      customMonitor.stop();
+    });
+
+    it('should not crash when stdout is null (ignored in stdio)', () => {
+      const nullStdoutProc = new EventEmitter();
+      nullStdoutProc.stdout = null;
+      nullStdoutProc.stderr = new EventEmitter();
+      nullStdoutProc.kill = jest.fn();
+      nullStdoutProc.pid = 88888;
+      spawn.mockReturnValueOnce(nullStdoutProc);
+
+      const customMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: [],
+        label: 'vlc',
+        stdio: ['ignore', 'ignore', 'pipe'],
+      });
+
+      expect(() => customMonitor.start()).not.toThrow();
+      customMonitor.stop();
+    });
+  });
+
+  // ── 4b: stderr counts toward receivedData ──
+
+  describe('stderr receivedData', () => {
+    it('should reset failure count when only stderr received (not stdout)', () => {
+      monitor.start();
+
+      // Emit stderr data (not stdout) — process ran successfully
+      mockProc.stderr.emit('data', Buffer.from('some output\n'));
+
+      // Process exits — should be treated as normal exit (failures reset)
+      spawn.mockClear();
+      const newProc = createMockSpawnProc();
+      spawn.mockReturnValue(newProc);
+      mockProc.emit('close', 0);
+
+      // Restart delay should be base delay (5000ms * 2^0 = 5000ms), not backoff
+      jest.advanceTimersByTime(5000);
+      expect(spawn).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── 4c: exited event ──
+
+  describe('exited event', () => {
+    it('should emit exited with code and signal when process dies', () => {
+      monitor.start();
+      const events = [];
+      monitor.on('exited', (data) => events.push(data));
+
+      mockProc.emit('close', 1, 'SIGTERM');
+
+      expect(events).toHaveLength(1);
+      expect(events[0]).toEqual({ code: 1, signal: 'SIGTERM' });
+    });
+
+    it('should emit exited even when stopped (intentional kill)', () => {
+      monitor.start();
+      const events = [];
+      monitor.on('exited', (data) => events.push(data));
+
+      monitor.stop();
+      mockProc.emit('close', null, 'SIGTERM');
+
+      expect(events).toHaveLength(1);
+    });
+  });
+
+  // ── 4d: restarted event ordering ──
+
+  describe('restarted event ordering', () => {
+    it('should emit restarted AFTER process is spawned (not before)', () => {
+      monitor.start();
+      let procWasRunningWhenRestarted = false;
+
+      monitor.on('restarted', () => {
+        procWasRunningWhenRestarted = monitor.isRunning();
+      });
+
+      const newProc = createMockSpawnProc();
+      spawn.mockReturnValue(newProc);
+      mockProc.emit('close', 1);
+      jest.advanceTimersByTime(10000);
+
+      expect(procWasRunningWhenRestarted).toBe(true);
+    });
+  });
 });

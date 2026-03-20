@@ -24,15 +24,21 @@ class ProcessMonitor extends EventEmitter {
    * @param {string} options.command - Command to spawn
    * @param {string[]} options.args - Arguments for the command
    * @param {string} options.label - Label for logging
+   * @param {string} [options.pidFile] - Path to PID file for orphan recovery after SIGKILL
+   * @param {string[]} [options.stdio] - stdio config for spawn (default: ['ignore', 'pipe', 'pipe'])
+   * @param {Object} [options.env] - Environment variables for spawn (default: inherit parent)
    * @param {number} [options.maxFailures=5] - Max consecutive failures before giving up
    * @param {number} [options.restartDelay=5000] - Base restart delay (ms)
    * @param {number} [options.backoffMultiplier=2] - Backoff multiplier
    */
-  constructor({ command, args, label, maxFailures, restartDelay, backoffMultiplier }) {
+  constructor({ command, args, label, pidFile, stdio, env, maxFailures, restartDelay, backoffMultiplier }) {
     super();
     this._command = command;
     this._args = args;
     this._label = label;
+    this._pidFile = pidFile || null;
+    this._stdio = stdio || null;
+    this._env = env || undefined;
     this._maxFailures = maxFailures ?? DEFAULTS.maxFailures;
     this._restartDelay = restartDelay ?? DEFAULTS.restartDelay;
     this._backoffMultiplier = backoffMultiplier ?? DEFAULTS.backoffMultiplier;
@@ -55,7 +61,10 @@ class ProcessMonitor extends EventEmitter {
       process.removeListener('exit', this._processExitHandler);
     }
 
-    this._proc = spawn(this._command, this._args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    this._proc = spawn(this._command, this._args, {
+      stdio: this._stdio || ['ignore', 'pipe', 'pipe'],
+      ...(this._env && { env: this._env }),
+    });
     logger.info(`${this._label} monitor started`, { pid: this._proc.pid });
 
     // Orphan prevention: kill child on parent exit (e.g., PM2 restart)
@@ -67,26 +76,33 @@ class ProcessMonitor extends EventEmitter {
     let buffer = '';
     let receivedData = false;
 
-    this._proc.stdout.on('data', (data) => {
-      if (this._stopped) return;
-      receivedData = true;
-      buffer += data.toString();
-      const lines = buffer.split('\n');
-      buffer = lines.pop(); // Keep incomplete line in buffer
+    if (this._proc.stdout) {
+      this._proc.stdout.on('data', (data) => {
+        if (this._stopped) return;
+        receivedData = true;
+        buffer += data.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop(); // Keep incomplete line in buffer
 
-      for (const line of lines) {
-        if (line.trim()) {
-          this.emit('line', line);
+        for (const line of lines) {
+          if (line.trim()) {
+            this.emit('line', line);
+          }
         }
-      }
-    });
+      });
+    }
 
-    this._proc.stderr.on('data', (data) => {
-      logger.debug(`${this._label} stderr`, { data: data.toString() });
-    });
+    if (this._proc.stderr) {
+      this._proc.stderr.on('data', (data) => {
+        receivedData = true;
+        logger.debug(`${this._label} stderr`, { data: data.toString() });
+      });
+    }
 
-    this._proc.on('close', (code) => {
+    this._proc.on('close', (code, signal) => {
       this._proc = null;
+
+      this.emit('exited', { code, signal });
 
       if (this._stopped) return;
 
@@ -107,8 +123,8 @@ class ProcessMonitor extends EventEmitter {
       this._restartTimer = setTimeout(() => {
         this._restartTimer = null;
         logger.info(`Restarting ${this._label}`, { delay });
-        this.emit('restarted', { attempt: this._failures || 1, delay });
         this.start();
+        this.emit('restarted', { attempt: this._failures || 1, delay });
       }, delay);
     });
   }
