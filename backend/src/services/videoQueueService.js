@@ -154,18 +154,16 @@ class VideoQueueService extends EventEmitter {
     // Get video path from queue item
     const videoPath = queueItem.videoPath;
 
-    // Check if video file exists before attempting playback
-    const fullPath = videoPath.startsWith('/')
-      ? path.join(process.cwd(), 'public', videoPath)
-      : path.join(process.cwd(), 'public', 'videos', videoPath);
-
-    if (!fs.existsSync(fullPath)) {
-      const error = new Error(`Video file not found: ${videoPath}`);
-      logger.error('Video file does not exist', { videoPath, fullPath });
-      throw error; // Will be caught by processQueue's try-catch
-    }
-
     try {
+      // Check if video file exists before attempting playback
+      const fullPath = videoPath.startsWith('/')
+        ? path.join(process.cwd(), 'public', videoPath)
+        : path.join(process.cwd(), 'public', 'videos', videoPath);
+
+      if (!fs.existsSync(fullPath)) {
+        throw new Error(`Video file not found: ${videoPath}`);
+      }
+
       // If video playback is enabled, use VLC
       if (config.features.videoPlayback) {
         // Actually play the video through VLC

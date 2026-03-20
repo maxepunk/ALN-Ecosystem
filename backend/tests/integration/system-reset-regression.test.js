@@ -18,6 +18,7 @@
  */
 
 const { connectAndIdentify, waitForEvent, disconnectAndWait } = require('../helpers/websocket-helpers');
+const { clearEventCache } = require('../helpers/websocket-core');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { logTestFileEntry, logTestFileExit, getServiceListenerCounts } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
@@ -70,6 +71,13 @@ describe('System Reset Regression Tests', () => {
           transaction: transactionService.listenerCount('transaction:accepted')
         };
 
+        // Clear cached ack from previous iteration so waitForEvent waits for
+        // the REAL ack from THIS reset. Without this, the cached ack resolves
+        // immediately, gm:command fires but the test proceeds before
+        // performSystemReset() completes — leaving async resets in flight
+        // that race with subsequent iterations and contaminate later tests.
+        clearEventCache(gmSocket);
+
         // Send system:reset command
         const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
         gmSocket.emit('gm:command', {
@@ -119,6 +127,11 @@ describe('System Reset Regression Tests', () => {
     it('should not cause duplicate broadcasts after multiple resets', async () => {
       // Perform 2 system resets
       for (let i = 0; i < 2; i++) {
+        // waitForEvent resolves from cache if lastGmCommandAck is set from a
+        // previous iteration. Clear it so we wait for the REAL ack from THIS
+        // reset — otherwise the command is emitted but the test proceeds before
+        // performSystemReset() completes, leaving stale session state.
+        clearEventCache(gmSocket);
         const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
         gmSocket.emit('gm:command', {
           event: 'gm:command',
