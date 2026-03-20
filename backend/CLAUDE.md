@@ -339,7 +339,7 @@ Services that wrap external systems use persistent monitors to detect state chan
 | `lightingService` | WebSocket client (`ws://host:8123/api/websocket`) | HA scene activations |
 
 **Reusable Utilities:**
-- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention)
+- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention, PID-file orphan recovery after SIGKILL). Manages 5 processes: VLC player, 3 D-Bus monitors (VLC/Spotify/BlueZ), pactl subscriber. PID files in `/tmp/aln-pm-*.pid`.
 - `src/utils/dbusSignalParser.js` — Parses `dbus-monitor --monitor` multi-line output into structured signal objects with PropertiesChanged property extraction
 
 **Key Pattern:** Monitors emit domain events on service singletons (e.g., `device:connected`, `playback:changed`, `state:changed`). These events are already wired in `broadcasts.js` → WebSocket delivery. No new broadcast wiring needed for monitors.
@@ -528,7 +528,7 @@ ffmpeg -i INPUT.mp4 \
 
 **PM2 Ecosystem:**
 - `aln-orchestrator`: Node.js server (2GB restart threshold)
-- VLC is spawned by `vlcMprisService.init()` (not PM2). `reset()` preserves VLC process, `cleanup()` kills it.
+- VLC is managed by ProcessMonitor in `vlcMprisService.init()` (not PM2). `reset()` preserves VLC ProcessMonitor (process kept running), `cleanup()` stops it. PID file at `/tmp/aln-pm-vlc.pid`.
 
 **Network URLs:**
 - Orchestrator: `https://[IP]:3000`
