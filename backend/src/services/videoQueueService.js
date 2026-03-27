@@ -131,6 +131,16 @@ class VideoQueueService extends EventEmitter {
    * @private
    */
   async playVideo(queueItem) {
+    // Claim item BEFORE hooks to prevent concurrent processQueue() re-entry.
+    // Two addToQueue() calls arriving close together both schedule processQueue()
+    // via setImmediate. Without early claiming, both invocations find the same
+    // pending item and enter this method concurrently. The pre-play hooks block
+    // for hundreds of ms (attention cue, display mode transition), giving the
+    // second call time to also reach startPlayback() and throw
+    // "Cannot start playback for item with status playing".
+    queueItem.startPlayback();
+    this.currentItem = queueItem;
+
     // Run pre-play hooks (blocking — e.g., attention sound completes before video)
     for (const hook of this._prePlayHooks) {
       try {
@@ -140,16 +150,12 @@ class VideoQueueService extends EventEmitter {
       }
     }
 
-    // Emit loading status first
+    // Emit loading status
     logger.debug('Emitting video:loading for', { tokenId: queueItem.tokenId });
     this.emit('video:loading', {
       queueItem,
       tokenId: queueItem.tokenId
     });
-
-    // Mark as playing
-    queueItem.startPlayback();
-    this.currentItem = queueItem;
 
     // Get video path from queue item
     const videoPath = queueItem.videoPath;
@@ -244,6 +250,7 @@ class VideoQueueService extends EventEmitter {
     } catch (error) {
       logger.error('Failed to play video through VLC', { error, itemId: queueItem.id });
       queueItem.failPlayback(error.message);
+      this.currentItem = null;
       this.emit('video:failed', queueItem);
 
       // Try next item

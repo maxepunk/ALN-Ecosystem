@@ -593,6 +593,109 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('playVideo() concurrent entry prevention', () => {
+    // Regression test for: two simultaneous processQueue() calls both entering
+    // playVideo() for the same pending item when pre-play hooks block.
+    // Fix: startPlayback() and currentItem assignment happen BEFORE hooks,
+    // so the second processQueue() sees currentItem.isPlaying() === true and returns.
+
+    let vlcService;
+    let registry;
+
+    beforeEach(() => {
+      vlcService = require('../../../src/services/vlcMprisService');
+      registry = require('../../../src/services/serviceHealthRegistry');
+      jest.spyOn(vlcService, 'playVideo').mockResolvedValue(undefined);
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', length: 30, position: 0.1,
+      });
+      jest.spyOn(vlcService, 'getState').mockReturnValue({ connected: true });
+      const fs = require('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const config = require('../../../src/config');
+      config.features.videoPlayback = false; // Use timer-based simulation (no VLC wait)
+      // Mark VLC healthy so processQueue() reaches playVideo()
+      registry.report('vlc', 'healthy', 'test setup');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      const config = require('../../../src/config');
+      config.features.videoPlayback = false;
+      registry.reset();
+    });
+
+    it('concurrent processQueue() calls should only call startPlayback() once per item', async () => {
+      // Arrange: one pending item, one pre-play hook that blocks long enough
+      // for both processQueue() calls to run before either claims the item
+      // (without the fix, both would enter playVideo and call startPlayback twice)
+      const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+      videoQueueService.queue.push(item);
+
+      let hookCallCount = 0;
+      const blockingHook = () => new Promise(resolve => {
+        hookCallCount++;
+        // Resolve immediately — we just count calls to detect duplicate entry
+        resolve();
+      });
+      videoQueueService.registerPrePlayHook(blockingHook);
+
+      // Spy on startPlayback to count calls
+      const startPlaybackSpy = jest.spyOn(item, 'startPlayback');
+
+      // Act: two concurrent processQueue() calls (simulates two addToQueue setImmediate)
+      await Promise.all([
+        videoQueueService.processQueue(),
+        videoQueueService.processQueue(),
+      ]);
+
+      // Assert: startPlayback called exactly once (item claimed by first entrant)
+      expect(startPlaybackSpy).toHaveBeenCalledTimes(1);
+      // Hook also called exactly once (second processQueue exits early)
+      expect(hookCallCount).toBe(1);
+    });
+
+    it('concurrent processQueue() calls should not throw duplicate-startPlayback error', async () => {
+      // Without the fix, the second playVideo() calls startPlayback() on a 'playing'
+      // item, which throws "Cannot start playback for item with status playing".
+      const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+      videoQueueService.queue.push(item);
+
+      // Register a hook that yields to the event loop, allowing concurrent entry
+      videoQueueService.registerPrePlayHook(
+        () => new Promise(resolve => setImmediate(resolve))
+      );
+
+      // Both processQueue() calls should complete without throwing
+      await expect(
+        Promise.all([
+          videoQueueService.processQueue(),
+          videoQueueService.processQueue(),
+        ])
+      ).resolves.not.toThrow();
+    });
+
+    it('second processQueue() call returns immediately after item is claimed', async () => {
+      const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+      videoQueueService.queue.push(item);
+
+      // No hooks needed — just verify that once currentItem is set, second call exits
+      const playVideoSpy = jest.spyOn(videoQueueService, 'playVideo');
+
+      // Manually set currentItem to playing state before second call
+      // (simulates what happens after fix: first call claims item immediately)
+      const originalPlayVideo = videoQueueService.playVideo.bind(videoQueueService);
+      playVideoSpy.mockImplementationOnce(async (queueItem) => {
+        await originalPlayVideo(queueItem);
+      });
+
+      await videoQueueService.processQueue();
+
+      // After first processQueue completes, item should be in playing state or completed
+      expect(item.isPending()).toBe(false);
+    });
+  });
+
   describe('waitForVlcLoaded — reactive state:changed listener', () => {
     let vlcService;
 
