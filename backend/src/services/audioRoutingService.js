@@ -825,11 +825,15 @@ class AudioRoutingService extends EventEmitter {
    * Stores pre-duck volume if not already stored, adds source to active list,
    * and sets target volume to lowest active "to" value.
    *
+   * Awaits pre-duck volume capture before applying duck to prevent a race
+   * where the volume SET completes before the volume READ, causing the captured
+   * pre-duck volume to be the already-ducked value.
+   *
    * @param {string} source - Source stream name
    * @param {Array} matchingRules - Rules matching this source
    * @private
    */
-  _handleDuckingStart(source, matchingRules) {
+  async _handleDuckingStart(source, matchingRules) {
     // Group rules by target stream
     const targetStreams = new Set(matchingRules.map(r => r.duck));
 
@@ -844,9 +848,17 @@ class AudioRoutingService extends EventEmitter {
         this._activeDuckingSources[target].push(source);
       }
 
-      // Store pre-duck volume before first duck (async, fire-and-forget)
+      // Capture pre-duck volume BEFORE applying duck (was fire-and-forget — caused race
+      // where volume SET could complete before volume READ, storing ducked value as pre-duck)
       if (this._preDuckVolumes[target] === undefined) {
-        this._capturePreDuckVolume(target);
+        await this._capturePreDuckVolume(target);
+      }
+
+      // Guard: rules may have been cleared (loadDuckingRules called) while we awaited
+      // volume capture — abort if the active sources array was reset
+      if (!Array.isArray(this._activeDuckingSources[target])) {
+        logger.debug('Ducking start aborted — rules were reset during volume capture', { source, target });
+        continue;
       }
 
       // Calculate the lowest "to" value among all active sources for this target
@@ -986,7 +998,7 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   _capturePreDuckVolume(target) {
-    this.getStreamVolume(target)
+    return this.getStreamVolume(target)
       .then(volume => {
         // Only store if still not set (race condition guard)
         if (this._preDuckVolumes[target] === undefined) {
