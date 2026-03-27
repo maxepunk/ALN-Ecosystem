@@ -18,6 +18,9 @@ let broadcastListenersActive = false;
 // Stash teamScore from transaction:accepted for enriching transaction:new
 const teamScoreStash = new Map();
 
+// Per-domain debounce timers for pushServiceState (module-level for cleanup)
+const _pushTimers = {};
+
 /**
  * Helper function to add and track event listeners
  * @param {EventEmitter} service - Service instance
@@ -81,7 +84,11 @@ function setupBroadcastListeners(io, services) {
     // Initialize all currently connected devices into the new session
     // This handles devices that connected before session existed
     // AWAIT to ensure all devices are registered before continuing
-    await initializeSessionDevices(io, session);
+    try {
+      await initializeSessionDevices(io, session);
+    } catch (err) {
+      logger.error('Failed to initialize session devices', { error: err.message });
+    }
 
     // Broadcast sync:full so all GMs get complete state (including device list)
     // Without this, GMs that connected before session creation would not see
@@ -418,17 +425,11 @@ function setupBroadcastListeners(io, services) {
   // ============================================================
 
   /**
-   * Per-domain debounce timers for pushServiceState.
-   * Coalesces bursts of state changes (e.g. rapid D-Bus signals) into a
-   * single WebSocket push per domain within a 50ms window.
-   */
-  const _pushTimers = {};
-
-  /**
    * Push unified service:state event with full state snapshot.
    * Debounced per domain (50ms) to coalesce rapid back-to-back state changes.
    * This is the sole broadcast mechanism for service domain state.
    * Frontend StateStore consumes these events via store subscriptions.
+   * _pushTimers is module-level so cleanupBroadcastListeners can cancel pending timers.
    */
   function pushServiceState(domain, service) {
     if (_pushTimers[domain]) clearTimeout(_pushTimers[domain]);
@@ -644,8 +645,11 @@ function cleanupBroadcastListeners() {
   // Clear teamScore stash to prevent state leaking between resets
   teamScoreStash.clear();
 
-  // Note: _pushTimers is local to setupBroadcastListeners closure — timers are
-  // automatically abandoned (will no-op) once broadcastListenersActive is reset.
+  // Cancel pending debounce timers to prevent stale pushes after cleanup
+  for (const domain of Object.keys(_pushTimers)) {
+    clearTimeout(_pushTimers[domain]);
+    delete _pushTimers[domain];
+  }
 
   // Reset flag to allow re-setup
   broadcastListenersActive = false;

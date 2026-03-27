@@ -591,6 +591,11 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     let mockSpotifyService;
     let mockVlcService;
 
+    // service:state pushes are debounced 50ms — use fake timers so unit tests
+    // can advance past the debounce without real-time waiting
+    beforeEach(() => { jest.useFakeTimers(); });
+    afterEach(() => { jest.useRealTimers(); });
+
     beforeEach(() => {
       mockBluetoothService = new EventEmitter();
       mockBluetoothService.getState = jest.fn().mockReturnValue({
@@ -633,6 +638,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain bluetooth on device:connected', () => {
       setupWithAllServices();
       mockBluetoothService.emit('device:connected', { address: 'AA:BB', name: 'Speaker' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -643,6 +649,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain audio on routing:changed', () => {
       setupWithAllServices();
       mockAudioRoutingService.emit('routing:changed', { stream: 'video', sink: 'hdmi' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -653,6 +660,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain lighting on scene:activated', () => {
       setupWithAllServices();
       mockLightingService.emit('scene:activated', { sceneId: 'scene.test' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -663,6 +671,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain spotify on playback:changed', () => {
       setupWithAllServices();
       mockSpotifyService.emit('playback:changed', { state: 'playing' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -673,6 +682,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain video on video:loading', () => {
       setupWithAllServices();
       mockVideoQueueService.emit('video:loading', { tokenId: 'test' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -683,6 +693,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     it('should emit service:state with domain video on VLC state:changed', () => {
       setupWithAllServices();
       mockVlcService.emit('state:changed', { current: { state: 'Stopped', filename: null }, previous: {} });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -699,6 +710,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       setupWithAllServices();
       serviceHealthRegistry.emit('health:changed', { serviceId: 'vlc' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -724,6 +736,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       });
 
       mockCueEngineService.emit('cue:held', { cueId: 'test-cue' });
+      // held domain uses direct emitToRoom (not debounced pushServiceState), no timer advance needed
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
