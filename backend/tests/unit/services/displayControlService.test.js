@@ -364,6 +364,22 @@ describe('DisplayControlService - State Machine', () => {
     });
   });
 
+  describe('Pre-play hook event emission', () => {
+    it('should emit display:mode:changed in pre-play hook', async () => {
+      const modeChangeSpy = jest.fn();
+      displayControlService.on('display:mode:changed', modeChangeSpy);
+
+      // Get the captured pre-play hook callback
+      const prePlayHook = mockVideoQueueService.registerPrePlayHook.mock.calls[0][0];
+      await prePlayHook();
+
+      expect(modeChangeSpy).toHaveBeenCalledWith(expect.objectContaining({
+        mode: 'VIDEO',
+        previousMode: 'IDLE_LOOP'
+      }));
+    });
+  });
+
   describe('Concurrent mode switch protection', () => {
     it('should serialize concurrent setIdleLoop and setScoreboard calls', async () => {
       const callOrder = [];

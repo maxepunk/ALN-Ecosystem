@@ -67,6 +67,10 @@ class DisplayControlService extends EventEmitter {
             await displayDriver.hideScoreboard();
           }
           this.currentMode = DisplayMode.VIDEO;
+          this.emit('display:mode:changed', {
+            mode: DisplayMode.VIDEO,
+            previousMode: this.previousMode
+          });
           logger.info('[DisplayControl] Pre-play hook: entered VIDEO mode', {
             previousMode: this.previousMode
           });
