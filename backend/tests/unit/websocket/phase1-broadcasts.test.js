@@ -287,9 +287,15 @@ describe('Phase 1 Broadcasts', () => {
   });
 
   describe('service:state dual-emit (unified state architecture)', () => {
+    // service:state pushes are debounced 50ms — use fake timers so unit tests
+    // can advance past the debounce without real-time waiting
+    beforeEach(() => { jest.useFakeTimers(); });
+    afterEach(() => { jest.useRealTimers(); });
+
     it('should emit service:state with domain gameclock on gameclock:started', () => {
       setupBroadcasts();
       mockGameClockService.emit('gameclock:started', { gameStartTime: Date.now() });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -300,6 +306,7 @@ describe('Phase 1 Broadcasts', () => {
     it('should emit service:state with domain gameclock on gameclock:paused', () => {
       setupBroadcasts();
       mockGameClockService.emit('gameclock:paused', { elapsed: 300 });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -310,6 +317,7 @@ describe('Phase 1 Broadcasts', () => {
     it('should emit service:state with domain gameclock on gameclock:resumed', () => {
       setupBroadcasts();
       mockGameClockService.emit('gameclock:resumed', { elapsed: 450 });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -320,6 +328,7 @@ describe('Phase 1 Broadcasts', () => {
     it('should emit service:state with domain sound on sound:started', () => {
       setupBroadcasts();
       mockSoundService.emit('sound:started', { file: 'test.wav' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
@@ -330,6 +339,7 @@ describe('Phase 1 Broadcasts', () => {
     it('should emit service:state with domain cueengine on cue:fired', () => {
       setupBroadcasts();
       mockCueEngineService.emit('cue:fired', { cueId: 'cue-1' });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
 
       expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
         event: 'service:state',
