@@ -656,12 +656,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
           audio: () => audioRoutingService.checkHealth(),
           sound: () => soundService.checkHealth(),
           gameclock: () => true,
-          cueengine: () => {
-            const hasCues = getCueEngine().getCues().length > 0;
-            registry.report('cueengine', hasCues ? 'healthy' : 'down',
-              hasCues ? 'Cues loaded' : 'No cues loaded');
-            return hasCues;
-          },
+          cueengine: () => getCueEngine().checkHealth(),
         };
 
         const { serviceId } = payload;

@@ -192,6 +192,19 @@ class CueEngineService extends EventEmitter {
   }
 
   /**
+   * Report cueengine health to the service health registry.
+   * No cues loaded is a valid configuration (not "down") — the cue engine
+   * is always operational; it just has nothing to fire.
+   * @returns {boolean} Always true (cue engine is always healthy)
+   */
+  checkHealth() {
+    const cues = this.getCues();
+    registry.report('cueengine', 'healthy',
+      cues.length > 0 ? `${cues.length} cues loaded` : 'No cues configured');
+    return true;
+  }
+
+  /**
    * Get cue summaries for sync:full payload and GM UI.
    * Returns metadata without commands/timeline arrays.
    * @returns {Array<Object>} Array of cue summary objects
