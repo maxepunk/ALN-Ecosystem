@@ -76,6 +76,10 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [];
     this._activeDuckingSources = {};  // { targetStream: ['video', 'sound'] }
     this._preDuckVolumes = {};        // { targetStream: originalVolume }
+
+    // Sink-input registry: populated reactively from pactl subscribe events
+    // Maps sink-input id (string) → { index, appName }
+    this._sinkInputRegistry = new Map();
   }
 
   // ── Lifecycle ──
@@ -166,6 +170,9 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [];
     this._activeDuckingSources = {};
     this._preDuckVolumes = {};
+
+    // Clear sink-input registry
+    this._sinkInputRegistry.clear();
 
     registry.report('audio', 'down', 'Reset');
   }
@@ -389,10 +396,20 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Find a sink-input by application name.
+   * Fast path: checks the reactive registry first (populated by pactl subscribe events).
+   * Fallback: polls `pactl list sink-inputs` when the registry hasn't caught up yet.
    * @param {string} appName - App name substring to match (e.g., 'VLC', 'spotifyd', 'pw-play')
    * @returns {Promise<{index: string}|null>} Sink-input object with index or null
    */
   async findSinkInput(appName) {
+    // Fast path: check reactive registry (avoids pactl call on the common path)
+    for (const [id, entry] of this._sinkInputRegistry) {
+      if (entry.appName && entry.appName.toLowerCase().includes(appName.toLowerCase())) {
+        return { index: id };
+      }
+    }
+
+    // Fallback: poll pactl (registry might not have caught up yet for a brand-new process)
     try {
       const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
       const index = this._parseSinkInputs(stdout, appName);
@@ -1103,6 +1120,12 @@ class AudioRoutingService extends EventEmitter {
           this.emit('sink:removed', { id: event.id });
           this._debouncedBtSinkChanged();
         });
+      } else if ((event.action === 'new' || event.action === 'remove') && event.type === 'sink-input') {
+        if (event.action === 'new') {
+          this._identifySinkInput(event.id).catch(() => {});
+        } else {
+          this._sinkInputRegistry.delete(event.id);
+        }
       } else if (event.action === 'change' && event.type === 'card') {
         // Card events — re-activate HDMI if card profile changed (e.g., projector hotplug)
         this._activateHdmiCards().catch(err => {
@@ -1112,6 +1135,33 @@ class AudioRoutingService extends EventEmitter {
     });
 
     this._sinkMonitor.start();
+  }
+
+  /**
+   * Identify a sink-input by its PulseAudio/PipeWire id and store it in the registry.
+   * Runs `pactl list sink-inputs` once, parses the section for the given id, and
+   * extracts application.name or application.process.binary.
+   * Called on 'new' sink-input events from pactl subscribe.
+   * @param {string} id - Sink-input id from pactl subscribe event
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _identifySinkInput(id) {
+    try {
+      const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
+      const sections = stdout.split(/Sink Input #/);
+      for (const section of sections) {
+        const idMatch = section.match(/^(\d+)/);
+        if (idMatch && idMatch[1] === id) {
+          const appMatch = section.match(/application\.name\s*=\s*"([^"]+)"/i) ||
+                           section.match(/application\.process\.binary\s*=\s*"([^"]+)"/i);
+          if (appMatch) {
+            this._sinkInputRegistry.set(id, { index: id, appName: appMatch[1] });
+          }
+          break;
+        }
+      }
+    } catch { /* non-fatal — registry just won't have this entry */ }
   }
 
   // ── Private helpers ──

@@ -630,6 +630,56 @@ describe('AudioRoutingService', () => {
       const result = await audioRoutingService.findSinkInput('VLC');
       expect(result).toBeNull();
     });
+
+    // Task 10: Fast-path from registry
+    it('should return from registry without calling pactl when registry has a match', async () => {
+      // Pre-populate registry directly (simulating a prior _identifySinkInput call)
+      audioRoutingService._sinkInputRegistry.set('55', { index: '55', appName: 'VLC media player' });
+
+      const result = await audioRoutingService.findSinkInput('VLC');
+
+      expect(result).toEqual({ index: '55' });
+      // pactl should NOT have been called (fast path)
+      expect(execFile).not.toHaveBeenCalled();
+    });
+
+    it('should fall back to pactl when registry is empty', async () => {
+      mockExecFileSuccess([
+        'Sink Input #77',
+        '\tProperties:',
+        '\t\tapplication.name = "VLC media player"',
+      ].join('\n'));
+
+      const result = await audioRoutingService.findSinkInput('VLC');
+
+      expect(result).toEqual({ index: '77' });
+      expect(execFile).toHaveBeenCalledWith(
+        'pactl', ['list', 'sink-inputs'], expect.any(Object), expect.any(Function)
+      );
+    });
+
+    it('should fall back to pactl when registry has entries but none match', async () => {
+      audioRoutingService._sinkInputRegistry.set('10', { index: '10', appName: 'Firefox' });
+
+      mockExecFileSuccess([
+        'Sink Input #77',
+        '\tProperties:',
+        '\t\tapplication.name = "VLC media player"',
+      ].join('\n'));
+
+      const result = await audioRoutingService.findSinkInput('VLC');
+
+      expect(result).toEqual({ index: '77' });
+    });
+
+    it('registry match is case-insensitive substring', async () => {
+      audioRoutingService._sinkInputRegistry.set('99', { index: '99', appName: 'vlc media player' });
+
+      const result = await audioRoutingService.findSinkInput('VLC');
+
+      expect(result).toEqual({ index: '99' });
+      expect(execFile).not.toHaveBeenCalled();
+    });
   });
 
   // ── Sink Monitor ──
@@ -853,6 +903,90 @@ describe('AudioRoutingService', () => {
       expect(spawn).toHaveBeenCalledTimes(5);
 
       jest.useRealTimers();
+    });
+
+    // Task 9: Sink-input registry via subscribe events
+    it('should populate registry on sink-input new event', async () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      // Mock _identifySinkInput's pactl list sink-inputs call
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #42',
+            '\tProperties:',
+            '\t\tapplication.name = "VLC media player"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      audioRoutingService.startSinkMonitor();
+
+      mockProc.stdout.emit('data', Buffer.from("Event 'new' on sink-input #42\n"));
+
+      // Wait for async _identifySinkInput to complete
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(audioRoutingService._sinkInputRegistry.has('42')).toBe(true);
+      expect(audioRoutingService._sinkInputRegistry.get('42')).toEqual({
+        index: '42',
+        appName: 'VLC media player',
+      });
+    });
+
+    it('should remove entry from registry on sink-input remove event', async () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+      execFile.mockImplementation((cmd, args, opts, cb) => cb(null, '', ''));
+
+      // Pre-populate registry
+      audioRoutingService._sinkInputRegistry.set('42', { index: '42', appName: 'VLC media player' });
+
+      audioRoutingService.startSinkMonitor();
+
+      mockProc.stdout.emit('data', Buffer.from("Event 'remove' on sink-input #42\n"));
+
+      // Synchronous path — no async needed, but await a tick to be safe
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(audioRoutingService._sinkInputRegistry.has('42')).toBe(false);
+    });
+
+    it('should not emit sink:added or sink:removed on sink-input events', async () => {
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+      execFile.mockImplementation((cmd, args, opts, cb) => cb(null, '', ''));
+
+      const addedHandler = jest.fn();
+      const removedHandler = jest.fn();
+      audioRoutingService.on('sink:added', addedHandler);
+      audioRoutingService.on('sink:removed', removedHandler);
+
+      audioRoutingService.startSinkMonitor();
+
+      mockProc.stdout.emit('data', Buffer.from("Event 'new' on sink-input #42\n"));
+      mockProc.stdout.emit('data', Buffer.from("Event 'remove' on sink-input #42\n"));
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(addedHandler).not.toHaveBeenCalled();
+      expect(removedHandler).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Sink-input registry reset ──
+
+  describe('reset() clears sink-input registry', () => {
+    it('should clear _sinkInputRegistry on reset()', () => {
+      audioRoutingService._sinkInputRegistry.set('42', { index: '42', appName: 'VLC media player' });
+      audioRoutingService._sinkInputRegistry.set('55', { index: '55', appName: 'spotifyd' });
+
+      audioRoutingService.reset();
+
+      expect(audioRoutingService._sinkInputRegistry.size).toBe(0);
     });
   });
 
