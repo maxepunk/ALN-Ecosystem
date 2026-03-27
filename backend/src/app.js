@@ -132,6 +132,19 @@ app.use((req, res) => {
 app.use((err, _req, res, _next) => {
   logger.error('Unhandled error', err);
 
+  // Return 200 for unparseable JSON bodies so ESP32 scanners clear their queue
+  // (ESP32 uploadQueueBatch only calls removeUploadedEntries on HTTP 200)
+  if (err.type === 'entity.parse.failed') {
+    logger.warn('Returning 200 for unparseable body to clear ESP32 queue', {
+      url: _req.url,
+      ip: _req.ip,
+    });
+    return res.status(200).json({
+      error: 'PARSE_FAILED',
+      message: 'Request body permanently unparseable — discarded',
+    });
+  }
+
   res.status(err.status || 500).json({
     error: 'INTERNAL_ERROR',
     message: err.message || 'Internal server error',
@@ -251,6 +264,16 @@ async function initializeServices() {
       logger.info('No previous session - ready for new game');
     }
     
+    // Start periodic health revalidation (catches stale services like pipewire-pulse)
+    serviceHealthRegistry.startRevalidation({
+      vlc: vlcService,
+      spotify: spotifyService,
+      sound: soundService,
+      bluetooth: bluetoothService,
+      audio: audioRoutingService,
+      lighting: lightingService,
+    }, 15000);
+
     logger.info('All services initialized successfully');
   } catch (error) {
     logger.error('Failed to initialize services', error);

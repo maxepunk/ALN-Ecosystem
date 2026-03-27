@@ -39,6 +39,7 @@ const soundService = require('./services/soundService');
 const spotifyService = require('./services/spotifyService');
 const vlcService = require('./services/vlcMprisService');
 const displayControlService = require('./services/displayControlService');
+const serviceHealthRegistry = require('./services/serviceHealthRegistry');
 
 // PHASE 1.3 (P0.3): Server state machine to enforce initialization order
 const ServerState = {
@@ -177,6 +178,7 @@ async function shutdown(signal) {
     });
 
     // Cleanup services
+    serviceHealthRegistry.stopRevalidation();
     vlcService.cleanup();
     bluetoothService.cleanup();
     audioRoutingService.cleanup();

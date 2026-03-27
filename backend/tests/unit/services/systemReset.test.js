@@ -25,6 +25,8 @@ jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   report: jest.fn(),
   on: jest.fn(),
   removeAllListeners: jest.fn(),
+  startRevalidation: jest.fn(),
+  stopRevalidation: jest.fn(),
 }));
 
 describe('performSystemReset', () => {

@@ -282,6 +282,16 @@ async function performSystemReset(io, services) {
 
   logger.debug('Service health re-initialized');
 
+  // Restart health revalidation (stopped by registry.reset())
+  serviceHealthRegistry.startRevalidation({
+    vlc: require('./vlcMprisService'),
+    spotify: require('./spotifyService'),
+    sound: require('./soundService'),
+    bluetooth: require('./bluetoothService'),
+    audio: require('./audioRoutingService'),
+    lighting: require('./lightingService'),
+  }, 15000);
+
   logger.info('System reset complete - ready for new session');
 }
 

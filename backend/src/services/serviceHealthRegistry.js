@@ -17,6 +17,7 @@ class ServiceHealthRegistry extends EventEmitter {
   constructor() {
     super();
     this._services = new Map();
+    this._revalidationTimer = null;
 
     // Initialize all known services as down
     for (const id of KNOWN_SERVICES) {
@@ -99,9 +100,54 @@ class ServiceHealthRegistry extends EventEmitter {
   }
 
   /**
+   * Start periodic health revalidation.
+   * Calls each service's health check method on an interval.
+   * Catches errors per-service so one failure doesn't block others.
+   *
+   * @param {Object} services - Map of service references
+   * @param {number} [intervalMs=15000] - Revalidation interval in ms
+   */
+  startRevalidation(services, intervalMs = 15000) {
+    this.stopRevalidation();
+
+    const HEALTH_CHECKS = {
+      vlc: () => services.vlc?.checkConnection(),
+      spotify: () => services.spotify?.checkConnection(),
+      sound: () => services.sound?.checkHealth(),
+      bluetooth: () => services.bluetooth?.checkHealth(),
+      audio: () => services.audio?.checkHealth(),
+      lighting: () => services.lighting?.checkConnection(),
+      // gameclock + cueengine are always healthy (in-process) — skip
+    };
+
+    this._revalidationTimer = setInterval(async () => {
+      for (const [id, check] of Object.entries(HEALTH_CHECKS)) {
+        try {
+          await check();
+        } catch (err) {
+          logger.warn(`Health revalidation failed for ${id}`, { error: err.message });
+        }
+      }
+    }, intervalMs);
+
+    logger.info(`Health revalidation started (${intervalMs}ms interval)`);
+  }
+
+  /**
+   * Stop periodic health revalidation.
+   */
+  stopRevalidation() {
+    if (this._revalidationTimer) {
+      clearInterval(this._revalidationTimer);
+      this._revalidationTimer = null;
+    }
+  }
+
+  /**
    * Reset all services to 'down' (used in system reset and testing).
    */
   reset() {
+    this.stopRevalidation();
     for (const id of KNOWN_SERVICES) {
       const current = this._services.get(id);
       if (current.status !== 'down') {
