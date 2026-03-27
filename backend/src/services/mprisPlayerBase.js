@@ -15,24 +15,14 @@
 'use strict';
 
 const EventEmitter = require('events');
-const { execFile } = require('child_process');
 const logger = require('../utils/logger');
+const { execFileWithStderr: execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
 const ProcessMonitor = require('../utils/processMonitor');
 const DbusSignalParser = require('../utils/dbusSignalParser');
 
 const DBUS_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
-
-// Wrap execFile to always return {stdout, stderr}
-function execFileAsync(cmd, args, opts) {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, opts, (err, stdout, stderr) => {
-      if (err) reject(err);
-      else resolve({ stdout, stderr });
-    });
-  });
-}
 
 class MprisPlayerBase extends EventEmitter {
   /**

@@ -1,22 +1,11 @@
 // backend/src/services/spotifyService.js
-const { execFile } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const logger = require('../utils/logger');
+const { execFileWithStderr: execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
 const MprisPlayerBase = require('./mprisPlayerBase');
-
-// Wrap execFile to always return {stdout, stderr} — needed for activate()
-// and checkConnection() which bypass _dbusCall() intentionally
-function execFileAsync(cmd, args, opts) {
-  return new Promise((resolve, reject) => {
-    execFile(cmd, args, opts, (err, stdout, stderr) => {
-      if (err) reject(err);
-      else resolve({ stdout, stderr });
-    });
-  });
-}
 
 /** D-Bus destination cache TTL (ms) — re-discover if spotifyd PID changed */
 const DBUS_DEST_CACHE_TTL = 300000; // 5 minutes
