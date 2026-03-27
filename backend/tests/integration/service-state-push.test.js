@@ -253,7 +253,7 @@ describe('service:state Push Integration', () => {
       expect(payload.state).toHaveProperty('spotify');
     });
 
-    it('should emit for each rapid change (no coalescing)', async () => {
+    it('should coalesce rapid changes into one push per domain (50ms debounce)', async () => {
       const events = [];
       gm1.on('service:state', (data) => {
         if ((data.data || data).domain === 'health') {
@@ -261,15 +261,19 @@ describe('service:state Push Integration', () => {
         }
       });
 
-      // Fire 3 rapid health changes (report 'down' to trigger actual status change)
+      // Fire 3 rapid health changes — all within the 50ms debounce window
       serviceHealthRegistry.report('vlc', 'down', 'Change 1');
       serviceHealthRegistry.report('spotify', 'down', 'Change 2');
       serviceHealthRegistry.report('sound', 'down', 'Change 3');
 
-      // Wait for events to arrive
+      // Wait for debounce to settle (50ms) + network round-trip
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      expect(events.length).toBeGreaterThanOrEqual(3);
+      // Debounce coalesces bursts: exactly 1 push with the latest full snapshot
+      expect(events.length).toBe(1);
+      // The single push should contain full health snapshot with all 8 services
+      const payload = (events[0].data || events[0]);
+      expect(Object.keys(payload.state).length).toBeGreaterThanOrEqual(8);
     });
   });
 });

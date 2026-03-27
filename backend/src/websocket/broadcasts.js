@@ -418,12 +418,24 @@ function setupBroadcastListeners(io, services) {
   // ============================================================
 
   /**
+   * Per-domain debounce timers for pushServiceState.
+   * Coalesces bursts of state changes (e.g. rapid D-Bus signals) into a
+   * single WebSocket push per domain within a 50ms window.
+   */
+  const _pushTimers = {};
+
+  /**
    * Push unified service:state event with full state snapshot.
+   * Debounced per domain (50ms) to coalesce rapid back-to-back state changes.
    * This is the sole broadcast mechanism for service domain state.
    * Frontend StateStore consumes these events via store subscriptions.
    */
   function pushServiceState(domain, service) {
-    emitToRoom(io, 'gm', 'service:state', { domain, state: service.getState() });
+    if (_pushTimers[domain]) clearTimeout(_pushTimers[domain]);
+    _pushTimers[domain] = setTimeout(() => {
+      delete _pushTimers[domain];
+      emitToRoom(io, 'gm', 'service:state', { domain, state: service.getState() });
+    }, 50);
   }
 
   // Spotify → service:state { domain: 'spotify' }
@@ -631,6 +643,9 @@ function cleanupBroadcastListeners() {
 
   // Clear teamScore stash to prevent state leaking between resets
   teamScoreStash.clear();
+
+  // Note: _pushTimers is local to setupBroadcastListeners closure — timers are
+  // automatically abandoned (will no-op) once broadcastListenersActive is reset.
 
   // Reset flag to allow re-setup
   broadcastListenersActive = false;
