@@ -14,11 +14,33 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
+// Custom format that serializes Error instances in metadata to plain objects.
+// Without this, winston's JSON transport renders Error objects as {} (empty).
+const serializeErrors = winston.format((info) => {
+  if (info.metadata && typeof info.metadata === 'object') {
+    for (const [key, val] of Object.entries(info.metadata)) {
+      if (val instanceof Error) {
+        info.metadata[key] = { message: val.message, stack: val.stack, name: val.name, ...val };
+      }
+      // Also check one level deeper (metadata.metadata from winston's metadata format)
+      if (val && typeof val === 'object' && !(val instanceof Error)) {
+        for (const [k2, v2] of Object.entries(val)) {
+          if (v2 instanceof Error) {
+            val[k2] = { message: v2.message, stack: v2.stack, name: v2.name, ...v2 };
+          }
+        }
+      }
+    }
+  }
+  return info;
+});
+
 // Custom log format
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
   winston.format.errors({ stack: true }),
-  winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] })
+  winston.format.metadata({ fillExcept: ['message', 'level', 'timestamp', 'label'] }),
+  serializeErrors()
 );
 
 // Console format with colors
