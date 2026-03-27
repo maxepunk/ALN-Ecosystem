@@ -592,4 +592,214 @@ describe('VideoQueueService - Queue Management', () => {
       });
     });
   });
+
+  describe('waitForVlcLoaded — reactive state:changed listener', () => {
+    let vlcService;
+
+    beforeEach(() => {
+      vlcService = require('../../../src/services/vlcMprisService');
+      // Ensure clean state state
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('fast path: resolves immediately when VLC is already playing the expected file', async () => {
+      vlcService.state = 'playing';
+      vlcService.track = { filename: 'target.mp4', length: 60 };
+
+      const getStatusSpy = jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0.1,
+      });
+
+      const result = await videoQueueService.waitForVlcLoaded('target.mp4', 'test fast path', 5000);
+
+      expect(result).toBeDefined();
+      expect(getStatusSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('resolves when state:changed fires with expected filename and playing state', async () => {
+      // NOT in fast path (wrong filename initially)
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      const getStatusSpy = jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0.0,
+      });
+
+      // Emit state:changed after a brief delay
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'stopped', filename: null },
+          current: { state: 'playing', filename: 'target.mp4' },
+        });
+      }, 20);
+
+      const result = await videoQueueService.waitForVlcLoaded('target.mp4', 'test reactive', 5000);
+
+      expect(result).toBeDefined();
+      // getStatus called once (from reactive handler, NOT polling)
+      expect(getStatusSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores state:changed events for wrong filename', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      const getStatusSpy = jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0.0,
+      });
+
+      // First emit wrong file, then correct file
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'stopped', filename: null },
+          current: { state: 'playing', filename: 'wrong.mp4' },
+        });
+      }, 10);
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'playing', filename: 'wrong.mp4' },
+          current: { state: 'playing', filename: 'target.mp4' },
+        });
+      }, 30);
+
+      const result = await videoQueueService.waitForVlcLoaded('target.mp4', 'test ignores wrong', 5000);
+      expect(result).toBeDefined();
+      // getStatus called once (only after correct file fires)
+      expect(getStatusSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores state:changed events for non-playing states', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      const getStatusSpy = jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0.0,
+      });
+
+      // First emit paused for correct file (should be ignored), then playing
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'stopped', filename: null },
+          current: { state: 'paused', filename: 'target.mp4' },
+        });
+      }, 10);
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'paused', filename: 'target.mp4' },
+          current: { state: 'playing', filename: 'target.mp4' },
+        });
+      }, 30);
+
+      const result = await videoQueueService.waitForVlcLoaded('target.mp4', 'test non-playing ignored', 5000);
+      expect(result).toBeDefined();
+      expect(getStatusSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects with timeout error when state:changed never fires with expected file', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'stopped',
+        currentItem: null,
+        length: 0,
+        position: 0,
+      });
+
+      await expect(
+        videoQueueService.waitForVlcLoaded('never.mp4', 'timeout test', 100)
+      ).rejects.toThrow(/Timeout waiting for timeout test after 100ms/);
+    });
+
+    it('timeout error message includes expected filename and current state', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = { filename: 'different.mp4' };
+
+      await expect(
+        videoQueueService.waitForVlcLoaded('expected.mp4', 'file load', 100)
+      ).rejects.toThrow(/expected\.mp4/);
+    });
+
+    it('does not leave dangling listeners after resolution', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0,
+      });
+
+      const listenersBefore = vlcService.listenerCount('state:changed');
+
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'stopped', filename: null },
+          current: { state: 'playing', filename: 'target.mp4' },
+        });
+      }, 10);
+
+      await videoQueueService.waitForVlcLoaded('target.mp4', 'cleanup test', 5000);
+
+      // Listener should be removed after resolution
+      expect(vlcService.listenerCount('state:changed')).toBe(listenersBefore);
+    });
+
+    it('does not leave dangling listeners after timeout rejection', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      const listenersBefore = vlcService.listenerCount('state:changed');
+
+      await expect(
+        videoQueueService.waitForVlcLoaded('timeout.mp4', 'cleanup timeout test', 50)
+      ).rejects.toThrow();
+
+      // Listener should be removed after rejection
+      expect(vlcService.listenerCount('state:changed')).toBe(listenersBefore);
+    });
+
+    it('does NOT poll getStatus in a loop (no polling pattern)', async () => {
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      const getStatusSpy = jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0,
+      });
+
+      setTimeout(() => {
+        vlcService.emit('state:changed', {
+          previous: { state: 'stopped', filename: null },
+          current: { state: 'playing', filename: 'target.mp4' },
+        });
+      }, 50);
+
+      await videoQueueService.waitForVlcLoaded('target.mp4', 'no-polling test', 5000);
+
+      // getStatus should be called exactly once (reactive, not polling)
+      expect(getStatusSpy.mock.calls.length).toBeLessThan(5);
+      expect(getStatusSpy.mock.calls.length).toBe(1);
+    });
+  });
 });

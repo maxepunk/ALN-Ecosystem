@@ -17,7 +17,7 @@ class VlcMprisService extends MprisPlayerBase {
       healthServiceId: 'vlc',
       signalDebounceMs: 100, // VLC signals are less chatty than Spotify
     });
-    this._previousDelta = null;
+    this._previousDelta = { state: 'stopped', filename: null };
     this._loopEnabled = false;
     this._rawVolume = 1.0; // MPRIS 0.0-1.0 — avoids lossy 256→100→256 round-trip
     this._vlcProcessMonitor = null;
@@ -442,7 +442,7 @@ class VlcMprisService extends MprisPlayerBase {
    */
   reset() {
     super.reset(); // stops D-Bus monitor, reports health down, resets state
-    this._previousDelta = null;
+    this._previousDelta = { state: 'stopped', filename: null };
     this._loopEnabled = false;
     this._rawVolume = 1.0;
     // VLC ProcessMonitor intentionally NOT stopped (process preserved, same as Spotify's spotifyd)

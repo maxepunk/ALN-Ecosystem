@@ -73,6 +73,11 @@ describe('VlcMprisService', () => {
     it('should use 100ms signal debounce (less chatty than Spotify)', () => {
       expect(vlcMprisService._signalDebounceMs).toBe(100);
     });
+
+    it('should seed _previousDelta to stopped/null so first state:changed is emitted', () => {
+      // Seeded (not null) so waitForVlcLoaded reactive listener catches the very first play.
+      expect(vlcMprisService._previousDelta).toEqual({ state: 'stopped', filename: null });
+    });
   });
 
   // ── Init ──
@@ -701,9 +706,11 @@ describe('VlcMprisService', () => {
       expect(registry.isHealthy('vlc')).toBe(true);
     });
 
-    it('should set baseline on first signal after reset (no state:changed emitted)', () => {
-      // After reset, _previousDelta is null — first signal sets baseline without emitting
-      vlcMprisService._previousDelta = null; // simulates post-reset state
+    it('should emit state:changed on first signal after reset (seeded _previousDelta enables first-play emission)', () => {
+      // After reset, _previousDelta is seeded to {state:'stopped', filename:null}
+      // so the first state change (stopped → playing) WILL emit state:changed.
+      // This is required so waitForVlcLoaded can catch the very first video play.
+      vlcMprisService._previousDelta = { state: 'stopped', filename: null }; // matches post-reset state
 
       const handler = jest.fn();
       vlcMprisService.on('state:changed', handler);
@@ -713,22 +720,14 @@ describe('VlcMprisService', () => {
         raw: '',
       });
 
-      // No state:changed emitted (no previous to compare against)
-      expect(handler).not.toHaveBeenCalled();
-      // But internal state IS updated
+      // state:changed IS emitted (previous was stopped, now playing)
+      expect(handler).toHaveBeenCalledWith({
+        previous: { state: 'stopped', filename: null },
+        current: { state: 'playing', filename: null },
+      });
+      // Internal state updated
       expect(vlcMprisService.state).toBe('playing');
       expect(vlcMprisService._previousDelta).toEqual({ state: 'playing', filename: null });
-
-      // Second signal with a change DOES emit
-      vlcMprisService._processStateChange({
-        properties: { PlaybackStatus: 'Paused' },
-        raw: '',
-      });
-
-      expect(handler).toHaveBeenCalledWith({
-        previous: { state: 'playing', filename: null },
-        current: { state: 'paused', filename: null },
-      });
     });
   });
 
@@ -816,7 +815,8 @@ describe('VlcMprisService', () => {
 
       expect(vlcMprisService.state).toBe('stopped');
       expect(vlcMprisService.volume).toBe(100);
-      expect(vlcMprisService._previousDelta).toBeNull();
+      // _previousDelta is seeded (not null) after reset to enable first-play state:changed emission
+      expect(vlcMprisService._previousDelta).toEqual({ state: 'stopped', filename: null });
       expect(vlcMprisService._loopEnabled).toBe(false);
     });
 
