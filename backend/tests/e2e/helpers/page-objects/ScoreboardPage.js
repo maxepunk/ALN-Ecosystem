@@ -18,23 +18,33 @@ class ScoreboardPage {
     this.connectionStatus = page.locator('#connectionStatus');
     this.statusText = page.locator('#statusText');
 
-    // Hero evidence card (latest discovery)
-    this.heroEvidence = page.locator('#heroEvidence');
-    this.heroEvidenceActive = page.locator('#heroEvidence:not(.empty)');
-    this.heroEvidenceEmpty = page.locator('#heroEvidence.empty');
-    this.heroEvidenceTeam = page.locator('#heroEvidence .hero-evidence__team');
-    this.heroEvidenceText = page.locator('#heroEvidence .hero-evidence__summary');
-    this.heroEvidenceTime = page.locator('#heroEvidence .hero-evidence__time');
+    // Evidence page (detective mode discoveries, grouped by character/owner)
+    // The scoreboard groups detective evidence by owner into .character-group cards.
+    // Each group has .character-group__entry children for individual token exposures.
+    // The page container (#evidencePage) shows .evidence-empty when nothing is exposed.
+    this.evidencePage = page.locator('#evidencePage');
+    this.evidenceContent = page.locator('#evidenceContent');
+    this.evidenceGroups = page.locator('.character-group');
+    this.evidenceEntries = page.locator('.character-group__entry');
+    this.evidenceEmpty = page.locator('.evidence-empty');
 
-    // Evidence feed grid (detective mode discoveries)
-    this.evidenceFeed = page.locator('#evidenceFeed');
-    this.evidenceCards = page.locator('.evidence-card');
-    this.evidenceFeedEmpty = page.locator('.evidence-feed-empty');
+    // Legacy locator aliases (kept for compatibility — point to real DOM selectors)
+    this.heroEvidence = page.locator('#evidencePage');
+    this.heroEvidenceActive = page.locator('.character-group');
+    this.heroEvidenceEmpty = page.locator('.evidence-empty');
+    this.heroEvidenceTeam = page.locator('.character-group__name');
+    this.heroEvidenceText = page.locator('.character-group__entry');
+    this.heroEvidenceTime = page.locator('.character-group__timestamp');
+    this.evidenceFeed = page.locator('#evidenceContent');
+    this.evidenceCards = page.locator('.character-group__entry');
+    this.evidenceFeedEmpty = page.locator('.evidence-empty');
 
     // Score ticker (Black Market rankings)
+    // The ticker uses .ticker-entry[data-team] elements inside #tickerContent.
     this.scoreTicker = page.locator('#scoreTicker');
-    this.tickerEntries = page.locator('#tickerEntries');
-    this.scoreEntries = page.locator('.score-entry');
+    this.tickerContent = page.locator('#tickerContent');
+    this.tickerEntries = page.locator('#tickerContent');
+    this.scoreEntries = page.locator('.ticker-entry');
     this.tickerEmpty = page.locator('.ticker-empty');
 
     // Overlays
@@ -124,30 +134,31 @@ class ScoreboardPage {
   // ============================================
 
   /**
-   * Check if hero evidence is displaying (not empty)
+   * Check if any evidence group is displaying (not empty state)
    * @returns {Promise<boolean>}
    */
   async hasHeroEvidence() {
-    return await this.heroEvidenceActive.isVisible();
+    return await this.evidenceGroups.count() > 0;
   }
 
   /**
-   * Wait for hero evidence to appear
+   * Wait for at least one evidence group to appear
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForHeroEvidence(timeout = 10000) {
-    await this.heroEvidenceActive.waitFor({ state: 'visible', timeout });
+    await this.evidenceGroups.first().waitFor({ state: 'visible', timeout });
   }
 
   /**
-   * Get hero evidence details
+   * Get first evidence group details
    * @returns {Promise<{team: string, text: string, time: string}>}
    */
   async getHeroEvidenceDetails() {
+    const firstGroup = this.evidenceGroups.first();
     return {
-      team: await this.heroEvidenceTeam.textContent(),
-      text: await this.heroEvidenceText.textContent(),
-      time: await this.heroEvidenceTime.textContent()
+      team: await firstGroup.locator('.character-group__name').textContent(),
+      text: await firstGroup.locator('.character-group__entry').first().textContent(),
+      time: await firstGroup.locator('.character-group__timestamp').first().textContent()
     };
   }
 
@@ -156,43 +167,41 @@ class ScoreboardPage {
   // ============================================
 
   /**
-   * Get count of evidence cards in the feed
+   * Get count of individual evidence entries across all character groups.
+   * Each detective-mode transaction adds one entry inside a character-group card.
    * @returns {Promise<number>}
    */
   async getEvidenceCardCount() {
-    return await this.evidenceCards.count();
+    return await this.evidenceEntries.count();
   }
 
   /**
-   * Wait for evidence cards to appear in feed
-   * Note: This only counts FEED cards, not the hero evidence
-   * @param {number} expectedCount - Minimum number of feed cards expected
+   * Wait for evidence entries to appear.
+   * Each detective transaction generates one .character-group__entry in the evidence page.
+   * @param {number} expectedCount - Minimum number of evidence entries expected
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForEvidenceCards(expectedCount = 1, timeout = 10000) {
     await this.page.waitForFunction(
-      (count) => document.querySelectorAll('.evidence-card').length >= count,
+      (count) => document.querySelectorAll('.character-group__entry').length >= count,
       expectedCount,
       { timeout }
     );
   }
 
   /**
-   * Wait for total evidence (hero + feed) to reach expected count
-   * The scoreboard displays evidence as: 1 hero card + N feed cards
-   * So total evidence = (hasHero ? 1 : 0) + feedCardCount
+   * Wait for evidence entries to reach the expected count.
+   * The scoreboard groups detective evidence by character (owner) into .character-group cards.
+   * Each exposed token adds one .character-group__entry. Total evidence = entry count.
    * @param {number} expectedTotal - Total evidence entries expected
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForTotalEvidence(expectedTotal = 1, timeout = 10000) {
     await this.page.waitForFunction(
       (count) => {
-        // Count hero evidence (not empty)
-        const heroEl = document.querySelector('#heroEvidence');
-        const hasHero = heroEl && !heroEl.classList.contains('empty') ? 1 : 0;
-        // Count feed cards
-        const feedCount = document.querySelectorAll('.evidence-card').length;
-        return (hasHero + feedCount) >= count;
+        // Count individual evidence entries (one per exposed token)
+        const entryCount = document.querySelectorAll('.character-group__entry').length;
+        return entryCount >= count;
       },
       expectedTotal,
       { timeout }
@@ -200,47 +209,49 @@ class ScoreboardPage {
   }
 
   /**
-   * Get total evidence count (hero + feed)
+   * Get total evidence entry count.
    * @returns {Promise<number>}
    */
   async getTotalEvidenceCount() {
-    const hasHero = await this.hasHeroEvidence() ? 1 : 0;
-    const feedCount = await this.getEvidenceCardCount();
-    return hasHero + feedCount;
+    return await this.evidenceEntries.count();
   }
 
   /**
-   * Check if evidence feed is empty
+   * Check if evidence is empty (no characters exposed)
    * @returns {Promise<boolean>}
    */
   async isEvidenceFeedEmpty() {
-    return await this.evidenceFeedEmpty.isVisible();
+    return await this.evidenceEmpty.isVisible();
   }
 
   /**
-   * Get all evidence card details
-   * @returns {Promise<Array<{team: string, text: string, time: string}>>}
+   * Get all evidence entry details from all character groups
+   * @returns {Promise<Array<{owner: string, text: string, time: string}>>}
    */
   async getAllEvidenceCards() {
-    const cards = await this.evidenceCards.all();
+    const groups = await this.evidenceGroups.all();
     const details = [];
-    for (const card of cards) {
-      details.push({
-        team: await card.locator('.evidence-card__team').textContent(),
-        text: await card.locator('.evidence-card__text').textContent(),
-        time: await card.locator('.evidence-card__time').textContent()
-      });
+    for (const group of groups) {
+      const owner = await group.locator('.character-group__name').textContent();
+      const entries = await group.locator('.character-group__entry').all();
+      for (const entry of entries) {
+        details.push({
+          team: owner.trim(),
+          text: await entry.textContent(),
+          time: await entry.locator('.character-group__timestamp').textContent().catch(() => '')
+        });
+      }
     }
     return details;
   }
 
   /**
-   * Find evidence card by text content
-   * @param {string} searchText - Text to search for in evidence
+   * Find evidence entry by text content
+   * @param {string} searchText - Text to search for in evidence entries
    * @returns {Promise<boolean>} - True if found
    */
   async hasEvidenceContaining(searchText) {
-    const count = await this.evidenceCards.filter({ hasText: searchText }).count();
+    const count = await this.evidenceEntries.filter({ hasText: searchText }).count();
     return count > 0;
   }
 
@@ -249,7 +260,8 @@ class ScoreboardPage {
   // ============================================
 
   /**
-   * Get count of score entries displayed
+   * Get count of score entries displayed in the ticker.
+   * Entries use .ticker-entry[data-team] in the actual scoreboard DOM.
    * @returns {Promise<number>}
    */
   async getScoreEntryCount() {
@@ -257,20 +269,20 @@ class ScoreboardPage {
   }
 
   /**
-   * Wait for score entries to appear
+   * Wait for score entries to appear in the ticker.
    * @param {number} expectedCount - Minimum number of entries expected
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForScoreEntries(expectedCount = 1, timeout = 10000) {
     await this.page.waitForFunction(
-      (count) => document.querySelectorAll('.score-entry').length >= count,
+      (count) => document.querySelectorAll('.ticker-entry').length >= count,
       expectedCount,
       { timeout }
     );
   }
 
   /**
-   * Check if score ticker is empty
+   * Check if score ticker is empty (shows "No scores recorded")
    * @returns {Promise<boolean>}
    */
   async isScoreTickerEmpty() {
@@ -278,15 +290,16 @@ class ScoreboardPage {
   }
 
   /**
-   * Get team score from ticker by team ID
+   * Get team score from ticker by team ID.
+   * Actual DOM: .ticker-entry[data-team="..."] .ticker-entry__score
    * @param {string} teamId - Team identifier
    * @returns {Promise<string|null>} - Score text (e.g., "$1,500") or null if not found
    */
   async getTeamScore(teamId) {
-    const entry = this.scoreEntries.filter({ hasText: teamId });
+    const entry = this.page.locator(`.ticker-entry[data-team="${teamId}"]`);
     const count = await entry.count();
     if (count === 0) return null;
-    return await entry.locator('.score-entry__amount').textContent();
+    return await entry.first().locator('.ticker-entry__score').textContent();
   }
 
   /**
@@ -302,25 +315,28 @@ class ScoreboardPage {
   }
 
   /**
-   * Get team rank from ticker by team ID
+   * Get team rank from ticker by team ID.
+   * Actual DOM: .ticker-entry[data-team="..."] .ticker-entry__rank
    * @param {string} teamId - Team identifier
    * @returns {Promise<number|null>} - Rank (1-based) or null if not found
    */
   async getTeamRank(teamId) {
-    const entry = this.scoreEntries.filter({ hasText: teamId });
+    const entry = this.page.locator(`.ticker-entry[data-team="${teamId}"]`);
     const count = await entry.count();
     if (count === 0) return null;
-    const rankText = await entry.locator('.score-entry__rank').textContent();
-    return parseInt(rankText, 10);
+    const rankText = await entry.first().locator('.ticker-entry__rank').textContent();
+    // Rank is rendered as "#1", strip the "#"
+    return parseInt(rankText.replace('#', ''), 10);
   }
 
   /**
-   * Check if a team appears in the score ticker
+   * Check if a team appears in the score ticker.
+   * Actual DOM: .ticker-entry[data-team="..."]
    * @param {string} teamId - Team identifier
    * @returns {Promise<boolean>}
    */
   async hasTeamInScores(teamId) {
-    const entry = this.page.locator(`.score-entry[data-team="${teamId}"]`);
+    const entry = this.page.locator(`.ticker-entry[data-team="${teamId}"]`);
     return await entry.isVisible();
   }
 
@@ -330,7 +346,7 @@ class ScoreboardPage {
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForTeamInScores(teamId, timeout = 10000) {
-    await this.page.locator(`.score-entry[data-team="${teamId}"]`).waitFor({ state: 'visible', timeout });
+    await this.page.locator(`.ticker-entry[data-team="${teamId}"]`).waitFor({ state: 'visible', timeout });
   }
 
   /**
@@ -338,14 +354,19 @@ class ScoreboardPage {
    * @returns {Promise<Array<{rank: number, team: string, score: string}>>}
    */
   async getAllScoreEntries() {
+    // Only get the first set (ticker doubles content for scrolling, avoid duplicates)
     const entries = await this.scoreEntries.all();
+    const seen = new Set();
     const details = [];
     for (const entry of entries) {
-      const rankText = await entry.locator('.score-entry__rank').textContent();
+      const team = await entry.getAttribute('data-team');
+      if (team && seen.has(team)) continue; // Skip duplicated scroll entries
+      seen.add(team);
+      const rankText = await entry.locator('.ticker-entry__rank').textContent();
       details.push({
-        rank: parseInt(rankText, 10),
-        team: await entry.locator('.score-entry__team').textContent(),
-        score: await entry.locator('.score-entry__amount').textContent()
+        rank: parseInt(rankText.replace('#', ''), 10),
+        team: await entry.locator('.ticker-entry__name').textContent(),
+        score: await entry.locator('.ticker-entry__score').textContent()
       });
     }
     return details.sort((a, b) => a.rank - b.rank);
@@ -384,7 +405,8 @@ class ScoreboardPage {
   // ============================================
 
   /**
-   * Wait for a score update to be reflected on screen
+   * Wait for a score update to be reflected on screen.
+   * Actual DOM: .ticker-entry[data-team="..."] .ticker-entry__score
    * @param {string} teamId - Team to watch
    * @param {number} expectedScore - Expected score value
    * @param {number} timeout - Timeout in milliseconds
@@ -392,9 +414,9 @@ class ScoreboardPage {
   async waitForScoreUpdate(teamId, expectedScore, timeout = 10000) {
     await this.page.waitForFunction(
       ({ team, score }) => {
-        const entry = document.querySelector(`.score-entry[data-team="${team}"]`);
+        const entry = document.querySelector(`.ticker-entry[data-team="${team}"]`);
         if (!entry) return false;
-        const amountEl = entry.querySelector('.score-entry__amount');
+        const amountEl = entry.querySelector('.ticker-entry__score');
         if (!amountEl) return false;
         const currentScore = parseInt(amountEl.textContent.replace(/[$,]/g, ''), 10);
         return currentScore >= score;
@@ -405,13 +427,14 @@ class ScoreboardPage {
   }
 
   /**
-   * Wait for new evidence to appear (count increases)
-   * @param {number} previousCount - Previous evidence count
+   * Wait for new evidence entries to appear (count increases).
+   * Counts .character-group__entry elements in the evidence page.
+   * @param {number} previousCount - Previous evidence entry count
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForNewEvidence(previousCount, timeout = 10000) {
     await this.page.waitForFunction(
-      (prevCount) => document.querySelectorAll('.evidence-card').length > prevCount,
+      (prevCount) => document.querySelectorAll('.character-group__entry').length > prevCount,
       previousCount,
       { timeout }
     );
