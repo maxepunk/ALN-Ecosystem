@@ -46,9 +46,9 @@ git submodule update --init --recursive
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# Install VLC
+# Install VLC and display management tools
 sudo apt-get update
-sudo apt-get install -y vlc
+sudo apt-get install -y vlc xdotool wmctrl
 
 # Install PM2 globally
 sudo npm install -g pm2
