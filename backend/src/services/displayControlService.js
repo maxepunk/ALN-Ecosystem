@@ -265,34 +265,38 @@ class DisplayControlService extends EventEmitter {
   /**
    * Handle video completion - return to previous mode
    * Called from video:idle listener, acquires lock to serialize with other transitions.
+   * Mode check is inside the lock to prevent TOCTOU race: another transition could
+   * change currentMode between the check and the lock acquisition.
+   * Internal _do* methods used to avoid deadlock (lock already held).
    * @private
    */
   async _handleVideoComplete() {
-    if (this.currentMode !== DisplayMode.VIDEO) {
-      return;
-    }
+    return this._withLock(async () => {
+      if (this.currentMode !== DisplayMode.VIDEO) {
+        return;
+      }
 
-    logger.info('[DisplayControl] Video complete, returning to previous mode', {
-      previousMode: this.previousMode
-    });
+      logger.info('[DisplayControl] Video complete, returning to previous mode', {
+        previousMode: this.previousMode
+      });
 
-    const completedVideo = this.pendingVideo;
-    this.pendingVideo = null;
+      const completedVideo = this.pendingVideo;
+      this.pendingVideo = null;
 
-    // Return to previous mode (goes through public API to acquire lock)
-    switch (this.previousMode) {
-      case DisplayMode.SCOREBOARD:
-        await this.setScoreboard();
-        break;
-      case DisplayMode.IDLE_LOOP:
-      default:
-        await this.setIdleLoop();
-        break;
-    }
+      switch (this.previousMode) {
+        case DisplayMode.SCOREBOARD:
+          await this._doSetScoreboard();
+          break;
+        case DisplayMode.IDLE_LOOP:
+        default:
+          await this._doSetIdleLoop();
+          break;
+      }
 
-    this.emit('display:video:complete', {
-      video: completedVideo,
-      returnedTo: this.currentMode
+      this.emit('display:video:complete', {
+        video: completedVideo,
+        returnedTo: this.currentMode
+      });
     });
   }
 
