@@ -1748,6 +1748,20 @@ class GMScannerPage {
     // Brief wait for broadcast to reach the scanner page
     await this.page.waitForTimeout(500);
   }
+
+  /**
+   * Wait for video status to show idle (no video playing, queue empty)
+   * @param {number} timeout - Max wait time in ms
+   */
+  async waitForVideoIdle(timeout = 10000) {
+    await this.page.waitForFunction(
+      () => {
+        const el = document.getElementById('now-showing-value');
+        return el && el.textContent === 'Idle Loop';
+      },
+      { timeout }
+    );
+  }
 }
 
 module.exports = { GMScannerPage };

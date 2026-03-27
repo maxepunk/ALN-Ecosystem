@@ -449,7 +449,10 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // 1.6.6: Fire video-driven compound cue (IF VLC is real)
     if (vlcInfo.type === 'real') {
-      console.log('  → Firing video-driven compound cue: e2e-video-compound');
+      // Wait for VLC to be idle before firing video compound cue
+      // (prevents video_busy hold if previous activity left VLC in use)
+      await gmScanner1.waitForVideoIdle(10000);
+      console.log('  → VLC idle, firing video-driven compound cue: e2e-video-compound');
       await gmScanner1.fireCue('e2e-video-compound');
 
       // Verify active cue appears
