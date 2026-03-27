@@ -364,31 +364,44 @@ function setupBroadcastListeners(io, services) {
   // ============================================================
 
   // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService
+  // handleDuckingEvent is async (awaits pre-duck volume capture) — attach .catch() for safety
   if (audioRoutingService && videoQueueService) {
     addTrackedListener(videoQueueService, 'video:started', () => {
-      audioRoutingService.handleDuckingEvent('video', 'started');
+      audioRoutingService.handleDuckingEvent('video', 'started').catch(err => {
+        logger.warn('Ducking start failed on video:started', { error: err.message });
+      });
       // Route video audio to configured output (VLC sink-input exists by video:started)
       audioRoutingService.applyRouting('video').catch(err => {
         logger.warn('Video audio routing failed on video:started', { error: err.message });
       });
     });
     addTrackedListener(videoQueueService, 'video:completed', () => {
-      audioRoutingService.handleDuckingEvent('video', 'completed');
+      audioRoutingService.handleDuckingEvent('video', 'completed').catch(err => {
+        logger.warn('Ducking stop failed on video:completed', { error: err.message });
+      });
     });
     addTrackedListener(videoQueueService, 'video:paused', () => {
-      audioRoutingService.handleDuckingEvent('video', 'paused');
+      audioRoutingService.handleDuckingEvent('video', 'paused').catch(err => {
+        logger.warn('Ducking stop failed on video:paused', { error: err.message });
+      });
     });
     addTrackedListener(videoQueueService, 'video:resumed', () => {
-      audioRoutingService.handleDuckingEvent('video', 'resumed');
+      audioRoutingService.handleDuckingEvent('video', 'resumed').catch(err => {
+        logger.warn('Ducking start failed on video:resumed', { error: err.message });
+      });
     });
   }
 
   if (audioRoutingService && soundService) {
     addTrackedListener(soundService, 'sound:started', () => {
-      audioRoutingService.handleDuckingEvent('sound', 'started');
+      audioRoutingService.handleDuckingEvent('sound', 'started').catch(err => {
+        logger.warn('Ducking start failed on sound:started', { error: err.message });
+      });
     });
     addTrackedListener(soundService, 'sound:completed', () => {
-      audioRoutingService.handleDuckingEvent('sound', 'completed');
+      audioRoutingService.handleDuckingEvent('sound', 'completed').catch(err => {
+        logger.warn('Ducking stop failed on sound:completed', { error: err.message });
+      });
     });
   }
 
@@ -452,11 +465,20 @@ function setupBroadcastListeners(io, services) {
   }
   const VIDEO_LIFECYCLE_EVENTS = [
     'video:started', 'video:completed', 'video:paused', 'video:resumed',
-    'video:loading', 'video:idle', 'video:failed',
+    'video:loading', 'video:idle',
   ];
   for (const event of VIDEO_LIFECYCLE_EVENTS) {
     addTrackedListener(videoQueueService, event, () => pushServiceState('video', videoQueueService));
   }
+  // video:failed requires an immediate (non-debounced) push to capture error status before
+  // videoQueueService nulls currentItem. Without this, getState() returns 'idle' instead of 'error'.
+  addTrackedListener(videoQueueService, 'video:failed', () => {
+    if (_pushTimers['video']) {
+      clearTimeout(_pushTimers['video']);
+      delete _pushTimers['video'];
+    }
+    emitToRoom(io, 'gm', 'service:state', { domain: 'video', state: videoQueueService.getState() });
+  });
   const QUEUE_EVENTS = ['queue:added', 'queue:cleared', 'queue:reordered', 'queue:pending-cleared', 'queue:reset'];
   for (const event of QUEUE_EVENTS) {
     addTrackedListener(videoQueueService, event, () => pushServiceState('video', videoQueueService));

@@ -96,7 +96,7 @@ describe('Phase 1 Broadcasts', () => {
       scanning: false, pairedDevices: [], connectedDevices: [],
     });
     mockAudioRoutingService = new EventEmitter();
-    mockAudioRoutingService.handleDuckingEvent = jest.fn();
+    mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
     mockAudioRoutingService.getState = jest.fn().mockReturnValue({
       routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
     });

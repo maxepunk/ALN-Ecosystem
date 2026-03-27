@@ -525,7 +525,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     beforeEach(() => {
       mockAudioRoutingService = new EventEmitter();
       mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
-      mockAudioRoutingService.handleDuckingEvent = jest.fn();
+      mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
       mockAudioRoutingService.applyRouting = jest.fn().mockResolvedValue();
       mockAudioRoutingService.getState = jest.fn().mockReturnValue({
         routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
@@ -602,7 +602,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         scanning: false, pairedDevices: [], connectedDevices: [],
       });
       mockAudioRoutingService = new EventEmitter();
-      mockAudioRoutingService.handleDuckingEvent = jest.fn();
+      mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
       mockAudioRoutingService.getState = jest.fn().mockReturnValue({
         routes: { video: 'hdmi' }, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
       });

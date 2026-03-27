@@ -113,8 +113,10 @@ class VideoQueueService extends EventEmitter {
     } catch (error) {
       logger.error('Failed to play video', { error, itemId: nextItem.id });
       nextItem.failPlayback(error.message);
-      this.currentItem = null;
+      // Emit video:failed BEFORE nulling currentItem so getState() can report 'error' status
+      // (broadcasts.js video:failed listener pushes state immediately — currentItem must be set)
       this.emit('video:failed', nextItem);
+      this.currentItem = null;
 
       // Clean up failed items from queue
       this.clearCompleted();
@@ -250,8 +252,10 @@ class VideoQueueService extends EventEmitter {
     } catch (error) {
       logger.error('Failed to play video through VLC', { error, itemId: queueItem.id });
       queueItem.failPlayback(error.message);
-      this.currentItem = null;
+      // Emit video:failed BEFORE nulling currentItem so getState() can report 'error' status
+      // (broadcasts.js video:failed listener pushes state immediately — currentItem must be set)
       this.emit('video:failed', queueItem);
+      this.currentItem = null;
 
       // Try next item
       setImmediate(() => this.processQueue());
@@ -378,8 +382,10 @@ class VideoQueueService extends EventEmitter {
         // Mark video as failed and clear currentItem to unblock queue
         if (queueItem && queueItem === this.currentItem) {
           queueItem.failPlayback(`VLC monitoring error: ${error.message}`);
-          this.currentItem = null;
+          // Emit video:failed BEFORE nulling currentItem so getState() can report 'error' status
+          // (broadcasts.js video:failed listener pushes state immediately — currentItem must be set)
           this.emit('video:failed', queueItem);
+          this.currentItem = null;
         }
 
         // Try to process next item in queue
