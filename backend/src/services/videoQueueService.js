@@ -756,6 +756,9 @@ class VideoQueueService extends EventEmitter {
       this.progressTimer = null;
     }
 
+    const wasPlaying = this.currentItem !== null;
+    const hadPending = this.queue.some(item => item.isPending());
+
     if (this.currentItem) {
       this.currentItem.failPlayback('Queue cleared');
     }
@@ -766,9 +769,13 @@ class VideoQueueService extends EventEmitter {
     logger.info('Video queue cleared');
     this.emit('queue:reset');
 
-    // Always emit idle when queue is cleared, regardless of previous state
-    // This ensures GM stations know the system is idle after a stop command
-    this.emit('video:idle');
+    // Only emit idle if we were actually playing or had pending items.
+    // Unconditional emission triggers displayControlService → setIdleLoop() →
+    // VLC loading idle-loop.mp4 even during session teardown or when nothing
+    // was playing, which is a root cause of spurious idle-loop starts.
+    if (wasPlaying || hadPending) {
+      this.emit('video:idle');
+    }
   }
 
   /**

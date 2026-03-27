@@ -161,6 +161,46 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('clearQueue() video:idle emission', () => {
+    it('should NOT emit video:idle when no video was playing and queue was empty', () => {
+      const idleSpy = jest.fn();
+      videoQueueService.on('video:idle', idleSpy);
+
+      videoQueueService.clearQueue();
+
+      expect(idleSpy).not.toHaveBeenCalled();
+      videoQueueService.removeListener('video:idle', idleSpy);
+    });
+
+    it('should emit video:idle when a video was playing (currentItem set)', () => {
+      const idleSpy = jest.fn();
+      videoQueueService.on('video:idle', idleSpy);
+
+      videoQueueService.currentItem = {
+        failPlayback: jest.fn(), isPlaying: () => true,
+      };
+
+      videoQueueService.clearQueue();
+
+      expect(idleSpy).toHaveBeenCalledTimes(1);
+      videoQueueService.removeListener('video:idle', idleSpy);
+    });
+
+    it('should emit video:idle when queue had pending items (no currentItem)', () => {
+      const idleSpy = jest.fn();
+      videoQueueService.on('video:idle', idleSpy);
+
+      const item = VideoQueueItem.fromToken(testToken, 'DEVICE_1');
+      videoQueueService.queue.push(item);
+      // currentItem remains null — item is pending in queue, not yet playing
+
+      videoQueueService.clearQueue();
+
+      expect(idleSpy).toHaveBeenCalledTimes(1);
+      videoQueueService.removeListener('video:idle', idleSpy);
+    });
+  });
+
   describe('VLC-down resilience (queue must not get stuck)', () => {
     // skipCurrent is the only transport method that needs try/catch around VLC calls.
     // It clears progressTimer BEFORE calling vlcService.stop(), removing the safety net
