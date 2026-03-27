@@ -114,6 +114,11 @@ class AudioRoutingService extends EventEmitter {
     // Start sink monitor
     this.startSinkMonitor();
 
+    // Pre-populate sink cache so first getState() has data
+    await this.getAvailableSinks().catch(err => {
+      logger.warn('Failed to pre-populate sink cache', { error: err.message });
+    });
+
     registry.report('audio', 'healthy', 'Audio routing initialized');
   }
 

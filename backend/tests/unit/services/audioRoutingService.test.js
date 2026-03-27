@@ -1081,6 +1081,11 @@ describe('AudioRoutingService', () => {
           cb(new Error('no matches'), '', '');
           return;
         }
+        // getAvailableSinks() pre-populates sink cache during init
+        if (cmd === 'pactl' && args[0] === 'list' && args[1] === 'sinks') {
+          cb(null, '0\talsa_output.hdmi\tmodule-alsa-card.c\ts16le 2ch 48000Hz\tIDLE', '');
+          return;
+        }
         cb(null, '', '');
       });
     }
@@ -1727,8 +1732,17 @@ describe('AudioRoutingService', () => {
     });
 
     describe('getAvailableSinksWithCombine - filtering', () => {
+      let getAvailableSinksSpy;
+
+      afterEach(() => {
+        if (getAvailableSinksSpy) {
+          getAvailableSinksSpy.mockRestore();
+          getAvailableSinksSpy = null;
+        }
+      });
+
       it('should exclude auto_null sink from available sinks', async () => {
-        audioRoutingService.getAvailableSinks = jest.fn().mockResolvedValue([
+        getAvailableSinksSpy = jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
           { id: '1', name: 'alsa_output.hdmi', driver: 'alsa', format: '', state: 'RUNNING', type: 'hdmi' },
           { id: '2', name: 'auto_null', driver: 'null', format: '', state: 'RUNNING', type: 'other' },
           { id: '3', name: 'bluez_output.XX_XX', driver: 'bluez', format: '', state: 'RUNNING', type: 'bluetooth' },
