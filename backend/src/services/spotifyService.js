@@ -130,7 +130,10 @@ class SpotifyService extends MprisPlayerBase {
    */
   async _dbusCall(method, args = []) {
     const dest = await this._discoverDbusDest();
-    if (!dest) throw new Error('spotifyd not found on D-Bus');
+    if (!dest) {
+      this._setConnected(false);
+      throw new Error('spotifyd not found on D-Bus');
+    }
     try {
       return await super._dbusCall(method, args);
     } catch (err) {
