@@ -24,6 +24,7 @@ const logger = require('./logger');
 let browserProcess = null;
 let windowId = null;  // X11 window ID string (e.g. '12345678')
 let visible = false;
+let launchPromise = null;  // Guard against concurrent spawns
 
 // Configuration
 const DISPLAY = process.env.DISPLAY || ':0';
@@ -96,15 +97,11 @@ async function findWindowId(retries = 10, delayMs = 500) {
 }
 
 /**
- * Ensure Chromium is running. If already running, return immediately.
- * If not running, spawn a new persistent kiosk instance and wait for its window.
- * @returns {Promise<boolean>} True if Chromium is running and window ID is known
+ * Spawn Chromium and wait for its window to appear.
+ * Only called from ensureBrowserRunning() when no process is alive.
+ * @returns {Promise<boolean>} True if Chromium launched and window ID found
  */
-async function ensureBrowserRunning() {
-  if (browserProcess && !browserProcess.killed) {
-    return true;
-  }
-
+async function _doLaunch() {
   logger.info('[DisplayDriver] Launching persistent scoreboard kiosk', { url: SCOREBOARD_URL });
 
   browserProcess = spawn('chromium-browser', [
@@ -156,6 +153,30 @@ async function ensureBrowserRunning() {
 }
 
 /**
+ * Ensure Chromium is running. If already running, return immediately.
+ * If the process is alive but windowId was lost (e.g. after a failed showScoreboard),
+ * re-search for the window rather than spawning a new process.
+ * Guards against concurrent spawns with a shared launchPromise.
+ * @returns {Promise<boolean>} True if Chromium is running and window ID is known
+ */
+async function ensureBrowserRunning() {
+  if (browserProcess && !browserProcess.killed) {
+    if (windowId) return true;
+    // Process alive but window ID lost — re-search before declaring failure
+    windowId = await findWindowId(3, 300);
+    return windowId !== null;
+  }
+
+  if (launchPromise) return launchPromise;
+  launchPromise = _doLaunch();
+  try {
+    return await launchPromise;
+  } finally {
+    launchPromise = null;
+  }
+}
+
+/**
  * Show the scoreboard on HDMI display.
  * Launches Chromium if not already running (first call only).
  * On subsequent calls, activates the existing window and forces fullscreen via wmctrl.
@@ -176,9 +197,10 @@ async function showScoreboard() {
     return true;
   } catch (error) {
     logger.error('[DisplayDriver] Failed to show scoreboard', { error: error.message });
-    // Window may have been destroyed (Chromium crashed) — clear state so next call respawns
+    // Stale window ID — clear it so ensureBrowserRunning() will re-search on next call.
+    // Do NOT null browserProcess: the process may still be alive; re-search will find
+    // the new window ID without killing and re-spawning.
     windowId = null;
-    browserProcess = null;
     visible = false;
     return false;
   }

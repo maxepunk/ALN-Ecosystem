@@ -181,6 +181,8 @@ async function shutdown(signal) {
     audioRoutingService.cleanup();
     await lightingService.cleanup();
     await stateService.cleanup();
+    const displayDriver = require('./utils/displayDriver');
+    await displayDriver.cleanup();
 
     // Save current session state (preserve AS-IS, don't end it)
     // Sessions end via explicit admin commands, not infrastructure events
