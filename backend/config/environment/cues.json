@@ -103,6 +103,27 @@
       "duration": 7
     },
     {
+      "id": "e2e-video-compound",
+      "label": "E2E Video Compound",
+      "quickFire": true,
+      "timeline": [
+        {
+          "at": 0,
+          "action": "video:queue:add",
+          "payload": {
+            "videoFile": "test_2sec.mp4"
+          }
+        },
+        {
+          "at": 1,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.video"
+          }
+        }
+      ]
+    },
+    {
       "id": "cue-1772422843217",
       "label": "90min WARNING",
       "quickFire": true,
