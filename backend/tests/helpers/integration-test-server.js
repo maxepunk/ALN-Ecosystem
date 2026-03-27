@@ -115,6 +115,7 @@ async function setupIntegrationTestServer() {
           gameClockService,
           cueEngineService,
           spotifyService,
+          soundService,
           deviceFilter: { connectedOnly: true },
         });
         emitWrapped(socket, 'sync:full', syncPayload);

@@ -16,6 +16,7 @@ const lightingService = require('../services/lightingService');
 const gameClockService = require('../services/gameClockService');
 const cueEngineService = require('../services/cueEngineService');
 const spotifyService = require('../services/spotifyService');
+const soundService = require('../services/soundService');
 const { buildSyncFullPayload } = require('../websocket/syncHelpers');
 
 /**
@@ -40,6 +41,7 @@ router.get('/', async (req, res) => {
       gameClockService,
       cueEngineService,
       spotifyService,
+      soundService,
     });
 
     // Generate ETag for caching — exclude volatile timestamps (lastChecked)

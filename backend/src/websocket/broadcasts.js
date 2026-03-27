@@ -97,7 +97,7 @@ function setupBroadcastListeners(io, services) {
       const syncPayload = await buildSyncFullPayload({
         sessionService, transactionService, videoQueueService,
         bluetoothService, audioRoutingService, lightingService,
-        gameClockService, cueEngineService, spotifyService,
+        gameClockService, cueEngineService, spotifyService, soundService,
       });
       emitToRoom(io, 'gm', 'sync:full', syncPayload);
       logger.info('Broadcasted sync:full after session creation', { sessionId: session.id });
@@ -311,6 +311,7 @@ function setupBroadcastListeners(io, services) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        soundService,
         deviceFilter: { connectedOnly: true },
       });
       emitToRoom(io, 'gm', 'sync:full', syncFullPayload);
@@ -351,6 +352,7 @@ function setupBroadcastListeners(io, services) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        soundService,
         deviceFilter: { connectedOnly: true },
       });
 

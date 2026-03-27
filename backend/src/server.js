@@ -84,6 +84,7 @@ function setupWebSocketHandlers(ioInstance) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        soundService,
         deviceFilter: { connectedOnly: true },
       });
       emitWrapped(socket, 'sync:full', syncPayload);

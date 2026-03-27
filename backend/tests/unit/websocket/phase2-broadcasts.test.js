@@ -167,6 +167,7 @@ describe('Phase 2 Broadcasts', () => {
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
         spotifyService: mockSpotifyService,
+        soundService: mockSoundService,
       };
 
       const payload = await syncHelpers.buildSyncFullPayload(mockServices);
@@ -222,6 +223,7 @@ describe('Phase 2 Broadcasts', () => {
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
         spotifyService: brokenSpotify,
+        soundService: mockSoundService,
       };
 
       const payload = await syncHelpers.buildSyncFullPayload(mockServices);
@@ -248,6 +250,7 @@ describe('Phase 2 Broadcasts', () => {
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
         spotifyService: mockSpotifyService,
+        soundService: mockSoundService,
       };
 
       const payload = await syncHelpers.buildSyncFullPayload(mockServices);
@@ -276,6 +279,7 @@ describe('Phase 2 Broadcasts', () => {
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
         spotifyService: mockSpotifyService,
+        soundService: mockSoundService,
       };
 
       const payload = await syncHelpers.buildSyncFullPayload(mockServices);
@@ -297,6 +301,7 @@ describe('Phase 2 Broadcasts', () => {
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
         spotifyService: mockSpotifyService,
+        soundService: mockSoundService,
       };
 
       const payload = await syncHelpers.buildSyncFullPayload(mockServices);

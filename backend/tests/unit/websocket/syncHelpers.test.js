@@ -67,6 +67,59 @@ describe('buildSyncFullPayload recentTransactions enrichment', () => {
   });
 });
 
+describe('buildSyncFullPayload sound field', () => {
+  function makeMinimalServicesWithSound({ soundState = { playing: [] } } = {}) {
+    const session = {
+      id: 'test-session',
+      transactions: [],
+      connectedDevices: [],
+      playerScans: [],
+      toJSON: () => ({ id: 'test-session', teams: [], status: 'active' }),
+    };
+    return {
+      sessionService: { getCurrentSession: () => session },
+      transactionService: {
+        getTeamScores: () => [],
+        getToken: () => null,
+      },
+      videoQueueService: {
+        currentStatus: 'idle',
+        queue: [],
+        currentVideo: null,
+      },
+      soundService: { getState: () => soundState },
+    };
+  }
+
+  it('should include sound field with playing array when soundService is provided', async () => {
+    const soundState = { playing: [{ file: 'attention.wav', pid: 1234 }] };
+    const services = makeMinimalServicesWithSound({ soundState });
+    const payload = await buildSyncFullPayload(services);
+
+    expect(payload).toHaveProperty('sound');
+    expect(payload.sound).toEqual(soundState);
+    expect(payload.sound.playing).toHaveLength(1);
+    expect(payload.sound.playing[0].file).toBe('attention.wav');
+  });
+
+  it('should fallback to { playing: [] } when soundService is not provided', async () => {
+    const services = makeMinimalServicesWithSound();
+    delete services.soundService;
+    const payload = await buildSyncFullPayload(services);
+
+    expect(payload).toHaveProperty('sound');
+    expect(payload.sound).toEqual({ playing: [] });
+  });
+
+  it('should include sound field with empty playing array when no sounds active', async () => {
+    const services = makeMinimalServicesWithSound({ soundState: { playing: [] } });
+    const payload = await buildSyncFullPayload(services);
+
+    expect(payload).toHaveProperty('sound');
+    expect(payload.sound.playing).toEqual([]);
+  });
+});
+
 describe('buildGameClockState expectedDuration', () => {
   it('should derive expectedDuration from SESSION_TIMEOUT config', async () => {
     // Save original

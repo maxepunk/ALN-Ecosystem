@@ -26,6 +26,8 @@ const logger = require('../utils/logger');
  * @param {Object} [options.lightingService]
  * @param {Object} [options.gameClockService]
  * @param {Object} [options.cueEngineService]
+ * @param {Object} [options.spotifyService]
+ * @param {Object} [options.soundService]
  * @param {Object} [options.deviceFilter] - Optional filter options
  * @param {boolean} [options.deviceFilter.connectedOnly=false] - Only include connected devices
  * @returns {Promise<Object>} sync:full payload
@@ -40,6 +42,7 @@ async function buildSyncFullPayload({
   gameClockService,
   cueEngineService,
   spotifyService,
+  soundService,
   deviceFilter = {},
 }) {
   const session = sessionService.getCurrentSession();
@@ -115,6 +118,9 @@ async function buildSyncFullPayload({
   // Phase 3: Held items (blocked by service outage or resource contention)
   const heldItems = buildHeldItemsState(cueEngineService, videoQueueService);
 
+  // Sound playback state
+  const sound = soundService ? soundService.getState() : { playing: [] };
+
   return {
     session: session ? session.toJSON() : null,
     scores,
@@ -128,6 +134,7 @@ async function buildSyncFullPayload({
     cueEngine,
     spotify,
     heldItems,
+    sound,
   };
 }
 
