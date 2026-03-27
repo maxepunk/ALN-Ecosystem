@@ -198,11 +198,24 @@ displayControlService (State Machine)
 ```
 
 **Key Implementation Details:**
+- Chromium is launched ONCE and persisted for the session. Display transitions use `xdotool windowminimize` (hide) and `xdotool windowactivate` + `wmctrl -b add,fullscreen` (show). No kill/spawn per video cycle.
+- `xdotool search --class chromium` finds the window (not `--pid` — Chromium forks, window belongs to child process)
+- `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler)
+- System dependencies: `sudo apt-get install -y xdotool wmctrl`
 - Chromium requires `--password-store=basic` flag to prevent keyring dialog
 - Scoreboard URL uses auto-detected local IP (not localhost) for CDN resources
-- Browser process killed before VLC starts; VLC stopped before browser launches
 
 **Key Files:** `src/services/displayControlService.js`, `src/utils/displayDriver.js`, `src/services/vlcMprisService.js`
+
+### VLC State Architecture (Reactive Monitor)
+
+**CRITICAL**: `vlcMprisService.getStatus()` only queries Position from D-Bus. PlaybackStatus and Metadata come from `this.state`/`this.track` (maintained reactively by the D-Bus monitor via `_processStateChange`). Do NOT add back D-Bus reads for PlaybackStatus or Metadata.
+
+**`waitForVlcLoaded` is reactive**: Listens for `vlcService` `state:changed` event instead of polling `getStatus()`. Event payload is `{ previous: { state, filename }, current: { state, filename } }`. `_previousDelta` MUST be seeded to `{ state: 'stopped', filename: null }` (not null) in constructor and `reset()` — null suppresses first emission.
+
+**processQueue concurrency**: `startPlayback()` + `this.currentItem` set BEFORE pre-play hooks (prevents concurrent `processQueue` re-entry during async hook window).
+
+**clearQueue**: Only emits `video:idle` when `currentItem !== null` or queue had pending items. NOT unconditional.
 
 ### Scoreboard Architecture
 
@@ -424,6 +437,7 @@ All service domain state (cue status, held items, health, spotify, video) is del
 - **CRITICAL**: `service:state` is the SOLE mechanism for service domain state delivery. Old discrete events (`spotify:status`, `gameclock:status`, `video:status`, `bluetooth:device`, `lighting:scene`, etc.) have been removed. Only discrete game events remain (`cue:fired`, `cue:completed`, `cue:error`, `transaction:new`, `session:update`, `display:mode`)
 - `gm:command:ack` payload simplified to `{action, success, message}` — no more `result.data` forwarding. State comes via `service:state` events
 - No post-command state push: state pushes triggered ONLY by service events (D-Bus monitors, service lifecycle)
+- **service:state debounce**: `pushServiceState` in `broadcasts.js` debounces per domain (50ms). `video:failed` bypasses the debounce for immediate error state capture. Tests must use `jest.useFakeTimers()` + `jest.advanceTimersByTime(51)` for service:state assertions.
 - Tests: `tests/unit/services/getState.test.js` (19 tests), `tests/integration/service-state-push.test.js` (13 tests), broadcast unit tests
 
 **CRITICAL Gotchas:**
@@ -440,6 +454,10 @@ Extends Phase 0 audio routing with PipeWire combine-sink management, event-drive
 **Combine-Sink (Dual BT Speakers):** Creates a virtual `combine-bt` sink using `pw-loopback` processes to route audio to two Bluetooth speakers simultaneously. `audioRoutingService.createCombineSink()` / `destroyCombineSink()`. Requires 2+ paired BT sinks. The virtual sink appears in `getAvailableSinksWithCombine()` when active. Managed via `audio:combine:create` / `audio:combine:destroy` gm:command actions. **IMPORTANT:** `createCombineSink()` and `destroyCombineSink()` must use `this._execFile()` (not raw `execFileAsync`) — all other methods use `_execFile()` which is mockable in tests.
 
 **Ducking Engine:** Automatically reduces Spotify volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
+
+**CRITICAL**: `handleDuckingEvent()` is async (returns a Promise). Callers in `broadcasts.js` use `.catch()`. `_handleDuckingStart` awaits `_capturePreDuckVolume` before applying duck volume to prevent race condition where captured "pre-duck" value is already ducked.
+
+**Sink-input tracking**: `audioRoutingService._sinkInputRegistry` (Map) is populated reactively from `pactl subscribe` sink-input events. `findSinkInput()` checks this registry first (fast-path), falls back to `pactl list sink-inputs`. Registry cleared on `reset()`.
 
 **Routing Inheritance (3-tier resolution):** When a compound cue dispatches a command, routing is resolved as: command-level `target` > cue-level `routing` map > global default. The `_resolveRouting(action, payload, cueDef)` method in `cueEngineService` derives stream type from the action prefix (e.g., `sound:play` → `sound`), then checks `cueDef.routing[streamType]`.
 
