@@ -206,36 +206,16 @@ class VlcMprisService extends MprisPlayerBase {
   // ── Status ──
 
   /**
-   * Get VLC status by actively reading D-Bus properties.
-   * Reads Position, PlaybackStatus, and Metadata directly — does not rely
-   * on the passive D-Bus monitor for state or track info.
+   * Get VLC status using cached state/track from the D-Bus monitor.
+   * PlaybackStatus and Metadata are kept current by the D-Bus monitor's
+   * _processStateChange() (PropertiesChanged signals). Only Position requires
+   * a live D-Bus query — it is not tracked by PropertiesChanged signals.
    * @returns {Promise<Object>} {connected, state, currentItem, position, length, time, volume, fullscreen, loop}
    */
   async getStatus() {
     await this._ensureConnection();
 
-    // Read PlaybackStatus directly (monitor may not have received signal yet)
-    try {
-      const { stdout } = await this._dbusGetProperty(PLAYER_IFACE, 'PlaybackStatus');
-      if (stdout.includes('"Playing"')) this.state = 'playing';
-      else if (stdout.includes('"Paused"')) this.state = 'paused';
-      else this.state = 'stopped';
-    } catch {
-      // PlaybackStatus read failed — keep cached state
-    }
-
-    // Read Metadata directly (monitor may not have received signal yet)
-    try {
-      const { stdout } = await this._dbusGetProperty(PLAYER_IFACE, 'Metadata');
-      const parsed = this._parseMetadata(stdout);
-      if (parsed) {
-        this.track = parsed;
-      }
-    } catch {
-      // Metadata read failed — keep cached track
-    }
-
-    // Read current position from D-Bus (not tracked by PropertiesChanged)
+    // Position is the only property not tracked by PropertiesChanged signals
     let positionUs = 0;
     try {
       const { stdout } = await this._dbusGetProperty(PLAYER_IFACE, 'Position');

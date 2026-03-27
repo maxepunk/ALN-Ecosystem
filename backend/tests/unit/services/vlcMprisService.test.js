@@ -337,23 +337,15 @@ describe('VlcMprisService', () => {
   // ── getStatus ──
 
   describe('getStatus', () => {
-    it('should return backward-compatible status shape', async () => {
-      vlcMprisService.volume = 50; // internal 0-100
+    it('should return backward-compatible status shape using cached state/track', async () => {
+      // State and track pre-seeded as if D-Bus monitor already populated them
+      vlcMprisService.state = 'playing';
+      vlcMprisService.track = { filename: 'video.mp4', length: 120, url: 'file:///path/to/video.mp4' };
       vlcMprisService._rawVolume = 0.5; // raw MPRIS value for lossless 0-256 conversion
       vlcMprisService._loopEnabled = false;
 
-      // Mock D-Bus property reads: PlaybackStatus, Metadata, Position
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        const argsStr = args.join(' ');
-        if (argsStr.includes('PlaybackStatus')) {
-          cb(null, '   variant       string "Playing"\n', '');
-        } else if (argsStr.includes('Metadata')) {
-          cb(null, '   variant       array [\n      dict entry(\n         string "xesam:url"\n         variant             string "file:///path/to/video.mp4"\n      )\n      dict entry(\n         string "mpris:length"\n         variant             int64 120000000\n      )\n   ]\n', '');
-        } else {
-          // Position: 60 seconds = 60000000 microseconds
-          cb(null, '   variant       int64 60000000\n', '');
-        }
-      });
+      // Only Position is queried from D-Bus — 60 seconds = 60000000 microseconds
+      mockExecFileSuccess('   variant       int64 60000000\n');
 
       const status = await vlcMprisService.getStatus();
 
@@ -370,27 +362,31 @@ describe('VlcMprisService', () => {
       }));
     });
 
-    it('should handle no track metadata gracefully', async () => {
+    it('should handle no track metadata gracefully using cached track=null', async () => {
       vlcMprisService.state = 'stopped';
       vlcMprisService.track = null;
 
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        const argsStr = args.join(' ');
-        if (argsStr.includes('PlaybackStatus')) {
-          cb(null, '   variant       string "Stopped"\n', '');
-        } else if (argsStr.includes('Metadata')) {
-          // Empty metadata — no xesam:url
-          cb(null, '   variant       array [\n   ]\n', '');
-        } else {
-          cb(null, '   variant       int64 0\n', '');
-        }
-      });
+      // Only Position is queried — returns 0
+      mockExecFileSuccess('   variant       int64 0\n');
 
       const status = await vlcMprisService.getStatus();
 
       expect(status.currentItem).toBeNull();
       expect(status.position).toBe(0);
       expect(status.length).toBe(0);
+    });
+
+    it('should only call _dbusGetProperty once (for Position), not PlaybackStatus or Metadata', async () => {
+      vlcMprisService.state = 'playing';
+      vlcMprisService.track = { filename: 'test.mp4', length: 60, url: 'file:///test.mp4' };
+
+      const dbusGetSpy = jest.spyOn(vlcMprisService, '_dbusGetProperty');
+      mockExecFileSuccess('   variant       int64 0\n');
+
+      await vlcMprisService.getStatus();
+
+      expect(dbusGetSpy).toHaveBeenCalledTimes(1);
+      expect(dbusGetSpy).toHaveBeenCalledWith(expect.any(String), 'Position');
     });
 
     it('should throw when VLC not connected', async () => {
