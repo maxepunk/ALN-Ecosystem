@@ -1424,8 +1424,18 @@
             });
 
             state.socket.on('connect_error', (error) => {
-                console.error('[Scoreboard] Connection error:', error);
+                const msg = error.message || String(error);
+                console.error('[Scoreboard] Connection error:', msg);
                 updateConnectionStatus('offline', 'CONN ERROR');
+
+                // Re-authenticate immediately on auth failures instead of waiting 5min zombie timer
+                if (msg.includes('AUTH_INVALID') || msg.includes('AUTH_REQUIRED')) {
+                    console.log('[Scoreboard] Auth failure — re-authenticating...');
+                    cleanupSocket();
+                    authenticate().then(authenticated => {
+                        if (authenticated) connectWebSocket();
+                    });
+                }
             });
 
             state.socket.on('reconnect', () => {
