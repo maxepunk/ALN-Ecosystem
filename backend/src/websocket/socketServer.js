@@ -76,7 +76,7 @@ function createSocketServer(httpServer) {
         const sessionService = require('../services/sessionService');
         const currentSession = sessionService.getCurrentSession();
         if (currentSession) {
-          const connectedDevices = (currentSession.toJSON().connectedDevices || [])
+          const connectedDevices = (currentSession.connectedDevices || [])
             .filter(d => d.connectionStatus === 'connected');
 
           const existingDevice = connectedDevices.find(d =>

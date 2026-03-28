@@ -2,27 +2,21 @@
  * ScoringCalculator - Recalculate scores from transactions
  * Implements the scoring formula from SCORING_LOGIC.md
  *
- * CRITICAL ARCHITECTURE NOTE:
- * - session.scores is initialized to zeros and NEVER updated during gameplay
- * - Live scores exist only in transactionService.teamScores (in-memory, not persisted)
- * - Post-session validation can ONLY recalculate from transaction history
- * - Detective mode transactions ALWAYS have points = 0 (no scoring)
- * - Blackmarket mode transactions have points = BASE_VALUES[rating] × TYPE_MULTIPLIERS[type]
+ * Scoring config loaded from shared ALN-TokenData/scoring-config.json.
+ * Validator compares independently calculated scores against session.scores
+ * (persisted final state with baseScore, currentScore, adminAdjustments).
  */
+
+const { loadScoringConstants } = require('./scoringConfigLoader');
 
 class ScoringCalculator {
   constructor(tokens) {
     this.tokens = tokens;
     this.tokensMap = new Map(tokens.map(t => [t.id, t]));
 
-    // Load scoring constants from shared config (single source of truth)
-    const scoringConfig = require('../../../ALN-TokenData/scoring-config.json');
-    this.BASE_VALUES = Object.fromEntries(
-      Object.entries(scoringConfig.baseValues).map(([k, v]) => [parseInt(k), v])
-    );
-    this.TYPE_MULTIPLIERS = Object.fromEntries(
-      Object.entries(scoringConfig.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
-    );
+    const { BASE_VALUES, TYPE_MULTIPLIERS } = loadScoringConstants();
+    this.BASE_VALUES = BASE_VALUES;
+    this.TYPE_MULTIPLIERS = TYPE_MULTIPLIERS;
   }
 
   /**

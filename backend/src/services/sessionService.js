@@ -268,14 +268,16 @@ class SessionService extends EventEmitter {
 
         // Mark all devices as disconnected — WebSocket connections don't survive restarts
         if (this.currentSession.connectedDevices) {
-          for (const device of this.currentSession.connectedDevices) {
-            if (device.connectionStatus === 'connected') {
+          const stale = this.currentSession.connectedDevices
+            .filter(d => d.connectionStatus === 'connected');
+          if (stale.length > 0) {
+            for (const device of stale) {
               device.connectionStatus = 'disconnected';
             }
+            logger.info('Cleared stale device connections after restart', {
+              deviceCount: stale.length
+            });
           }
-          logger.info('Cleared stale device connections after restart', {
-            deviceCount: this.currentSession.connectedDevices.length
-          });
         }
 
         // CRITICAL: Sync teams to transactionService on session restoration

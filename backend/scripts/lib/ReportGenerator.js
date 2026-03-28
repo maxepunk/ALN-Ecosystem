@@ -63,8 +63,8 @@ class ReportGenerator {
       lines.push('');
       lines.push('> Compares independently calculated scores (from transactions + scoring config) against session.scores (final persisted state).');
       lines.push('');
-      lines.push('| Team | Calculated | Adj | Total | Broadcast | Base | Bonus | BM | Det | Status |');
-      lines.push('|------|------------|-----|-------|-----------|------|-------|----|----|--------|');
+      lines.push('| Team | Calculated | Adj | Total | Session | Base | Bonus | BM | Det | Status |');
+      lines.push('|------|------------|-----|-------|---------|------|-------|----|----|--------|');
 
       for (const row of scoreCheck.summary) {
         const calc = typeof row.calculatedScore === 'number'
@@ -75,8 +75,8 @@ class ReportGenerator {
           : '—';
         const total = typeof row.adjustedTotal === 'number'
           ? `$${row.adjustedTotal.toLocaleString()}`
-          : calc; // fallback to calculated if no adjustment
-        const broadcast = typeof row.broadcastScore === 'number'
+          : calc;
+        const sessionScore = typeof row.broadcastScore === 'number'
           ? `$${row.broadcastScore.toLocaleString()}`
           : row.broadcastScore;
         const base = typeof row.calculatedBase === 'number'
@@ -87,7 +87,7 @@ class ReportGenerator {
           : row.calculatedBonus;
         const statusEmoji = row.match === 'MATCH' ? '✅' : (row.match === 'MISMATCH' ? '❌' : '—');
 
-        lines.push(`| ${row.teamId} | ${calc} | ${adj} | ${total} | ${broadcast} | ${base} | ${bonus} | ${row.blackmarketCount || 0} | ${row.detectiveCount || 0} | ${statusEmoji} |`);
+        lines.push(`| ${row.teamId} | ${calc} | ${adj} | ${total} | ${sessionScore} | ${base} | ${bonus} | ${row.blackmarketCount || 0} | ${row.detectiveCount || 0} | ${statusEmoji} |`);
       }
       lines.push('');
     }

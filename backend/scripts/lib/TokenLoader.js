@@ -63,14 +63,7 @@ class TokenLoader {
 
     const rawTokens = this.loadRawTokens();
 
-    // Load scoring constants from shared config (single source of truth)
-    const scoringConfig = require('../../../ALN-TokenData/scoring-config.json');
-    const BASE_VALUES = Object.fromEntries(
-      Object.entries(scoringConfig.baseValues).map(([k, v]) => [parseInt(k), v])
-    );
-    const TYPE_MULTIPLIERS = Object.fromEntries(
-      Object.entries(scoringConfig.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
-    );
+    const { BASE_VALUES, TYPE_MULTIPLIERS } = require('./scoringConfigLoader').loadScoringConstants();
 
     this.tokens = Object.entries(rawTokens).map(([id, token]) => {
       const groupName = TokenLoader.extractGroupName(token.SF_Group);

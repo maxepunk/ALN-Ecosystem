@@ -494,17 +494,15 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   async _killStaleMonitors() {
-    for (const processName of ['pactl subscribe']) {
-      try {
-        const stdout = await this._execFile('pgrep', ['-f', processName]);
-        const pids = stdout.trim().split('\n').filter(Boolean);
-        if (pids.length > 0) {
-          logger.warn(`Killing ${pids.length} stale ${processName} process(es)`, { pids });
-          await this._execFile('pkill', ['-f', processName]);
-        }
-      } catch {
-        // pgrep exits 1 when no matches — expected when clean
+    try {
+      const stdout = await this._execFile('pgrep', ['-f', 'pactl subscribe']);
+      const pids = stdout.trim().split('\n').filter(Boolean);
+      if (pids.length > 0) {
+        logger.warn(`Killing ${pids.length} stale pactl subscribe process(es)`, { pids });
+        await this._execFile('pkill', ['-f', 'pactl subscribe']);
       }
+    } catch {
+      // pgrep exits 1 when no matches — expected when clean
     }
   }
 

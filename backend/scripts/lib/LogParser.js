@@ -171,7 +171,7 @@ class LogParser {
    * @param {string} endTime - unused (kept for API compat)
    * @param {Object} [session] - Session data (required for accurate results)
    */
-  async getFinalScoreBroadcasts(startTime, endTime, session) {
+  async getFinalScores(startTime, endTime, session) {
     const byTeam = new Map();
 
     if (session?.scores) {

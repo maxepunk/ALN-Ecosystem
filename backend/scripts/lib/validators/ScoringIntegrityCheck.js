@@ -33,24 +33,21 @@ class ScoringIntegrityCheck {
     // Calculate expected scores from transactions
     const calculatedScores = this.calculator.calculateAllTeamScores(session);
 
-    // Get final broadcast values from logs (what scoreboard actually displayed)
-    let broadcastScores = [];
+    // Get final scores from session data (authoritative persisted state)
+    let sessionScores = [];
     try {
-      broadcastScores = await this.logParser.getFinalScoreBroadcasts(sessionStart, sessionEnd, session);
+      sessionScores = await this.logParser.getFinalScores(sessionStart, sessionEnd, session);
     } catch (err) {
       findings.push({
         severity: 'WARNING',
-        message: `Could not read log broadcasts: ${err.message}`,
+        message: `Could not read session scores: ${err.message}`,
         details: { error: err.message }
       });
     }
 
-    const broadcastMap = new Map(broadcastScores.map(b => [b.teamId, b]));
+    const sessionScoreMap = new Map(sessionScores.map(b => [b.teamId, b]));
 
-    // ========================================
-    // ADMIN SCORE ADJUSTMENTS
-    // ========================================
-    // GM stations can manually adjust team scores - must account for these!
+    // Admin adjustments from logs (cross-reference)
     let adminAdjustments = [];
     const adjustmentsByTeam = new Map();
 
@@ -64,7 +61,6 @@ class ScoringIntegrityCheck {
         adjustmentsByTeam.set(adj.teamId, current);
       }
 
-      // Report adjustments found
       if (adminAdjustments.length > 0) {
         findings.push({
           severity: 'INFO',
@@ -88,25 +84,10 @@ class ScoringIntegrityCheck {
       });
     }
 
-    // Document that session.scores is always zeros (for education)
-    const sessionScores = session.scores || [];
-    if (sessionScores.length > 0) {
-      const allZeros = sessionScores.every(s =>
-        (s.currentScore || s.score || 0) === 0
-      );
-      if (allZeros) {
-        findings.push({
-          severity: 'INFO',
-          message: 'session.scores is all zeros (expected - never updated during gameplay)',
-          details: { note: 'Comparing against log broadcasts instead' }
-        });
-      }
-    }
-
-    // Compare calculated vs broadcast for each team
+    // Compare calculated vs session scores for each team
     const comparisonRows = [];
     for (const [teamId, calculated] of calculatedScores) {
-      const broadcast = broadcastMap.get(teamId);
+      const storedScore = sessionScoreMap.get(teamId);
       const adjustment = adjustmentsByTeam.get(teamId);
       const adjustmentTotal = adjustment?.total || 0;
       const adjustedCalculated = calculated.totalScore + adjustmentTotal;
@@ -118,30 +99,29 @@ class ScoringIntegrityCheck {
         calculatedBonus: calculated.bonusScore,
         adminAdjustment: adjustmentTotal,
         adjustedTotal: adjustedCalculated,
-        broadcastScore: broadcast?.score ?? 'N/A',
-        broadcastBonus: broadcast?.bonus ?? 'N/A',
+        broadcastScore: storedScore?.score ?? 'N/A',
+        broadcastBonus: storedScore?.bonus ?? 'N/A',
         tokenCount: calculated.tokenCount,
         blackmarketCount: calculated.blackmarketCount,
         detectiveCount: calculated.detectiveCount,
         match: 'N/A'
       };
 
-      if (broadcast) {
-        const broadcastTotal = broadcast.score;
+      if (storedScore) {
+        const storedTotal = storedScore.score;
 
-        // Compare ADJUSTED calculated (with admin adjustments) vs broadcast
-        if (adjustedCalculated === broadcastTotal) {
+        if (adjustedCalculated === storedTotal) {
           row.match = 'MATCH';
           const hasAdjustment = adjustmentTotal !== 0;
           findings.push({
             severity: 'INFO',
-            message: `Team ${teamId}: Score verified ($${broadcastTotal.toLocaleString()})${hasAdjustment ? ` [includes $${adjustmentTotal.toLocaleString()} admin adjustment]` : ''}`,
+            message: `Team ${teamId}: Score verified ($${storedTotal.toLocaleString()})${hasAdjustment ? ` [includes $${adjustmentTotal.toLocaleString()} admin adjustment]` : ''}`,
             details: {
               teamId,
               calculated: calculated.totalScore,
               adminAdjustment: adjustmentTotal,
               adjustedTotal: adjustedCalculated,
-              broadcast: broadcastTotal,
+              sessionScore: storedTotal,
               base: calculated.baseScore,
               bonus: calculated.bonusScore,
               adjustmentDetails: adjustment?.entries || []
@@ -152,32 +132,28 @@ class ScoringIntegrityCheck {
           status = 'FAIL';
           findings.push({
             severity: 'ERROR',
-            message: `Team ${teamId}: Score mismatch (even after admin adjustments)`,
+            message: `Team ${teamId}: Score mismatch (calculated vs session)`,
             details: {
               teamId,
               calculated: calculated.totalScore,
               adminAdjustment: adjustmentTotal,
               adjustedTotal: adjustedCalculated,
-              broadcast: broadcastTotal,
-              difference: adjustedCalculated - broadcastTotal,
+              sessionScore: storedTotal,
+              difference: adjustedCalculated - storedTotal,
               breakdown: {
                 base: calculated.baseScore,
                 bonus: calculated.bonusScore,
                 completedGroups: calculated.completedGroups.map(g => g.id)
               },
               adjustmentDetails: adjustment?.entries || [],
-              note: adjustmentTotal !== 0
-                ? 'Admin adjustments were found but still mismatch'
-                : 'No admin adjustments found - possible missing adjustment or bug'
             }
           });
         }
       } else {
-        // No broadcast found - might be a problem
         if (calculated.totalScore > 0) {
           findings.push({
             severity: 'WARNING',
-            message: `Team ${teamId}: Has transactions but no broadcast found in logs`,
+            message: `Team ${teamId}: Has transactions but no score in session data`,
             details: {
               teamId,
               calculated: calculated.totalScore,
@@ -193,13 +169,13 @@ class ScoringIntegrityCheck {
       comparisonRows.push(row);
     }
 
-    // Check for broadcasts without calculated scores
-    for (const [teamId, broadcast] of broadcastMap) {
+    // Check for session scores without calculated scores
+    for (const [teamId, storedScore] of sessionScoreMap) {
       if (!calculatedScores.has(teamId)) {
         findings.push({
           severity: 'WARNING',
-          message: `Team ${teamId}: Has broadcast (${broadcast.score}) but no transactions`,
-          details: { teamId, broadcast }
+          message: `Team ${teamId}: Has session score ($${storedScore.score.toLocaleString()}) but no transactions`,
+          details: { teamId, score: storedScore.score }
         });
         if (status === 'PASS') status = 'WARNING';
       }
