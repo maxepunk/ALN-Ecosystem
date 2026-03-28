@@ -75,8 +75,11 @@ class ProcessMonitor extends EventEmitter {
     this._writePidFile();
 
     // Orphan prevention: kill child on parent exit (e.g., PM2 restart)
+    // Capture proc ref in closure — survives stop() nulling this._proc.
+    // SIGKILL because there's no event loop during process.exit().
+    const proc = this._proc;
     this._processExitHandler = () => {
-      if (this._proc) this._proc.kill();
+      try { proc.kill('SIGKILL'); } catch { /* already dead */ }
     };
     process.on('exit', this._processExitHandler);
 
@@ -108,6 +111,12 @@ class ProcessMonitor extends EventEmitter {
 
     this._proc.on('close', (code, signal) => {
       this._proc = null;
+
+      // Remove exit handler now that child is confirmed dead
+      if (this._processExitHandler) {
+        process.removeListener('exit', this._processExitHandler);
+        this._processExitHandler = null;
+      }
 
       this.emit('exited', { code, signal });
 
@@ -145,10 +154,6 @@ class ProcessMonitor extends EventEmitter {
       this._proc = null;
     }
     this._removePidFile();
-    if (this._processExitHandler) {
-      process.removeListener('exit', this._processExitHandler);
-      this._processExitHandler = null;
-    }
     if (this._restartTimer) {
       clearTimeout(this._restartTimer);
       this._restartTimer = null;

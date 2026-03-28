@@ -249,11 +249,17 @@ describe('ProcessMonitor', () => {
       expect(spawn).not.toHaveBeenCalled();
     });
 
-    it('should clean up process.on("exit") handler', () => {
+    it('should clean up process.on("exit") handler when child exits after stop', () => {
       const removeSpy = jest.spyOn(process, 'removeListener');
       monitor.start();
       monitor.stop();
-      expect(removeSpy).toHaveBeenCalledWith('exit', expect.any(Function));
+      // Exit handler NOT removed yet — it's the safety net
+      const removeCallsAfterStop = removeSpy.mock.calls.filter(c => c[0] === 'exit').length;
+      // Child exits
+      mockProc.emit('close', 0, null);
+      // NOW exit handler removed
+      const removeCallsAfterClose = removeSpy.mock.calls.filter(c => c[0] === 'exit').length;
+      expect(removeCallsAfterClose).toBeGreaterThan(removeCallsAfterStop);
     });
 
     it('should be safe to call multiple times', () => {
@@ -283,7 +289,7 @@ describe('ProcessMonitor', () => {
   });
 
   describe('orphan prevention', () => {
-    it('should register a process.on("exit") handler that kills the child', () => {
+    it('should register a process.on("exit") handler that sends SIGKILL', () => {
       const onSpy = jest.spyOn(process, 'on');
       monitor.start();
 
@@ -292,7 +298,7 @@ describe('ProcessMonitor', () => {
       // Get the handler and call it
       const exitHandler = onSpy.mock.calls.find(c => c[0] === 'exit')[1];
       exitHandler();
-      expect(mockProc.kill).toHaveBeenCalled();
+      expect(mockProc.kill).toHaveBeenCalledWith('SIGKILL');
     });
   });
 
