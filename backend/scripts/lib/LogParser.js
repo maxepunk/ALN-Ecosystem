@@ -163,38 +163,25 @@ class LogParser {
   }
 
   /**
-   * Extract score broadcast events from logs
-   * NOTE: Searches for historical score:updated entries (event removed in Layer 3 cleanup)
-   * Returns: { teamId, score, bonus } for each broadcast
-   * @param {string} startTime - Session start time
-   * @param {string} endTime - Session end time
+   * Get final score for each team from session data.
+   * Session.scores is the authoritative final state — it includes all BM transactions
+   * and admin adjustments. Log-based "Team score adjusted" entries only capture
+   * intermediate snapshots (newScore at adjustment time, before later transactions).
+   * @param {string} startTime - unused (kept for API compat)
+   * @param {string} endTime - unused (kept for API compat)
+   * @param {Object} [session] - Session data (required for accurate results)
    */
-  async findScoreBroadcasts(startTime, endTime) {
-    const broadcasts = await this.filterLogs(
-      entry => entry.message === 'Broadcasted score:updated to GM stations',
-      { startTime, endTime }
-    );
-
-    return broadcasts.map(entry => ({
-      timestamp: entry.timestamp,
-      teamId: entry.metadata?.teamId,
-      score: entry.metadata?.score,
-      bonus: entry.metadata?.bonus || 0
-    })).filter(b => b.teamId && typeof b.score === 'number');
-  }
-
-  /**
-   * Get final score broadcast for each team
-   * @param {string} startTime - Session start time
-   * @param {string} endTime - Session end time
-   */
-  async getFinalScoreBroadcasts(startTime, endTime) {
-    const broadcasts = await this.findScoreBroadcasts(startTime, endTime);
-
-    // Group by team, keep only the last broadcast per team
+  async getFinalScoreBroadcasts(startTime, endTime, session) {
     const byTeam = new Map();
-    for (const b of broadcasts) {
-      byTeam.set(b.teamId, b);
+
+    if (session?.scores) {
+      const scores = Array.isArray(session.scores) ? session.scores : [];
+      for (const s of scores) {
+        const teamId = s.teamId;
+        if (!teamId) continue;
+        const score = s.currentScore ?? s.baseScore ?? 0;
+        byTeam.set(teamId, { teamId, score, bonus: 0, source: 'session' });
+      }
     }
 
     return Array.from(byTeam.values());

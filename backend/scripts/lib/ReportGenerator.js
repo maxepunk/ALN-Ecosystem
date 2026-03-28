@@ -59,9 +59,9 @@ class ReportGenerator {
     // Team Scores (from Scoring Integrity check)
     const scoreCheck = results.find(r => r.name === 'Scoring Integrity');
     if (scoreCheck?.summary?.length > 0) {
-      lines.push('## Team Scores (Calculated vs Broadcast)');
+      lines.push('## Team Scores (Calculated vs Session)');
       lines.push('');
-      lines.push('> **Note**: session.scores is always zeros. This compares calculated scores + admin adjustments against log broadcasts (what scoreboard displayed).');
+      lines.push('> Compares independently calculated scores (from transactions + scoring config) against session.scores (final persisted state).');
       lines.push('');
       lines.push('| Team | Calculated | Adj | Total | Broadcast | Base | Bonus | BM | Det | Status |');
       lines.push('|------|------------|-----|-------|-----------|------|-------|----|----|--------|');

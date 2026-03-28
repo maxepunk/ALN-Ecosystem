@@ -1,16 +1,12 @@
 /**
  * ScoringIntegrityCheck - Verify blackmarket scores calculated correctly
  *
- * CRITICAL ARCHITECTURE NOTE:
- * - session.scores is ALWAYS ZEROS (initialized but never updated)
- * - Live scores exist only in transactionService.teamScores Map (in-memory, not persisted)
- * - This validator compares calculated scores against LOG BROADCASTS (what scoreboard displayed)
- * - DO NOT compare against session.scores - that is fundamentally broken
- *
- * ADMIN ADJUSTMENTS:
- * - GM stations can manually adjust team scores during gameplay (score:adjust command)
- * - These adjustments are logged as "Team score adjusted" with delta and reason
- * - Calculated scores + adjustments should equal broadcast scores
+ * ARCHITECTURE:
+ * - session.scores contains team score objects with baseScore, currentScore, adminAdjustments
+ * - Scores are delivered to clients via transaction:new (teamScore payload) — not separately logged
+ * - This validator compares independently calculated scores against session.scores
+ * - Also cross-references "Team score adjusted" log entries for admin adjustments
+ * - Scoring config loaded from shared ALN-TokenData/scoring-config.json (single source of truth)
  */
 
 class ScoringIntegrityCheck {
@@ -40,7 +36,7 @@ class ScoringIntegrityCheck {
     // Get final broadcast values from logs (what scoreboard actually displayed)
     let broadcastScores = [];
     try {
-      broadcastScores = await this.logParser.getFinalScoreBroadcasts(sessionStart, sessionEnd);
+      broadcastScores = await this.logParser.getFinalScoreBroadcasts(sessionStart, sessionEnd, session);
     } catch (err) {
       findings.push({
         severity: 'WARNING',

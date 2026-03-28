@@ -15,9 +15,14 @@ class ScoringCalculator {
     this.tokens = tokens;
     this.tokensMap = new Map(tokens.map(t => [t.id, t]));
 
-    // Scoring constants (must match config/index.js)
-    this.BASE_VALUES = { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 };
-    this.TYPE_MULTIPLIERS = { personal: 1, business: 3, technical: 5 };
+    // Load scoring constants from shared config (single source of truth)
+    const scoringConfig = require('../../../ALN-TokenData/scoring-config.json');
+    this.BASE_VALUES = Object.fromEntries(
+      Object.entries(scoringConfig.baseValues).map(([k, v]) => [parseInt(k), v])
+    );
+    this.TYPE_MULTIPLIERS = Object.fromEntries(
+      Object.entries(scoringConfig.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
+    );
   }
 
   /**
