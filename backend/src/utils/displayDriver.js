@@ -16,7 +16,7 @@
  * Used by displayControlService to switch between VLC and browser modes.
  */
 
-const { spawn, execFile } = require('child_process');
+const { spawn, execFile, execFileSync } = require('child_process');
 const os = require('os');
 const logger = require('./logger');
 
@@ -102,6 +102,15 @@ async function findWindowId(retries = 10, delayMs = 500) {
  * @returns {Promise<boolean>} True if Chromium launched and window ID found
  */
 async function _doLaunch() {
+  // Kill any orphaned Chromium from previous server instance
+  try {
+    execFileSync('pkill', ['-f', 'chromium.*kiosk'], { timeout: 3000 });
+    // Wait for Chromium to fully exit (releases single-instance lock)
+    await new Promise(r => setTimeout(r, 2000));
+  } catch {
+    // No Chromium running — clean state
+  }
+
   logger.info('[DisplayDriver] Launching persistent scoreboard kiosk', { url: SCOREBOARD_URL });
 
   browserProcess = spawn('chromium-browser', [
@@ -272,6 +281,13 @@ async function cleanup() {
   browserProcess = null;
   windowId = null;
   visible = false;
+
+  // Fallback: kill any Chromium kiosk that escaped tracking
+  try {
+    execFileSync('pkill', ['-f', 'chromium.*kiosk'], { timeout: 3000 });
+  } catch {
+    // None running
+  }
 }
 
 module.exports = {

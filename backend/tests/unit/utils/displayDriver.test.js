@@ -9,6 +9,7 @@
 jest.mock('child_process', () => ({
   spawn: jest.fn(),
   execFile: jest.fn(),
+  execFileSync: jest.fn(),
 }));
 
 // Reset module between tests to clear module-level state
@@ -268,6 +269,83 @@ describe('displayDriver — window management', () => {
     test('no-ops if no browser process is running', async () => {
       // Should not throw
       await expect(displayDriver.cleanup()).resolves.not.toThrow();
+    });
+
+    test('runs pkill fallback after tracked process cleanup', async () => {
+      const { spawn, execFile, execFileSync } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false, kill: jest.fn() };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      await displayDriver.showScoreboard();
+      execFileSync.mockClear(); // Clear calls from _doLaunch orphan cleanup
+      await displayDriver.cleanup();
+
+      expect(execFileSync).toHaveBeenCalledWith(
+        'pkill',
+        ['-f', 'chromium.*kiosk'],
+        { timeout: 3000 }
+      );
+    });
+
+    test('pkill fallback does not throw if no Chromium running', async () => {
+      const { execFileSync } = require('child_process');
+      execFileSync.mockImplementation(() => { throw new Error('no process found'); });
+
+      // cleanup with no browser process — pkill throws but cleanup succeeds
+      await expect(displayDriver.cleanup()).resolves.not.toThrow();
+    });
+  });
+
+  describe('orphan Chromium cleanup', () => {
+    test('kills orphaned Chromium before spawning new one in _doLaunch', async () => {
+      const { spawn, execFile, execFileSync } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      await displayDriver.showScoreboard();
+
+      // execFileSync (pkill) must have been called BEFORE spawn
+      expect(execFileSync).toHaveBeenCalledWith(
+        'pkill',
+        ['-f', 'chromium.*kiosk'],
+        { timeout: 3000 }
+      );
+
+      // Verify pkill was called before spawn by checking call order
+      const pkillCallOrder = execFileSync.mock.invocationCallOrder[0];
+      const spawnCallOrder = spawn.mock.invocationCallOrder[0];
+      expect(pkillCallOrder).toBeLessThan(spawnCallOrder);
+    });
+
+    test('proceeds with launch even if no orphaned Chromium exists', async () => {
+      const { spawn, execFile, execFileSync } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      // pkill throws when no matching process — should not prevent launch
+      execFileSync.mockImplementation(() => { throw new Error('no process found'); });
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      const result = await displayDriver.showScoreboard();
+      expect(result).toBe(true);
+      expect(spawn).toHaveBeenCalledWith('chromium-browser', expect.any(Array), expect.any(Object));
     });
   });
 });
