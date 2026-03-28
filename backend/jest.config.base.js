@@ -5,6 +5,13 @@
  * DO NOT run this directly - use jest.config.js or jest.integration.config.js
  */
 
+// Prevent unit/contract tests from spawning real VLC processes.
+// Integration tests that need VLC should explicitly set ENABLE_VIDEO_PLAYBACK=true.
+// config/index.js reads this at require time: videoPlayback = process.env.ENABLE_VIDEO_PLAYBACK !== 'false'
+if (!process.env.ENABLE_VIDEO_PLAYBACK) {
+  process.env.ENABLE_VIDEO_PLAYBACK = 'false';
+}
+
 module.exports = {
   // Test environment
   testEnvironment: 'node',
