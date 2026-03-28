@@ -48,7 +48,7 @@ function getLocalIP() {
 }
 
 // Use actual IP to ensure CDN resources load correctly
-const SCOREBOARD_URL = `https://${getLocalIP()}:${process.env.PORT || 3000}/scoreboard?kiosk=true`;
+const SCOREBOARD_URL = `https://${getLocalIP()}:${process.env.PORT || 3000}/scoreboard?kiosk=true&deviceId=SCOREBOARD_HDMI`;
 
 /**
  * Run an external command via execFile (no shell injection).

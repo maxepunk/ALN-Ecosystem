@@ -266,6 +266,18 @@ class SessionService extends EventEmitter {
         this.currentSession = Session.fromJSON(sessionData);
         logger.info('Session restored from storage', { sessionId: this.currentSession.id });
 
+        // Mark all devices as disconnected — WebSocket connections don't survive restarts
+        if (this.currentSession.connectedDevices) {
+          for (const device of this.currentSession.connectedDevices) {
+            if (device.connectionStatus === 'connected') {
+              device.connectionStatus = 'disconnected';
+            }
+          }
+          logger.info('Cleared stale device connections after restart', {
+            deviceCount: this.currentSession.connectedDevices.length
+          });
+        }
+
         // CRITICAL: Sync teams to transactionService on session restoration
         // This ensures transactionService.teamScores Map matches session.scores after restart
         const transactionService = require('./transactionService');

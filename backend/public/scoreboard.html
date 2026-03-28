@@ -1428,13 +1428,17 @@
                 console.error('[Scoreboard] Connection error:', msg);
                 updateConnectionStatus('offline', 'CONN ERROR');
 
-                // Re-authenticate immediately on auth failures instead of waiting 5min zombie timer
-                if (msg.includes('AUTH_INVALID') || msg.includes('AUTH_REQUIRED')) {
-                    console.log('[Scoreboard] Auth failure — re-authenticating...');
+                // Any server-side rejection (auth, device collision, etc.) needs
+                // a fresh auth + reconnect cycle — Socket.io's built-in reconnect
+                // will just retry the same broken handshake forever.
+                if (msg.includes('AUTH_') || msg.includes('DEVICE_ID_')) {
+                    console.log('[Scoreboard] Server rejected connection — re-authenticating...');
                     cleanupSocket();
-                    authenticate().then(authenticated => {
-                        if (authenticated) connectWebSocket();
-                    });
+                    setTimeout(() => {
+                        authenticate().then(authenticated => {
+                            if (authenticated) connectWebSocket();
+                        });
+                    }, CONFIG.reconnectDelay);
                 }
             });
 

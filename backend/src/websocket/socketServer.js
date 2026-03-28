@@ -68,24 +68,29 @@ function createSocketServer(httpServer) {
         return next(new Error('AUTH_INVALID: Invalid or expired token'));
       }
 
-      // Check for device ID collision (only check CONNECTED devices, allow reconnection)
-      const sessionService = require('../services/sessionService');
-      const currentSession = sessionService.getCurrentSession();
-      if (currentSession) {
-        const connectedDevices = (currentSession.toJSON().connectedDevices || [])
-          .filter(d => d.connectionStatus === 'connected');
+      // Check for device ID collision (only GM scanners, not scoreboards)
+      // Scoreboards are read-only displays — multiple connections are harmless.
+      // GM scanners process transactions, so duplicates could cause scoring issues.
+      const isScoreboard = deviceId.startsWith('SCOREBOARD_');
+      if (!isScoreboard) {
+        const sessionService = require('../services/sessionService');
+        const currentSession = sessionService.getCurrentSession();
+        if (currentSession) {
+          const connectedDevices = (currentSession.toJSON().connectedDevices || [])
+            .filter(d => d.connectionStatus === 'connected');
 
-        const existingDevice = connectedDevices.find(d =>
-          d.id === deviceId && d.type === 'gm'
-        );
+          const existingDevice = connectedDevices.find(d =>
+            d.id === deviceId && d.type === 'gm'
+          );
 
-        if (existingDevice) {
-          logger.warn('GM connection rejected: device ID already in use', {
-            socketId: socket.id,
-            deviceId,
-            existingIp: existingDevice.ipAddress
-          });
-          return next(new Error('DEVICE_ID_COLLISION: This device ID is already connected from another location'));
+          if (existingDevice) {
+            logger.warn('GM connection rejected: device ID already in use', {
+              socketId: socket.id,
+              deviceId,
+              existingIp: existingDevice.ipAddress
+            });
+            return next(new Error('DEVICE_ID_COLLISION: This device ID is already connected from another location'));
+          }
         }
       }
 
