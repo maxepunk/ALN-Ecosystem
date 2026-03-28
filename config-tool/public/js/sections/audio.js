@@ -6,7 +6,7 @@ import * as api from '../utils/api.js';
 import { el } from '../utils/formatting.js';
 import { makeEnvField } from '../utils/formFields.js';
 
-const SINK_OPTIONS = ['hdmi', 'bluetooth', 'combine-bt'];
+const SINK_OPTIONS = ['hdmi', 'bluetooth'];
 const STREAMS = ['video', 'spotify', 'sound'];
 
 let routingData = null;
@@ -85,7 +85,7 @@ function renderStreamRouting(container) {
 
   const fieldOpts = { sectionName: 'audio', markDirty: ctx.markDirty };
   const defaultGrid = el('div', { className: 'form-grid', style: { marginTop: '12px' } },
-    makeEnvField(envData, 'AUDIO_DEFAULT_OUTPUT', 'Default Output', 'select', { ...fieldOpts, options: ['hdmi', 'bluetooth', 'combine-bt'] }),
+    makeEnvField(envData, 'AUDIO_DEFAULT_OUTPUT', 'Default Output', 'select', { ...fieldOpts, options: ['hdmi', 'bluetooth'] }),
   );
   card.appendChild(defaultGrid);
 

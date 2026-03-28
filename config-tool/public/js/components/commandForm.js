@@ -264,7 +264,7 @@ export function buildPayloadField(field, cmd, allCues, editorCtx) {
     group.appendChild(select);
 
   } else if (field.type === 'sink-picker') {
-    const sinks = ['(default)', 'hdmi', 'bluetooth', 'combine-bt'];
+    const sinks = ['(default)', 'hdmi', 'bluetooth'];
     const select = el('select', {
       onChange: () => {
         cmd.payload[field.key] = select.value === '(default)' ? undefined : select.value;

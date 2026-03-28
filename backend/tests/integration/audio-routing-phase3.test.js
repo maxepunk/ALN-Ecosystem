@@ -3,11 +3,10 @@
  *
  * Tests end-to-end flows for Phase 3 features:
  * 1. Ducking engine — video/sound lifecycle auto-ducks Spotify volume
- * 2. Combine-sink management — virtual aln-combine sink for dual BT speakers
- * 3. Per-stream volume control — setStreamVolume/getStreamVolume
- * 4. Routing inheritance — cue-level routing injected at dispatch time
+ * 2. Per-stream volume control — setStreamVolume/getStreamVolume
+ * 3. Routing inheritance — cue-level routing injected at dispatch time
  *
- * External dependencies (pactl, pw-loopback) are mocked at the service level.
+ * External dependencies (pactl) are mocked at the service level.
  * The tests verify internal service coordination, NOT external tools.
  */
 
@@ -45,10 +44,6 @@ describe('Audio Routing Phase 3 Integration', () => {
     audioRoutingService.loadDuckingRules([]);
     // Reset stream volumes
     audioRoutingService._streamVolumes = { video: 100, spotify: 100, sound: 100 };
-    // Reset combine-sink state
-    audioRoutingService._combineSinkActive = false;
-    audioRoutingService._combineSinkPids = [];
-    audioRoutingService._combineSinkProcs = [];
   });
 
   afterEach(() => {
@@ -157,72 +152,6 @@ describe('Audio Routing Phase 3 Integration', () => {
 
       await audioRoutingService.handleDuckingEvent('video', 'started');
       expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalled();
-    });
-  });
-
-  // ══════════════════════════════════════════════════════════════
-  // Combine-Sink Management
-  // ══════════════════════════════════════════════════════════════
-
-  describe('Combine-Sink Management', () => {
-    it('should create combine-sink when 2 BT speakers available', async () => {
-      jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-        { name: 'bluez_output.AA.a2dp', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
-        { name: 'bluez_output.BB.a2dp', type: 'bluetooth', format: 's16le 2ch 48000Hz' },
-      ]);
-      // Mock pactl (null sink creation) — same pattern as Per-Stream Volume tests
-      jest.spyOn(audioRoutingService, '_execFile').mockResolvedValue('12345');
-      // Mock spawn to prevent real pw-loopback
-      const mockProc = { pid: 1234, on: jest.fn(), kill: jest.fn() };
-      jest.spyOn(require('child_process'), 'spawn').mockReturnValue(mockProc);
-
-      await audioRoutingService.createCombineSink();
-
-      expect(audioRoutingService._combineSinkActive).toBe(true);
-    });
-
-    it('should reject combine-sink with fewer than 2 BT speakers', async () => {
-      jest.spyOn(audioRoutingService, 'getBluetoothSinks').mockResolvedValue([
-        { name: 'bluez_output.AA.a2dp', type: 'bluetooth' },
-      ]);
-
-      await expect(audioRoutingService.createCombineSink()).rejects.toThrow(/Need at least 2/);
-      expect(audioRoutingService._combineSinkActive).toBe(false);
-    });
-
-    it('should include virtual aln-combine sink when active', async () => {
-      audioRoutingService._combineSinkActive = true;
-      jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
-        { name: 'hdmi', type: 'hdmi' },
-      ]);
-
-      const sinks = await audioRoutingService.getAvailableSinksWithCombine();
-      const combineSink = sinks.find(s => s.name === 'aln-combine');
-
-      expect(combineSink).toBeDefined();
-      expect(combineSink.virtual).toBe(true);
-    });
-
-    it('should NOT include aln-combine when inactive', async () => {
-      audioRoutingService._combineSinkActive = false;
-      jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
-        { name: 'hdmi', type: 'hdmi' },
-      ]);
-
-      const sinks = await audioRoutingService.getAvailableSinksWithCombine();
-      expect(sinks.find(s => s.name === 'aln-combine')).toBeUndefined();
-    });
-
-    it('should clean up combine-sink on destroy', async () => {
-      const mockProc = { pid: 999, kill: jest.fn(), on: jest.fn() };
-      audioRoutingService._combineSinkActive = true;
-      audioRoutingService._combineSinkPids = [999];
-      audioRoutingService._combineSinkProcs = [mockProc];
-
-      await audioRoutingService.destroyCombineSink();
-
-      expect(audioRoutingService._combineSinkActive).toBe(false);
-      expect(audioRoutingService._combineSinkPids).toHaveLength(0);
     });
   });
 

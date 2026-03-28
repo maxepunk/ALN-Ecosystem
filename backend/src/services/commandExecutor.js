@@ -54,8 +54,6 @@ const SERVICE_DEPENDENCIES = {
   'bluetooth:scan:stop': 'bluetooth',
   'audio:route:set': 'audio',
   'audio:volume:set': 'audio',
-  'audio:combine:create': 'audio',
-  'audio:combine:destroy': 'audio',
 };
 
 // Lookup tables for command dispatch
@@ -425,20 +423,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         await audioRoutingService.setStreamRoute(stream, sink);
         resultMessage = `Audio route set: ${stream} -> ${sink}`;
         logger.info('Audio route set', { source, deviceId, stream, sink });
-        break;
-      }
-
-      case 'audio:combine:create': {
-        resultData = await audioRoutingService.createCombineSink();
-        resultMessage = 'Combine-sink created';
-        logger.info('Combine-sink created', { source, deviceId });
-        break;
-      }
-
-      case 'audio:combine:destroy': {
-        await audioRoutingService.destroyCombineSink();
-        resultMessage = 'Combine-sink destroyed';
-        logger.info('Combine-sink destroyed', { source, deviceId });
         break;
       }
 

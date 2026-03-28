@@ -19,6 +19,7 @@ jest.mock('../../../src/utils/logger', () => ({
 
 const bluetoothService = require('../../../src/services/bluetoothService');
 const registry = require('../../../src/services/serviceHealthRegistry');
+const logger = require('../../../src/utils/logger');
 
 /** Default mock spawn proc for device monitor (started by init when adapter available) */
 function createDefaultMockSpawnProc() {
@@ -754,8 +755,8 @@ describe('BluetoothService', () => {
       await pairPromise;
     });
 
-    it('should enforce A2DP profile after auto-connect in pairDevice', async () => {
-      const spy = jest.spyOn(bluetoothService, '_enforceA2DPProfile').mockResolvedValue();
+    it('should verify A2DP profile after auto-connect in pairDevice', async () => {
+      const spy = jest.spyOn(bluetoothService, '_verifyA2DPProfile').mockResolvedValue();
 
       const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
       await jest.advanceTimersByTimeAsync(500);
@@ -830,40 +831,79 @@ describe('BluetoothService', () => {
     });
   });
 
-  // ── _enforceA2DPProfile() ──
+  // ── _verifyA2DPProfile() ──
 
-  describe('_enforceA2DPProfile()', () => {
-    it('should call pactl set-card-profile with a2dp-sink', async () => {
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        cb(null, '', '');
-      });
+  describe('_verifyA2DPProfile()', () => {
+    let execFileSpy;
 
-      await bluetoothService._enforceA2DPProfile('AA:BB:CC:DD:EE:FF');
+    afterEach(() => {
+      if (execFileSpy) {
+        execFileSpy.mockRestore();
+        execFileSpy = null;
+      }
+    });
 
-      expect(execFile).toHaveBeenCalledWith(
-        'pactl',
-        ['set-card-profile', 'bluez_card.AA_BB_CC_DD_EE_FF', 'a2dp-sink'],
-        expect.any(Object),
-        expect.any(Function)
+    it('should log warning when card has no A2DP profile active', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile').mockResolvedValue(
+        'Card #0\n\tName: bluez_card.AA_BB_CC_DD_EE_FF\n\t\tActive Profile: headset-head-unit\n\t\tProfiles:\n\t\t\theadset-head-unit: Headset\n'
+      );
+      const warnSpy = jest.spyOn(logger, 'warn');
+
+      await bluetoothService._verifyA2DPProfile('AA:BB:CC:DD:EE:FF');
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('not on A2DP'),
+        expect.any(Object)
       );
     });
 
-    it('should not throw on failure (best-effort)', async () => {
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        cb(new Error('No such card'), '', '');
-      });
+    it('should not warn when a2dp-sink profile is active', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile').mockResolvedValue(
+        'Card #0\n\tName: bluez_card.AA_BB_CC_DD_EE_FF\n\t\tActive Profile: a2dp-sink\n'
+      );
+      const warnSpy = jest.spyOn(logger, 'warn');
+
+      await bluetoothService._verifyA2DPProfile('AA:BB:CC:DD:EE:FF');
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should accept a2dp-sink-sbc_xq as valid A2DP', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile').mockResolvedValue(
+        'Card #0\n\tName: bluez_card.AA_BB_CC_DD_EE_FF\n\t\tActive Profile: a2dp-sink-sbc_xq\n'
+      );
+      const warnSpy = jest.spyOn(logger, 'warn');
+
+      await bluetoothService._verifyA2DPProfile('AA:BB:CC:DD:EE:FF');
+
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not throw on pactl failure (best-effort)', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile').mockRejectedValue(new Error('pactl failed'));
 
       // Should not throw
-      await bluetoothService._enforceA2DPProfile('AA:BB:CC:DD:EE:FF');
+      await bluetoothService._verifyA2DPProfile('AA:BB:CC:DD:EE:FF');
+    });
+
+    it('should not warn when card not yet in PipeWire', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile').mockResolvedValue(
+        'Card #0\n\tName: bluez_card.11_22_33_44_55_66\n\t\tActive Profile: a2dp-sink\n'
+      );
+      const warnSpy = jest.spyOn(logger, 'warn');
+
+      await bluetoothService._verifyA2DPProfile('AA:BB:CC:DD:EE:FF');
+
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
-  describe('connectDevice with A2DP enforcement', () => {
-    it('should enforce A2DP profile after successful connect', async () => {
+  describe('connectDevice with A2DP verification', () => {
+    it('should verify A2DP profile after successful connect', async () => {
       execFile.mockImplementation((cmd, args, opts, cb) => {
         cb(null, 'Connection successful\n', '');
       });
-      const spy = jest.spyOn(bluetoothService, '_enforceA2DPProfile');
+      const spy = jest.spyOn(bluetoothService, '_verifyA2DPProfile').mockResolvedValue();
 
       await bluetoothService.connectDevice('AA:BB:CC:DD:EE:FF');
 
@@ -1023,7 +1063,7 @@ describe('BluetoothService', () => {
       await bluetoothService.init();
 
       expect(registry.isHealthy('bluetooth')).toBe(true);
-      expect(registry.getStatus('bluetooth').message).toBe('Adapter available');
+      expect(registry.getStatus('bluetooth').message).toBe('Adapter available (no devices connected)');
     });
 
     it('should report down when no adapter on init', async () => {
@@ -1078,6 +1118,89 @@ describe('BluetoothService', () => {
       bluetoothService.reset();
 
       expect(registry.isHealthy('bluetooth')).toBe(false);
+    });
+  });
+
+  // ── checkHealth — A2DP transport verification ──
+
+  describe('checkHealth — A2DP transport verification', () => {
+    let execFileSpy;
+
+    afterEach(() => {
+      if (execFileSpy) {
+        execFileSpy.mockRestore();
+        execFileSpy = null;
+      }
+    });
+
+    it('should report healthy when adapter on and connected device has BT sink', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile')
+        .mockResolvedValueOnce('Powered: yes')  // bluetoothctl show
+        .mockResolvedValueOnce('65\talsa_output.hdmi\tPipeWire\n72\tbluez_output.AA_BB.1\tPipeWire\ts16le 2ch 48000Hz\tSUSPENDED');  // pactl list sinks short
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Speaker' }],
+      ]);
+
+      const result = await bluetoothService.checkHealth();
+
+      expect(result).toBe(true);
+      expect(registry.isHealthy('bluetooth')).toBe(true);
+      expect(registry.getStatus('bluetooth').message).toContain('BT audio active');
+    });
+
+    it('should report healthy with warning message when connected device has no PipeWire sink', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile')
+        .mockResolvedValueOnce('Powered: yes')  // bluetoothctl show
+        .mockResolvedValueOnce('65\talsa_output.hdmi\tPipeWire');  // no BT sink
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Speaker' }],
+      ]);
+
+      const result = await bluetoothService.checkHealth();
+
+      expect(result).toBe(true); // adapter is on, so true
+      expect(registry.isHealthy('bluetooth')).toBe(true);
+      expect(registry.getStatus('bluetooth').message).toContain('no PipeWire sink');
+    });
+
+    it('should not check sinks when no devices connected', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile')
+        .mockResolvedValueOnce('Powered: yes');
+      bluetoothService._cachedDeviceStates = new Map();
+
+      await bluetoothService.checkHealth();
+
+      // Only one call (bluetoothctl show via isAvailable), no pactl call
+      expect(execFileSpy).toHaveBeenCalledTimes(1);
+      expect(registry.getStatus('bluetooth').message).toBe('Adapter available (no devices connected)');
+    });
+
+    it('should report adapter down when not available', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile')
+        .mockRejectedValueOnce(new Error('No adapter'));
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Speaker' }],
+      ]);
+
+      const result = await bluetoothService.checkHealth();
+
+      expect(result).toBe(false);
+      expect(registry.isHealthy('bluetooth')).toBe(false);
+    });
+
+    it('should report healthy when pactl check throws (non-fatal)', async () => {
+      execFileSpy = jest.spyOn(bluetoothService, '_execFile')
+        .mockResolvedValueOnce('Powered: yes')  // bluetoothctl show
+        .mockRejectedValueOnce(new Error('pactl failed'));  // pactl list sinks short
+      bluetoothService._cachedDeviceStates = new Map([
+        ['AA:BB:CC:DD:EE:FF', { connected: true, paired: true, name: 'Speaker' }],
+      ]);
+
+      const result = await bluetoothService.checkHealth();
+
+      expect(result).toBe(true);
+      expect(registry.isHealthy('bluetooth')).toBe(true);
+      expect(registry.getStatus('bluetooth').message).toContain('PipeWire check failed');
     });
   });
 

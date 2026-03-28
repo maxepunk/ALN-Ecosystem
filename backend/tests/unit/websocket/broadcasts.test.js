@@ -528,7 +528,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
       mockAudioRoutingService.applyRouting = jest.fn().mockResolvedValue();
       mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-        routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+        routes: {}, defaultSink: 'hdmi', ducking: {},
       });
 
       setupBroadcastListeners(mockIo, {
@@ -604,7 +604,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       mockAudioRoutingService = new EventEmitter();
       mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
       mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-        routes: { video: 'hdmi' }, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+        routes: { video: 'hdmi' }, defaultSink: 'hdmi', ducking: {},
       });
       mockLightingService = new EventEmitter();
       mockLightingService.getState = jest.fn().mockReturnValue({

@@ -500,7 +500,7 @@ function setupBroadcastListeners(io, services) {
 
   // Audio → service:state { domain: 'audio' }
   if (audioRoutingService) {
-    for (const event of ['routing:changed', 'routing:applied', 'routing:fallback', 'sink:added', 'sink:removed', 'ducking:changed', 'combine-sink:created', 'combine-sink:destroyed']) {
+    for (const event of ['routing:changed', 'routing:applied', 'routing:fallback', 'sink:added', 'sink:removed', 'ducking:changed']) {
       addTrackedListener(audioRoutingService, event, () => pushServiceState('audio', audioRoutingService));
     }
   }

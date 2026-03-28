@@ -1346,12 +1346,9 @@ components:
         - `bluetooth:unpair` — `{address: string}` (required)
         - `bluetooth:connect` — `{address: string}` (required)
         - `bluetooth:disconnect` — `{address: string}` (required)
-        - `audio:route:set` — `{stream: 'video'|'spotify'|'sound', sink: 'hdmi'|'bluetooth'|'combine-bt'}`.
-          Phase 0 only routed stream='video'. Phase 3 adds per-stream routing for all three streams
-          and 'combine-bt' sink (virtual combined Bluetooth output). The GM sends a logical alias;
+        - `audio:route:set` — `{stream: 'video'|'spotify'|'sound', sink: 'hdmi'|'bluetooth'}`.
+          Per-stream routing for all three streams. The GM sends a logical alias;
           audioRoutingService resolves it to an actual PipeWire sink name.
-        - `audio:combine:create` — `{}` Create virtual combine-bt sink from connected BT speakers
-        - `audio:combine:destroy` — `{}` Tear down combine-bt sink
         - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
         - `lighting:scenes:refresh` — `{}`
 
@@ -1407,8 +1404,6 @@ components:
                   - bluetooth:disconnect
                   - audio:route:set
                   - audio:volume:set
-                  - audio:combine:create
-                  - audio:combine:destroy
                   - lighting:scene:activate
                   - lighting:scenes:refresh
                   - cue:fire
@@ -2001,7 +1996,7 @@ components:
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
                   - **health**: `{vlc: {status, message, lastChecked}, spotify: {...}, ...}` (all 8 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
-                  - **audio**: `{routes, defaultSink, combineSinkActive, ducking}`
+                  - **audio**: `{routes, defaultSink, ducking}`
                   - **lighting**: `{connected, activeScene, scenes[]}`
                   - **sound**: `{playing[]}`
                   - **gameclock**: `{status, elapsed, startTime, totalPausedMs}`

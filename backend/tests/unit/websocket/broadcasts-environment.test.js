@@ -71,7 +71,7 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     mockAudioRoutingService = new EventEmitter();
     mockAudioRoutingService.handleDuckingEvent = jest.fn();
     mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-      routes: {}, defaultSink: 'hdmi', combineSinkActive: false, ducking: {},
+      routes: {}, defaultSink: 'hdmi', ducking: {},
     });
     mockLightingService = new EventEmitter();
     mockLightingService.getState = jest.fn().mockReturnValue({

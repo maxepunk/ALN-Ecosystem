@@ -79,7 +79,7 @@ describe('Service getState() Methods', () => {
       const state = audioRoutingService.getState();
       expect(state).toHaveProperty('routes');
       expect(state).toHaveProperty('defaultSink');
-      expect(state).toHaveProperty('combineSinkActive', false);
+      expect(state).not.toHaveProperty('combineSinkActive');
       expect(state).toHaveProperty('ducking');
       expect(typeof state.routes).toBe('object');
     });

@@ -425,8 +425,9 @@ All service domain state (cue status, held items, health, spotify, video) is del
 **`sync:full` Phase 4 Additions:**
 - `serviceHealth`: `{vlc: {status, message}, spotify: {...}, ...}` via `serviceHealthRegistry.getSnapshot()`
 - `heldItems`: `[{id, type, cueId?, reason, ...}]` via `buildHeldItemsState()`
+- `sound`: `{playing: [{file, target, volume, pid}]}` via `soundService.getState()`
 
-**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`). Missing a service = silent state desync. Bug has recurred in `scores:reset`, `offline:queue:processed`, and `integration-test-server.js` — audit ALL emission points (including test helpers) when adding new services.
+**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`, `soundService`). Missing a service = silent state desync. Bug has recurred 4 times: `scores:reset`, `offline:queue:processed`, `integration-test-server.js`, and `soundService` omission. 7 callers as of 2026-03-27: `gmAuth.js`, `broadcasts.js` (×3), `stateRoutes.js`, `server.js`, `integration-test-server.js`. Audit ALL when adding new services.
 
 **Unified `service:state` Pattern (Sole Push Mechanism):**
 - Every service has a sync `getState()` method returning a full state snapshot
@@ -449,9 +450,7 @@ All service domain state (cue status, held items, health, spotify, video) is del
 
 ### Multi-Speaker Routing + Ducking (Phase 3)
 
-Extends Phase 0 audio routing with PipeWire combine-sink management, event-driven ducking engine, and cue-level routing inheritance.
-
-**Combine-Sink (Dual BT Speakers):** Creates a virtual `combine-bt` sink using `pw-loopback` processes to route audio to two Bluetooth speakers simultaneously. `audioRoutingService.createCombineSink()` / `destroyCombineSink()`. Requires 2+ paired BT sinks. The virtual sink appears in `getAvailableSinksWithCombine()` when active. Managed via `audio:combine:create` / `audio:combine:destroy` gm:command actions. **IMPORTANT:** `createCombineSink()` and `destroyCombineSink()` must use `this._execFile()` (not raw `execFileAsync`) — all other methods use `_execFile()` which is mockable in tests.
+Extends Phase 0 audio routing with event-driven ducking engine and cue-level routing inheritance.
 
 **Ducking Engine:** Automatically reduces Spotify volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
 
@@ -460,13 +459,6 @@ Extends Phase 0 audio routing with PipeWire combine-sink management, event-drive
 **Sink-input tracking**: `audioRoutingService._sinkInputRegistry` (Map) is populated reactively from `pactl subscribe` sink-input events. `findSinkInput()` checks this registry first (fast-path), falls back to `pactl list sink-inputs`. Registry cleared on `reset()`.
 
 **Routing Inheritance (3-tier resolution):** When a compound cue dispatches a command, routing is resolved as: command-level `target` > cue-level `routing` map > global default. The `_resolveRouting(action, payload, cueDef)` method in `cueEngineService` derives stream type from the action prefix (e.g., `sound:play` → `sound`), then checks `cueDef.routing[streamType]`.
-
-**Phase 3 gm:command Actions:**
-
-| Action | Payload | Description |
-|--------|---------|-------------|
-| `audio:combine:create` | `{}` | Create combine-bt virtual sink from paired BT speakers |
-| `audio:combine:destroy` | `{}` | Destroy combine-bt virtual sink |
 
 **Config:** `config/environment/routing.json` — `ducking` array:
 ```json
@@ -478,7 +470,7 @@ Extends Phase 0 audio routing with PipeWire combine-sink management, event-drive
 
 **Note:** Ducking state is delivered via `service:state` domain `audio` (included in `audioRoutingService.getState().ducking`). Ducking is fully automated on the backend — no GM intervention needed, but the indicator gives the GM visibility into active ducking.
 
-**Key Files:** `src/services/audioRoutingService.js` (combine-sink + ducking), `src/services/cueEngineService.js` (`_resolveRouting`), `config/environment/routing.json`
+**Key Files:** `src/services/audioRoutingService.js` (ducking engine), `src/services/cueEngineService.js` (`_resolveRouting`), `config/environment/routing.json`
 
 ## Configuration
 

@@ -113,7 +113,7 @@ describe('Phase 1 AsyncAPI Contract - gm:command actions', () => {
         action: 'sound:play',
         payload: {
           file: 'fanfare.wav',
-          target: 'combine-bt'
+          target: 'hdmi'
         }
       },
       timestamp: new Date().toISOString()

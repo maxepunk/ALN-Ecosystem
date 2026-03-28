@@ -23,7 +23,7 @@ const TRIGGER_EVENTS = {
   'gameclock:started': { label: 'Game Clock Started', fields: ['gameStartTime'] },
 };
 
-const SINK_OPTIONS = ['(default)', 'hdmi', 'bluetooth', 'combine-bt'];
+const SINK_OPTIONS = ['(default)', 'hdmi', 'bluetooth'];
 
 export function renderCueEditor(container, cue, allCues, editorCtx) {
   container.textContent = '';

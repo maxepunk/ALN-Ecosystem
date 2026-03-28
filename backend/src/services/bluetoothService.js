@@ -68,16 +68,44 @@ class BluetoothService extends EventEmitter {
 
   /**
    * On-demand health check. Re-probes adapter availability and reports to registry.
+   * If devices are connected, also verifies that PipeWire has BT audio sinks.
    * @returns {Promise<boolean>} true if adapter is powered on
    */
   async checkHealth() {
     const available = await this.isAvailable();
-    if (available) {
-      registry.report('bluetooth', 'healthy', 'Adapter available');
-    } else {
+    if (!available) {
       registry.report('bluetooth', 'down', 'No adapter or adapter powered off');
+      return false;
     }
-    return available;
+
+    // Check if connected devices have PipeWire sinks
+    const connectedDevices = [...this._cachedDeviceStates.entries()]
+      .filter(([, state]) => state.connected);
+
+    if (connectedDevices.length === 0) {
+      registry.report('bluetooth', 'healthy', 'Adapter available (no devices connected)');
+      return true;
+    }
+
+    // Verify PipeWire has BT sinks for connected devices
+    try {
+      const sinkList = await this._execFile('pactl', ['list', 'sinks', 'short']);
+      const hasBtSink = sinkList.includes('bluez_output');
+
+      if (hasBtSink) {
+        registry.report('bluetooth', 'healthy', 'Adapter available, BT audio active');
+      } else {
+        registry.report('bluetooth', 'healthy',
+          `Adapter available, ${connectedDevices.length} device(s) connected but no PipeWire sink`);
+        logger.warn('BT device connected but no PipeWire audio sink', {
+          devices: connectedDevices.map(([addr, s]) => ({ address: addr, name: s.name })),
+        });
+      }
+    } catch {
+      registry.report('bluetooth', 'healthy', 'Adapter available (PipeWire check failed)');
+    }
+
+    return true;
   }
 
   /**
@@ -296,8 +324,8 @@ class BluetoothService extends EventEmitter {
       // Auto-connect — for speakers, pair without connect is useless
       try {
         await this._execFile('bluetoothctl', ['connect', address]);
-        // Best-effort: force A2DP profile
-        await this._enforceA2DPProfile(address);
+        // Best-effort: verify A2DP profile was selected
+        await this._verifyA2DPProfile(address);
         logger.info('Device auto-connected after pair', { address, name });
         this.emit('device:connected', { address, name });
       } catch (err) {
@@ -316,7 +344,7 @@ class BluetoothService extends EventEmitter {
   }
 
   /**
-   * Connect to a paired device
+   * Connect to a paired device. Verifies A2DP profile after connect.
    * @param {string} address - MAC address
    * @returns {Promise<void>}
    */
@@ -327,8 +355,8 @@ class BluetoothService extends EventEmitter {
     await this._execFile('bluetoothctl', ['connect', address]);
     const name = await this._getDeviceName(address);
 
-    // Best-effort: force A2DP profile (prevents HFP/HSP mono mode)
-    await this._enforceA2DPProfile(address);
+    // Best-effort: verify A2DP profile was selected by WirePlumber
+    await this._verifyA2DPProfile(address);
 
     logger.info('Device connected', { address, name });
 
@@ -336,18 +364,36 @@ class BluetoothService extends EventEmitter {
   }
 
   /**
-   * Best-effort A2DP profile enforcement after Bluetooth connect.
-   * Sets the PipeWire card profile to a2dp-sink, preventing HFP/HSP
-   * (mono 16kHz headset mode) which produces garbled audio.
+   * Verify that a connected device is using an A2DP profile (not HFP/HSP).
+   * Logs a warning if the device ended up on a headset profile, which would
+   * produce mono 16kHz audio. Does NOT force a profile change — WirePlumber
+   * config should handle profile selection correctly.
    * @param {string} address - Bluetooth MAC address
    */
-  async _enforceA2DPProfile(address) {
+  async _verifyA2DPProfile(address) {
     const cardName = `bluez_card.${address.replace(/:/g, '_')}`;
     try {
-      await this._execFile('pactl', ['set-card-profile', cardName, 'a2dp-sink']);
-      logger.info('A2DP profile enforced', { address, cardName });
+      const stdout = await this._execFile('pactl', ['list', 'cards']);
+      // Find the active profile for this card
+      const cardIdx = stdout.indexOf(cardName);
+      if (cardIdx === -1) return; // Card not in PipeWire yet (normal during connect)
+
+      const afterCard = stdout.slice(cardIdx);
+      const activeMatch = afterCard.match(/Active Profile:\s*(.+)/);
+      if (!activeMatch) return;
+
+      const activeProfile = activeMatch[1].trim();
+      if (activeProfile.startsWith('a2dp-sink')) {
+        logger.debug('BT device on A2DP profile', { address, profile: activeProfile });
+      } else {
+        logger.warn('BT device not on A2DP profile — audio may be mono/low quality', {
+          address,
+          activeProfile,
+          expected: 'a2dp-sink*',
+        });
+      }
     } catch (err) {
-      logger.warn('A2DP profile enforcement failed (device may not support A2DP)', {
+      logger.debug('Could not verify A2DP profile (non-fatal)', {
         address, error: err.message,
       });
     }

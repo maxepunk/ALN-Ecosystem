@@ -8,11 +8,10 @@
  * routing between HDMI and Bluetooth sinks.
  *
  * Uses execFile (not exec) to prevent shell injection.
- * Uses spawn for pw-loopback (combine-sink) and ProcessMonitor for pactl subscribe.
+ * Uses ProcessMonitor for pactl subscribe.
  */
 
 const EventEmitter = require('events');
-const { spawn } = require('child_process');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
 const { execFileAsync } = require('../utils/execHelper');
@@ -52,9 +51,6 @@ const FIND_SINK_INPUT_BACKOFF = 100;
 /** How long to cache sink list (ms) — invalidated immediately on sink events */
 const SINK_CACHE_TTL = 5000;
 
-/** Debounce delay for BT sink change processing (ms) */
-const BT_SINK_DEBOUNCE = 300;
-
 class AudioRoutingService extends EventEmitter {
   constructor() {
     super();
@@ -64,13 +60,6 @@ class AudioRoutingService extends EventEmitter {
     // Sink list cache (reduces pactl calls — invalidated on sink events)
     this._sinkCache = null;
     this._sinkCacheTime = 0;
-    this._btSinkDebounceTimer = null;
-
-    // Combine-sink state
-    this._combineSinkActive = false;
-    this._combineSinkPids = [];
-    this._combineSinkProcs = [];
-    this._combineSinkModuleId = null;
 
     // Ducking engine state
     this._duckingRules = [];
@@ -145,14 +134,7 @@ class AudioRoutingService extends EventEmitter {
       this._sinkMonitor.stop();
       this._sinkMonitor = null;
     }
-    if (this._btSinkDebounceTimer) {
-      clearTimeout(this._btSinkDebounceTimer);
-      this._btSinkDebounceTimer = null;
-    }
     this._invalidateSinkCache();
-
-    // Tear down combine-sink processes
-    this._killCombineSinkProcs();
 
     logger.info('Audio routing service cleaned up');
   }
@@ -166,10 +148,6 @@ class AudioRoutingService extends EventEmitter {
     this._routingData = JSON.parse(JSON.stringify(DEFAULT_ROUTING));
     this._sinkCache = null;
     this._sinkCacheTime = 0;
-    this._combineSinkActive = false;
-    this._combineSinkPids = [];
-    this._combineSinkProcs = [];
-    this._combineSinkModuleId = null;
 
     // Reset ducking engine state
     this._duckingRules = [];
@@ -236,9 +214,6 @@ class AudioRoutingService extends EventEmitter {
     if (name.toLowerCase().includes('hdmi')) {
       return 'hdmi';
     }
-    if (name === 'combine-bt' || name === 'aln-combine') {
-      return 'combine';
-    }
     return 'other';
   }
 
@@ -294,7 +269,7 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Get current audio routing state snapshot (sync).
-   * @returns {{routes: Object, defaultSink: string, combineSinkActive: boolean, ducking: Object, availableSinks: Array}}
+   * @returns {{routes: Object, defaultSink: string, ducking: Object, availableSinks: Array}}
    */
   getState() {
     const routes = {};
@@ -304,7 +279,6 @@ class AudioRoutingService extends EventEmitter {
     return {
       routes,
       defaultSink: this._routingData.defaultSink,
-      combineSinkActive: this._combineSinkActive,
       ducking: { ...this._activeDuckingSources },
       availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || []),
     };
@@ -324,7 +298,7 @@ class AudioRoutingService extends EventEmitter {
     return {
       routes,
       defaultSink: this._routingData.defaultSink,
-      availableSinks: await this.getAvailableSinksWithCombine(),
+      availableSinks: await this.getAvailableSinks(),
     };
   }
 
@@ -499,259 +473,20 @@ class AudioRoutingService extends EventEmitter {
     }
   }
 
-  // ── Combine-Sink Management ──
-
-  /**
-   * Create a virtual combine-sink that forwards audio to both BT speakers.
-   * Spawns two pw-loopback processes, one per BT speaker, sharing a virtual
-   * capture node named 'combine-bt'. Tracks PIDs for cleanup.
-   *
-   * Requires at least 2 connected Bluetooth speakers.
-   * No-op if combine-sink is already active.
-   * @returns {Promise<void>}
-   */
-  async createCombineSink() {
-    if (this._combineSinkActive) {
-      logger.info('Combine-sink already active, skipping creation');
-      return;
-    }
-
-    const allBtSinks = await this.getBluetoothSinks();
-    const btSinks = allBtSinks.filter(s => this._isHighQualitySink(s));
-    if (btSinks.length < allBtSinks.length) {
-      const skipped = allBtSinks.filter(s => !this._isHighQualitySink(s));
-      logger.warn('Skipping low-quality BT sinks (HFP/HSP) for combine-sink', {
-        skipped: skipped.map(s => ({ name: s.name, format: s.format })),
-      });
-    }
-    if (btSinks.length < 2) {
-      throw new Error(
-        `Need at least 2 Bluetooth speakers for combine-sink, found ${btSinks.length}`
-      );
-    }
-
-    // 1. Create Null Sink (The Source)
-    try {
-      const stdout = await this._execFile('pactl', [
-        'load-module',
-        'module-null-sink',
-        'sink_name=aln-combine',
-        'sink_properties=device.description=ALN_Multi_Speaker'
-      ]);
-      this._combineSinkModuleId = stdout.trim();
-      logger.info('Created null sink aln-combine', { moduleId: this._combineSinkModuleId });
-    } catch (err) {
-      logger.error('Failed to create null sink', { error: err.message });
-      throw err;
-    }
-
-    // 2. Spawn Loopbacks (The Cables)
-    // Connect aln-combine.monitor -> Speaker Sinks
-    const targetSinks = btSinks.slice(0, 2);
-    const procs = [];
-    const pids = [];
-
-    for (const sink of targetSinks) {
-      const proc = spawn('pw-loopback', [
-        '--capture-props', 'node.target=aln-combine.monitor media.class=Stream/Input/Audio',
-        '--playback-props', `node.target=${sink.name} node.latency=200/1000`, // 200ms latency request
-      ]);
-
-      // Handle unexpected exit of pw-loopback process
-      proc.on('close', (code) => {
-        logger.warn('pw-loopback process exited', { pid: proc.pid, code, sink: sink.name });
-        this._onCombineLoopbackExit(proc.pid);
-      });
-
-      proc.on('error', (err) => {
-        logger.error('pw-loopback spawn error', { sink: sink.name, error: err.message });
-        // NOTE: 'close' also fires after 'error' on ENOENT — _combineSinkActive guard
-        // in _onCombineLoopbackExit prevents double teardown
-        this._onCombineLoopbackExit(proc.pid);
-      });
-
-      procs.push(proc);
-      pids.push(proc.pid);
-
-      logger.info('pw-loopback started', { pid: proc.pid, target: sink.name });
-    }
-
-    this._combineSinkActive = true;
-    this._combineSinkPids = pids;
-    this._combineSinkProcs = procs;
-
-    const sinkNames = targetSinks.map(s => s.name);
-    logger.info('Combine-sink created (Null Sink + Loopbacks)', { pids, sinks: sinkNames });
-
-    this.emit('combine-sink:created', { pids, sinks: sinkNames });
-  }
-
-  /**
-   * Tear down the combine-sink by killing all pw-loopback processes.
-   * Safe to call when no combine-sink is active.
-   * @returns {Promise<void>}
-   */
-  async destroyCombineSink() {
-    if (!this._combineSinkActive) {
-      return;
-    }
-
-    // 1. Kill Loopbacks
-    this._killCombineSinkProcs();
-
-    // 2. Unload Null Sink
-    if (this._combineSinkModuleId) {
-      try {
-        await this._execFile('pactl', ['unload-module', this._combineSinkModuleId]);
-        logger.info('Unloaded null sink aln-combine', { moduleId: this._combineSinkModuleId });
-      } catch (err) {
-        logger.warn('Failed to unload null sink', { error: err.message, moduleId: this._combineSinkModuleId });
-      }
-      this._combineSinkModuleId = null;
-    }
-
-    logger.info('Combine-sink destroyed');
-    this.emit('combine-sink:destroyed');
-  }
-
   /**
    * Build the GM-facing available sinks list from a raw sink array.
-   * Filters internal sinks and adds virtual combine entry if active.
-   * Used by both getState() (sync) and getAvailableSinksWithCombine() (async).
+   * Filters internal auto_null sink.
    * @param {Array} rawSinks - Raw sink list (from cache or fresh fetch)
    * @returns {Array} Filtered sink list for GM consumption
    * @private
    */
   _buildAvailableSinksSnapshot(rawSinks) {
-    let sinks = rawSinks.filter(s =>
-      s.name !== 'aln-combine' &&
-      s.name !== 'combine-bt' &&
-      s.name !== 'auto_null'
-    );
-
-    if (this._combineSinkActive) {
-      sinks = [...sinks, {
-        id: 'virtual-combine',
-        name: 'aln-combine',
-        driver: 'module-null-sink',
-        format: '',
-        state: 'RUNNING',
-        type: 'combine',
-        virtual: true,
-        label: 'All Bluetooth Speakers',
-      }];
-    }
-
-    return sinks;
+    return rawSinks.filter(s => s.name !== 'auto_null');
   }
 
   /**
-   * Get available sinks including the virtual combine-bt sink if active.
-   * @returns {Promise<Array>} Array of sink objects (real + virtual)
-   */
-  async getAvailableSinksWithCombine() {
-    const sinks = await this.getAvailableSinks();
-    return this._buildAvailableSinksSnapshot(sinks);
-  }
-
-  /**
-   * Handle BT sink changes (called from sink:added / sink:removed).
-   * Auto-creates combine-sink when 2+ BT speakers are available.
-   * Auto-destroys combine-sink when fewer than 2 BT speakers remain.
-   * @returns {Promise<void>}
-   * @private
-   */
-  async _onBtSinkChanged() {
-    try {
-      const btSinks = await this.getBluetoothSinks();
-
-      if (btSinks.length >= 2 && !this._combineSinkActive) {
-        logger.info('Two BT speakers detected, auto-creating combine-sink');
-        await this.createCombineSink();
-      } else if (btSinks.length < 2 && this._combineSinkActive) {
-        logger.info('Fewer than 2 BT speakers, auto-destroying combine-sink');
-        await this.destroyCombineSink();
-      }
-    } catch (err) {
-      logger.error('Failed to handle BT sink change for combine-sink', {
-        error: err.message,
-      });
-    }
-  }
-
-  /**
-   * Debounced version of _onBtSinkChanged.
-   * Coalesces rapid sink events (e.g., BT speaker connect triggers multiple
-   * PipeWire events) into a single processing cycle.
-   * @private
-   */
-  _debouncedBtSinkChanged() {
-    if (this._btSinkDebounceTimer) {
-      clearTimeout(this._btSinkDebounceTimer);
-    }
-    this._btSinkDebounceTimer = setTimeout(() => {
-      this._btSinkDebounceTimer = null;
-      this._onBtSinkChanged();
-    }, BT_SINK_DEBOUNCE);
-  }
-
-  /**
-   * Handle unexpected exit of a pw-loopback process.
-   * Tears down the entire combine-sink since it requires both loopbacks.
-   * @param {number} exitedPid - PID of the exited process
-   * @private
-   */
-  async _onCombineLoopbackExit(exitedPid) {
-    if (!this._combineSinkActive) return;
-
-    logger.warn('pw-loopback exited unexpectedly, tearing down combine-sink', {
-      exitedPid,
-    });
-
-    // Kill any remaining processes (the one that didn't exit)
-    this._killCombineSinkProcs();
-
-    // Unload the null sink module (matches destroyCombineSink behavior)
-    if (this._combineSinkModuleId) {
-      try {
-        await this._execFile('pactl', ['unload-module', this._combineSinkModuleId]);
-        logger.info('Unloaded null sink after loopback exit', { moduleId: this._combineSinkModuleId });
-      } catch (err) {
-        logger.warn('Failed to unload null sink after loopback exit', {
-          error: err.message, moduleId: this._combineSinkModuleId,
-        });
-      }
-      this._combineSinkModuleId = null;
-    }
-
-    this.emit('combine-sink:destroyed');
-  }
-
-  /**
-   * Kill all combine-sink pw-loopback processes and reset state.
-   * @private
-   */
-  _killCombineSinkProcs() {
-    for (const proc of this._combineSinkProcs) {
-      try {
-        proc.kill();
-      } catch (err) {
-        // Process may have already exited
-        logger.debug('Failed to kill pw-loopback process', {
-          pid: proc.pid,
-          error: err.message,
-        });
-      }
-    }
-
-    this._combineSinkActive = false;
-    this._combineSinkPids = [];
-    this._combineSinkProcs = [];
-  }
-
-  /**
-   * Kill orphaned pactl subscribe and pw-loopback processes from previous server
-   * instances. Called during init() before starting our own monitor.
+   * Kill orphaned pactl subscribe processes from previous server instances.
+   * Called during init() before starting our own monitor.
    *
    * When PM2 sends SIGKILL (e.g., after `pm2 kill` or kill_timeout expiry),
    * child processes are re-parented to PID 1 and never cleaned up. Over multiple
@@ -759,7 +494,7 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   async _killStaleMonitors() {
-    for (const processName of ['pactl subscribe', 'pw-loopback']) {
+    for (const processName of ['pactl subscribe']) {
       try {
         const stdout = await this._execFile('pgrep', ['-f', processName]);
         const pids = stdout.trim().split('\n').filter(Boolean);
@@ -1125,21 +860,17 @@ class AudioRoutingService extends EventEmitter {
         this.getAvailableSinks().then(() => {
           this.emit('sink:added', { id: event.id });
           this._onSinkAdded(event.id);
-          this._debouncedBtSinkChanged();
         }).catch(err => {
           logger.warn('Failed to refresh sinks after sink:added', { error: err.message });
           this.emit('sink:added', { id: event.id });
-          this._debouncedBtSinkChanged();
         });
       } else if (event.action === 'remove' && event.type === 'sink') {
         this._invalidateSinkCache();
         this.getAvailableSinks().then(() => {
           this.emit('sink:removed', { id: event.id });
-          this._debouncedBtSinkChanged();
         }).catch(err => {
           logger.warn('Failed to refresh sinks after sink:removed', { error: err.message });
           this.emit('sink:removed', { id: event.id });
-          this._debouncedBtSinkChanged();
         });
       } else if ((event.action === 'new' || event.action === 'remove') && event.type === 'sink-input') {
         if (event.action === 'new') {
@@ -1290,28 +1021,9 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
-   * Check if a BT sink supports high-quality audio (A2DP profile).
-   * HFP/HSP sinks are mono 16kHz and produce garbled audio via pw-loopback.
-   * Requires stereo (2+ channels) and sample rate >= 44100Hz.
-   * @param {Object} sink - Sink object from _parseSinkList
-   * @returns {boolean}
-   * @private
-   */
-  _isHighQualitySink(sink) {
-    if (!sink.format) return false;
-    // Format example: "s16le 2ch 48000Hz"
-    const chMatch = sink.format.match(/(\d+)ch/);
-    const hzMatch = sink.format.match(/(\d+)Hz/);
-    if (!chMatch || !hzMatch) return false;
-    const channels = parseInt(chMatch[1], 10);
-    const sampleRate = parseInt(hzMatch[1], 10);
-    return channels >= 2 && sampleRate >= 44100;
-  }
-
-  /**
    * Generate a human-readable label for a sink based on its name and type.
    * @param {string} name - Raw sink name
-   * @param {string} type - Sink type ('hdmi', 'bluetooth', 'combine', 'other')
+   * @param {string} type - Sink type ('hdmi', 'bluetooth', 'other')
    * @returns {string} Human-readable label
    * @private
    */
@@ -1334,10 +1046,6 @@ class AudioRoutingService extends EventEmitter {
         return `BT Speaker (${macPart})`;
       }
       return 'Bluetooth Speaker';
-    }
-
-    if (type === 'combine') {
-      return 'All Bluetooth Speakers';
     }
 
     // Fallback: use usage-agnostic name if possible, or just the raw name
