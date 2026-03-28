@@ -56,6 +56,9 @@ describe('ProcessMonitor', () => {
 
   afterEach(() => {
     monitor.stop();
+    // Trigger close handler to clean up process.on('exit') handler
+    // (exit handler removal moved from stop() to close handler)
+    mockProc.emit('close', 0, null);
     jest.useRealTimers();
     jest.restoreAllMocks();
   });
