@@ -288,7 +288,7 @@ describe('displayDriver — window management', () => {
 
       expect(execFileSync).toHaveBeenCalledWith(
         'pkill',
-        ['-f', 'chromium.*kiosk'],
+        ['-f', 'chromium.*--kiosk'],
         { timeout: 3000 }
       );
     });
@@ -319,7 +319,7 @@ describe('displayDriver — window management', () => {
       // execFileSync (pkill) must have been called BEFORE spawn
       expect(execFileSync).toHaveBeenCalledWith(
         'pkill',
-        ['-f', 'chromium.*kiosk'],
+        ['-f', 'chromium.*--kiosk'],
         { timeout: 3000 }
       );
 
