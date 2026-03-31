@@ -60,7 +60,9 @@ class VlcMprisService extends MprisPlayerBase {
   /**
    * Detect Raspberry Pi model and return hardware acceleration flags.
    * Pi 4: v4l2_m2m hardware decode.
-   * Pi 5: --vout=gl (prevents HDMI signal loss from DRM plane conflicts with Xorg).
+   * Pi 5: --vout=gles2 renders via EGL/OpenGL ES 2 within Xorg (no DRM plane conflict).
+   *   --vout=gl used desktop GL which caused 280% CPU and black screens.
+   *   Videos must be HEVC — Pi 5 has no H.264 hardware decode.
    * VLC_HW_ACCEL env var overrides auto-detection.
    * @returns {string[]}
    */
@@ -70,7 +72,7 @@ class VlcMprisService extends MprisPlayerBase {
     }
     try {
       const model = fs.readFileSync('/proc/device-tree/model', 'utf8').trim();
-      if (model.includes('Raspberry Pi 5')) return ['--vout=gl'];
+      if (model.includes('Raspberry Pi 5')) return ['--vout=gles2'];
       if (model.includes('Raspberry Pi 4')) return ['--codec=avcodec', '--avcodec-hw=v4l2_m2m'];
     } catch {
       // Not a Pi (dev machine, CI)
