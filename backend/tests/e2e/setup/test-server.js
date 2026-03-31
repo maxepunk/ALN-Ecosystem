@@ -76,7 +76,7 @@ const TEST_ENV = {
   NODE_ENV: 'test',
   PORT: process.env.TEST_PORT || '3000',
   HOST: '0.0.0.0',
-  FEATURE_VIDEO_PLAYBACK: 'true',
+  ENABLE_VIDEO_PLAYBACK: 'true',
   ADMIN_PASSWORD: process.env.TEST_ADMIN_PASSWORD || '@LN-c0nn3ct',
   LOG_LEVEL: 'warn', // Reduce noise in test output
   ENABLE_HTTPS: process.env.TEST_HTTPS || 'false',

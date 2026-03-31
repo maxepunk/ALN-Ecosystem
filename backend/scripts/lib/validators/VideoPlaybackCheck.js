@@ -115,7 +115,7 @@ class VideoPlaybackCheck {
           videoTokenScans: videoTokenScans.length,
           possibleCauses: [
             'VLC not connected',
-            'FEATURE_VIDEO_PLAYBACK=false',
+            'ENABLE_VIDEO_PLAYBACK=false',
             'Logs rotated/archived',
             'GM scans (do not trigger video)'
           ]

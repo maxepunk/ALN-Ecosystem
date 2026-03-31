@@ -17,7 +17,7 @@
     "// DEVELOPMENT MODES": "=== Different development configurations ===",
     "dev:full": "nodemon src/server.js",
     "dev:orchestrator": "NODE_ENV=development npm run orchestrator:dev",
-    "dev:no-video": "FEATURE_VIDEO_PLAYBACK=false npm run orchestrator:dev",
+    "dev:no-video": "ENABLE_VIDEO_PLAYBACK=false npm run orchestrator:dev",
     "// PRODUCTION (PM2)": "=== Production management with PM2 ===",
     "prod:start": "NODE_ENV=production pm2 start ecosystem.config.js",
     "prod:stop": "pm2 stop aln-orchestrator; ./scripts/desktop-control.sh start",

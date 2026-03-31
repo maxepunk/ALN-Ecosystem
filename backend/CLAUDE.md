@@ -65,6 +65,8 @@ npm run health:api        # Check orchestrator only
 ```
 
 **Critical Testing Notes:**
+- Contract tests call `initializeServices()` from `app.js` (full service init). `ENABLE_VIDEO_PLAYBACK=false` is set in `jest.config.base.js` to prevent real VLC spawning. Can be overridden by setting the env var explicitly before Jest runs.
+- Integration tests do selective init in `setupIntegrationTestServer()` (persistenceService, transactionService, sessionService only) — they never call `vlcService.init()` or `initializeServices()`.
 - Integration tests MUST run sequentially (`--runInBand`) to prevent state contamination
 - Use `resetAllServicesForTesting()` helper in integration tests to prevent listener leaks
 - E2E tests require orchestrator running: `npm run dev:full`
@@ -81,7 +83,6 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | Service | Purpose | Export Style |
 |---------|---------|--------------|
 | `sessionService` | Active session (source of truth, persisted) | `new SessionService()` |
-| `stateService` | Global state (computed on-demand from session) | `new StateService()` |
 | `transactionService` | Token scan processing and scoring | `new TransactionService()` |
 | `videoQueueService` | Video playback queue | `new VideoQueueService()` |
 | `vlcService` | VLC D-Bus MPRIS control (extends MprisPlayerBase) | `new VlcMprisService()` |
@@ -105,23 +106,9 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 
 **transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
-### Session and State (Source of Truth Pattern)
+### Session as Source of Truth
 
-**CRITICAL**: Session is source of truth (persisted), GameState is computed on-demand.
-
-- **Session** (`sessionService`): Persisted to disk, survives restarts
-- **GameState** (`stateService`): Computed property derived from Session + live system status
-  - Always call `getCurrentState()` - NEVER store state
-  - Automatically includes: session data, VLC status, video queue, offline queue
-  - Eliminates sync bugs on orchestrator restart
-
-```javascript
-// CORRECT: Compute state on-demand
-const state = stateService.getCurrentState();
-
-// WRONG: Storing state leads to stale data
-const cachedState = stateService.getCurrentState(); // Don't do this
-```
+**CRITICAL**: Session (`sessionService`) is the single source of truth — persisted to disk, survives restarts. There is no separate state service; game state is derived from the session and delivered via `sync:full` and `service:state` events.
 
 ### Event-Driven Service Coordination
 
@@ -131,13 +118,12 @@ Service-to-service communication within orchestrator backend.
 
 **Pattern:**
 ```
-Domain Event (Service) → Listener (stateService) → WebSocket Broadcast (broadcasts.js)
+Domain Event (Service) → Listener (broadcasts.js) → WebSocket Broadcast
 ```
 
 **Key Services & Events:**
 - `sessionService`: `session:created`, `session:updated`, `transaction:added`, `player-scan:added`, `device:updated/removed`
 - `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`
-- `stateService`: `sync:full` (NOTE: `state:updated`, `state:sync`, and all event listeners removed — `stateService` only provides `getCurrentState()` and `reset()`)
 - `videoQueueService`: `video:*`, `queue:*`
 - `serviceHealthRegistry`: `health:changed` (all service health consolidated here — no per-service connection events)
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
@@ -175,7 +161,7 @@ Note: Player scan broadcast is handled directly in `scanRoutes.js` (not via broa
 
 Player scans are tracked for Game Activity (token lifecycle visibility) but do not affect scoring.
 
-**Key Files:** `src/services/stateService.js` (`getCurrentState`), `src/websocket/broadcasts.js`
+**Key Files:** `src/websocket/broadcasts.js`
 
 **Layer 2: WebSocket (AsyncAPI)**
 
@@ -200,7 +186,8 @@ displayControlService (State Machine)
 **Key Implementation Details:**
 - Chromium is launched ONCE and persisted for the session. Display transitions use `xdotool windowminimize` (hide) and `xdotool windowactivate` + `wmctrl -b add,fullscreen` (show). No kill/spawn per video cycle.
 - `xdotool search --class chromium` finds the window (not `--pid` — Chromium forks, window belongs to child process)
-- `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler)
+- `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler). Also runs `pkill -f chromium.*--kiosk` as fallback for Chromium that escaped tracking.
+- `_doLaunch()` runs `pkill -f chromium.*--kiosk` before spawning to kill orphans from previous server crashes
 - System dependencies: `sudo apt-get install -y xdotool wmctrl`
 - Chromium requires `--password-store=basic` flag to prevent keyring dialog
 - Scoreboard URL uses auto-detected local IP (not localhost) for CDN resources
@@ -210,6 +197,11 @@ displayControlService (State Machine)
 ### VLC State Architecture (Reactive Monitor)
 
 **CRITICAL**: `vlcMprisService.getStatus()` only queries Position from D-Bus. PlaybackStatus and Metadata come from `this.state`/`this.track` (maintained reactively by the D-Bus monitor via `_processStateChange`). Do NOT add back D-Bus reads for PlaybackStatus or Metadata.
+
+**CRITICAL — Render Blindness:** Backend health checks verify D-Bus reachability only, NOT actual video output.
+VLC can report "Playing" via D-Bus while displaying a black screen (broken vout, GPU failure, etc.).
+`vlcHealthy: true` in logs means D-Bus responded — it says nothing about what's on the display.
+GM Scanner VideoRenderer also shows "Playing" based on queue item state, not VLC output.
 
 **`waitForVlcLoaded` is reactive**: Listens for `vlcService` `state:changed` event instead of polling `getStatus()`. Event payload is `{ previous: { state, filename }, current: { state, filename } }`. `_previousDelta` MUST be seeded to `{ state: 'stopped', filename: null }` (not null) in constructor and `reset()` — null suppresses first emission.
 
@@ -352,7 +344,7 @@ Services that wrap external systems use persistent monitors to detect state chan
 | `lightingService` | WebSocket client (`ws://host:8123/api/websocket`) | HA scene activations |
 
 **Reusable Utilities:**
-- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention, PID-file orphan recovery after SIGKILL). Manages 5 processes: VLC player, 3 D-Bus monitors (VLC/Spotify/BlueZ), pactl subscriber. PID files in `/tmp/aln-pm-*.pid`.
+- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention, PID-file orphan recovery after SIGKILL). Manages 5 processes: VLC player, 3 D-Bus monitors (VLC/Spotify/BlueZ), pactl subscriber. PID files in `/tmp/aln-pm-*.pid`. **`stop()` is intentionally sync** — making it async cascades through 12+ methods (all service cleanup/reset methods, systemReset.js, test helpers). Exit handler uses captured `proc` closure + SIGKILL (not `this._proc` + SIGTERM) so it works after `stop()` nulls `_proc`. Exit handler removed in the `close` handler (not `stop()`) so the safety net persists until child is confirmed dead.
 - `src/utils/dbusSignalParser.js` — Parses `dbus-monitor --monitor` multi-line output into structured signal objects with PropertiesChanged property extraction
 
 **Key Pattern:** Monitors emit domain events on service singletons (e.g., `device:connected`, `playback:changed`, `state:changed`). These events are already wired in `broadcasts.js` → WebSocket delivery. No new broadcast wiring needed for monitors.
@@ -480,7 +472,7 @@ Extends Phase 0 audio routing with event-driven ducking engine and cue-level rou
 ```env
 NODE_ENV=development|production
 PORT=3000
-FEATURE_VIDEO_PLAYBACK=true
+ENABLE_VIDEO_PLAYBACK=true
 HOST=0.0.0.0                  # For network access
 DISCOVERY_UDP_PORT=8888       # UDP broadcast
 ENABLE_HTTPS=true             # Required for NFC
@@ -535,6 +527,39 @@ ffmpeg -i INPUT.mp4 \
   -movflags +faststart \
   OUTPUT.mp4 -y
 ```
+
+### Raspberry Pi 5 Specifics
+
+**CRITICAL — Video Codec:** Pi 5 has NO H.264 hardware decode (hardware block physically absent).
+Only HEVC (H.265) is hardware-decoded via `rpi-hevc-dec` at `/dev/video19`.
+All game videos MUST be HEVC or VLC software-decodes at ~47% CPU with artifacts.
+
+**CRITICAL — VLC vout:** Must use `--vout=gles2` (EGL/OpenGL ES 2, native Pi 5 GPU).
+`--vout=gl` uses desktop OpenGL via Mesa compatibility = 280% CPU + black screens.
+`--vout=gles2` avoids DRM plane conflicts with Xorg the same way, at ~8% CPU.
+Override via `VLC_HW_ACCEL` env var in `_getHwAccelArgs()`.
+
+**Video Encoding (HEVC for Pi 5):**
+```bash
+ffmpeg -i INPUT.mp4 \
+  -c:v libx265 -crf 20 -preset medium -tag:v hvc1 \
+  -g 60 -keyint_min 30 \
+  -movflags +faststart \
+  -c:a copy \
+  OUTPUT.mp4 -y
+```
+`-movflags +faststart` is required — without it, moov atom at end causes frozen first frame.
+`-g 60 -keyint_min 30` = keyframe every 2s at 30fps for reliable seeking.
+
+**Debugging VLC decode path:**
+```bash
+DISPLAY=:0 cvlc --verbose 2 --play-and-exit video.mp4 2>&1 | grep -i "v4l2\|Hwaccel\|hw fail\|codec.*started\|gles2"
+```
+- `Hwaccel V4L2 HEVC stateless V4` = hardware decode working
+- `Set hw fail` at init = false alarm (pre-vout probe), check for Hwaccel lines after
+- `Could not find a valid device` for h264_v4l2m2m = expected on Pi 5 (no H.264 hw)
+
+**CPU measurement:** Use `top -b -n2 -d1 -p PID` (instantaneous), not `ps -o %cpu` (cumulative average).
 
 **PM2 Ecosystem:**
 - `aln-orchestrator`: Node.js server (2GB restart threshold)

@@ -93,7 +93,7 @@ function askQuestion() {
             case '2':
                 console.log(`\n${colors.blue}Starting orchestrator only (no video)...${colors.reset}`);
                 runCommand(
-                    'FEATURE_VIDEO_PLAYBACK=false nodemon src/server.js',
+                    'ENABLE_VIDEO_PLAYBACK=false nodemon src/server.js',
                     'Orchestrator Only Mode'
                 );
                 break;

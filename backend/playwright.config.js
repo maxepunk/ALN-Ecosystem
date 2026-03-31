@@ -91,7 +91,7 @@ module.exports = defineConfig({
             '--no-sandbox', // Required for Pi compatibility
             '--disable-setuid-sandbox',
             // Conditionally disable GPU if VLC is using it for video playback
-            ...(process.env.FEATURE_VIDEO_PLAYBACK !== 'false' ? ['--disable-gpu'] : []),
+            ...(process.env.ENABLE_VIDEO_PLAYBACK !== 'false' ? ['--disable-gpu'] : []),
             '--disable-web-security', // Allow self-signed certs in tests
           ],
         },
@@ -112,7 +112,7 @@ module.exports = defineConfig({
             '--no-sandbox',
             '--disable-setuid-sandbox',
             // Conditionally disable GPU if VLC is using it for video playback
-            ...(process.env.FEATURE_VIDEO_PLAYBACK !== 'false' ? ['--disable-gpu'] : []),
+            ...(process.env.ENABLE_VIDEO_PLAYBACK !== 'false' ? ['--disable-gpu'] : []),
           ],
         },
       },
