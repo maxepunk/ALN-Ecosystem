@@ -16,7 +16,6 @@
  */
 
 const { execFileSync, spawn } = require('child_process');
-const path = require('path');
 const logger = require('../../../src/utils/logger');
 
 const VLC_DBUS_DEST = 'org.mpris.MediaPlayer2.vlc';
@@ -62,11 +61,14 @@ async function startVLCIfNeeded() {
   logger.info('Starting VLC for E2E tests...');
 
   try {
-    const scriptPath = path.join(__dirname, '../../../scripts/vlc-headless.sh');
-
-    vlcProcess = spawn('bash', [scriptPath], {
+    vlcProcess = spawn('cvlc', [
+      '--intf', 'dummy',
+      '--no-video-title-show',
+      '--quiet'
+    ], {
       detached: true,
-      stdio: 'ignore'
+      stdio: 'ignore',
+      env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' }
     });
     vlcProcess.unref();
 
