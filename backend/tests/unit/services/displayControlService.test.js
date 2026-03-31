@@ -228,15 +228,19 @@ describe('DisplayControlService - State Machine', () => {
       expect(status.previousMode).toBe(DisplayMode.IDLE_LOOP);
     });
 
-    test('should return failure and revert mode when displayDriver.showScoreboard returns false', async () => {
+    test('should still succeed and emit event when displayDriver.showScoreboard returns false', async () => {
       const displayDriver = require('../../../src/utils/displayDriver');
       displayDriver.showScoreboard.mockResolvedValueOnce(false);
 
+      const modeChanged = jest.fn();
+      displayControlService.on('display:mode:changed', modeChanged);
+
       const result = await displayControlService.setScoreboard();
 
-      expect(result.success).toBe(false);
-      expect(result.error).toMatch(/Chromium/i);
-      expect(displayControlService.getCurrentMode()).toBe('IDLE_LOOP');
+      // Mode change succeeds even if physical display fails (non-fatal, like hideScoreboard)
+      expect(result.success).toBe(true);
+      expect(displayControlService.getCurrentMode()).toBe('SCOREBOARD');
+      expect(modeChanged).toHaveBeenCalledWith(expect.objectContaining({ mode: 'SCOREBOARD' }));
     });
   });
 
