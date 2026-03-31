@@ -78,6 +78,12 @@ class DisplayControlService extends EventEmitter {
       });
     }
 
+    // Pre-launch scoreboard Chromium so showScoreboard() is instant.
+    // Fire-and-forget: init should not block on Chromium spawn.
+    displayDriver.ensureBrowserRunning().catch(err => {
+      logger.warn('[DisplayControl] Chromium pre-launch failed (non-fatal)', { error: err.message });
+    });
+
     this._initialized = true;
     logger.info('[DisplayControl] Initialized', { mode: this.currentMode });
   }

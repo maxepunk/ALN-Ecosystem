@@ -5,6 +5,16 @@
  * Phase 4.2: HDMI Display Control state machine
  */
 
+// Mock displayDriver to prevent real Chromium spawn during init()
+jest.mock('../../../src/utils/displayDriver', () => ({
+  ensureBrowserRunning: jest.fn().mockResolvedValue(true),
+  showScoreboard: jest.fn().mockResolvedValue(true),
+  hideScoreboard: jest.fn().mockResolvedValue(true),
+  isScoreboardVisible: jest.fn().mockReturnValue(false),
+  getStatus: jest.fn().mockReturnValue({}),
+  cleanup: jest.fn().mockResolvedValue(),
+}));
+
 const { resetAllServices } = require('../../helpers/service-reset');
 const displayControlService = require('../../../src/services/displayControlService');
 const { DisplayMode } = displayControlService;
@@ -15,6 +25,15 @@ describe('DisplayControlService - State Machine', () => {
   let mockVideoQueueService;
 
   beforeEach(async () => {
+    // Re-apply displayDriver mock implementations (resetMocks: true clears them between tests)
+    const displayDriver = require('../../../src/utils/displayDriver');
+    displayDriver.ensureBrowserRunning.mockResolvedValue(true);
+    displayDriver.showScoreboard.mockResolvedValue(true);
+    displayDriver.hideScoreboard.mockResolvedValue(true);
+    displayDriver.isScoreboardVisible.mockReturnValue(false);
+    displayDriver.getStatus.mockReturnValue({});
+    displayDriver.cleanup.mockResolvedValue();
+
     // Reset service state
     displayControlService.reset();
 
@@ -46,6 +65,40 @@ describe('DisplayControlService - State Machine', () => {
   afterEach(() => {
     displayControlService.removeAllListeners();
     displayControlService.reset();
+  });
+
+  describe('init', () => {
+    test('should call displayDriver.ensureBrowserRunning during init', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      displayDriver.ensureBrowserRunning.mockClear();
+
+      displayControlService.reset();
+      displayControlService.init({
+        vlcService: mockVlcService,
+        videoQueueService: mockVideoQueueService
+      });
+
+      // ensureBrowserRunning is fire-and-forget (non-blocking)
+      await new Promise(r => setImmediate(r));
+
+      expect(displayDriver.ensureBrowserRunning).toHaveBeenCalled();
+    });
+
+    test('should still initialize if ensureBrowserRunning fails', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      displayDriver.ensureBrowserRunning.mockRejectedValueOnce(new Error('No display'));
+
+      displayControlService.reset();
+      displayControlService.init({
+        vlcService: mockVlcService,
+        videoQueueService: mockVideoQueueService
+      });
+
+      await new Promise(r => setImmediate(r));
+
+      // Service is still initialized despite driver failure
+      expect(displayControlService._initialized).toBe(true);
+    });
   });
 
   describe('Initial State', () => {
