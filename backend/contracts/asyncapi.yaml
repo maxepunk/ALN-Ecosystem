@@ -1096,6 +1096,7 @@ components:
         **When Sent**:
         - GM sends display:idle-loop command → broadcast IDLE_LOOP
         - GM sends display:scoreboard command → broadcast SCOREBOARD
+        - GM sends display:return-to-video command → broadcast VIDEO (from overlay)
         - Video starts playing → broadcast VIDEO
         - Video completes → broadcast return to previous mode
 
@@ -1388,6 +1389,7 @@ components:
                   - video:queue:clear
                   - display:idle-loop
                   - display:scoreboard
+                  - display:return-to-video
                   - display:status
                   - score:adjust
                   - score:reset

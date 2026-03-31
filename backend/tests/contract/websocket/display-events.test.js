@@ -139,6 +139,68 @@ describe('Display Events - Contract Validation', () => {
       validateWebSocketEvent(event, 'display:mode');
     });
 
+    it('should match AsyncAPI schema for display:return-to-video command', async () => {
+      // Re-init displayControlService with VLC "connected" so playVideo succeeds
+      displayControlService.reset();
+      displayControlService.init({
+        vlcService: {
+          isConnected: () => true,
+          returnToIdleLoop: async () => true,
+          stop: async () => true,
+          playVideo: async () => true
+        },
+        videoQueueService
+      });
+
+      // Re-register broadcast listeners with updated displayControlService
+      cleanupBroadcastListeners();
+      setupBroadcastListeners(testContext.io, {
+        sessionService,
+        stateService,
+        videoQueueService,
+        offlineQueueService,
+        transactionService,
+        displayControlService
+      });
+
+      // Step 1: Enter VIDEO mode
+      const videoEventPromise = waitForEvent(socket, 'display:mode',
+        (data) => data?.data?.mode === 'VIDEO');
+      await displayControlService.playVideo('test-video.mp4');
+      await videoEventPromise; // consume VIDEO mode event
+
+      // Step 2: Set videoQueueService.currentItem to simulate a playing video
+      videoQueueService.currentItem = { isPlaying: () => true };
+
+      // Step 3: Switch to SCOREBOARD (overlay — VLC keeps playing)
+      const sbEventPromise = waitForEvent(socket, 'display:mode',
+        (data) => data?.data?.mode === 'SCOREBOARD');
+      await displayControlService.setScoreboard();
+      await sbEventPromise; // consume SCOREBOARD mode event
+
+      // Step 4: Listen for return-to-video display:mode broadcast
+      const eventPromise = waitForEvent(socket, 'display:mode',
+        (data) => data?.data?.mode === 'VIDEO');
+
+      // Trigger: Send display:return-to-video command via WebSocket
+      sendGmCommand(socket, 'display:return-to-video', {});
+
+      const event = await eventPromise;
+
+      // Validate: Wrapped envelope structure
+      expect(event).toHaveProperty('event', 'display:mode');
+      expect(event).toHaveProperty('data');
+      expect(event).toHaveProperty('timestamp');
+      expect(event.data.mode).toBe('VIDEO');
+      expect(event.data).toHaveProperty('previousMode');
+
+      // Validate: Against AsyncAPI contract schema
+      validateWebSocketEvent(event, 'display:mode');
+
+      // Cleanup: remove mock currentItem
+      videoQueueService.currentItem = null;
+    });
+
   });
 
   describe('display:status via ack', () => {
