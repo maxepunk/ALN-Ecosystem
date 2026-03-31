@@ -147,7 +147,8 @@ async function performSystemReset(io, services) {
   logger.debug('Broadcast listeners re-initialized');
 
   // Re-initialize display control service (needs to re-attach listeners)
-  if (displayControlService && vlcService) {
+  // Initializes regardless of VLC status — Scoreboard mode uses Chromium, not VLC
+  if (displayControlService) {
     displayControlService.init({
       vlcService,
       videoQueueService
