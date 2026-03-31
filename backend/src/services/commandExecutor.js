@@ -241,7 +241,8 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Display commands ---
 
       case 'display:idle-loop':
-      case 'display:scoreboard': {
+      case 'display:scoreboard':
+      case 'display:return-to-video': {
         // Local helper for display command handling (DRY)
         async function handleDisplayCommand(serviceMethod, modeName, logMessage) {
           const result = await serviceMethod();
@@ -265,6 +266,12 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
             'SCOREBOARD',
             'Display switched to scoreboard'
           );
+        } else if (action === 'display:return-to-video') {
+          await handleDisplayCommand(
+            () => displayControlService.returnToVideo(),
+            'VIDEO',
+            'Returned to video from scoreboard overlay'
+          );
         }
         break;
       }
@@ -275,17 +282,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         resultData = { displayStatus };
         resultMessage = `Display mode: ${displayStatus.currentMode}`;
         logger.info('Display status requested', { source, deviceId, status: displayStatus });
-        break;
-      }
-
-      case 'display:return-to-video': {
-        const returnResult = await displayControlService.returnToVideo();
-        if (!returnResult.success) {
-          throw new Error(returnResult.error || 'Failed to return to video');
-        }
-        resultData = { mode: returnResult.mode };
-        resultMessage = 'Returned to video from scoreboard overlay';
-        logger.info('Display returned to video', { source, deviceId });
         break;
       }
 

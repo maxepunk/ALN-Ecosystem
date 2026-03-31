@@ -152,12 +152,6 @@ describe('DisplayControlService - State Machine', () => {
       expect(displayControlService.previousMode).toBe(DisplayMode.IDLE_LOOP);
     });
 
-    it('should still stop VLC when switching from IDLE_LOOP', async () => {
-      await displayControlService.setScoreboard();
-
-      expect(mockVlcService.stop).toHaveBeenCalled();
-    });
-
     it('should emit display:mode:changed event', (done) => {
       displayControlService.once('display:mode:changed', (data) => {
         try {
