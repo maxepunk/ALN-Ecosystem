@@ -204,7 +204,10 @@ class DisplayControlService extends EventEmitter {
       }
 
       // Launch scoreboard in kiosk browser
-      await displayDriver.showScoreboard();
+      const shown = await displayDriver.showScoreboard();
+      if (!shown) {
+        throw new Error('Chromium display driver failed — scoreboard may not be visible');
+      }
 
       this.emit('display:mode:changed', {
         mode: DisplayMode.SCOREBOARD,

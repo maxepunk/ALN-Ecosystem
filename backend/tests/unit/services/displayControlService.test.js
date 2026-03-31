@@ -227,6 +227,17 @@ describe('DisplayControlService - State Machine', () => {
       const status = displayControlService.getStatus();
       expect(status.previousMode).toBe(DisplayMode.IDLE_LOOP);
     });
+
+    test('should return failure and revert mode when displayDriver.showScoreboard returns false', async () => {
+      const displayDriver = require('../../../src/utils/displayDriver');
+      displayDriver.showScoreboard.mockResolvedValueOnce(false);
+
+      const result = await displayControlService.setScoreboard();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Chromium/i);
+      expect(displayControlService.getCurrentMode()).toBe('IDLE_LOOP');
+    });
   });
 
   describe('Mode Switching - playVideo()', () => {
