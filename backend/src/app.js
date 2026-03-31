@@ -248,7 +248,7 @@ async function initializeServices() {
       // Display control initializes regardless of VLC status.
       // It manages Scoreboard mode (Chromium) independently of VLC.
       // VLC and videoQueueService are optional dependencies (null-checked internally).
-      displayControlService.init({ vlcService, videoQueueService });
+      await displayControlService.init({ vlcService, videoQueueService });
       logger.info('Display control service initialized');
     } else {
       logger.info('VLC service disabled - video playback feature is off');

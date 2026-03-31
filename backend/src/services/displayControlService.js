@@ -41,7 +41,7 @@ class DisplayControlService extends EventEmitter {
    * @param {Object} options.vlcService - VLC service instance
    * @param {Object} options.videoQueueService - Video queue service instance
    */
-  init({ vlcService, videoQueueService }) {
+  async init({ vlcService, videoQueueService }) {
     if (this._initialized) {
       logger.warn('[DisplayControl] Already initialized');
       return;
@@ -79,10 +79,13 @@ class DisplayControlService extends EventEmitter {
     }
 
     // Pre-launch scoreboard Chromium so showScoreboard() is instant.
-    // Fire-and-forget: init should not block on Chromium spawn.
-    displayDriver.ensureBrowserRunning().catch(err => {
+    // Awaited so Chromium is fully ready before any display commands arrive.
+    // The 30-second server startup budget easily accommodates the ~5s launch.
+    try {
+      await displayDriver.ensureBrowserRunning();
+    } catch (err) {
       logger.warn('[DisplayControl] Chromium pre-launch failed (non-fatal)', { error: err.message });
-    });
+    }
 
     this._initialized = true;
     logger.info('[DisplayControl] Initialized', { mode: this.currentMode });

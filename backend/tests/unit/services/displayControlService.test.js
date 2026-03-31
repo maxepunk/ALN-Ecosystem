@@ -56,7 +56,7 @@ describe('DisplayControlService - State Machine', () => {
     };
 
     // Initialize with mocks
-    displayControlService.init({
+    await displayControlService.init({
       vlcService: mockVlcService,
       videoQueueService: mockVideoQueueService
     });
@@ -73,13 +73,10 @@ describe('DisplayControlService - State Machine', () => {
       displayDriver.ensureBrowserRunning.mockClear();
 
       displayControlService.reset();
-      displayControlService.init({
+      await displayControlService.init({
         vlcService: mockVlcService,
         videoQueueService: mockVideoQueueService
       });
-
-      // ensureBrowserRunning is fire-and-forget (non-blocking)
-      await new Promise(r => setImmediate(r));
 
       expect(displayDriver.ensureBrowserRunning).toHaveBeenCalled();
     });
@@ -89,12 +86,10 @@ describe('DisplayControlService - State Machine', () => {
       displayDriver.ensureBrowserRunning.mockRejectedValueOnce(new Error('No display'));
 
       displayControlService.reset();
-      displayControlService.init({
+      await displayControlService.init({
         vlcService: mockVlcService,
         videoQueueService: mockVideoQueueService
       });
-
-      await new Promise(r => setImmediate(r));
 
       // Service is still initialized despite driver failure
       expect(displayControlService._initialized).toBe(true);
@@ -497,12 +492,12 @@ describe('DisplayControlService - State Machine', () => {
   });
 
   describe('Singleton Pattern', () => {
-    it('should warn if already initialized', () => {
+    it('should warn if already initialized', async () => {
       // Already initialized in beforeEach
       const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
       // Try to initialize again (should warn via logger, not throw)
-      displayControlService.init({
+      await displayControlService.init({
         vlcService: mockVlcService,
         videoQueueService: mockVideoQueueService
       });

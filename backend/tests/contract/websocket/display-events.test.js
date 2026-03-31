@@ -16,7 +16,6 @@ const { resetAllServices } = require('../../helpers/service-reset');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
-const stateService = require('../../../src/services/stateService');
 const videoQueueService = require('../../../src/services/videoQueueService');
 const offlineQueueService = require('../../../src/services/offlineQueueService');
 const displayControlService = require('../../../src/services/displayControlService');
@@ -47,7 +46,7 @@ describe('Display Events - Contract Validation', () => {
     serviceHealthRegistry.report('vlc', 'healthy', 'test mock');
 
     // Initialize display control service with mocked VLC
-    displayControlService.init({
+    await displayControlService.init({
       vlcService: {
         isConnected: () => false,  // No VLC in tests
         returnToIdleLoop: async () => true,
@@ -61,7 +60,6 @@ describe('Display Events - Contract Validation', () => {
     // Must include displayControlService for display:mode:changed → display:mode broadcasts
     setupBroadcastListeners(testContext.io, {
       sessionService,
-      stateService,
       videoQueueService,
       offlineQueueService,
       transactionService,
@@ -142,7 +140,7 @@ describe('Display Events - Contract Validation', () => {
     it('should match AsyncAPI schema for display:return-to-video command', async () => {
       // Re-init displayControlService with VLC "connected" so playVideo succeeds
       displayControlService.reset();
-      displayControlService.init({
+      await displayControlService.init({
         vlcService: {
           isConnected: () => true,
           returnToIdleLoop: async () => true,
@@ -156,7 +154,6 @@ describe('Display Events - Contract Validation', () => {
       cleanupBroadcastListeners();
       setupBroadcastListeners(testContext.io, {
         sessionService,
-        stateService,
         videoQueueService,
         offlineQueueService,
         transactionService,
