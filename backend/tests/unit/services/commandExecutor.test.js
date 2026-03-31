@@ -67,6 +67,7 @@ jest.mock('../../../src/services/vlcMprisService', () => ({
 jest.mock('../../../src/services/displayControlService', () => ({
   setIdleLoop: jest.fn(),
   setScoreboard: jest.fn(),
+  returnToVideo: jest.fn(),
   getStatus: jest.fn(),
 }));
 
@@ -174,6 +175,7 @@ describe('commandExecutor', () => {
 
     displayControlService.setIdleLoop.mockResolvedValue({ success: true });
     displayControlService.setScoreboard.mockResolvedValue({ success: true });
+    displayControlService.returnToVideo.mockResolvedValue({ success: true, mode: 'VIDEO' });
     displayControlService.getStatus.mockReturnValue({ currentMode: 'IDLE_LOOP' });
 
     bluetoothService.startScan.mockReturnValue(undefined);
@@ -383,6 +385,27 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(result.data.displayStatus).toBeDefined();
+    });
+
+    it('should execute display:return-to-video', async () => {
+      displayControlService.returnToVideo.mockResolvedValue({ success: true, mode: 'VIDEO' });
+      const result = await executeCommand({
+        action: 'display:return-to-video',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(displayControlService.returnToVideo).toHaveBeenCalled();
+    });
+
+    it('should handle display:return-to-video failure', async () => {
+      displayControlService.returnToVideo.mockResolvedValue({ success: false, error: 'No video playing' });
+      const result = await executeCommand({
+        action: 'display:return-to-video',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(false);
     });
   });
 

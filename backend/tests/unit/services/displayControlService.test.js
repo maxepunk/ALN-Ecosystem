@@ -32,7 +32,8 @@ describe('DisplayControlService - State Machine', () => {
     mockVideoQueueService = {
       on: jest.fn(),
       removeListener: jest.fn(),
-      registerPrePlayHook: jest.fn()
+      registerPrePlayHook: jest.fn(),
+      currentItem: null
     };
 
     // Initialize with mocks
@@ -114,7 +115,44 @@ describe('DisplayControlService - State Machine', () => {
       expect(displayControlService.getCurrentMode()).toBe(DisplayMode.SCOREBOARD);
     });
 
-    it('should call VLC stop when connected', async () => {
+    it('should call VLC stop when switching from IDLE_LOOP', async () => {
+      // Ensure starting from IDLE_LOOP (not VIDEO)
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.IDLE_LOOP);
+
+      await displayControlService.setScoreboard();
+
+      expect(mockVlcService.stop).toHaveBeenCalled();
+    });
+
+    it('should NOT stop VLC when switching from VIDEO mode (overlay)', async () => {
+      // Enter VIDEO mode
+      await displayControlService.playVideo('test.mp4');
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
+      mockVlcService.stop.mockClear();
+
+      await displayControlService.setScoreboard();
+
+      expect(mockVlcService.stop).not.toHaveBeenCalled();
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.SCOREBOARD);
+    });
+
+    it('should NOT overwrite previousMode when switching from VIDEO (overlay)', async () => {
+      // IDLE_LOOP -> VIDEO -> SCOREBOARD
+      // previousMode should stay IDLE_LOOP (set by pre-play hook), not become VIDEO
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.IDLE_LOOP);
+      await displayControlService.playVideo('test.mp4');
+
+      // playVideo sets previousMode to IDLE_LOOP
+      const preScoreboardPrev = displayControlService.previousMode;
+      expect(preScoreboardPrev).toBe(DisplayMode.IDLE_LOOP);
+
+      await displayControlService.setScoreboard();
+
+      // previousMode preserved — still IDLE_LOOP, not VIDEO
+      expect(displayControlService.previousMode).toBe(DisplayMode.IDLE_LOOP);
+    });
+
+    it('should still stop VLC when switching from IDLE_LOOP', async () => {
       await displayControlService.setScoreboard();
 
       expect(mockVlcService.stop).toHaveBeenCalled();
@@ -259,6 +297,100 @@ describe('DisplayControlService - State Machine', () => {
       await displayControlService._handleVideoComplete();
 
       expect(displayControlService.pendingVideo).toBeNull();
+    });
+  });
+
+  describe('returnToVideo()', () => {
+    it('should return to VIDEO mode when video is playing behind scoreboard', async () => {
+      // Setup: VIDEO -> SCOREBOARD (overlay)
+      await displayControlService.playVideo('test.mp4');
+      mockVideoQueueService.currentItem = { isPlaying: () => true };
+      await displayControlService.setScoreboard();
+
+      const result = await displayControlService.returnToVideo();
+
+      expect(result.success).toBe(true);
+      expect(result.mode).toBe(DisplayMode.VIDEO);
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
+    });
+
+    it('should fail when not in SCOREBOARD mode', async () => {
+      const result = await displayControlService.returnToVideo();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/not in scoreboard mode/i);
+    });
+
+    it('should fail when no video is playing', async () => {
+      await displayControlService.setScoreboard();
+      // No currentItem on videoQueueService
+
+      const result = await displayControlService.returnToVideo();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/no video playing/i);
+    });
+
+    it('should not touch previousMode', async () => {
+      await displayControlService.playVideo('test.mp4');
+      mockVideoQueueService.currentItem = { isPlaying: () => true };
+      await displayControlService.setScoreboard();
+
+      const prevBefore = displayControlService.previousMode;
+      await displayControlService.returnToVideo();
+
+      expect(displayControlService.previousMode).toBe(prevBefore);
+    });
+
+    it('should emit display:mode:changed', async () => {
+      await displayControlService.playVideo('test.mp4');
+      mockVideoQueueService.currentItem = { isPlaying: () => true };
+      await displayControlService.setScoreboard();
+
+      const spy = jest.fn();
+      displayControlService.on('display:mode:changed', spy);
+
+      await displayControlService.returnToVideo();
+
+      expect(spy).toHaveBeenCalledWith(expect.objectContaining({
+        mode: DisplayMode.VIDEO,
+        previousMode: DisplayMode.SCOREBOARD
+      }));
+    });
+  });
+
+  describe('Overlay lifecycle', () => {
+    it('IDLE_LOOP -> VIDEO -> SCOREBOARD -> returnToVideo -> complete -> IDLE_LOOP', async () => {
+      mockVideoQueueService.currentItem = { isPlaying: () => true };
+
+      await displayControlService.playVideo('test.mp4');
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
+      expect(displayControlService.previousMode).toBe(DisplayMode.IDLE_LOOP);
+
+      await displayControlService.setScoreboard();
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.SCOREBOARD);
+      expect(displayControlService.previousMode).toBe(DisplayMode.IDLE_LOOP); // preserved
+
+      await displayControlService.returnToVideo();
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
+
+      // Video completes
+      await displayControlService._handleVideoComplete();
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.IDLE_LOOP);
+    });
+
+    it('_handleVideoComplete is no-op when mode is SCOREBOARD (video ends behind overlay)', async () => {
+      mockVideoQueueService.currentItem = { isPlaying: () => true };
+
+      await displayControlService.playVideo('test.mp4');
+      await displayControlService.setScoreboard();
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.SCOREBOARD);
+
+      // Video ends while scoreboard is showing
+      await displayControlService._handleVideoComplete();
+
+      // Should NOT change mode — scoreboard is sticky
+      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.SCOREBOARD);
     });
   });
 

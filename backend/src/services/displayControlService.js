@@ -182,13 +182,18 @@ class DisplayControlService extends EventEmitter {
     logger.info('[DisplayControl] Switching to SCOREBOARD mode');
 
     const oldMode = this.currentMode;
-    this.previousMode = oldMode;
+    // When overlaying scoreboard on video, preserve previousMode (the restore-to target
+    // set by the pre-play hook). Only update previousMode for non-overlay transitions.
+    if (oldMode !== DisplayMode.VIDEO) {
+      this.previousMode = oldMode;
+    }
     this.currentMode = DisplayMode.SCOREBOARD;
     this.pendingVideo = null;
 
     try {
-      // Stop VLC playback when switching to scoreboard
-      if (this.vlcService && this.vlcService.isConnected()) {
+      // Stop VLC only when switching from non-VIDEO modes.
+      // When switching from VIDEO, VLC keeps playing behind the scoreboard.
+      if (oldMode !== DisplayMode.VIDEO && this.vlcService && this.vlcService.isConnected()) {
         await this.vlcService.stop();
       }
 
@@ -208,6 +213,46 @@ class DisplayControlService extends EventEmitter {
       this.currentMode = oldMode;
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Return to video from scoreboard overlay.
+   * Hides scoreboard to reveal the still-playing VLC video.
+   * Only valid when in SCOREBOARD mode with a video playing behind it.
+   * @returns {Promise<Object>} Result of mode switch
+   */
+  async returnToVideo() {
+    return this._withLock(async () => {
+      if (this.currentMode !== DisplayMode.SCOREBOARD) {
+        return { success: false, error: 'Not in scoreboard mode' };
+      }
+
+      if (!this.videoQueueService?.currentItem?.isPlaying()) {
+        return { success: false, error: 'No video playing' };
+      }
+
+      logger.info('[DisplayControl] Returning to video from scoreboard overlay');
+
+      const oldMode = this.currentMode;
+      this.currentMode = DisplayMode.VIDEO;
+      // Do NOT touch previousMode — it's already correct from the pre-play hook
+
+      try {
+        await displayDriver.hideScoreboard();
+
+        this.emit('display:mode:changed', {
+          mode: DisplayMode.VIDEO,
+          previousMode: oldMode
+        });
+
+        logger.info('[DisplayControl] Now showing VIDEO (returned from overlay)');
+        return { success: true, mode: DisplayMode.VIDEO };
+      } catch (error) {
+        logger.error('[DisplayControl] Failed to return to video', { error: error.message });
+        this.currentMode = oldMode;
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   /**
@@ -315,6 +360,9 @@ class DisplayControlService extends EventEmitter {
 
     // Then remove our own listeners
     this.removeAllListeners();
+
+    // Hide scoreboard if visible (prevents stale Chromium window after reset)
+    displayDriver.hideScoreboard().catch(() => {});
 
     // Reset state
     this.currentMode = DisplayMode.IDLE_LOOP;

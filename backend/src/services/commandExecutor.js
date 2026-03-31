@@ -278,6 +278,17 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
+      case 'display:return-to-video': {
+        const returnResult = await displayControlService.returnToVideo();
+        if (!returnResult.success) {
+          throw new Error(returnResult.error || 'Failed to return to video');
+        }
+        resultData = { mode: returnResult.mode };
+        resultMessage = 'Returned to video from scoreboard overlay';
+        logger.info('Display returned to video', { source, deviceId });
+        break;
+      }
+
       // --- Scoring commands ---
 
       case 'score:adjust': {
