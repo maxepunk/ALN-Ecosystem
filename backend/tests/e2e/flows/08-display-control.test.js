@@ -38,6 +38,11 @@ let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
 
+// Display control tests manage a system-wide Chromium kiosk process via pkill/spawn.
+// Running in both projects with --workers=2 causes cross-worker Chromium kill loops.
+// Run once in chromium project (desktop viewport matches createBrowserContext 'desktop').
+test.skip(({ isMobile }) => isMobile, 'Display control tests only run on chromium project');
+
 test.describe('Display Control - Admin Panel', () => {
 
   test.beforeAll(async () => {
