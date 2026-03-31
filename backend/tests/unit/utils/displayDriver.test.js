@@ -302,6 +302,45 @@ describe('displayDriver — window management', () => {
     });
   });
 
+  describe('ensureBrowserRunning()', () => {
+    test('is exported and callable', () => {
+      expect(typeof displayDriver.ensureBrowserRunning).toBe('function');
+    });
+
+    test('launches Chromium and returns true when spawn succeeds', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      const result = await displayDriver.ensureBrowserRunning();
+      expect(result).toBe(true);
+      expect(spawn).toHaveBeenCalledTimes(1);
+    });
+
+    test('returns true without relaunching on second call', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      await displayDriver.ensureBrowserRunning();
+      const result = await displayDriver.ensureBrowserRunning();
+      expect(result).toBe(true);
+      expect(spawn).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('orphan Chromium cleanup', () => {
     test('kills orphaned Chromium before spawning new one in _doLaunch', async () => {
       const { spawn, execFile, execFileSync } = require('child_process');

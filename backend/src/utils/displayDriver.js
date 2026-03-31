@@ -291,6 +291,7 @@ async function cleanup() {
 }
 
 module.exports = {
+  ensureBrowserRunning,
   showScoreboard,
   hideScoreboard,
   isScoreboardVisible,
