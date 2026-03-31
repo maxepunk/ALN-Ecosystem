@@ -241,8 +241,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Display commands ---
 
       case 'display:idle-loop':
-      case 'display:scoreboard':
-      case 'display:toggle': {
+      case 'display:scoreboard': {
         // Local helper for display command handling (DRY)
         async function handleDisplayCommand(serviceMethod, modeName, logMessage) {
           const result = await serviceMethod();
@@ -266,15 +265,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
             'SCOREBOARD',
             'Display switched to scoreboard'
           );
-        } else if (action === 'display:toggle') {
-          // display:toggle needs special handling because mode isn't known in advance
-          const toggleResult = await displayControlService.toggleMode();
-          if (!toggleResult.success) {
-            throw new Error(toggleResult.error || 'Failed to toggle display mode');
-          }
-          resultData = { mode: toggleResult.mode };
-          resultMessage = `Display toggled to ${toggleResult.mode.toLowerCase()}`;
-          logger.info('Display toggled', { source, deviceId, newMode: toggleResult.mode });
         }
         break;
       }

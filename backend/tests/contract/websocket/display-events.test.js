@@ -139,56 +139,6 @@ describe('Display Events - Contract Validation', () => {
       validateWebSocketEvent(event, 'display:mode');
     });
 
-    it('should match AsyncAPI schema for display:toggle command (IDLE_LOOP -> SCOREBOARD)', async () => {
-      // Ensure we're starting in IDLE_LOOP mode
-      expect(displayControlService.getCurrentMode()).toBe('IDLE_LOOP');
-
-      const eventPromise = waitForEvent(socket, 'display:mode');
-
-      // Trigger: Send display:toggle command
-      sendGmCommand(socket, 'display:toggle', {});
-
-      const event = await eventPromise;
-
-      // Validate: Wrapped envelope
-      expect(event).toHaveProperty('event', 'display:mode');
-      expect(event).toHaveProperty('data');
-      expect(event).toHaveProperty('timestamp');
-
-      // Validate: Payload content (toggled to SCOREBOARD)
-      expect(event.data.mode).toBe('SCOREBOARD');
-      expect(event.data).toHaveProperty('previousMode');
-
-      // Validate: Against AsyncAPI contract
-      validateWebSocketEvent(event, 'display:mode');
-    });
-
-    it('should match AsyncAPI schema for display:toggle command (SCOREBOARD -> IDLE_LOOP)', async () => {
-      // First switch to SCOREBOARD and consume that broadcast
-      const setupPromise = waitForEvent(socket, 'display:mode');
-      await displayControlService.setScoreboard();
-      await setupPromise;
-      expect(displayControlService.getCurrentMode()).toBe('SCOREBOARD');
-
-      const eventPromise = waitForEvent(socket, 'display:mode');
-
-      // Trigger: Send display:toggle command
-      sendGmCommand(socket, 'display:toggle', {});
-
-      const event = await eventPromise;
-
-      // Validate: Wrapped envelope
-      expect(event).toHaveProperty('event', 'display:mode');
-      expect(event).toHaveProperty('data');
-      expect(event).toHaveProperty('timestamp');
-
-      // Validate: Payload content (toggled back to IDLE_LOOP)
-      expect(event.data.mode).toBe('IDLE_LOOP');
-      expect(event.data).toHaveProperty('previousMode');
-
-      // Validate: Against AsyncAPI contract
-      validateWebSocketEvent(event, 'display:mode');
-    });
   });
 
   describe('display:status via ack', () => {

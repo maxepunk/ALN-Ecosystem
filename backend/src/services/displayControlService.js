@@ -305,26 +305,6 @@ class DisplayControlService extends EventEmitter {
   }
 
   /**
-   * Toggle between IDLE_LOOP and SCOREBOARD modes
-   * Useful for quick switching from admin panel
-   * @returns {Promise<Object>} Result of mode toggle
-   */
-  async toggleMode() {
-    return this._withLock(async () => {
-      if (this.currentMode === DisplayMode.IDLE_LOOP) {
-        // Call internal _do* method to avoid deadlock (already holding the lock)
-        return await this._doSetScoreboard();
-      } else if (this.currentMode === DisplayMode.SCOREBOARD) {
-        return await this._doSetIdleLoop();
-      } else {
-        // If in VIDEO mode, do nothing (let video complete)
-        logger.info('[DisplayControl] Cannot toggle while in VIDEO mode');
-        return { success: false, error: 'Cannot toggle during video playback' };
-      }
-    });
-  }
-
-  /**
    * Reset service for tests
    */
   reset() {

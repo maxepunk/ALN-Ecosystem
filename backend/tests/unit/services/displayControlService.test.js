@@ -203,38 +203,6 @@ describe('DisplayControlService - State Machine', () => {
     });
   });
 
-  describe('toggleMode()', () => {
-    it('should toggle from IDLE_LOOP to SCOREBOARD', async () => {
-      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.IDLE_LOOP);
-
-      const result = await displayControlService.toggleMode();
-
-      expect(result.success).toBe(true);
-      expect(result.mode).toBe(DisplayMode.SCOREBOARD);
-    });
-
-    it('should toggle from SCOREBOARD to IDLE_LOOP', async () => {
-      await displayControlService.setScoreboard();
-      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.SCOREBOARD);
-
-      const result = await displayControlService.toggleMode();
-
-      expect(result.success).toBe(true);
-      expect(result.mode).toBe(DisplayMode.IDLE_LOOP);
-    });
-
-    it('should NOT toggle during VIDEO mode', async () => {
-      await displayControlService.playVideo('test.mp4');
-      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
-
-      const result = await displayControlService.toggleMode();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Cannot toggle during video playback');
-      expect(displayControlService.getCurrentMode()).toBe(DisplayMode.VIDEO);
-    });
-  });
-
   describe('Video Completion - _handleVideoComplete()', () => {
     it('should return to IDLE_LOOP if previous mode was IDLE_LOOP', async () => {
       // Start from IDLE_LOOP, play video

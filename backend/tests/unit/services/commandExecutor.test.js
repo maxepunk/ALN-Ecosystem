@@ -67,7 +67,6 @@ jest.mock('../../../src/services/vlcMprisService', () => ({
 jest.mock('../../../src/services/displayControlService', () => ({
   setIdleLoop: jest.fn(),
   setScoreboard: jest.fn(),
-  toggleMode: jest.fn(),
   getStatus: jest.fn(),
 }));
 
@@ -175,7 +174,6 @@ describe('commandExecutor', () => {
 
     displayControlService.setIdleLoop.mockResolvedValue({ success: true });
     displayControlService.setScoreboard.mockResolvedValue({ success: true });
-    displayControlService.toggleMode.mockResolvedValue({ success: true, mode: 'SCOREBOARD' });
     displayControlService.getStatus.mockReturnValue({ currentMode: 'IDLE_LOOP' });
 
     bluetoothService.startScan.mockReturnValue(undefined);
@@ -370,16 +368,6 @@ describe('commandExecutor', () => {
     it('should execute display:scoreboard', async () => {
       const result = await executeCommand({
         action: 'display:scoreboard',
-        payload: {},
-        source: 'gm'
-      });
-      expect(result.success).toBe(true);
-      expect(result.data.mode).toBe('SCOREBOARD');
-    });
-
-    it('should execute display:toggle', async () => {
-      const result = await executeCommand({
-        action: 'display:toggle',
         payload: {},
         source: 'gm'
       });

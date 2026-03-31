@@ -95,7 +95,6 @@ jest.mock('../../../src/services/vlcMprisService', () => ({
 jest.mock('../../../src/services/displayControlService', () => ({
   setIdleLoop: jest.fn(),
   setScoreboard: jest.fn(),
-  toggleMode: jest.fn(),
   getStatus: jest.fn(),
 }));
 

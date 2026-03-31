@@ -53,7 +53,6 @@ const ACTION_DEFS = {
   ]},
   'display:idle-loop': { label: 'Show Idle Loop', category: 'display', fields: [] },
   'display:scoreboard': { label: 'Show Scoreboard', category: 'display', fields: [] },
-  'display:toggle': { label: 'Toggle Display', category: 'display', fields: [] },
 };
 
 export { ACTION_DEFS };
