@@ -386,5 +386,28 @@ describe('displayDriver — window management', () => {
       expect(result).toBe(true);
       expect(spawn).toHaveBeenCalledWith('chromium-browser', expect.any(Array), expect.any(Object));
     });
+
+    test('skips 2-second wait when no orphaned Chromium was running', async () => {
+      const { spawn, execFile, execFileSync } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      // pkill throws when no matching process (exit code 1)
+      execFileSync.mockImplementation(() => { throw new Error('no process found'); });
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      const start = Date.now();
+      await displayDriver.showScoreboard();
+      const elapsed = Date.now() - start;
+
+      // Without an orphan to kill, launch should NOT include the 2-second cleanup wait.
+      // Allow generous margin for test execution overhead, but should be well under 2000ms.
+      expect(elapsed).toBeLessThan(1500);
+    });
   });
 });

@@ -103,12 +103,17 @@ async function findWindowId(retries = 10, delayMs = 500) {
  */
 async function _doLaunch() {
   // Kill any orphaned Chromium from previous server instance
+  let killedOrphan = false;
   try {
     execFileSync('pkill', ['-f', 'chromium.*--kiosk'], { timeout: 3000 });
+    killedOrphan = true;
+  } catch {
+    // No Chromium running — clean state, no wait needed
+  }
+
+  if (killedOrphan) {
     // Wait for Chromium to fully exit (releases single-instance lock)
     await new Promise(r => setTimeout(r, 2000));
-  } catch {
-    // No Chromium running — clean state
   }
 
   logger.info('[DisplayDriver] Launching persistent scoreboard kiosk', { url: SCOREBOARD_URL });
