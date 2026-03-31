@@ -11,6 +11,7 @@
 
 const config = require('../config');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
+const displayControlService = require('../services/displayControlService');
 const { buildEnvironmentState } = require('./environmentHelpers');
 const logger = require('../utils/logger');
 
@@ -121,6 +122,13 @@ async function buildSyncFullPayload({
   // Sound playback state
   const sound = soundService ? soundService.getState() : { playing: [] };
 
+  // Display mode status (singleton import — no call site changes needed)
+  // Use getStatus() but strip volatile `timestamp` to keep ETag stable
+  const displayStatusRaw = displayControlService.getStatus
+    ? displayControlService.getStatus()
+    : { currentMode: 'IDLE_LOOP', previousMode: 'IDLE_LOOP', pendingVideo: null };
+  const { timestamp: _ts, ...displayStatus } = displayStatusRaw;
+
   return {
     session: session ? session.toJSON() : null,
     scores,
@@ -135,6 +143,7 @@ async function buildSyncFullPayload({
     spotify,
     heldItems,
     sound,
+    displayStatus,
   };
 }
 
