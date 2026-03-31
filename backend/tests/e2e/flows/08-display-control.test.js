@@ -226,6 +226,47 @@ test.describe('Display Control - Admin Panel', () => {
     }
   });
 
+  test('should show Return to Video button only when video playing behind scoreboard', async () => {
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await gmScanner.navigateToAdminPanel();
+
+      // Return to Video button should be hidden initially (no video, idle loop mode)
+      await expect(gmScanner.btnReturnToVideo).toBeHidden();
+
+      // Switch to scoreboard mode (longer timeout for WebSocket round-trip on Pi)
+      await gmScanner.setDisplayScoreboard();
+      await expect(gmScanner.nowShowingValue).toHaveText('Scoreboard', { timeout: 10000 });
+
+      // Return to Video button should STILL be hidden (scoreboard mode, but no video playing)
+      await expect(gmScanner.btnReturnToVideo).toBeHidden();
+
+      // Switch back to idle loop
+      await gmScanner.setDisplayIdleLoop();
+      await expect(gmScanner.nowShowingValue).toHaveText('Idle Loop', { timeout: 10000 });
+
+      // Return to Video button should still be hidden
+      await expect(gmScanner.btnReturnToVideo).toBeHidden();
+
+      // NOTE: Full overlay test (button appears when video plays behind scoreboard)
+      // requires VLC video playback which is environment-dependent.
+      // The positive path is covered by unit + contract tests.
+
+      console.log('✓ Return to Video button correctly hidden when no video playing');
+
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
   test('should handle display control without errors during view switching', async () => {
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);

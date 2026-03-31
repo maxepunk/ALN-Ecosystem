@@ -159,6 +159,7 @@ class GMScannerPage {
     this.returnsToMode = page.locator('#returns-to-mode');
     this.btnIdleLoop = page.locator('#btn-idle-loop');
     this.btnScoreboard = page.locator('#btn-scoreboard');
+    this.btnReturnToVideo = page.locator('#btn-return-to-video');
 
     // Environment control elements (Phase 0 - Admin panel)
     // Environment control elements (Phase 3 - Admin panel)
@@ -788,6 +789,13 @@ class GMScannerPage {
    */
   async setDisplayScoreboard() {
     await this.btnScoreboard.click();
+  }
+
+  /**
+   * Click Return to Video button
+   */
+  async returnToVideo() {
+    await this.btnReturnToVideo.click();
   }
 
   /**
