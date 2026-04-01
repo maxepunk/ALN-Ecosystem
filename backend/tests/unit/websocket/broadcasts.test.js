@@ -13,6 +13,15 @@
 const EventEmitter = require('events');
 const broadcasts = require('../../../src/websocket/broadcasts');
 const { setupBroadcastListeners, cleanupBroadcastListeners } = broadcasts;
+const {
+  createMockSessionService,
+  createMockTransactionService,
+  createMockVideoQueueService,
+  createMockOfflineQueueService,
+  createMockAudioRoutingService,
+  createMockBluetoothService,
+  createMockLightingService,
+} = require('../../helpers/mocks');
 
 describe('broadcasts.js - Event Wrapper Integration', () => {
   let mockIo;
@@ -20,7 +29,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
   let mockTransactionService;
   let mockVideoQueueService;
   let mockOfflineQueueService;
-  let initializeSessionDevicesSpy;
 
   beforeEach(() => {
     // Mock Socket.io server with minimal structure needed for wrapper tests
@@ -38,33 +46,23 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       }
     };
 
-    // Mock services as EventEmitters
-    mockSessionService = new EventEmitter();
-    mockTransactionService = new EventEmitter();
-    mockVideoQueueService = new EventEmitter();
-    mockOfflineQueueService = new EventEmitter();
-
-    // Add methods needed by broadcast handlers
-    mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
-    mockVideoQueueService.getState = jest.fn().mockReturnValue({
-      status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+    // Create mock services via shared factories
+    mockSessionService = createMockSessionService({
+      getCurrentSession: jest.fn().mockReturnValue({ id: 'session-123' }),
     });
-
-    // Mock transactionService.getToken (needed by transaction:added handler)
-    mockTransactionService.getToken = jest.fn().mockReturnValue({
-      memoryType: 'TEST_TYPE',
-      metadata: {
-        originalType: 'ORIGINAL_TYPE',
-        rating: 5,
-        group: 'TEST_GROUP'
-      },
-      value: 100
+    mockTransactionService = createMockTransactionService({
+      getToken: jest.fn().mockReturnValue({
+        memoryType: 'TEST_TYPE',
+        metadata: {
+          originalType: 'ORIGINAL_TYPE',
+          rating: 5,
+          group: 'TEST_GROUP'
+        },
+        value: 100
+      }),
     });
-
-    // Mock sessionService.getCurrentSession (needed by transaction:added handler)
-    mockSessionService.getCurrentSession = jest.fn().mockReturnValue({
-      id: 'session-123'
-    });
+    mockVideoQueueService = createMockVideoQueueService();
+    mockOfflineQueueService = createMockOfflineQueueService();
   });
 
   afterEach(() => {
@@ -520,13 +518,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     let mockAudioRoutingService;
 
     beforeEach(() => {
-      mockAudioRoutingService = new EventEmitter();
-      mockAudioRoutingService.getRoutingStatus = jest.fn().mockResolvedValue({ availableSinks: [] });
-      mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
-      mockAudioRoutingService.applyRouting = jest.fn().mockResolvedValue();
-      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-        routes: {}, defaultSink: 'hdmi', ducking: {},
-      });
+      mockAudioRoutingService = createMockAudioRoutingService();
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
@@ -594,19 +586,19 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     afterEach(() => { jest.useRealTimers(); });
 
     beforeEach(() => {
-      mockBluetoothService = new EventEmitter();
-      mockBluetoothService.getState = jest.fn().mockReturnValue({
-        scanning: false, pairedDevices: [], connectedDevices: [],
+      mockBluetoothService = createMockBluetoothService();
+      mockAudioRoutingService = createMockAudioRoutingService({
+        getState: jest.fn().mockReturnValue({
+          routes: { video: 'hdmi' }, defaultSink: 'hdmi', ducking: {},
+        }),
       });
-      mockAudioRoutingService = new EventEmitter();
-      mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
-      mockAudioRoutingService.getState = jest.fn().mockReturnValue({
-        routes: { video: 'hdmi' }, defaultSink: 'hdmi', ducking: {},
+      mockLightingService = createMockLightingService({
+        getState: jest.fn().mockReturnValue({
+          connected: true, activeScene: 'scene.test', scenes: [{ id: 'scene.test', name: 'Test' }],
+        }),
       });
-      mockLightingService = new EventEmitter();
-      mockLightingService.getState = jest.fn().mockReturnValue({
-        connected: true, activeScene: 'scene.test', scenes: [{ id: 'scene.test', name: 'Test' }],
-      });
+      // spotifyService and vlcService are not in the mock factories (not in task scope)
+      // but still needed here — keep inline
       mockSpotifyService = new EventEmitter();
       mockSpotifyService.getState = jest.fn().mockReturnValue({
         connected: true, state: 'playing', volume: 80, track: { title: 'Test' },
