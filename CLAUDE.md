@@ -307,6 +307,18 @@ npm run test:e2e   # Playwright E2E
 npm run build      # Production build
 ```
 
+**ESP32 Scanner:** See 'arduino-cyd-player-scanner/CLAUDE.md' for full command reference.
+```bash
+cd arduino-cyd-player-scanner
+pio test -e native       # PlatformIO unit tests (models layer)
+```
+
+**Player Scanner (Web):** See 'aln-memory-scanner/CLAUDE.md' for full command reference.
+```bash
+cd aln-memory-scanner
+npm test                 # Jest unit tests
+```
+
 **Config Tool:** See 'config-tool/README.md' for full documentation.
 ```bash
 cd config-tool
