@@ -121,13 +121,15 @@ class ServiceHealthRegistry extends EventEmitter {
     };
 
     this._revalidationTimer = setInterval(async () => {
-      for (const [id, check] of Object.entries(HEALTH_CHECKS)) {
-        try {
-          await check();
-        } catch (err) {
-          logger.warn(`Health revalidation failed for ${id}`, { error: err.message });
-        }
-      }
+      await Promise.allSettled(
+        Object.entries(HEALTH_CHECKS).map(async ([id, check]) => {
+          try {
+            await check();
+          } catch (err) {
+            logger.warn(`Health revalidation failed for ${id}`, { error: err.message });
+          }
+        })
+      );
     }, intervalMs);
 
     logger.info(`Health revalidation started (${intervalMs}ms interval)`);

@@ -30,54 +30,37 @@ const DEFAULTS = {
 
 /**
  * Build the environment state object for sync:full payloads.
- * Async because bluetoothService methods shell out to bluetoothctl.
+ * Uses cached getState() from each service (no subprocess spawns).
  *
  * @param {Object} options
  * @param {Object} [options.bluetoothService] - BluetoothService instance (optional)
  * @param {Object} [options.audioRoutingService] - AudioRoutingService instance (optional)
  * @param {Object} [options.lightingService] - LightingService instance (optional)
- * @returns {Promise<Object>} Environment state snapshot
+ * @returns {Object} Environment state snapshot
  */
-async function buildEnvironmentState({ bluetoothService, audioRoutingService, lightingService } = {}) {
-  // Bluetooth — async calls, catch errors individually
+function buildEnvironmentState({ bluetoothService, audioRoutingService, lightingService } = {}) {
   let bluetooth = DEFAULTS.bluetooth;
   if (bluetoothService) {
     try {
-      const [available, pairedDevices, connectedDevices] = await Promise.all([
-        bluetoothService.isAvailable(),
-        bluetoothService.getPairedDevices(),
-        bluetoothService.getConnectedDevices(),
-      ]);
-      bluetooth = {
-        available,
-        scanning: bluetoothService.isScanning(),
-        pairedDevices,
-        connectedDevices,
-      };
+      bluetooth = bluetoothService.getState();
     } catch (err) {
       logger.warn('Failed to gather bluetooth state for sync:full', { error: err.message });
     }
   }
 
-  // Audio — sync call
   let audio = DEFAULTS.audio;
   if (audioRoutingService) {
     try {
-      audio = await audioRoutingService.getRoutingStatus();
+      audio = audioRoutingService.getState();
     } catch (err) {
       logger.warn('Failed to gather audio state for sync:full', { error: err.message });
     }
   }
 
-  // Lighting — sync calls
   let lighting = DEFAULTS.lighting;
   if (lightingService) {
     try {
-      lighting = {
-        connected: lightingService.isConnected(),
-        scenes: lightingService.getCachedScenes(),
-        activeScene: lightingService.getActiveScene(),
-      };
+      lighting = lightingService.getState();
     } catch (err) {
       logger.warn('Failed to gather lighting state for sync:full', { error: err.message });
     }

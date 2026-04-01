@@ -9,7 +9,7 @@
  * - Display: HDMI output available
  *
  * Usage:
- * - npm run test:e2e                    # Run E2E tests (2 workers)
+ * - npm run test:e2e                    # Run E2E tests (1 worker — Chromium kiosk is single-instance)
  * - npm run test:e2e:fast               # Run E2E tests (3 workers, max speed)
  * - npm run test:e2e:headed             # Run with visible browser (1 worker)
  * - npm run test:e2e:ui                 # Interactive UI mode

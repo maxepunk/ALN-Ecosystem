@@ -12,6 +12,30 @@ jest.mock('child_process', () => ({
   execFileSync: jest.fn(),
 }));
 
+jest.mock('fs', () => {
+  const realFs = jest.requireActual('fs');
+  return {
+    ...realFs,
+    readFileSync: jest.fn((...args) => {
+      // PID file reads are mocked; everything else uses real fs
+      if (typeof args[0] === 'string' && (args[0].includes('aln-pm-') || args[0].includes('/proc/'))) {
+        throw new Error('ENOENT');
+      }
+      return realFs.readFileSync(...args);
+    }),
+    writeFileSync: jest.fn((...args) => {
+      // PID file writes are mocked; everything else uses real fs
+      if (typeof args[0] === 'string' && args[0].includes('aln-pm-')) return;
+      return realFs.writeFileSync(...args);
+    }),
+    unlinkSync: jest.fn((...args) => {
+      // PID file unlinks are mocked; everything else uses real fs
+      if (typeof args[0] === 'string' && args[0].includes('aln-pm-')) return;
+      return realFs.unlinkSync(...args);
+    }),
+  };
+});
+
 // Reset module between tests to clear module-level state
 // (browserProcess, windowId, visible are module-level vars)
 let displayDriver;
@@ -271,8 +295,9 @@ describe('displayDriver — window management', () => {
       await expect(displayDriver.cleanup()).resolves.not.toThrow();
     });
 
-    test('runs pkill fallback after tracked process cleanup', async () => {
-      const { spawn, execFile, execFileSync } = require('child_process');
+    test('removes PID file on cleanup after tracked process', async () => {
+      const fs = require('fs');
+      const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false, kill: jest.fn() };
       spawn.mockReturnValue(mockProc);
 
@@ -283,21 +308,23 @@ describe('displayDriver — window management', () => {
       });
 
       await displayDriver.showScoreboard();
-      execFileSync.mockClear(); // Clear calls from _doLaunch orphan cleanup
       await displayDriver.cleanup();
 
-      expect(execFileSync).toHaveBeenCalledWith(
-        'pkill',
-        ['-f', 'chromium.*--kiosk'],
-        { timeout: 3000 }
+      // PID file should have been written on launch, then removed on cleanup
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining('aln-pm-scoreboard-chromium.pid'),
+        '1234'
+      );
+      expect(fs.unlinkSync).toHaveBeenCalledWith(
+        expect.stringContaining('aln-pm-scoreboard-chromium.pid')
       );
     });
 
-    test('pkill fallback does not throw if no Chromium running', async () => {
-      const { execFileSync } = require('child_process');
-      execFileSync.mockImplementation(() => { throw new Error('no process found'); });
+    test('cleanup does not throw if PID file missing', async () => {
+      const fs = require('fs');
+      fs.unlinkSync.mockImplementation(() => { throw new Error('ENOENT'); });
 
-      // cleanup with no browser process — pkill throws but cleanup succeeds
+      // cleanup with no browser process — PID file removal throws but cleanup succeeds
       await expect(displayDriver.cleanup()).resolves.not.toThrow();
     });
   });
@@ -342,10 +369,20 @@ describe('displayDriver — window management', () => {
   });
 
   describe('orphan Chromium cleanup', () => {
-    test('kills orphaned Chromium before spawning new one in _doLaunch', async () => {
-      const { spawn, execFile, execFileSync } = require('child_process');
+    test('kills orphaned Chromium via PID file before spawning new one', async () => {
+      const fs = require('fs');
+      const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };
       spawn.mockReturnValue(mockProc);
+
+      // Simulate PID file from previous crashed server with a chromium process
+      const readCalls = [];
+      fs.readFileSync.mockImplementation((path) => {
+        readCalls.push(path);
+        if (path.includes('aln-pm-scoreboard-chromium.pid')) return '9999';
+        if (path.includes('/proc/9999/cmdline')) return 'chromium-browser\0--kiosk\0';
+        throw new Error('ENOENT');
+      });
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
@@ -353,28 +390,27 @@ describe('displayDriver — window management', () => {
         else cb(null, '', '');
       });
 
-      await displayDriver.showScoreboard();
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      try {
+        await displayDriver.showScoreboard();
 
-      // execFileSync (pkill) must have been called BEFORE spawn
-      expect(execFileSync).toHaveBeenCalledWith(
-        'pkill',
-        ['-f', 'chromium.*--kiosk'],
-        { timeout: 3000 }
-      );
-
-      // Verify pkill was called before spawn by checking call order
-      const pkillCallOrder = execFileSync.mock.invocationCallOrder[0];
-      const spawnCallOrder = spawn.mock.invocationCallOrder[0];
-      expect(pkillCallOrder).toBeLessThan(spawnCallOrder);
+        // Should have killed the orphan PID from the PID file
+        expect(killSpy).toHaveBeenCalledWith(9999, 'SIGTERM');
+        // Should have spawned new Chromium after orphan cleanup
+        expect(spawn).toHaveBeenCalledWith('chromium-browser', expect.any(Array), expect.any(Object));
+      } finally {
+        killSpy.mockRestore();
+      }
     });
 
-    test('proceeds with launch even if no orphaned Chromium exists', async () => {
-      const { spawn, execFile, execFileSync } = require('child_process');
+    test('proceeds with launch when no PID file exists', async () => {
+      const fs = require('fs');
+      const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };
       spawn.mockReturnValue(mockProc);
 
-      // pkill throws when no matching process — should not prevent launch
-      execFileSync.mockImplementation(() => { throw new Error('no process found'); });
+      // No PID file — readFileSync throws
+      fs.readFileSync.mockImplementation(() => { throw new Error('ENOENT'); });
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }

@@ -443,6 +443,7 @@ class BluetoothService extends EventEmitter {
       if (state.connected) connectedDevices.push(device);
     }
     return {
+      available: registry.isHealthy('bluetooth'),
       scanning: this.isScanning(),
       pairedDevices,
       connectedDevices,

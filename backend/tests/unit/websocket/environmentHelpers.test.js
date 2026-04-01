@@ -7,8 +7,8 @@ const { buildEnvironmentState, DEFAULTS } = require('../../../src/websocket/envi
 
 describe('environmentHelpers - buildEnvironmentState', () => {
   describe('with no services provided', () => {
-    it('should return default values when called with no arguments', async () => {
-      const result = await buildEnvironmentState();
+    it('should return default values when called with no arguments', () => {
+      const result = buildEnvironmentState();
 
       expect(result).toEqual({
         bluetooth: DEFAULTS.bluetooth,
@@ -17,8 +17,8 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       });
     });
 
-    it('should return default values when called with empty object', async () => {
-      const result = await buildEnvironmentState({});
+    it('should return default values when called with empty object', () => {
+      const result = buildEnvironmentState({});
 
       expect(result).toEqual({
         bluetooth: DEFAULTS.bluetooth,
@@ -29,99 +29,103 @@ describe('environmentHelpers - buildEnvironmentState', () => {
   });
 
   describe('bluetooth state', () => {
-    it('should gather bluetooth state from service', async () => {
+    it('should gather bluetooth state from service', () => {
       const mockBluetooth = {
-        isAvailable: jest.fn().mockResolvedValue(true),
-        getPairedDevices: jest.fn().mockResolvedValue([
-          { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true },
-        ]),
-        getConnectedDevices: jest.fn().mockResolvedValue([
-          { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true },
-        ]),
-        isScanning: jest.fn().mockReturnValue(false),
+        getState: jest.fn().mockReturnValue({
+          scanning: false,
+          pairedDevices: [
+            { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true },
+          ],
+          connectedDevices: [
+            { address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true },
+          ],
+        }),
       };
 
-      const result = await buildEnvironmentState({ bluetoothService: mockBluetooth });
+      const result = buildEnvironmentState({ bluetoothService: mockBluetooth });
 
       expect(result.bluetooth).toEqual({
-        available: true,
         scanning: false,
         pairedDevices: [{ address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true }],
         connectedDevices: [{ address: 'AA:BB:CC:DD:EE:FF', name: 'Speaker', connected: true }],
       });
     });
 
-    it('should report scanning: true when isScanning() returns true', async () => {
+    it('should report scanning: true when service reports scanning', () => {
       const mockBluetooth = {
-        isAvailable: jest.fn().mockResolvedValue(true),
-        getPairedDevices: jest.fn().mockResolvedValue([]),
-        getConnectedDevices: jest.fn().mockResolvedValue([]),
-        isScanning: jest.fn().mockReturnValue(true),
+        getState: jest.fn().mockReturnValue({
+          scanning: true,
+          pairedDevices: [],
+          connectedDevices: [],
+        }),
       };
 
-      const result = await buildEnvironmentState({ bluetoothService: mockBluetooth });
+      const result = buildEnvironmentState({ bluetoothService: mockBluetooth });
 
       expect(result.bluetooth.scanning).toBe(true);
     });
 
-    it('should fall back to defaults on bluetooth error', async () => {
+    it('should fall back to defaults on bluetooth error', () => {
       const mockBluetooth = {
-        isAvailable: jest.fn().mockRejectedValue(new Error('bluetoothctl not found')),
-        getPairedDevices: jest.fn().mockRejectedValue(new Error('bluetoothctl not found')),
-        getConnectedDevices: jest.fn().mockRejectedValue(new Error('bluetoothctl not found')),
-        isScanning: jest.fn().mockReturnValue(false),
+        getState: jest.fn().mockImplementation(() => {
+          throw new Error('bluetoothctl not found');
+        }),
       };
 
-      const result = await buildEnvironmentState({ bluetoothService: mockBluetooth });
+      const result = buildEnvironmentState({ bluetoothService: mockBluetooth });
 
       expect(result.bluetooth).toEqual(DEFAULTS.bluetooth);
     });
   });
 
   describe('audio state', () => {
-    it('should gather audio state from service', async () => {
+    it('should gather audio state from service', () => {
       const mockAudio = {
-        getRoutingStatus: jest.fn().mockResolvedValue({
-          routes: { video: { sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink' } },
+        getState: jest.fn().mockReturnValue({
+          routes: { video: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink' },
           defaultSink: 'hdmi',
+          ducking: {},
           availableSinks: [],
         }),
       };
 
-      const result = await buildEnvironmentState({ audioRoutingService: mockAudio });
+      const result = buildEnvironmentState({ audioRoutingService: mockAudio });
 
       expect(result.audio).toEqual({
-        routes: { video: { sink: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink' } },
+        routes: { video: 'bluez_sink.AA_BB_CC_DD_EE_FF.a2dp_sink' },
         defaultSink: 'hdmi',
+        ducking: {},
         availableSinks: [],
       });
     });
 
-    it('should fall back to defaults on audio error', async () => {
+    it('should fall back to defaults on audio error', () => {
       const mockAudio = {
-        getRoutingStatus: jest.fn().mockImplementation(() => {
+        getState: jest.fn().mockImplementation(() => {
           throw new Error('pactl error');
         }),
       };
 
-      const result = await buildEnvironmentState({ audioRoutingService: mockAudio });
+      const result = buildEnvironmentState({ audioRoutingService: mockAudio });
 
       expect(result.audio).toEqual(DEFAULTS.audio);
     });
   });
 
   describe('lighting state', () => {
-    it('should gather lighting state from service', async () => {
+    it('should gather lighting state from service', () => {
       const mockLighting = {
-        isConnected: jest.fn().mockReturnValue(true),
-        getCachedScenes: jest.fn().mockReturnValue([
-          { id: 'scene.dramatic_red', name: 'Dramatic Red' },
-          { id: 'scene.cool_blue', name: 'Cool Blue' },
-        ]),
-        getActiveScene: jest.fn().mockReturnValue('scene.dramatic_red'),
+        getState: jest.fn().mockReturnValue({
+          connected: true,
+          scenes: [
+            { id: 'scene.dramatic_red', name: 'Dramatic Red' },
+            { id: 'scene.cool_blue', name: 'Cool Blue' },
+          ],
+          activeScene: 'scene.dramatic_red',
+        }),
       };
 
-      const result = await buildEnvironmentState({ lightingService: mockLighting });
+      const result = buildEnvironmentState({ lightingService: mockLighting });
 
       expect(result.lighting).toEqual({
         connected: true,
@@ -133,14 +137,16 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       });
     });
 
-    it('should report disconnected and empty scenes', async () => {
+    it('should report disconnected and empty scenes', () => {
       const mockLighting = {
-        isConnected: jest.fn().mockReturnValue(false),
-        getCachedScenes: jest.fn().mockReturnValue([]),
-        getActiveScene: jest.fn().mockReturnValue(null),
+        getState: jest.fn().mockReturnValue({
+          connected: false,
+          scenes: [],
+          activeScene: null,
+        }),
       };
 
-      const result = await buildEnvironmentState({ lightingService: mockLighting });
+      const result = buildEnvironmentState({ lightingService: mockLighting });
 
       expect(result.lighting).toEqual({
         connected: false,
@@ -149,45 +155,47 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       });
     });
 
-    it('should fall back to defaults on lighting error', async () => {
+    it('should fall back to defaults on lighting error', () => {
       const mockLighting = {
-        isConnected: jest.fn().mockImplementation(() => {
+        getState: jest.fn().mockImplementation(() => {
           throw new Error('HA unreachable');
         }),
-        getCachedScenes: jest.fn().mockReturnValue([]),
-        getActiveScene: jest.fn().mockReturnValue(null),
       };
 
-      const result = await buildEnvironmentState({ lightingService: mockLighting });
+      const result = buildEnvironmentState({ lightingService: mockLighting });
 
       expect(result.lighting).toEqual(DEFAULTS.lighting);
     });
   });
 
   describe('combined services', () => {
-    it('should gather state from all three services together', async () => {
+    it('should gather state from all three services together', () => {
       const mockBluetooth = {
-        isAvailable: jest.fn().mockResolvedValue(true),
-        getPairedDevices: jest.fn().mockResolvedValue([]),
-        getConnectedDevices: jest.fn().mockResolvedValue([]),
-        isScanning: jest.fn().mockReturnValue(false),
+        getState: jest.fn().mockReturnValue({
+          scanning: false,
+          pairedDevices: [],
+          connectedDevices: [],
+        }),
       };
 
       const mockAudio = {
-        getRoutingStatus: jest.fn().mockResolvedValue({
-          routes: { video: { sink: 'hdmi' } },
+        getState: jest.fn().mockReturnValue({
+          routes: { video: 'hdmi' },
           defaultSink: 'hdmi',
+          ducking: {},
           availableSinks: [],
         }),
       };
 
       const mockLighting = {
-        isConnected: jest.fn().mockReturnValue(false),
-        getCachedScenes: jest.fn().mockReturnValue([]),
-        getActiveScene: jest.fn().mockReturnValue(null),
+        getState: jest.fn().mockReturnValue({
+          connected: false,
+          scenes: [],
+          activeScene: null,
+        }),
       };
 
-      const result = await buildEnvironmentState({
+      const result = buildEnvironmentState({
         bluetoothService: mockBluetooth,
         audioRoutingService: mockAudio,
         lightingService: mockLighting,
@@ -196,27 +204,24 @@ describe('environmentHelpers - buildEnvironmentState', () => {
       expect(result).toHaveProperty('bluetooth');
       expect(result).toHaveProperty('audio');
       expect(result).toHaveProperty('lighting');
-      expect(result.bluetooth.available).toBe(true);
-      expect(result.audio.routes.video.sink).toBe('hdmi');
+      expect(result.audio.routes.video).toBe('hdmi');
       expect(result.lighting.connected).toBe(false);
     });
 
-    it('should handle partial service availability', async () => {
-      // Only bluetooth provided, others missing
+    it('should handle partial service availability', () => {
       const mockBluetooth = {
-        isAvailable: jest.fn().mockResolvedValue(false),
-        getPairedDevices: jest.fn().mockResolvedValue([]),
-        getConnectedDevices: jest.fn().mockResolvedValue([]),
-        isScanning: jest.fn().mockReturnValue(false),
+        getState: jest.fn().mockReturnValue({
+          scanning: false,
+          pairedDevices: [],
+          connectedDevices: [],
+        }),
       };
 
-      const result = await buildEnvironmentState({
+      const result = buildEnvironmentState({
         bluetoothService: mockBluetooth,
-        // audioRoutingService: undefined
-        // lightingService: undefined
       });
 
-      expect(result.bluetooth.available).toBe(false);
+      expect(result.bluetooth.scanning).toBe(false);
       expect(result.audio).toEqual(DEFAULTS.audio);
       expect(result.lighting).toEqual(DEFAULTS.lighting);
     });

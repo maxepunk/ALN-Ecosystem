@@ -17,6 +17,7 @@
  */
 
 const { spawn, execFile, execFileSync } = require('child_process');
+const fs = require('fs');
 const os = require('os');
 const logger = require('./logger');
 
@@ -25,6 +26,9 @@ let browserProcess = null;
 let windowId = null;  // X11 window ID string (e.g. '12345678')
 let visible = false;
 let launchPromise = null;  // Guard against concurrent spawns
+
+// PID file for orphan recovery (matches ProcessMonitor pattern)
+const PID_FILE = '/tmp/aln-pm-scoreboard-chromium.pid';
 
 // Configuration
 const DISPLAY = process.env.DISPLAY || ':0';
@@ -102,13 +106,22 @@ async function findWindowId(retries = 10, delayMs = 500) {
  * @returns {Promise<boolean>} True if Chromium launched and window ID found
  */
 async function _doLaunch() {
-  // Kill any orphaned Chromium from previous server instance
+  // Kill orphaned Chromium from previous server crash via PID file.
+  // PID-scoped (not system-wide pkill) so concurrent orchestrators don't interfere.
   let killedOrphan = false;
   try {
-    execFileSync('pkill', ['-f', 'chromium.*--kiosk'], { timeout: 3000 });
-    killedOrphan = true;
+    const oldPid = parseInt(fs.readFileSync(PID_FILE, 'utf8').trim(), 10);
+    if (!isNaN(oldPid)) {
+      // Verify it's actually a chromium process before killing
+      const cmdline = fs.readFileSync(`/proc/${oldPid}/cmdline`, 'utf8').replace(/\0/g, ' ');
+      if (cmdline.includes('chromium')) {
+        process.kill(oldPid, 'SIGTERM');
+        killedOrphan = true;
+        logger.info('[DisplayDriver] Killed orphaned Chromium', { pid: oldPid });
+      }
+    }
   } catch {
-    // No Chromium running — clean state, no wait needed
+    // PID file doesn't exist, process already gone, or not chromium — clean state
   }
 
   if (killedOrphan) {
@@ -152,6 +165,15 @@ async function _doLaunch() {
     windowId = null;
     visible = false;
   });
+
+  // Write PID file for orphan recovery on next server start
+  if (browserProcess?.pid) {
+    try {
+      fs.writeFileSync(PID_FILE, String(browserProcess.pid));
+    } catch (err) {
+      logger.debug('[DisplayDriver] Failed to write PID file', { error: err.message });
+    }
+  }
 
   windowId = await findWindowId();
   if (!windowId) {
@@ -287,11 +309,11 @@ async function cleanup() {
   windowId = null;
   visible = false;
 
-  // Fallback: kill any Chromium kiosk that escaped tracking
+  // Remove PID file (clean shutdown — no orphan to recover)
   try {
-    execFileSync('pkill', ['-f', 'chromium.*--kiosk'], { timeout: 3000 });
+    fs.unlinkSync(PID_FILE);
   } catch {
-    // None running
+    // Already removed or never written
   }
 }
 

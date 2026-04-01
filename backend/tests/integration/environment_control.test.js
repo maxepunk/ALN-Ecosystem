@@ -21,7 +21,6 @@ const { connectAndIdentify, waitForEvent, sendGmCommand } = require('../helpers/
 const { resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 const bluetoothService = require('../../src/services/bluetoothService');
@@ -62,7 +61,6 @@ describe('Environment Control Integration', () => {
     // listeners are not re-attached and service events won't reach WebSocket clients.
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
-      stateService,
       transactionService,
       videoQueueService,
       offlineQueueService,
@@ -113,11 +111,14 @@ describe('Environment Control Integration', () => {
     });
 
     it('should report bluetooth available:true when adapter is powered on', async () => {
-      jest.spyOn(bluetoothService, 'isAvailable').mockResolvedValue(true);
-      jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([
-        { address: 'AA:BB:CC:DD:EE:FF', name: 'Test Speaker', connected: false },
-      ]);
-      jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
+      jest.spyOn(bluetoothService, 'getState').mockReturnValue({
+        available: true,
+        scanning: false,
+        pairedDevices: [
+          { address: 'AA:BB:CC:DD:EE:FF', name: 'Test Speaker', connected: false },
+        ],
+        connectedDevices: [],
+      });
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_002');
 
@@ -298,8 +299,10 @@ describe('Environment Control Integration', () => {
 
   describe('graceful degradation: bluetooth unavailable', () => {
     it('should report bluetooth.available:false in sync:full when adapter is absent', async () => {
-      // isAvailable returns false -> adapter not present
       mockBluetoothUnavailable();
+      jest.spyOn(bluetoothService, 'getState').mockReturnValue({
+        available: false, scanning: false, pairedDevices: [], connectedDevices: [],
+      });
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_040');
 

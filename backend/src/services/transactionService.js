@@ -47,15 +47,14 @@ class TransactionService extends EventEmitter {
    * Listens to unwrapped domain events from sessionService
    */
   registerSessionListener() {
-    // Listen for new session (initialize team scores)
-    sessionService.on('session:created', (sessionData) => {
+    // Remove any previously registered listeners to prevent accumulation
+    this._removeSessionListeners();
+
+    this._onSessionCreated = (sessionData) => {
       // CRITICAL: Clear map FIRST to prevent state leakage from previous sessions
-      // Prevents race condition where session:updated(ended) listener might execute
-      // after teams are added, clearing them immediately
       this.teamScores.clear();
 
       if (sessionData.teams) {
-        // New session created - initialize team scores
         sessionData.teams.forEach(teamId => {
           this.teamScores.set(teamId, TeamScore.createInitial(teamId));
         });
@@ -64,20 +63,35 @@ class TransactionService extends EventEmitter {
           count: this.teamScores.size
         });
       }
-    });
+    };
 
-    // Listen for session updates (handle session end)
-    sessionService.on('session:updated', (sessionData) => {
+    this._onSessionUpdated = (sessionData) => {
       if (sessionData.status === 'ended') {
-        // Session ended - clear all team scores (no session = no teams)
-        // NOTE: resetScores() preserves team membership; clear() removes everything
         this.teamScores.clear();
         this.recentTransactions = [];
         logger.info('Scores cleared due to session end');
       }
-    });
+    };
+
+    sessionService.on('session:created', this._onSessionCreated);
+    sessionService.on('session:updated', this._onSessionUpdated);
 
     logger.info('Session event listener registered');
+  }
+
+  /**
+   * Remove session listeners from sessionService
+   * @private
+   */
+  _removeSessionListeners() {
+    if (this._onSessionCreated) {
+      sessionService.removeListener('session:created', this._onSessionCreated);
+      this._onSessionCreated = null;
+    }
+    if (this._onSessionUpdated) {
+      sessionService.removeListener('session:updated', this._onSessionUpdated);
+      this._onSessionUpdated = null;
+    }
   }
 
   // ... (skip to adjustTeamScore)
@@ -691,7 +705,10 @@ class TransactionService extends EventEmitter {
    * NOTE: Contract tests should NOT call reset() - follow auth-events.test.js pattern
    */
   reset() {
-    // Remove listeners to prevent accumulation
+    // Remove listeners on sessionService to prevent accumulation
+    this._removeSessionListeners();
+
+    // Remove listeners on this service's own emitter
     this.removeAllListeners();
 
     // Clear all transaction history

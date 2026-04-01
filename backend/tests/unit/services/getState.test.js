@@ -34,6 +34,7 @@ describe('Service getState() Methods', () => {
     it('should return expected shape with empty state', () => {
       const state = bluetoothService.getState();
       expect(state).toEqual({
+        available: false,
         scanning: false,
         pairedDevices: [],
         connectedDevices: [],

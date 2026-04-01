@@ -6,12 +6,11 @@
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 
 describe('Service Event Communication', () => {
   beforeEach(async () => {
     // Reset all services to clean state
-    await resetAllServices();await stateService.reset();
+    await resetAllServices();
 
     // Ensure listener is registered after reset
     if (!transactionService.sessionListenerRegistered) {
@@ -27,7 +26,6 @@ describe('Service Event Communication', () => {
     }
     sessionService.removeAllListeners();
     transactionService.removeAllListeners();
-    stateService.removeAllListeners();
   });
 
   describe('transactionService listens to session domain events', () => {
