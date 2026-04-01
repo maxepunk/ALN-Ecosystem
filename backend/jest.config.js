@@ -17,7 +17,7 @@ module.exports = {
     '/node_modules/',
     '/tests/integration/',  // Exclude integration tests (use jest.integration.config.js)
     '/tests/e2e/',          // Exclude E2E tests (use Playwright)
-    '/tests/functional/',   // Exclude functional tests (archived)
+    '/tests/functional/',   // Functional tests merged into integration (Task 3)
   ],
 
   // Timing
