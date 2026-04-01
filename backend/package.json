@@ -48,6 +48,8 @@
     "// TESTING - Utilities": "=== Development and debugging ===",
     "test:watch": "jest --watch --maxWorkers=2",
     "test:coverage": "jest --coverage --maxWorkers=4",
+    "coverage:ratchet": "jest --coverage --maxWorkers=4 && node scripts/coverage-ratchet.js generate",
+    "coverage:check": "node scripts/coverage-ratchet.js check",
     "test:offline": "jest tests/integration/offline_mode.test.js --runInBand",
     "test:docker": "sg docker -c 'npx jest --config jest.integration.config.js tests/integration/docker-lifecycle.test.js --runInBand'",
     "// SESSION VALIDATION": "=== Post-session analysis tools ===",

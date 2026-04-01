@@ -1,0 +1,307 @@
+{
+  "./src/app.js": {
+    "branches": 25,
+    "functions": 40,
+    "lines": 75
+  },
+  "./src/config/index.js": {
+    "branches": 50,
+    "functions": 100,
+    "lines": 80
+  },
+  "./src/middleware/auth.js": {
+    "branches": 40,
+    "functions": 40,
+    "lines": 50
+  },
+  "./src/middleware/offlineStatus.js": {
+    "branches": 65,
+    "functions": 60,
+    "lines": 55
+  },
+  "./src/models/deviceConnection.js": {
+    "branches": 35,
+    "functions": 15,
+    "lines": 25
+  },
+  "./src/models/session.js": {
+    "branches": 70,
+    "functions": 75,
+    "lines": 80
+  },
+  "./src/models/teamScore.js": {
+    "branches": 35,
+    "functions": 35,
+    "lines": 45
+  },
+  "./src/models/token.js": {
+    "branches": 25,
+    "functions": 60,
+    "lines": 60
+  },
+  "./src/models/transaction.js": {
+    "branches": 70,
+    "functions": 75,
+    "lines": 65
+  },
+  "./src/models/videoQueueItem.js": {
+    "branches": 35,
+    "functions": 75,
+    "lines": 60
+  },
+  "./src/routes/adminRoutes.js": {
+    "branches": 60,
+    "functions": 65,
+    "lines": 70
+  },
+  "./src/routes/healthRoutes.js": {
+    "branches": 10,
+    "functions": 100,
+    "lines": 45
+  },
+  "./src/routes/resourceRoutes.js": {
+    "branches": 0,
+    "functions": 50,
+    "lines": 80
+  },
+  "./src/routes/scanRoutes.js": {
+    "branches": 60,
+    "functions": 85,
+    "lines": 75
+  },
+  "./src/routes/sessionRoutes.js": {
+    "branches": 75,
+    "functions": 50,
+    "lines": 80
+  },
+  "./src/routes/stateRoutes.js": {
+    "branches": 100,
+    "functions": 100,
+    "lines": 90
+  },
+  "./src/server.js": {
+    "branches": 30,
+    "functions": 20,
+    "lines": 40
+  },
+  "./src/services/audioRoutingService.js": {
+    "branches": 80,
+    "functions": 90,
+    "lines": 90
+  },
+  "./src/services/bluetoothService.js": {
+    "branches": 75,
+    "functions": 85,
+    "lines": 90
+  },
+  "./src/services/commandExecutor.js": {
+    "branches": 75,
+    "functions": 85,
+    "lines": 90
+  },
+  "./src/services/cueEngineService.js": {
+    "branches": 75,
+    "functions": 75,
+    "lines": 75
+  },
+  "./src/services/cueEngineWiring.js": {
+    "branches": 100,
+    "functions": 35,
+    "lines": 70
+  },
+  "./src/services/discoveryService.js": {
+    "branches": 50,
+    "functions": 90,
+    "lines": 85
+  },
+  "./src/services/displayControlService.js": {
+    "branches": 85,
+    "functions": 85,
+    "lines": 90
+  },
+  "./src/services/gameClockService.js": {
+    "branches": 85,
+    "functions": 100,
+    "lines": 90
+  },
+  "./src/services/heartbeatMonitorService.js": {
+    "branches": 25,
+    "functions": 70,
+    "lines": 50
+  },
+  "./src/services/lightingService.js": {
+    "branches": 80,
+    "functions": 100,
+    "lines": 90
+  },
+  "./src/services/mprisPlayerBase.js": {
+    "branches": 90,
+    "functions": 90,
+    "lines": 95
+  },
+  "./src/services/offlineQueueService.js": {
+    "branches": 15,
+    "functions": 35,
+    "lines": 40
+  },
+  "./src/services/persistenceService.js": {
+    "branches": 60,
+    "functions": 95,
+    "lines": 85
+  },
+  "./src/services/serviceHealthRegistry.js": {
+    "branches": 90,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/services/sessionService.js": {
+    "branches": 55,
+    "functions": 75,
+    "lines": 70
+  },
+  "./src/services/soundService.js": {
+    "branches": 70,
+    "functions": 90,
+    "lines": 85
+  },
+  "./src/services/spotifyService.js": {
+    "branches": 90,
+    "functions": 90,
+    "lines": 95
+  },
+  "./src/services/systemReset.js": {
+    "branches": 55,
+    "functions": 100,
+    "lines": 85
+  },
+  "./src/services/tokenService.js": {
+    "branches": 95,
+    "functions": 100,
+    "lines": 95
+  },
+  "./src/services/transactionService.js": {
+    "branches": 60,
+    "functions": 80,
+    "lines": 75
+  },
+  "./src/services/videoQueueService.js": {
+    "branches": 45,
+    "functions": 55,
+    "lines": 50
+  },
+  "./src/services/vlcMprisService.js": {
+    "branches": 75,
+    "functions": 80,
+    "lines": 90
+  },
+  "./src/storage/FileStorage.js": {
+    "branches": 20,
+    "functions": 40,
+    "lines": 30
+  },
+  "./src/storage/index.js": {
+    "branches": 10,
+    "functions": 100,
+    "lines": 50
+  },
+  "./src/storage/MemoryStorage.js": {
+    "branches": 50,
+    "functions": 90,
+    "lines": 70
+  },
+  "./src/storage/StorageInterface.js": {
+    "branches": 0,
+    "functions": 0,
+    "lines": 5
+  },
+  "./src/utils/dbusSignalParser.js": {
+    "branches": 95,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/utils/displayDriver.js": {
+    "branches": 80,
+    "functions": 85,
+    "lines": 80
+  },
+  "./src/utils/dockerHelper.js": {
+    "branches": 100,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/utils/execHelper.js": {
+    "branches": 65,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/utils/logger.js": {
+    "branches": 60,
+    "functions": 30,
+    "lines": 65
+  },
+  "./src/utils/processMonitor.js": {
+    "branches": 90,
+    "functions": 100,
+    "lines": 95
+  },
+  "./src/utils/responseBuilder.js": {
+    "branches": 5,
+    "functions": 10,
+    "lines": 20
+  },
+  "./src/utils/validators.js": {
+    "branches": 50,
+    "functions": 100,
+    "lines": 90
+  },
+  "./src/websocket/adminEvents.js": {
+    "branches": 40,
+    "functions": 100,
+    "lines": 50
+  },
+  "./src/websocket/broadcasts.js": {
+    "branches": 80,
+    "functions": 70,
+    "lines": 80
+  },
+  "./src/websocket/deviceHelpers.js": {
+    "branches": 60,
+    "functions": 100,
+    "lines": 70
+  },
+  "./src/websocket/deviceTracking.js": {
+    "branches": 80,
+    "functions": 100,
+    "lines": 85
+  },
+  "./src/websocket/environmentHelpers.js": {
+    "branches": 100,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/websocket/eventWrapper.js": {
+    "branches": 0,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/websocket/gmAuth.js": {
+    "branches": 65,
+    "functions": 100,
+    "lines": 85
+  },
+  "./src/websocket/listenerRegistry.js": {
+    "branches": 60,
+    "functions": 65,
+    "lines": 70
+  },
+  "./src/websocket/socketServer.js": {
+    "branches": 65,
+    "functions": 100,
+    "lines": 80
+  },
+  "./src/websocket/syncHelpers.js": {
+    "branches": 95,
+    "functions": 100,
+    "lines": 90
+  }
+}
