@@ -15,8 +15,7 @@
 | Coverage thresholds | Per-file ratchet | Global thresholds punish one bad file; ratchet enforces monotonic improvement per file |
 | ESP32 testing | PlatformIO migration + native unit tests | Enables C++ unit testing of pure logic; required to diagnose active RFID bugs |
 | PWA scanner testing | Extract pure logic, then test (full modularization later) | Light refactor for high testability gain without introducing build system |
-| Shared contracts | Move openapi.yaml to ALN-TokenData | HTTP API contract is cross-cutting; WebSocket (asyncapi) stays in backend (GM Scanner only) |
-| Contract fixtures | Parse openapi.yaml directly, no generated intermediaries | Single source of truth, zero duplication |
+| Shared contracts | Keep openapi.yaml in backend, reference via monorepo-relative paths | Avoids 5-commit submodule cascade per API change; contract validation in parent repo CI |
 | Mock strategy | Shared mock factories in tests/helpers/mocks/ | Solves "30 files to update" problem (stateService removal touched 30+ files) |
 | ALNScanner test organization | Reorganize to mirror source paths | One test file per source file; eliminate phase-split naming artifacts |
 | WebSocket handler testing | Unit tests for complex handlers, integration for simple ones | adminEvents.js/broadcasts.js have branching logic; deviceHelpers.js is thin glue |
@@ -30,48 +29,55 @@ Each module gets test layers tailored to its complexity and role:
 |--------|------|----------|-------------|-----|
 | **Backend** | Jest (isolated, mocked) | Jest (OpenAPI/AsyncAPI validation) | Jest (multi-service, real WebSocket) | Playwright (browser, live server) |
 | **ALNScanner** | Jest + jsdom (isolated) | -- | Jest (storage strategies) | Playwright (standalone + full-stack) |
-| **ESP32 Scanner** | PlatformIO Unity (pure C++ logic) | Shared fixtures via ALN-TokenData | -- | -- |
-| **PWA Player Scanner** | Jest (extracted logic + orchestratorIntegration) | Shared fixtures via ALN-TokenData | -- | -- |
-| **config-tool** | node:test (existing) | -- | -- | -- |
+| **ESP32 Scanner** | PlatformIO Unity (pure C++ logic) | Via parent repo CI (monorepo-relative path to openapi.yaml) | -- | -- |
+| **PWA Player Scanner** | Jest (extracted logic + orchestratorIntegration) | Via parent repo CI (monorepo-relative path to openapi.yaml) | -- | -- |
+| **config-tool** | node:test (existing, expand coverage) | -- | -- | -- |
 
 ### Backend Layers (post-merge)
 
 - **Unit** (~55 files): Isolated service/module tests with mocks. Parallel execution (4 workers), 10s timeout.
 - **Contract** (~18 files): HTTP/WebSocket schema validation against OpenAPI/AsyncAPI specs. Stateless, parallel.
 - **Integration** (~35 files, includes former functional): Multi-service orchestration with real WebSocket. Sequential (1 worker), 30s timeout.
-- **E2E** (~20 files): Playwright browser tests against live orchestrator. Sequential, 60s timeout.
+- **E2E** (20 files): Playwright browser tests against live orchestrator. Sequential (workers=1), 60s timeout.
 
 ## Shared Contract Infrastructure
 
 ### Location
 
-```
-ALN-TokenData/
-+-- tokens.json                    # existing
-+-- scoring-config.json            # existing
-+-- contracts/
-|   +-- openapi.yaml               # HTTP API contract (moved from backend/contracts/)
-|   +-- README.md                  # field semantics, update procedures
-```
+`openapi.yaml` stays in `backend/contracts/` (source of truth). `asyncapi.yaml` also stays in `backend/contracts/` (WebSocket is only used by backend + GM Scanner).
 
-`asyncapi.yaml` stays in `backend/contracts/` — WebSocket is only used by backend + GM Scanner.
+Other modules reference the spec via monorepo-relative paths:
+
+```
+ALN-Ecosystem/
++-- backend/contracts/openapi.yaml      # source of truth, stays here
++-- ALNScanner/                         # ../../backend/contracts/openapi.yaml
++-- aln-memory-scanner/                 # ../backend/contracts/openapi.yaml
++-- arduino-cyd-player-scanner/         # ../backend/contracts/openapi.yaml
+```
 
 ### Consumption Pattern
 
-- **Backend contract tests**: validate route handler responses against openapi.yaml schemas
-- **ESP32 unit tests**: validate `OrchestratorService::sendScan()` payload construction against openapi.yaml request schema
-- **PWA scanner unit tests**: validate `orchestratorIntegration.js` request construction against openapi.yaml request schema
-- **Contract drift check**: CI step that verifies all consumers agree with the spec
+- **Backend contract tests**: validate route handler responses against openapi.yaml schemas (direct local reference)
+- **ESP32 contract tests**: validate payload construction against request schema (via extraction script — YAML parsing impractical in C++)
+- **PWA scanner contract tests**: validate request construction against openapi.yaml (monorepo-relative path)
+- **Contract drift check**: parent repo CI runs all contract tests with all paths available
 
 ### Update Procedure
 
 When the HTTP API changes:
-1. Update `openapi.yaml` in ALN-TokenData
-2. Commit inside the submodule
-3. Update submodule refs in consuming repos
-4. Contract tests in each consumer validate against the updated spec automatically
+1. Update `openapi.yaml` in `backend/contracts/`
+2. Backend contract tests validate automatically (same repo)
+3. Parent repo CI validates scanner contract tests against updated spec
+4. No submodule commits needed — zero cascade
 
-No generation step, no duplication. The spec IS the fixture.
+### ESP32 Contract Extraction
+
+PlatformIO native tests run on the host but parsing YAML in C++ is impractical. A small script extracts request schema fields from `openapi.yaml` into a C-compatible header or JSON fixture in `test_fixtures/`. This script runs as a pre-test step (not committed — always derived from current spec).
+
+### CI Boundary
+
+Contract validation for scanners runs only in parent repo CI (where all monorepo paths are available). Per-submodule CI runs unit tests and build verification only — no contract checks. This matches the tiered CI design: submodule CI = fast feedback, parent CI = integration validation.
 
 ## Coverage Strategy: Per-File Ratchet
 
@@ -90,12 +96,14 @@ A script reads current coverage and generates a Jest threshold config where each
 
 ### Example output
 
+**CRITICAL**: Jest `coverageThreshold` keys must use `./` prefix (relative to rootDir) or they silently fail to match:
+
 ```json
 {
-  "src/services/transactionService.js": {
+  "./src/services/transactionService.js": {
     "branches": 85, "lines": 90, "functions": 90
   },
-  "src/services/bluetoothService.js": {
+  "./src/services/bluetoothService.js": {
     "branches": 60, "lines": 70, "functions": 65
   }
 }
@@ -133,6 +141,18 @@ tests/helpers/mocks/
 - Service API changes update one factory, not 30+ test files
 - Consistent mock shapes across all tests
 - Mock shape stays aligned with real service API
+
+### Functional Test Merge
+
+The 3 backend functional test files require different handling:
+
+| File | Action | Reason |
+|------|--------|--------|
+| `fr-transaction-processing.test.js` | Move to `tests/integration/` | Uses integration test server, tests backend transaction flow — clean merge |
+| `fr-admin-panel.test.js` | Evaluate — imports ALNScanner `SessionModeManager` | Cross-module dependency; may need refactoring to remove ALNScanner import |
+| `fr-deployment-modes.test.js` | Move to ALNScanner `tests/` | Tests GM Scanner behavior (imports SessionModeManager, Settings) — belongs in ALNScanner |
+
+After migration, delete `tests/functional/` directory.
 
 ### WebSocket Handler Unit Tests
 
@@ -176,18 +196,20 @@ Specific scenarios to add to contract/integration tests:
 Current (phase-split, inconsistent):
 ```
 tests/unit/admin/MonitoringDisplay.test.js
+tests/unit/admin/MonitoringDisplay-environment.test.js
+tests/unit/admin/MonitoringDisplay-phase1.test.js
 tests/unit/admin/MonitoringDisplay-phase2.test.js
 tests/unit/admin/MonitoringDisplay-phase3.test.js
-tests/unit/admin/MonitoringDisplay-environment.test.js
-tests/unit/utils/adminModule.test.js           # tests SessionManager + VideoController
-tests/unit/utils/domEventBindings.test.js
+tests/unit/admin/MonitoringDisplay-showcontrol.test.js
+tests/unit/utils/adminModule.test.js               # tests SessionManager + VideoController
+tests/unit/utils/domEventBindings-admin.test.js
 tests/unit/utils/domEventBindings-spotify.test.js
 tests/unit/utils/domEventBindings-safeAction.test.js
 ```
 
 Target (mirrors source paths):
 ```
-tests/unit/admin/MonitoringDisplay.test.js     # consolidated from 4 files
+tests/unit/admin/MonitoringDisplay.test.js     # consolidated from 6 files
 tests/unit/admin/SessionManager.test.js        # extracted from adminModule
 tests/unit/admin/VideoController.test.js       # extracted from adminModule
 tests/unit/admin/AdminOperations.test.js       # new
@@ -207,6 +229,12 @@ tests/unit/utils/domEventBindings.test.js      # consolidated from 3 files
 
 ## ESP32 PlatformIO Migration
 
+### Prerequisites
+
+- Install PlatformIO on Pi: `pip install platformio` (or via installer script)
+- Install Arduino mock library (e.g., `ArduinoFake` or custom fakes) for native test environment
+- Create Arduino mock headers for hardware dependencies (`<WiFi.h>`, `<SD.h>`, `<HTTPClient.h>`, `<ArduinoJson.h>`, FreeRTOS primitives) before writing unit tests
+
 ### Project Structure Changes
 
 ```
@@ -219,7 +247,8 @@ arduino-cyd-player-scanner/
 |   +-- test_queue/                # Offline queue serialization tests
 |   +-- test_payload/              # HTTP JSON payload construction tests
 |   +-- test_ndef/                 # NDEF byte-level parsing tests (Phase 3)
-+-- test_fixtures/                 # NEW: Captured byte sequences, contract data
++-- test_fixtures/                 # NEW: Captured byte sequences, extracted contract data
++-- mock/                          # NEW: Arduino/FreeRTOS mock headers for native testing
 ```
 
 ### What Gets Unit Tested
@@ -232,6 +261,8 @@ arduino-cyd-player-scanner/
 | `services/ConfigService.h` | KEY=VALUE parsing, comment handling | Bad parse = wrong WiFi/URL |
 | `services/TokenService.h` | Token lookup, ID matching | Failed lookup = blank screen |
 | `models/ConnectionState.h` | State transitions | Wrong state = scans to dead connection |
+
+**Note:** All source is header-only (`.h` files) that `#include` Arduino/WiFi/SD/FreeRTOS headers. The mock infrastructure (task in Phase 2) must provide stubs for these dependencies before unit tests can compile in the native environment.
 
 ### RFID Investigation (Phase 3)
 
@@ -249,17 +280,19 @@ Requires separating "read bytes from SPI" from "parse NDEF from bytes" in `RFIDR
 
 ### Contract Validation
 
-Tests import shared `ALN-TokenData/contracts/openapi.yaml` and verify:
+A pre-test extraction script reads `../../backend/contracts/openapi.yaml` and writes request schema fields into `test_fixtures/` (JSON or C header). Native tests validate that:
 - `sendScan()` builds payloads matching the POST /api/scan request schema
 - `uploadQueueBatch()` builds payloads matching POST /api/scan/batch schema
 - Queue JSONL entries contain all required fields
+
+Contract validation only runs in parent repo CI (where monorepo paths are available).
 
 ## PWA Player Scanner Testing
 
 ### Logic Extraction
 
 Extract from `MemoryScanner` class in `index.html` into `js/scannerCore.js`:
-- `normalizeTokenId()` — token ID cleaning
+- `normalizeTokenId()` — token ID cleaning (NOTE: currently calls `this.showError()` and `navigator.vibrate()` — must refactor to return error codes instead of calling DOM methods)
 - `handleScan()` / `processToken()` — scan decision logic
 - Offline detection logic
 
@@ -268,7 +301,6 @@ Extract from `MemoryScanner` class in `index.html` into `js/scannerCore.js`:
 | File | What to Test |
 |------|-------------|
 | `js/orchestratorIntegration.js` (330 lines, 100% pure) | Request construction, offline queueing, batch upload, health polling, mode detection |
-| `data/shared/aln-tools.js` (236 lines, 85% pure) | NFC utilities, token loading, URL parsing |
 | `js/scannerCore.js` (new, extracted) | Token normalization, scan handling, offline detection |
 
 ### Test Runner
@@ -277,10 +309,12 @@ Jest with jsdom (matches ALNScanner pattern). Minimal config — no build system
 
 ### Contract Validation
 
-Tests verify request construction matches `ALN-TokenData/contracts/openapi.yaml`:
+Tests verify request construction matches `backend/contracts/openapi.yaml` (monorepo-relative path):
 - Single scan payload format (POST /api/scan)
 - Batch payload format (POST /api/scan/batch)
 - Health check URL format (GET /health)
+
+Contract validation only runs in parent repo CI.
 
 ## Verification Checkpoints
 
@@ -296,12 +330,14 @@ Run unit + contract tests for the changed module.
 Backend integration tests validate multi-service coordination.
 
 **Full Verification** (before work is considered "done"):
-All of the above, PLUS end-to-end tests. E2E is mandatory. Features that pass
-unit tests but break E2E are not done. If E2E fails and the failure is pre-existing
-and unrelated to your changes, document it explicitly.
+All of the above, PLUS end-to-end tests:
+- If ALNScanner source changed: rebuild dist first (`cd ALNScanner && npm run build`) — backend E2E symlinks to `ALNScanner/dist`, stale builds test stale code
+- Backend E2E: `cd backend && npm run test:e2e`
+- ALNScanner E2E: `cd ALNScanner && npm run test:e2e`
 
-Each component CLAUDE.md references the root verification checkpoints rather than
-duplicating the rules.
+E2E is mandatory. Features that pass unit tests but break E2E are not done. If E2E fails and the failure is pre-existing and unrelated to your changes, document it explicitly.
+
+Each component CLAUDE.md references the root verification checkpoints rather than duplicating the rules.
 
 ## CI Pipeline
 
@@ -311,16 +347,18 @@ duplicating the rules.
 |------------|------|-----------|----------|
 | Quick check | After any code change | Unit + contract for changed module | ~30s |
 | Integration check | After feature/refactor complete | Backend integration tests | ~5 min |
-| Full verification | Before work is "done" | All above + E2E | ~15 min |
+| Full verification | Before work is "done" | All above + ALNScanner dist rebuild + E2E (workers=1) | ~15 min |
 
-### Per-Submodule CI (GitHub Actions — Secondary)
+### Per-Submodule CI (GitHub Actions — Fast Feedback)
 
-| Repo | Jobs | Duration |
-|------|------|----------|
-| ALNScanner | Unit tests, build verification, coverage ratchet | ~2 min |
-| aln-memory-scanner | Unit tests | ~30s |
-| arduino-cyd-player-scanner | PlatformIO unit tests | ~1 min |
-| ALN-TokenData | Contract schema validation | ~15s |
+Unit tests and build verification only. No contract validation (monorepo paths unavailable).
+
+| Repo | Jobs | Duration | Notes |
+|------|------|----------|-------|
+| ALNScanner | Unit tests, build verification, coverage ratchet | ~2 min | Update existing workflow |
+| aln-memory-scanner | Unit tests | ~30s | New workflow |
+| arduino-cyd-player-scanner | PlatformIO unit tests | ~1 min | New workflow; needs `platformio/run-platformio` action |
+| ALN-TokenData | Schema validation (openapi.yaml is valid YAML, examples parse) | ~15s | New workflow |
 
 ### Parent Repo CI (GitHub Actions — Integration Gate)
 
@@ -329,38 +367,38 @@ duplicating the rules.
 | Backend unit + contract | `npm test` | ~30s |
 | Backend integration | `npm run test:integration` | ~5 min |
 | Coverage ratchet check | Verify no file regressed | ~10s |
-| Contract drift check | Scanner tests vs openapi.yaml | ~15s |
+| Contract drift check | Scanner contract tests vs backend openapi.yaml (all paths available) | ~15s |
 
 ## Implementation Roadmap
 
 ### Phase 1: Foundation (unblocks everything else)
-1. Move `openapi.yaml` to `ALN-TokenData/contracts/`
-2. Create coverage ratchet script for backend and ALNScanner
-3. Merge functional tests into integration (relocate 3 backend test files)
-4. Set ALNScanner coverage thresholds to current actuals (unblocks CI)
+1. Create coverage ratchet script for backend and ALNScanner
+2. Set ALNScanner coverage thresholds to current actuals (unblocks CI)
+3. Merge functional tests into integration (evaluate 3 files — see Functional Test Merge section)
+4. Create shared mock factories for backend (tests/helpers/mocks/) — moved earlier to reduce duplication in subsequent phases
 
 ### Phase 2: Scanner testing infrastructure
-5. PlatformIO migration for ESP32 (platformio.ini, test/ directory, verify build)
-6. ESP32 pure logic unit tests (config, token ID, JSON payloads, queue serialization)
-7. PWA scanner logic extraction (normalizeTokenId, scan handling → js/scannerCore.js)
-8. PWA scanner unit tests (orchestratorIntegration.js, aln-tools.js, scannerCore.js)
+5. Install PlatformIO on Pi; create Arduino mock headers for native test environment
+6. PlatformIO migration for ESP32 (platformio.ini, test/ directory, verify build)
+7. ESP32 pure logic unit tests (config, token ID, JSON payloads, queue serialization)
+8. PWA scanner logic extraction (normalizeTokenId, scan handling → js/scannerCore.js; refactor DOM side effects to return error codes)
+9. PWA scanner unit tests (orchestratorIntegration.js, scannerCore.js)
 
 ### Phase 3: Contract and coverage hardening
-9. Shared contract tests — backend, ESP32, PWA all validate against openapi.yaml
-10. Backend scanner API gap tests (session states, malformed input, batch failures)
-11. Coverage ratchet enforcement — integrate into local test scripts, baseline all modules
-12. Instrument `RFIDReader.h` — byte-level logging for NDEF investigation, capture sequences
-13. NDEF byte-level tests — parser regression tests from captured sequences
+10. Contract tests — backend, ESP32, PWA all validate against backend/contracts/openapi.yaml (ESP32 via extraction script)
+11. Backend scanner API gap tests (session states, malformed input, batch failures)
+12. Coverage ratchet enforcement — integrate into local test scripts, baseline all modules
+13. Instrument `RFIDReader.h` — byte-level logging for NDEF investigation, capture sequences
+14. NDEF byte-level tests — parser regression tests from captured sequences
 
 ### Phase 4: Test quality and organization
-14. Backend shared mock factories (tests/helpers/mocks/)
 15. Backend unit tests for adminEvents.js and broadcasts.js
 16. Backend coverage gap tests (heartbeatMonitorService, models)
-17. ALNScanner test file reorganization (mirror source paths)
+17. ALNScanner test file reorganization (mirror source paths, consolidate phase-split files)
 18. ALNScanner coverage gaps (DisplayController, CommandSender)
 
 ### Phase 5: CI and documentation
-19. Per-submodule CI workflows (update ALNScanner, new for others)
+19. Per-submodule CI workflows (update ALNScanner, new for aln-memory-scanner, arduino-cyd-player-scanner, ALN-TokenData)
 20. Parent repo CI workflow (backend tests + coverage ratchet + contract drift)
-21. CLAUDE.md verification checkpoint documentation
-22. ESP32 hardware investigation (unreliable detection + NDEF fallback diagnosis)
+21. CLAUDE.md verification checkpoint documentation (root + component references)
+22. ESP32 hardware investigation (unreliable detection + NDEF fallback diagnosis using Phase 3 instrumentation)
