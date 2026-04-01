@@ -22,6 +22,10 @@ package-lock.json
 Video_Reencode_*
 backend/node_modules/
 
+# Coverage reports
+backend/coverage/
+ALNScanner/coverage/
+
 # Playwright test artifacts
 backend/playwright-report/
 backend/test-results/

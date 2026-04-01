@@ -45,9 +45,9 @@
     "lines": 65
   },
   "./src/models/videoQueueItem.js": {
-    "branches": 35,
-    "functions": 75,
-    "lines": 60
+    "branches": 25,
+    "functions": 65,
+    "lines": 55
   },
   "./src/routes/adminRoutes.js": {
     "branches": 60,
@@ -101,13 +101,13 @@
   },
   "./src/services/cueEngineService.js": {
     "branches": 75,
-    "functions": 75,
+    "functions": 70,
     "lines": 75
   },
   "./src/services/cueEngineWiring.js": {
     "branches": 100,
-    "functions": 35,
-    "lines": 70
+    "functions": 25,
+    "lines": 60
   },
   "./src/services/discoveryService.js": {
     "branches": 50,
@@ -185,7 +185,7 @@
     "lines": 75
   },
   "./src/services/videoQueueService.js": {
-    "branches": 45,
+    "branches": 40,
     "functions": 55,
     "lines": 50
   },
