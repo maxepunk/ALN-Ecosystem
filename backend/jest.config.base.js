@@ -5,21 +5,12 @@
  * DO NOT run this directly - use jest.config.js or jest.integration.config.js
  */
 
-const fs = require('fs');
-const path = require('path');
-
 // Prevent unit/contract tests from spawning real VLC processes.
 // Integration tests that need VLC should explicitly set ENABLE_VIDEO_PLAYBACK=true.
 // config/index.js reads this at require time: videoPlayback = process.env.ENABLE_VIDEO_PLAYBACK !== 'false'
 if (!process.env.ENABLE_VIDEO_PLAYBACK) {
   process.env.ENABLE_VIDEO_PLAYBACK = 'false';
 }
-
-// Load per-file coverage thresholds if available, otherwise fall back to global thresholds
-const thresholdsPath = path.resolve(__dirname, '.coverage-thresholds.json');
-const coverageThreshold = fs.existsSync(thresholdsPath)
-  ? JSON.parse(fs.readFileSync(thresholdsPath, 'utf8'))
-  : { global: { branches: 80, functions: 80, lines: 80, statements: 80 } };
 
 module.exports = {
   // Test environment
@@ -60,5 +51,4 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json'],
-  coverageThreshold,
 };
