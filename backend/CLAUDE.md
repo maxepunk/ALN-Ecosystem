@@ -30,6 +30,9 @@ npm run lint             # ESLint
 ```
 
 ### Testing
+
+**4 test layers:** unit, contract, integration, E2E. (The former functional layer was merged into integration.)
+
 ```bash
 # Fast feedback
 npm test                  # Unit + contract (~15-30s)
@@ -47,6 +50,10 @@ npx playwright test --debug         # Step-through debugger
 # Comprehensive
 npm run test:all          # Unit + contract + integration (~5-6 min)
 npm run test:full         # All tests including E2E (~10-15 min)
+
+# Coverage ratchet (per-file thresholds, unit + contract only)
+npm run coverage:ratchet  # Regenerate per-file coverage thresholds
+npm run coverage:check    # Verify no file regressed below threshold
 ```
 
 ### Production
@@ -73,6 +80,14 @@ npm run health:api        # Check orchestrator only
 - E2E uses lightweight fixtures (`tests/e2e/fixtures/`) not production token data
 - E2E uses 2 workers (`--workers=2` in npm script overrides playwright.config.js default of 1)
 - E2E `GMScannerPage.createSession()` waits for `.session-status--setup` (Phase 1 lifecycle). `createSessionWithTeams()` then calls `startGame()` to transition to active. If session lifecycle states change, update locators in `tests/e2e/helpers/page-objects/GMScannerPage.js`.
+
+**Shared Mock Factories:**
+
+Shared mock factories in `tests/helpers/mocks/` provide canonical mock shapes for each service. Use `createMockSessionService()`, `createMockTransactionService()`, etc. for new tests. Each factory extends EventEmitter and stubs all public methods with `jest.fn()`. Accepts an `overrides` parameter for test-specific customization. Available factories: sessionService, transactionService, videoQueueService, bluetoothService, audioRoutingService, lightingService, offlineQueueService.
+
+**Coverage Ratchet:**
+
+Per-file coverage thresholds in `.coverage-thresholds.json` (tracked in git). Thresholds are rounded down to nearest 5%. Covers unit + contract tests only (not integration). `npm run coverage:ratchet` regenerates thresholds from current coverage data. `npm run coverage:check` verifies no file regressed. Script: `scripts/coverage-ratchet.js`.
 
 ## Architecture
 

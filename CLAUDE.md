@@ -286,13 +286,16 @@ git submodule status --recursive           # Check sync status
 
 ## Key Commands
 
-**Backend:** See 'backend/CLAUDE.md' for full command reference.
+**Backend:** See 'backend/CLAUDE.md' for full command reference. 4 test layers: unit, contract, integration, E2E.
 ```bash
 cd backend
-npm run dev        # Development
-npm test           # Unit + contract tests
-npm run test:e2e   # Playwright E2E
-npm start          # Production (PM2)
+npm run dev              # Development
+npm test                 # Unit + contract tests
+npm run test:integration # Integration tests (sequential)
+npm run test:e2e         # Playwright E2E
+npm run coverage:ratchet # Regenerate per-file coverage thresholds
+npm run coverage:check   # Verify no file regressed below threshold
+npm start                # Production (PM2)
 ```
 
 **GM Scanner:** See 'ALNScanner/CLAUDE.md' for full command reference.
