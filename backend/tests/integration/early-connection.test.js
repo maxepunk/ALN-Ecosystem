@@ -9,7 +9,6 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('..
 const { resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 
@@ -30,7 +29,6 @@ describe('Early Connection Integration (Phase 1.3)', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
       videoQueueService,
       offlineQueueService
     });

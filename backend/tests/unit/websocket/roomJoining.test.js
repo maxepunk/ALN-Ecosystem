@@ -5,7 +5,6 @@
 
 const { handleGmIdentify } = require('../../../src/websocket/gmAuth');
 const sessionService = require('../../../src/services/sessionService');
-const stateService = require('../../../src/services/stateService');
 const { resetAllServices } = require('../../helpers/service-reset');
 
 describe('Socket Room Joining (Phase 2.2 P1.2)', () => {

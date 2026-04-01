@@ -244,25 +244,6 @@ describe('PersistenceService', () => {
     });
   });
 
-  describe('saveAdminConfig and loadAdminConfig', () => {
-    it('should save and load admin config', async () => {
-      // ARRANGE
-      const adminConfig = {
-        password: 'admin-password',
-        features: { videoPlayback: true }
-      };
-
-      // ACT
-      await persistenceService.saveAdminConfig(adminConfig);
-      const loaded = await persistenceService.loadAdminConfig();
-
-      // ASSERT
-      expect(loaded).toBeTruthy();
-      expect(loaded.password).toBe('admin-password');
-      expect(loaded.features.videoPlayback).toBe(true);
-    });
-  });
-
   describe('saveTokens and loadTokens', () => {
     it('should save and load tokens', async () => {
       // ARRANGE

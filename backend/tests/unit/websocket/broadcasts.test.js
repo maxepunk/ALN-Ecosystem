@@ -18,7 +18,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
   let mockIo;
   let mockSessionService;
   let mockTransactionService;
-  let mockStateService;
   let mockVideoQueueService;
   let mockOfflineQueueService;
   let initializeSessionDevicesSpy;
@@ -42,7 +41,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     // Mock services as EventEmitters
     mockSessionService = new EventEmitter();
     mockTransactionService = new EventEmitter();
-    mockStateService = new EventEmitter();
     mockVideoQueueService = new EventEmitter();
     mockOfflineQueueService = new EventEmitter();
 
@@ -78,7 +76,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -108,7 +106,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -139,7 +137,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -183,7 +181,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -232,7 +230,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -278,7 +276,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -337,7 +335,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -403,7 +401,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -427,7 +425,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -456,14 +454,13 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
 
       // Trigger various events
       mockSessionService.emit('session:created', { id: 'test', name: 'Test' });
-      mockStateService.emit('sync:full', { session: {}, state: {}, queue: [] });
 
       // All emit calls should have wrapped structure
       mockIo.emit.mock.calls.forEach(call => {
@@ -484,7 +481,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService
       });
@@ -511,7 +508,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         setupBroadcastListeners(mockIo, {
           sessionService: mockSessionService,
           transactionService: mockTransactionService,
-          stateService: mockStateService,
+  
           videoQueueService: mockVideoQueueService,
           offlineQueueService: mockOfflineQueueService
         });
@@ -534,7 +531,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService,
         audioRoutingService: mockAudioRoutingService,
@@ -561,7 +558,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService,
         displayControlService: mockDisplayControlService,
@@ -624,7 +621,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService,
         bluetoothService: mockBluetoothService,
@@ -729,7 +726,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
         transactionService: mockTransactionService,
-        stateService: mockStateService,
+
         videoQueueService: mockVideoQueueService,
         offlineQueueService: mockOfflineQueueService,
         cueEngineService: mockCueEngineService,

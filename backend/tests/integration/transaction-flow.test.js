@@ -39,7 +39,6 @@ describe('Transaction Flow Integration', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService: require('../../src/services/stateService'),
       videoQueueService: require('../../src/services/videoQueueService'),
       offlineQueueService: require('../../src/services/offlineQueueService')
     });

@@ -58,9 +58,6 @@ describe('performSystemReset', () => {
         setupPersistenceListeners: jest.fn(),
         setupGameClockListeners: jest.fn(),
       },
-      stateService: {
-        // stateService is no longer reset — only passed to broadcasts for error listener
-      },
       transactionService: {
         reset: jest.fn(),
         registerSessionListener: jest.fn(),
@@ -150,7 +147,6 @@ describe('performSystemReset', () => {
 
     // Core services
     expect(mockServices.sessionService.reset).toHaveBeenCalled();
-    // stateService.reset() no longer called (no listeners to clean up after Task 1)
     expect(mockServices.transactionService.reset).toHaveBeenCalled();
     expect(mockServices.videoQueueService.reset).toHaveBeenCalled();
     expect(mockServices.offlineQueueService.reset).toHaveBeenCalled();

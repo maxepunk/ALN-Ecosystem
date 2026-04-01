@@ -31,7 +31,6 @@ async function setupIntegrationTestServer() {
   const persistenceService = require('../../src/services/persistenceService');
   const transactionService = require('../../src/services/transactionService');
   const sessionService = require('../../src/services/sessionService');
-  const stateService = require('../../src/services/stateService');
 
   logger.info('Initializing integration test services with test fixtures...');
 
@@ -163,7 +162,6 @@ async function setupIntegrationTestServer() {
 
   setupBroadcastListeners(io, {
     sessionService,
-    stateService,
     videoQueueService,
     offlineQueueService,
     transactionService,
@@ -233,7 +231,6 @@ async function cleanupIntegrationTestServer(context) {
   // Reset services (clear state for next test)
   const sessionService = require('../../src/services/sessionService');
   const transactionService = require('../../src/services/transactionService');
-  const stateService = require('../../src/services/stateService');
   const videoQueueService = require('../../src/services/videoQueueService');
   const bluetoothService = require('../../src/services/bluetoothService');
   const audioRoutingService = require('../../src/services/audioRoutingService');
@@ -246,7 +243,6 @@ async function cleanupIntegrationTestServer(context) {
 
   await sessionService.reset();
   await transactionService.reset();
-  await stateService.reset();
   await videoQueueService.reset();
 
   // Reset environment control services
@@ -266,7 +262,6 @@ async function cleanupIntegrationTestServer(context) {
   // Remove remaining event listeners
   sessionService.removeAllListeners();
   transactionService.removeAllListeners();
-  stateService.removeAllListeners();
   videoQueueService.removeAllListeners();
 
   logger.debug('Integration test server cleanup complete');

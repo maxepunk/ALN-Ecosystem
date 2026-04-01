@@ -29,7 +29,6 @@ describe('Error Events - Contract Validation', () => {
 
     // Re-setup broadcast listeners after reset
     const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../../src/websocket/broadcasts');
-    const stateService = require('../../../src/services/stateService');
     const videoQueueService = require('../../../src/services/videoQueueService');
     const offlineQueueService = require('../../../src/services/offlineQueueService');
     const transactionService = require('../../../src/services/transactionService');
@@ -37,7 +36,6 @@ describe('Error Events - Contract Validation', () => {
     cleanupBroadcastListeners();
     setupBroadcastListeners(testContext.io, {
       sessionService,
-      stateService,
       videoQueueService,
       offlineQueueService,
       transactionService

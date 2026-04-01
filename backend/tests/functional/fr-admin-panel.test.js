@@ -41,14 +41,12 @@ describe('FR Section 4: Admin Panel', () => {
     await transactionService.init(tokens);
 
     // CRITICAL: Re-setup broadcast listeners after cleanup
-    const stateService = require('../../src/services/stateService');
     const videoQueueService = require('../../src/services/videoQueueService');
     const offlineQueueService = require('../../src/services/offlineQueueService');
 
     setupBroadcastListeners(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
       videoQueueService,
       offlineQueueService
     });

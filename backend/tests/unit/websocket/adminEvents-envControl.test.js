@@ -69,12 +69,6 @@ jest.mock('../../../src/services/offlineQueueService', () => ({
   removeListener: jest.fn(),
 }));
 
-jest.mock('../../../src/services/stateService', () => ({
-  getCurrentState: jest.fn(),
-  on: jest.fn(),
-  removeListener: jest.fn(),
-}));
-
 jest.mock('../../../src/services/videoQueueService', () => ({
   skipCurrent: jest.fn(),
   addVideoByFilename: jest.fn(),

@@ -9,7 +9,6 @@ const { resetAllServices, resetAllServicesForTesting } = require('../helpers/ser
 const sessionService = require('../../src/services/sessionService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 
 describe('Offline Queue Synchronization Integration', () => {
@@ -28,7 +27,6 @@ describe('Offline Queue Synchronization Integration', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
       videoQueueService,
       offlineQueueService
     });

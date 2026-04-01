@@ -19,7 +19,6 @@ const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('..
 const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 const TestTokens = require('../fixtures/test-tokens');
@@ -49,7 +48,6 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
       videoQueueService,
       offlineQueueService
     });

@@ -36,7 +36,6 @@ function waitForServiceState(socket, domain, predicate) {
 const { resetAllServices, resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 const vlcService = require('../../src/services/vlcMprisService');
@@ -125,7 +124,6 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService,
       videoQueueService,
       offlineQueueService
     });

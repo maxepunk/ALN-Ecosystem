@@ -8,7 +8,6 @@ const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpe
 const { resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
-const stateService = require('../../src/services/stateService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
 
@@ -29,7 +28,6 @@ describe('Room-Based Broadcasts (Phase 2.2 P1.2)', () => {
     // Room broadcast tests depend on session:update events which are emitted by broadcast listeners
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
-      stateService,
       transactionService,
       videoQueueService,
       offlineQueueService

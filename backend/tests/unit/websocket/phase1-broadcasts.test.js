@@ -16,7 +16,6 @@ describe('Phase 1 Broadcasts', () => {
   let mockIo;
   let mockSessionService;
   let mockTransactionService;
-  let mockStateService;
   let mockVideoQueueService;
   let mockOfflineQueueService;
   let mockBluetoothService;
@@ -33,7 +32,6 @@ describe('Phase 1 Broadcasts', () => {
     setupBroadcastListeners(mockIo, {
       sessionService: mockSessionService,
       transactionService: mockTransactionService,
-      stateService: mockStateService,
       videoQueueService: mockVideoQueueService,
       offlineQueueService: mockOfflineQueueService,
       bluetoothService: mockBluetoothService,
@@ -82,7 +80,6 @@ describe('Phase 1 Broadcasts', () => {
     });
     mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
 
-    mockStateService = new EventEmitter();
     mockVideoQueueService = new EventEmitter();
     mockVideoQueueService.getQueueItems = jest.fn().mockReturnValue([]);
     mockVideoQueueService.getState = jest.fn().mockReturnValue({

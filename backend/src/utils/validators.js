@@ -70,23 +70,6 @@ const sessionSchema = Joi.object({
   }).required(),
 });
 
-// GameState validation schema
-const gameStateSchema = Joi.object({
-  sessionId: uuid.required(),
-  lastUpdate: isoDate.required(),
-  currentVideo: Joi.object({
-    tokenId: Joi.string().required(),
-    startTime: isoDate.required(),
-    expectedEndTime: isoDate.required(),
-    requestedBy: Joi.string().required(),
-  }).optional().allow(null),
-  scores: Joi.array().items(Joi.object()).required(),
-  recentTransactions: Joi.array().items(transactionSchema).required(),
-  systemStatus: Joi.object({
-    orchestratorOnline: Joi.boolean().required(),
-  }).required(),
-});
-
 // VideoQueueItem validation schema
 const videoQueueItemSchema = Joi.object({
   id: uuid.required(),
@@ -130,26 +113,6 @@ const teamScoreSchema = Joi.object({
     timestamp: isoDate.required()
   })).default([]),  // Optional with default empty array for backward compatibility
   lastUpdate: isoDate.required(),
-});
-
-// AdminConfig validation schema
-const adminConfigSchema = Joi.object({
-  vlcConfig: Joi.object({
-    host: Joi.string().hostname().required(),
-    port: Joi.number().port().required(),
-    password: Joi.string().required(),
-  }).required(),
-  sessionConfig: Joi.object({
-    maxPlayers: Joi.number().integer().min(1).max(50).required(),
-    maxGmStations: Joi.number().integer().min(1).max(10).required(),
-    duplicateWindow: Joi.number().integer().min(1).max(60).required(),
-    sessionTimeout: Joi.number().integer().min(1).max(1440).required(),
-  }).required(),
-  networkConfig: Joi.object({
-    orchestratorPort: Joi.number().port().required(),
-    corsOrigins: Joi.array().items(Joi.string().uri()).required(),
-    staticIps: Joi.object().pattern(Joi.string(), Joi.string().ip()).optional(),
-  }).required(),
 });
 
 // API Request validation schemas
@@ -261,11 +224,9 @@ module.exports = {
   tokenSchema,
   transactionSchema,
   sessionSchema,
-  gameStateSchema,
   videoQueueItemSchema,
   deviceConnectionSchema,
   teamScoreSchema,
-  adminConfigSchema,
 
   // API request schemas
   playerScanRequestSchema,

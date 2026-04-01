@@ -36,7 +36,6 @@ describe('Multi-GM Coordination', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService: require('../../src/services/stateService'),
       videoQueueService: require('../../src/services/videoQueueService'),
       offlineQueueService: require('../../src/services/offlineQueueService')
     });

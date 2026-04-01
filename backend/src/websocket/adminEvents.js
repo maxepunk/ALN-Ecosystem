@@ -8,7 +8,6 @@ const config = require('../config');
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const offlineQueueService = require('../services/offlineQueueService');
-const stateService = require('../services/stateService');
 const videoQueueService = require('../services/videoQueueService');
 const displayControlService = require('../services/displayControlService');
 const vlcService = require('../services/vlcMprisService');
@@ -60,7 +59,6 @@ async function handleGmCommand(socket, data, io) {
 
         await performSystemReset(io, {
           sessionService,
-          stateService,
           transactionService,
           offlineQueueService,
           videoQueueService,

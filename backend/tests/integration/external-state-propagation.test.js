@@ -21,7 +21,6 @@ const { resetAllServicesForTesting } = require('../helpers/service-reset');
 
 // Service singletons
 const sessionService = require('../../src/services/sessionService');
-const stateService = require('../../src/services/stateService');
 const transactionService = require('../../src/services/transactionService');
 const videoQueueService = require('../../src/services/videoQueueService');
 const offlineQueueService = require('../../src/services/offlineQueueService');
@@ -55,7 +54,6 @@ describe('External State Propagation', () => {
   beforeEach(async () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
-      stateService,
       transactionService,
       videoQueueService,
       offlineQueueService,

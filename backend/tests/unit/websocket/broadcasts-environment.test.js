@@ -21,7 +21,6 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
   let mockIo;
   let mockSessionService;
   let mockTransactionService;
-  let mockStateService;
   let mockVideoQueueService;
   let mockOfflineQueueService;
   let mockBluetoothService;
@@ -61,7 +60,6 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
 
     mockSessionService = new EventEmitter();
     mockTransactionService = new EventEmitter();
-    mockStateService = new EventEmitter();
     mockVideoQueueService = new EventEmitter();
     mockOfflineQueueService = new EventEmitter();
     mockBluetoothService = new EventEmitter();
@@ -102,7 +100,6 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     setupBroadcastListeners(mockIo, {
       sessionService: mockSessionService,
       transactionService: mockTransactionService,
-      stateService: mockStateService,
       videoQueueService: mockVideoQueueService,
       offlineQueueService: mockOfflineQueueService,
       bluetoothService: mockBluetoothService,
@@ -138,7 +135,6 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     setupBroadcastListeners(mockIo, {
       sessionService: mockSessionService,
       transactionService: mockTransactionService,
-      stateService: mockStateService,
       videoQueueService: mockVideoQueueService,
       offlineQueueService: mockOfflineQueueService,
       bluetoothService: mockBluetoothService,
@@ -170,7 +166,6 @@ describe('broadcasts.js - Environment in offline:queue:processed sync:full (Phas
     setupBroadcastListeners(mockIo, {
       sessionService: mockSessionService,
       transactionService: mockTransactionService,
-      stateService: mockStateService,
       videoQueueService: mockVideoQueueService,
       offlineQueueService: mockOfflineQueueService,
       bluetoothService: mockBluetoothService,

@@ -218,23 +218,6 @@ class PersistenceService {
   }
 
   /**
-   * Save admin configuration
-   * @param {Object} config - Admin config to save
-   * @returns {Promise<void>}
-   */
-  async saveAdminConfig(config) {
-    await this.save('config:admin', config);
-  }
-
-  /**
-   * Load admin configuration
-   * @returns {Promise<Object|null>}
-   */
-  async loadAdminConfig() {
-    return this.load('config:admin');
-  }
-
-  /**
    * Save token data
    * @param {Array} tokens - Tokens array
    * @returns {Promise<void>}

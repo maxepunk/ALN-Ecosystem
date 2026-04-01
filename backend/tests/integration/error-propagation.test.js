@@ -49,7 +49,6 @@ describe('Error Propagation Integration', () => {
     await resetAllServicesForTesting(testContext.io, {
       sessionService,
       transactionService,
-      stateService: require('../../src/services/stateService'),
       videoQueueService,
       offlineQueueService: require('../../src/services/offlineQueueService')
     });

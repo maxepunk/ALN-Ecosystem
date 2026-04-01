@@ -25,7 +25,6 @@ const { handleGmCommand, handleTransactionSubmit } = require('./websocket/adminE
 
 // Import services for WebSocket events
 const sessionService = require('./services/sessionService');
-const stateService = require('./services/stateService');
 const videoQueueService = require('./services/videoQueueService');
 const offlineQueueService = require('./services/offlineQueueService');
 const transactionService = require('./services/transactionService');
@@ -130,7 +129,6 @@ function setupWebSocketHandlers(ioInstance) {
 function setupServiceListeners(ioInstance) {
   setupBroadcastListeners(ioInstance, {
     sessionService,
-    stateService,
     videoQueueService,
     offlineQueueService,
     transactionService,
@@ -149,8 +147,6 @@ function setupServiceListeners(ioInstance) {
   heartbeatMonitorService.init(ioInstance);
   heartbeatMonitorService.start();
 
-  // Note: transaction:added is already handled by stateService.js which properly
-  // manages recentTransactions updates. We don't need a duplicate listener here.
   // Scores are included in transaction:accepted events (teamScore field).
 }
 
@@ -183,7 +179,6 @@ async function shutdown(signal) {
     bluetoothService.cleanup();
     audioRoutingService.cleanup();
     await lightingService.cleanup();
-    await stateService.cleanup();
     const displayDriver = require('./utils/displayDriver');
     await displayDriver.cleanup();
 
