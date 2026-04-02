@@ -107,9 +107,53 @@ function validateWebSocketEvent(eventData, eventName) {
   return true;
 }
 
+/**
+ * Extract REQUEST body schema from OpenAPI spec
+ * @param {string} path - OpenAPI path (e.g., '/api/scan')
+ * @param {string} method - HTTP method (e.g., 'post')
+ * @returns {object} JSON Schema for the request body
+ */
+function getHTTPRequestSchema(path, method) {
+  const pathSpec = openapi.paths[path];
+  if (!pathSpec) throw new Error(`Path ${path} not found in OpenAPI spec`);
+
+  const methodSpec = pathSpec[method.toLowerCase()];
+  if (!methodSpec) throw new Error(`Method ${method} not found for ${path}`);
+
+  const requestBody = methodSpec.requestBody;
+  if (!requestBody) throw new Error(`No requestBody defined for ${method} ${path}`);
+
+  return requestBody.content['application/json'].schema;
+}
+
+/**
+ * Validate a request body against OpenAPI request schema
+ * @param {object} body - Request body to validate
+ * @param {string} path - OpenAPI path
+ * @param {string} method - HTTP method
+ * @returns {boolean} true if valid
+ * @throws {Error} if validation fails with detailed errors
+ */
+function validateHTTPRequest(body, path, method) {
+  const schema = getHTTPRequestSchema(path, method);
+  const validate = ajv.compile(schema);
+  const valid = validate(body);
+
+  if (!valid) {
+    throw new Error(
+      `HTTP request validation failed for ${method.toUpperCase()} ${path}:\n` +
+      JSON.stringify(validate.errors, null, 2)
+    );
+  }
+
+  return true;
+}
+
 module.exports = {
   validateHTTPResponse,
+  validateHTTPRequest,
   validateWebSocketEvent,
   getHTTPSchema,
+  getHTTPRequestSchema,
   getWebSocketSchema
 };
