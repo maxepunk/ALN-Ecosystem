@@ -5,9 +5,10 @@
  * no session, validation boundaries, unknown tokens, batch edge cases.
  *
  * IMPORTANT: Player scan route (scanRoutes.js) does NOT check session status —
- * any session (setup/active/paused/ended) allows player scans. This is by design:
- * player scanners are "intel gathering" devices. Only GM transactions enforce
- * session state via transactionService.processScan().
+ * any existing session (setup/active/paused) allows player scans. This is by design:
+ * player scanners are "intel gathering" devices. Ended sessions return 409 because
+ * endSession() nulls the session object. Only GM transactions enforce session state
+ * via transactionService.processScan().
  */
 
 // CRITICAL: Load browser mocks FIRST before any scanner code
@@ -99,12 +100,13 @@ describe('Scan API Edge Cases', () => {
       expect(res.status).toBe(200);
     });
 
-    test('accepts scan during active session', async () => {
+    test('accepts scan during active session (real production token)', async () => {
       await sessionService.createSession({ name: 'Test' });
       await sessionService.startGame();
 
+      // Use real production token from ALN-TokenData (loaded by Task 9b)
       const res = await postScan({
-        tokenId: 'rat001',
+        tokenId: 'ale001',
         deviceId: 'TEST_DEVICE',
         deviceType: 'player',
         timestamp: new Date().toISOString()
