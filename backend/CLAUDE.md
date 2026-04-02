@@ -87,7 +87,15 @@ Shared mock factories in `tests/helpers/mocks/` provide canonical mock shapes fo
 
 **Coverage Ratchet:**
 
-Per-file coverage thresholds in `.coverage-thresholds.json` (tracked in git). Thresholds are rounded down to nearest 5%. Covers unit + contract tests only (not integration). `npm run coverage:ratchet` regenerates thresholds from current coverage data. `npm run coverage:check` verifies no file regressed. Script: `scripts/coverage-ratchet.js`.
+Per-file coverage thresholds in `.coverage-thresholds.json` (tracked in git). Thresholds are rounded down to nearest 5%. Covers unit + contract tests only (not integration). `npm run coverage:ratchet` regenerates thresholds from current coverage data. `npm run coverage:check` verifies no file regressed. Script: `scripts/coverage-ratchet.js`. **Enforced automatically:** `test:all` and `test:ci` run `jest --coverage` + `coverage:check` before integration tests.
+
+**Contract Request Validation:**
+
+`tests/helpers/contract-validator.js` validates both REQUEST and RESPONSE schemas against OpenAPI spec:
+- `validateHTTPRequest(body, path, method)` — validates request body against OpenAPI requestBody schema
+- `validateHTTPResponse(response, path, method, status)` — validates response against OpenAPI response schema
+- `getHTTPRequestSchema(path, method)` / `getHTTPSchema(path, method, status)` — extract JSON Schema
+- Scanner contract tests in `tests/contract/scanner/request-schema-validation.test.js` validate ESP32 and PWA payload formats
 
 ## Architecture
 
