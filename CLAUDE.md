@@ -239,6 +239,8 @@ See 'backend/contracts/README.md' for full documentation.
 
 Breaking changes require coordinated updates across backend + all 3 scanner submodules.
 
+**Scanner contract validation:** `backend/tests/contract/scanner/request-schema-validation.test.js` validates ESP32 and PWA scanner payloads against OpenAPI request schemas using AJV. Runs in parent repo (monorepo-relative paths to openapi.yaml). Catches drift between scanner payload construction and backend expectations.
+
 **Event Architecture (SRP Refactor):**
 - Primary event is `transaction:accepted` (contains transaction, teamScore, groupBonus, deviceTracking)
 - `sessionService` owns ALL persistence (not transactionService or stateService)
@@ -310,7 +312,7 @@ npm run build      # Production build
 **ESP32 Scanner:** See 'arduino-cyd-player-scanner/CLAUDE.md' for full command reference.
 ```bash
 cd arduino-cyd-player-scanner
-pio test -e native       # PlatformIO unit tests (models layer)
+pio test -e native       # PlatformIO unit tests (models + NDEF parser)
 ```
 
 **Player Scanner (Web):** See 'aln-memory-scanner/CLAUDE.md' for full command reference.
