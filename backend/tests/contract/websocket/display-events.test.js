@@ -117,7 +117,8 @@ describe('Display Events - Contract Validation', () => {
     });
 
     it('should match AsyncAPI schema for display:scoreboard command', async () => {
-      const eventPromise = waitForEvent(socket, 'display:mode');
+      // Extended timeout: Chromium launch can be slow under parallel workers
+      const eventPromise = waitForEvent(socket, 'display:mode', 10000);
 
       // Trigger: Send display:scoreboard command
       sendGmCommand(socket, 'display:scoreboard', {});
