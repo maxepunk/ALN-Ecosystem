@@ -46,9 +46,11 @@ describe('DeviceConnection', () => {
   describe('heartbeat and timeout', () => {
     test('updateHeartbeat refreshes timestamp', () => {
       const dc = new DeviceConnection({ id: 'dev1', type: 'player' });
+      // Set heartbeat to old value, then verify updateHeartbeat changes it
+      dc.lastHeartbeat = new Date(Date.now() - 5000).toISOString();
       const before = dc.lastHeartbeat;
       dc.updateHeartbeat();
-      expect(dc.lastHeartbeat).toBeTruthy();
+      expect(dc.lastHeartbeat).not.toBe(before);
     });
 
     test('hasTimedOut returns true after timeout period', () => {
