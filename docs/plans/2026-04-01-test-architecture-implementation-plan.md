@@ -4515,7 +4515,7 @@ describe('adminEvents.js', () => {
     test('rejects socket without deviceId', async () => {
       mockSocket.deviceId = null;
 
-      await handleTransactionSubmit(mockSocket, { data: { tokenId: 'tok1', teamId: 'Team1' } }, mockIo);
+      await handleTransactionSubmit(mockSocket, { data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket' } }, mockIo);
 
       expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'error', expect.objectContaining({
         code: 'AUTH_REQUIRED'
@@ -4523,7 +4523,7 @@ describe('adminEvents.js', () => {
     });
 
     test('rejects missing envelope (no data.data)', async () => {
-      await handleTransactionSubmit(mockSocket, { tokenId: 'tok1' }, mockIo);
+      await handleTransactionSubmit(mockSocket, { tokenId: 'tok1', mode: 'blackmarket' }, mockIo);
 
       expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'error', expect.objectContaining({
         code: 'VALIDATION_ERROR',
@@ -4698,6 +4698,7 @@ describe('TeamScore', () => {
       score.addPoints(100);
       score.adjustScore(-30, 'gm-001', 'Penalty');
       expect(score.currentScore).toBe(70);
+      expect(score.baseScore).toBe(70);
       expect(score.adminAdjustments).toHaveLength(1);
       expect(score.adminAdjustments[0].delta).toBe(-30);
     });
@@ -5150,17 +5151,14 @@ describe('HeartbeatMonitorService', () => {
     test('disconnects timed-out player devices', async () => {
       const oldHeartbeat = new Date(Date.now() - 60000).toISOString();
       const session = {
-        connectedDevices: new Map([
-          ['player-1', {
-            id: 'player-1',
-            type: 'player',
-            connectionStatus: 'connected',
-            lastHeartbeat: oldHeartbeat,
-            hasTimedOut: () => true,
-            isGM: () => false,
-            isConnected: () => true
-          }]
-        ])
+        connectedDevices: [{
+          id: 'player-1',
+          type: 'player',
+          connectionStatus: 'connected',
+          connectionTime: oldHeartbeat,
+          lastHeartbeat: oldHeartbeat,
+          syncState: { lastSyncTime: oldHeartbeat, pendingUpdates: 0, syncErrors: 0 }
+        }]
       };
       sessionService.getCurrentSession.mockReturnValue(session);
 
@@ -5170,18 +5168,16 @@ describe('HeartbeatMonitorService', () => {
     });
 
     test('skips GM devices (WebSocket-based, not HTTP heartbeat)', async () => {
+      const oldHeartbeat = new Date(Date.now() - 60000).toISOString();
       const session = {
-        connectedDevices: new Map([
-          ['gm-1', {
-            id: 'gm-1',
-            type: 'gm',
-            connectionStatus: 'connected',
-            lastHeartbeat: new Date(Date.now() - 60000).toISOString(),
-            hasTimedOut: () => true,
-            isGM: () => true,
-            isConnected: () => true
-          }]
-        ])
+        connectedDevices: [{
+          id: 'gm-1',
+          type: 'gm',
+          connectionStatus: 'connected',
+          connectionTime: oldHeartbeat,
+          lastHeartbeat: oldHeartbeat,
+          syncState: { lastSyncTime: oldHeartbeat, pendingUpdates: 0, syncErrors: 0 }
+        }]
       };
       sessionService.getCurrentSession.mockReturnValue(session);
 
@@ -5191,18 +5187,16 @@ describe('HeartbeatMonitorService', () => {
     });
 
     test('skips already disconnected devices', async () => {
+      const oldHeartbeat = new Date(Date.now() - 60000).toISOString();
       const session = {
-        connectedDevices: new Map([
-          ['player-1', {
-            id: 'player-1',
-            type: 'player',
-            connectionStatus: 'disconnected',
-            lastHeartbeat: new Date(Date.now() - 60000).toISOString(),
-            hasTimedOut: () => true,
-            isGM: () => false,
-            isConnected: () => false
-          }]
-        ])
+        connectedDevices: [{
+          id: 'player-1',
+          type: 'player',
+          connectionStatus: 'disconnected',
+          connectionTime: oldHeartbeat,
+          lastHeartbeat: oldHeartbeat,
+          syncState: { lastSyncTime: oldHeartbeat, pendingUpdates: 0, syncErrors: 0 }
+        }]
       };
       sessionService.getCurrentSession.mockReturnValue(session);
 
@@ -5288,48 +5282,59 @@ git commit -m "chore: update ALNScanner ref (test file reorganization)"
 - Create: `ALNScanner/tests/unit/admin/DisplayController.test.js`
 - Create: `ALNScanner/tests/unit/admin/AdminOperations.test.js`
 
-**Context:** Both classes follow the same pattern: constructor takes `connection` (OrchestratorClient), methods call `this.connection.sendCommand(action, payload)` and return the result. Tests mock `sendCommand` to return resolved/rejected promises.
-
-**Note:** The original plan listed `CommandSender.js` — this module doesn't exist. The functionality is on `OrchestratorClient.sendCommand()`. Tests for DisplayController and AdminOperations cover the same concern.
+**Context:** Both classes follow the same pattern: constructor takes `connection` (OrchestratorClient EventTarget), methods call the imported `sendCommand(connection, action, payload)` function from `src/admin/utils/CommandSender.js`. Tests mock `CommandSender.js` at module level (before imports) — matching the established pattern in `AudioController.test.js`.
 
 **Step 1: Create DisplayController tests**
 
 Create `ALNScanner/tests/unit/admin/DisplayController.test.js`:
 
 ```javascript
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// Mock CommandSender - must be before import
+jest.mock('../../../src/admin/utils/CommandSender.js', () => ({
+  sendCommand: jest.fn().mockResolvedValue({ success: true })
+}));
+
 import { DisplayController } from '../../../src/admin/DisplayController.js';
+import { sendCommand } from '../../../src/admin/utils/CommandSender.js';
 
 describe('DisplayController', () => {
   let controller;
   let mockConnection;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     mockConnection = {
-      sendCommand: jest.fn().mockResolvedValue({ success: true })
+      send: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn()
     };
     controller = new DisplayController(mockConnection);
   });
 
   describe('setIdleLoop', () => {
-    test('sends display:idle-loop command', async () => {
+    it('sends display:idle-loop command via CommandSender', async () => {
       await controller.setIdleLoop();
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'display:idle-loop',
         expect.any(Object)
       );
     });
 
-    test('returns result from connection', async () => {
-      mockConnection.sendCommand.mockResolvedValue({ success: true, mode: 'IDLE_LOOP' });
+    it('returns result from sendCommand', async () => {
+      sendCommand.mockResolvedValue({ success: true, mode: 'IDLE_LOOP' });
       const result = await controller.setIdleLoop();
       expect(result.success).toBe(true);
     });
   });
 
   describe('setScoreboard', () => {
-    test('sends display:scoreboard command', async () => {
+    it('sends display:scoreboard command', async () => {
       await controller.setScoreboard();
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'display:scoreboard',
         expect.any(Object)
       );
@@ -5337,9 +5342,10 @@ describe('DisplayController', () => {
   });
 
   describe('returnToVideo', () => {
-    test('sends display:return-to-video command', async () => {
+    it('sends display:return-to-video command', async () => {
       await controller.returnToVideo();
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'display:return-to-video',
         expect.any(Object)
       );
@@ -5347,9 +5353,10 @@ describe('DisplayController', () => {
   });
 
   describe('getDisplayStatus', () => {
-    test('sends display:status command', async () => {
+    it('sends display:status command', async () => {
       await controller.getDisplayStatus();
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'display:status',
         expect.any(Object)
       );
@@ -5357,7 +5364,7 @@ describe('DisplayController', () => {
   });
 
   describe('destroy', () => {
-    test('does not throw', () => {
+    it('does not throw', () => {
       expect(() => controller.destroy()).not.toThrow();
     });
   });
@@ -5369,33 +5376,57 @@ describe('DisplayController', () => {
 Create `ALNScanner/tests/unit/admin/AdminOperations.test.js`:
 
 ```javascript
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+
+// Mock CommandSender - must be before import
+jest.mock('../../../src/admin/utils/CommandSender.js', () => ({
+  sendCommand: jest.fn().mockResolvedValue({ success: true, message: 'OK' })
+}));
+
 import { AdminOperations } from '../../../src/admin/AdminOperations.js';
+import { sendCommand } from '../../../src/admin/utils/CommandSender.js';
 
 describe('AdminOperations', () => {
   let ops;
   let mockConnection;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     mockConnection = {
-      sendCommand: jest.fn().mockResolvedValue({ success: true, message: 'OK' })
+      send: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn()
     };
     ops = new AdminOperations(mockConnection);
   });
 
   describe('restartSystem', () => {
-    test('sends system:restart command', async () => {
+    it('sends system:restart command', async () => {
       await ops.restartSystem();
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'system:restart',
         expect.any(Object)
       );
     });
   });
 
+  describe('clearData', () => {
+    it('sends system:clear command', async () => {
+      await ops.clearData();
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
+        'system:clear',
+        expect.any(Object)
+      );
+    });
+  });
+
   describe('resetScores', () => {
-    test('sends score:reset command', async () => {
+    it('sends score:reset command', async () => {
       await ops.resetScores();
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'score:reset',
         expect.any(Object)
       );
@@ -5403,9 +5434,10 @@ describe('AdminOperations', () => {
   });
 
   describe('adjustScore', () => {
-    test('sends score:adjust with teamId, delta, reason', async () => {
+    it('sends score:adjust with teamId, delta, reason', async () => {
       await ops.adjustScore('Team1', -50000, 'Penalty');
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'score:adjust',
         expect.objectContaining({
           teamId: 'Team1',
@@ -5415,9 +5447,10 @@ describe('AdminOperations', () => {
       );
     });
 
-    test('uses default reason when not provided', async () => {
+    it('uses default reason when not provided', async () => {
       await ops.adjustScore('Team1', 10000);
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'score:adjust',
         expect.objectContaining({
           reason: expect.any(String)
@@ -5427,9 +5460,10 @@ describe('AdminOperations', () => {
   });
 
   describe('deleteTransaction', () => {
-    test('sends transaction:delete with transactionId', async () => {
+    it('sends transaction:delete with transactionId', async () => {
       await ops.deleteTransaction('tx-123');
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'transaction:delete',
         expect.objectContaining({ transactionId: 'tx-123' })
       );
@@ -5437,9 +5471,10 @@ describe('AdminOperations', () => {
   });
 
   describe('checkService', () => {
-    test('sends service:check with serviceId', async () => {
+    it('sends service:check with serviceId', async () => {
       await ops.checkService('vlc');
-      expect(mockConnection.sendCommand).toHaveBeenCalledWith(
+      expect(sendCommand).toHaveBeenCalledWith(
+        mockConnection,
         'service:check',
         expect.objectContaining({ serviceId: 'vlc' })
       );
@@ -5447,7 +5482,7 @@ describe('AdminOperations', () => {
   });
 
   describe('destroy', () => {
-    test('does not throw', () => {
+    it('does not throw', () => {
       expect(() => ops.destroy()).not.toThrow();
     });
   });
