@@ -4319,7 +4319,7 @@ After all tasks (9, 9b, 10, 11, 12, 13, 13b):
 **Context:** `adminEvents.js` exports two functions: `handleGmCommand(socket, data, io)` and `handleTransactionSubmit(socket, data, _io)`. The env control test file (`adminEvents-envControl.test.js`) exists but tests only environment commands via commandExecutor. This task tests the core routing, auth checks, envelope unwrapping, and error paths.
 
 **Key patterns from reading the source:**
-- `handleGmCommand` checks `socket.deviceType === 'gm'` for auth
+- `handleGmCommand` checks `!socket.deviceId || socket.deviceType !== 'gm'` for auth (compound: both must be valid)
 - It unwraps AsyncAPI envelope: `data.data || data` for action/payload
 - `system:reset` is handled directly (with mutex), everything else goes to `executeCommand()`
 - Ack format is `{action, success, message}` via `emitWrapped(socket, 'gm:command:ack', ...)`
@@ -4709,6 +4709,12 @@ describe('TeamScore', () => {
       expect(score.tokensScanned).toBe(2);
     });
 
+    test('getBaseScore returns currentScore minus bonusPoints', () => {
+      score.addPoints(100);
+      score.addBonus(30);
+      expect(score.getBaseScore()).toBe(100);
+    });
+
     test('getAveragePointsPerToken returns 0 for no tokens', () => {
       expect(score.getAveragePointsPerToken()).toBe(0);
     });
@@ -5095,8 +5101,7 @@ describe('HeartbeatMonitorService', () => {
   describe('init', () => {
     test('stores io reference', () => {
       heartbeatMonitorService.init(mockIo);
-      // No throw means success
-      expect(() => heartbeatMonitorService.init(mockIo)).not.toThrow();
+      expect(heartbeatMonitorService.io).toBe(mockIo);
     });
 
     test('throws if io is null', () => {
