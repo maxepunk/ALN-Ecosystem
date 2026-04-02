@@ -386,6 +386,22 @@ module.exports = {
     // Add null-scoring token
     tokens[this.NULL_SCORING_TOKEN.id] = this.NULL_SCORING_TOKEN;
 
+    // Load real tokens from ALN-TokenData (production database)
+    // Curated tokens above take precedence for existing test expectations.
+    // Real tokens provide production IDs (ale001, kai001, etc.) for new tests.
+    try {
+      const { loadTokens } = require('../../src/services/tokenService');
+      const realTokens = loadTokens();
+      for (const token of realTokens) {
+        if (!tokens[token.id]) {
+          tokens[token.id] = token;
+        }
+      }
+    } catch (e) {
+      // Graceful fallback — submodule may not be available in CI
+      console.warn('test-tokens: could not load real tokens from ALN-TokenData:', e.message);
+    }
+
     return tokens;
   },
 
