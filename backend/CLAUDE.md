@@ -97,6 +97,12 @@ Per-file coverage thresholds in `.coverage-thresholds.json` (tracked in git). Th
 - `getHTTPRequestSchema(path, method)` / `getHTTPSchema(path, method, status)` — extract JSON Schema
 - Scanner contract tests in `tests/contract/scanner/request-schema-validation.test.js` validate ESP32 and PWA payload formats
 
+**Model unit tests:** `tests/unit/models/` covers TeamScore (scoring, groups, comparison, reset, serialization), DeviceConnection (lifecycle, heartbeat timeout, sync state, serialization), VideoQueueItem (playback state machine, timing).
+
+**Service unit tests:** `tests/unit/services/heartbeatMonitorService.test.js` covers init/start/stop, interval checking, device timeout detection.
+
+**WebSocket unit tests:** `tests/unit/websocket/adminEvents.test.js` covers core gm:command routing (auth, ack format, system:reset mutex, envelope unwrapping) and transaction submission (session state, offline queuing). Environment commands tested separately in `adminEvents-envControl.test.js`.
+
 ## Architecture
 
 ### Service Singleton Pattern
