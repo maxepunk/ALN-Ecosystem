@@ -531,7 +531,6 @@ def fetch_all_memory_tokens():
         "filter": {
             "or": [
                 {"property": "Basic Type", "select": {"equals": "Memory Token"}},
-                {"property": "Basic Type", "select": {"equals": "Memory Token Image"}},
                 {"property": "Basic Type", "select": {"equals": "Memory Token Audio"}},
                 {"property": "Basic Type", "select": {"equals": "Memory Token Video"}},
                 {"property": "Basic Type", "select": {"equals": "Memory Token Audio + Image"}}
@@ -726,6 +725,13 @@ def main():
 
     # Sort tokens by RFID for cleaner output
     sorted_tokens = dict(sorted(tokens.items()))
+
+    # Safety check: warn if token count dropped significantly
+    if TOKENS_JSON.exists():
+        existing = json.load(open(TOKENS_JSON))
+        existing_count = len(existing)
+        if len(sorted_tokens) < existing_count * 0.5:
+            print(f"⚠️  WARNING: Only {len(sorted_tokens)} tokens found (existing file has {existing_count}). Possible Notion API error.")
 
     # Write to tokens.json
     print(f"Writing to {TOKENS_JSON}...")
