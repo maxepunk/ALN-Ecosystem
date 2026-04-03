@@ -103,6 +103,8 @@ Per-file coverage thresholds in `.coverage-thresholds.json` (tracked in git). Th
 
 **WebSocket unit tests:** `tests/unit/websocket/adminEvents.test.js` covers core gm:command routing (auth, ack format, system:reset mutex, envelope unwrapping) and transaction submission (session state, offline queuing). Environment commands tested separately in `adminEvents-envControl.test.js`.
 
+**Full verification workflow** (including E2E prerequisites): See root `CLAUDE.md` → Verification Checkpoints
+
 ## Architecture
 
 ### Service Singleton Pattern

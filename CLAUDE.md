@@ -329,6 +329,67 @@ npm run dev        # Development with auto-reload
 npm test           # Node.js built-in test runner
 ```
 
+## Verification Checkpoints
+
+Run these verification sequences at key development milestones. Each checkpoint builds on the previous — run the highest applicable level.
+
+### Quick Check (after any code change)
+
+```bash
+# Run the test suite for the component you changed
+cd backend && npm test                    # Backend unit + contract (~30s)
+cd ALNScanner && npm test                 # GM Scanner unit (~15s)
+cd aln-memory-scanner && npm test         # PWA Scanner unit (~5s)
+cd arduino-cyd-player-scanner && pio test -e native  # ESP32 (~10s)
+cd config-tool && npm test                # Config Tool (~5s)
+```
+
+### Pre-Merge Check (before merging to main)
+
+```bash
+# Backend: full non-E2E suite
+cd backend
+npm test -- --coverage                    # Unit + contract with coverage
+npm run coverage:check                    # Verify no coverage regression
+npm run test:integration                  # Integration tests (sequential, ~5 min)
+
+# GM Scanner: full suite
+cd ../ALNScanner
+npm test                                  # Unit tests
+npm run coverage:check                    # Coverage ratchet
+
+# All other scanners
+cd ../aln-memory-scanner && npm test
+cd ../arduino-cyd-player-scanner && pio test -e native
+cd ../config-tool && npm test
+```
+
+### Full Verification (before release or after major refactors)
+
+**CRITICAL: ALNScanner dist rebuild required for E2E tests.**
+`backend/public/gm-scanner` is a symlink to `../../ALNScanner/dist`. If ALNScanner source changed, E2E tests will test stale code unless you rebuild.
+
+```bash
+# 1. Rebuild GM Scanner dist
+cd ALNScanner && npm run build
+
+# 2. Backend E2E (requires orchestrator + Chromium)
+cd ../backend
+npm run test:e2e                          # Playwright E2E (~5 min, workers=1)
+
+# 3. GM Scanner E2E (standalone, no backend needed)
+cd ../ALNScanner
+npm run test:e2e                          # Playwright E2E (~2-3 min)
+```
+
+### Post-Game Session
+
+```bash
+cd backend
+npm run session:validate latest           # 15 holistic validators
+npm run session:validate latest > report.md  # Save report
+```
+
 ## Cross-Module Debugging
 
 ### Token Data Sync Issues
