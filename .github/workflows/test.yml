@@ -11,6 +11,7 @@ jobs:
   backend-unit-contract:
     name: Backend Unit + Contract Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -40,6 +41,7 @@ jobs:
   backend-integration:
     name: Backend Integration Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -65,6 +67,7 @@ jobs:
   scanner-tests:
     name: Scanner Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout code
@@ -101,6 +104,7 @@ jobs:
   esp32-tests:
     name: ESP32 Native Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
