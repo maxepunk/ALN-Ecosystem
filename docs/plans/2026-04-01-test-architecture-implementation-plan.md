@@ -5594,25 +5594,550 @@ After all tasks (14, 15, 16, 17, 18, 18b):
 
 ---
 
-## Phase 5: CI and Documentation (detail in next planning session)
-
-> **Before starting:** Use `superpowers:writing-plans` to expand this phase into full step-by-step detail.
+## Phase 5: CI and Documentation (fully detailed)
 
 ### Task 19: Per-submodule CI workflows
 
-**Scope:** Update ALNScanner CI (add coverage ratchet). Create new workflows for aln-memory-scanner, arduino-cyd-player-scanner (needs `platformio/run-platformio` GitHub Action), and ALN-TokenData. Unit tests only — no contract validation (monorepo paths unavailable in submodule CI).
+**Files:**
+- Create: `aln-memory-scanner/.github/workflows/test.yml`
+- Create: `arduino-cyd-player-scanner/.github/workflows/test.yml`
+- Create: `config-tool/.github/workflows/test.yml`
+
+**Context:** ALNScanner test.yml already has coverage ratchet (added in Phase 3 Task 11 — verified present). ALN-TokenData is pure JSON data validated by backend contract tests — no standalone CI needed. Each submodule workflow tests only what's available inside that submodule (no monorepo-relative contract validation).
+
+**Step 1: Create aln-memory-scanner test workflow**
+
+Create `aln-memory-scanner/.github/workflows/test.yml`:
+
+```yaml
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+```
+
+**Note:** `submodules: recursive` included because aln-memory-scanner has a nested `data/` submodule (ALN-TokenData). Current tests don't load token data, but this future-proofs the workflow.
+
+**Step 2: Create arduino-cyd-player-scanner test workflow**
+
+Create `arduino-cyd-player-scanner/.github/workflows/test.yml`:
+
+```yaml
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  native-tests:
+    name: PlatformIO Native Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Run native tests
+        run: pio test -e native
+```
+
+**Step 3: Create config-tool test workflow**
+
+Create `config-tool/.github/workflows/test.yml`:
+
+```yaml
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm test
+```
+
+**Step 4: Verify workflows are syntactically valid**
+
+```bash
+# Quick YAML syntax check (no actionlint needed — just verify parseable)
+cd aln-memory-scanner && python3 -c "import yaml; yaml.safe_load(open('.github/workflows/test.yml'))" && echo "OK"
+cd ../arduino-cyd-player-scanner && python3 -c "import yaml; yaml.safe_load(open('.github/workflows/test.yml'))" && echo "OK"
+cd ../config-tool && python3 -c "import yaml; yaml.safe_load(open('.github/workflows/test.yml'))" && echo "OK"
+```
+
+Expected: All print "OK"
+
+**Step 5: Commit in each submodule**
+
+`aln-memory-scanner` and `arduino-cyd-player-scanner` are git submodules — commit inside them first. `config-tool` is NOT a submodule — it's direct in the monorepo, so its workflow is committed from the parent repo.
+
+```bash
+cd aln-memory-scanner
+git add .github/workflows/test.yml
+git commit -m "ci: add unit test workflow"
+
+cd ../arduino-cyd-player-scanner
+git add .github/workflows/test.yml
+git commit -m "ci: add PlatformIO native test workflow"
+```
+
+**Step 6: Commit parent repo changes (submodule refs + config-tool workflow)**
+
+```bash
+cd ..
+git add aln-memory-scanner arduino-cyd-player-scanner config-tool/.github/workflows/test.yml
+git commit -m "ci: add test workflows (submodule refs + config-tool)"
+```
+
+**IMPORTANT:** `git add aln-memory-scanner arduino-cyd-player-scanner` stages the updated submodule refs. `git add config-tool/.github/workflows/test.yml` stages the config-tool workflow file directly (config-tool is NOT a submodule).
+
+---
 
 ### Task 20: Parent repo CI workflow
 
-**Scope:** Create `.github/workflows/test.yml` at ALN-Ecosystem root. Jobs: backend unit+contract, backend integration, coverage ratchet check, contract drift check. Needs GitHub Actions YAML scaffold since no CI exists at root level.
+**Files:**
+- Create: `.github/workflows/test.yml`
+
+**Context:** No CI exists at the parent repo level. This workflow tests the backend (which is NOT a submodule — it's direct in the monorepo). It also runs coverage ratchet checks for both backend and ALNScanner. Integration tests start a lightweight in-process server and mock hardware calls (bluetoothctl, pactl, etc.). E2E tests are excluded from CI (require Chromium + real system services like PipeWire, D-Bus). `ENABLE_VIDEO_PLAYBACK=false` is already set by `jest.config.base.js` (which `jest.integration.config.js` extends) — no env var override needed.
+
+**CRITICAL:** Backend integration tests import services at module level (service constructors run at require time), but constructors are lightweight — system calls are deferred to `init()` methods. Integration tests mock at the method level (e.g., `jest.spyOn(bluetoothService, 'startScan').mockImplementation(...)`) and `docker-lifecycle.test.js` skips gracefully when Docker is unavailable. The workflow separates unit+contract and integration into parallel jobs so failures are isolated.
+
+**Step 1: Create parent repo test workflow**
+
+Create `.github/workflows/test.yml`:
+
+```yaml
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  backend-unit-contract:
+    name: Backend Unit + Contract Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run unit and contract tests with coverage
+        working-directory: backend
+        run: npm test -- --coverage --maxWorkers=2
+
+      - name: Check coverage ratchet
+        working-directory: backend
+        run: npm run coverage:check
+
+  backend-integration:
+    name: Backend Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run integration tests
+        working-directory: backend
+        run: npm run test:integration
+
+  scanner-tests:
+    name: Scanner Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            ALNScanner/package-lock.json
+            aln-memory-scanner/package-lock.json
+            config-tool/package-lock.json
+
+      - name: ALNScanner unit tests with coverage
+        working-directory: ALNScanner
+        run: npm ci && npm test -- --coverage
+
+      - name: ALNScanner coverage ratchet
+        working-directory: ALNScanner
+        run: npm run coverage:check
+
+      - name: PWA Scanner unit tests
+        working-directory: aln-memory-scanner
+        run: npm ci && npm test
+
+      - name: Config Tool unit tests
+        working-directory: config-tool
+        run: npm ci && npm test
+
+  esp32-tests:
+    name: ESP32 Native Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Run native tests
+        working-directory: arduino-cyd-player-scanner
+        run: pio test -e native
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [backend-unit-contract, backend-integration, scanner-tests, esp32-tests]
+    if: always()
+
+    steps:
+      - name: Check results
+        run: |
+          if [ "${{ needs.backend-unit-contract.result }}" != "success" ]; then
+            echo "Backend unit+contract tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.backend-integration.result }}" != "success" ]; then
+            echo "Backend integration tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.scanner-tests.result }}" != "success" ]; then
+            echo "Scanner tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.esp32-tests.result }}" != "success" ]; then
+            echo "ESP32 tests failed"
+            exit 1
+          fi
+          echo "All checks passed"
+```
+
+**Step 2: Verify workflow is syntactically valid**
+
+```bash
+python3 -c "import yaml; yaml.safe_load(open('.github/workflows/test.yml'))" && echo "OK"
+```
+
+Expected: "OK"
+
+**Step 3: Commit**
+
+```bash
+git add .github/workflows/test.yml
+git commit -m "ci: add parent repo test workflow (backend + all scanners)"
+```
+
+---
 
 ### Task 21: CLAUDE.md verification checkpoint documentation
 
-**Scope:** Add Verification Checkpoints section to root CLAUDE.md. Include ALNScanner dist rebuild requirement (`cd ALNScanner && npm run build` before backend E2E). Add references from `backend/CLAUDE.md` and `ALNScanner/CLAUDE.md`. This builds on the incremental CLAUDE.md updates from Phases 1-4 — those phases documented tools and patterns; this task adds the overarching verification workflow.
+**Files:**
+- Modify: `CLAUDE.md` (root) — add Verification Checkpoints section
+- Modify: `backend/CLAUDE.md` — add cross-reference to root verification section
+
+**Context:** Phases 1-4 documented individual tools and patterns incrementally. This task adds the overarching verification workflow that ties everything together. The key insight: E2E tests require `ALNScanner/dist/` to be current (symlinked from `backend/public/gm-scanner`), so `npm run build` in ALNScanner is a prerequisite.
+
+**Step 1: Add Verification Checkpoints section to root CLAUDE.md**
+
+Insert after the "Key Commands" section (after the config-tool commands block, before "## Cross-Module Debugging"):
+
+```markdown
+## Verification Checkpoints
+
+Run these verification sequences at key development milestones. Each checkpoint builds on the previous — run the highest applicable level.
+
+### Quick Check (after any code change)
+
+```bash
+# Run the test suite for the component you changed
+cd backend && npm test                    # Backend unit + contract (~30s)
+cd ALNScanner && npm test                 # GM Scanner unit (~15s)
+cd aln-memory-scanner && npm test         # PWA Scanner unit (~5s)
+cd arduino-cyd-player-scanner && pio test -e native  # ESP32 (~10s)
+cd config-tool && npm test                # Config Tool (~5s)
+```
+
+### Pre-Merge Check (before merging to main)
+
+```bash
+# Backend: full non-E2E suite
+cd backend
+npm test -- --coverage                    # Unit + contract with coverage
+npm run coverage:check                    # Verify no coverage regression
+npm run test:integration                  # Integration tests (sequential, ~5 min)
+
+# GM Scanner: full suite
+cd ../ALNScanner
+npm test                                  # Unit tests
+npm run coverage:check                    # Coverage ratchet
+
+# All other scanners
+cd ../aln-memory-scanner && npm test
+cd ../arduino-cyd-player-scanner && pio test -e native
+cd ../config-tool && npm test
+```
+
+### Full Verification (before release or after major refactors)
+
+**CRITICAL: ALNScanner dist rebuild required for E2E tests.**
+`backend/public/gm-scanner` is a symlink to `../../ALNScanner/dist`. If ALNScanner source changed, E2E tests will test stale code unless you rebuild.
+
+```bash
+# 1. Rebuild GM Scanner dist
+cd ALNScanner && npm run build
+
+# 2. Backend E2E (requires orchestrator + Chromium)
+cd ../backend
+npm run test:e2e                          # Playwright E2E (~5 min, workers=1)
+
+# 3. GM Scanner E2E (standalone, no backend needed)
+cd ../ALNScanner
+npm run test:e2e                          # Playwright E2E (~2-3 min)
+```
+
+### Post-Game Session
+
+```bash
+cd backend
+npm run session:validate latest           # 15 holistic validators
+npm run session:validate latest > report.md  # Save report
+```
+```
+
+**Step 2: Add cross-reference in backend CLAUDE.md**
+
+In `backend/CLAUDE.md`, insert immediately after the **WebSocket unit tests** paragraph (line ~104, just before `## Architecture`):
+
+```markdown
+**Full verification workflow** (including E2E prerequisites): See root `CLAUDE.md` → Verification Checkpoints
+```
+
+**Step 3: Verify the documentation is accurate**
+
+```bash
+# Confirm the symlink exists
+ls -la backend/public/gm-scanner
+
+# Confirm all referenced commands work
+cd backend && npm test -- --listTests | head -5
+cd ../ALNScanner && npm test -- --listTests | head -5
+cd ../aln-memory-scanner && npm test -- --listTests | head -5
+cd ../arduino-cyd-player-scanner && pio test -e native --list-tests 2>/dev/null || echo "PlatformIO list not supported, but pio test -e native works"
+cd ../config-tool && npm test 2>&1 | head -5
+```
+
+**Step 4: Commit**
+
+```bash
+git add CLAUDE.md backend/CLAUDE.md
+git commit -m "docs: add verification checkpoints to CLAUDE.md"
+```
+
+---
 
 ### Task 22: ESP32 hardware investigation
 
-**Scope:** Diagnose unreliable scan detection and NDEF fallback bugs using instrumentation from Task 12. Investigative — outcomes feed back into test fixtures for Task 13.
+**⚠️ MANUAL TASK — Do NOT dispatch a subagent for this task.** Requires physical ESP32 hardware and NFC tokens. Execute manually when hardware is available.
+
+**Scope:** Diagnose unreliable scan detection and NDEF fallback bugs using the NDEF_DEBUG instrumentation from Phase 3 Task 12.
+
+**Context:** This is a physical investigation task — it requires an ESP32 device with RFID reader and physical NFC tokens. It cannot be automated in CI or executed by a subagent. The goal is to capture real NDEF byte sequences from tokens that fail to scan reliably, then use those captures as test fixtures for the NDEFParser tests (Phase 3 Task 13 framework is already in place).
+
+**Prerequisites:**
+- ESP32-2432S028R device with MFRC522 RFID reader connected
+- Physical NFC tokens (NTAG213/215)
+- USB cable to Pi 5
+- `NDEF_DEBUG` flag in `config.h` (currently commented out)
+
+**Step 1: Enable NDEF diagnostic logging**
+
+In `arduino-cyd-player-scanner/ALNScanner_v5/config.h`, uncomment:
+```cpp
+#define NDEF_DEBUG
+```
+
+**Step 2: Compile and upload**
+
+```bash
+cd arduino-cyd-player-scanner/ALNScanner_v5
+arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=no_ota,UploadSpeed=921600 .
+arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32 .
+```
+
+**Step 3: Capture serial output (passive TX-only)**
+
+**WARNING:** Do NOT use `arduino-cli monitor` — it opens serial bidirectionally, causing GPIO 3 bus contention with RFID chip select.
+
+```bash
+stty -F /dev/ttyUSB0 115200 raw && cat /dev/ttyUSB0 | tee ndef_capture.log
+```
+
+**Step 4: Scan tokens systematically**
+
+For each token:
+1. Scan 5 times in quick succession
+2. Note which scans succeed (NDEF text extracted) vs fail (UID hex fallback)
+3. Record token type (NTAG213 vs NTAG215) if known
+4. Look for `[NDEF-DIAG]` lines showing byte dumps
+
+**Step 5: Extract test fixtures from captures**
+
+From `ndef_capture.log`, find `[NDEF-DIAG]` lines for failing scans. Convert the hex byte sequences into test fixtures:
+
+```cpp
+// In test/test_ndef/test_ndef.cpp — add new test cases:
+void test_real_token_XXX_failure(void) {
+    // Bytes captured from [NDEF-DIAG] output for token XXX
+    uint8_t pages[] = { /* paste captured bytes */ };
+    String result = hal::parseNDEFText(pages, sizeof(pages), 0x00);
+    // Assert expected behavior based on investigation
+    TEST_ASSERT_EQUAL_STRING("xxx001", result.c_str());
+}
+```
+
+**Step 6: Disable NDEF_DEBUG after capture**
+
+Re-comment `#define NDEF_DEBUG` in `config.h`, recompile and upload production firmware.
+
+**Step 7: Document findings**
+
+Create `arduino-cyd-player-scanner/docs/ndef-investigation-YYYY-MM-DD.md` with:
+- Which tokens fail and how often
+- Byte patterns from failures
+- Root cause hypothesis
+- Fixes applied (if any)
+
+**Step 8: Commit any new test fixtures**
+
+```bash
+cd arduino-cyd-player-scanner
+git add test/test_ndef/test_ndef.cpp docs/
+git commit -m "test: add real-world NDEF failure fixtures from hardware investigation"
+```
+
+**IMPORTANT:** Steps 1-7 require physical hardware access. If the ESP32 is not available during this session, skip this task and document it as pending physical investigation.
+
+---
+
+### Phase 5 Completion Checklist
+
+After all tasks (19-22, or 19-21 if hardware unavailable):
+1. Run full verification:
+   ```bash
+   cd backend && npm test && npm run test:integration
+   cd ../ALNScanner && npm test
+   cd ../aln-memory-scanner && npm test
+   cd ../arduino-cyd-player-scanner && pio test -e native
+   cd ../config-tool && npm test
+   ```
+2. Run code review via `superpowers:requesting-code-review`
+3. Investigate ALL findings — fix before proceeding
+4. Commit any fixes
+5. Push submodules (aln-memory-scanner, arduino-cyd-player-scanner)
+6. Update parent submodule refs
 
 ---
 
