@@ -282,13 +282,18 @@ function getStatus() {
  */
 async function cleanup() {
   if (browserProcess && !browserProcess.killed) {
-    logger.info('[DisplayDriver] Killing browser process on shutdown', {
-      pid: browserProcess.pid
-    });
+    const pid = browserProcess.pid;
+    logger.info('[DisplayDriver] Killing browser process on shutdown', { pid });
     browserProcess.kill('SIGTERM');
     await new Promise(r => setTimeout(r, 1000));
-    if (browserProcess && !browserProcess.killed) {
-      browserProcess.kill('SIGKILL');
+    // .killed reflects kill() was CALLED, not that process died.
+    // Use signal 0 to check if actually dead.
+    try {
+      process.kill(pid, 0); // Throws ESRCH if process doesn't exist
+      process.kill(pid, 'SIGKILL');
+      logger.warn('[DisplayDriver] Browser process required SIGKILL', { pid });
+    } catch {
+      // Process is dead — SIGTERM worked
     }
   }
   browserProcess = null;

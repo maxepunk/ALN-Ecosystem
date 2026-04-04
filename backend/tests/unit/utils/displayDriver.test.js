@@ -383,6 +383,62 @@ describe('displayDriver — window management', () => {
       // cleanup with no browser process — PID file removal throws but cleanup succeeds
       await expect(displayDriver.cleanup()).resolves.not.toThrow();
     });
+
+    test('escalates to SIGKILL when process survives SIGTERM', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false, kill: jest.fn() };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      await displayDriver.showScoreboard();
+
+      // process.kill(pid, 0) not throwing = process still alive after SIGTERM
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      try {
+        await displayDriver.cleanup();
+
+        // Should have probed with signal 0, then sent SIGKILL
+        expect(killSpy).toHaveBeenCalledWith(1234, 0);
+        expect(killSpy).toHaveBeenCalledWith(1234, 'SIGKILL');
+      } finally {
+        killSpy.mockRestore();
+      }
+    });
+
+    test('does not SIGKILL when process dies from SIGTERM', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false, kill: jest.fn() };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      await displayDriver.showScoreboard();
+
+      // process.kill(pid, 0) throwing ESRCH = process already dead
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {
+        const err = new Error('ESRCH');
+        err.code = 'ESRCH';
+        throw err;
+      });
+      try {
+        await displayDriver.cleanup();
+
+        // Should have probed with signal 0 but NOT sent SIGKILL
+        expect(killSpy).toHaveBeenCalledWith(1234, 0);
+        expect(killSpy).not.toHaveBeenCalledWith(1234, 'SIGKILL');
+      } finally {
+        killSpy.mockRestore();
+      }
+    });
   });
 
   describe('ensureBrowserRunning()', () => {
