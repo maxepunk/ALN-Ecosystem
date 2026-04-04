@@ -7,9 +7,9 @@
  * The process is never killed during normal operation — only on server shutdown.
  *
  * Key design decisions (verified on Pi 2026-03-26):
- * - xdotool search --pid does NOT work for Chromium (window belongs to forked child)
- * - xdotool search --class chromium DOES work
- * - windowunmap/windowmap does NOT preserve fullscreen (comes back 1024x704) — NOT USED
+ * - xdotool search --name "Case File" finds the content window by HTML <title>
+ *   (--class chromium returns ALL windows including zygote/GPU; --pid doesn't work for Chromium)
+ * - Window ID looked up fresh per show/hide operation — never cached (eliminates stale-ID bugs)
  * - windowminimize to hide + windowactivate + wmctrl -b add,fullscreen to show — VERIFIED 0,0 1920x1080
  * - execFile (not exec) for all xdotool/wmctrl calls — no shell injection
  *
@@ -23,7 +23,6 @@ const logger = require('./logger');
 
 // Module-level state (persistent across calls within a process lifetime)
 let browserProcess = null;
-let windowId = null;  // X11 window ID string (e.g. '12345678')
 let visible = false;
 let launchPromise = null;  // Guard against concurrent spawns
 
@@ -71,31 +70,23 @@ function run(cmd, args) {
 }
 
 /**
- * Find the Chromium window ID via xdotool search --class.
- * Chromium forks — the window belongs to a child process, not the spawned parent.
- * Must search by class, not PID.
- * Retries with delay to allow Chromium time to create its window.
- * @param {number} retries - Number of attempts
- * @param {number} delayMs - Milliseconds between attempts
+ * Find the scoreboard Chromium window by its page title.
+ * Searches fresh every time — no caching, no stale IDs.
+ * Uses --name to match the HTML <title>, which distinguishes the content
+ * window from Chromium's internal windows (zygote, GPU, crashpad).
  * @returns {Promise<string|null>} X11 window ID or null if not found
  */
-async function findWindowId(retries = 10, delayMs = 500) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const ids = await run('xdotool', ['search', '--class', 'chromium']);
-      if (ids) {
-        const idList = ids.split('\n').filter(Boolean);
-        if (idList.length > 0) {
-          // Return the last ID — typically the main content window
-          return idList[idList.length - 1];
-        }
+async function _findScoreboardWindow() {
+  try {
+    const ids = await run('xdotool', ['search', '--name', 'Case File']);
+    if (ids) {
+      const idList = ids.split('\n').filter(Boolean);
+      if (idList.length > 0) {
+        return idList[0];
       }
-    } catch {
-      // Window not ready yet — keep retrying
     }
-    if (i < retries - 1) {
-      await new Promise(r => setTimeout(r, delayMs));
-    }
+  } catch {
+    // Window not found
   }
   return null;
 }
@@ -155,14 +146,12 @@ async function _doLaunch() {
   browserProcess.on('error', (error) => {
     logger.error('[DisplayDriver] Browser process error', { error: error.message });
     browserProcess = null;
-    windowId = null;
     visible = false;
   });
 
   browserProcess.on('exit', (code, signal) => {
     logger.warn('[DisplayDriver] Browser process exited', { code, signal });
     browserProcess = null;
-    windowId = null;
     visible = false;
   });
 
@@ -175,32 +164,20 @@ async function _doLaunch() {
     }
   }
 
-  windowId = await findWindowId();
-  if (!windowId) {
-    logger.error('[DisplayDriver] Could not find Chromium window after launch');
-    return false;
-  }
-
-  logger.info('[DisplayDriver] Scoreboard window found', {
-    pid: browserProcess?.pid,
-    windowId
+  logger.info('[DisplayDriver] Chromium process started', {
+    pid: browserProcess?.pid
   });
   return true;
 }
 
 /**
  * Ensure Chromium is running. If already running, return immediately.
- * If the process is alive but windowId was lost (e.g. after a failed showScoreboard),
- * re-search for the window rather than spawning a new process.
  * Guards against concurrent spawns with a shared launchPromise.
- * @returns {Promise<boolean>} True if Chromium is running and window ID is known
+ * @returns {Promise<boolean>} True if Chromium process is alive
  */
 async function ensureBrowserRunning() {
   if (browserProcess && !browserProcess.killed) {
-    if (windowId) return true;
-    // Process alive but window ID lost — re-search before declaring failure
-    windowId = await findWindowId(3, 300);
-    return windowId !== null;
+    return true;
   }
 
   if (launchPromise) return launchPromise;
@@ -215,7 +192,7 @@ async function ensureBrowserRunning() {
 /**
  * Show the scoreboard on HDMI display.
  * Launches Chromium if not already running (first call only).
- * On subsequent calls, activates the existing window and forces fullscreen via wmctrl.
+ * Looks up the window by title fresh each time — no cached window IDs.
  * Verified on Pi: windowactivate + wmctrl -b add,fullscreen → 0,0 1920x1080
  * @returns {Promise<boolean>} True on success
  */
@@ -223,20 +200,20 @@ async function showScoreboard() {
   const running = await ensureBrowserRunning();
   if (!running) return false;
 
+  const wid = await _findScoreboardWindow();
+  if (!wid) {
+    logger.error('[DisplayDriver] Scoreboard window not found (title match failed)');
+    return false;
+  }
+
   try {
-    // Activate window (brings it to front / un-minimizes)
-    await run('xdotool', ['windowactivate', '--sync', windowId]);
-    // Force fullscreen via wmctrl (verified: preserves 1920x1080 on Pi)
-    await run('wmctrl', ['-i', '-r', windowId, '-b', 'add,fullscreen']);
+    await run('xdotool', ['windowactivate', '--sync', wid]);
+    await run('wmctrl', ['-i', '-r', wid, '-b', 'add,fullscreen']);
     visible = true;
-    logger.info('[DisplayDriver] Scoreboard shown (fullscreen)', { windowId });
+    logger.info('[DisplayDriver] Scoreboard shown (fullscreen)', { windowId: wid });
     return true;
   } catch (error) {
     logger.error('[DisplayDriver] Failed to show scoreboard', { error: error.message });
-    // Stale window ID — clear it so ensureBrowserRunning() will re-search on next call.
-    // Do NOT null browserProcess: the process may still be alive; re-search will find
-    // the new window ID without killing and re-spawning.
-    windowId = null;
     visible = false;
     return false;
   }
@@ -245,20 +222,22 @@ async function showScoreboard() {
 /**
  * Hide the scoreboard by minimizing the window.
  * Does NOT kill the process — Chromium stays alive for fast re-show.
+ * Looks up the window by title fresh each time — catches orphaned windows too.
  * Minimizing (not windowunmap) preserves fullscreen state for next windowactivate.
  * Non-fatal: VLC renders underneath even if minimize fails.
  * @returns {Promise<boolean>} Always true (non-fatal hide)
  */
 async function hideScoreboard() {
-  if (!windowId) {
+  const wid = await _findScoreboardWindow();
+  if (!wid) {
     visible = false;
     return true;
   }
 
   try {
-    await run('xdotool', ['windowminimize', windowId]);
+    await run('xdotool', ['windowminimize', wid]);
     visible = false;
-    logger.info('[DisplayDriver] Scoreboard minimized', { windowId });
+    logger.info('[DisplayDriver] Scoreboard minimized', { windowId: wid });
     return true;
   } catch (error) {
     logger.error('[DisplayDriver] Failed to hide scoreboard', { error: error.message });
@@ -272,7 +251,7 @@ async function hideScoreboard() {
  * @returns {boolean} True if scoreboard window is visible
  */
 function isScoreboardVisible() {
-  return visible && windowId !== null;
+  return visible;
 }
 
 /**
@@ -283,7 +262,6 @@ function getStatus() {
   return {
     scoreboardVisible: isScoreboardVisible(),
     browserPid: browserProcess?.pid || null,
-    windowId,
     display: DISPLAY,
     scoreboardUrl: SCOREBOARD_URL
   };
@@ -306,7 +284,6 @@ async function cleanup() {
     }
   }
   browserProcess = null;
-  windowId = null;
   visible = false;
 
   // Remove PID file (clean shutdown — no orphan to recover)
