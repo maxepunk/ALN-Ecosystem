@@ -106,7 +106,7 @@ async function _doLaunch() {
       // Verify it's actually a chromium process before killing
       const cmdline = fs.readFileSync(`/proc/${oldPid}/cmdline`, 'utf8').replace(/\0/g, ' ');
       if (cmdline.includes('chromium')) {
-        process.kill(oldPid, 'SIGTERM');
+        process.kill(oldPid, 'SIGKILL');
         killedOrphan = true;
         logger.info('[DisplayDriver] Killed orphaned Chromium', { pid: oldPid });
       }
@@ -162,6 +162,14 @@ async function _doLaunch() {
     } catch (err) {
       logger.debug('[DisplayDriver] Failed to write PID file', { error: err.message });
     }
+  }
+
+  // Brief alive check — catches early crashes (e.g., single-instance lock conflict,
+  // binary missing, GPU init failure). The on('exit') handler nulls browserProcess.
+  await new Promise(r => setTimeout(r, 1000));
+  if (!browserProcess) {
+    logger.error('[DisplayDriver] Chromium process died during startup');
+    return false;
   }
 
   logger.info('[DisplayDriver] Chromium process started', {

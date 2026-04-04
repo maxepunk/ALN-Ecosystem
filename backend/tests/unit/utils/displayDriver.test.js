@@ -420,6 +420,29 @@ describe('displayDriver — window management', () => {
       expect(result).toBe(true);
       expect(spawn).toHaveBeenCalledTimes(1);
     });
+
+    test('returns false if Chromium crashes during startup', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        cb(null, '', '');
+      });
+
+      // Simulate Chromium crashing: trigger the exit handler during the 1s alive check
+      // The on('exit') handler is registered as the second .on() call
+      const onExitHandler = () => {
+        const exitCb = mockProc.on.mock.calls.find(c => c[0] === 'exit')?.[1];
+        if (exitCb) exitCb(1, null); // exit code 1
+      };
+      // Trigger after spawn but before the 1s check completes
+      setTimeout(onExitHandler, 100);
+
+      const result = await displayDriver.ensureBrowserRunning();
+      expect(result).toBe(false);
+    });
   });
 
   describe('orphan Chromium cleanup', () => {
@@ -449,7 +472,7 @@ describe('displayDriver — window management', () => {
         await displayDriver.showScoreboard();
 
         // Should have killed the orphan PID from the PID file
-        expect(killSpy).toHaveBeenCalledWith(9999, 'SIGTERM');
+        expect(killSpy).toHaveBeenCalledWith(9999, 'SIGKILL');
         // Should have spawned new Chromium after orphan cleanup
         expect(spawn).toHaveBeenCalledWith('chromium-browser', expect.any(Array), expect.any(Object));
       } finally {
@@ -495,9 +518,9 @@ describe('displayDriver — window management', () => {
       await displayDriver.showScoreboard();
       const elapsed = Date.now() - start;
 
-      // Without an orphan to kill, launch should NOT include the 2-second cleanup wait.
-      // Allow generous margin for test execution overhead, but should be well under 2000ms.
-      expect(elapsed).toBeLessThan(1500);
+      // _doLaunch() has a 1000ms alive check after spawn.
+      // Without an orphan to kill, total should be ~1000ms (no 2s orphan wait).
+      expect(elapsed).toBeLessThan(2500);
     });
   });
 });
