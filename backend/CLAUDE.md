@@ -218,7 +218,7 @@ displayControlService (State Machine)
 - Chromium is launched ONCE and persisted for the session. Display transitions use `xdotool windowminimize` (hide) and `xdotool windowactivate` + `wmctrl -b add,fullscreen` (show). No kill/spawn per video cycle.
 - `xdotool search --name "Case File"` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached.
 - `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler). Sends SIGTERM, waits 1s, escalates to SIGKILL via `process.kill(pid, 0)` alive-check.
-- `_doLaunch()` kills orphaned Chromium via PID file (`/tmp/aln-pm-scoreboard-chromium.pid`) with SIGKILL before spawning. Includes 1s alive-check after spawn to detect early crashes.
+- `_doLaunch()` two-stage orphan recovery before spawning: (1) SIGKILL via PID file (`/tmp/aln-pm-scoreboard-chromium.pid`, verified against `/proc/pid/cmdline`), (2) `pkill -9 -f chromium.*--kiosk` fallback to catch children reparented to init. 2s wait after either kill for lock release. 1s alive-check after spawn detects early crashes (e.g., single-instance lock conflict).
 - System dependencies: `sudo apt-get install -y xdotool wmctrl`
 - Chromium requires `--password-store=basic` flag to prevent keyring dialog
 - Scoreboard URL uses auto-detected local IP (not localhost) for CDN resources
