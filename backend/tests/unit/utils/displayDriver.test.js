@@ -478,9 +478,12 @@ describe('displayDriver — window management', () => {
     });
 
     test('returns false if Chromium crashes during startup', async () => {
-      const { spawn, execFile } = require('child_process');
+      const { spawn, execFile, execFileSync } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };
       spawn.mockReturnValue(mockProc);
+
+      // pkill finds no orphans (throws = no matching processes)
+      execFileSync.mockImplementation(() => { throw new Error('no process found'); });
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }

@@ -115,6 +115,21 @@ async function _doLaunch() {
     // PID file doesn't exist, process already gone, or not chromium — clean state
   }
 
+  // Fallback: kill any Chromium kiosk processes reparented to init (PID 1).
+  // PID-file recovery only tracks the most recently spawned parent.
+  // If the parent was killed but children survived (reparented to init),
+  // they hold the single-instance lock and block new launches.
+  // Safe on this dedicated kiosk Pi — no legitimate second Chromium instance.
+  try {
+    execFileSync('pkill', ['-9', '-f', 'chromium.*--kiosk'], { timeout: 3000 });
+    if (!killedOrphan) {
+      killedOrphan = true;
+      logger.info('[DisplayDriver] Killed orphaned Chromium via pkill fallback');
+    }
+  } catch {
+    // No matching processes or pkill not available — clean state
+  }
+
   if (killedOrphan) {
     // Wait for Chromium to fully exit (releases single-instance lock)
     await new Promise(r => setTimeout(r, 2000));
