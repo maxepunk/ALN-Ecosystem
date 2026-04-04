@@ -92,9 +92,9 @@ async function _findScoreboardWindow() {
 }
 
 /**
- * Spawn Chromium and wait for its window to appear.
+ * Spawn Chromium in kiosk mode.
  * Only called from ensureBrowserRunning() when no process is alive.
- * @returns {Promise<boolean>} True if Chromium launched and window ID found
+ * @returns {Promise<boolean>} True if Chromium process started
  */
 async function _doLaunch() {
   // Kill orphaned Chromium from previous server crash via PID file.

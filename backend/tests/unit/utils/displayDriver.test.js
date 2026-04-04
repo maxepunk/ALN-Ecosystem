@@ -37,7 +37,7 @@ jest.mock('fs', () => {
 });
 
 // Reset module between tests to clear module-level state
-// (browserProcess, windowId, visible are module-level vars)
+// (browserProcess, visible are module-level vars)
 let displayDriver;
 beforeEach(() => {
   jest.resetModules();
@@ -54,7 +54,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -74,7 +74,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -93,7 +93,7 @@ describe('displayDriver — window management', () => {
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
         calls.push({ cmd, args });
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -121,7 +121,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -129,21 +129,63 @@ describe('displayDriver — window management', () => {
       expect(result).toBe(true);
     });
 
-    test('returns false if window not found after launch', async () => {
+    test('returns false when browser running but window title not found', async () => {
       const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };
       spawn.mockReturnValue(mockProc);
 
-      // xdotool search always fails (no window found)
+      // xdotool search --name always fails (no window with matching title)
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') {
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
           cb(new Error('no windows found'), '', '');
         } else {
           cb(null, '', '');
         }
       });
 
+      const result = await displayDriver.showScoreboard();
+      expect(result).toBe(false);
+    });
+
+    test('looks up window ID fresh on every showScoreboard call (no caching)', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      let searchCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
+          searchCount++;
+          cb(null, '12345678\n', '');
+        } else {
+          cb(null, '', '');
+        }
+      });
+
+      await displayDriver.showScoreboard();
+      await displayDriver.showScoreboard();
+      await displayDriver.showScoreboard();
+
+      expect(searchCount).toBe(3);
+    });
+
+    test('returns false when browser is running but window title not found', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
+          cb(new Error('no windows found'), '', '');
+        } else {
+          cb(null, '', '');
+        }
+      });
+
+      await displayDriver.ensureBrowserRunning();
       const result = await displayDriver.showScoreboard();
       expect(result).toBe(false);
     });
@@ -157,7 +199,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -177,7 +219,17 @@ describe('displayDriver — window management', () => {
     });
 
     test('returns true when no window is tracked (no-op)', async () => {
-      // No showScoreboard called — windowId is null
+      const { execFile } = require('child_process');
+      // No browser launched — _findScoreboardWindow() returns null
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
+          cb(new Error('no windows found'), '', '');
+        } else {
+          cb(null, '', '');
+        }
+      });
+
       const result = await displayDriver.hideScoreboard();
       expect(result).toBe(true);
     });
@@ -189,7 +241,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else if (cmd === 'xdotool' && args[0] === 'windowminimize') {
           cb(new Error('window not responding'), '', '');
         } else {
@@ -209,7 +261,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -218,6 +270,30 @@ describe('displayDriver — window management', () => {
 
       await displayDriver.hideScoreboard();
       expect(displayDriver.isScoreboardVisible()).toBe(false);
+    });
+
+    test('looks up window ID fresh on every hideScoreboard call', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      let searchCount = 0;
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
+          searchCount++;
+          cb(null, '12345678\n', '');
+        } else {
+          cb(null, '', '');
+        }
+      });
+
+      await displayDriver.ensureBrowserRunning();
+      searchCount = 0;
+      await displayDriver.hideScoreboard();
+      await displayDriver.hideScoreboard();
+
+      expect(searchCount).toBe(2);
     });
   });
 
@@ -233,7 +309,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -247,7 +323,6 @@ describe('displayDriver — window management', () => {
       const status = displayDriver.getStatus();
       expect(status).toHaveProperty('scoreboardVisible');
       expect(status).toHaveProperty('browserPid');
-      expect(status).toHaveProperty('windowId');
       expect(status).toHaveProperty('display');
       expect(status).toHaveProperty('scoreboardUrl');
     });
@@ -259,7 +334,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -268,7 +343,6 @@ describe('displayDriver — window management', () => {
 
       expect(status.scoreboardVisible).toBe(true);
       expect(status.browserPid).toBe(1234);
-      expect(status.windowId).toBe('12345678');
     });
   });
 
@@ -280,7 +354,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -303,7 +377,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -341,8 +415,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
-        else cb(null, '', '');
+        cb(null, '', '');
       });
 
       const result = await displayDriver.ensureBrowserRunning();
@@ -357,8 +430,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
-        else cb(null, '', '');
+        cb(null, '', '');
       });
 
       await displayDriver.ensureBrowserRunning();
@@ -386,7 +458,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -414,7 +486,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
@@ -433,7 +505,7 @@ describe('displayDriver — window management', () => {
 
       execFile.mockImplementation((cmd, args, opts, cb) => {
         if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
         else cb(null, '', '');
       });
 
