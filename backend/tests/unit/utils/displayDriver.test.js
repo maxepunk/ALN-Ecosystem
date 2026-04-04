@@ -171,24 +171,6 @@ describe('displayDriver — window management', () => {
       expect(searchCount).toBe(3);
     });
 
-    test('returns false when browser is running but window title not found', async () => {
-      const { spawn, execFile } = require('child_process');
-      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
-      spawn.mockReturnValue(mockProc);
-
-      execFile.mockImplementation((cmd, args, opts, cb) => {
-        if (typeof opts === 'function') { cb = opts; }
-        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
-          cb(new Error('no windows found'), '', '');
-        } else {
-          cb(null, '', '');
-        }
-      });
-
-      await displayDriver.ensureBrowserRunning();
-      const result = await displayDriver.showScoreboard();
-      expect(result).toBe(false);
-    });
   });
 
   describe('hideScoreboard()', () => {

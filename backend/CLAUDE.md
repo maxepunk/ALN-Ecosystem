@@ -216,7 +216,7 @@ displayControlService (State Machine)
 
 **Key Implementation Details:**
 - Chromium is launched ONCE and persisted for the session. Display transitions use `xdotool windowminimize` (hide) and `xdotool windowactivate` + `wmctrl -b add,fullscreen` (show). No kill/spawn per video cycle.
-- `xdotool search --class chromium` finds the window (not `--pid` — Chromium forks, window belongs to child process)
+- `xdotool search --name "Case File"` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached.
 - `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler). Also runs `pkill -f chromium.*--kiosk` as fallback for Chromium that escaped tracking.
 - `_doLaunch()` runs `pkill -f chromium.*--kiosk` before spawning to kill orphans from previous server crashes
 - System dependencies: `sudo apt-get install -y xdotool wmctrl`
