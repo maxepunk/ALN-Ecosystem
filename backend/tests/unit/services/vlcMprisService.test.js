@@ -490,6 +490,21 @@ describe('VlcMprisService', () => {
       );
     });
 
+    it('should accept string mode for Track loop', async () => {
+      mockExecFileSuccess('');
+      await vlcMprisService.setLoop('Track');
+
+      expect(execFile).toHaveBeenCalledWith(
+        'dbus-send',
+        expect.arrayContaining([
+          'string:LoopStatus',
+          'variant:string:Track',
+        ]),
+        expect.any(Object),
+        expect.any(Function)
+      );
+    });
+
     it('should set LoopStatus to None when disabled', async () => {
       mockExecFileSuccess('');
       await vlcMprisService.setLoop(false);
@@ -537,12 +552,12 @@ describe('VlcMprisService', () => {
         expect.any(Function)
       );
 
-      // Should set LoopStatus to Playlist (after playVideo)
+      // Should set LoopStatus to Track (single-track loop, not Playlist)
       expect(execFile).toHaveBeenCalledWith(
         'dbus-send',
         expect.arrayContaining([
           'string:LoopStatus',
-          'variant:string:Playlist',
+          'variant:string:Track',
         ]),
         expect.any(Object),
         expect.any(Function)

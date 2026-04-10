@@ -279,13 +279,18 @@ class VlcMprisService extends MprisPlayerBase {
 
   /**
    * Set loop mode via MPRIS LoopStatus property.
-   * @param {boolean} enabled - true = Playlist loop, false = None
+   * @param {boolean|string} enabled - false/'None' = no loop, true/'Playlist' = playlist loop, 'Track' = single track loop
    */
   async setLoop(enabled) {
-    const status = enabled ? 'Playlist' : 'None';
+    let status;
+    if (typeof enabled === 'string') {
+      status = enabled;
+    } else {
+      status = enabled ? 'Playlist' : 'None';
+    }
     await this._dbusSetProperty(PLAYER_IFACE, 'LoopStatus', 'string', status);
-    this._loopEnabled = enabled;
-    logger.debug(`[VLC] Loop ${enabled ? 'enabled' : 'disabled'}`);
+    this._loopEnabled = status !== 'None';
+    logger.debug(`[VLC] Loop set to ${status}`);
   }
 
   // ── Idle Loop ──
@@ -308,7 +313,7 @@ class VlcMprisService extends MprisPlayerBase {
     try {
       await this._initializeIdleLoopDelay();
       await this.playVideo('idle-loop.mp4');
-      await this.setLoop(true);
+      await this.setLoop('Track');
       logger.info('[VLC] Idle loop initialized with continuous playback');
     } catch (err) {
       logger.warn('[VLC] Failed to initialize idle loop:', err.message);
@@ -325,7 +330,7 @@ class VlcMprisService extends MprisPlayerBase {
 
     try {
       await this.playVideo('idle-loop.mp4');
-      await this.setLoop(true);
+      await this.setLoop('Track');
       logger.info('[VLC] Returned to idle loop');
     } catch (err) {
       logger.warn('[VLC] Failed to return to idle loop:', err.message);
