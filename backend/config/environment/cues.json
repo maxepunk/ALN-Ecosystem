@@ -188,17 +188,17 @@
           }
         },
         {
-          "at": 300,
+          "at": 180,
           "action": "lighting:scene:activate",
           "payload": {
-            "sceneId": "scene.off"
+            "sceneId": "scene.police_1"
           }
         },
         {
-          "at": 541,
+          "at": 300,
           "action": "lighting:scene:activate",
           "payload": {
-            "sceneId": "scene.game"
+            "sceneId": "scene.police2"
           }
         },
         {
@@ -206,6 +206,35 @@
           "action": "lighting:scene:activate",
           "payload": {
             "sceneId": "scene.video"
+          }
+        },
+        {
+          "at": 390,
+          "action": "sound:play",
+          "payload": {
+            "file": "policesounds.wav",
+            "target": "bluetooth"
+          }
+        },
+        {
+          "at": 391,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.police3"
+          }
+        },
+        {
+          "at": 540,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.policeglitch"
+          }
+        },
+        {
+          "at": 600,
+          "action": "lighting:scene:activate",
+          "payload": {
+            "sceneId": "scene.game"
           }
         }
       ]
