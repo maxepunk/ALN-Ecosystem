@@ -44,12 +44,12 @@ class ScoreboardControlService extends EventEmitter {
    * Jump to the page containing the given character owner.
    * Scoreboards that do not currently show this owner will no-op.
    *
+   * PRECONDITION: `owner` is a non-empty string (validated by the caller —
+   * commandExecutor for gm:command dispatch).
+   *
    * @param {string} owner - Character owner name (e.g. "Alex Reeves")
    */
   jumpToOwner(owner) {
-    if (typeof owner !== 'string' || !owner.trim()) {
-      throw new Error('owner is required for scoreboard:page:owner');
-    }
     logger.debug('[scoreboardControlService] jumpToOwner()', { owner });
     this.emit('scoreboard:page:requested', { action: 'owner', owner });
   }

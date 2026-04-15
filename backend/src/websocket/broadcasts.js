@@ -436,10 +436,8 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
-  // Scoreboard page navigation events (GM-driven manual scroll)
-  // Delivered to the `gm` room which contains both GM scanners and scoreboards
-  // (SCOREBOARD_* deviceId). Scoreboards handle the event by calling
-  // manualTransitionToPage() / jumpToEvidence(); GM scanners ignore it.
+  // Scoreboard page navigation events (GM-driven manual scroll) — delivered
+  // to the `gm` room (GM scanners ignore; SCOREBOARD_* clients act on it).
   addTrackedListener(scoreboardControlService, 'scoreboard:page:requested', (data) => {
     emitToRoom(io, 'gm', 'scoreboard:page', data);
     logger.debug('Broadcasted scoreboard:page', { action: data.action, owner: data.owner });

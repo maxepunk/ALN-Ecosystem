@@ -1188,65 +1188,47 @@
             }
         }
 
-        function transitionToPage(pageIndex) {
-            if (pageIndex === state.currentPage) return;
-
-            // Fade-to-black transition
-            elements.evidencePage.classList.add('evidence-page--transitioning');
-
-            setTimeout(() => {
-                state.currentPage = pageIndex;
-                renderPage(pageIndex);
-                renderPageDots();
-            }, 200);  // Halfway through 400ms animation
-
-            setTimeout(() => {
-                elements.evidencePage.classList.remove('evidence-page--transitioning');
-            }, 400);
-
-            // Reset cycle timer so this page gets full display time.
-            // (startPageCycling() is a no-op if a manual-pause window is active.)
-            startPageCycling();
-        }
-
         /**
-         * GM-driven page navigation. Performs the same visual transition as
-         * transitionToPage but ALSO suspends auto-cycling for MANUAL_PAUSE_MS
-         * so the GM has time to read the page they selected. Auto-cycling
-         * resumes automatically when the pause timer fires.
+         * Transition to the given evidence page with a fade animation.
+         *
+         * @param {number} pageIndex
+         * @param {Object} [opts]
+         * @param {boolean} [opts.manual=false] - GM-driven navigation: suspends
+         *   auto-cycling for MANUAL_PAUSE_MS (resumes automatically). A manual
+         *   transition to the same page still extends the pause window — the
+         *   GM clicked deliberately.
          */
-        function manualTransitionToPage(pageIndex) {
+        function transitionToPage(pageIndex, { manual = false } = {}) {
             if (!Array.isArray(state.pages) || state.pages.length === 0) return;
-            if (pageIndex === state.currentPage) {
-                // Even if the target IS the current page, still extend the
-                // pause window — the GM clicked deliberately.
-                stopPageCycling();
-                clearManualPause();
+            const sameTarget = pageIndex === state.currentPage;
+            // Auto-cycle hitting the current page is a no-op; manual clicks on
+            // the current page still reset the pause window.
+            if (sameTarget && !manual) return;
+
+            stopPageCycling();
+            if (manual) clearManualPause();
+
+            if (!sameTarget) {
+                elements.evidencePage.classList.add('evidence-page--transitioning');
+                setTimeout(() => {
+                    state.currentPage = pageIndex;
+                    renderPage(pageIndex);
+                    renderPageDots();
+                }, 200);  // Halfway through 400ms animation
+                setTimeout(() => {
+                    elements.evidencePage.classList.remove('evidence-page--transitioning');
+                }, 400);
+            }
+
+            if (manual) {
                 state.manualPauseTimer = setTimeout(() => {
                     state.manualPauseTimer = null;
                     startPageCycling();
                 }, MANUAL_PAUSE_MS);
-                return;
-            }
-
-            stopPageCycling();
-            clearManualPause();
-
-            // Fade-to-black transition (mirrors transitionToPage)
-            elements.evidencePage.classList.add('evidence-page--transitioning');
-            setTimeout(() => {
-                state.currentPage = pageIndex;
-                renderPage(pageIndex);
-                renderPageDots();
-            }, 200);
-            setTimeout(() => {
-                elements.evidencePage.classList.remove('evidence-page--transitioning');
-            }, 400);
-
-            state.manualPauseTimer = setTimeout(() => {
-                state.manualPauseTimer = null;
+            } else {
+                // Reset cycle timer so this page gets full display time.
                 startPageCycling();
-            }, MANUAL_PAUSE_MS);
+            }
         }
 
         // Recalculate pages on resize
@@ -1691,7 +1673,7 @@
                     return;
                 }
                 console.log('[Scoreboard] Manual page navigation:', data.action, data.owner || '', '→ page', target);
-                manualTransitionToPage(target);
+                transitionToPage(target, { manual: true });
             });
         }
 
