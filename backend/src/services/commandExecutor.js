@@ -21,6 +21,7 @@ const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
 const spotifyService = require('./spotifyService');
+const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
 
 // Service dependency map for pre-dispatch health checks
@@ -282,6 +283,31 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         resultData = { displayStatus };
         resultMessage = `Display mode: ${displayStatus.currentMode}`;
         logger.info('Display status requested', { source, deviceId, status: displayStatus });
+        break;
+      }
+
+      // --- Scoreboard page navigation (pure broadcast passthrough) ---
+
+      case 'scoreboard:page:next':
+        scoreboardControlService.next();
+        resultMessage = 'Scoreboard advanced to next page';
+        logger.info('Scoreboard page: next', { source, deviceId });
+        break;
+
+      case 'scoreboard:page:prev':
+        scoreboardControlService.prev();
+        resultMessage = 'Scoreboard returned to previous page';
+        logger.info('Scoreboard page: prev', { source, deviceId });
+        break;
+
+      case 'scoreboard:page:owner': {
+        const owner = typeof payload.owner === 'string' ? payload.owner.trim() : '';
+        if (!owner) {
+          throw new Error('owner is required for scoreboard:page:owner');
+        }
+        scoreboardControlService.jumpToOwner(owner);
+        resultMessage = `Scoreboard jumped to owner: ${owner}`;
+        logger.info('Scoreboard page: owner', { source, deviceId, owner });
         break;
       }
 

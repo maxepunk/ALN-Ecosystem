@@ -787,6 +787,7 @@
             pages: [],                        // Array of arrays of owner names per page
             currentPage: 0,                   // Current page index
             pageCycleTimer: null,             // setInterval ID for page cycling
+            manualPauseTimer: null,           // setTimeout ID: pauses auto-cycle after GM manual nav
             displayMode: 'SCOREBOARD',
             kioskMode: false,
             countdown: {                      // Game countdown state
@@ -1153,9 +1154,16 @@
         // ============================================
         // PAGE CYCLING (Task 11)
         // ============================================
+        // How long to suspend auto-cycling after the GM manually navigates
+        // (Prev/Next or Jump to Character). Gives the GM time to read.
+        const MANUAL_PAUSE_MS = 60000;
+
         function startPageCycling() {
             stopPageCycling();
             if (state.pages.length <= 1) return;
+            // Respect the manual-pause window — don't start a cycle timer
+            // while the GM is reading a specific page.
+            if (state.manualPauseTimer) return;
 
             // Adaptive interval: 2-3 pages = 18s, 4+ = 12s
             const interval = state.pages.length <= 3 ? 18000 : 12000;
@@ -1170,6 +1178,13 @@
             if (state.pageCycleTimer) {
                 clearInterval(state.pageCycleTimer);
                 state.pageCycleTimer = null;
+            }
+        }
+
+        function clearManualPause() {
+            if (state.manualPauseTimer) {
+                clearTimeout(state.manualPauseTimer);
+                state.manualPauseTimer = null;
             }
         }
 
@@ -1189,8 +1204,49 @@
                 elements.evidencePage.classList.remove('evidence-page--transitioning');
             }, 400);
 
-            // Reset cycle timer so this page gets full display time
+            // Reset cycle timer so this page gets full display time.
+            // (startPageCycling() is a no-op if a manual-pause window is active.)
             startPageCycling();
+        }
+
+        /**
+         * GM-driven page navigation. Performs the same visual transition as
+         * transitionToPage but ALSO suspends auto-cycling for MANUAL_PAUSE_MS
+         * so the GM has time to read the page they selected. Auto-cycling
+         * resumes automatically when the pause timer fires.
+         */
+        function manualTransitionToPage(pageIndex) {
+            if (!Array.isArray(state.pages) || state.pages.length === 0) return;
+            if (pageIndex === state.currentPage) {
+                // Even if the target IS the current page, still extend the
+                // pause window — the GM clicked deliberately.
+                stopPageCycling();
+                clearManualPause();
+                state.manualPauseTimer = setTimeout(() => {
+                    state.manualPauseTimer = null;
+                    startPageCycling();
+                }, MANUAL_PAUSE_MS);
+                return;
+            }
+
+            stopPageCycling();
+            clearManualPause();
+
+            // Fade-to-black transition (mirrors transitionToPage)
+            elements.evidencePage.classList.add('evidence-page--transitioning');
+            setTimeout(() => {
+                state.currentPage = pageIndex;
+                renderPage(pageIndex);
+                renderPageDots();
+            }, 200);
+            setTimeout(() => {
+                elements.evidencePage.classList.remove('evidence-page--transitioning');
+            }, 400);
+
+            state.manualPauseTimer = setTimeout(() => {
+                state.manualPauseTimer = null;
+                startPageCycling();
+            }, MANUAL_PAUSE_MS);
         }
 
         // Recalculate pages on resize
@@ -1282,6 +1338,7 @@
                 state.pages = [];
                 state.currentPage = 0;
                 stopPageCycling();
+                clearManualPause();
                 stopCountdown();
             }
             state.sessionId = newSessionId;
@@ -1609,6 +1666,32 @@
                 const data = eventData.data;
                 console.log('[Scoreboard] Display mode event:', data);
                 handleDisplayMode(data);
+            });
+
+            // GM-driven evidence page navigation
+            state.socket.on('scoreboard:page', (eventData) => {
+                const data = eventData?.data;
+                if (!data || !Array.isArray(state.pages) || state.pages.length === 0) {
+                    return;
+                }
+                let target = state.currentPage;
+                if (data.action === 'next') {
+                    target = (state.currentPage + 1) % state.pages.length;
+                } else if (data.action === 'prev') {
+                    target = (state.currentPage - 1 + state.pages.length) % state.pages.length;
+                } else if (data.action === 'owner' && typeof data.owner === 'string') {
+                    const ownerPage = state.pages.findIndex(p => p.includes(data.owner));
+                    if (ownerPage < 0) {
+                        // Owner not on this scoreboard's pages — no-op.
+                        console.log('[Scoreboard] scoreboard:page owner not present:', data.owner);
+                        return;
+                    }
+                    target = ownerPage;
+                } else {
+                    return;
+                }
+                console.log('[Scoreboard] Manual page navigation:', data.action, data.owner || '', '→ page', target);
+                manualTransitionToPage(target);
             });
         }
 

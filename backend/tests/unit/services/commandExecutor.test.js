@@ -112,6 +112,12 @@ jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   removeAllListeners: jest.fn(),
 }));
 
+jest.mock('../../../src/services/scoreboardControlService', () => ({
+  next: jest.fn(),
+  prev: jest.fn(),
+  jumpToOwner: jest.fn(),
+}));
+
 jest.mock('../../../src/services/spotifyService', () => ({
   play: jest.fn().mockResolvedValue(),
   pause: jest.fn().mockResolvedValue(),
@@ -406,6 +412,72 @@ describe('commandExecutor', () => {
         source: 'gm'
       });
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('scoreboard page commands', () => {
+    const scoreboardControlService = require('../../../src/services/scoreboardControlService');
+
+    it('should execute scoreboard:page:next', async () => {
+      const result = await executeCommand({
+        action: 'scoreboard:page:next',
+        payload: {},
+        source: 'gm',
+        deviceId: 'gm-1'
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toMatch(/next page/i);
+      expect(scoreboardControlService.next).toHaveBeenCalled();
+      expect(scoreboardControlService.prev).not.toHaveBeenCalled();
+    });
+
+    it('should execute scoreboard:page:prev', async () => {
+      const result = await executeCommand({
+        action: 'scoreboard:page:prev',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toMatch(/previous page/i);
+      expect(scoreboardControlService.prev).toHaveBeenCalled();
+    });
+
+    it('should execute scoreboard:page:owner with owner payload', async () => {
+      const result = await executeCommand({
+        action: 'scoreboard:page:owner',
+        payload: { owner: '  Alex Reeves  ' },
+        source: 'gm'
+      });
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Alex Reeves');
+      expect(scoreboardControlService.jumpToOwner).toHaveBeenCalledWith('Alex Reeves');
+    });
+
+    it('should reject scoreboard:page:owner without owner', async () => {
+      const result = await executeCommand({
+        action: 'scoreboard:page:owner',
+        payload: {},
+        source: 'gm'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/owner is required/i);
+      expect(scoreboardControlService.jumpToOwner).not.toHaveBeenCalled();
+    });
+
+    it('should reject scoreboard:page:owner with whitespace-only owner', async () => {
+      const result = await executeCommand({
+        action: 'scoreboard:page:owner',
+        payload: { owner: '   ' },
+        source: 'gm'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/owner is required/i);
+    });
+
+    it('should not require a service health gate (no SERVICE_DEPENDENCIES entry)', () => {
+      expect(SERVICE_DEPENDENCIES['scoreboard:page:next']).toBeUndefined();
+      expect(SERVICE_DEPENDENCIES['scoreboard:page:prev']).toBeUndefined();
+      expect(SERVICE_DEPENDENCIES['scoreboard:page:owner']).toBeUndefined();
     });
   });
 

@@ -89,6 +89,7 @@ channels:
           - $ref: '#/components/messages/OfflineQueueProcessed'
           - $ref: '#/components/messages/GroupCompleted'
           - $ref: '#/components/messages/DisplayMode'
+          - $ref: '#/components/messages/ScoreboardPage'
           - $ref: '#/components/messages/CueFired'
           - $ref: '#/components/messages/CueCompleted'
           - $ref: '#/components/messages/CueError'
@@ -1154,6 +1155,74 @@ components:
               previousMode: SCOREBOARD
             timestamp: "2025-10-15T20:16:00.000Z"
 
+    ScoreboardPage:
+      name: scoreboard:page
+      title: Scoreboard Page Navigation Broadcast
+      summary: Broadcast when a GM manually navigates scoreboard evidence pages
+      description: |
+        Broadcast page navigation intent to scoreboard displays (and GM Scanners,
+        which share the `gm` room). Scoreboards listening to this event advance
+        their local page index (`next`/`prev`) or jump to a page containing the
+        requested character `owner`, and pause their auto-cycle for a short window.
+
+        **Delivery**: Emitted to the `gm` room, which contains both GM Scanners
+        and Scoreboard clients (deviceId prefix `SCOREBOARD_`).
+
+        **Viewport independence**: Page counts differ between scoreboards with
+        different viewports (HDMI vs remote phone). `next`/`prev` semantics are
+        applied independently per client — the two may drift. `owner` semantics
+        keep both aligned to the same character when that character is present.
+
+        **Decisions Applied**: #2 (wrapped envelope)
+      payload:
+        type: object
+        required:
+          - event
+          - data
+          - timestamp
+        properties:
+          event:
+            type: string
+            const: scoreboard:page
+            description: Event name
+          data:
+            type: object
+            required:
+              - action
+            properties:
+              action:
+                type: string
+                enum: [next, prev, owner]
+                description: Navigation intent
+                example: "next"
+              owner:
+                type: string
+                description: |
+                  Character owner name (required when action is `owner`).
+                  Scoreboards locate the first page containing this owner and
+                  transition to it; if the owner is not present on this
+                  scoreboard's current page set the event is a no-op.
+                example: "Alex Reeves"
+          timestamp:
+            type: string
+            format: date-time
+            description: Event timestamp
+            example: "2025-10-15T20:18:00.000Z"
+      examples:
+        - name: Next Page
+          payload:
+            event: scoreboard:page
+            data:
+              action: next
+            timestamp: "2025-10-15T20:18:00.000Z"
+        - name: Jump to Character
+          payload:
+            event: scoreboard:page
+            data:
+              action: owner
+              owner: "Alex Reeves"
+            timestamp: "2025-10-15T20:18:30.000Z"
+
     # ============================================================================
     # SESSION MANAGEMENT (2 events)
     # ============================================================================
@@ -1391,6 +1460,9 @@ components:
                   - display:scoreboard
                   - display:return-to-video
                   - display:status
+                  - scoreboard:page:next
+                  - scoreboard:page:prev
+                  - scoreboard:page:owner
                   - score:adjust
                   - score:reset
                   - transaction:delete
