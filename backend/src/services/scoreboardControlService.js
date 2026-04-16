@@ -10,7 +10,7 @@
  *     → scoreboardControlService.next()
  *       → emits 'scoreboard:page:requested' {action: 'next'}
  *         → broadcasts.js forwards to 'gm' room as 'scoreboard:page'
- *           → scoreboard.html handler calls manualTransitionToPage()
+ *           → scoreboard.html handler calls transitionToPage(target, { manual: true })
  *
  * Both HDMI and remote scoreboards live in the `gm` room (see gmAuth.js),
  * so a single broadcast reaches both. Viewport differences mean page counts
