@@ -441,6 +441,85 @@ class ScoreboardPage {
   }
 
   // ============================================
+  // EVIDENCE PAGE NAVIGATION (PR #10)
+  // ============================================
+
+  /**
+   * Get current evidence page index (0-based).
+   * @returns {Promise<number>}
+   */
+  async getCurrentPageIndex() {
+    return await this.page.evaluate(() => state.currentPage);
+  }
+
+  /**
+   * Get total evidence page count.
+   * @returns {Promise<number>}
+   */
+  async getPageCount() {
+    return await this.page.evaluate(() => state.pages.length);
+  }
+
+  /**
+   * Get owner names on the currently-displayed evidence page.
+   * @returns {Promise<string[]>}
+   */
+  async getCurrentPageOwners() {
+    return await this.page.evaluate(() => {
+      if (!state.pages.length) return [];
+      return state.pages[state.currentPage] || [];
+    });
+  }
+
+  /**
+   * Check whether the manual-navigation pause timer is active
+   * (set after GM Prev/Next/Jump; cleared after 60s).
+   * @returns {Promise<boolean>}
+   */
+  async isManualPauseActive() {
+    return await this.page.evaluate(() => state.manualPauseTimer !== null);
+  }
+
+  /**
+   * Find the page index containing the given owner, or -1 if absent.
+   * @param {string} owner
+   * @returns {Promise<number>}
+   */
+  async findPageContainingOwner(owner) {
+    return await this.page.evaluate(
+      (o) => state.pages.findIndex(p => p.includes(o)),
+      owner
+    );
+  }
+
+  /**
+   * Wait until the scoreboard has computed at least `expected` pages.
+   * Pagination recalculates on every transaction:new event.
+   * @param {number} expected - Minimum page count
+   * @param {number} timeout
+   */
+  async waitForPageCount(expected, timeout = 15000) {
+    await this.page.waitForFunction(
+      (n) => state.pages.length >= n,
+      expected,
+      { timeout }
+    );
+  }
+
+  /**
+   * Wait until the current page index equals `expected`.
+   * @param {number} expected - Target page index
+   * @param {number} timeout
+   */
+  async waitForPageIndex(expected, timeout = 5000) {
+    await this.page.waitForFunction(
+      (n) => state.currentPage === n,
+      expected,
+      { timeout }
+    );
+  }
+
+  // ============================================
   // UTILITIES
   // ============================================
 
