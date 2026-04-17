@@ -276,6 +276,14 @@ paths:
                     format: date-time
                     description: Current server timestamp
                     example: "2025-09-30T12:00:00.000Z"
+                  timezone:
+                    type: string
+                    description: |
+                      POSIX TZ string for this deployment. Used by ESP32 scanners
+                      (and any other client without local timezone config) to
+                      render scan timestamps in the deployment's local time.
+                      Defaults to "UTC0" when APP_TIMEZONE_POSIX is unset.
+                    example: "PST8PDT,M3.2.0,M11.1.0"
 
   /api/scan:
     post:
