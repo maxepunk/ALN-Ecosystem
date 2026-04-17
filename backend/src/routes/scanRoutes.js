@@ -268,6 +268,34 @@ router.post('/batch', async (req, res) => {
         continue;
       }
 
+      // Persist valid entries to session.playerScans so offline-drained
+      // scans are visible to post-session analysis (session:validate).
+      // No player:scan WebSocket broadcast — batches represent past
+      // activity, not live events; GMs will see them via next sync:full.
+      // If no session is active, log and skip persistence (batch shape
+      // is still acknowledged).
+      const session = sessionService.getCurrentSession();
+      if (session) {
+        const tokenData = {
+          SF_MemoryType: token.memoryType,
+          SF_ValueRating: token.metadata.rating,
+          SF_Group: token.metadata.group || null,
+          summary: token.metadata.summary || null
+        };
+        await sessionService.addPlayerScan({
+          tokenId: scanRequest.tokenId,
+          deviceId: scanRequest.deviceId,
+          deviceType: scanRequest.deviceType || 'player',
+          timestamp: scanRequest.timestamp || new Date().toISOString(),
+          tokenData
+        });
+      } else {
+        logger.warn('Batch scan: no active session — entry not persisted', {
+          tokenId: scanRequest.tokenId,
+          deviceId: scanRequest.deviceId
+        });
+      }
+
       // Process video if applicable
       if (token.hasVideo()) {
         const videoCheck = videoQueueService.canAcceptVideo();
