@@ -13,7 +13,7 @@ const fs = require('fs');
 const router = express.Router();
 const tokenService = require('../services/tokenService');
 const logger = require('../utils/logger');
-const { success } = require('../utils/responseBuilder');
+const { success, errors } = require('../utils/responseBuilder');
 
 // Canonical asset roots live in the aln-memory-scanner submodule so backend
 // and PWA share a single source of truth. Resolved once at module load.
@@ -60,11 +60,8 @@ router.get('/tokens', (req, res) => {
       count: Object.keys(rawTokens).length,
       lastUpdate: new Date().toISOString()
     });
-  } catch (error) {
-    res.status(500).json({
-      error: 'INTERNAL_ERROR',
-      message: error.message
-    });
+  } catch (err) {
+    errors.internal(res, err.message);
   }
 });
 
@@ -76,15 +73,13 @@ router.get('/assets/manifest', (req, res) => {
   try {
     const manifest = readManifest();
     if (!manifest) {
-      return res.status(404).json({
-        error: 'NOT_FOUND',
-        message: 'Asset manifest not generated yet. Run scripts/sync_notion_to_tokens.py.'
-      });
+      return errors.notFound(res,
+        'Asset manifest not generated yet. Run scripts/sync_notion_to_tokens.py.');
     }
     res.json(manifest);
   } catch (err) {
     logger.error('Failed to serve asset manifest', err);
-    res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+    errors.internal(res, err.message);
   }
 });
 
@@ -96,20 +91,18 @@ router.get('/assets/images/:file', (req, res) => {
   const { file } = req.params;
   const match = /^([a-z0-9_]+)\.bmp$/i.exec(file);
   if (!match || !TOKEN_ID_PATTERN.test(match[1])) {
-    return res.status(400).json({
-      error: 'INVALID_TOKEN_ID',
-      message: 'Expected <tokenId>.bmp where tokenId matches [a-z0-9_]+'
-    });
+    return errors.validation(res,
+      'Expected <tokenId>.bmp where tokenId matches [a-z0-9_]+');
   }
   const abs = path.join(IMAGES_DIR, `${match[1]}.bmp`);
   // Express sendFile handles ETag + Last-Modified + If-None-Match automatically.
   res.sendFile(abs, { headers: { 'Content-Type': 'image/bmp' } }, (err) => {
     if (err && !res.headersSent) {
       if (err.code === 'ENOENT') {
-        res.status(404).json({ error: 'NOT_FOUND', message: 'Image not found' });
+        errors.notFound(res, 'Image not found');
       } else {
         logger.error('sendFile image failed', { file, err: err.message });
-        res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+        errors.internal(res, err.message);
       }
     }
   });
@@ -123,10 +116,8 @@ router.get('/assets/audio/:file', (req, res) => {
   const { file } = req.params;
   const match = /^([a-z0-9_]+)\.(wav|mp3)$/i.exec(file);
   if (!match || !TOKEN_ID_PATTERN.test(match[1])) {
-    return res.status(400).json({
-      error: 'INVALID_TOKEN_ID',
-      message: 'Expected <tokenId>.(wav|mp3) where tokenId matches [a-z0-9_]+'
-    });
+    return errors.validation(res,
+      'Expected <tokenId>.(wav|mp3) where tokenId matches [a-z0-9_]+');
   }
   const ext = match[2].toLowerCase();
   const abs = path.join(AUDIO_DIR, `${match[1]}.${ext}`);
@@ -134,10 +125,10 @@ router.get('/assets/audio/:file', (req, res) => {
   res.sendFile(abs, { headers: { 'Content-Type': contentType } }, (err) => {
     if (err && !res.headersSent) {
       if (err.code === 'ENOENT') {
-        res.status(404).json({ error: 'NOT_FOUND', message: 'Audio not found' });
+        errors.notFound(res, 'Audio not found');
       } else {
         logger.error('sendFile audio failed', { file, err: err.message });
-        res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message });
+        errors.internal(res, err.message);
       }
     }
   });
