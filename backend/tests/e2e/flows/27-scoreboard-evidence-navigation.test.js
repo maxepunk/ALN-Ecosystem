@@ -116,4 +116,49 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     }
   });
 
+  // ====================================================
+  // TEST 2: Detective scan populates dropdown + enables controls
+  // ====================================================
+
+  test('detective scan enables controls and populates owner dropdown', async () => {
+    const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const gmPage = await createPage(gmContext);
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.createSessionWithTeams('Dropdown Populate Test', [TEAM]);
+
+      // Scan ONE detective token
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList(TEAM);
+
+      const token = detectiveTokens[0];
+      await gmScanner.manualScan(token.SF_RFID);
+      await gmScanner.waitForResult();
+
+      // Navigate to admin panel and verify the owner appears in the dropdown
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.waitForScoreboardOwner(token.owner, 10000);
+
+      const options = await gmScanner.scoreboardDropdownOptions();
+      expect(options).toEqual([token.owner]);
+
+      const state = await gmScanner.scoreboardControlsEnabled();
+      expect(state.prev).toBe(true);
+      expect(state.next).toBe(true);
+      expect(state.jump).toBe(true);
+      expect(state.dropdown).toBe(true);
+
+      const hint = await gmScanner.scoreboardEvidenceHint.textContent();
+      expect(hint.trim()).toMatch(/1 character on board/);
+    } finally {
+      await gmPage.close();
+      await gmContext.close();
+    }
+  });
+
 });
