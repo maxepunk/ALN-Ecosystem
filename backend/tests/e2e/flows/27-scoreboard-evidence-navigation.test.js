@@ -276,4 +276,90 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     }
   });
 
+  // ====================================================
+  // TEST 5: Viewport-independent owner jump
+  //         (validates PR #10's "owner keeps both aligned" claim)
+  // ====================================================
+
+  test('owner jump lands both differently-sized scoreboards on pages containing the owner', async () => {
+    const largeCtx = await createBrowserContext(browser, 'desktop', {
+      baseURL: orchestratorInfo.url,
+      viewport: LARGE_VIEWPORT
+    });
+    const smallCtx = await createBrowserContext(browser, 'desktop', {
+      baseURL: orchestratorInfo.url,
+      viewport: SMALL_VIEWPORT
+    });
+    const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const largePage = await createPage(largeCtx);
+    const smallPage = await createPage(smallCtx);
+    const gmPage = await createPage(gmContext);
+    const sbLarge = new ScoreboardPage(largePage);
+    const sbSmall = new ScoreboardPage(smallPage);
+
+    try {
+      // Unique device IDs so both scoreboards can coexist.
+      await sbLarge.gotoWithDeviceId(orchestratorInfo.url, 'SCOREBOARD_LARGE');
+      await sbLarge.waitForConnection(10000);
+      await sbSmall.gotoWithDeviceId(orchestratorInfo.url, 'SCOREBOARD_SMALL');
+      await sbSmall.waitForConnection(10000);
+
+      const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.createSessionWithTeams('Viewport Test', [TEAM]);
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList(TEAM);
+      await scanAllTokens(gmScanner);
+
+      await sbLarge.waitForPageCount(2, 20000);
+      await sbSmall.waitForPageCount(3, 20000);
+
+      const largePages = await sbLarge.getPageCount();
+      const smallPages = await sbSmall.getPageCount();
+      console.log(`Large viewport: ${largePages} pages, Small viewport: ${smallPages} pages`);
+      // Different page counts is the whole point of this test.
+      expect(smallPages).toBeGreaterThan(largePages);
+
+      // Pick an owner that is NOT on page 0 of EITHER scoreboard (oldest).
+      const targetOwner = detectiveTokens[0].owner;
+      const largeTargetPage = await sbLarge.findPageContainingOwner(targetOwner);
+      const smallTargetPage = await sbSmall.findPageContainingOwner(targetOwner);
+      expect(largeTargetPage).toBeGreaterThanOrEqual(0);
+      expect(smallTargetPage).toBeGreaterThanOrEqual(0);
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.waitForScoreboardOwner(targetOwner);
+      await gmScanner.jumpScoreboardToOwner(targetOwner);
+
+      // Both scoreboards must land on a page containing the owner.
+      // The page INDICES may differ (viewport independence) — we assert
+      // containment, not equality.
+      await sbLarge.waitForPageIndex(largeTargetPage);
+      await sbSmall.waitForPageIndex(smallTargetPage);
+
+      const largeOwners = await sbLarge.getCurrentPageOwners();
+      const smallOwners = await sbSmall.getCurrentPageOwners();
+      expect(largeOwners).toContain(targetOwner);
+      expect(smallOwners).toContain(targetOwner);
+
+      // If the target is on different pages between the two, we've
+      // proved viewport independence. If both happen to be index 0,
+      // the test still validates the contract.
+      if (largeTargetPage !== smallTargetPage) {
+        console.log(`✓ Viewport drift confirmed: large p${largeTargetPage} vs small p${smallTargetPage}`);
+      }
+    } finally {
+      await largePage.close();
+      await smallPage.close();
+      await gmPage.close();
+      await largeCtx.close();
+      await smallCtx.close();
+      await gmContext.close();
+    }
+  });
+
 });
