@@ -223,4 +223,57 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     }
   });
 
+  // ====================================================
+  // TEST 4: Jump to owner lands on that character's page
+  // ====================================================
+
+  test('Jump-to-Character navigates scoreboard to the page containing that owner', async () => {
+    const sbContext = await createBrowserContext(browser, 'desktop', {
+      baseURL: orchestratorInfo.url,
+      viewport: SMALL_VIEWPORT
+    });
+    const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const sbPage = await createPage(sbContext);
+    const gmPage = await createPage(gmContext);
+    const scoreboard = new ScoreboardPage(sbPage);
+
+    try {
+      await scoreboard.goto(orchestratorInfo.url);
+      await scoreboard.waitForConnection(10000);
+
+      const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.createSessionWithTeams('Jump Test', [TEAM]);
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList(TEAM);
+      await scanAllTokens(gmScanner);
+
+      await scoreboard.waitForPageCount(3, 20000);
+
+      // Pick a token whose owner is NOT on page 0 (forces a real jump).
+      // Most-recently-scanned owner is on page 0 (sorted descending by
+      // lastExposed). Use the first-scanned owner (oldest → last page).
+      const targetOwner = detectiveTokens[0].owner;
+      const targetPage = await scoreboard.findPageContainingOwner(targetOwner);
+      expect(targetPage).toBeGreaterThan(0);
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.waitForScoreboardOwner(targetOwner);
+      await gmScanner.jumpScoreboardToOwner(targetOwner);
+
+      await scoreboard.waitForPageIndex(targetPage);
+      const owners = await scoreboard.getCurrentPageOwners();
+      expect(owners).toContain(targetOwner);
+    } finally {
+      await sbPage.close();
+      await gmPage.close();
+      await sbContext.close();
+      await gmContext.close();
+    }
+  });
+
 });
