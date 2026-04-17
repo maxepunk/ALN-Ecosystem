@@ -43,7 +43,7 @@ npm run test:contract     # Contract tests (parallel, 4 workers)
 npm run test:integration  # Sequential (~5 min)
 
 # E2E (requires orchestrator running)
-npm run test:e2e          # Playwright (2 workers, ~4-5 min)
+npm run test:e2e          # Playwright (1 worker, ~30 min full suite on Pi 5)
 npx playwright test flows/00-smoke  # Specific suite
 npx playwright test --debug         # Step-through debugger
 
@@ -78,7 +78,7 @@ npm run health:api        # Check orchestrator only
 - Use `resetAllServicesForTesting()` helper in integration tests to prevent listener leaks
 - E2E tests require orchestrator running: `npm run dev:full`
 - E2E uses lightweight fixtures (`tests/e2e/fixtures/`) not production token data
-- E2E uses 2 workers (`--workers=2` in npm script overrides playwright.config.js default of 1)
+- E2E uses 1 worker (`--workers=1` in `test:e2e` npm script; `test:e2e:fast` uses `--workers=3` for speed runs). Sequential execution is required because each test manages its own orchestrator lifecycle.
 - E2E `GMScannerPage.createSession()` waits for `.session-status--setup` (Phase 1 lifecycle). `createSessionWithTeams()` then calls `startGame()` to transition to active. If session lifecycle states change, update locators in `tests/e2e/helpers/page-objects/GMScannerPage.js`.
 
 **Shared Mock Factories:**
