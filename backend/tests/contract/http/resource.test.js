@@ -100,7 +100,7 @@ describe('GET /api/assets/images/:file', () => {
     const response = await request(app.app).get('/api/assets/images/..%2F..%2Fetc%2Fpasswd.bmp');
     // Express decodes %2F; regex rejects anything outside [a-z0-9_]+.
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe('INVALID_TOKEN_ID');
+    expect(response.body.error).toBe('VALIDATION_ERROR');
   });
 
   it('returns 400 on uppercase/invalid characters', async () => {
