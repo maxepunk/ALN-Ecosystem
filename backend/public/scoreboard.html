@@ -787,6 +787,7 @@
             pages: [],                        // Array of arrays of owner names per page
             currentPage: 0,                   // Current page index
             pageCycleTimer: null,             // setInterval ID for page cycling
+            manualPauseTimer: null,           // setTimeout ID: pauses auto-cycle after GM manual nav
             displayMode: 'SCOREBOARD',
             kioskMode: false,
             countdown: {                      // Game countdown state
@@ -1153,9 +1154,16 @@
         // ============================================
         // PAGE CYCLING (Task 11)
         // ============================================
+        // How long to suspend auto-cycling after the GM manually navigates
+        // (Prev/Next or Jump to Character). Gives the GM time to read.
+        const MANUAL_PAUSE_MS = 60000;
+
         function startPageCycling() {
             stopPageCycling();
             if (state.pages.length <= 1) return;
+            // Respect the manual-pause window — don't start a cycle timer
+            // while the GM is reading a specific page.
+            if (state.manualPauseTimer) return;
 
             // Adaptive interval: 2-3 pages = 18s, 4+ = 12s
             const interval = state.pages.length <= 3 ? 18000 : 12000;
@@ -1173,24 +1181,54 @@
             }
         }
 
-        function transitionToPage(pageIndex) {
-            if (pageIndex === state.currentPage) return;
+        function clearManualPause() {
+            if (state.manualPauseTimer) {
+                clearTimeout(state.manualPauseTimer);
+                state.manualPauseTimer = null;
+            }
+        }
 
-            // Fade-to-black transition
-            elements.evidencePage.classList.add('evidence-page--transitioning');
+        /**
+         * Transition to the given evidence page with a fade animation.
+         *
+         * @param {number} pageIndex
+         * @param {Object} [opts]
+         * @param {boolean} [opts.manual=false] - GM-driven navigation: suspends
+         *   auto-cycling for MANUAL_PAUSE_MS (resumes automatically). A manual
+         *   transition to the same page still extends the pause window — the
+         *   GM clicked deliberately.
+         */
+        function transitionToPage(pageIndex, { manual = false } = {}) {
+            if (!Array.isArray(state.pages) || state.pages.length === 0) return;
+            const sameTarget = pageIndex === state.currentPage;
+            // Auto-cycle hitting the current page is a no-op; manual clicks on
+            // the current page still reset the pause window.
+            if (sameTarget && !manual) return;
 
-            setTimeout(() => {
-                state.currentPage = pageIndex;
-                renderPage(pageIndex);
-                renderPageDots();
-            }, 200);  // Halfway through 400ms animation
+            stopPageCycling();
+            if (manual) clearManualPause();
 
-            setTimeout(() => {
-                elements.evidencePage.classList.remove('evidence-page--transitioning');
-            }, 400);
+            if (!sameTarget) {
+                elements.evidencePage.classList.add('evidence-page--transitioning');
+                setTimeout(() => {
+                    state.currentPage = pageIndex;
+                    renderPage(pageIndex);
+                    renderPageDots();
+                }, 200);  // Halfway through 400ms animation
+                setTimeout(() => {
+                    elements.evidencePage.classList.remove('evidence-page--transitioning');
+                }, 400);
+            }
 
-            // Reset cycle timer so this page gets full display time
-            startPageCycling();
+            if (manual) {
+                state.manualPauseTimer = setTimeout(() => {
+                    state.manualPauseTimer = null;
+                    startPageCycling();
+                }, MANUAL_PAUSE_MS);
+            } else {
+                // Reset cycle timer so this page gets full display time.
+                startPageCycling();
+            }
         }
 
         // Recalculate pages on resize
@@ -1282,6 +1320,7 @@
                 state.pages = [];
                 state.currentPage = 0;
                 stopPageCycling();
+                clearManualPause();
                 stopCountdown();
             }
             state.sessionId = newSessionId;
@@ -1609,6 +1648,32 @@
                 const data = eventData.data;
                 console.log('[Scoreboard] Display mode event:', data);
                 handleDisplayMode(data);
+            });
+
+            // GM-driven evidence page navigation
+            state.socket.on('scoreboard:page', (eventData) => {
+                const data = eventData?.data;
+                if (!data || !Array.isArray(state.pages) || state.pages.length === 0) {
+                    return;
+                }
+                let target = state.currentPage;
+                if (data.action === 'next') {
+                    target = (state.currentPage + 1) % state.pages.length;
+                } else if (data.action === 'prev') {
+                    target = (state.currentPage - 1 + state.pages.length) % state.pages.length;
+                } else if (data.action === 'owner' && typeof data.owner === 'string') {
+                    const ownerPage = state.pages.findIndex(p => p.includes(data.owner));
+                    if (ownerPage < 0) {
+                        // Owner not on this scoreboard's pages — no-op.
+                        console.log('[Scoreboard] scoreboard:page owner not present:', data.owner);
+                        return;
+                    }
+                    target = ownerPage;
+                } else {
+                    return;
+                }
+                console.log('[Scoreboard] Manual page navigation:', data.action, data.owner || '', '→ page', target);
+                transitionToPage(target, { manual: true });
             });
         }
 

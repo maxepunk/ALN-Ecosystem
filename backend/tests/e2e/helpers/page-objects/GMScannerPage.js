@@ -188,6 +188,14 @@ class GMScannerPage {
     this.gameClockDisplay = page.locator('#game-clock-display');
     this.activeCuesList = page.locator('#active-cues-list');
     this.nowPlayingSection = page.locator('#now-playing-section');
+
+    // Scoreboard Evidence Navigation (PR #10 - Admin panel)
+    this.scoreboardEvidenceSection = page.locator('#scoreboard-evidence-section');
+    this.scoreboardEvidenceHint = page.locator('#scoreboard-evidence-hint');
+    this.scoreboardPrevBtn = page.locator('#scoreboard-prev-btn');
+    this.scoreboardNextBtn = page.locator('#scoreboard-next-btn');
+    this.scoreboardJumpBtn = page.locator('#scoreboard-jump-btn');
+    this.scoreboardOwnerDropdown = page.locator('#scoreboard-owner-dropdown');
   }
 
   /**
@@ -1770,6 +1778,75 @@ class GMScannerPage {
       { timeout }
     );
   }
+
+  // ============================================
+  // SCOREBOARD EVIDENCE NAVIGATION (PR #10)
+  // ============================================
+
+  /**
+   * Read enabled/disabled state of all four scoreboard evidence controls.
+   * @returns {Promise<{prev: boolean, next: boolean, jump: boolean, dropdown: boolean}>}
+   */
+  async scoreboardControlsEnabled() {
+    return {
+      prev: !(await this.scoreboardPrevBtn.isDisabled()),
+      next: !(await this.scoreboardNextBtn.isDisabled()),
+      jump: !(await this.scoreboardJumpBtn.isDisabled()),
+      dropdown: !(await this.scoreboardOwnerDropdown.isDisabled()),
+    };
+  }
+
+  /**
+   * Read all owner values in the Jump-to-Character dropdown
+   * (excludes the empty placeholder option).
+   * @returns {Promise<string[]>}
+   */
+  async scoreboardDropdownOptions() {
+    return await this.scoreboardOwnerDropdown.evaluate(sel =>
+      Array.from(sel.options).map(o => o.value).filter(v => v !== '')
+    );
+  }
+
+  /**
+   * Click Next on the scoreboard evidence nav.
+   */
+  async clickScoreboardNext() {
+    await this.scoreboardNextBtn.click();
+  }
+
+  /**
+   * Click Prev on the scoreboard evidence nav.
+   */
+  async clickScoreboardPrev() {
+    await this.scoreboardPrevBtn.click();
+  }
+
+  /**
+   * Select an owner from the dropdown and click Jump.
+   * @param {string} owner - Character owner name (must be a dropdown option)
+   */
+  async jumpScoreboardToOwner(owner) {
+    await this.scoreboardOwnerDropdown.selectOption(owner);
+    await this.scoreboardJumpBtn.click();
+  }
+
+  /**
+   * Wait until an owner appears in the dropdown.
+   * @param {string} owner
+   * @param {number} timeout
+   */
+  async waitForScoreboardOwner(owner, timeout = 10000) {
+    await this.page.waitForFunction(
+      (o) => {
+        const dd = document.getElementById('scoreboard-owner-dropdown');
+        if (!dd) return false;
+        return Array.from(dd.options).some(opt => opt.value === o);
+      },
+      owner,
+      { timeout }
+    );
+  }
+
 }
 
 module.exports = { GMScannerPage };

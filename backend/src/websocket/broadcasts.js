@@ -8,6 +8,7 @@ const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
 const { buildSyncFullPayload, buildHeldItemsState } = require('./syncHelpers');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
+const scoreboardControlService = require('../services/scoreboardControlService');
 
 // Module-level listener tracking for cleanup
 const activeListeners = [];
@@ -434,6 +435,13 @@ function setupBroadcastListeners(io, services) {
       logger.debug('Broadcasted display:mode', { mode: data.mode });
     });
   }
+
+  // Scoreboard page navigation events (GM-driven manual scroll) — delivered
+  // to the `gm` room (GM scanners ignore; SCOREBOARD_* clients act on it).
+  addTrackedListener(scoreboardControlService, 'scoreboard:page:requested', (data) => {
+    emitToRoom(io, 'gm', 'scoreboard:page', data);
+    logger.debug('Broadcasted scoreboard:page', { action: data.action, owner: data.owner });
+  });
 
   // ============================================================
   // UNIFIED service:state BROADCASTS (sole push mechanism for service domains)
