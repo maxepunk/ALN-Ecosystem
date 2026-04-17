@@ -77,7 +77,7 @@ npm run health:api        # Check orchestrator only
 - Integration tests MUST run sequentially (`--runInBand`) to prevent state contamination
 - Use `resetAllServicesForTesting()` helper in integration tests to prevent listener leaks
 - E2E tests require orchestrator running: `npm run dev:full`
-- E2E uses lightweight fixtures (`tests/e2e/fixtures/`) not production token data
+- E2E uses production token data via `/api/tokens` (fetched in-test by `selectTestTokens()` / `selectDetectiveTokens()` helpers). The `tests/e2e/fixtures/test-tokens.json` fixture is deprecated (lacks `owner`/`summary` fields, README marks it "legacy minimal token set"). E2E DOES use video file fixtures under `tests/e2e/fixtures/test-videos/`.
 - E2E uses 1 worker (`--workers=1` in `test:e2e` npm script; `test:e2e:fast` uses `--workers=3` for speed runs). Sequential execution is required because each test manages its own orchestrator lifecycle.
 - E2E `GMScannerPage.createSession()` waits for `.session-status--setup` (Phase 1 lifecycle). `createSessionWithTeams()` then calls `startGame()` to transition to active. If session lifecycle states change, update locators in `tests/e2e/helpers/page-objects/GMScannerPage.js`.
 
