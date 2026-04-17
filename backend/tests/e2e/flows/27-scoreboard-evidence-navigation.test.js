@@ -362,4 +362,57 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     }
   });
 
+  // ====================================================
+  // TEST 6: Auto-cycle pauses after manual navigation
+  // ====================================================
+
+  test('manual navigation suspends the auto-cycle timer', async () => {
+    const sbContext = await createBrowserContext(browser, 'desktop', {
+      baseURL: orchestratorInfo.url,
+      viewport: SMALL_VIEWPORT
+    });
+    const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const sbPage = await createPage(sbContext);
+    const gmPage = await createPage(gmContext);
+    const scoreboard = new ScoreboardPage(sbPage);
+
+    try {
+      await scoreboard.goto(orchestratorInfo.url);
+      await scoreboard.waitForConnection(10000);
+
+      const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.createSessionWithTeams('Pause Test', [TEAM]);
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList(TEAM);
+      await scanAllTokens(gmScanner);
+      await scoreboard.waitForPageCount(3, 20000);
+
+      // Pre-manual: manualPauseTimer is null, auto-cycle is running
+      expect(await scoreboard.isManualPauseActive()).toBe(false);
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.clickScoreboardNext();
+      await scoreboard.waitForPageIndex(1);
+
+      // Post-manual: manualPauseTimer MUST be active
+      expect(await scoreboard.isManualPauseActive()).toBe(true);
+
+      // Observe for 15s — longer than the 12-18s auto-cycle interval.
+      // Page index must NOT change.
+      await sbPage.waitForTimeout(15000);
+      expect(await scoreboard.getCurrentPageIndex()).toBe(1);
+      expect(await scoreboard.isManualPauseActive()).toBe(true);
+    } finally {
+      await sbPage.close();
+      await gmPage.close();
+      await sbContext.close();
+      await gmContext.close();
+    }
+  });
+
 });
