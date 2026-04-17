@@ -254,8 +254,57 @@ async function selectTestTokens(orchestratorUrl) {
   return selected;
 }
 
+/**
+ * Select tokens suitable for scoreboard evidence-navigation testing.
+ *
+ * Scoreboard evidence pagination is owner-driven (one card per distinct
+ * character). Tokens must have: `owner` (populates getExposedOwners),
+ * `summary` (renders realistically in evidence entries), and the scoring
+ * fields (persists as a detective transaction).
+ *
+ * Ordering is deterministic by owner name so page layouts are repeatable
+ * across test runs at a fixed viewport.
+ *
+ * @param {string} orchestratorUrl - Backend URL
+ * @param {Object} [opts]
+ * @param {number} [opts.count=10] - Distinct-owner tokens to return
+ * @returns {Promise<Array<Object>>} Tokens, one per unique owner
+ * @throws {Error} When fewer than `count` qualifying tokens exist
+ */
+async function selectDetectiveTokens(orchestratorUrl, { count = 10 } = {}) {
+  const tokens = await fetchTokenDatabase(orchestratorUrl);
+
+  const qualifying = Object.values(tokens).filter(t =>
+    t.owner && t.summary && t.SF_MemoryType && t.SF_ValueRating
+  );
+
+  // Deduplicate by owner. Iterate in a stable tokenId order so "first
+  // token per owner" is deterministic regardless of JSON key order.
+  const byOwner = new Map();
+  for (const t of [...qualifying].sort((a, b) => a.SF_RFID.localeCompare(b.SF_RFID))) {
+    if (!byOwner.has(t.owner)) byOwner.set(t.owner, t);
+  }
+
+  const selected = [...byOwner.values()]
+    .sort((a, b) => a.owner.localeCompare(b.owner))
+    .slice(0, count);
+
+  if (selected.length < count) {
+    throw new Error(
+      `selectDetectiveTokens: need ${count} distinct-owner tokens with ` +
+      `summary + scoring fields. Found ${selected.length} ` +
+      `(pool: ${qualifying.length}, distinct owners: ${byOwner.size}).`
+    );
+  }
+
+  console.log(`✓ Selected ${selected.length} detective tokens: ` +
+    selected.map(t => `${t.SF_RFID}→${t.owner}`).join(', '));
+  return selected;
+}
+
 module.exports = {
   selectTestTokens,
+  selectDetectiveTokens,
   fetchTokenDatabase,
   findGroupTokens
 };
