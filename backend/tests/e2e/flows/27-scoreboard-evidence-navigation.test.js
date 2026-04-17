@@ -161,4 +161,66 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     }
   });
 
+  // ====================================================
+  // TEST 3: Next/Prev navigate scoreboard pages
+  // ====================================================
+
+  test('Next and Prev advance the scoreboard through evidence pages', async () => {
+    const sbContext = await createBrowserContext(browser, 'desktop', {
+      baseURL: orchestratorInfo.url,
+      viewport: SMALL_VIEWPORT
+    });
+    const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const sbPage = await createPage(sbContext);
+    const gmPage = await createPage(gmContext);
+    const scoreboard = new ScoreboardPage(sbPage);
+
+    try {
+      await scoreboard.goto(orchestratorInfo.url);
+      await scoreboard.waitForConnection(10000);
+
+      const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+      await gmScanner.createSessionWithTeams('Nav Test', [TEAM]);
+
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList(TEAM);
+      await scanAllTokens(gmScanner);
+
+      // Wait for pagination to settle (≥3 pages expected at 600x500 with 10 owners)
+      await scoreboard.waitForPageCount(3, 20000);
+      const pageCount = await scoreboard.getPageCount();
+      console.log(`Scoreboard at ${SMALL_VIEWPORT.width}x${SMALL_VIEWPORT.height} produced ${pageCount} pages`);
+      expect(pageCount).toBeGreaterThanOrEqual(3);
+
+      // Confirm starting page is 0 (initial render)
+      expect(await scoreboard.getCurrentPageIndex()).toBe(0);
+
+      // GM navigates
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.clickScoreboardNext();
+      await scoreboard.waitForPageIndex(1);
+
+      await gmScanner.clickScoreboardNext();
+      await scoreboard.waitForPageIndex(2);
+
+      await gmScanner.clickScoreboardPrev();
+      await scoreboard.waitForPageIndex(1);
+
+      // Wraparound: Prev from page 0 goes to last page
+      await gmScanner.clickScoreboardPrev();  // 1 → 0
+      await scoreboard.waitForPageIndex(0);
+      await gmScanner.clickScoreboardPrev();  // 0 → last
+      await scoreboard.waitForPageIndex(pageCount - 1);
+    } finally {
+      await sbPage.close();
+      await gmPage.close();
+      await sbContext.close();
+      await gmContext.close();
+    }
+  });
+
 });
