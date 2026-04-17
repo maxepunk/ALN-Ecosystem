@@ -350,7 +350,7 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
       // proved viewport independence. If both happen to be index 0,
       // the test still validates the contract.
       if (largeTargetPage !== smallTargetPage) {
-        console.log(`✓ Viewport drift confirmed: large p${largeTargetPage} vs small p${smallTargetPage}`);
+        console.log(`Viewport drift confirmed: large p${largeTargetPage} vs small p${smallTargetPage}`);
       }
     } finally {
       await largePage.close();

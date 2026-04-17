@@ -443,6 +443,11 @@ class ScoreboardPage {
   // ============================================
   // EVIDENCE PAGE NAVIGATION (PR #10)
   // ============================================
+  // These helpers reach into scoreboard.html's top-level `state` global
+  // (classic script, declared at `public/scoreboard.html` as `const state = {...}`).
+  // If scoreboard.html is ever refactored to a module or IIFE, all helpers
+  // below break at once — grep for `state.currentPage`, `state.pages`, and
+  // `state.manualPauseTimer` before changing scoreboard.html's script scope.
 
   /**
    * Get current evidence page index (0-based).
