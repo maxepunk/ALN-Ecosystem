@@ -649,6 +649,18 @@ DISPLAY=:0 cvlc --verbose 2 --play-and-exit video.mp4 2>&1 | grep -i "v4l2\|Hwac
 
 **Key Files:** `src/routes/scanRoutes.js`, `contracts/openapi.yaml`
 
+### Spotify Wedged on IPv6 Dealer (After LAN Event)
+**Symptoms:** spotifyd logs `starting dealer failed: Network/Host unreachable`; `org.mpris.MediaPlayer2.spotifyd.*` missing from D-Bus (only `rs.spotifyd.*` present); backend spotify health flaps or stuck `down`; GM `spotify:*` commands rejected pre-dispatch.
+
+**Debug:**
+1. `ip -6 route show default` - if an RA-learned default route is present on eth0, that's the problem
+2. `sudo ip -6 route del default` - immediate recovery; backend re-heals within ~15s via health revalidation
+3. `nmcli -g ipv6.method connection show "Wired connection 1"` should return `link-local` - the structural fix
+
+**Cause & prevention:** librespot's dealer lacks address-family fallback — a broken IPv6 default route wedges spotifyd on an unreachable v6 endpoint. eth0 uses `ipv6.method=link-local` in NM (persisted at `/etc/NetworkManager/system-connections/Wired connection 1.nmconnection`) to reject all RAs at the kernel layer. **Do not revert** unless the Pi moves to a LAN with trusted IPv6.
+
+**Key Files:** `src/services/spotifyService.js`, `/etc/NetworkManager/system-connections/Wired connection 1.nmconnection`
+
 ## Post-Session Analysis
 
 ### Session Validation Tool
