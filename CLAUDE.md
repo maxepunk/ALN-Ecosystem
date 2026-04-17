@@ -418,6 +418,18 @@ npm run session:validate latest > report.md  # Save report
 2. Check backend logs for duplicate detection
 3. Verify WebSocket `sync:full` event sent after reconnect
 
+### ESP32 Asset Sync Issues
+**Symptoms:** CYD scanner shows `placeholder.bmp` for known tokens; boot log reports asset-sync failures
+
+**Debug:**
+1. `curl -k https://[IP]:3000/api/assets/manifest` — verify backend has a manifest (404 means `sync_notion_to_tokens.py` was never run, or ran without `generate_asset_manifest.py` reachable)
+2. `python3 scripts/generate_asset_manifest.py` — regenerate the manifest from whatever BMPs are already on disk (doesn't touch Notion)
+3. On device, serial CONFIG command — confirm `SYNC_ASSETS=true` in `config.txt`
+4. Check boot log for `[ASSET-SVC]` lines; `sha1 mismatch`/`short read`/`size mismatch` all auto-retry on next boot
+5. If manifest is enormous (>128 KB), the device will refuse it — see `limits::MAX_MANIFEST_SIZE`
+
+**Key Files:** `scripts/generate_asset_manifest.py`, `backend/src/routes/resourceRoutes.js` (asset endpoints), `arduino-cyd-player-scanner/ALNScanner_v5/services/AssetService.h`
+
 ### Post-Session Analysis
 **Tool:** `npm run session:validate latest` (from backend/)
 **Purpose:** Detect scoring discrepancies, video issues, duplicate handling bugs after a game session.
