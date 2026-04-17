@@ -8,6 +8,7 @@ const router = express.Router();
 const logger = require('../utils/logger');
 const sessionService = require('../services/sessionService');
 const DeviceConnection = require('../models/deviceConnection');
+const { getPosixTimezone } = require('../utils/timezone');
 
 /**
  * GET /health
@@ -22,12 +23,18 @@ const DeviceConnection = require('../models/deviceConnection');
  */
 router.get('/health', async (req, res) => {
   try {
-    // Basic health check response
+    // Basic health check response. The `timezone` field is a POSIX TZ
+    // string auto-derived from the host's system timezone (see
+    // src/utils/timezone.js). ESP32 scanners (and any client without
+    // local TZ config) apply this so scan timestamps render in the
+    // deployment's local time. Falls back to "UTC0" if the host zoneinfo
+    // cannot be read.
     const health = {
       status: 'online',
       version: process.env.npm_package_version || '1.0.0',
       uptime: process.uptime(),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      timezone: getPosixTimezone()
     };
 
     // Optional device tracking via query params

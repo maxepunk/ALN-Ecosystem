@@ -392,4 +392,66 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
       });
     });
   });
+
+  describe('session.playerScans persistence', () => {
+    test('persists each valid entry to session.playerScans', async () => {
+      const before = sessionService.currentSession.playerScans.length;
+
+      await request(app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: 'persist-multi',
+          transactions: [
+            { tokenId: 'kaa001', deviceId: 'SCANNER_001', deviceType: 'esp32', timestamp: '2026-04-16T23:10:00.000-07:00' },
+            { tokenId: 'kaa002', deviceId: 'SCANNER_001', deviceType: 'esp32', timestamp: '2026-04-16T23:10:05.000-07:00' }
+          ]
+        });
+
+      const after = sessionService.currentSession.playerScans;
+      expect(after.length).toBe(before + 2);
+      expect(after[before].tokenId).toBe('kaa001');
+      expect(after[before].deviceType).toBe('esp32');
+      expect(after[before].timestamp).toBe('2026-04-16T23:10:00.000-07:00');
+      expect(after[before + 1].tokenId).toBe('kaa002');
+    });
+
+    test('skips persistence for unknown tokens but persists valid ones in mixed batch', async () => {
+      const before = sessionService.currentSession.playerScans.length;
+
+      const response = await request(app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: 'persist-mixed',
+          transactions: [
+            { tokenId: 'kaa001', deviceId: 'SCANNER_001', deviceType: 'esp32' },
+            { tokenId: 'UNKNOWN_XYZ', deviceId: 'SCANNER_001', deviceType: 'esp32' }
+          ]
+        });
+
+      expect(response.body.processedCount).toBe(1);
+      expect(response.body.failedCount).toBe(1);
+
+      const after = sessionService.currentSession.playerScans;
+      expect(after.length).toBe(before + 1);
+      expect(after[before].tokenId).toBe('kaa001');
+      expect(after.some(ps => ps.tokenId === 'UNKNOWN_XYZ')).toBe(false);
+    });
+
+    test('when no active session, returns 200 without persisting', async () => {
+      await sessionService.endSession();
+
+      const response = await request(app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: 'persist-no-session',
+          transactions: [
+            { tokenId: 'kaa001', deviceId: 'SCANNER_001', deviceType: 'esp32' }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.processedCount).toBe(1);
+      expect(sessionService.currentSession).toBeNull();
+    });
+  });
 });
