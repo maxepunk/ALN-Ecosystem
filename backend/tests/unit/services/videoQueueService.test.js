@@ -905,4 +905,119 @@ describe('VideoQueueService - Queue Management', () => {
       expect(getStatusSpy.mock.calls.length).toBe(1);
     });
   });
+
+  describe('playVideo() — listener race during vlcService.playVideo() (regression for 2026-04-17 endgame cutoff)', () => {
+    let vlcService;
+    let registry;
+
+    beforeEach(() => {
+      vlcService = require('../../../src/services/vlcMprisService');
+      registry = require('../../../src/services/serviceHealthRegistry');
+      vlcService.state = 'stopped';
+      vlcService.track = null;
+
+      const fs = require('fs');
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+
+      const config = require('../../../src/config');
+      config.features.videoPlayback = true; // exercise the VLC code path
+
+      registry.report('vlc', 'healthy', 'test setup');
+
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing',
+        currentItem: 'target.mp4',
+        length: 60,
+        position: 0,
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      const config = require('../../../src/config');
+      config.features.videoPlayback = false;
+      registry.reset();
+    });
+
+    it('resolves when state:changed fires during vlcService.playVideo() execution', async () => {
+      // Simulate the production race: VLC emits state:changed while playVideo() is
+      // still running (before waitForVlcLoaded() has registered its listener).
+      //
+      // The production race is: VLC's debounced MPRIS signal fires during the
+      // OpenUri D-Bus chain inside vlcService.playVideo(). By the time the backend
+      // calls waitForVlcLoaded(), the event is gone AND vlcService.state/track may
+      // have been updated by a subsequent transient signal (e.g., a brief state
+      // glitch) so the fast-path check also misses.
+      //
+      // We simulate this by:
+      // 1. Emitting state:changed with the correct terminal state (the event the
+      //    listener MUST catch to resolve)
+      // 2. THEN mutating vlcService.track to a non-matching value so the fast-path
+      //    check inside waitForVlcLoaded() fails when it enters
+      //
+      // Pre-fix: listener registered AFTER playVideo() returns. The emit happened
+      //   with no listener. Fast-path fails (track was mutated). Wait hangs until
+      //   the 30s timeout. Promise.race resolves to 'neither' at 200ms.
+      // Post-fix: listener registered BEFORE playVideo() is called. Catches the
+      //   emit, resolves. video:started fires. Promise.race resolves to 'started'.
+      jest.spyOn(vlcService, 'playVideo').mockImplementation(async () => {
+        // Simulate VLC's debounced signal firing during the OpenUri/getStatus D-Bus chain.
+        // At this instant, state/track are the correct terminal values.
+        vlcService.state = 'playing';
+        vlcService.track = { filename: 'target.mp4', length: 60 };
+        vlcService.emit('state:changed', {
+          previous: { state: 'playing', filename: 'idle-loop.mp4' },
+          current: { state: 'playing', filename: 'target.mp4' },
+        });
+        // Yield to event loop so the emit is fully processed
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Now simulate a transient state desync: a subsequent signal mutated
+        // vlcService.track to something that doesn't match the expected filename.
+        // This defeats the fast-path check inside waitForVlcLoaded() when it
+        // eventually runs in the pre-fix code path.
+        vlcService.track = { filename: null, length: 0 };
+      });
+
+      const raceToken = new Token({
+        id: 'target',
+        name: 'Target',
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: {
+          image: null,
+          audio: null,
+          video: 'target.mp4',
+          processingImage: null,
+        },
+        metadata: { rating: 3 },
+      });
+      const item = VideoQueueItem.fromToken(raceToken, 'DEVICE_1');
+
+      // playVideo() should eventually emit video:started (not video:failed)
+      const startedPromise = new Promise(resolve => {
+        videoQueueService.once('video:started', resolve);
+      });
+      const failedPromise = new Promise(resolve => {
+        videoQueueService.once('video:failed', resolve);
+      });
+
+      // Fire-and-forget: pre-fix code will hang here for 30s waiting on
+      // waitForVlcLoaded. We don't await it so the Promise.race below can
+      // declare 'neither' at 200ms and fail the assertion cleanly.
+      // Attach .catch() to suppress unhandled rejection from the 30s timeout
+      // that eventually fires after the test ends (pre-fix only).
+      videoQueueService.playVideo(item).catch(() => {});
+
+      // Race the events: started should win. If neither fires within 200ms,
+      // that means waitForVlcLoaded missed the event (pre-fix behavior).
+      const winner = await Promise.race([
+        startedPromise.then(() => 'started'),
+        failedPromise.then(() => 'failed'),
+        new Promise(resolve => setTimeout(() => resolve('neither'), 200)),
+      ]);
+
+      expect(winner).toBe('started');
+    });
+  });
 });
