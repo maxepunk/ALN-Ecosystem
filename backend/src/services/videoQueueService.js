@@ -174,18 +174,27 @@ class VideoQueueService extends EventEmitter {
 
       // If video playback is enabled, use VLC
       if (config.features.videoPlayback) {
-        // Actually play the video through VLC
-        await vlcService.playVideo(videoPath);
-
-        // Wait for VLC to actually load and play the NEW video (condition-based waiting)
-        // ROOT CAUSE FIX: VLC's in_play doesn't immediately switch videos
-        // We need to wait for currentItem to match the expected video file
+        // RACE FIX (2026-04-17): Register the wait listener BEFORE triggering VLC.
+        // VLC's debounced state:changed signal can fire during the OpenUri/getStatus
+        // D-Bus chain inside vlcService.playVideo() — if waitForVlcLoaded() runs
+        // afterward, the event is already gone and the wait hangs until the 30s
+        // timeout. Latent since 2026-03-27 (polling→reactive), exposed by the
+        // 2026-04-17 kernel/GStreamer upgrade that shifted MPRIS signal timing.
         const expectedFilename = videoPath.split('/').pop(); // Extract filename
-        const status = await this.waitForVlcLoaded(
+        const waitPromise = this.waitForVlcLoaded(
           expectedFilename,
           'VLC to load and play new video',
-          30000  // 30s — Pi 4 needs time to buffer large video files (e.g., 1.6GB ENDGAME)
+          30000
         );
+        // Suppress unhandled-rejection if vlcService.playVideo() throws —
+        // we re-throw via the outer catch and never await waitPromise in that path.
+        waitPromise.catch(() => {});
+
+        // Trigger VLC playback. PropertiesChanged signals will arrive shortly;
+        // the listener registered above is guaranteed to catch them.
+        await vlcService.playVideo(videoPath);
+
+        const status = await waitPromise;
 
         // VLC is now playing - duration is reliable
         let duration = status.length || 0;
