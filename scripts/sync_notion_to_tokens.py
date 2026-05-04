@@ -13,8 +13,13 @@ import requests
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+# Local helper used to emit the ESP32-consumable asset manifest.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import generate_asset_manifest  # noqa: E402
 
 # Load environment variables from .env file if present
 try:
@@ -40,11 +45,15 @@ CHARACTERS_DATABASE_ID = "18c2f33d-583f-8060-a6ab-de32ff06bca2"
 
 # File paths (relative to ALN-Ecosystem root)
 ECOSYSTEM_ROOT = Path("/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem")
-ASSETS_IMAGES = ECOSYSTEM_ROOT / "aln-memory-scanner/assets/images"
-ASSETS_AUDIO = ECOSYSTEM_ROOT / "aln-memory-scanner/assets/audio"
+ASSETS_ROOT = ECOSYSTEM_ROOT / "aln-memory-scanner/assets"
+ASSETS_IMAGES = ASSETS_ROOT / "images"
+ASSETS_AUDIO = ASSETS_ROOT / "audio"
 VIDEOS_DIR = ECOSYSTEM_ROOT / "backend/public/videos"
 TOKENS_JSON = ECOSYSTEM_ROOT / "ALN-TokenData/tokens.json"
-ESP32_SD_IMAGES = ECOSYSTEM_ROOT / "arduino-cyd-player-scanner/sd-card-deploy/images"
+# NOTE: BMPs/WAVs are no longer copied into the ESP32 SD-card tree. The CYD
+# scanner now syncs them wirelessly from the backend at boot; the canonical
+# asset set lives only at ASSETS_ROOT. See
+# `/root/.claude/plans/let-s-think-about-this-flickering-bubble.md`.
 
 # Notion API headers
 headers = {
@@ -204,7 +213,7 @@ def generate_neurai_display(rfid, text):
         text: Summary text to display
 
     Returns:
-        Tuple of (pwa_path, esp32_path) for generated files
+        The canonical PWA path (relative to ECOSYSTEM_ROOT) of the written BMP
     """
     # Create image with black background
     img = Image.new('RGB', (WIDTH, HEIGHT), color='#0a0a0a')
@@ -362,20 +371,12 @@ def generate_neurai_display(rfid, text):
     brand_x = (WIDTH - brand_width) / 2
     draw.text((brand_x, HEIGHT - 16), brand_text, fill=brand_color, font=brand_font)
 
-    # Save to both PWA and ESP32 locations
+    # Save to the single canonical PWA location; the ESP32 pulls this file
+    # wirelessly from the backend at boot (see AssetService on device side).
     pwa_path = ASSETS_IMAGES / f"{rfid}.bmp"
-    esp32_path = ESP32_SD_IMAGES / f"{rfid}.bmp"
-
-    # Ensure directories exist
     pwa_path.parent.mkdir(parents=True, exist_ok=True)
-    esp32_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Save as 24-bit BMP
     img.save(pwa_path, 'BMP')
-    img.save(esp32_path, 'BMP')
-
-    return (str(pwa_path.relative_to(ECOSYSTEM_ROOT)),
-            str(esp32_path.relative_to(ECOSYSTEM_ROOT)))
+    return str(pwa_path.relative_to(ECOSYSTEM_ROOT))
 
 def parse_sf_fields(description_text):
     """
@@ -604,7 +605,7 @@ def process_token(page, character_map):
     generated_bmp = False
     if display_text and display_text.strip():
         try:
-            pwa_path, esp32_path = generate_neurai_display(rfid, display_text)
+            pwa_path = generate_neurai_display(rfid, display_text)
             print(f"   Generated NeurAI display for {rfid}")
             generated_bmp = True
         except Exception as e:
@@ -658,7 +659,9 @@ def main():
     print("=" * 60)
     print()
 
-    # Verify directories exist
+    # Verify directories exist. sd-card-deploy is no longer a write target
+    # (images/audio now sync wirelessly to the ESP32 from these canonical
+    # locations).
     print("Checking directories...")
     for path, name in [
         (ASSETS_IMAGES, "aln-memory-scanner/assets/images"),
@@ -737,6 +740,29 @@ def main():
     print(f"Writing to {TOKENS_JSON}...")
     with open(TOKENS_JSON, 'w') as f:
         json.dump(sorted_tokens, f, indent=2)
+
+    # Prune orphan BMPs/audio for tokens no longer in Notion so the canonical
+    # asset set stays aligned with tokens.json. Non-token files such as
+    # `placeholder.bmp` are preserved by the generator's filename filter.
+    print()
+    print("Pruning orphaned asset files...")
+    removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys())
+    if removed:
+        for p in removed:
+            print(f"  - removed orphan {p.relative_to(ECOSYSTEM_ROOT)}")
+        print(f"Removed {len(removed)} orphan asset file(s).")
+    else:
+        print("No orphans found.")
+
+    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot.
+    print()
+    print("Writing asset manifest...")
+    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT)
+    manifest_path = generate_asset_manifest.write_manifest(ASSETS_ROOT, manifest)
+    print(
+        f"Wrote {manifest_path.relative_to(ECOSYSTEM_ROOT)} "
+        f"(images={len(manifest['images'])}, audio={len(manifest['audio'])})"
+    )
 
     print()
     print("=" * 60)
