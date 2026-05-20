@@ -25,6 +25,7 @@ const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
 const spotifyService = require('./services/spotifyService');
+const musicService = require('./services/musicService');
 const serviceHealthRegistry = require('./services/serviceHealthRegistry');
 
 // Import routes (6 files after health extraction)
@@ -269,6 +270,7 @@ async function initializeServices() {
     serviceHealthRegistry.startRevalidation({
       vlc: vlcService,
       spotify: spotifyService,
+      music: musicService,
       sound: soundService,
       bluetooth: bluetoothService,
       audio: audioRoutingService,

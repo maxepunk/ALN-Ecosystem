@@ -22,9 +22,9 @@ describe('ServiceHealthRegistry', () => {
       }
     });
 
-    it('should have 8 registered services', () => {
+    it('should have 9 registered services', () => {
       const snapshot = registry.getSnapshot();
-      expect(Object.keys(snapshot)).toHaveLength(8);
+      expect(Object.keys(snapshot)).toHaveLength(9);
     });
   });
 
@@ -164,10 +164,10 @@ describe('ServiceHealthRegistry', () => {
       expect(snapshot).not.toBeInstanceOf(Map);
     });
 
-    it('should include all 8 services', () => {
+    it('should include all 9 services', () => {
       const snapshot = registry.getSnapshot();
       expect(Object.keys(snapshot)).toEqual(
-        expect.arrayContaining(['vlc', 'spotify', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'])
+        expect.arrayContaining(['vlc', 'spotify', 'music', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'])
       );
     });
 

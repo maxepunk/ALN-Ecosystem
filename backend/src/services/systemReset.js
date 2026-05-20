@@ -287,6 +287,7 @@ async function performSystemReset(io, services) {
   serviceHealthRegistry.startRevalidation({
     vlc: require('./vlcMprisService'),
     spotify: require('./spotifyService'),
+    music: require('./musicService'),
     sound: require('./soundService'),
     bluetooth: require('./bluetoothService'),
     audio: require('./audioRoutingService'),
