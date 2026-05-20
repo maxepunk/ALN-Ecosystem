@@ -1034,13 +1034,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
         '503':
           description: Music service not connected
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
 
   /api/music/playlists:
     get:
@@ -1070,7 +1076,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
 
     put:
       tags:
@@ -1117,7 +1126,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
 
 components:
   schemas:
