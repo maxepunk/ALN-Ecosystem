@@ -72,6 +72,27 @@ class MusicService extends EventEmitter {
   async next()     { this._assertConnected(); await this._mpd.sendCommand('next'); }
   async previous() { this._assertConnected(); await this._mpd.sendCommand('previous'); }
 
+  async setVolume(v) {
+    this._assertConnected();
+    if (typeof v !== 'number' || !Number.isFinite(v)) {
+      throw new Error(`Invalid volume: ${v}`);
+    }
+    if (v < 0 || v > 100) {
+      throw new Error(`Volume out of range: ${v}`);
+    }
+    await this._mpd.sendCommand(`setvol ${Math.round(v)}`);
+  }
+
+  async setShuffle(enabled) {
+    this._assertConnected();
+    await this._mpd.sendCommand(`random ${enabled ? 1 : 0}`);
+  }
+
+  async setLoop(enabled) {
+    this._assertConnected();
+    await this._mpd.sendCommand(`repeat ${enabled ? 1 : 0}`);
+  }
+
   _wireMpdEvents() {
     // Filled in later tasks (idle event handlers)
   }

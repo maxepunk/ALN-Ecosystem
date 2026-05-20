@@ -142,3 +142,52 @@ describe('MusicService — transports', () => {
     await expect(service.play()).rejects.toThrow(/not connected/i);
   });
 });
+
+describe('MusicService — settings', () => {
+  let service;
+  beforeEach(async () => {
+    service = new MusicService();
+    await service.init();
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('');
+  });
+
+  it('setVolume(50) rounds and sends "setvol 50"', async () => {
+    await service.setVolume(50);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('setvol 50');
+  });
+
+  it('setVolume(50.7) rounds to 51', async () => {
+    await service.setVolume(50.7);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('setvol 51');
+  });
+
+  it('setVolume rejects out-of-range values', async () => {
+    await expect(service.setVolume(-1)).rejects.toThrow(/range/i);
+    await expect(service.setVolume(101)).rejects.toThrow(/range/i);
+  });
+
+  it('setVolume rejects non-numeric values', async () => {
+    await expect(service.setVolume('loud')).rejects.toThrow(/invalid/i);
+    await expect(service.setVolume(NaN)).rejects.toThrow(/invalid/i);
+  });
+
+  it('setShuffle(true) sends "random 1"', async () => {
+    await service.setShuffle(true);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('random 1');
+  });
+
+  it('setShuffle(false) sends "random 0"', async () => {
+    await service.setShuffle(false);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('random 0');
+  });
+
+  it('setLoop(true) sends "repeat 1"', async () => {
+    await service.setLoop(true);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('repeat 1');
+  });
+
+  it('setLoop(false) sends "repeat 0"', async () => {
+    await service.setLoop(false);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('repeat 0');
+  });
+});
