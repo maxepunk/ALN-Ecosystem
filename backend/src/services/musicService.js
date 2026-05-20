@@ -43,6 +43,7 @@ class MusicService extends EventEmitter {
   }
 
   async cleanup() {
+    this._stopPositionPolling();
     if (this._mpd) {
       try { await this._mpd.disconnect(); } catch (_) { /* ignore */ }
       this._mpd = null;
@@ -225,12 +226,27 @@ class MusicService extends EventEmitter {
   }
 
   _startPositionPolling() {
-    // Stub — implemented in next task. Existence here prevents test crashes
-    // when player events trigger position polling start.
+    if (this._positionTimer) return;
+    this._positionTimer = setInterval(() => {
+      this._pollPosition().catch(this._logErr.bind(this));
+    }, 1000);
   }
 
   _stopPositionPolling() {
-    // Stub — implemented in next task.
+    if (this._positionTimer) {
+      clearInterval(this._positionTimer);
+      this._positionTimer = null;
+    }
+  }
+
+  async _pollPosition() {
+    if (!this._mpd || !this.connected || !this.track) return;
+    const raw = await this._mpd.sendCommand('status');
+    const status = this._parseKV(raw);
+    const pos = parseFloat(status.elapsed);
+    if (Number.isFinite(pos)) {
+      this.track.position = pos;
+    }
   }
 }
 

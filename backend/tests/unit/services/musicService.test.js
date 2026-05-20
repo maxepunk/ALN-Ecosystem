@@ -356,6 +356,43 @@ describe('MusicService — idle events', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it('starts position polling when state transitions to playing', async () => {
+    jest.useFakeTimers();
+    try {
+      service._mpd.sendCommand = jest.fn(async (cmd) => {
+        if (cmd === 'status') return 'state: playing\nsong: 0\nelapsed: 30\nduration: 180\n';
+        if (cmd === 'currentsong') return 'file: a.mp3\nTitle: A\nArtist: x\n';
+        return '';
+      });
+      service._mpd.emit('system-player');
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      const callsAfterEvent = service._mpd.sendCommand.mock.calls.length;
+      jest.advanceTimersByTime(1100);
+      await Promise.resolve();
+      expect(service._mpd.sendCommand.mock.calls.length).toBeGreaterThan(callsAfterEvent);
+      service._stopPositionPolling();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('stops position polling when state leaves playing', async () => {
+    jest.useFakeTimers();
+    try {
+      service._mpd.sendCommand = jest.fn(async (cmd) => {
+        if (cmd === 'status') return 'state: paused\nelapsed: 30\nduration: 180\n';
+        return 'file: a.mp3\nTitle: A\n';
+      });
+      service._startPositionPolling();
+      service._stopPositionPolling();
+      const callsBefore = service._mpd.sendCommand.mock.calls.length;
+      jest.advanceTimersByTime(2000);
+      expect(service._mpd.sendCommand.mock.calls.length).toBe(callsBefore);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('clears track when no file is playing', async () => {
     service.track = { file: 'old.mp3', title: 'Old', artist: '', album: '', position: 0, duration: 0 };
     service._mpd.sendCommand = jest.fn(async (cmd) => {
