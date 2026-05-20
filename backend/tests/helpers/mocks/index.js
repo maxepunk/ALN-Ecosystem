@@ -13,4 +13,5 @@ module.exports = {
   ...require('./audioRoutingService'),
   ...require('./lightingService'),
   ...require('./offlineQueueService'),
+  ...require('./musicService'),
 };
