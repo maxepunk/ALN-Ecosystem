@@ -29,6 +29,7 @@ const logger = require('../utils/logger');
  * @param {Object} [options.gameClockService]
  * @param {Object} [options.cueEngineService]
  * @param {Object} [options.spotifyService]
+ * @param {Object} [options.musicService]
  * @param {Object} [options.soundService]
  * @param {Object} [options.deviceFilter] - Optional filter options
  * @param {boolean} [options.deviceFilter.connectedOnly=false] - Only include connected devices
@@ -44,6 +45,7 @@ async function buildSyncFullPayload({
   gameClockService,
   cueEngineService,
   spotifyService,
+  musicService,
   soundService,
   deviceFilter = {},
 }) {
@@ -117,6 +119,9 @@ async function buildSyncFullPayload({
   // Phase 2: Spotify state
   const spotify = buildSpotifyState(spotifyService);
 
+  // Music state (MPD)
+  const music = buildMusicState(musicService);
+
   // Phase 3: Held items (blocked by service outage or resource contention)
   const heldItems = buildHeldItemsState(cueEngineService, videoQueueService);
 
@@ -142,6 +147,7 @@ async function buildSyncFullPayload({
     gameClock,
     cueEngine,
     spotify,
+    music,
     heldItems,
     sound,
     displayStatus,
@@ -217,6 +223,37 @@ function buildSpotifyState(spotifyService) {
 }
 
 /**
+ * Build music state for sync:full payload.
+ * Includes playlists array so GM Scanner can populate the picker without
+ * a second round-trip. Gracefully degrades when service is unavailable.
+ *
+ * @param {Object} musicService - MusicService instance (optional)
+ * @returns {Object} Music state with playlists
+ */
+function buildMusicState(musicService) {
+  const defaultState = {
+    connected: false,
+    state: 'stopped',
+    volume: 70,
+    track: null,
+    playlist: null,
+    pausedByGameClock: false,
+    playlists: [],
+  };
+  try {
+    if (!musicService) return defaultState;
+    const state = musicService.getState();
+    const playlists = typeof musicService.getPlaylists === 'function'
+      ? musicService.getPlaylists()
+      : [];
+    return { ...state, playlists };
+  } catch (err) {
+    logger.warn('Failed to gather music state for sync:full', { error: err.message });
+    return defaultState;
+  }
+}
+
+/**
  * Build held items state for sync:full payload.
  * Combines held videos and held cues into a single array.
  * Gracefully degrades when services are unavailable.
@@ -244,4 +281,4 @@ function buildHeldItemsState(cueEngineService, videoQueueService) {
   return items;
 }
 
-module.exports = { buildSyncFullPayload, buildHeldItemsState };
+module.exports = { buildSyncFullPayload, buildHeldItemsState, buildMusicState };
