@@ -144,12 +144,30 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     expect(['healthy', 'down']).toContain(syncEvent.data.serviceHealth.vlc.status);
   });
 
-  it('should include music + playlists in sync:full', async () => {
+  it('should include music + playlists in sync:full (from real musicService, not default fallback)', async () => {
     await sessionService.createSession({
       name: 'Music Sync Test',
       teams: ['Team Alpha']
     });
     await sessionService.startGame();
+
+    // Mutate musicService BEFORE sync so we can distinguish "service was
+    // passed correctly" from "buildMusicState(undefined) returned default".
+    // Default state has volume=70, playlists=[]. If sync:full silently
+    // dropped musicService, we'd see those defaults and the assertions
+    // below would fail.
+    const musicService = require('../../src/services/musicService');
+    musicService.volume = 42;
+    musicService._playlists = new Map([
+      ['sync-test-pl', {
+        id: 'sync-test-pl',
+        name: 'Sync Test Playlist',
+        shuffle: false,
+        loop: true,
+        crossfadeMs: 1000,
+        tracks: ['fixture.mp3'],
+      }],
+    ]);
 
     scanner = await createAuthenticatedScanner(testContext.url, 'MUSIC_SYNC_GM', 'blackmarket');
 
@@ -157,12 +175,17 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     scanner.socket.emit('sync:request');
     const syncEvent = await syncPromise;
 
-    // The "recurred 4 times" bug class: every sync:full must include music
+    // The "recurred 4 times" bug class guard: shape AND non-default values
     expect(syncEvent.data.music).toBeDefined();
     expect(syncEvent.data.music).toHaveProperty('connected');
     expect(syncEvent.data.music).toHaveProperty('state');
-    expect(syncEvent.data.music).toHaveProperty('volume');
-    expect(syncEvent.data.music).toHaveProperty('playlists');
+    expect(syncEvent.data.music.volume).toBe(42);  // proves real service flowed through
     expect(Array.isArray(syncEvent.data.music.playlists)).toBe(true);
+    expect(syncEvent.data.music.playlists.length).toBeGreaterThanOrEqual(1);
+    expect(syncEvent.data.music.playlists.some(p => p.id === 'sync-test-pl')).toBe(true);
+
+    // Reset for other tests
+    musicService.reset();
+    musicService._playlists = new Map();
   });
 });

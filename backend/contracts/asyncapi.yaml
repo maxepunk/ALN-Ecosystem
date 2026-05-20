@@ -2047,7 +2047,7 @@ components:
         `video:status`, `bluetooth:device`, etc.) have been removed. All service
         state changes are delivered exclusively through this unified event.
 
-        **Domains**: spotify, video, health, bluetooth, audio, lighting, sound, gameclock, cueengine
+        **Domains**: spotify, music, video, health, bluetooth, audio, lighting, sound, gameclock, cueengine, held
       payload:
         type: object
         required:

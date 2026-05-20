@@ -27,6 +27,7 @@ class MusicService extends EventEmitter {
     this.track = null;
     this.playlist = null;
     this._pausedByGameClock = false;
+    this._stopped = false;  // set by cleanup() to short-circuit racing handlers
   }
 
   getState() {
@@ -43,6 +44,7 @@ class MusicService extends EventEmitter {
   async init() {
     const mpd2 = require('mpd2');
     const registry = require('./serviceHealthRegistry');
+    this._stopped = false;
     this._loadPlaylistsFromDisk();
     this._startPlaylistWatcher();
     try {
@@ -57,6 +59,10 @@ class MusicService extends EventEmitter {
   }
 
   async cleanup() {
+    // Set _stopped BEFORE tearing down so in-flight async handlers
+    // (e.g., _handlePlayerEvent mid-await) bail out instead of
+    // re-registering the position-polling timer.
+    this._stopped = true;
     this._stopPositionPolling();
     this._stopPlaylistWatcher();
     if (this._mpd) {
@@ -71,7 +77,18 @@ class MusicService extends EventEmitter {
     try {
       const raw = fs.readFileSync(this._playlistFile, 'utf8');
       const parsed = JSON.parse(raw);
-      this._playlists = new Map((parsed.playlists || []).map(p => [p.id, p]));
+      const logger = require('../utils/logger');
+      // Filter to structurally valid playlists so a single bad entry
+      // doesn't poison the entire Map. Each is re-validated at loadPlaylist().
+      const validPlaylists = [];
+      for (const p of (parsed.playlists || [])) {
+        if (!p || typeof p.id !== 'string' || !Array.isArray(p.tracks)) {
+          logger.warn(`[Music] skipping invalid playlist: ${p?.id || '(no id)'}`);
+          continue;
+        }
+        validPlaylists.push([p.id, p]);
+      }
+      this._playlists = new Map(validPlaylists);
     } catch (err) {
       require('../utils/logger').warn(`[Music] failed to load playlists: ${err.message}`);
       this._playlists = new Map();
@@ -99,11 +116,32 @@ class MusicService extends EventEmitter {
   }
 
   async checkConnection() {
-    if (!this._mpd) return false;
+    // Reactive reconnect: if init() failed (e.g., MPD wasn't ready when app
+    // initialized), the 15s health revalidation gives us a recovery path
+    // without restarting the orchestrator.
+    if (!this._mpd) {
+      if (this._stopped) return false;
+      try {
+        const mpd2 = require('mpd2');
+        this._mpd = await mpd2.connect({ path: this._socketPath });
+        this._wireMpdEvents();
+        this.connected = true;
+        const registry = require('./serviceHealthRegistry');
+        registry.report('music', 'healthy', 'MPD reconnected');
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
     try {
       await this._mpd.sendCommand('ping');
       return true;
     } catch (_) {
+      // Connection went stale — drop the client so next checkConnection
+      // attempts a fresh connect.
+      try { await this._mpd.disconnect(); } catch (__) { /* ignore */ }
+      this._mpd = null;
+      this.connected = false;
       return false;
     }
   }
@@ -142,13 +180,31 @@ class MusicService extends EventEmitter {
   }
 
   _quoteMpdArg(s) {
-    return `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+    const str = String(s);
+    // MPD's protocol is line-delimited; newlines/null bytes in a filename
+    // would corrupt the command stream. There is no escape for these
+    // inside a quoted string — reject at the boundary.
+    if (/[\n\r\x00]/.test(str)) {
+      throw new Error(`Invalid character in MPD argument: ${JSON.stringify(str)}`);
+    }
+    return `"${str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
   }
 
   async loadPlaylist(playlistId) {
     this._assertConnected();
     const playlist = this._playlists.get(playlistId);
     if (!playlist) throw new Error(`Unknown playlist: ${playlistId}`);
+
+    // Defensive validation — _playlists may have been populated by a
+    // hand-edited or partially-written JSON file. The PUT route validates
+    // at write time but the fs.watch reload window allows briefly
+    // inconsistent state to land here.
+    if (!Array.isArray(playlist.tracks)) {
+      throw new Error(`Playlist ${playlistId} has no tracks array`);
+    }
+    if (playlist.tracks.some(t => typeof t !== 'string')) {
+      throw new Error(`Playlist ${playlistId} contains non-string tracks`);
+    }
 
     const crossfadeSec = Math.round((playlist.crossfadeMs ?? 0) / 1000);
     const cmds = [
@@ -216,11 +272,13 @@ class MusicService extends EventEmitter {
   }
 
   async _handlePlayerEvent() {
-    if (!this._mpd) return;
+    if (!this._mpd || this._stopped) return;
     const [statusRaw, songRaw] = await Promise.all([
       this._mpd.sendCommand('status'),
       this._mpd.sendCommand('currentsong'),
     ]);
+    // Re-check after await — cleanup() may have run during the I/O window
+    if (this._stopped || !this._mpd) return;
     const status = this._parseKV(statusRaw);
     const song = this._parseKV(songRaw);
 
@@ -253,8 +311,9 @@ class MusicService extends EventEmitter {
   }
 
   async _handleMixerEvent() {
-    if (!this._mpd) return;
+    if (!this._mpd || this._stopped) return;
     const raw = await this._mpd.sendCommand('status');
+    if (this._stopped) return;
     const status = this._parseKV(raw);
     const v = parseInt(status.volume, 10);
     if (Number.isFinite(v) && v !== this.volume) {
@@ -264,8 +323,9 @@ class MusicService extends EventEmitter {
   }
 
   async _handlePlaylistEvent() {
-    if (!this._mpd) return;
+    if (!this._mpd || this._stopped) return;
     const raw = await this._mpd.sendCommand('status');
+    if (this._stopped) return;
     const status = this._parseKV(raw);
     if (this.playlist) {
       this.playlist.position = parseInt(status.song, 10) || 0;
@@ -273,7 +333,7 @@ class MusicService extends EventEmitter {
   }
 
   _startPositionPolling() {
-    if (this._positionTimer) return;
+    if (this._positionTimer || this._stopped) return;
     this._positionTimer = setInterval(() => {
       this._pollPosition().catch(this._logErr.bind(this));
     }, 1000);

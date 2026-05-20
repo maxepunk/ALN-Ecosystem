@@ -1011,6 +1011,10 @@ paths:
                       type: object
                       required:
                         - file
+                        - title
+                        - artist
+                        - album
+                        - duration
                       properties:
                         file:
                           type: string
@@ -1071,6 +1075,15 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/MusicPlaylist'
+        '500':
+          description: Server error reading playlist file
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
         '503':
           description: Playlist file not configured
           content:
@@ -1120,7 +1133,23 @@ paths:
                     type: boolean
                     example: true
         '400':
-          $ref: '#/components/responses/ValidationError'
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
+        '500':
+          description: Server error writing playlist file
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
         '503':
           description: Playlist file not configured
           content:

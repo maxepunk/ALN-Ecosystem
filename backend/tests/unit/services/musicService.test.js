@@ -102,9 +102,30 @@ describe('MusicService — lifecycle', () => {
     expect(ok).toBe(false);
   });
 
-  it('checkConnection() returns false when not initialized', async () => {
+  it('checkConnection() reconnects when _mpd is null but service not stopped', async () => {
+    // The 15s health revalidation calls checkConnection — it must recover
+    // from a startup race where init() ran before MPD's socket was ready.
+    expect(service._mpd).toBeUndefined();
+    const ok = await service.checkConnection();
+    expect(ok).toBe(true);
+    expect(service._mpd).toBeDefined();
+    expect(service.connected).toBe(true);
+  });
+
+  it('checkConnection() returns false after cleanup() (stopped)', async () => {
+    await service.init();
+    await service.cleanup();
     const ok = await service.checkConnection();
     expect(ok).toBe(false);
+  });
+
+  it('checkConnection() drops the client and returns false when ping rejects', async () => {
+    await service.init();
+    service._mpd.sendCommand = jest.fn().mockRejectedValue(new Error('broken pipe'));
+    const ok = await service.checkConnection();
+    expect(ok).toBe(false);
+    expect(service._mpd).toBeNull();
+    expect(service.connected).toBe(false);
   });
 });
 

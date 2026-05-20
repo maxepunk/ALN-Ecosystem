@@ -45,6 +45,15 @@ describe('Music — AsyncAPI contract', () => {
       expect(() => validateWebSocketEvent(cmd, 'gm:command')).not.toThrow();
     });
 
+    it('music:setLoop with enabled payload validates', () => {
+      const cmd = {
+        event: 'gm:command',
+        data: { action: 'music:setLoop', payload: { enabled: false } },
+        timestamp: new Date().toISOString(),
+      };
+      expect(() => validateWebSocketEvent(cmd, 'gm:command')).not.toThrow();
+    });
+
     it('music:loadPlaylist with playlistId payload validates', () => {
       const cmd = {
         event: 'gm:command',

@@ -51,6 +51,19 @@ const EVENT_NORMALIZERS = {
   'cue:completed': (payload) => ({ cueId: payload.cueId }),
   'sound:completed': (payload) => ({ file: payload.file }),
   'spotify:track:changed': (payload) => ({ title: payload.title, artist: payload.artist }),
+  // Music events — musicService emits these via cueEngineWiring
+  'music:track:changed': (payload) => ({
+    title: payload.track?.title ?? null,
+    artist: payload.track?.artist ?? null,
+    file: payload.track?.file ?? null,
+  }),
+  'music:playback:changed': (payload) => ({ state: payload.state }),
+  'music:playlist:changed': (payload) => ({
+    playlistId: payload.id,
+    playlistName: payload.name,
+    shuffle: payload.shuffle,
+    loop: payload.loop,
+  }),
   'gameclock:started': (payload) => ({ gameStartTime: payload.gameStartTime }),
 };
 
