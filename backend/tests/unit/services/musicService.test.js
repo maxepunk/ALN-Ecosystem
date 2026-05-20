@@ -16,13 +16,19 @@ const mpd2 = require('mpd2');
 const registry = require('../../../src/services/serviceHealthRegistry');
 const { MusicService } = require('../../../src/services/musicService');
 
+// resetMocks: true in jest.config.base.js wipes mock implementations
+// between tests, so we must re-establish the mpd2.connect impl here.
 beforeEach(() => {
   jest.spyOn(registry, 'report').mockImplementation(() => {});
-});
-
-afterEach(() => {
-  jest.restoreAllMocks();
-  mpd2.connect.mockClear();
+  mpd2.connect.mockImplementation(async () => {
+    const { EventEmitter } = require('events');
+    const client = new EventEmitter();
+    client._connected = true;
+    client.sendCommand = jest.fn().mockResolvedValue('');
+    client.sendCommands = jest.fn().mockResolvedValue([]);
+    client.disconnect = jest.fn(async () => { client._connected = false; });
+    return client;
+  });
 });
 
 describe('MusicService — construction', () => {
@@ -54,15 +60,6 @@ describe('MusicService — lifecycle', () => {
 
   beforeEach(() => {
     service = new MusicService();
-    mpd2.connect.mockImplementation(async () => {
-      const { EventEmitter } = require('events');
-      const client = new EventEmitter();
-      client._connected = true;
-      client.sendCommand = jest.fn().mockResolvedValue('');
-      client.sendCommands = jest.fn().mockResolvedValue([]);
-      client.disconnect = jest.fn(async () => { client._connected = false; });
-      return client;
-    });
   });
 
   it('init() connects mpd2 and reports healthy', async () => {
@@ -104,5 +101,44 @@ describe('MusicService — lifecycle', () => {
   it('checkConnection() returns false when not initialized', async () => {
     const ok = await service.checkConnection();
     expect(ok).toBe(false);
+  });
+});
+
+describe('MusicService — transports', () => {
+  let service;
+  beforeEach(async () => {
+    service = new MusicService();
+    await service.init();
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('');
+  });
+
+  it('play() sends "play"', async () => {
+    await service.play();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('play');
+  });
+
+  it('pause() sends "pause 1"', async () => {
+    await service.pause();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('pause 1');
+  });
+
+  it('stop() sends "stop"', async () => {
+    await service.stop();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('stop');
+  });
+
+  it('next() sends "next"', async () => {
+    await service.next();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('next');
+  });
+
+  it('previous() sends "previous"', async () => {
+    await service.previous();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('previous');
+  });
+
+  it('transports throw when not connected', async () => {
+    await service.cleanup();
+    await expect(service.play()).rejects.toThrow(/not connected/i);
   });
 });

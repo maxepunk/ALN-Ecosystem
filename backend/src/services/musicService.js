@@ -60,6 +60,18 @@ class MusicService extends EventEmitter {
     }
   }
 
+  _assertConnected() {
+    if (!this._mpd || !this.connected) {
+      throw new Error('Music service not connected');
+    }
+  }
+
+  async play()     { this._assertConnected(); await this._mpd.sendCommand('play'); }
+  async pause()    { this._assertConnected(); await this._mpd.sendCommand('pause 1'); }
+  async stop()     { this._assertConnected(); await this._mpd.sendCommand('stop'); }
+  async next()     { this._assertConnected(); await this._mpd.sendCommand('next'); }
+  async previous() { this._assertConnected(); await this._mpd.sendCommand('previous'); }
+
   _wireMpdEvents() {
     // Filled in later tasks (idle event handlers)
   }
