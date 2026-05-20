@@ -213,7 +213,8 @@ async function initializeServices() {
       gameClockService,
       cueEngineService,
       soundService,
-      spotifyService
+      spotifyService,
+      musicService
     });
 
     // Load ducking rules from routing config

@@ -21,6 +21,7 @@ const logger = require('../utils/logger');
  * @param {Object} deps.cueEngineService - Cue engine service
  * @param {Object} [deps.soundService] - Sound service (optional)
  * @param {Object} [deps.spotifyService] - Spotify service (optional, Phase 2)
+ * @param {Object} [deps.musicService]   - Music service (optional)
  */
 function setupCueEngineForwarding({
   listenerRegistry,
@@ -30,7 +31,8 @@ function setupCueEngineForwarding({
   gameClockService,
   cueEngineService,
   soundService,
-  spotifyService
+  spotifyService,
+  musicService
 }) {
   // Game clock tick → cue engine clock trigger evaluation + compound cue advancement
   listenerRegistry.addTrackedListener(gameClockService, 'gameclock:tick', (data) => {
@@ -120,6 +122,15 @@ function setupCueEngineForwarding({
     listenerRegistry.addTrackedListener(spotifyService, 'track:changed', (data) => {
       cueEngineService.handleGameEvent('spotify:track:changed', data);
     }, 'spotifyService->cueEngineService');
+  }
+
+  // Music events — enables standing cues that trigger on music state/track/playlist changes
+  if (musicService) {
+    for (const ev of ['track:changed', 'playback:changed', 'playlist:changed']) {
+      listenerRegistry.addTrackedListener(musicService, ev, (data) => {
+        cueEngineService.handleGameEvent(`music:${ev}`, data);
+      }, `musicService->${ev}->cueEngineService`);
+    }
   }
 
   logger.info('Cue engine event forwarding registered');

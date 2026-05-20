@@ -48,7 +48,8 @@ async function performSystemReset(io, services) {
     gameClockService,     // Optional (Phase 1)
     cueEngineService,     // Optional (Phase 1)
     soundService,         // Optional (Phase 1)
-    spotifyService        // Optional (Phase 2)
+    spotifyService,       // Optional (Phase 2)
+    musicService          // Optional (music feature)
   } = services;
 
   logger.info('Starting system reset');
@@ -121,6 +122,9 @@ async function performSystemReset(io, services) {
   if (spotifyService) {
     spotifyService.reset();
   }
+  if (musicService) {
+    musicService.reset();
+  }
 
   // Reset health registry (clears stale health state from previous session)
   serviceHealthRegistry.reset();
@@ -141,6 +145,7 @@ async function performSystemReset(io, services) {
     cueEngineService,
     soundService,
     spotifyService,
+    musicService,
     vlcService,
     displayControlService,
   });
@@ -179,7 +184,8 @@ async function performSystemReset(io, services) {
       gameClockService,
       cueEngineService,
       soundService,
-      spotifyService
+      spotifyService,
+      musicService
     });
   }
 
