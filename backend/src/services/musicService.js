@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const EventEmitter = require('events');
 
 class MusicService extends EventEmitter {
@@ -31,6 +32,8 @@ class MusicService extends EventEmitter {
   async init() {
     const mpd2 = require('mpd2');
     const registry = require('./serviceHealthRegistry');
+    this._loadPlaylistsFromDisk();
+    this._startPlaylistWatcher();
     try {
       this._mpd = await mpd2.connect({ path: this._socketPath });
       this._wireMpdEvents();
@@ -44,11 +47,44 @@ class MusicService extends EventEmitter {
 
   async cleanup() {
     this._stopPositionPolling();
+    this._stopPlaylistWatcher();
     if (this._mpd) {
       try { await this._mpd.disconnect(); } catch (_) { /* ignore */ }
       this._mpd = null;
     }
     this.connected = false;
+  }
+
+  _loadPlaylistsFromDisk() {
+    if (!this._playlistFile) return;
+    try {
+      const raw = fs.readFileSync(this._playlistFile, 'utf8');
+      const parsed = JSON.parse(raw);
+      this._playlists = new Map((parsed.playlists || []).map(p => [p.id, p]));
+    } catch (err) {
+      require('../utils/logger').warn(`[Music] failed to load playlists: ${err.message}`);
+      this._playlists = new Map();
+    }
+  }
+
+  _startPlaylistWatcher() {
+    if (!this._playlistFile || this._playlistWatcher) return;
+    if (!fs.existsSync(this._playlistFile)) return;
+    let debounce;
+    this._playlistWatcher = fs.watch(this._playlistFile, () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        this._loadPlaylistsFromDisk();
+        this.emit('playlists:reloaded');
+      }, 100);
+    });
+  }
+
+  _stopPlaylistWatcher() {
+    if (this._playlistWatcher) {
+      this._playlistWatcher.close();
+      this._playlistWatcher = null;
+    }
   }
 
   async checkConnection() {

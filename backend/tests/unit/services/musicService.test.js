@@ -1,3 +1,7 @@
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 jest.mock('mpd2', () => {
   const { EventEmitter } = require('events');
   class MockMpdClient extends EventEmitter {
@@ -390,6 +394,59 @@ describe('MusicService — idle events', () => {
       expect(service._mpd.sendCommand.mock.calls.length).toBe(callsBefore);
     } finally {
       jest.useRealTimers();
+    }
+  });
+
+  it('playlist file: loads playlists on init', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-music-'));
+    const plFile = path.join(tmpDir, 'music-playlists.json');
+    fs.writeFileSync(plFile, JSON.stringify({
+      playlists: [
+        { id: 'p1', name: 'P1', shuffle: false, loop: true, crossfadeMs: 1000, tracks: ['a.mp3'] },
+        { id: 'p2', name: 'P2', shuffle: true, loop: false, crossfadeMs: 0, tracks: ['b.mp3', 'c.mp3'] },
+      ],
+    }));
+    const s = new MusicService({ playlistFile: plFile });
+    await s.init();
+    try {
+      expect(s.getPlaylists()).toHaveLength(2);
+      expect(s.getPlaylists()[0].id).toBe('p1');
+      expect(s.getPlaylist('p2').tracks).toEqual(['b.mp3', 'c.mp3']);
+    } finally {
+      await s.cleanup();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('playlist file: reloads playlists when file changes', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-music-'));
+    const plFile = path.join(tmpDir, 'music-playlists.json');
+    fs.writeFileSync(plFile, JSON.stringify({
+      playlists: [{ id: 'p1', name: 'P1', shuffle: false, loop: true, crossfadeMs: 0, tracks: [] }],
+    }));
+    const s = new MusicService({ playlistFile: plFile });
+    await s.init();
+    try {
+      expect(s.getPlaylists()).toHaveLength(1);
+      fs.writeFileSync(plFile, JSON.stringify({
+        playlists: [{ id: 'new', name: 'New', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['z.mp3'] }],
+      }));
+      await new Promise(r => setTimeout(r, 250));
+      expect(s.getPlaylists()).toHaveLength(1);
+      expect(s.getPlaylists()[0].id).toBe('new');
+    } finally {
+      await s.cleanup();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('playlist file: gracefully handles missing file', async () => {
+    const s = new MusicService({ playlistFile: '/nonexistent/path/music-playlists.json' });
+    await s.init();
+    try {
+      expect(s.getPlaylists()).toEqual([]);
+    } finally {
+      await s.cleanup();
     }
   });
 
