@@ -560,6 +560,7 @@ components:
                 example:
                   vlc: { status: "healthy", message: "Connected to VLC", lastChecked: "2025-10-15T19:00:30.000Z" }
                   spotify: { status: "down", message: "Not yet checked", lastChecked: null }
+                  music: { status: "healthy", message: "MPD connected", lastChecked: "2025-10-15T19:00:30.000Z" }
               heldItems:
                 type: array
                 description: Items held due to service outage or resource contention (Phase 3). Combines held cues and held videos.
@@ -1498,6 +1499,15 @@ components:
                   - spotify:volume
                   - spotify:playlist
                   - spotify:cache:verify
+                  - music:play
+                  - music:pause
+                  - music:stop
+                  - music:next
+                  - music:previous
+                  - music:setVolume
+                  - music:setShuffle
+                  - music:setLoop
+                  - music:loadPlaylist
                   - service:check
                 example: "video:skip"
               payload:
@@ -2057,16 +2067,17 @@ components:
             properties:
               domain:
                 type: string
-                enum: [spotify, video, health, bluetooth, audio, lighting, sound, gameclock, cueengine, held]
+                enum: [spotify, music, video, health, bluetooth, audio, lighting, sound, gameclock, cueengine, held]
                 description: Service domain identifier
-                example: "spotify"
+                example: "music"
               state:
                 type: object
                 description: |
                   Full state snapshot for the domain. Shape varies by domain:
                   - **spotify**: `{connected, state, volume, track, pausedByGameClock}`
+                  - **music**: `{connected, state, volume, track, playlist, playlists[], pausedByGameClock}`
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
-                  - **health**: `{vlc: {status, message, lastChecked}, spotify: {...}, ...}` (all 8 services)
+                  - **health**: `{vlc: {status, message, lastChecked}, spotify: {...}, music: {...}, ...}` (all 9 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
                   - **audio**: `{routes, defaultSink, ducking}`
                   - **lighting**: `{connected, activeScene, scenes[]}`
