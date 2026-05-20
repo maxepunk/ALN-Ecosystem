@@ -377,7 +377,7 @@ describe('AudioRoutingService', () => {
 
     it('should reject invalid stream name', async () => {
       await expect(
-        audioRoutingService.setStreamRoute('music', 'hdmi')
+        audioRoutingService.setStreamRoute('notastream', 'hdmi')
       ).rejects.toThrow('Invalid stream name');
     });
 
@@ -403,7 +403,7 @@ describe('AudioRoutingService', () => {
     });
 
     it('should reject invalid stream name', () => {
-      expect(() => audioRoutingService.getStreamRoute('music')).toThrow('Invalid stream name');
+      expect(() => audioRoutingService.getStreamRoute('notastream')).toThrow('Invalid stream name');
     });
   });
 
@@ -578,7 +578,7 @@ describe('AudioRoutingService', () => {
 
     it('should reject invalid stream name', async () => {
       await expect(
-        audioRoutingService.applyRouting('music')
+        audioRoutingService.applyRouting('notastream')
       ).rejects.toThrow('Invalid stream name');
     });
   });

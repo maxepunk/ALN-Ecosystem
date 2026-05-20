@@ -8,6 +8,10 @@
       "sink": "hdmi",
       "fallback": "hdmi"
     },
+    "music": {
+      "sink": "hdmi",
+      "fallback": "hdmi"
+    },
     "sound": {
       "sink": "hdmi",
       "fallback": "hdmi"
@@ -23,6 +27,18 @@
     {
       "when": "sound",
       "duck": "spotify",
+      "to": 40,
+      "fadeMs": 200
+    },
+    {
+      "when": "video",
+      "duck": "music",
+      "to": 20,
+      "fadeMs": 500
+    },
+    {
+      "when": "sound",
+      "duck": "music",
       "to": 40,
       "fadeMs": 200
     }

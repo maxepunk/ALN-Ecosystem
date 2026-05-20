@@ -18,13 +18,14 @@ const { execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
 const ProcessMonitor = require('../utils/processMonitor');
 
-/** Valid stream names for Phase 1 */
-const VALID_STREAMS = ['video', 'spotify', 'sound'];
+/** Valid stream names */
+const VALID_STREAMS = ['video', 'spotify', 'music', 'sound'];
 
 /** Map stream names to application process names */
 const STREAM_APP_NAMES = {
   video: 'VLC',
   spotify: 'spotifyd',
+  music: 'aln-music',
   sound: 'pw-play',
 };
 
