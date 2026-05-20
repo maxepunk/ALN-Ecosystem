@@ -148,7 +148,89 @@ class MusicService extends EventEmitter {
   }
 
   _wireMpdEvents() {
-    // Filled in later tasks (idle event handlers)
+    this._mpd.on('system-player', () => { this._handlePlayerEvent().catch(this._logErr.bind(this)); });
+    this._mpd.on('system-mixer',  () => { this._handleMixerEvent().catch(this._logErr.bind(this)); });
+    this._mpd.on('system-playlist', () => { this._handlePlaylistEvent().catch(this._logErr.bind(this)); });
+  }
+
+  _logErr(err) {
+    require('../utils/logger').warn(`[Music] idle handler error: ${err.message}`);
+  }
+
+  _parseKV(stdout) {
+    const obj = {};
+    for (const line of String(stdout).split('\n')) {
+      const idx = line.indexOf(':');
+      if (idx === -1) continue;
+      obj[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    }
+    return obj;
+  }
+
+  async _handlePlayerEvent() {
+    if (!this._mpd) return;
+    const [statusRaw, songRaw] = await Promise.all([
+      this._mpd.sendCommand('status'),
+      this._mpd.sendCommand('currentsong'),
+    ]);
+    const status = this._parseKV(statusRaw);
+    const song = this._parseKV(songRaw);
+
+    const newState = status.state || 'stopped';
+    if (newState !== this.state) {
+      this.state = newState;
+      this.emit('playback:changed', { state: this.state });
+    }
+
+    if (song.file) {
+      const newTrack = {
+        file: song.file,
+        title: song.Title || song.file,
+        artist: song.Artist || '',
+        album: song.Album || '',
+        position: parseFloat(status.elapsed) || 0,
+        duration: parseFloat(status.duration) || 0,
+      };
+      const changed = !this.track || this.track.file !== newTrack.file
+        || this.track.title !== newTrack.title;
+      this.track = newTrack;
+      if (changed) this.emit('track:changed', { track: { ...newTrack } });
+    } else if (this.track) {
+      this.track = null;
+      this.emit('track:changed', { track: null });
+    }
+
+    if (newState === 'playing') this._startPositionPolling();
+    else this._stopPositionPolling();
+  }
+
+  async _handleMixerEvent() {
+    if (!this._mpd) return;
+    const raw = await this._mpd.sendCommand('status');
+    const status = this._parseKV(raw);
+    const v = parseInt(status.volume, 10);
+    if (Number.isFinite(v) && v !== this.volume) {
+      this.volume = v;
+      this.emit('volume:changed', { volume: v });
+    }
+  }
+
+  async _handlePlaylistEvent() {
+    if (!this._mpd) return;
+    const raw = await this._mpd.sendCommand('status');
+    const status = this._parseKV(raw);
+    if (this.playlist) {
+      this.playlist.position = parseInt(status.song, 10) || 0;
+    }
+  }
+
+  _startPositionPolling() {
+    // Stub — implemented in next task. Existence here prevents test crashes
+    // when player events trigger position polling start.
+  }
+
+  _stopPositionPolling() {
+    // Stub — implemented in next task.
   }
 }
 

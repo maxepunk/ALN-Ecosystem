@@ -297,3 +297,78 @@ describe('MusicService — game clock', () => {
     expect(service._mpd.sendCommand).not.toHaveBeenCalled();
   });
 });
+
+describe('MusicService — idle events', () => {
+  let service;
+  beforeEach(async () => {
+    service = new MusicService();
+    await service.init();
+  });
+
+  it('on "system-player" event, emits playback:changed and track:changed', async () => {
+    service._mpd.sendCommand = jest.fn(async (cmd) => {
+      if (cmd === 'status') return 'state: playing\nsong: 0\nelapsed: 12.5\nduration: 180\n';
+      if (cmd === 'currentsong') return 'file: a.mp3\nTitle: Alpha\nArtist: Test\nAlbum: TestA\n';
+      return '';
+    });
+
+    const playbackHandler = jest.fn();
+    const trackHandler = jest.fn();
+    service.on('playback:changed', playbackHandler);
+    service.on('track:changed', trackHandler);
+
+    service._mpd.emit('system-player');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+
+    expect(playbackHandler).toHaveBeenCalledWith({ state: 'playing' });
+    expect(trackHandler).toHaveBeenCalledWith({
+      track: {
+        file: 'a.mp3',
+        title: 'Alpha',
+        artist: 'Test',
+        album: 'TestA',
+        position: 12.5,
+        duration: 180,
+      },
+    });
+    expect(service.state).toBe('playing');
+    expect(service.track.title).toBe('Alpha');
+    service._stopPositionPolling();
+  });
+
+  it('on "system-mixer" event, emits volume:changed when volume changes', async () => {
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('volume: 55\n');
+    const handler = jest.fn();
+    service.on('volume:changed', handler);
+    service._mpd.emit('system-mixer');
+    await new Promise(r => setImmediate(r));
+    expect(handler).toHaveBeenCalledWith({ volume: 55 });
+    expect(service.volume).toBe(55);
+  });
+
+  it('on "system-mixer" event, does NOT emit if volume unchanged', async () => {
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('volume: 70\n');
+    const handler = jest.fn();
+    service.on('volume:changed', handler);
+    service._mpd.emit('system-mixer');
+    await new Promise(r => setImmediate(r));
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it('clears track when no file is playing', async () => {
+    service.track = { file: 'old.mp3', title: 'Old', artist: '', album: '', position: 0, duration: 0 };
+    service._mpd.sendCommand = jest.fn(async (cmd) => {
+      if (cmd === 'status') return 'state: stopped\n';
+      if (cmd === 'currentsong') return '';
+      return '';
+    });
+    const trackHandler = jest.fn();
+    service.on('track:changed', trackHandler);
+    service._mpd.emit('system-player');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    expect(service.track).toBe(null);
+    expect(trackHandler).toHaveBeenCalledWith({ track: null });
+  });
+});
