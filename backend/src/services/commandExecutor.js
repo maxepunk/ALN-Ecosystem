@@ -21,6 +21,7 @@ const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
 const spotifyService = require('./spotifyService');
+const musicService = require('./musicService');
 const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
 
@@ -55,6 +56,15 @@ const SERVICE_DEPENDENCIES = {
   'bluetooth:scan:stop': 'bluetooth',
   'audio:route:set': 'audio',
   'audio:volume:set': 'audio',
+  'music:play': 'music',
+  'music:pause': 'music',
+  'music:stop': 'music',
+  'music:next': 'music',
+  'music:previous': 'music',
+  'music:setVolume': 'music',
+  'music:setShuffle': 'music',
+  'music:setLoop': 'music',
+  'music:loadPlaylist': 'music',
 };
 
 // Lookup tables for command dispatch
@@ -652,12 +662,59 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
+      // --- Music commands (MPD) ---
+
+      case 'music:play':
+      case 'music:pause':
+      case 'music:stop':
+      case 'music:next':
+      case 'music:previous': {
+        const method = action.split(':')[1];
+        await musicService[method]();
+        resultMessage = `Music: ${method}`;
+        logger.info(`Music ${method}`, { source, deviceId });
+        break;
+      }
+
+      case 'music:setVolume': {
+        const { volume } = payload;
+        if (volume === undefined) throw new Error('volume required');
+        await musicService.setVolume(volume);
+        resultMessage = `Music volume: ${volume}`;
+        logger.info('Music volume set', { source, deviceId, volume });
+        break;
+      }
+
+      case 'music:setShuffle': {
+        await musicService.setShuffle(!!payload.enabled);
+        resultMessage = `Music shuffle: ${payload.enabled ? 'on' : 'off'}`;
+        logger.info('Music shuffle set', { source, deviceId, enabled: !!payload.enabled });
+        break;
+      }
+
+      case 'music:setLoop': {
+        await musicService.setLoop(!!payload.enabled);
+        resultMessage = `Music loop: ${payload.enabled ? 'on' : 'off'}`;
+        logger.info('Music loop set', { source, deviceId, enabled: !!payload.enabled });
+        break;
+      }
+
+      case 'music:loadPlaylist': {
+        const { playlistId } = payload;
+        if (!playlistId) throw new Error('playlistId required');
+        await musicService.loadPlaylist(playlistId);
+        resultMessage = `Music playlist loaded: ${playlistId}`;
+        logger.info('Music playlist loaded', { source, deviceId, playlistId });
+        break;
+      }
+
       // --- Service health check (Phase 3) ---
 
       case 'service:check': {
         const HEALTH_CHECKS = {
           vlc: () => require('./vlcMprisService').checkConnection(),
           spotify: () => spotifyService.checkConnection(),
+          music: () => musicService.checkConnection(),
           lighting: () => lightingService.checkConnection(),
           bluetooth: () => bluetoothService.isAvailable(),
           audio: () => audioRoutingService.checkHealth(),
