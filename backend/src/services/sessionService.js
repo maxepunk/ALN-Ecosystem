@@ -506,6 +506,7 @@ class SessionService extends EventEmitter {
     // Lazy-require to avoid circular dependency at module load time
     const cueEngineService = require('./cueEngineService');
     const spotifyService = require('./spotifyService');
+    const musicService = require('./musicService');
 
     switch (status) {
       case 'paused':
@@ -514,6 +515,9 @@ class SessionService extends EventEmitter {
         cueEngineService.suspend();
         spotifyService.pauseForGameClock().catch(err =>
           logger.warn('Failed to pause Spotify during session pause', { error: err.message })
+        );
+        musicService.pauseForGameClock().catch(err =>
+          logger.warn('Failed to pause music during session pause', { error: err.message })
         );
         this.currentSession.gameClock = gameClockService.toPersistence();
         break;
@@ -524,6 +528,9 @@ class SessionService extends EventEmitter {
           cueEngineService.activate();
           spotifyService.resumeFromGameClock().catch(err =>
             logger.warn('Failed to resume Spotify during session resume', { error: err.message })
+          );
+          musicService.resumeFromGameClock().catch(err =>
+            logger.warn('Failed to resume music during session resume', { error: err.message })
           );
         }
         this.currentSession.gameClock = gameClockService.toPersistence();
