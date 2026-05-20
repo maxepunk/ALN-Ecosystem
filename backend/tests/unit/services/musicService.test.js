@@ -260,3 +260,40 @@ describe('MusicService — loadPlaylist', () => {
     expect(calls[2]).toBe('repeat 0');
   });
 });
+
+describe('MusicService — game clock', () => {
+  let service;
+  beforeEach(async () => {
+    service = new MusicService();
+    await service.init();
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('');
+  });
+
+  it('pauseForGameClock pauses when playing and sets the flag', async () => {
+    service.state = 'playing';
+    await service.pauseForGameClock();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('pause 1');
+    expect(service._pausedByGameClock).toBe(true);
+  });
+
+  it('pauseForGameClock no-op when not playing', async () => {
+    service.state = 'paused';
+    await service.pauseForGameClock();
+    expect(service._mpd.sendCommand).not.toHaveBeenCalled();
+    expect(service._pausedByGameClock).toBe(false);
+  });
+
+  it('resumeFromGameClock resumes only if paused-by-clock flag is set', async () => {
+    service._pausedByGameClock = true;
+    await service.resumeFromGameClock();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('play');
+    expect(service._pausedByGameClock).toBe(false);
+  });
+
+  it('resumeFromGameClock no-op when paused by user (flag false)', async () => {
+    service._pausedByGameClock = false;
+    service.state = 'paused';
+    await service.resumeFromGameClock();
+    expect(service._mpd.sendCommand).not.toHaveBeenCalled();
+  });
+});

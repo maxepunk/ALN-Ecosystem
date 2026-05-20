@@ -133,6 +133,20 @@ class MusicService extends EventEmitter {
     return this._playlists.get(id) || null;
   }
 
+  async pauseForGameClock() {
+    if (this.state !== 'playing') return;
+    this._assertConnected();
+    await this._mpd.sendCommand('pause 1');
+    this._pausedByGameClock = true;
+  }
+
+  async resumeFromGameClock() {
+    if (!this._pausedByGameClock) return;
+    this._assertConnected();
+    await this._mpd.sendCommand('play');
+    this._pausedByGameClock = false;
+  }
+
   _wireMpdEvents() {
     // Filled in later tasks (idle event handlers)
   }
