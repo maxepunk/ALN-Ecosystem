@@ -557,6 +557,16 @@ describe('MusicService — spawnMpd', () => {
     const bad = new MusicService({ socketPath: '/tmp/x.sock' });
     await expect(bad.spawnMpd()).rejects.toThrow(/musicDir/);
   });
+
+  it('ProcessMonitor "exited" event flips this.connected to false', async () => {
+    service.connected = true;
+    await service.spawnMpd();
+    expect(service._procMon).toBeDefined();
+    // The spawnMpd handler registers an 'exited' listener; firing it
+    // should drop us out of healthy state regardless of why MPD died.
+    service._procMon.emit('exited', { code: 1, signal: 'SIGKILL' });
+    expect(service.connected).toBe(false);
+  });
 });
 
 describe('MusicService — reset', () => {
