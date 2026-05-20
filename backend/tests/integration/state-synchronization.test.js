@@ -133,13 +133,36 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     scanner.socket.emit('sync:request');
     const syncEvent = await syncPromise;
 
-    // Validate: serviceHealth structure (registry snapshot with all 8 services)
+    // Validate: serviceHealth structure (registry snapshot with all 9 services)
     expect(syncEvent.data.serviceHealth).toBeDefined();
     expect(syncEvent.data.serviceHealth).toHaveProperty('vlc');
     expect(syncEvent.data.serviceHealth).toHaveProperty('spotify');
+    expect(syncEvent.data.serviceHealth).toHaveProperty('music');
     expect(syncEvent.data.serviceHealth).toHaveProperty('lighting');
     expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('status');
     expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('message');
     expect(['healthy', 'down']).toContain(syncEvent.data.serviceHealth.vlc.status);
+  });
+
+  it('should include music + playlists in sync:full', async () => {
+    await sessionService.createSession({
+      name: 'Music Sync Test',
+      teams: ['Team Alpha']
+    });
+    await sessionService.startGame();
+
+    scanner = await createAuthenticatedScanner(testContext.url, 'MUSIC_SYNC_GM', 'blackmarket');
+
+    const syncPromise = waitForEvent(scanner.socket, 'sync:full');
+    scanner.socket.emit('sync:request');
+    const syncEvent = await syncPromise;
+
+    // The "recurred 4 times" bug class: every sync:full must include music
+    expect(syncEvent.data.music).toBeDefined();
+    expect(syncEvent.data.music).toHaveProperty('connected');
+    expect(syncEvent.data.music).toHaveProperty('state');
+    expect(syncEvent.data.music).toHaveProperty('volume');
+    expect(syncEvent.data.music).toHaveProperty('playlists');
+    expect(Array.isArray(syncEvent.data.music.playlists)).toBe(true);
   });
 });
