@@ -27,6 +27,42 @@ class MusicService extends EventEmitter {
       pausedByGameClock: this._pausedByGameClock,
     };
   }
+
+  async init() {
+    const mpd2 = require('mpd2');
+    const registry = require('./serviceHealthRegistry');
+    try {
+      this._mpd = await mpd2.connect({ path: this._socketPath });
+      this._wireMpdEvents();
+      this.connected = true;
+      registry.report('music', 'healthy', 'MPD connected');
+    } catch (err) {
+      this.connected = false;
+      registry.report('music', 'down', `MPD connect failed: ${err.message}`);
+    }
+  }
+
+  async cleanup() {
+    if (this._mpd) {
+      try { await this._mpd.disconnect(); } catch (_) { /* ignore */ }
+      this._mpd = null;
+    }
+    this.connected = false;
+  }
+
+  async checkConnection() {
+    if (!this._mpd) return false;
+    try {
+      await this._mpd.sendCommand('ping');
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  _wireMpdEvents() {
+    // Filled in later tasks (idle event handlers)
+  }
 }
 
 const singleton = new MusicService();
