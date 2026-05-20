@@ -983,6 +983,142 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
 
+  /api/music/tracks:
+    get:
+      tags:
+        - Music
+      summary: List all music tracks available to MPD
+      description: |
+        Returns the full catalog of MP3 tracks known to MPD's database.
+        The set is derived from `backend/public/music/` at MPD startup.
+
+        Used by the Config Tool playlist editor to populate the "Available Tracks"
+        list for drag-and-drop authoring.
+      operationId: listMusicTracks
+      responses:
+        '200':
+          description: Track catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - tracks
+                properties:
+                  tracks:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - file
+                      properties:
+                        file:
+                          type: string
+                          description: Filename relative to MPD music_directory
+                          example: "001 - OGRE_-_Negotiation_s_Over.mp3"
+                        title:
+                          type: string
+                          example: "Negotiation's Over"
+                        artist:
+                          type: string
+                          example: "OGRE"
+                        album:
+                          type: string
+                          example: ""
+                        duration:
+                          type: integer
+                          description: Track duration in seconds
+                          example: 184
+        '500':
+          description: Server error querying MPD
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Music service not connected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/music/playlists:
+    get:
+      tags:
+        - Music
+      summary: Get all music playlists
+      description: |
+        Returns the contents of `backend/config/music-playlists.json` verbatim.
+        Used by the GM Scanner (via sync:full) and the Config Tool editor.
+      operationId: listMusicPlaylists
+      responses:
+        '200':
+          description: Playlist set
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - playlists
+                properties:
+                  playlists:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MusicPlaylist'
+        '503':
+          description: Playlist file not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Music
+      summary: Replace all music playlists
+      description: |
+        Atomically replaces `backend/config/music-playlists.json` with the
+        supplied payload. The write is `.tmp + rename` so readers always see a
+        valid file. musicService's fs.watch picks up the rename and emits
+        'playlists:reloaded' → service:state push to GM clients.
+
+        Body MUST be `{playlists: [...]}`. Each playlist requires id, name,
+        shuffle, loop, crossfadeMs (0-5000), tracks (string array). Duplicate
+        ids are rejected.
+      operationId: replaceMusicPlaylists
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - playlists
+              properties:
+                playlists:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/MusicPlaylist'
+      responses:
+        '200':
+          description: Playlists saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Playlist file not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Error:
@@ -1458,6 +1594,45 @@ components:
               status:
                 type: string
                 description: Current status (always 'held' in state snapshot)
+
+    MusicPlaylist:
+      type: object
+      description: A named playlist of MP3 tracks for the music service.
+      required:
+        - id
+        - name
+        - shuffle
+        - loop
+        - crossfadeMs
+        - tracks
+      properties:
+        id:
+          type: string
+          description: Stable kebab-case identifier
+          example: "all-tracks"
+        name:
+          type: string
+          description: Human-readable display name
+          example: "All Tracks"
+        description:
+          type: string
+          description: Optional notes for the GM
+        shuffle:
+          type: boolean
+          description: Whether the queue is shuffled when loaded
+        loop:
+          type: boolean
+          description: Whether MPD repeats the queue when the last track ends
+        crossfadeMs:
+          type: integer
+          minimum: 0
+          maximum: 5000
+          description: Crossfade duration in ms (MPD rounds to seconds)
+        tracks:
+          type: array
+          items:
+            type: string
+          description: Track filenames relative to MPD music_directory
 
   responses:
     ValidationError:
