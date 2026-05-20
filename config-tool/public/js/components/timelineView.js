@@ -10,6 +10,7 @@ const CATEGORY_COLORS = {
   lighting: '#fbbc04',
   video: '#ea4335',
   spotify: '#1ed760',
+  music: '#9c27b0',
   cue: '#a855f7',
   display: '#9ca3af',
   audio: '#06b6d4',
@@ -369,7 +370,9 @@ function buildPayloadSummary(entry) {
   if (p.sceneId) parts.push(p.sceneId);
   if (p.cueId) parts.push(p.cueId);
   if (p.uri) parts.push(p.uri);
+  if (p.playlistId) parts.push(p.playlistId);
   if (p.volume !== undefined) parts.push(`vol:${p.volume}`);
+  if (p.enabled !== undefined) parts.push(p.enabled ? 'on' : 'off');
   if (p.stream) parts.push(p.stream);
   if (p.sink) parts.push(p.sink);
   if (p.target) parts.push(`→${p.target}`);

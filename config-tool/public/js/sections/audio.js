@@ -7,7 +7,7 @@ import { el } from '../utils/formatting.js';
 import { makeEnvField } from '../utils/formFields.js';
 
 const SINK_OPTIONS = ['hdmi', 'bluetooth'];
-const STREAMS = ['video', 'spotify', 'sound'];
+const STREAMS = ['video', 'spotify', 'music', 'sound'];
 
 let routingData = null;
 let envData = null;
