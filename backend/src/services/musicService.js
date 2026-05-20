@@ -93,6 +93,46 @@ class MusicService extends EventEmitter {
     await this._mpd.sendCommand(`repeat ${enabled ? 1 : 0}`);
   }
 
+  _quoteMpdArg(s) {
+    return `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }
+
+  async loadPlaylist(playlistId) {
+    this._assertConnected();
+    const playlist = this._playlists.get(playlistId);
+    if (!playlist) throw new Error(`Unknown playlist: ${playlistId}`);
+
+    const crossfadeSec = Math.round((playlist.crossfadeMs ?? 0) / 1000);
+    const cmds = [
+      `crossfade ${crossfadeSec}`,
+      `random ${playlist.shuffle ? 1 : 0}`,
+      `repeat ${playlist.loop ? 1 : 0}`,
+      'clear',
+      ...playlist.tracks.map(t => `add ${this._quoteMpdArg(t)}`),
+      'play',
+    ];
+    await this._mpd.sendCommands(cmds);
+
+    this.playlist = {
+      id: playlist.id,
+      name: playlist.name,
+      position: 0,
+      total: playlist.tracks.length,
+      shuffle: playlist.shuffle,
+      loop: playlist.loop,
+      crossfadeMs: playlist.crossfadeMs,
+    };
+    this.emit('playlist:changed', { ...this.playlist });
+  }
+
+  getPlaylists() {
+    return [...this._playlists.values()];
+  }
+
+  getPlaylist(id) {
+    return this._playlists.get(id) || null;
+  }
+
   _wireMpdEvents() {
     // Filled in later tasks (idle event handlers)
   }

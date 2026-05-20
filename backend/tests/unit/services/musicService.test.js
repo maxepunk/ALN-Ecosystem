@@ -191,3 +191,72 @@ describe('MusicService — settings', () => {
     expect(service._mpd.sendCommand).toHaveBeenCalledWith('repeat 0');
   });
 });
+
+const FIXTURE_PLAYLISTS = [
+  { id: 'p1', name: 'Test One', shuffle: false, loop: true, crossfadeMs: 2000, tracks: ['a.mp3', 'b.mp3', 'c.mp3'] },
+  { id: 'p2', name: 'Test Two', shuffle: true, loop: false, crossfadeMs: 0, tracks: ['x.mp3'] },
+];
+
+describe('MusicService — loadPlaylist', () => {
+  let service;
+  beforeEach(async () => {
+    service = new MusicService();
+    service._playlists = new Map(FIXTURE_PLAYLISTS.map(p => [p.id, p]));
+    await service.init();
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('');
+    service._mpd.sendCommands = jest.fn().mockResolvedValue([]);
+  });
+
+  it('loads playlist, sets crossfade/random/repeat, clears, adds tracks, plays', async () => {
+    await service.loadPlaylist('p1');
+    const calls = service._mpd.sendCommands.mock.calls[0][0];
+    expect(calls).toEqual([
+      'crossfade 2',
+      'random 0',
+      'repeat 1',
+      'clear',
+      'add "a.mp3"',
+      'add "b.mp3"',
+      'add "c.mp3"',
+      'play',
+    ]);
+  });
+
+  it('emits playlist:changed with the loaded playlist info', async () => {
+    const handler = jest.fn();
+    service.on('playlist:changed', handler);
+    await service.loadPlaylist('p1');
+    expect(handler).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'p1',
+      name: 'Test One',
+      total: 3,
+      shuffle: false,
+      loop: true,
+      crossfadeMs: 2000,
+      position: 0,
+    }));
+  });
+
+  it('rejects unknown playlist id', async () => {
+    await expect(service.loadPlaylist('nope')).rejects.toThrow(/unknown.*nope/i);
+  });
+
+  it('escapes quotes and backslashes in track filenames', async () => {
+    service._playlists.set('special', {
+      id: 'special', name: 'X', shuffle: false, loop: false, crossfadeMs: 0,
+      tracks: ['has "quote".mp3', 'back\\slash.mp3'],
+    });
+    await service.loadPlaylist('special');
+    const calls = service._mpd.sendCommands.mock.calls[0][0];
+    expect(calls).toContain('add "has \\"quote\\".mp3"');
+    expect(calls).toContain('add "back\\\\slash.mp3"');
+  });
+
+  it('handles 0ms crossfade as "crossfade 0"', async () => {
+    await service.loadPlaylist('p2');
+    const calls = service._mpd.sendCommands.mock.calls[0][0];
+    expect(calls[0]).toBe('crossfade 0');
+    expect(calls[1]).toBe('random 1');
+    expect(calls[2]).toBe('repeat 0');
+  });
+});
