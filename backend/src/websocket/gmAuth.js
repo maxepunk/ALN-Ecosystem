@@ -14,6 +14,7 @@ const lightingService = require('../services/lightingService');
 const gameClockService = require('../services/gameClockService');
 const cueEngineService = require('../services/cueEngineService');
 const spotifyService = require('../services/spotifyService');
+const musicService = require('../services/musicService');
 const soundService = require('../services/soundService');
 const { emitWrapped } = require('./eventWrapper');
 const { buildSyncFullPayload } = require('./syncHelpers');
@@ -146,6 +147,7 @@ async function handleGmIdentify(socket, data, io) {
       gameClockService,
       cueEngineService,
       spotifyService,
+      musicService,
       soundService,
       deviceFilter: { connectedOnly: true },
     });

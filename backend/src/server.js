@@ -36,6 +36,7 @@ const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
 const spotifyService = require('./services/spotifyService');
+const musicService = require('./services/musicService');
 const vlcService = require('./services/vlcMprisService');
 const displayControlService = require('./services/displayControlService');
 const serviceHealthRegistry = require('./services/serviceHealthRegistry');
@@ -84,6 +85,7 @@ function setupWebSocketHandlers(ioInstance) {
         gameClockService,
         cueEngineService,
         spotifyService,
+        musicService,
         soundService,
         deviceFilter: { connectedOnly: true },
       });
@@ -139,6 +141,7 @@ function setupServiceListeners(ioInstance) {
     cueEngineService,
     soundService,
     spotifyService,
+    musicService,
     vlcService,
     displayControlService,
   });
