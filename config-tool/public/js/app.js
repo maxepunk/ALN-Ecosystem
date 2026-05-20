@@ -9,6 +9,7 @@ const sectionModules = {};
 const sectionNames = {
   economy: 'Game Economy',
   showcontrol: 'Show Control',
+  music: 'Music & Playlists',
   audio: 'Audio & Environment',
   infra: 'Infrastructure',
   presets: 'Presets',
