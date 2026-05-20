@@ -1,14 +1,25 @@
 'use strict';
 
 const fs = require('fs');
+const path = require('path');
 const EventEmitter = require('events');
 
 class MusicService extends EventEmitter {
-  constructor({ socketPath = '/tmp/aln-mpd.sock', playlistFile = null } = {}) {
+  constructor({
+    socketPath = '/tmp/aln-mpd.sock',
+    configFile = '/tmp/aln-mpd.conf',
+    musicDir = null,
+    dataDir = '/tmp',
+    playlistFile = null,
+  } = {}) {
     super();
     this._socketPath = socketPath;
+    this._configFile = configFile;
+    this._musicDir = musicDir;
+    this._dataDir = dataDir;
     this._playlistFile = playlistFile;
     this._playlists = new Map();
+    this._procMon = null;
 
     this.connected = false;
     this.state = 'stopped';
@@ -292,6 +303,53 @@ class MusicService extends EventEmitter {
     this.track = null;
     this.playlist = null;
     this._pausedByGameClock = false;
+  }
+
+  /**
+   * Generate MPD config and start the supervised MPD process.
+   * Returns once the ProcessMonitor has been started.
+   */
+  async spawnMpd() {
+    if (!this._musicDir) throw new Error('musicDir not configured');
+    const { buildMpdConfig } = require('./mpdConfigBuilder');
+    const ProcessMonitor = require('../utils/processMonitor');
+    const logger = require('../utils/logger');
+
+    const playlistDir = path.join(this._dataDir, 'aln-mpd-playlists');
+    fs.mkdirSync(playlistDir, { recursive: true });
+
+    const cfg = buildMpdConfig({
+      musicDir: this._musicDir,
+      socketPath: this._socketPath,
+      dbFile: path.join(this._dataDir, 'aln-mpd.db'),
+      logFile: path.join(this._dataDir, 'aln-mpd.log'),
+      stateFile: path.join(this._dataDir, 'aln-mpd.state'),
+      pidFile: path.join(this._dataDir, 'aln-mpd-internal.pid'),
+      playlistDir,
+    });
+    fs.writeFileSync(this._configFile, cfg);
+
+    this._procMon = new ProcessMonitor({
+      command: 'mpd',
+      args: ['--no-daemon', this._configFile],
+      label: 'mpd',
+      pidFile: '/tmp/aln-pm-mpd.pid',
+    });
+    this._procMon.on('exited', ({ code, signal }) => {
+      logger.warn(`[Music] MPD exited code=${code} signal=${signal}`);
+      this.connected = false;
+    });
+    this._procMon.start();
+  }
+
+  /**
+   * Stop the supervised MPD process. Safe to call when not spawned.
+   */
+  stopMpd() {
+    if (this._procMon) {
+      this._procMon.stop();
+      this._procMon = null;
+    }
   }
 }
 

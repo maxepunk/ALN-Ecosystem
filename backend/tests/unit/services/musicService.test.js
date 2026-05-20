@@ -467,6 +467,77 @@ describe('MusicService — idle events', () => {
   });
 });
 
+jest.mock('../../../src/utils/processMonitor', () => {
+  const { EventEmitter } = require('events');
+  // Use a real class so resetMocks doesn't strip the constructor body.
+  // We also expose a calls log on the constructor itself for assertion.
+  class MockProcessMonitor extends EventEmitter {
+    constructor(opts) {
+      super();
+      this._opts = opts;
+      this.start = jest.fn();
+      this.stop = jest.fn();
+      MockProcessMonitor._instances.push(this);
+      MockProcessMonitor._lastOpts = opts;
+    }
+  }
+  MockProcessMonitor._instances = [];
+  MockProcessMonitor._lastOpts = null;
+  return MockProcessMonitor;
+});
+
+describe('MusicService — spawnMpd', () => {
+  let service;
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-mpd-test-'));
+    const musicDir = path.join(tmpDir, 'music');
+    fs.mkdirSync(musicDir);
+    service = new MusicService({
+      socketPath: path.join(tmpDir, 'mpd.sock'),
+      configFile: path.join(tmpDir, 'mpd.conf'),
+      musicDir,
+      dataDir: tmpDir,
+    });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('writes the MPD config file with absolute paths', async () => {
+    await service.spawnMpd();
+    expect(fs.existsSync(path.join(tmpDir, 'mpd.conf'))).toBe(true);
+    const cfg = fs.readFileSync(path.join(tmpDir, 'mpd.conf'), 'utf8');
+    expect(cfg).toContain(`music_directory   "${path.join(tmpDir, 'music')}"`);
+    expect(cfg).toContain(`bind_to_address   "${path.join(tmpDir, 'mpd.sock')}"`);
+    expect(cfg).toContain('application_name "aln-music"');
+  });
+
+  it('creates playlist directory under dataDir', async () => {
+    await service.spawnMpd();
+    expect(fs.existsSync(path.join(tmpDir, 'aln-mpd-playlists'))).toBe(true);
+  });
+
+  it('starts a ProcessMonitor for mpd', async () => {
+    const ProcessMonitor = require('../../../src/utils/processMonitor');
+    await service.spawnMpd();
+    expect(ProcessMonitor._lastOpts).toMatchObject({
+      command: 'mpd',
+      label: 'mpd',
+      pidFile: '/tmp/aln-pm-mpd.pid',
+    });
+    expect(ProcessMonitor._lastOpts.args).toContain('--no-daemon');
+    expect(service._procMon.start).toHaveBeenCalled();
+  });
+
+  it('refuses to spawn without musicDir', async () => {
+    const bad = new MusicService({ socketPath: '/tmp/x.sock' });
+    await expect(bad.spawnMpd()).rejects.toThrow(/musicDir/);
+  });
+});
+
 describe('MusicService — reset', () => {
   it('reset() clears state and stops timers without disconnecting MPD', () => {
     const service = new MusicService();
