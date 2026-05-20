@@ -214,6 +214,51 @@ function createRouter(configManager) {
     }
   });
 
+  // -- Music (proxy to orchestrator) --
+  // The orchestrator owns the MPD socket and the canonical playlist file.
+  // This proxy exists so the SPA can stay on its own origin (port 9000) and
+  // not depend on CORS at the orchestrator.
+  const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'http://localhost:3000';
+
+  router.get('/music/tracks', async (req, res) => {
+    try {
+      const r = await fetch(`${ORCHESTRATOR_URL}/api/music/tracks`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await r.text();
+      res.status(r.status).type('json').send(text);
+    } catch (err) {
+      res.status(502).json({ error: `Orchestrator unreachable: ${err.message}` });
+    }
+  });
+
+  router.get('/music/playlists', async (req, res) => {
+    try {
+      const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await r.text();
+      res.status(r.status).type('json').send(text);
+    } catch (err) {
+      res.status(502).json({ error: `Orchestrator unreachable: ${err.message}` });
+    }
+  });
+
+  router.put('/music/playlists', async (req, res) => {
+    try {
+      const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await r.text();
+      res.status(r.status).type('json').send(text);
+    } catch (err) {
+      res.status(502).json({ error: `Orchestrator unreachable: ${err.message}` });
+    }
+  });
+
   return router;
 }
 
