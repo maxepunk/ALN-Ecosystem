@@ -212,6 +212,48 @@ describe('Cue Engine Integration', () => {
     });
   });
 
+  describe('cue dispatches music command', () => {
+    it('cue with music:loadPlaylist action invokes musicService.loadPlaylist', async () => {
+      const musicService = require('../../src/services/musicService');
+      const registry = require('../../src/services/serviceHealthRegistry');
+
+      // Music service must be healthy for commandExecutor to dispatch the action
+      // (SERVICE_DEPENDENCIES gates pre-dispatch — see commandExecutor.js).
+      registry.report('music', 'healthy', 'test setup');
+      const loadSpy = jest.spyOn(musicService, 'loadPlaylist').mockResolvedValue(undefined);
+
+      try {
+        cueEngineService.loadCues([
+          {
+            id: 'test-music-cue',
+            label: 'Test Music Cue',
+            trigger: { event: 'transaction:accepted' },
+            commands: [
+              { action: 'music:loadPlaylist', payload: { playlistId: 'all-tracks' } },
+            ],
+          },
+        ]);
+
+        await createAndStartSession(gm1, 'Music Cue Test', ['Team Alpha']);
+        cueEngineService.activate();
+
+        const cueFiredPromise = waitForEvent(gm1, 'cue:fired');
+        const testToken = TestTokens.STANDALONE_TOKENS[0];
+        submitTransaction(gm1, testToken.id, 'Team Alpha');
+
+        const cueFired = await cueFiredPromise;
+        expect(cueFired.data.cueId).toBe('test-music-cue');
+
+        // commandExecutor invocation is async — give the event loop a tick.
+        await new Promise(r => setImmediate(r));
+
+        expect(loadSpy).toHaveBeenCalledWith('all-tracks');
+      } finally {
+        loadSpy.mockRestore();
+      }
+    });
+  });
+
   describe('pause cascade', () => {
     it('should pause game clock and suspend cue engine on session:pause', async () => {
       // Create session and start game
