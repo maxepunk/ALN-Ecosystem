@@ -3413,176 +3413,582 @@ cd ..
 
 ### Phase 8: Config Tool — Music Section
 
-#### Task 8.1: music.html template
+**Architecture context (verified against codebase 2026-05-20):** The config-tool is a vanilla-JS SPA. Sections are JS-only modules (no per-section HTML files exist or are needed); each section module exports a `render(container, config, ctx)` function and builds its DOM with the `el()` helper from `utils/formatting.js`. Section state writes flow through `ctx.markDirty(name)` + `save()` export OR direct `api.X()` calls. Tests run via Node's built-in `node:test` runner (`describe/it/beforeEach/afterEach` from `node:test`) — **no Jest, no JSDOM dependency**. Backend routes are added to `lib/routes.js` via `createRouter(configManager)`, NOT directly to `server.js`. The SPA entry is `public/js/app.js` (not `main.js`); the sidebar nav uses `<button class="sidebar__link" data-section="X">` with an SVG icon. Phase 8 follows these patterns.
 
-**Files:** create `config-tool/public/sections/music.html`
-
-- [ ] **Step 1: Write the section markup**
-
-```html
-<section id="music-section" class="config-section" hidden>
-  <h2>Music Playlists</h2>
-  <div class="music-editor">
-    <aside class="music-playlist-list">
-      <h3>Playlists</h3>
-      <ul id="music-playlist-list"></ul>
-      <button id="music-new-playlist">+ New</button>
-    </aside>
-    <main class="music-playlist-detail">
-      <input id="music-playlist-name" type="text" placeholder="Playlist name" />
-      <textarea id="music-playlist-desc" placeholder="Description (optional)"></textarea>
-      <label><input type="checkbox" id="music-playlist-shuffle" /> Shuffle</label>
-      <label><input type="checkbox" id="music-playlist-loop" /> Loop</label>
-      <label>Crossfade <input type="range" id="music-playlist-crossfade" min="0" max="5000" step="100" /> <span id="music-playlist-crossfade-display">2000</span> ms</label>
-      <div class="music-tracks-panes">
-        <div class="music-available">
-          <h4>Available Tracks</h4>
-          <ul id="music-available-list"></ul>
-        </div>
-        <div class="music-current">
-          <h4>Playlist Tracks</h4>
-          <ul id="music-current-list"></ul>
-        </div>
-      </div>
-      <button id="music-save">Save</button>
-      <button id="music-delete">Delete Playlist</button>
-    </main>
-  </div>
-</section>
-```
-
-- [ ] **Step 2: Commit**
-
-```bash
-git add config-tool/public/sections/music.html
-git commit -m "feat(config-tool): music section template"
-```
-
-#### Task 8.2: music.js section logic (TDD)
+#### Task 8.1: Music proxy routes in lib/routes.js + API client
 
 **Files:**
-- Create: `config-tool/public/js/sections/music.js`
-- Create: `config-tool/tests/music.test.js`
+- Modify: `config-tool/lib/routes.js`
+- Modify: `config-tool/public/js/utils/api.js`
 
-- [ ] **Step 1: Write failing test (node:test pattern)**
+- [ ] **Step 1: Add proxy routes in `lib/routes.js`**
+
+In `config-tool/lib/routes.js`, immediately before `return router;` at the end of `createRouter`, insert:
 
 ```js
-// config-tool/tests/music.test.js
-const test = require('node:test');
+  // -- Music (proxy to orchestrator) --
+
+  const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'http://localhost:3000';
+
+  router.get('/music/tracks', async (req, res) => {
+    try {
+      const r = await fetch(`${ORCHESTRATOR_URL}/api/music/tracks`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await r.text();
+      res.status(r.status).type('json').send(text);
+    } catch (err) {
+      res.status(502).json({ error: `Orchestrator unreachable: ${err.message}` });
+    }
+  });
+
+  router.get('/music/playlists', async (req, res) => {
+    try {
+      const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await r.text();
+      res.status(r.status).type('json').send(text);
+    } catch (err) {
+      res.status(502).json({ error: `Orchestrator unreachable: ${err.message}` });
+    }
+  });
+
+  router.put('/music/playlists', async (req, res) => {
+    try {
+      const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+        signal: AbortSignal.timeout(5000),
+      });
+      const text = await r.text();
+      res.status(r.status).type('json').send(text);
+    } catch (err) {
+      res.status(502).json({ error: `Orchestrator unreachable: ${err.message}` });
+    }
+  });
+```
+
+Notes:
+- Default `ORCHESTRATOR_URL` is HTTP because backend's local-dev endpoint is `http://localhost:3000` (matches existing `npm run health:api` script). If running against HTTPS prod, set `ORCHESTRATOR_URL=https://localhost:3000`.
+- The existing `/scenes` route (line 131) uses the same `fetch + AbortSignal.timeout` pattern — we mirror it.
+- `express.json()` middleware is already mounted globally in `server.js` (`app.use(express.json())`), so we don't need it per-route.
+
+- [ ] **Step 2: Add API client helpers in `utils/api.js`**
+
+Append to `config-tool/public/js/utils/api.js`:
+
+```js
+// Music
+export const getMusicTracks = () => request('GET', '/music/tracks');
+export const getMusicPlaylists = () => request('GET', '/music/playlists');
+export const putMusicPlaylists = (data) => request('PUT', '/music/playlists', data);
+```
+
+- [ ] **Step 3: Smoke test that routes are wired (no test infra, just curl when orchestrator is running)**
+
+Run:
+```bash
+cd config-tool && node server.js &
+sleep 1
+curl -s http://localhost:9000/api/music/playlists
+kill %1
+```
+Expected: returns either the orchestrator's playlist JSON, or `{"error":"Orchestrator unreachable: ..."}` (both are valid — they prove the proxy is wired).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add config-tool/lib/routes.js config-tool/public/js/utils/api.js
+git commit -m "feat(config-tool): music tracks/playlists proxy + API client"
+```
+
+#### Task 8.2: MusicModel (pure state logic) + node:test coverage
+
+**Files:**
+- Create: `config-tool/public/js/sections/musicModel.js`
+- Create: `config-tool/tests/musicModel.test.js`
+
+Pure state class — no DOM, no fetch. Encapsulates playlist CRUD so the rendering layer stays thin and the logic is testable under `node --test` without JSDOM.
+
+- [ ] **Step 1: Write failing test**
+
+```js
+// config-tool/tests/musicModel.test.js
+const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert');
-const { JSDOM } = require('jsdom');
 
-test('MusicSection — create new playlist', async () => {
-  const dom = new JSDOM(/* fixture html with music-section markup */);
-  global.document = dom.window.document;
-  global.fetch = async () => ({ ok: true, json: async () => ({ playlists: [] }) });
-
-  const { MusicSection } = require('../public/js/sections/music.js');
-  const section = new MusicSection({ container: dom.window.document.body });
-  await section.load();
-  await section.createPlaylist('New Playlist');
-  assert.strictEqual(section.getPlaylists().length, 1);
-  assert.strictEqual(section.getPlaylists()[0].name, 'New Playlist');
+// MusicModel is ESM. We import it via dynamic import inside tests
+// because node:test files are CommonJS by default in this repo.
+let MusicModel;
+before(async () => {
+  ({ MusicModel } = await import('../public/js/sections/musicModel.js'));
 });
 
-// More tests: rename, delete, drag-drop reorder, save round-trip, schema validation
+describe('MusicModel', () => {
+  let model;
+  beforeEach(() => { model = new MusicModel(); });
+
+  it('starts empty', () => {
+    assert.deepStrictEqual(model.getPlaylists(), []);
+    assert.deepStrictEqual(model.getTracks(), []);
+  });
+
+  it('setPlaylists / setTracks store defensive copies', () => {
+    const src = [{ id: 'a', name: 'A', shuffle: false, loop: true, crossfadeMs: 1000, tracks: [] }];
+    model.setPlaylists(src);
+    src[0].name = 'mutated';
+    assert.strictEqual(model.getPlaylists()[0].name, 'A');
+  });
+
+  it('createPlaylist generates kebab-case id from name', () => {
+    const p = model.createPlaylist('Quiet Mood');
+    assert.strictEqual(p.id, 'quiet-mood');
+    assert.strictEqual(p.name, 'Quiet Mood');
+    assert.deepStrictEqual(p.tracks, []);
+    assert.strictEqual(p.shuffle, false);
+    assert.strictEqual(p.loop, true);
+    assert.strictEqual(p.crossfadeMs, 2000);
+  });
+
+  it('createPlaylist rejects duplicate id', () => {
+    model.createPlaylist('Mood');
+    assert.throws(() => model.createPlaylist('mood'), /already exists/i);
+  });
+
+  it('createPlaylist rejects empty or non-string name', () => {
+    assert.throws(() => model.createPlaylist(''), /name/i);
+    assert.throws(() => model.createPlaylist('  '), /name/i);
+    assert.throws(() => model.createPlaylist(null), /name/i);
+  });
+
+  it('deletePlaylist removes by id and returns true / false', () => {
+    model.createPlaylist('A');
+    assert.strictEqual(model.deletePlaylist('a'), true);
+    assert.strictEqual(model.getPlaylists().length, 0);
+    assert.strictEqual(model.deletePlaylist('nope'), false);
+  });
+
+  it('addTrack appends to playlist (allows duplicates)', () => {
+    model.createPlaylist('A');
+    model.addTrack('a', 'song.mp3');
+    model.addTrack('a', 'song.mp3');
+    assert.deepStrictEqual(model.getPlaylist('a').tracks, ['song.mp3', 'song.mp3']);
+  });
+
+  it('removeTrack removes the first matching index only', () => {
+    model.createPlaylist('A');
+    model.addTrack('a', 'x.mp3');
+    model.addTrack('a', 'y.mp3');
+    model.addTrack('a', 'x.mp3');
+    model.removeTrack('a', 0);
+    assert.deepStrictEqual(model.getPlaylist('a').tracks, ['y.mp3', 'x.mp3']);
+  });
+
+  it('moveTrack reorders within a playlist', () => {
+    model.createPlaylist('A');
+    model.addTrack('a', 'x.mp3');
+    model.addTrack('a', 'y.mp3');
+    model.addTrack('a', 'z.mp3');
+    model.moveTrack('a', 2, 0);
+    assert.deepStrictEqual(model.getPlaylist('a').tracks, ['z.mp3', 'x.mp3', 'y.mp3']);
+  });
+
+  it('setShuffle / setLoop / setCrossfadeMs update the playlist', () => {
+    model.createPlaylist('A');
+    model.setShuffle('a', true);
+    model.setLoop('a', false);
+    model.setCrossfadeMs('a', 3500);
+    assert.strictEqual(model.getPlaylist('a').shuffle, true);
+    assert.strictEqual(model.getPlaylist('a').loop, false);
+    assert.strictEqual(model.getPlaylist('a').crossfadeMs, 3500);
+  });
+
+  it('setCrossfadeMs clamps to 0..5000', () => {
+    model.createPlaylist('A');
+    model.setCrossfadeMs('a', -100);
+    assert.strictEqual(model.getPlaylist('a').crossfadeMs, 0);
+    model.setCrossfadeMs('a', 9999);
+    assert.strictEqual(model.getPlaylist('a').crossfadeMs, 5000);
+  });
+
+  it('toJSON returns the serializable playlist set', () => {
+    model.createPlaylist('A');
+    model.addTrack('a', 'x.mp3');
+    assert.deepStrictEqual(model.toJSON(), { playlists: [
+      { id: 'a', name: 'A', shuffle: false, loop: true, crossfadeMs: 2000, tracks: ['x.mp3'] },
+    ]});
+  });
+});
 ```
+
+Note: `node:test` files in this repo are CommonJS. Importing ESM modules requires dynamic `import()` — pattern shown above. (The same pattern is needed in 8.4.)
 
 - [ ] **Step 2: Run → fail**
 
-- [ ] **Step 3: Implement MusicSection class**
+Run:
+```bash
+cd config-tool && npm test
+```
+Expected: fail with `Cannot find module './public/js/sections/musicModel.js'`.
+
+- [ ] **Step 3: Implement MusicModel**
+
+Create `config-tool/public/js/sections/musicModel.js`:
 
 ```js
-// config-tool/public/js/sections/music.js
-export class MusicSection {
-  constructor({ container, apiBase = '/api/music' }) {
-    this._container = container;
-    this._apiBase = apiBase;
+/**
+ * MusicModel — Pure playlist state management for the config-tool Music section.
+ * No DOM, no fetch. Wraps an array of playlists with CRUD semantics so the
+ * rendering layer stays thin and this logic is testable under node:test.
+ */
+
+const CROSSFADE_MIN = 0;
+const CROSSFADE_MAX = 5000;
+
+function _slug(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+}
+
+export class MusicModel {
+  constructor() {
     this._playlists = [];
     this._tracks = [];
-    this._selectedId = null;
   }
 
-  async load() {
-    const [pl, tr] = await Promise.all([
-      fetch(`${this._apiBase}/playlists`).then(r => r.json()),
-      fetch(`${this._apiBase}/tracks`).then(r => r.json()),
-    ]);
-    this._playlists = pl.playlists || [];
-    this._tracks = tr.tracks || [];
-    this._render();
-  }
-
-  getPlaylists() { return [...this._playlists]; }
+  setPlaylists(arr) { this._playlists = JSON.parse(JSON.stringify(arr || [])); }
+  setTracks(arr) { this._tracks = JSON.parse(JSON.stringify(arr || [])); }
+  getPlaylists() { return JSON.parse(JSON.stringify(this._playlists)); }
+  getTracks() { return JSON.parse(JSON.stringify(this._tracks)); }
+  getPlaylist(id) { return this._playlists.find(p => p.id === id) || null; }
 
   createPlaylist(name) {
-    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
-    this._playlists.push({ id, name, shuffle: false, loop: true, crossfadeMs: 2000, tracks: [] });
-    this._selectedId = id;
-    this._render();
-    return this._playlists[this._playlists.length - 1];
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Playlist name is required');
+    }
+    const id = _slug(name);
+    if (!id) throw new Error('Playlist name produces empty id');
+    if (this._playlists.some(p => p.id === id)) {
+      throw new Error(`Playlist id already exists: ${id}`);
+    }
+    const playlist = { id, name: name.trim(), shuffle: false, loop: true, crossfadeMs: 2000, tracks: [] };
+    this._playlists.push(playlist);
+    return playlist;
   }
 
-  // ... more methods: deletePlaylist, addTrackToPlaylist, removeTrack, reorder, save, render ...
+  deletePlaylist(id) {
+    const i = this._playlists.findIndex(p => p.id === id);
+    if (i === -1) return false;
+    this._playlists.splice(i, 1);
+    return true;
+  }
 
-  async save() {
-    return fetch(`${this._apiBase}/playlists`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playlists: this._playlists }),
-    });
+  addTrack(playlistId, filename) {
+    const pl = this._playlists.find(p => p.id === playlistId);
+    if (!pl) throw new Error(`Unknown playlist: ${playlistId}`);
+    pl.tracks.push(filename);
+  }
+
+  removeTrack(playlistId, index) {
+    const pl = this._playlists.find(p => p.id === playlistId);
+    if (!pl) throw new Error(`Unknown playlist: ${playlistId}`);
+    if (index < 0 || index >= pl.tracks.length) return;
+    pl.tracks.splice(index, 1);
+  }
+
+  moveTrack(playlistId, fromIndex, toIndex) {
+    const pl = this._playlists.find(p => p.id === playlistId);
+    if (!pl) throw new Error(`Unknown playlist: ${playlistId}`);
+    if (fromIndex < 0 || fromIndex >= pl.tracks.length) return;
+    const [item] = pl.tracks.splice(fromIndex, 1);
+    const target = Math.max(0, Math.min(toIndex, pl.tracks.length));
+    pl.tracks.splice(target, 0, item);
+  }
+
+  setShuffle(playlistId, enabled) {
+    const pl = this._playlists.find(p => p.id === playlistId);
+    if (pl) pl.shuffle = !!enabled;
+  }
+
+  setLoop(playlistId, enabled) {
+    const pl = this._playlists.find(p => p.id === playlistId);
+    if (pl) pl.loop = !!enabled;
+  }
+
+  setCrossfadeMs(playlistId, ms) {
+    const pl = this._playlists.find(p => p.id === playlistId);
+    if (!pl) return;
+    const v = Number(ms);
+    pl.crossfadeMs = Math.max(CROSSFADE_MIN, Math.min(CROSSFADE_MAX, Number.isFinite(v) ? v : 0));
+  }
+
+  toJSON() {
+    return { playlists: JSON.parse(JSON.stringify(this._playlists)) };
   }
 }
+
+export default MusicModel;
 ```
 
-Implement enough to pass tests; flesh out drag-drop incrementally.
-
 - [ ] **Step 4: Run → pass**
+
+Run:
+```bash
+cd config-tool && npm test
+```
+Expected: all musicModel tests pass.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add config-tool/public/js/sections/music.js config-tool/tests/music.test.js
-git commit -m "feat(config-tool): music section CRUD + load/save"
+git add config-tool/public/js/sections/musicModel.js config-tool/tests/musicModel.test.js
+git commit -m "feat(config-tool): MusicModel (pure playlist CRUD) + node:test coverage"
 ```
 
-#### Task 8.3: server.js proxy
+#### Task 8.3: music.js section (render + DOM, no automated test)
 
-**Files:** modify `config-tool/server.js`
+**Files:**
+- Create: `config-tool/public/js/sections/music.js`
 
-- [ ] **Step 1: Add proxy routes**
+The section follows the existing `economy.js`/`audio.js` pattern: a single `render(container, config, ctx)` function that builds DOM via `el()`, marks dirty via `ctx.markDirty()`, and exposes an optional `save()` export for the toolbar Save button (or uses its own button — we use the toolbar button so it matches the other sections).
+
+- [ ] **Step 1: Implement music.js**
 
 ```js
-const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'https://localhost:3000';
+/**
+ * Music Section
+ * Playlist authoring: create, rename, delete; pick tracks from the available list
+ * to add to a playlist (with shuffle/loop/crossfade per playlist).
+ * Save is routed through the toolbar Save button (ctx.markDirty('music')).
+ */
+import * as api from '../utils/api.js';
+import { el } from '../utils/formatting.js';
+import { MusicModel } from './musicModel.js';
 
-app.get('/api/music/tracks', async (req, res) => {
-  const r = await fetch(`${ORCHESTRATOR_URL}/api/music/tracks`);
-  res.status(r.status).type('json').send(await r.text());
-});
+const model = new MusicModel();
+let ctx = null;
+let containerRoot = null;
+let selectedId = null;
+let loadError = null;
 
-app.get('/api/music/playlists', async (req, res) => {
-  const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`);
-  res.status(r.status).type('json').send(await r.text());
-});
+export async function render(container, config, context) {
+  ctx = context;
+  containerRoot = container;
+  container.appendChild(el('div', { className: 'section__loading' }, 'Loading music…'));
+  try {
+    const [pl, tr] = await Promise.all([api.getMusicPlaylists(), api.getMusicTracks()]);
+    model.setPlaylists(pl.playlists || []);
+    model.setTracks(tr.tracks || []);
+    selectedId = model.getPlaylists()[0]?.id || null;
+    loadError = null;
+  } catch (err) {
+    loadError = err.message;
+  }
+  _redraw();
+}
 
-app.put('/api/music/playlists', express.json(), async (req, res) => {
-  const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(req.body),
+export async function save() {
+  await api.putMusicPlaylists(model.toJSON());
+}
+
+function _redraw() {
+  containerRoot.innerHTML = '';
+  if (loadError) {
+    containerRoot.appendChild(el('div', { className: 'empty-state' },
+      `Failed to load music data: ${loadError}. Is the orchestrator running on the configured ORCHESTRATOR_URL?`));
+    return;
+  }
+  containerRoot.appendChild(_renderPlaylistList());
+  containerRoot.appendChild(_renderPlaylistDetail());
+}
+
+function _renderPlaylistList() {
+  const card = el('div', { className: 'card' },
+    el('div', { className: 'card__header' },
+      el('div', {},
+        el('div', { className: 'card__title' }, 'Playlists'),
+        el('div', { className: 'card__subtitle' }, 'Select a playlist to edit on the right'),
+      ),
+    ),
+  );
+  const list = el('ul', { className: 'music-playlist-list', style: { listStyle: 'none', padding: 0 } });
+  for (const p of model.getPlaylists()) {
+    const isSelected = p.id === selectedId;
+    list.appendChild(el('li', {
+      style: { padding: '6px 8px', background: isSelected ? 'var(--color-bg-elev)' : 'transparent', cursor: 'pointer' },
+      onClick: () => { selectedId = p.id; _redraw(); },
+    }, `${p.name} (${p.tracks.length})`));
+  }
+  card.appendChild(list);
+
+  card.appendChild(el('button', {
+    className: 'btn btn--secondary',
+    onClick: () => {
+      const name = prompt('Playlist name?');
+      if (!name) return;
+      try {
+        const p = model.createPlaylist(name);
+        selectedId = p.id;
+        ctx.markDirty('music');
+        _redraw();
+      } catch (err) {
+        ctx.toast(err.message, 'error');
+      }
+    },
+  }, '+ New playlist'));
+  return card;
+}
+
+function _renderPlaylistDetail() {
+  const card = el('div', { className: 'card' });
+  const playlist = selectedId ? model.getPlaylist(selectedId) : null;
+  if (!playlist) {
+    card.appendChild(el('div', { className: 'empty-state' }, 'Select a playlist or create one.'));
+    return card;
+  }
+
+  card.appendChild(el('div', { className: 'card__title' }, playlist.name));
+
+  const shuffle = el('input', { type: 'checkbox', checked: playlist.shuffle ? 'checked' : undefined,
+    onChange: () => { model.setShuffle(playlist.id, shuffle.checked); ctx.markDirty('music'); },
   });
-  res.status(r.status).type('json').send(await r.text());
-});
+  const loop = el('input', { type: 'checkbox', checked: playlist.loop ? 'checked' : undefined,
+    onChange: () => { model.setLoop(playlist.id, loop.checked); ctx.markDirty('music'); },
+  });
+  const crossfade = el('input', { type: 'range', min: 0, max: 5000, step: 100, value: String(playlist.crossfadeMs),
+    onInput: () => { model.setCrossfadeMs(playlist.id, parseInt(crossfade.value, 10)); ctx.markDirty('music'); crossfadeOut.textContent = `${crossfade.value} ms`; },
+  });
+  const crossfadeOut = el('span', { className: 'mono' }, `${playlist.crossfadeMs} ms`);
+
+  card.appendChild(el('div', { className: 'form-row' },
+    el('label', {}, shuffle, ' Shuffle'),
+    el('label', {}, loop, ' Loop'),
+    el('label', {}, 'Crossfade ', crossfade, ' ', crossfadeOut),
+  ));
+
+  // Available tracks (left) + current tracks (right)
+  card.appendChild(el('div', { className: 'music-tracks-panes', style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' } },
+    _renderAvailableTracks(playlist),
+    _renderCurrentTracks(playlist),
+  ));
+
+  card.appendChild(el('button', {
+    className: 'btn btn--danger',
+    onClick: () => {
+      if (!confirm(`Delete playlist "${playlist.name}"?`)) return;
+      model.deletePlaylist(playlist.id);
+      selectedId = model.getPlaylists()[0]?.id || null;
+      ctx.markDirty('music');
+      _redraw();
+    },
+  }, 'Delete playlist'));
+
+  return card;
+}
+
+function _renderAvailableTracks(playlist) {
+  const box = el('div', {},
+    el('h4', {}, 'Available Tracks'),
+  );
+  const list = el('ul', { style: { listStyle: 'none', padding: 0, maxHeight: '400px', overflowY: 'auto' } });
+  for (const t of model.getTracks()) {
+    list.appendChild(el('li', { style: { display: 'flex', justifyContent: 'space-between', padding: '4px 6px' } },
+      el('span', {}, t.title || t.file),
+      el('button', {
+        className: 'btn btn--small',
+        onClick: () => { model.addTrack(playlist.id, t.file); ctx.markDirty('music'); _redraw(); },
+      }, '+'),
+    ));
+  }
+  box.appendChild(list);
+  return box;
+}
+
+function _renderCurrentTracks(playlist) {
+  const box = el('div', {}, el('h4', {}, 'Playlist Tracks'));
+  const list = el('ul', { style: { listStyle: 'none', padding: 0, maxHeight: '400px', overflowY: 'auto' } });
+  playlist.tracks.forEach((file, i) => {
+    list.appendChild(el('li', { style: { display: 'flex', justifyContent: 'space-between', padding: '4px 6px' } },
+      el('span', {}, `${i + 1}. ${file}`),
+      el('span', {},
+        el('button', { className: 'btn btn--small', disabled: i === 0,
+          onClick: () => { model.moveTrack(playlist.id, i, i - 1); ctx.markDirty('music'); _redraw(); } }, '↑'),
+        el('button', { className: 'btn btn--small', disabled: i === playlist.tracks.length - 1,
+          onClick: () => { model.moveTrack(playlist.id, i, i + 1); ctx.markDirty('music'); _redraw(); } }, '↓'),
+        el('button', { className: 'btn btn--small btn--danger',
+          onClick: () => { model.removeTrack(playlist.id, i); ctx.markDirty('music'); _redraw(); } }, '✕'),
+      ),
+    ));
+  });
+  box.appendChild(list);
+  return box;
+}
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 2: Manual smoke**
+
+Run `cd config-tool && npm start`, open http://localhost:9000, navigate to Music section (wired in 8.4). Verify list renders, "+ New playlist" prompts, tracks can be added/removed/reordered, "Unsaved changes" indicator appears, Save button persists via PUT.
+
+- [ ] **Step 3: Commit**
 
 ```bash
-git add config-tool/server.js
-git commit -m "feat(config-tool): proxy /api/music/* to orchestrator"
+git add config-tool/public/js/sections/music.js
+git commit -m "feat(config-tool): music section (render + playlist editor)"
 ```
 
-#### Task 8.4: Remove spotify from cueEditor/timelineView/commandForm/audio.js
+#### Task 8.4: Wire music section into the SPA shell
+
+**Files:**
+- Modify: `config-tool/public/index.html`
+- Modify: `config-tool/public/js/app.js`
+
+- [ ] **Step 1: Add sidebar nav button + section placeholder in `index.html`**
+
+In the `<ul class="sidebar__nav">` list, insert a new `<li>` between the existing `showcontrol` and `audio` entries (placing music close to other show-control concerns):
+
+```html
+        <li>
+          <button class="sidebar__link" data-section="music">
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Music
+          </button>
+        </li>
+```
+
+In the `<div class="content">` block, add a new section placeholder near the others:
+
+```html
+        <section class="section" id="section-music">
+          <div class="section__loading">Loading music…</div>
+        </section>
+```
+
+- [ ] **Step 2: Register music in `app.js sectionNames`**
+
+In `config-tool/public/js/app.js`, update the `sectionNames` map:
+
+```js
+const sectionNames = {
+  economy: 'Game Economy',
+  showcontrol: 'Show Control',
+  music: 'Music & Playlists',
+  audio: 'Audio & Environment',
+  infra: 'Infrastructure',
+  presets: 'Presets',
+};
+```
+
+The lazy-loader (`loadSection`) and Save button wiring already handle any new section via `data-section` + `id="section-X"` — no further changes needed.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add config-tool/public/index.html config-tool/public/js/app.js
+git commit -m "feat(config-tool): expose Music section in SPA shell (sidebar + section slot)"
+```
+
+#### Task 8.5: Add music:* actions to cue/timeline/command editors + music stream
 
 **Files:**
 - Modify: `config-tool/public/js/components/cueEditor.js`
@@ -3590,66 +3996,68 @@ git commit -m "feat(config-tool): proxy /api/music/* to orchestrator"
 - Modify: `config-tool/public/js/components/commandForm.js`
 - Modify: `config-tool/public/js/sections/audio.js`
 
-For each file:
+This task adds `music:*` actions alongside the existing `spotify:*` ones (final spotify removal happens in Phase 10.8).
 
-- [ ] **Step 1: Find spotify references**
+- [ ] **Step 1: Inventory spotify references in each file**
 
+Run:
 ```bash
-grep -n "spotify" config-tool/public/js/components/cueEditor.js
+grep -n "spotify" config-tool/public/js/components/cueEditor.js \
+  config-tool/public/js/components/timelineView.js \
+  config-tool/public/js/components/commandForm.js \
+  config-tool/public/js/sections/audio.js
+```
+Read each hit to understand the structure (action enum entry, label, payload schema, etc.).
+
+- [ ] **Step 2: For each component file**
+
+In `cueEditor.js`, `timelineView.js`, `commandForm.js`: wherever spotify actions are listed (action enums, labels, payload schemas), add the parallel music actions:
+
+```
+music:play          {}                            (label: "Music: Play")
+music:pause         {}                            (label: "Music: Pause")
+music:stop          {}                            (label: "Music: Stop")
+music:next          {}                            (label: "Music: Next track")
+music:previous      {}                            (label: "Music: Previous track")
+music:setVolume     {volume: 0..100}              (label: "Music: Set volume")
+music:setShuffle    {enabled: boolean}            (label: "Music: Toggle shuffle")
+music:setLoop       {enabled: boolean}            (label: "Music: Toggle loop")
+music:loadPlaylist  {playlistId: string}          (label: "Music: Load playlist")
 ```
 
-- [ ] **Step 2: Add music:* action equivalents alongside spotify:*** (still keeping spotify for now; final remove in Phase 10)
+For `commandForm.js` specifically: the `music:loadPlaylist` form needs a `<select>` populated from `api.getMusicPlaylists()` (mirror how `sound:play` populates from `api.getSounds()`).
 
-In the action enums add `music:play`, `music:loadPlaylist`, etc. with appropriate labels.
+- [ ] **Step 3: For `audio.js`, add `music` to STREAMS**
 
-- [ ] **Step 3: For audio.js — add `music` stream option**
-
+In `config-tool/public/js/sections/audio.js`:
 ```js
 const STREAMS = ['video', 'spotify', 'music', 'sound'];
 ```
+This makes music available in the Stream Routing table and the Duck dropdown.
 
-- [ ] **Step 4: Verify config-tool still works**
+- [ ] **Step 4: Verify tests pass + manual smoke**
 
 ```bash
 cd config-tool && npm test
 ```
+Manual: open Show Control → New cue → action dropdown should list all `music:*` actions. `music:loadPlaylist` should populate playlist `<select>`. Audio section should show `music` row in Stream Routing.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add config-tool/public/js/components/cueEditor.js config-tool/public/js/components/timelineView.js config-tool/public/js/components/commandForm.js config-tool/public/js/sections/audio.js
-git commit -m "feat(config-tool): cue/timeline/audio editors expose music:* actions alongside spotify:*"
-```
-
-#### Task 8.5: Wire music section into config-tool shell
-
-**Files:** modify `config-tool/public/index.html`, `config-tool/public/js/main.js` (or equivalent)
-
-- [ ] **Step 1: Add nav link to Music**
-
-In `index.html` nav:
-```html
-<li><a href="#music">Music</a></li>
-```
-
-- [ ] **Step 2: Import section markup and JS**
-
-Wire `<section>` from `sections/music.html` and import `js/sections/music.js`.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add config-tool/public/index.html config-tool/public/js/main.js
-git commit -m "feat(config-tool): expose Music section in shell"
+git commit -m "feat(config-tool): cue/timeline/command editors expose music:* actions; music stream in audio routing"
 ```
 
 ---
 
 ### Phase 9: E2E Tests
 
-#### Task 9.1: Generate ffmpeg test fixtures
+#### Task 9.1: Generate ffmpeg test fixtures (optional safety net)
 
 **Files:** create `backend/tests/e2e/fixtures/test-music/` with 3 short MP3s
+
+**Scope clarification:** The 9.2 E2E flow plays the production "All Tracks" playlist (66 real MP3s in `backend/public/music/`), so these fixtures are NOT loaded by any current test. We still generate them as a known-good minimal fixture set so future short-duration tests (e.g., crossfade timing tests, gapless boundary tests) have predictable 3-second clips to work with rather than depending on potentially-changing production music files. Skip this task if you don't intend to add such tests later.
 
 - [ ] **Step 1: Generate fixtures**
 
@@ -3665,26 +4073,30 @@ ffmpeg -y -f lavfi -i "sine=frequency=659:duration=3" -ar 44100 -ac 2 -b:a 128k 
 
 Create `backend/tests/e2e/fixtures/test-music/README.md`:
 ```
-Short 3-second sine-wave MP3s generated by ffmpeg lavfi for E2E playlist tests.
-Regenerate with the commands in plan task 9.1.
+Short 3-second sine-wave MP3s generated by ffmpeg lavfi.
+Currently not loaded by any test — kept as a known-good minimal fixture set
+for future crossfade/gapless boundary tests. Regenerate with the commands
+in plan task 9.1.
 ```
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add backend/tests/e2e/fixtures/test-music/
-git commit -m "test(music): add short MP3 fixtures for E2E playlist tests"
+git commit -m "test(music): add short MP3 fixtures for future E2E playlist tests"
 ```
 
 #### Task 9.2: 07d-05-admin-music-playlist E2E
 
 **Files:** create `backend/tests/e2e/flows/07d-05-admin-music-playlist.test.js`
 
+**CSS selector note:** MusicRenderer.js uses BEM (`music__X`, double underscore). The element classes are `.music`, `.music__playlist-picker`, `.music__track-title`, `.music__track-artist`, `.music__play-btn`, `.music__volume-slider`, etc. Action attributes are `data-action="admin.musicPlay"`, `admin.musicPause`, etc. (no underscores). Empty track text is `"No track"` (capital N), not `"(no track)"`.
+
 - [ ] **Step 1: Write the E2E test**
 
 ```js
 import { test, expect } from '@playwright/test';
-import { GMScannerPage } from '../helpers/page-objects/GMScannerPage';
+import { GMScannerPage } from '../helpers/page-objects/GMScannerPage.js';
 
 test.describe('Admin — music playlist control', () => {
   test('select All Tracks playlist, play, verify state', async ({ page }) => {
@@ -3692,13 +4104,15 @@ test.describe('Admin — music playlist control', () => {
     await gm.connect();
     await gm.navigateToAdminPanel();
 
-    const picker = page.locator('.music-playlist-picker');
+    const picker = page.locator('.music__playlist-picker');
     await expect(picker).toBeVisible();
     await expect(picker.locator('option')).toContainText(['All Tracks']);
 
     await picker.selectOption('all-tracks');
     await page.locator('[data-action="admin.musicPlay"]').click();
-    await expect(page.locator('.music-track-title')).not.toHaveText('(no track)', { timeout: 5000 });
+    // Initial state shows "No track"; once MPD starts playing, the title swaps
+    // to a real filename/Title from the MPD database.
+    await expect(page.locator('.music__track-title')).not.toHaveText('No track', { timeout: 5000 });
   });
 });
 ```
@@ -3721,9 +4135,20 @@ git commit -m "test(music): E2E flow — admin selects and plays All Tracks play
 
 **Files:** modify `backend/tests/e2e/flows/07d-03-admin-show-control.test.js`
 
-- [ ] **Step 1: Replace spotify assertions with music**
+The only spotify reference in this file is the `serviceCommandMap` entry used by the "gated execution" test (around line 421). Replace it with a music entry — `music:play` is the lightest gated command and tests the same code path.
 
-Find Spotify-related selectors and assertions; replace with `.music-now-playing`, `[data-action="admin.musicPlay"]`, etc.
+- [ ] **Step 1: Update `serviceCommandMap`**
+
+In the gated-execution test, change:
+```js
+spotify: { action: 'spotify:play', payload: {} },
+```
+to:
+```js
+music: { action: 'music:play', payload: {} },
+```
+
+(Keep the other entries as-is. No other selectors change in this file.)
 
 - [ ] **Step 2: Run + commit**
 
@@ -3731,14 +4156,46 @@ Find Spotify-related selectors and assertions; replace with `.music-now-playing`
 cd ALNScanner && npm run build
 cd ../backend && npx playwright test flows/07d-03
 git add backend/tests/e2e/flows/07d-03-admin-show-control.test.js
-git commit -m "test(music): update 07d-03 show-control E2E for music controls"
+git commit -m "test(music): update 07d-03 show-control E2E for music gated execution"
 ```
 
 #### Task 9.4: Update 07d-04-admin-environment-control
 
-Same pattern as 9.3 for `07d-04-admin-environment-control.test.js`.
+**Files:** modify `backend/tests/e2e/flows/07d-04-admin-environment-control.test.js`
 
-Commit: `test(music): update 07d-04 environment-control E2E for music ducking`
+This file has **three** spotify-anchored tests that need rewriting in place (verified 2026-05-20):
+1. `'GM controls Spotify playback'` (~line 118) — gates on `serviceHealth.spotify`, sends `spotify:pause` / `spotify:play`
+2. `'Spotify auto-ducks when video plays'` (~line 287) — verifies `service:state.ducking.spotify` array contains/clears `'video'`
+3. `'Cascading pause suspends Spotify'` (~line 365) — verifies game-clock cascade sets `service:state.domain === 'spotify'` `pausedByGameClock`
+
+Each test must be rewritten to target the music service instead. After Phase 10 removes spotify entirely, no spotify references should remain in this file.
+
+- [ ] **Step 1: Rewrite each test**
+
+| Old assertion | New equivalent |
+|---|---|
+| `serviceHealth.spotify?.status === 'healthy'` | `serviceHealth.music?.status === 'healthy'` |
+| `sendGMCommand(url, 'spotify:pause')` | `sendGMCommand(url, 'music:pause')` |
+| `sendGMCommand(url, 'spotify:play')` | `sendGMCommand(url, 'music:play')` |
+| `data.data?.state?.ducking?.spotify` | `data.data?.state?.ducking?.music` |
+| `data.data?.domain === 'spotify' && data.data.state.pausedByGameClock` | `data.data?.domain === 'music' && data.data.state.pausedByGameClock` |
+
+Also rename test labels: `'GM controls Spotify playback'` → `'GM controls music playback'`, etc. Skip the test if `serviceHealth.music?.status !== 'healthy'` (matches existing pattern).
+
+**Note:** The ducking test (`auto-ducks when video plays`) already covers ducking semantics; replacing the duck target from spotify→music keeps coverage equivalent. The cascading-pause test exercises the same `pauseForGameClock`/`resumeFromGameClock` contract that musicService implements (Task 1.7) and that's already verified in `tests/integration/cue-engine.test.js`.
+
+- [ ] **Step 2: Verify pre-conditions for the music tests**
+
+The "auto-ducks when video plays" music test needs music to be actively playing for the duck to fire. Add a `loadPlaylist('all-tracks')` + small wait before triggering the video, just as the spotify version called `spotify:play` before the video trigger.
+
+- [ ] **Step 3: Run + commit**
+
+```bash
+cd ALNScanner && npm run build
+cd ../backend && npx playwright test flows/07d-04
+git add backend/tests/e2e/flows/07d-04-admin-environment-control.test.js
+git commit -m "test(music): update 07d-04 environment-control E2E for music ducking + cascade"
+```
 
 ---
 
@@ -3839,36 +4296,59 @@ git commit -m "chore(spotify): remove spotifyService wiring from app/broadcasts/
 
 #### Task 10.3: Delete remaining spotify-referencing files
 
-**Files:** delete spotify-only tests, helpers, fixtures
+**Files:** delete spotify-only tests, helpers, fixtures, E2E setup
 
-- [ ] **Step 1: List spotify-only files**
+- [ ] **Step 1: List spotify-only files (active codebase)**
 
 ```bash
 grep -rli "spotify" backend/tests --include="*.js" | xargs grep -L "music"
 ```
 Each file in output references spotify but not music — these are spotify-only and should be deleted or rewritten.
 
-- [ ] **Step 2: Delete spotify-only tests**
+- [ ] **Step 2: Delete spotify-only files**
 
 ```bash
-rm backend/tests/unit/services/spotifyService.test.js  # (already done in 10.1, redundant)
-# any others identified
+rm backend/tests/e2e/setup/spotify-service.js  # E2E helper that probes for spotifyd via D-Bus + tries to start it
+# (spotifyService.test.js already deleted in 10.1)
+# Add any others identified by step 1
 ```
 
-- [ ] **Step 3: Update mixed-mention tests**
+The `backend/tests/e2e/setup/spotify-service.js` file is the real-or-unavailable D-Bus probe used by `07d-04`'s spotify tests. After we rewrote those tests for music in Task 9.4, this file has no callers — delete it.
 
-For tests that reference both spotify and music (e.g., `external-state-propagation`, `state-synchronization`):
-- Remove spotify assertions/setup
-- Keep music coverage that was added in Phase 6
+- [ ] **Step 3: Update mixed-mention tests (where spotify and music co-exist after Phase 6)**
+
+For each of the following, remove spotify assertions/setup and keep the music coverage added in Phase 6:
+- `backend/tests/integration/external-state-propagation.test.js`
+- `backend/tests/integration/state-synchronization.test.js`
+- `backend/tests/integration/audio-routing-phase3.test.js` (keep music ducking; remove spotify ducking block — music ducking already proves the engine works)
+- `backend/tests/integration/service-state-push.test.js`
+- `backend/tests/integration/compound-cues.test.js`
+- `backend/tests/integration/cue-engine.test.js` (Phase 6 added music tests; remove spotify-equivalents)
+- `backend/tests/unit/services/audioRoutingService.test.js` (`spotify` stream tests → music)
+- `backend/tests/unit/services/commandExecutor.test.js` (`spotify:*` cases — should be gone after 10.1, but verify)
+- `backend/tests/unit/services/cueEngineService.test.js` (`spotify:track:changed` normalizer)
+- `backend/tests/unit/services/cueEngineWiring.test.js`
+- `backend/tests/unit/services/getState.test.js`
+- `backend/tests/unit/services/serviceHealthRegistry.test.js` + `serviceHealthRegistry-revalidation.test.js`
+- `backend/tests/unit/services/session-lifecycle.test.js`
+- `backend/tests/unit/services/systemReset.test.js`
+- `backend/tests/unit/services/vlcMprisService.test.js` (shared MPRIS base class test — may have spotify in setup)
+- `backend/tests/unit/services/mprisPlayerBase.test.js` (may not exist; check)
+- `backend/tests/unit/websocket/adminEvents.test.js`
+- `backend/tests/unit/websocket/broadcasts.test.js` + `phase2-broadcasts.test.js`
+- `backend/tests/contract/http/state.test.js` — may include spotify in `sync:full` shape check
+- `backend/tests/contract/scanner/event-handling.test.js`
+- `backend/tests/contract/websocket/session-events.test.js`
 
 - [ ] **Step 4: Update test helpers**
 
 In `backend/tests/helpers/browser-mocks.js`:
-- Remove MockSpotifyService
-- Keep MockMusicService
+- Remove `MockSpotifyService`
+- Keep `MockMusicService`
 
 In `backend/tests/helpers/integration-test-server.js`:
-- Remove `services.spotify` initialization
+- Remove `services.spotify` initialization + reset + cleanup hooks
+- Remove spotify from `buildSyncFullPayload` call site
 - Keep `services.music`
 
 In `backend/tests/helpers/service-reset.js`:
@@ -3879,6 +4359,7 @@ In `backend/tests/helpers/service-reset.js`:
 
 ```bash
 cd backend && npm test
+cd backend && npm run test:integration
 ```
 Expected: all tests pass.
 
@@ -3886,7 +4367,7 @@ Expected: all tests pass.
 
 ```bash
 git add backend/tests
-git commit -m "chore(spotify): delete spotify-only tests and remove spotify from helpers"
+git commit -m "chore(spotify): delete spotify-only tests + e2e setup, scrub mixed-mention tests, update helpers"
 ```
 
 #### Task 10.4: Remove SPOTIFY_* env vars + audio-routing ducking entries
@@ -3895,23 +4376,59 @@ git commit -m "chore(spotify): delete spotify-only tests and remove spotify from
 - Modify: `backend/.env.example`
 - Modify: `backend/config/environment/routing.json`
 
-- [ ] **Step 1: Remove SPOTIFY_* from .env.example**
+- [ ] **Step 1: Remove the entire SPOTIFY block from .env.example**
 
-```bash
-sed -i '/SPOTIFY_/d' backend/.env.example
+⚠️ `sed -i '/SPOTIFY_/d'` is insufficient — it only deletes lines matching `SPOTIFY_` literally, so the section banner (`# SPOTIFY (Phase 2 - spotifyd via D-Bus)`) and prose comment (`# Path to spotifyd cache directory ...`) survive as orphans. Verified 2026-05-20: the block in `backend/.env.example` is:
+
+```
+# ============================================================
+# SPOTIFY (Phase 2 - spotifyd via D-Bus)
+# ============================================================
+# Path to spotifyd cache directory (default: ~/.cache/spotifyd)
+SPOTIFY_CACHE_PATH=
 ```
 
-Verify by inspection.
+Use a precise Edit (open in editor, remove all 5 lines + the blank line that separates from the next section) OR a multi-line sed:
 
-- [ ] **Step 2: routing.json**
+```bash
+sed -i '/^# =\{40,\}$/{
+  N; /^# =\{40,\}\n# SPOTIFY/{
+    N; N; N; N; d
+  }
+}' backend/.env.example
+```
 
-Already updated in Phase 4.2 — but double-check no `"duck": "spotify"` remains.
+Verify by inspection:
+```bash
+grep -niE "spotify|SPOTIFY_CACHE_PATH" backend/.env.example
+# expected: zero hits
+```
+
+- [ ] **Step 2: routing.json — remove spotify route + spotify-duck rules**
+
+`backend/config/environment/routing.json` currently has both a `spotify` route entry AND spotify-targeting duck rules alongside the music ones (added in Phase 4.2 for parallel operation). Remove:
+
+In `routes`, delete:
+```json
+"spotify": {
+  "sink": "hdmi",
+  "fallback": "hdmi"
+}
+```
+
+In `ducking`, delete the entries whose `"duck"` is `"spotify"` (keep the ones whose `"duck"` is `"music"`).
+
+Verify:
+```bash
+grep -n "spotify" backend/config/environment/routing.json
+# expected: zero hits
+```
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add backend/.env.example backend/config/environment/routing.json
-git commit -m "chore(spotify): remove SPOTIFY_* env vars from .env.example"
+git commit -m "chore(spotify): remove SPOTIFY_* env vars + spotify routing/ducking entries"
 ```
 
 #### Task 10.5: Remove spotify from contracts
@@ -3967,13 +4484,43 @@ git commit -m "docs(spotify): remove spotify references from backend/CLAUDE.md; 
 
 #### Task 10.7: ALNScanner Spotify cleanup (inside submodule)
 
-**Files:**
-- Delete: `ALNScanner/src/admin/SpotifyController.js`
-- Delete: `ALNScanner/src/ui/renderers/SpotifyRenderer.js`
-- Delete: `ALNScanner/tests/unit/admin/SpotifyController.test.js`
-- Delete: `ALNScanner/tests/unit/ui/renderers/SpotifyRenderer.test.js`
-- Delete: `ALNScanner/tests/unit/utils/domEventBindings-spotify.test.js`
-- Modify: various ALNScanner source files
+**Files (verified by grep 2026-05-20):**
+
+Code/test files to delete:
+- `ALNScanner/src/admin/SpotifyController.js`
+- `ALNScanner/src/ui/renderers/SpotifyRenderer.js`
+- `ALNScanner/src/styles/components/spotify.css`
+- `ALNScanner/tests/unit/admin/SpotifyController.test.js`
+- `ALNScanner/tests/unit/ui/renderers/SpotifyRenderer.test.js`
+- `ALNScanner/tests/unit/utils/domEventBindings-spotify.test.js`
+
+Code files to scrub (active spotify references — exact lines verified):
+- `ALNScanner/src/core/stateStore.js` — delete the `spotify` domain entry
+- `ALNScanner/src/network/networkedSession.js` — delete `case 'spotify':` from service:state switch and `if (payload.spotify)` from sync:full handling
+- `ALNScanner/src/utils/domEventBindings.js` — delete all `case 'spotifyX':` action cases (play/pause/stop/next/previous/setVolume)
+- `ALNScanner/src/app/adminController.js` lines 27, 66 — delete the `SpotifyController` import + `spotifyController:` slot
+- `ALNScanner/src/admin/MonitoringDisplay.js` lines 7, 29, 87-95, 124-125 — delete `SpotifyRenderer` import, instantiation, ducking forwarding (keep music forwarding), `on('spotify', …)` subscription
+- `ALNScanner/src/admin/AdminOperations.js` line 71 — update JSDoc example from `'vlc', 'spotify', 'audio'` to `'vlc', 'music', 'audio'`
+- `ALNScanner/src/admin/AudioController.js` lines 7, 10, 28, 37 — update JSDoc comments to reference `music` stream instead of `spotify`
+- `ALNScanner/src/ui/renderers/EnvironmentRenderer.js` lines 36, 46, 202 — delete `spotify: 'Spotify Music'` from `STREAM_LABELS`, delete `spotify: 100` from `_volumeValues`, delete the spotify entry from the per-stream slider list
+- `ALNScanner/src/ui/renderers/HealthRenderer.js` — delete `spotify: 'Spotify'` from `SERVICE_NAMES`
+- `ALNScanner/src/core/unifiedDataManager.js` line 521 — update the comment listing service domains (remove `spotify`)
+
+CSS / markup:
+- `ALNScanner/src/styles/main.css` line 24 — delete `@import './components/spotify.css';`
+- `ALNScanner/index.html` lines 428-432 — delete the `<!-- Now Playing / Spotify Status … -->` comment, the wrapping `<div class="subsection">`, and the `<div id="now-playing-section">`. Update the surrounding comment block to mention only Music.
+
+Test files to scrub (mixed mentions — remove spotify assertions, keep music ones):
+- `ALNScanner/tests/unit/admin/AudioController-volume.test.js`
+- `ALNScanner/tests/unit/admin/MonitoringDisplay-phase3.test.js`
+- `ALNScanner/tests/unit/core/stateStore.test.js`
+- `ALNScanner/tests/unit/network/networkedSession.test.js`
+- `ALNScanner/tests/unit/ui/renderers/EnvironmentRenderer.test.js`
+- `ALNScanner/tests/unit/ui/renderers/HealthRenderer.test.js`
+- `ALNScanner/tests/unit/utils/domEventBindings-safeAction.test.js`
+
+Docs:
+- `ALNScanner/CLAUDE.md` — strip spotify mentions
 
 - [ ] **Step 1: Delete spotify-only files**
 
@@ -3981,50 +4528,49 @@ git commit -m "docs(spotify): remove spotify references from backend/CLAUDE.md; 
 cd ALNScanner
 rm src/admin/SpotifyController.js
 rm src/ui/renderers/SpotifyRenderer.js
+rm src/styles/components/spotify.css
 rm tests/unit/admin/SpotifyController.test.js
 rm tests/unit/ui/renderers/SpotifyRenderer.test.js
 rm tests/unit/utils/domEventBindings-spotify.test.js
 ```
 
-- [ ] **Step 2: Remove spotify from stateStore**
+- [ ] **Step 2: Scrub code references**
 
-In `src/core/stateStore.js`, delete the `spotify` initial domain entry.
+Work through the "Code files to scrub" list above one file at a time. Pattern: grep, read the specific line(s), apply the documented change.
 
-- [ ] **Step 3: Remove spotify from networkedSession**
+- [ ] **Step 3: Scrub CSS + markup**
 
-In `src/network/networkedSession.js`, remove `case 'spotify':` from service:state switch and `if (data.spotify)` from sync:full handling.
+Remove the `@import` line in `main.css`. Remove the now-playing-section div in `index.html`.
 
-- [ ] **Step 4: Remove spotify from HealthRenderer SERVICE_NAMES**
+- [ ] **Step 4: Scrub mixed-mention tests**
 
-- [ ] **Step 5: Remove spotify from domEventBindings**
+For each test file listed under "Test files to scrub": remove spotify assertions and setup, keep music coverage that was added in Phase 7.
 
-Remove all `case 'spotifyX':` cases.
-
-- [ ] **Step 6: Remove spotify from adminController/MonitoringDisplay/AdminOperations/AudioController/EnvironmentRenderer/unifiedDataManager**
-
-Grep each file, remove spotify-specific code. Keep music.
-
-- [ ] **Step 7: Update tests with mixed mentions**
-
-Files like `MonitoringDisplay-phase3.test.js`, `EnvironmentRenderer.test.js`, etc. — remove spotify assertions, keep music ones.
-
-- [ ] **Step 8: Run all ALNScanner tests**
+- [ ] **Step 5: Run all ALNScanner tests + build**
 
 ```bash
-cd ALNScanner && npm test
+cd ALNScanner && npm test && npm run coverage:check && npm run build
 ```
 Expected: pass.
 
-- [ ] **Step 9: Update ALNScanner CLAUDE.md**
+- [ ] **Step 6: Update ALNScanner CLAUDE.md**
 
 Strip remaining spotify references.
 
-- [ ] **Step 10: Commit (in submodule)**
+- [ ] **Step 7: Verify no remaining spotify in active ALNScanner code**
+
+```bash
+cd ALNScanner
+grep -rli "spotify" src tests index.html CLAUDE.md 2>/dev/null
+# expected: zero hits (or only historical docs you've intentionally kept)
+```
+
+- [ ] **Step 8: Commit (in submodule)**
 
 ```bash
 cd ALNScanner
 git add -A
-git commit -m "chore(spotify): remove all Spotify code from ALNScanner (controllers, renderer, store, network, health, bindings, tests)"
+git commit -m "chore(spotify): remove all Spotify code from ALNScanner (controllers, renderer, CSS, store, network, health, bindings, tests)"
 cd ..
 ```
 
@@ -4036,10 +4582,11 @@ cd ..
 - Modify: `config-tool/public/js/components/commandForm.js`
 - Modify: `config-tool/public/js/sections/audio.js`
 - Modify: `config-tool/README.md`
+- Modify: `config-tool/public/css/styles.css` (only if it has spotify-specific styles — `grep -n spotify` first)
 
 - [ ] **Step 1: Remove spotify:* entries from action enums**
 
-In each component file, remove `spotify:play`, `spotify:pause`, etc. from any enum or labels list.
+In each component file, remove `spotify:play`, `spotify:pause`, `spotify:stop`, `spotify:next`, `spotify:previous` from any action enum, label map, or payload schema. Keep the `music:*` actions added in Task 8.5.
 
 - [ ] **Step 2: Remove `spotify` stream from audio.js**
 
@@ -4047,15 +4594,23 @@ In each component file, remove `spotify:play`, `spotify:pause`, etc. from any en
 const STREAMS = ['video', 'music', 'sound'];  // was ['video', 'spotify', 'music', 'sound']
 ```
 
-- [ ] **Step 3: Update README**
+This affects the Stream Routing table and the Duck dropdown options.
 
-Strip spotify references from `config-tool/README.md`.
+- [ ] **Step 3: Update README — specific lines verified 2026-05-20**
 
-- [ ] **Step 4: Run config-tool tests**
+In `config-tool/README.md`:
+- Line 60: change `"sound, lighting, video, Spotify"` → `"sound, lighting, video, music"`
+- Line 78: change `"Sound, Lighting, Video, Spotify, Audio, Cue, Display"` → `"Sound, Lighting, Video, Music, Audio, Cue, Display"`
+- Line 80: change `"sound → sink, video → sink, spotify → sink"` → `"sound → sink, video → sink, music → sink"`
+- Line 94: change `"For each audio stream (video, spotify, sound)"` → `"For each audio stream (video, music, sound)"`. Drop `combine-bt` reference if still present (removed per memory).
+- Line 98: change `"Duck — The stream to reduce (e.g., 'spotify')"` → `"Duck — The stream to reduce (e.g., 'music')"`
+
+- [ ] **Step 4: Run config-tool tests + smoke**
 
 ```bash
 cd config-tool && npm test
 ```
+Manual: open Show Control → New cue → action dropdown should have NO spotify:* entries, only music:*. Audio section should show no "spotify" row.
 
 - [ ] **Step 5: Commit**
 
@@ -4066,30 +4621,69 @@ git commit -m "chore(spotify): remove spotify from cue editor, timeline, command
 
 #### Task 10.9: Parent CLAUDE.md + DEPLOYMENT_GUIDE.md cleanup
 
-**Files:** modify parent `CLAUDE.md`, `DEPLOYMENT_GUIDE.md`
+**Files:** modify parent `CLAUDE.md`. Append (don't replace) an MPD section to `DEPLOYMENT_GUIDE.md`.
 
-- [ ] **Step 1: Find spotify mentions in parent CLAUDE.md**
+**Important finding (verified 2026-05-20):** `DEPLOYMENT_GUIDE.md` has **zero** spotify or spotifyd mentions. There is no "spotifyd setup step" to remove — only an MPD install step to add.
 
+**Parent `CLAUDE.md` spotify references (verified line numbers):**
+| Line | Current text | Action |
+|---|---|---|
+| 222 | `...Spotify control` (Show Control admin row) | Replace `Spotify` → `Music` |
+| 251 | `... gameClock, cueEngine, spotify, serviceHealth ...` (sync:full payload list) | Replace `spotify` → `music` |
+| 254 | `10 domains: spotify, video, health, bluetooth, ...` + `spotify:status, ...` removed events | Replace `spotify` → `music` in the domain list; leave the removed-events list (`spotify:status`) since that's historical (removed events list is intentionally retained for archaeology) |
+| 256 | `auto-duck Spotify for video/sound` (Phase 3 features) | Replace `Spotify` → `Music` |
+| 258 | `health of 8 services (vlc, spotify, sound, ...)` + `spotifyService: connection:changed` | Replace `spotify` → `music` in service list. Remove the `spotifyService: connection:changed` reference from the events parenthetical |
+| 259 | `... catches stale pipewire-pulse, dead spotifyd` | Replace `spotifyd` → `mpd` |
+| 262 | `Phase 2 adds video progress/lifecycle forwarding and spotifyService forwarding` | Replace `spotifyService` → `musicService` |
+
+- [ ] **Step 1: Apply the table above to parent CLAUDE.md via targeted Edits**
+
+- [ ] **Step 2: Add MPD setup section to DEPLOYMENT_GUIDE.md**
+
+Find the section that documents audio service setup (pipewire-pulse, VLC, etc.) and append:
+
+```markdown
+## MPD (Music Player Daemon)
+
+The orchestrator spawns its own MPD instance via ProcessMonitor and controls
+it over a Unix socket at `/tmp/aln-mpd.sock`. The system MPD service is
+disabled — we manage MPD lifecycle from the orchestrator.
+
+Install:
 ```bash
-grep -n "spotify\|Spotify" CLAUDE.md
+sudo apt install -y mpd
+sudo systemctl stop mpd && sudo systemctl disable mpd
+sudo systemctl stop mpd.socket 2>/dev/null && sudo systemctl disable mpd.socket 2>/dev/null
 ```
 
-- [ ] **Step 2: Replace with music**
+Music library:
+- MP3 files live in `backend/public/music/` (relative to the repo root).
+- After adding/removing tracks, regenerate the All Tracks bootstrap playlist:
+  ```bash
+  cd backend && npm run music:seed
+  ```
 
-Most are in the services table and event architecture section. Update them.
+PipeWire integration:
+- MPD's audio output is named `aln-music` (application name).
+- This is the stream that `audioRoutingService` routes/ducks via `pactl`.
+- Verify when MPD is playing: `pactl list sink-inputs | grep -i aln-music`
+```
 
-- [ ] **Step 3: Update DEPLOYMENT_GUIDE.md**
-
-Add MPD install step; remove spotifyd setup step.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add CLAUDE.md DEPLOYMENT_GUIDE.md
-git commit -m "docs(spotify): remove spotify references from parent CLAUDE.md and DEPLOYMENT_GUIDE"
+git commit -m "docs: replace spotify with music in parent CLAUDE.md; add MPD setup to DEPLOYMENT_GUIDE"
 ```
 
 #### Task 10.10: Spotify deployment removal (system level)
+
+**Install detection (verified on this Pi 2026-05-20):**
+- `dpkg -l | grep spotifyd` → empty
+- `~/.cargo/bin/spotifyd` → does NOT exist
+- `/usr/local/bin/spotifyd` → exists (binary installed manually via `wget` + extract, not via package manager). The systemd unit at `~/.config/systemd/user/spotifyd.service` references this path with `ExecStart=/usr/local/bin/spotifyd --no-daemon ...`.
+
+The plan accounts for apt and cargo but **misses the `/usr/local/bin` manual-install path** that's actually used here. Use the full check below.
 
 - [ ] **Step 1: Stop and disable spotifyd**
 
@@ -4098,23 +4692,27 @@ systemctl --user stop spotifyd
 systemctl --user disable spotifyd
 ```
 
-- [ ] **Step 2: Remove spotifyd**
+- [ ] **Step 2: Detect install location + remove**
 
-Check how spotifyd is installed:
 ```bash
-dpkg -l | grep spotifyd
+# Check every known install path
+dpkg -l 2>/dev/null | grep spotifyd
+which spotifyd
 ls -la ~/.cargo/bin/spotifyd 2>/dev/null
+ls -la /usr/local/bin/spotifyd 2>/dev/null
+
+# Remove based on where it lives:
+# - apt: sudo apt remove --purge spotifyd
+# - cargo: rm ~/.cargo/bin/spotifyd
+# - /usr/local/bin (manual install on this Pi): sudo rm /usr/local/bin/spotifyd
 ```
 
-If apt-installed: `sudo apt remove --purge spotifyd`
-If cargo-installed: `rm ~/.cargo/bin/spotifyd`
-
-- [ ] **Step 3: Delete spotifyd config and cache**
+- [ ] **Step 3: Delete spotifyd config, cache, and unit**
 
 ```bash
 rm -rf ~/.config/spotifyd
 rm -rf ~/.cache/spotifyd
-rm ~/.config/systemd/user/spotifyd.service
+rm -f ~/.config/systemd/user/spotifyd.service
 systemctl --user daemon-reload
 ```
 
@@ -4122,10 +4720,13 @@ systemctl --user daemon-reload
 
 ```bash
 ls ~/.config/systemd/user/ | grep -i spotify
+which spotifyd
 ```
-Expected: empty.
+Expected: both empty.
 
 - [ ] **Step 5: No commit required** (system-level changes)
+
+⚠️ Spotify Premium credentials in the now-deleted `~/.config/spotifyd/spotifyd.conf` were plaintext on this Pi. If those credentials were ever reused elsewhere, rotate them after this task.
 
 #### Task 10.11: Cleanup audit grep
 
@@ -4135,10 +4736,16 @@ Expected: empty.
 grep -rli "spotify" \
   backend ALNScanner config-tool DEPLOYMENT_GUIDE.md CLAUDE.md \
   --include="*.js" --include="*.json" --include="*.yaml" --include="*.md" \
-  --include="*.html" --include="*.ts" \
-  2>/dev/null | grep -vE "node_modules|dist/|\.git|coverage|playwright-report|/data/"
+  --include="*.html" --include="*.ts" --include="*.css" \
+  2>/dev/null | grep -vE "node_modules|dist/|\.git|coverage|playwright-report|/data/|backend/docs/plans/|docs/superpowers/plans/"
 ```
-Expected: zero results, OR only hits in historical files like `backend/docs/plans/*spotify*.md` (those are archived plans, keep them).
+
+Notes:
+- `--include="*.css"` is required (we have `ALNScanner/src/styles/components/spotify.css` and possibly residual selectors in `main.css` / `config-tool/public/css/styles.css`).
+- The post-filter excludes BOTH `backend/docs/plans/` (archived backend plans) AND `docs/superpowers/plans/` (this plan file lives here). The plan itself documents spotify history — that's expected and should not fail the audit.
+- The "ipv6 dealer" debug section in `backend/CLAUDE.md` (the "Spotify Wedged" recovery note) — if you choose to retain it for archaeology, this audit will catch it. Either remove it in Task 10.6 OR move it to `backend/docs/plans/`-style archive and rerun.
+
+Expected: zero results.
 
 - [ ] **Step 2: If any hits remain in active code, fix them and re-run**
 
@@ -4283,30 +4890,41 @@ git pull --ff-only
 git submodule update --init --recursive
 ```
 
-- [ ] **Step 2: Rebuild ALNScanner dist**
+- [ ] **Step 2: Install backend deps (mpd2 is new)**
+
+```bash
+cd backend && npm install && cd ..
+```
+
+This picks up the newly-added `mpd2` runtime dependency. Skipping this step results in `Cannot find module 'mpd2'` on startup.
+
+- [ ] **Step 3: Rebuild ALNScanner dist**
 
 ```bash
 cd ALNScanner && npm install && npm run build && cd ..
 ```
 
-- [ ] **Step 3: Restart orchestrator**
+- [ ] **Step 4: Restart orchestrator**
 
 ```bash
-npm run prod:restart  # or pm2 restart all
+cd backend && npm run prod:restart  # = pm2 restart all
 ```
 
-- [ ] **Step 4: Verify**
+- [ ] **Step 5: Verify**
 
 ```bash
-curl -k https://localhost:3000/health | jq
+curl -s http://localhost:3000/health | jq
 pgrep -a mpd
 pgrep -a spotifyd  # expected empty
+ls /tmp/aln-pm-mpd.pid && cat /tmp/aln-pm-mpd.pid  # ProcessMonitor PID file
+mpc -h /tmp/aln-mpd.sock status  # if mpc CLI is available
 ```
 
 Expected:
-- Orchestrator healthy
-- MPD running
+- Orchestrator healthy (`/health` returns 200 with no `down` services other than what's intentionally unconfigured)
+- MPD running under ProcessMonitor (`/tmp/aln-pm-mpd.pid` exists)
 - No spotifyd
+- `pactl list sink-inputs | grep -i aln-music` — present when MPD is playing (i.e., after a `music:loadPlaylist` is issued)
 
 ---
 
@@ -4336,8 +4954,8 @@ npm test
 cd ..
 grep -rli "spotify" backend ALNScanner config-tool DEPLOYMENT_GUIDE.md CLAUDE.md \
   --include="*.js" --include="*.json" --include="*.yaml" --include="*.md" \
-  --include="*.html" --include="*.ts" \
-  2>/dev/null | grep -vE "node_modules|dist/|\.git|coverage|playwright-report|/data/|/docs/plans/"
+  --include="*.html" --include="*.ts" --include="*.css" \
+  2>/dev/null | grep -vE "node_modules|dist/|\.git|coverage|playwright-report|/data/|backend/docs/plans/|docs/superpowers/plans/"
 # Expected: empty output
 ```
 
@@ -4364,7 +4982,7 @@ Manual smoke checklist (run on Pi after merge):
 | MPD database stale when files added | Service runs `mpd.update()` on startup AND when `/api/music/tracks` returns 404 for a known file |
 | PipeWire stream name collision if user has another MPD running | Audited: no MPD installed currently on Pi; we'll spawn ours under ProcessMonitor, so it's tightly coupled |
 | sync:full omission causes silent state desync | Phase 4.8 explicitly audits all 7 callers; integration test in 6.5 guards against future regressions |
-| mpd2 client disconnect on long-running connection | mpd2 has reconnect; wrap with health-aware retry; rely on ProcessMonitor for MPD itself |
+| mpd2 client disconnect on long-running connection | Implemented in Phase 1.3 / code-review remediation: `musicService.checkConnection()` is reactive — when a `ping` raises (broken socket), the service nulls `_mpd` and the next command path reconnects. ProcessMonitor handles MPD process restart; the `exited` handler also reports `down` to `serviceHealthRegistry` so gated commands fail fast |
 | Live-edit of music-playlists.json during playback | musicService watches via `fs.watch`, only reloads metadata; doesn't disrupt current playback (Phase 1.10 + 6.7 verify) |
 | pipewire-pulse-stale recurrence | Memory note: pipewire-pulse can wedge after days of uptime. Same mitigation as before: audioRoutingService health checks detect; `pipewire-pulse` restart recovery |
 
