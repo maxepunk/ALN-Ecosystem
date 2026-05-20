@@ -284,6 +284,15 @@ class MusicService extends EventEmitter {
       this.track.position = pos;
     }
   }
+
+  reset() {
+    this._stopPositionPolling();
+    this.state = 'stopped';
+    this.volume = 70;
+    this.track = null;
+    this.playlist = null;
+    this._pausedByGameClock = false;
+  }
 }
 
 const singleton = new MusicService();

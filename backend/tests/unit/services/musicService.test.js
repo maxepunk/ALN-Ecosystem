@@ -466,3 +466,24 @@ describe('MusicService — idle events', () => {
     expect(trackHandler).toHaveBeenCalledWith({ track: null });
   });
 });
+
+describe('MusicService — reset', () => {
+  it('reset() clears state and stops timers without disconnecting MPD', () => {
+    const service = new MusicService();
+    service.connected = true;
+    service.state = 'playing';
+    service.volume = 50;
+    service.track = { file: 'x.mp3', title: 'X' };
+    service.playlist = { id: 'a', name: 'A', position: 2, total: 5 };
+    service._pausedByGameClock = true;
+    service._positionTimer = setInterval(() => {}, 1000);
+    const stopSpy = jest.spyOn(service, '_stopPositionPolling');
+    service.reset();
+    expect(stopSpy).toHaveBeenCalled();
+    expect(service.state).toBe('stopped');
+    expect(service.volume).toBe(70);
+    expect(service.track).toBe(null);
+    expect(service.playlist).toBe(null);
+    expect(service._pausedByGameClock).toBe(false);
+  });
+});
