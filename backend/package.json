@@ -54,6 +54,7 @@
     "test:docker": "sg docker -c 'npx jest --config jest.integration.config.js tests/integration/docker-lifecycle.test.js --runInBand'",
     "// SESSION VALIDATION": "=== Post-session analysis tools ===",
     "session:validate": "node scripts/validate-session.js",
+    "music:seed": "node scripts/seed-music-playlist.js",
     "// UTILITIES": "=== Maintenance and setup ===",
     "setup": "./scripts/setup.sh",
     "clean:logs": "rm -rf logs/*.log",
