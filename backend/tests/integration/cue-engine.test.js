@@ -247,6 +247,48 @@ describe('Cue Engine Integration', () => {
       expect(result.data.error).toBe('SESSION_PAUSED');
     });
 
+    it('should call music.pauseForGameClock on session:pause', async () => {
+      // sessionService.setStatus uses a lazy require for musicService, so we
+      // spy on the actual singleton method.
+      const musicService = require('../../src/services/musicService');
+      const pauseSpy = jest.spyOn(musicService, 'pauseForGameClock')
+        .mockResolvedValue(undefined);
+
+      try {
+        await createAndStartSession(gm1, 'Music Pause Test Session', ['Team Alpha']);
+
+        sendGmCommand(gm1, 'session:pause', {});
+        await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'paused');
+
+        // sessionService fires music.pauseForGameClock() fire-and-forget;
+        // the await above guarantees the pause cascade has run.
+        expect(pauseSpy).toHaveBeenCalled();
+      } finally {
+        pauseSpy.mockRestore();
+      }
+    });
+
+    it('should call music.resumeFromGameClock on session:resume', async () => {
+      const musicService = require('../../src/services/musicService');
+      const resumeSpy = jest.spyOn(musicService, 'resumeFromGameClock')
+        .mockResolvedValue(undefined);
+
+      try {
+        await createAndStartSession(gm1, 'Music Resume Test Session', ['Team Alpha']);
+
+        sendGmCommand(gm1, 'session:pause', {});
+        await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'paused');
+
+        resumeSpy.mockClear();
+        sendGmCommand(gm1, 'session:resume', {});
+        await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'running');
+
+        expect(resumeSpy).toHaveBeenCalled();
+      } finally {
+        resumeSpy.mockRestore();
+      }
+    });
+
     it('should resume everything on session:resume', async () => {
       // Create session, start, and pause
       await createAndStartSession(gm1, 'Resume Test Session', ['Team Alpha']);
