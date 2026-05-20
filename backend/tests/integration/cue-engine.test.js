@@ -252,6 +252,66 @@ describe('Cue Engine Integration', () => {
         loadSpy.mockRestore();
       }
     });
+
+    it('music:track:changed payload is normalized to flat fields for cue conditions', async () => {
+      // Proves the EVENT_NORMALIZERS music entries added in commit 5ff8c9e5
+      // actually flatten the nested payload for condition evaluation. Without
+      // the normalizer, condition.field=title would resolve to undefined
+      // (raw payload is { track: { title } } — nested), and the cue would
+      // never match.
+      //
+      // We exercise handleGameEvent directly rather than emitting on the
+      // service singleton because integration tests inherit cueEngineWiring
+      // listeners from prior test files via process-wide module state — that
+      // works but is fragile and adds an extra hop. Direct invocation tests
+      // the normalizer + condition-eval path in isolation.
+      const musicService = require('../../src/services/musicService');
+      const registry = require('../../src/services/serviceHealthRegistry');
+      registry.report('music', 'healthy', 'test setup');
+      const stopSpy = jest.spyOn(musicService, 'stop').mockResolvedValue(undefined);
+
+      try {
+        cueEngineService.loadCues([
+          {
+            id: 'music-title-cue',
+            label: 'Stop music when "GameEnd" plays',
+            trigger: {
+              event: 'music:track:changed',
+              conditions: [{ field: 'title', op: 'eq', value: 'GameEnd' }],
+            },
+            commands: [{ action: 'music:stop', payload: {} }],
+          },
+          // Negative-match cue: ensures we don't fire when title differs
+          {
+            id: 'music-decoy-cue',
+            trigger: {
+              event: 'music:track:changed',
+              conditions: [{ field: 'title', op: 'eq', value: 'NEVER_MATCHES' }],
+            },
+            commands: [{ action: 'music:stop', payload: {} }],
+          },
+        ]);
+
+        await createAndStartSession(gm1, 'Music Normalizer Test', ['Team Alpha']);
+        cueEngineService.activate();
+
+        // Drive cueEngineService directly to test the normalizer path.
+        cueEngineService.handleGameEvent('music:track:changed', {
+          track: { title: 'GameEnd', artist: 'X', file: 'end.mp3' },
+        });
+
+        // Fire is async — let the microtask drain
+        await new Promise(r => setImmediate(r));
+        await new Promise(r => setImmediate(r));
+
+        // Positive match fired exactly once (decoy did NOT fire — confirms
+        // normalizer is producing the right field name AND condition eval
+        // is reading the normalized value).
+        expect(stopSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        stopSpy.mockRestore();
+      }
+    });
   });
 
   describe('pause cascade', () => {

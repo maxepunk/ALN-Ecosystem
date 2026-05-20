@@ -567,6 +567,33 @@ describe('MusicService — spawnMpd', () => {
     service._procMon.emit('exited', { code: 1, signal: 'SIGKILL' });
     expect(service.connected).toBe(false);
   });
+
+  it('ProcessMonitor "exited" event also reports "down" to health registry', async () => {
+    // Without this, commandExecutor's SERVICE_DEPENDENCIES gate keeps
+    // dispatching music:* commands to a dead MPD because health remains
+    // 'healthy' from the original successful init.
+    await service.spawnMpd();
+    registry.report.mockClear();  // wipe any spawn-time noise
+
+    service._procMon.emit('exited', { code: 137, signal: 'SIGKILL' });
+    expect(registry.report).toHaveBeenCalledWith(
+      'music',
+      'down',
+      expect.stringContaining('SIGKILL')
+    );
+  });
+
+  it('ProcessMonitor "exited" event drops the stale mpd2 client', async () => {
+    // After exit, the existing _mpd handle points at the dead instance.
+    // checkConnection's reactive reconnect needs _mpd to be null to fire,
+    // so the exit handler must clear it.
+    await service.init();
+    expect(service._mpd).toBeDefined();
+    // Need a _procMon to test the exit handler — spawnMpd installs both.
+    await service.spawnMpd();
+    service._procMon.emit('exited', { code: 0, signal: null });
+    expect(service._mpd).toBeNull();
+  });
 });
 
 describe('MusicService — reset', () => {

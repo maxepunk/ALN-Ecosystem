@@ -43,7 +43,11 @@ describe('Audio Routing Phase 3 Integration', () => {
     // Reset ducking state
     audioRoutingService.loadDuckingRules([]);
     // Reset stream volumes
-    audioRoutingService._streamVolumes = { video: 100, spotify: 100, music: 70, sound: 100 };
+    // NOTE: audioRoutingService doesn't actually have a _streamVolumes
+    // cache — pre-duck volumes come from pactl via getStreamVolume() with
+    // a 100 fallback. Reset the real state instead.
+    audioRoutingService._preDuckVolumes = {};
+    audioRoutingService._activeDuckingSources = {};
   });
 
   afterEach(() => {
@@ -218,9 +222,18 @@ describe('Audio Routing Phase 3 Integration', () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');  // music → 20
       audioRoutingService.setStreamVolume.mockClear();
       await audioRoutingService.handleDuckingEvent('sound', 'started');  // music would-be 40
-      // Engine never raises a stream to a higher duck value mid-duck.
-      // Music must NOT be set to 40 (the looser of the two).
-      expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalledWith('music', 40);
+
+      // Positive assertion: ANY music call must be to 20 (the lower of the
+      // two ducks). A regression to 25, 30, or any other value would slip
+      // past the original `not.toHaveBeenCalledWith(...,40)` check.
+      const musicCalls = audioRoutingService.setStreamVolume.mock.calls
+        .filter(c => c[0] === 'music');
+      // Engine may re-affirm the existing value (call with 20) or be a no-op
+      // (call count 0). Both are acceptable. What's NOT acceptable is any
+      // call with a value other than 20.
+      for (const call of musicCalls) {
+        expect(call[1]).toBe(20);
+      }
     });
 
     it('restores music only when ALL ducking sources complete', async () => {

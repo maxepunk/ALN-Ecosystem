@@ -398,6 +398,13 @@ class MusicService extends EventEmitter {
     this._procMon.on('exited', ({ code, signal }) => {
       logger.warn(`[Music] MPD exited code=${code} signal=${signal}`);
       this.connected = false;
+      // Drop the stale mpd2 client so the next checkConnection reconnects
+      // cleanly to the respawned MPD instance.
+      this._mpd = null;
+      // CRITICAL: also flip the health registry — without this, the
+      // commandExecutor SERVICE_DEPENDENCIES gate keeps thinking music
+      // is healthy and dispatches commands to a dead service.
+      require('./serviceHealthRegistry').report('music', 'down', `MPD exited code=${code} signal=${signal}`);
     });
     this._procMon.start();
   }
