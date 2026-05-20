@@ -43,7 +43,7 @@ describe('Audio Routing Phase 3 Integration', () => {
     // Reset ducking state
     audioRoutingService.loadDuckingRules([]);
     // Reset stream volumes
-    audioRoutingService._streamVolumes = { video: 100, spotify: 100, sound: 100 };
+    audioRoutingService._streamVolumes = { video: 100, spotify: 100, music: 70, sound: 100 };
   });
 
   afterEach(() => {
@@ -152,6 +152,91 @@ describe('Audio Routing Phase 3 Integration', () => {
 
       await audioRoutingService.handleDuckingEvent('video', 'started');
       expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalled();
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════
+  // Ducking — music stream (alongside spotify)
+  // Verifies music is a duck TARGET (not source), with parallel rules
+  // matching the production routing.json after Phase 4.2.
+  // ══════════════════════════════════════════════════════════════
+
+  describe('Ducking Engine — music stream', () => {
+    beforeEach(() => {
+      // Production-shape rules (matches routing.json after the music PR):
+      // Both spotify AND music are ducked when video/sound plays.
+      audioRoutingService.loadDuckingRules([
+        { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
+        { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+        { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+        { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
+      ]);
+      jest.spyOn(audioRoutingService, 'setStreamVolume').mockResolvedValue();
+    });
+
+    it('ducks BOTH spotify and music when video starts', async () => {
+      await audioRoutingService.handleDuckingEvent('video', 'started');
+
+      // Order is not guaranteed; verify both calls happened with correct levels.
+      const calls = audioRoutingService.setStreamVolume.mock.calls;
+      const spotifyCall = calls.find(c => c[0] === 'spotify');
+      const musicCall = calls.find(c => c[0] === 'music');
+      expect(spotifyCall).toEqual(['spotify', 20]);
+      expect(musicCall).toEqual(['music', 20]);
+    });
+
+    it('restores BOTH spotify and music when video completes', async () => {
+      await audioRoutingService.handleDuckingEvent('video', 'started');
+      audioRoutingService.setStreamVolume.mockClear();
+
+      await audioRoutingService.handleDuckingEvent('video', 'completed');
+
+      const calls = audioRoutingService.setStreamVolume.mock.calls;
+      // _capturePreDuckVolume() calls getStreamVolume → pactl, falling back to
+      // 100 when pactl returns null. In integration tests with no real MPD
+      // sink, both spotify and music fall back to 100.
+      expect(calls).toContainEqual(['spotify', 100]);
+      expect(calls).toContainEqual(['music', 100]);
+    });
+
+    it('captures live pre-duck music volume (not a hardcoded default)', async () => {
+      // Simulate pactl reporting a real volume of 55 for music's sink-input.
+      // _capturePreDuckVolume should capture and use this value on restore.
+      jest.spyOn(audioRoutingService, 'getStreamVolume')
+        .mockImplementation(async (stream) => (stream === 'music' ? 55 : 100));
+
+      await audioRoutingService.handleDuckingEvent('video', 'started');
+      audioRoutingService.setStreamVolume.mockClear();
+
+      await audioRoutingService.handleDuckingEvent('video', 'completed');
+
+      const calls = audioRoutingService.setStreamVolume.mock.calls;
+      expect(calls).toContainEqual(['music', 55]);
+    });
+
+    it('keeps lowest volume when video+sound both active for music', async () => {
+      await audioRoutingService.handleDuckingEvent('video', 'started');  // music → 20
+      audioRoutingService.setStreamVolume.mockClear();
+      await audioRoutingService.handleDuckingEvent('sound', 'started');  // music would-be 40
+      // Engine never raises a stream to a higher duck value mid-duck.
+      // Music must NOT be set to 40 (the looser of the two).
+      expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalledWith('music', 40);
+    });
+
+    it('restores music only when ALL ducking sources complete', async () => {
+      await audioRoutingService.handleDuckingEvent('video', 'started');
+      await audioRoutingService.handleDuckingEvent('sound', 'started');
+      audioRoutingService.setStreamVolume.mockClear();
+
+      await audioRoutingService.handleDuckingEvent('sound', 'completed');
+      // Video still active → music NOT restored
+      const musicRestoreCalls1 = audioRoutingService.setStreamVolume.mock.calls
+        .filter(c => c[0] === 'music' && c[1] !== 20 && c[1] !== 40);
+      expect(musicRestoreCalls1).toEqual([]);
+
+      await audioRoutingService.handleDuckingEvent('video', 'completed');
+      // Now ALL sources done → music restored (to pactl fallback 100)
+      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 100);
     });
   });
 
