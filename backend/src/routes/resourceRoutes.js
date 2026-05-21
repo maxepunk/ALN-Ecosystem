@@ -103,6 +103,8 @@ router.get('/assets/images/:file', (req, res) => {
         logger.error('sendFile image failed', { file, err: err.message });
         errors.internal(res, err.message);
       }
+    } else if (!err && res.statusCode === 304) {
+      logger.debug('asset image 304', { file });
     }
   });
 });
@@ -129,6 +131,8 @@ router.get('/assets/audio/:file', (req, res) => {
         logger.error('sendFile audio failed', { file, err: err.message });
         errors.internal(res, err.message);
       }
+    } else if (!err && res.statusCode === 304) {
+      logger.debug('asset audio 304', { file });
     }
   });
 });
