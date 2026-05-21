@@ -129,7 +129,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `gameClockService` | Game clock (start/pause/resume/tick) | `new GameClockService()` |
 | `cueEngineService` | Standing + manual cue evaluation and firing | `new CueEngineService()` |
 | `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
-| `spotifyService` | D-Bus MPRIS wrapper for spotifyd playback (extends MprisPlayerBase) | `new SpotifyService()` |
+| `musicService` | MPD control over Unix socket (mpd2 client); spawns/supervises MPD via ProcessMonitor | `new MusicService()` |
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
@@ -162,7 +162,7 @@ Domain Event (Service) → Listener (broadcasts.js) → WebSocket Broadcast
 - `lightingService`: `scene:activated`, `scenes:refreshed`
 - `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:tick`, `gameclock:overtime`
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
-- `spotifyService`: `playback:changed`, `volume:changed`, `playlist:changed`, `track:changed`
+- `musicService`: `playback:changed`, `volume:changed`, `track:changed`, `playlist:changed`, `playlists:reloaded`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
 - `vlcService`: `state:changed` (emitted by D-Bus MPRIS monitor when playback state or filename changes)
 
@@ -287,12 +287,16 @@ WebSocket command interface for session management:
 | `cue:disable` | `{cueId}` | Disable a standing cue |
 | `sound:play` | `{file, target?, volume?}` | Play sound via pw-play |
 | `sound:stop` | `{file?}` | Stop sound (specific or all) |
-| `spotify:play` | `{}` | Resume Spotify via D-Bus |
-| `spotify:pause` | `{}` | Pause Spotify via D-Bus |
-| `spotify:stop` | `{}` | Stop Spotify via D-Bus |
-| `spotify:next` | `{}` | Next Spotify track |
-| `spotify:previous` | `{}` | Previous Spotify track |
-| `audio:volume:set` | `{stream, volume}` | Set per-stream volume (0-100). Streams: `video`, `spotify`, `sound` |
+| `music:play` | `{}` | Resume MPD playback |
+| `music:pause` | `{}` | Pause MPD playback |
+| `music:stop` | `{}` | Stop MPD playback |
+| `music:next` | `{}` | Next track in current playlist |
+| `music:previous` | `{}` | Previous track in current playlist |
+| `music:setVolume` | `{volume}` | Set music volume (0-100) |
+| `music:setShuffle` | `{enabled}` | Toggle shuffle |
+| `music:setLoop` | `{enabled}` | Toggle loop |
+| `music:loadPlaylist` | `{playlistId}` | Load and play a named playlist |
+| `audio:volume:set` | `{stream, volume}` | Set per-stream volume (0-100). Streams: `video`, `music`, `sound` |
 | `service:check` | `{serviceId}` or `{}` | On-demand health probe (single or all services) |
 | `held:release` | `{heldId}` | Release held cue/video (routes by ID prefix) |
 | `held:discard` | `{heldId}` | Discard held cue/video |
@@ -301,7 +305,7 @@ WebSocket command interface for session management:
 
 **Session Lifecycle:** `setup` → `active` → `paused` ↔ `active` → `ended`
 
-Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused), cue engine (suspended), and Spotify (`pauseForGameClock()`). Resuming restores Spotify only if it was paused by the game clock (preserves user-paused state).
+Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused), cue engine (suspended), and music (`pauseForGameClock()`). Resuming restores music only if it was paused by the game clock (preserves user-paused state).
 
 **Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, source}`. Has `SERVICE_DEPENDENCIES` map — commands are rejected pre-dispatch if their service dependency is down (gated execution). `validateCommand()` checks health AND resource existence for pre-show verification. Services emit their own domain events (EventEmitter) which `broadcasts.js` forwards as `service:state` to WebSocket clients.
 
@@ -344,7 +348,7 @@ GM Scanner admin panel controls venue environment (audio, lighting, Bluetooth) v
 
 **Key Helper Files:**
 - `src/websocket/environmentHelpers.js` - Builds environment state for `sync:full` payloads
-- `src/websocket/syncHelpers.js` - Assembles full `sync:full` payload (session + environment + video + gameClock + cueEngine + spotify)
+- `src/websocket/syncHelpers.js` - Assembles full `sync:full` payload (session + environment + video + gameClock + cueEngine + music)
 - `src/websocket/listenerRegistry.js` - Tracks EventEmitter listeners for cleanup (prevents leaks)
 - `src/utils/execHelper.js` - `execFileAsync` wrapper (no shell injection)
 - `src/utils/dockerHelper.js` - Docker container lifecycle (start/stop Home Assistant)
@@ -370,12 +374,11 @@ Services that wrap external systems use persistent monitors to detect state chan
 |---------|---------|-----------------|
 | `audioRoutingService` | `ProcessMonitor` + `pactl subscribe` | PipeWire sink add/remove |
 | `bluetoothService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --system` | Device connect/disconnect/pair |
-| `spotifyService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --session` | Playback/track/volume changes |
 | `vlcService` | `ProcessMonitor` + `DbusSignalParser` + `dbus-monitor --session` | Playback state/filename/volume changes |
 | `lightingService` | WebSocket client (`ws://host:8123/api/websocket`) | HA scene activations |
 
 **Reusable Utilities:**
-- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention, PID-file orphan recovery after SIGKILL). Manages 5 processes: VLC player, 3 D-Bus monitors (VLC/Spotify/BlueZ), pactl subscriber. PID files in `/tmp/aln-pm-*.pid`. **`stop()` is intentionally sync** — making it async cascades through 12+ methods (all service cleanup/reset methods, systemReset.js, test helpers). Exit handler uses captured `proc` closure + SIGKILL (not `this._proc` + SIGTERM) so it works after `stop()` nulls `_proc`. Exit handler removed in the `close` handler (not `stop()`) so the safety net persists until child is confirmed dead.
+- `src/utils/processMonitor.js` — Self-healing spawned-process wrapper (spawn, line-buffer, exponential backoff restart, orphan prevention, PID-file orphan recovery after SIGKILL). Manages 5 processes: VLC player, 2 D-Bus monitors (VLC/BlueZ), pactl subscriber, MPD daemon. PID files in `/tmp/aln-pm-*.pid`. **`stop()` is intentionally sync** — making it async cascades through 12+ methods (all service cleanup/reset methods, systemReset.js, test helpers). Exit handler uses captured `proc` closure + SIGKILL (not `this._proc` + SIGTERM) so it works after `stop()` nulls `_proc`. Exit handler removed in the `close` handler (not `stop()`) so the safety net persists until child is confirmed dead.
 - `src/utils/dbusSignalParser.js` — Parses `dbus-monitor --monitor` multi-line output into structured signal objects with PropertiesChanged property extraction
 
 **Key Pattern:** Monitors emit domain events on service singletons (e.g., `device:connected`, `playback:changed`, `state:changed`). These events are already wired in `broadcasts.js` → WebSocket delivery. No new broadcast wiring needed for monitors.
@@ -415,7 +418,7 @@ Game clock and sound state delivered via `service:state` domains `gameclock` and
 
 ### Compound Cue Architecture (Phase 2)
 
-Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) and Spotify integration.
+Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) and music integration.
 
 **Compound Cue Timelines:** Cues with `timeline` arrays containing timed commands. Two drive modes:
 - **Clock-driven:** Advances via `gameclock:tick`. Relative time = `elapsed - startElapsed`.
@@ -423,42 +426,42 @@ Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) a
 
 **Cue Hold System:** When a cue command requires a service that's down or a video is already playing, the cue is held (not discarded). Emits `cue:held` with reason (`video_busy` or `service_down`). Held cues auto-cancel after 10s or can be released/discarded via `held:release`/`held:discard` commands. `cue:released`/`cue:discarded` events emitted on resolution.
 
-**Spotify Service:** Extends `MprisPlayerBase` (shared D-Bus MPRIS foundation). Uses `dbus-send` CLI (no compiled bindings). D-Bus destination discovered dynamically (PID suffix changes on restart). Overrides `_dbusCall()` for reactive recovery (activate + retry), `_processStateChange()` for Spotify-specific signal handling, `checkConnection()` for metadata refresh. Methods: `play()`, `pause()`, `stop()`, `next()`, `previous()`, `setVolume()`, `setPlaylist()`, `checkConnection()`, `getState()`, `reset()`. `resumeFromGameClock()` only resumes if `_pausedByGameClock === true`.
+**Music Service:** Controls MPD via the `mpd2` Node client over a Unix socket at `/tmp/aln-mpd.sock`. Spawns/supervises MPD via `ProcessMonitor` (PID file `/tmp/aln-pm-mpd.pid`). Reactive reconnect on socket errors. Methods: `play()`, `pause()`, `stop()`, `next()`, `previous()`, `setVolume()`, `setShuffle()`, `setLoop()`, `loadPlaylist()`, `checkConnection()`, `getState()`, `reset()`. Position polling at 1s while playing. `resumeFromGameClock()` only resumes if `_pausedByGameClock === true`. Playlists loaded from `config/music-playlists.json` with `fs.watch` for hot reload.
 
 **MprisPlayerBase:** Shared base class (`src/services/mprisPlayerBase.js`) for D-Bus MPRIS media player services. Provides: `_buildDbusArgs()`, `_dbusCall()` (overrideable), `_dbusGetProperty/SetProperty`, `_transport()`, `startPlaybackMonitor/stopPlaybackMonitor` (ProcessMonitor + DbusSignalParser), signal debounce+merge, `checkConnection()`, `getState()`, `reset()/cleanup()`. Subclasses override `_processStateChange()`, `_parseMetadata()`, optionally `_dbusCall()` (recovery) and `_getDestination()` (dynamic discovery).
 
-**Audio Stream Volume:** `audioRoutingService.setStreamVolume(stream, volume)` / `getStreamVolume(stream)`. Valid streams: `['video', 'spotify', 'sound']`.
+**Audio Stream Volume:** `audioRoutingService.setStreamVolume(stream, volume)` / `getStreamVolume(stream)`. Valid streams: `['video', 'music', 'sound']`.
 
 **Game Clock Overtime:** `gameClockService.setOvertimeThreshold(seconds)` → `gameclock:overtime` event (fires ONCE, does NOT end session).
 
 **Phase 2 Event Forwarding (cueEngineWiring.js):**
 - `videoQueueService.video:progress` → `cueEngineService.handleVideoProgressEvent(data)`
 - `videoQueueService.video:paused/resumed/completed` → `cueEngineService.handleVideoLifecycleEvent(type, data)`
-- `spotifyService` forwarded for standing cue conditions
+- `musicService` forwarded (`track:changed`, `playback:changed`, `playlist:changed` → `music:*`) for standing cue conditions
 
 **WebSocket Events (Server → Client, Phase 2):**
 
-All service domain state (cue status, held items, health, spotify, video) is delivered via unified `service:state` events. See "Unified `service:state` Pattern" section below.
+All service domain state (cue status, held items, health, music, video) is delivered via unified `service:state` events. See "Unified `service:state` Pattern" section below.
 
 **`sync:full` Phase 2 Additions:**
-- `spotify`: `{connected, state, volume, pausedByGameClock}` via `buildSpotifyState()`
+- `music`: `{connected, state, volume, track, playlist, playlists, pausedByGameClock}` via `buildMusicState()`
 - `gameClock`: `{status, elapsed, expectedDuration}` via `buildGameClockState()`
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
 **`sync:full` Phase 4 Additions:**
-- `serviceHealth`: `{vlc: {status, message}, spotify: {...}, ...}` via `serviceHealthRegistry.getSnapshot()`
+- `serviceHealth`: `{vlc: {status, message}, music: {...}, ...}` via `serviceHealthRegistry.getSnapshot()` (8 services)
 - `heldItems`: `[{id, type, cueId?, reason, ...}]` via `buildHeldItemsState()`
 - `sound`: `{playing: [{file, target, volume, pid}]}` via `soundService.getState()`
 
-**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `spotifyService`, `soundService`). Missing a service = silent state desync. Bug has recurred 4 times: `scores:reset`, `offline:queue:processed`, `integration-test-server.js`, and `soundService` omission. 7 callers as of 2026-03-27: `gmAuth.js`, `broadcasts.js` (×3), `stateRoutes.js`, `server.js`, `integration-test-server.js`. Audit ALL when adding new services.
+**CRITICAL `sync:full` Completeness:** Every code path that emits `sync:full` MUST call `buildSyncFullPayload()` with ALL service references (including `musicService`, `soundService`). Missing a service = silent state desync. Bug has recurred 4 times: `scores:reset`, `offline:queue:processed`, `integration-test-server.js`, and `soundService` omission. 7 callers: `gmAuth.js`, `broadcasts.js` (×3), `stateRoutes.js`, `server.js`, `integration-test-server.js`. Audit ALL when adding new services.
 
 **Unified `service:state` Pattern (Sole Push Mechanism):**
 - Every service has a sync `getState()` method returning a full state snapshot
 - `broadcasts.js` `pushServiceState(domain, service)` emits `service:state` with `{domain, state: service.getState()}` to GM room
-- 10 domains: `spotify`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`, `held`
+- 10 domains: `music`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`, `held`
 - `video` domain is owned by `videoQueueService.getState()` — composes VLC connection state from `vlcMprisService.getState()`
 - `held` domain aggregates held cues + videos via `buildHeldItemsState()`, pushed via `pushHeldState()`
-- **CRITICAL**: `service:state` is the SOLE mechanism for service domain state delivery. Old discrete events (`spotify:status`, `gameclock:status`, `video:status`, `bluetooth:device`, `lighting:scene`, etc.) have been removed. Only discrete game events remain (`cue:fired`, `cue:completed`, `cue:error`, `transaction:new`, `session:update`, `display:mode`)
+- **CRITICAL**: `service:state` is the SOLE mechanism for service domain state delivery. Old discrete events (`gameclock:status`, `video:status`, `bluetooth:device`, `lighting:scene`, etc.) have been removed. Only discrete game events remain (`cue:fired`, `cue:completed`, `cue:error`, `transaction:new`, `session:update`, `display:mode`)
 - `gm:command:ack` payload simplified to `{action, success, message}` — no more `result.data` forwarding. State comes via `service:state` events
 - No post-command state push: state pushes triggered ONLY by service events (D-Bus monitors, service lifecycle)
 - **service:state debounce**: `pushServiceState` in `broadcasts.js` debounces per domain (50ms). `video:failed` bypasses the debounce for immediate error state capture. Tests must use `jest.useFakeTimers()` + `jest.advanceTimersByTime(51)` for service:state assertions.
@@ -469,13 +472,13 @@ All service domain state (cue status, held items, health, spotify, video) is del
 - `cue:started` internal event broadcasts as `cue:status` with `state: 'running'` (not `started`)
 - VLC `position` is 0.0-1.0 ratio, NOT seconds
 
-**Key Files:** `src/services/spotifyService.js`, `src/services/cueEngineWiring.js`, `src/websocket/broadcasts.js`, `src/websocket/syncHelpers.js`
+**Key Files:** `src/services/musicService.js`, `src/services/cueEngineWiring.js`, `src/websocket/broadcasts.js`, `src/websocket/syncHelpers.js`
 
 ### Multi-Speaker Routing + Ducking (Phase 3)
 
 Extends Phase 0 audio routing with event-driven ducking engine and cue-level routing inheritance.
 
-**Ducking Engine:** Automatically reduces Spotify volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
+**Ducking Engine:** Automatically reduces music volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
 
 **CRITICAL**: `handleDuckingEvent()` is async (returns a Promise). Callers in `broadcasts.js` use `.catch()`. `_handleDuckingStart` awaits `_capturePreDuckVolume` before applying duck volume to prevent race condition where captured "pre-duck" value is already ducked.
 
@@ -486,8 +489,8 @@ Extends Phase 0 audio routing with event-driven ducking engine and cue-level rou
 **Config:** `config/environment/routing.json` — `ducking` array:
 ```json
 [
-  { "when": "video", "duck": "spotify", "to": 20, "fadeMs": 500 },
-  { "when": "sound", "duck": "spotify", "to": 40, "fadeMs": 200 }
+  { "when": "video", "duck": "music", "to": 20, "fadeMs": 500 },
+  { "when": "sound", "duck": "music", "to": 40, "fadeMs": 200 }
 ]
 ```
 
@@ -648,18 +651,6 @@ DISPLAY=:0 cvlc --verbose 2 --play-and-exit video.mp4 2>&1 | grep -i "v4l2\|Hwac
 4. `npm run prod:logs` - Check backend logs
 
 **Key Files:** `src/routes/scanRoutes.js`, `contracts/openapi.yaml`
-
-### Spotify Wedged on IPv6 Dealer (After LAN Event)
-**Symptoms:** spotifyd logs `starting dealer failed: Network/Host unreachable`; `org.mpris.MediaPlayer2.spotifyd.*` missing from D-Bus (only `rs.spotifyd.*` present); backend spotify health flaps or stuck `down`; GM `spotify:*` commands rejected pre-dispatch.
-
-**Debug:**
-1. `ip -6 route show default` - if an RA-learned default route is present on eth0, that's the problem
-2. `sudo ip -6 route del default` - immediate recovery; backend re-heals within ~15s via health revalidation
-3. `nmcli -g ipv6.method connection show "Wired connection 1"` should return `link-local` - the structural fix
-
-**Cause & prevention:** librespot's dealer lacks address-family fallback — a broken IPv6 default route wedges spotifyd on an unreachable v6 endpoint. eth0 uses `ipv6.method=link-local` in NM (persisted at `/etc/NetworkManager/system-connections/Wired connection 1.nmconnection`) to reject all RAs at the kernel layer. **Do not revert** unless the Pi moves to a LAN with trusted IPv6.
-
-**Key Files:** `src/services/spotifyService.js`, `/etc/NetworkManager/system-connections/Wired connection 1.nmconnection`
 
 ## Post-Session Analysis
 
