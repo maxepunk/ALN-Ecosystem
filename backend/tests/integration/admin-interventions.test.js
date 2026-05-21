@@ -512,14 +512,21 @@ describe('Admin Intervention Integration', () => {
         // Per AsyncAPI contract line 1017 and FR 4.2.2 lines 906-920
         // FR: "Reorder: Move video from position X to position Y"
 
-        // First, add videos to the queue to have something to reorder
+        // Seed the queue with 3 items by pushing VideoQueueItem instances
+        // directly. We deliberately bypass videoQueueService.addToQueue()
+        // because it schedules setImmediate(this.processQueue()) when no
+        // currentItem is set — that scheduled callback races the WebSocket
+        // reorder dispatch and pops the head item into currentItem,
+        // leaving the queue with only 2 items by the time reorder fires
+        // (toIndex=2 then exceeds queue.length=2). The direct-push form
+        // gives deterministic 3-item state for the contract assertion below.
         const videoQueueService = require('../../src/services/videoQueueService');
         const transactionService = require('../../src/services/transactionService');
-        const TestTokens = require('../fixtures/test-tokens');
+        const VideoQueueItem = require('../../src/models/videoQueueItem');
         const token = transactionService.tokens.get('534e2b03');
-        videoQueueService.addToQueue(token, 'GM_ADMIN');
-        videoQueueService.addToQueue(token, 'GM_ADMIN');
-        videoQueueService.addToQueue(token, 'GM_ADMIN');
+        videoQueueService.queue.push(VideoQueueItem.fromToken(token, 'GM_ADMIN'));
+        videoQueueService.queue.push(VideoQueueItem.fromToken(token, 'GM_ADMIN'));
+        videoQueueService.queue.push(VideoQueueItem.fromToken(token, 'GM_ADMIN'));
 
         const responsePromise = Promise.race([
           waitForEvent(gmAdmin.socket, 'gm:command:ack'),
