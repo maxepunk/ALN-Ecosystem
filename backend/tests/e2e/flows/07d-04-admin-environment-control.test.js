@@ -136,13 +136,13 @@ test.describe('GM Scanner - Environment Control', () => {
 
   test('GM controls music playback', async () => {
     if (serviceHealth.music?.status !== 'healthy') {
-      test.skip();
       console.log('Music not healthy — skipping');
+      test.skip();
       return;
     }
     if (!musicLibraryPopulated()) {
-      test.skip();
       console.log('backend/public/music/ empty — skipping (Pi-only test)');
+      test.skip();
       return;
     }
 
@@ -215,8 +215,8 @@ test.describe('GM Scanner - Environment Control', () => {
 
   test('GM initiates Bluetooth scan', async () => {
     if (serviceHealth.bluetooth?.status !== 'healthy') {
-      test.skip();
       console.log('Bluetooth not healthy — skipping');
+      test.skip();
       return;
     }
 
@@ -254,8 +254,8 @@ test.describe('GM Scanner - Environment Control', () => {
 
   test('GM activates lighting scene', async () => {
     if (serviceHealth.lighting?.status !== 'healthy') {
-      test.skip();
       console.log('Lighting not healthy — skipping');
+      test.skip();
       return;
     }
 
@@ -300,8 +300,8 @@ test.describe('GM Scanner - Environment Control', () => {
 
   test('GM changes audio routing', async () => {
     if (serviceHealth.audio?.status !== 'healthy') {
-      test.skip();
       console.log('Audio not healthy — skipping');
+      test.skip();
       return;
     }
 
@@ -350,19 +350,19 @@ test.describe('GM Scanner - Environment Control', () => {
     const videoToken = testTokens?.videoToken;
 
     if (!musicHealthy || !vlcHealthy) {
-      test.skip();
       console.log(`Music=${musicHealthy}, VLC=${vlcHealthy} — both needed for ducking test`);
+      test.skip();
       return;
     }
     if (!musicLibraryPopulated()) {
-      test.skip();
       console.log('backend/public/music/ empty — skipping (Pi-only test)');
+      test.skip();
       return;
     }
 
     if (!videoToken) {
-      test.skip();
       console.log('No video token available — cannot test auto-ducking');
+      test.skip();
       return;
     }
 
@@ -440,13 +440,13 @@ test.describe('GM Scanner - Environment Control', () => {
 
   test('Cascading pause suspends music', async () => {
     if (serviceHealth.music?.status !== 'healthy') {
-      test.skip();
       console.log('Music not healthy — skipping cascading pause test');
+      test.skip();
       return;
     }
     if (!musicLibraryPopulated()) {
-      test.skip();
       console.log('backend/public/music/ empty — skipping (Pi-only test)');
+      test.skip();
       return;
     }
 

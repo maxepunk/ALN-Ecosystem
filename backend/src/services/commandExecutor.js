@@ -628,16 +628,23 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'music:setShuffle': {
-        await musicService.setShuffle(!!payload.enabled);
-        resultMessage = `Music shuffle: ${payload.enabled ? 'on' : 'off'}`;
-        logger.info('Music shuffle set', { source, deviceId, enabled: !!payload.enabled });
+        // Coerce defensively: GM Scanner live controls send real booleans
+        // (checkbox.checked), but config-tool cue authoring uses a select
+        // with string values 'true'/'false'. `!!"false"` is true (string is
+        // truthy), so a cue authored with shuffle=false would silently enable
+        // shuffle without this normalization.
+        const enabled = (payload.enabled === true || payload.enabled === 'true');
+        await musicService.setShuffle(enabled);
+        resultMessage = `Music shuffle: ${enabled ? 'on' : 'off'}`;
+        logger.info('Music shuffle set', { source, deviceId, enabled });
         break;
       }
 
       case 'music:setLoop': {
-        await musicService.setLoop(!!payload.enabled);
-        resultMessage = `Music loop: ${payload.enabled ? 'on' : 'off'}`;
-        logger.info('Music loop set', { source, deviceId, enabled: !!payload.enabled });
+        const enabled = (payload.enabled === true || payload.enabled === 'true');
+        await musicService.setLoop(enabled);
+        resultMessage = `Music loop: ${enabled ? 'on' : 'off'}`;
+        logger.info('Music loop set', { source, deviceId, enabled });
         break;
       }
 

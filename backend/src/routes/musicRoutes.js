@@ -90,6 +90,15 @@ function validatePlaylistsBody(body) {
     if (!Array.isArray(p.tracks) || p.tracks.some(t => typeof t !== 'string')) {
       return `Playlist ${p.id}: tracks must be an array of strings`;
     }
+    // MPD's `add` command takes paths relative to music_directory. Reject
+    // absolute paths and any `..` segment so we don't pass through requests
+    // that could resolve outside the configured music root if MPD's own
+    // safety check is ever relaxed or misconfigured.
+    for (const t of p.tracks) {
+      if (t.startsWith('/') || /(?:^|\/)\.\.(?:\/|$)/.test(t)) {
+        return `Playlist ${p.id}: track paths must be relative with no .. segments (got: ${t})`;
+      }
+    }
     if (seenIds.has(p.id)) return `Duplicate playlist id: ${p.id}`;
     seenIds.add(p.id);
   }

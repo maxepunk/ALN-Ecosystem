@@ -37,6 +37,8 @@ class MusicService extends EventEmitter {
     this.playlist = null;
     this._pausedByGameClock = false;
     this._stopped = false;  // set by cleanup() to short-circuit racing handlers
+    this._reconnecting = false;  // guards concurrent checkConnection() reconnects
+    this._eventsWired = false;   // tracks per-mpd-client listener registration
   }
 
   getState() {
@@ -58,6 +60,7 @@ class MusicService extends EventEmitter {
     this._startPlaylistWatcher();
     try {
       this._mpd = await mpd2.connect({ path: this._socketPath });
+      this._eventsWired = false;  // fresh client; events not yet wired
       this._wireMpdEvents();
       this.connected = true;
       registry.report('music', 'healthy', 'MPD connected');
@@ -78,6 +81,7 @@ class MusicService extends EventEmitter {
       try { await this._mpd.disconnect(); } catch (_) { /* ignore */ }
       this._mpd = null;
     }
+    this._eventsWired = false;
     this.connected = false;
   }
 
@@ -125,14 +129,22 @@ class MusicService extends EventEmitter {
   }
 
   async checkConnection() {
+    // Concurrency guard: serviceHealthRegistry serializes revalidation but
+    // an in-flight reconnect could race with a direct caller. Without this
+    // guard, two concurrent reconnects would orphan a client with active
+    // listeners pointing at `this._mpd` (now the second client) and cause
+    // idle events to dispatch commands on the wrong connection.
+    if (this._reconnecting) return this.connected;
     // Reactive reconnect: if init() failed (e.g., MPD wasn't ready when app
     // initialized), the 15s health revalidation gives us a recovery path
     // without restarting the orchestrator.
     if (!this._mpd) {
       if (this._stopped) return false;
+      this._reconnecting = true;
       try {
         const mpd2 = require('mpd2');
         this._mpd = await mpd2.connect({ path: this._socketPath });
+        this._eventsWired = false;  // fresh client; events not yet wired
         this._wireMpdEvents();
         this.connected = true;
         const registry = require('./serviceHealthRegistry');
@@ -140,6 +152,8 @@ class MusicService extends EventEmitter {
         return true;
       } catch (_) {
         return false;
+      } finally {
+        this._reconnecting = false;
       }
     }
     try {
@@ -150,6 +164,7 @@ class MusicService extends EventEmitter {
       // attempts a fresh connect.
       try { await this._mpd.disconnect(); } catch (__) { /* ignore */ }
       this._mpd = null;
+      this._eventsWired = false;
       this.connected = false;
       return false;
     }
@@ -261,9 +276,15 @@ class MusicService extends EventEmitter {
   }
 
   _wireMpdEvents() {
+    // Idempotent per mpd2 client. Callers must reset _eventsWired = false
+    // when assigning a fresh _mpd (init, reconnect). Without this guard,
+    // a second call would double-register listeners and double-fire idle
+    // event handlers.
+    if (this._eventsWired) return;
     this._mpd.on('system-player', () => { this._handlePlayerEvent().catch(this._logErr.bind(this)); });
     this._mpd.on('system-mixer',  () => { this._handleMixerEvent().catch(this._logErr.bind(this)); });
     this._mpd.on('system-playlist', () => { this._handlePlaylistEvent().catch(this._logErr.bind(this)); });
+    this._eventsWired = true;
   }
 
   _logErr(err) {

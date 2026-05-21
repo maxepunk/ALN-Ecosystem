@@ -12,6 +12,10 @@ backend/public/videos/*.mp4
 # Keep images in loopimages directory
 !backend/public/videos/loopimages/
 
+# Music library — ~10MB of MP3s seeded into the All Tracks playlist.
+# Production music files are deployed/copied separately, not committed.
+backend/public/music/*.mp3
+
 # Runtime session data
 backend/data/
 

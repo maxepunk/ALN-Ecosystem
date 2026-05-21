@@ -37,7 +37,36 @@ export async function render(container, config, context) {
   _redraw();
 }
 
+/**
+ * Re-fetch playlists + tracks from the orchestrator. app.js calls this
+ * when navigating back to the music section if the module has already been
+ * loaded — without it, a transient orchestrator outage on first load would
+ * leave the section stuck in the error state until full page reload.
+ */
+export async function refresh() {
+  if (!containerRoot || !ctx) return;
+  containerRoot.innerHTML = '';
+  containerRoot.appendChild(el('div', { className: 'section__loading' }, 'Loading music…'));
+  try {
+    const [pl, tr] = await Promise.all([api.getMusicPlaylists(), api.getMusicTracks()]);
+    model.setPlaylists(pl.playlists || []);
+    model.setTracks(tr.tracks || []);
+    if (!selectedId) selectedId = model.getPlaylists()[0]?.id || null;
+    loadError = null;
+  } catch (err) {
+    loadError = err.message;
+  }
+  _redraw();
+}
+
 export async function save() {
+  // Defensive: never persist when the initial load failed. The model could
+  // contain stale/empty data and a PUT would clobber the on-disk file with
+  // garbage. The dirty-state UX should prevent users from reaching Save in
+  // this scenario, but a runtime guard is cheap insurance.
+  if (loadError) {
+    throw new Error('Cannot save: music data failed to load. Refresh the section first.');
+  }
   await api.putMusicPlaylists(model.toJSON());
 }
 
