@@ -865,10 +865,10 @@ paths:
                     status: "healthy"
                     message: "Connected to VLC"
                     lastChecked: "2025-10-15T19:00:30.000Z"
-                  spotify:
-                    status: "down"
-                    message: "Not yet checked"
-                    lastChecked: null
+                  music:
+                    status: "healthy"
+                    message: "MPD connected"
+                    lastChecked: "2025-10-15T19:00:30.000Z"
         '304':
           description: Not Modified (ETag match)
         '500':
@@ -1524,10 +1524,10 @@ components:
               status: "healthy"
               message: "Connected to VLC"
               lastChecked: "2025-10-15T19:00:30.000Z"
-            spotify:
-              status: "down"
-              message: "Not yet checked"
-              lastChecked: null
+            music:
+              status: "healthy"
+              message: "MPD connected"
+              lastChecked: "2025-10-15T19:00:30.000Z"
         playerScans:
           type: array
           description: Player scanner scan records persisted to session (Phase 1). Included in sync:full for Game Activity tracking.
@@ -1598,25 +1598,6 @@ components:
               description: Disabled standing cue IDs
               items:
                 type: string
-        spotify:
-          type: object
-          description: Spotify playback state (Phase 2). Background music integration via D-Bus MPRIS.
-          properties:
-            connected:
-              type: boolean
-              description: Whether spotifyd is reachable
-            state:
-              type: string
-              enum: [playing, paused, stopped]
-              description: Current playback state
-            volume:
-              type: integer
-              description: Current volume (0-100)
-              minimum: 0
-              maximum: 100
-            pausedByGameClock:
-              type: boolean
-              description: Whether Spotify was paused by game clock cascade
         heldItems:
           type: array
           description: Items held due to service outage or resource contention (Phase 4). Combines held cues and held videos.
