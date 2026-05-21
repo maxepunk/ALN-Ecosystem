@@ -104,6 +104,19 @@ jest.mock('../../../src/services/soundService', () => ({
   checkHealth: jest.fn(),
 }));
 
+jest.mock('../../../src/services/musicService', () => ({
+  play: jest.fn(),
+  pause: jest.fn(),
+  stop: jest.fn(),
+  next: jest.fn(),
+  previous: jest.fn(),
+  setVolume: jest.fn(),
+  setShuffle: jest.fn(),
+  setLoop: jest.fn(),
+  loadPlaylist: jest.fn(),
+  checkConnection: jest.fn(),
+}));
+
 jest.mock('../../../src/services/serviceHealthRegistry', () => ({
   isHealthy: jest.fn().mockReturnValue(true),
   getStatus: jest.fn().mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() }),
