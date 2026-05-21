@@ -11,7 +11,7 @@ const EventEmitter = require('events');
  * Normalizing in one place prevents the bug class where E2E real-MPD output
  * silently fails canonical-name comparisons.
  */
-const MPD_STATE_MAP = { play: 'playing', pause: 'paused', stop: 'stopped' };
+const MPD_STATE_MAP = Object.freeze({ play: 'playing', pause: 'paused', stop: 'stopped' });
 
 class MusicService extends EventEmitter {
   constructor({

@@ -20,11 +20,30 @@
  */
 
 const { test, expect, chromium } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
 const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../setup/test-server');
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
+
+const MUSIC_DIR = path.resolve(__dirname, '../../../public/music');
+
+/**
+ * Returns true when at least one MP3 is present in backend/public/music/.
+ * The directory is gitignored — fresh CI clones won't have any tracks even
+ * if the seed playlist (committed) references them. Without MP3s, MPD adds
+ * non-existent filenames, the queue stays empty, the track title never
+ * updates, and the test times out misleadingly.
+ */
+function musicLibraryPopulated() {
+  try {
+    return fs.readdirSync(MUSIC_DIR).some(f => f.toLowerCase().endsWith('.mp3'));
+  } catch {
+    return false;
+  }
+}
 
 let browser = null;
 let orchestratorInfo = null;
@@ -78,6 +97,11 @@ test.describe('GM Scanner — Music Playlist Control', () => {
     if (serviceHealth.music?.status !== 'healthy') {
       console.log(`Music not healthy (${serviceHealth.music?.status || 'unknown'}) — skipping`);
       test.skip(true, 'Music service not healthy');
+      return;
+    }
+    if (!musicLibraryPopulated()) {
+      console.log('backend/public/music/ is empty — skipping (Pi-only test, requires real MP3s)');
+      test.skip(true, 'Music library not populated');
       return;
     }
 

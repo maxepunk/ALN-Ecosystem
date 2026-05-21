@@ -20,6 +20,25 @@ const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
+
+const MUSIC_DIR = path.resolve(__dirname, '../../../public/music');
+
+/**
+ * Returns true when at least one MP3 is present in backend/public/music/.
+ * The directory is gitignored — fresh CI clones won't have any tracks even
+ * if the seed playlist (committed) references them. Without MP3s, MPD adds
+ * non-existent filenames and the music never actually plays — pause/cascade/
+ * ducking flows all fail silently in misleading ways. Pi-only by design.
+ */
+function musicLibraryPopulated() {
+  try {
+    return fs.readdirSync(MUSIC_DIR).some(f => f.toLowerCase().endsWith('.mp3'));
+  } catch {
+    return false;
+  }
+}
 
 let browser = null;
 let orchestratorInfo = null;
@@ -121,6 +140,11 @@ test.describe('GM Scanner - Environment Control', () => {
       console.log('Music not healthy — skipping');
       return;
     }
+    if (!musicLibraryPopulated()) {
+      test.skip();
+      console.log('backend/public/music/ empty — skipping (Pi-only test)');
+      return;
+    }
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -132,30 +156,58 @@ test.describe('GM Scanner - Environment Control', () => {
       });
       await gmScanner.createSessionWithTeams('Music Test', ['Team Alpha']);
 
-      // Music starts in a 'stopped' state with no queue. To meaningfully
-      // exercise pause/play we first load a playlist (which adds tracks and
-      // auto-starts playback per musicService.loadPlaylist).
-      const loadAck = await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist',
-        { playlistId: 'all-tracks' });
-      expect(loadAck.data.success).toBe(true);
-      console.log('Music playlist loaded:', loadAck.data.message);
+      // Persistent listener for music service:state — needed to verify actual
+      // MPD state transitions, not just gm:command ACKs (which fire before
+      // MPD's idle event reports the new playback state).
+      const wsSocket = await connectWithAuth(
+        orchestratorInfo.url, ADMIN_PASSWORD,
+        `MUSIC_TEST_${Date.now()}`, 'gm'
+      );
 
-      // Pause music via gm:command
-      const pauseAck = await sendGMCommand(orchestratorInfo.url, 'music:pause');
-      expect(pauseAck.data.success).toBe(true);
-      console.log('Music paused:', pauseAck.data.message);
+      try {
+        // Music starts in a 'stopped' state with no queue. To meaningfully
+        // exercise pause/play we first load a playlist (which adds tracks and
+        // auto-starts playback per musicService.loadPlaylist). loadPlaylist's
+        // ACK returns once MPD has accepted the batch, but MPD's idle event
+        // (which updates musicService.state to 'playing') is async. Wait for
+        // the state push before issuing pause so we test real state machine,
+        // not just the command pipeline.
+        const playingPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'music' &&
+            data.data?.state?.state === 'playing', 10000);
+        const loadAck = await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist',
+          { playlistId: 'all-tracks' });
+        expect(loadAck.data.success).toBe(true);
+        await playingPromise;
+        console.log('Music playlist loaded + MPD reports playing');
 
-      // Resume music via gm:command
-      const playAck = await sendGMCommand(orchestratorInfo.url, 'music:play');
-      expect(playAck.data.success).toBe(true);
-      console.log('Music playing:', playAck.data.message);
+        // Pause music via gm:command — verify MPD actually pauses
+        const pausedPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'music' &&
+            data.data?.state?.state === 'paused', 10000);
+        const pauseAck = await sendGMCommand(orchestratorInfo.url, 'music:pause');
+        expect(pauseAck.data.success).toBe(true);
+        await pausedPromise;
+        console.log('Music paused via gm:command');
 
-      // Verify Music section visible on admin panel
-      await gmScanner.navigateToAdminPanel();
-      const musicSection = page.locator('#music-section');
-      await expect(musicSection).toBeVisible({ timeout: 10000 });
-      console.log('Music section visible on admin panel');
+        // Resume music via gm:command — verify MPD actually plays again
+        const playingAgainPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'music' &&
+            data.data?.state?.state === 'playing', 10000);
+        const playAck = await sendGMCommand(orchestratorInfo.url, 'music:play');
+        expect(playAck.data.success).toBe(true);
+        await playingAgainPromise;
+        console.log('Music resumed via gm:command');
 
+        // Verify Music section visible on admin panel
+        await gmScanner.navigateToAdminPanel();
+        const musicSection = page.locator('#music-section');
+        await expect(musicSection).toBeVisible({ timeout: 10000 });
+        console.log('Music section visible on admin panel');
+
+      } finally {
+        disconnectSocket(wsSocket);
+      }
     } finally {
       await context.close();
     }
@@ -302,6 +354,11 @@ test.describe('GM Scanner - Environment Control', () => {
       console.log(`Music=${musicHealthy}, VLC=${vlcHealthy} — both needed for ducking test`);
       return;
     }
+    if (!musicLibraryPopulated()) {
+      test.skip();
+      console.log('backend/public/music/ empty — skipping (Pi-only test)');
+      return;
+    }
 
     if (!videoToken) {
       test.skip();
@@ -359,7 +416,9 @@ test.describe('GM Scanner - Environment Control', () => {
 
         // Register the duck-end listener AFTER duck-on matched so we only catch
         // the post-video-end clear, not any earlier sound-duck clears that may
-        // have fired before video started.
+        // have fired before video started. There's a theoretical microtask gap
+        // here that could miss the duck-end event, but production video tokens
+        // are seconds-to-minutes long — ample time to register the listener.
         const duckingByVideoEndedPromise = waitForEvent(wsSocket, 'service:state',
           (data) => data.data?.domain === 'audio' &&
             Array.isArray(data.data?.state?.ducking?.music) &&
@@ -383,6 +442,11 @@ test.describe('GM Scanner - Environment Control', () => {
     if (serviceHealth.music?.status !== 'healthy') {
       test.skip();
       console.log('Music not healthy — skipping cascading pause test');
+      return;
+    }
+    if (!musicLibraryPopulated()) {
+      test.skip();
+      console.log('backend/public/music/ empty — skipping (Pi-only test)');
       return;
     }
 
