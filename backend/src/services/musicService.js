@@ -368,10 +368,16 @@ class MusicService extends EventEmitter {
 
   async _handlePlayerEvent() {
     if (!this._mpd || this._stopped) return;
-    // mpd2 serializes commands on a single _promiseQueue (Promise.all would
-    // not actually parallelize). sendCommands sends both in one command_list
-    // batch = one socket round-trip, atomic.
-    const [statusRaw, songRaw] = await this._mpd.sendCommands(['status', 'currentsong']);
+    // Two sendCommand calls — NOT sendCommands. mpd2@1.0.7's sendCommands
+    // wraps the list in `command_list_begin` (no separators), and concatenates
+    // every command's output into a SINGLE string. Destructuring that string
+    // slices characters instead of responses, silently breaking idle handling.
+    // mpd2 serializes commands via its internal _promiseQueue, so Promise.all
+    // is two sequential round-trips on the wire — accurate and reliable.
+    const [statusRaw, songRaw] = await Promise.all([
+      this._mpd.sendCommand('status'),
+      this._mpd.sendCommand('currentsong'),
+    ]);
     // Re-check after await — cleanup() may have run during the I/O window
     if (this._stopped || !this._mpd) return;
     const status = this._parseKV(statusRaw);

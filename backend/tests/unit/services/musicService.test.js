@@ -331,10 +331,10 @@ describe('MusicService — idle events', () => {
   });
 
   it('on "system-player" event, emits playback:changed and track:changed', async () => {
-    service._mpd.sendCommands = jest.fn().mockResolvedValue([
-      'state: playing\nsong: 0\nelapsed: 12.5\nduration: 180\n',
-      'file: a.mp3\nTitle: Alpha\nArtist: Test\nAlbum: TestA\n',
-    ]);
+    // Two sendCommand calls (NOT sendCommands — see _handlePlayerEvent for the why)
+    service._mpd.sendCommand = jest.fn()
+      .mockResolvedValueOnce('state: playing\nsong: 0\nelapsed: 12.5\nduration: 180\n')
+      .mockResolvedValueOnce('file: a.mp3\nTitle: Alpha\nArtist: Test\nAlbum: TestA\n');
 
     const playbackHandler = jest.fn();
     const trackHandler = jest.fn();
@@ -362,10 +362,9 @@ describe('MusicService — idle events', () => {
 
   it('updates playlist.position from status.song when playlist is loaded', async () => {
     service.playlist = { id: 'p1', name: 'P1', position: 0, total: 5, shuffle: false, loop: false, crossfadeMs: 0 };
-    service._mpd.sendCommands = jest.fn().mockResolvedValue([
-      'state: playing\nsong: 3\nelapsed: 5\nduration: 180\n',
-      'file: c.mp3\nTitle: C\nArtist: x\n',
-    ]);
+    service._mpd.sendCommand = jest.fn()
+      .mockResolvedValueOnce('state: playing\nsong: 3\nelapsed: 5\nduration: 180\n')
+      .mockResolvedValueOnce('file: c.mp3\nTitle: C\nArtist: x\n');
     service._mpd.emit('system-player');
     await new Promise(r => setImmediate(r));
     await new Promise(r => setImmediate(r));
@@ -383,10 +382,9 @@ describe('MusicService — idle events', () => {
     ['pause', 'paused'],
     ['stop', 'stopped'],
   ])('normalizes raw MPD state "%s" → canonical "%s"', async (raw, canonical) => {
-    service._mpd.sendCommands = jest.fn().mockResolvedValue([
-      `state: ${raw}\n`,
-      '',
-    ]);
+    service._mpd.sendCommand = jest.fn()
+      .mockResolvedValueOnce(`state: ${raw}\n`)
+      .mockResolvedValueOnce('');
     const handler = jest.fn();
     service.on('playback:changed', handler);
     service._mpd.emit('system-player');

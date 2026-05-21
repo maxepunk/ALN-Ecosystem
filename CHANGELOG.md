@@ -3,6 +3,27 @@
 Notable changes are recorded here. Format roughly follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are ISO-8601.
 
+## [2026-05-21]
+
+### Fixed
+- **Music: state and track never updated after `loadPlaylist`.** The
+  simplification commit `ad7d49b1` replaced
+  `Promise.all([sendCommand('status'), sendCommand('currentsong')])` with
+  `sendCommands(['status', 'currentsong'])` in
+  `musicService._handlePlayerEvent`. But `mpd2@1.0.7`'s `sendCommands`
+  wraps the list in `command_list_begin` (no separators) and returns a
+  single concatenated **string** — not an array of per-command responses.
+  The destructure `const [statusRaw, songRaw] = result` therefore sliced
+  the first two characters ("v" and "o" from "volume: …\nstate: …" /
+  "OK\n…"), `status.state` came back `undefined`, `newState` fell back to
+  `'stopped'` and matched `this.state='stopped'`, so `playback:changed`
+  never fired. MPD itself was playing fine — the orchestrator just never
+  saw the state change. Reverted to `Promise.all`; mpd2 serializes via
+  its internal `_promiseQueue` so it's still two sequential round-trips,
+  just correct ones. Three idle-event unit tests were mocking the
+  phantom-array `sendCommands` return, which masked the bug — updated
+  them to mock per-call `sendCommand` strings.
+
 ## [2026-05-20] Music subsystem: Spotify → MPD
 
 **Summary:** Replaced Spotify-driven background music with a local
