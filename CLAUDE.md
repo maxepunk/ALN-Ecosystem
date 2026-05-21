@@ -428,6 +428,13 @@ npm run session:validate latest > report.md  # Save report
 4. Check boot log for `[ASSET-SVC]` lines; `sha1 mismatch`/`short read`/`size mismatch` all auto-retry on next boot
 5. If manifest is enormous (>128 KB), the device will refuse it — see `limits::MAX_MANIFEST_SIZE`
 
+**First-boot expectation:** Blank-SD first boot transfers ~30-40 MB
+over HTTPS, taking 5-15 minutes depending on LAN conditions. The TFT
+shows per-file progress (`image 12/127 67%`). The scanner is unresponsive
+to RFID/serial during this window — this is expected. To skip asset sync
+(e.g., a demo with cached assets), edit `config.txt` on the SD card and
+set `SYNC_ASSETS=false`, then power-cycle.
+
 **Key Files:** `scripts/generate_asset_manifest.py`, `backend/src/routes/resourceRoutes.js` (asset endpoints), `arduino-cyd-player-scanner/ALNScanner_v5/services/AssetService.h`
 
 ### Post-Session Analysis
