@@ -331,11 +331,10 @@ describe('MusicService — idle events', () => {
   });
 
   it('on "system-player" event, emits playback:changed and track:changed', async () => {
-    service._mpd.sendCommand = jest.fn(async (cmd) => {
-      if (cmd === 'status') return 'state: playing\nsong: 0\nelapsed: 12.5\nduration: 180\n';
-      if (cmd === 'currentsong') return 'file: a.mp3\nTitle: Alpha\nArtist: Test\nAlbum: TestA\n';
-      return '';
-    });
+    service._mpd.sendCommands = jest.fn().mockResolvedValue([
+      'state: playing\nsong: 0\nelapsed: 12.5\nduration: 180\n',
+      'file: a.mp3\nTitle: Alpha\nArtist: Test\nAlbum: TestA\n',
+    ]);
 
     const playbackHandler = jest.fn();
     const trackHandler = jest.fn();
@@ -359,25 +358,35 @@ describe('MusicService — idle events', () => {
     });
     expect(service.state).toBe('playing');
     expect(service.track.title).toBe('Alpha');
-    service._stopPositionPolling();
+  });
+
+  it('updates playlist.position from status.song when playlist is loaded', async () => {
+    service.playlist = { id: 'p1', name: 'P1', position: 0, total: 5, shuffle: false, loop: false, crossfadeMs: 0 };
+    service._mpd.sendCommands = jest.fn().mockResolvedValue([
+      'state: playing\nsong: 3\nelapsed: 5\nduration: 180\n',
+      'file: c.mp3\nTitle: C\nArtist: x\n',
+    ]);
+    service._mpd.emit('system-player');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    expect(service.playlist.position).toBe(3);
   });
 
   // Anti-confidence regression: real MPD returns raw protocol strings
   // (`play`/`pause`/`stop`), not the canonical names. The unit tests above
-  // mock with canonical names which masked a bug found in E2E — pauseForGameClock,
-  // position-polling trigger, and the frontend MusicRenderer all compare against
-  // `'playing'`, so raw `'play'` silently failed every check. The normalization
-  // map in _handlePlayerEvent is the fix; this test locks it in.
+  // mock with canonical names which masked a bug found in E2E — pauseForGameClock
+  // and the frontend MusicRenderer all compare against `'playing'`, so raw
+  // `'play'` silently failed every check. The MPD_STATE_MAP normalization
+  // in _handlePlayerEvent is the fix; this test locks it in.
   it.each([
     ['play', 'playing'],
     ['pause', 'paused'],
     ['stop', 'stopped'],
   ])('normalizes raw MPD state "%s" → canonical "%s"', async (raw, canonical) => {
-    service._mpd.sendCommand = jest.fn(async (cmd) => {
-      if (cmd === 'status') return `state: ${raw}\n`;
-      if (cmd === 'currentsong') return '';
-      return '';
-    });
+    service._mpd.sendCommands = jest.fn().mockResolvedValue([
+      `state: ${raw}\n`,
+      '',
+    ]);
     const handler = jest.fn();
     service.on('playback:changed', handler);
     service._mpd.emit('system-player');
@@ -387,7 +396,6 @@ describe('MusicService — idle events', () => {
     if (canonical !== 'stopped') {
       expect(handler).toHaveBeenCalledWith({ state: canonical });
     }
-    service._stopPositionPolling();
   });
 
   it('on "system-mixer" event, emits volume:changed when volume changes', async () => {
@@ -409,42 +417,6 @@ describe('MusicService — idle events', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('starts position polling when state transitions to playing', async () => {
-    jest.useFakeTimers();
-    try {
-      service._mpd.sendCommand = jest.fn(async (cmd) => {
-        if (cmd === 'status') return 'state: playing\nsong: 0\nelapsed: 30\nduration: 180\n';
-        if (cmd === 'currentsong') return 'file: a.mp3\nTitle: A\nArtist: x\n';
-        return '';
-      });
-      service._mpd.emit('system-player');
-      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
-      const callsAfterEvent = service._mpd.sendCommand.mock.calls.length;
-      jest.advanceTimersByTime(1100);
-      await Promise.resolve();
-      expect(service._mpd.sendCommand.mock.calls.length).toBeGreaterThan(callsAfterEvent);
-      service._stopPositionPolling();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it('stops position polling when state leaves playing', async () => {
-    jest.useFakeTimers();
-    try {
-      service._mpd.sendCommand = jest.fn(async (cmd) => {
-        if (cmd === 'status') return 'state: paused\nelapsed: 30\nduration: 180\n';
-        return 'file: a.mp3\nTitle: A\n';
-      });
-      service._startPositionPolling();
-      service._stopPositionPolling();
-      const callsBefore = service._mpd.sendCommand.mock.calls.length;
-      jest.advanceTimersByTime(2000);
-      expect(service._mpd.sendCommand.mock.calls.length).toBe(callsBefore);
-    } finally {
-      jest.useRealTimers();
-    }
-  });
 
   it('playlist file: loads playlists on init', async () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-music-'));
@@ -626,7 +598,7 @@ describe('MusicService — spawnMpd', () => {
 });
 
 describe('MusicService — reset', () => {
-  it('reset() clears state and stops timers without disconnecting MPD', () => {
+  it('reset() clears state without disconnecting MPD', () => {
     const service = new MusicService();
     service.connected = true;
     service.state = 'playing';
@@ -634,10 +606,7 @@ describe('MusicService — reset', () => {
     service.track = { file: 'x.mp3', title: 'X' };
     service.playlist = { id: 'a', name: 'A', position: 2, total: 5 };
     service._pausedByGameClock = true;
-    service._positionTimer = setInterval(() => {}, 1000);
-    const stopSpy = jest.spyOn(service, '_stopPositionPolling');
     service.reset();
-    expect(stopSpy).toHaveBeenCalled();
     expect(service.state).toBe('stopped');
     expect(service.volume).toBe(70);
     expect(service.track).toBe(null);

@@ -13,6 +13,34 @@ const EventEmitter = require('events');
  */
 const MPD_STATE_MAP = Object.freeze({ play: 'playing', pause: 'paused', stop: 'stopped' });
 
+/**
+ * Parse MPD's `listallinfo` multi-record output. Each track starts with a
+ * `file:` key; subsequent metadata keys belong to that track until the next
+ * `file:` line. Exported so HTTP routes can use it without reaching into
+ * musicService internals.
+ */
+function parseListAllInfo(stdout) {
+  const tracks = [];
+  let current = null;
+  for (const line of String(stdout).split('\n')) {
+    const idx = line.indexOf(':');
+    if (idx === -1) continue;
+    const key = line.slice(0, idx).trim();
+    const val = line.slice(idx + 1).trim();
+    if (key === 'file') {
+      if (current) tracks.push(current);
+      current = { file: val, title: val, artist: '', album: '', duration: 0 };
+    } else if (current) {
+      if (key === 'Title') current.title = val;
+      else if (key === 'Artist') current.artist = val;
+      else if (key === 'Album') current.album = val;
+      else if (key === 'Time') current.duration = parseInt(val, 10) || 0;
+    }
+  }
+  if (current) tracks.push(current);
+  return tracks;
+}
+
 class MusicService extends EventEmitter {
   constructor({
     socketPath = '/tmp/aln-mpd.sock',
@@ -72,10 +100,8 @@ class MusicService extends EventEmitter {
 
   async cleanup() {
     // Set _stopped BEFORE tearing down so in-flight async handlers
-    // (e.g., _handlePlayerEvent mid-await) bail out instead of
-    // re-registering the position-polling timer.
+    // (e.g., _handlePlayerEvent mid-await) bail out before mutating state.
     this._stopped = true;
-    this._stopPositionPolling();
     this._stopPlaylistWatcher();
     if (this._mpd) {
       try { await this._mpd.disconnect(); } catch (_) { /* ignore */ }
@@ -161,11 +187,14 @@ class MusicService extends EventEmitter {
       return true;
     } catch (_) {
       // Connection went stale — drop the client so next checkConnection
-      // attempts a fresh connect.
+      // attempts a fresh connect. Report 'down' so the commandExecutor
+      // SERVICE_DEPENDENCIES gate rejects music:* cleanly with a service
+      // error instead of letting the handler throw "not connected" mid-flight.
       try { await this._mpd.disconnect(); } catch (__) { /* ignore */ }
       this._mpd = null;
       this._eventsWired = false;
       this.connected = false;
+      require('./serviceHealthRegistry').report('music', 'down', 'MPD ping failed');
       return false;
     }
   }
@@ -261,6 +290,37 @@ class MusicService extends EventEmitter {
     return this._playlists.get(id) || null;
   }
 
+  // ── Accessors for HTTP routes (keep _mpd / _playlistFile encapsulated) ──
+
+  /** Fetches the MPD library and returns parsed track metadata. */
+  async listAllTracks() {
+    this._assertConnected();
+    const stdout = await this._mpd.sendCommand('listallinfo');
+    return parseListAllInfo(stdout);
+  }
+
+  /**
+   * Read the raw playlist file content. Throws ENOENT if the file doesn't
+   * exist (caller decides how to surface that).
+   */
+  readPlaylistFileRaw() {
+    if (!this._playlistFile) throw new Error('Playlist file not configured');
+    return fs.readFileSync(this._playlistFile, 'utf8');
+  }
+
+  /** Atomically write the playlist set to disk. Body is serialized as JSON. */
+  writePlaylistFile(body) {
+    if (!this._playlistFile) throw new Error('Playlist file not configured');
+    const tmp = `${this._playlistFile}.tmp.${process.pid}`;
+    fs.writeFileSync(tmp, JSON.stringify(body, null, 2));
+    fs.renameSync(tmp, this._playlistFile);
+  }
+
+  /** True if a playlist file path is configured (regardless of file presence). */
+  hasPlaylistFile() {
+    return Boolean(this._playlistFile);
+  }
+
   async pauseForGameClock() {
     if (this.state !== 'playing') return;
     this._assertConnected();
@@ -280,10 +340,15 @@ class MusicService extends EventEmitter {
     // when assigning a fresh _mpd (init, reconnect). Without this guard,
     // a second call would double-register listeners and double-fire idle
     // event handlers.
+    //
+    // We skip MPD's `system-playlist` subsystem (fires on queue contents
+    // changes — clear/add/reorder). Queue contents are mutated only by our
+    // own loadPlaylist() which updates this.playlist directly, and the
+    // playlist queue position (song index) is read off the player event's
+    // status snapshot — no extra round-trip needed.
     if (this._eventsWired) return;
     this._mpd.on('system-player', () => { this._handlePlayerEvent().catch(this._logErr.bind(this)); });
     this._mpd.on('system-mixer',  () => { this._handleMixerEvent().catch(this._logErr.bind(this)); });
-    this._mpd.on('system-playlist', () => { this._handlePlaylistEvent().catch(this._logErr.bind(this)); });
     this._eventsWired = true;
   }
 
@@ -303,10 +368,10 @@ class MusicService extends EventEmitter {
 
   async _handlePlayerEvent() {
     if (!this._mpd || this._stopped) return;
-    const [statusRaw, songRaw] = await Promise.all([
-      this._mpd.sendCommand('status'),
-      this._mpd.sendCommand('currentsong'),
-    ]);
+    // mpd2 serializes commands on a single _promiseQueue (Promise.all would
+    // not actually parallelize). sendCommands sends both in one command_list
+    // batch = one socket round-trip, atomic.
+    const [statusRaw, songRaw] = await this._mpd.sendCommands(['status', 'currentsong']);
     // Re-check after await — cleanup() may have run during the I/O window
     if (this._stopped || !this._mpd) return;
     const status = this._parseKV(statusRaw);
@@ -314,10 +379,9 @@ class MusicService extends EventEmitter {
 
     // MPD's status returns raw protocol strings (`play`/`pause`/`stop`).
     // Normalize to the canonical names that the rest of the system uses
-    // (pauseForGameClock guard, position-polling trigger, frontend renderer
-    // all check === 'playing' / 'paused' / 'stopped'). Falls through unchanged
-    // for any unknown value so test mocks supplying canonical names directly
-    // also work.
+    // (pauseForGameClock guard, frontend renderer all check === 'playing' /
+    // 'paused' / 'stopped'). Falls through unchanged for any unknown value
+    // so test mocks supplying canonical names directly also work.
     const newState = MPD_STATE_MAP[status.state] || status.state || 'stopped';
     if (newState !== this.state) {
       this.state = newState;
@@ -342,8 +406,12 @@ class MusicService extends EventEmitter {
       this.emit('track:changed', { track: null });
     }
 
-    if (newState === 'playing') this._startPositionPolling();
-    else this._stopPositionPolling();
+    // Track queue position from the same status snapshot — avoids a separate
+    // round-trip on the system-playlist event (which we no longer subscribe to).
+    if (this.playlist) {
+      const queuePos = parseInt(status.song, 10);
+      if (Number.isFinite(queuePos)) this.playlist.position = queuePos;
+    }
   }
 
   async _handleMixerEvent() {
@@ -358,42 +426,7 @@ class MusicService extends EventEmitter {
     }
   }
 
-  async _handlePlaylistEvent() {
-    if (!this._mpd || this._stopped) return;
-    const raw = await this._mpd.sendCommand('status');
-    if (this._stopped) return;
-    const status = this._parseKV(raw);
-    if (this.playlist) {
-      this.playlist.position = parseInt(status.song, 10) || 0;
-    }
-  }
-
-  _startPositionPolling() {
-    if (this._positionTimer || this._stopped) return;
-    this._positionTimer = setInterval(() => {
-      this._pollPosition().catch(this._logErr.bind(this));
-    }, 1000);
-  }
-
-  _stopPositionPolling() {
-    if (this._positionTimer) {
-      clearInterval(this._positionTimer);
-      this._positionTimer = null;
-    }
-  }
-
-  async _pollPosition() {
-    if (!this._mpd || !this.connected || !this.track) return;
-    const raw = await this._mpd.sendCommand('status');
-    const status = this._parseKV(raw);
-    const pos = parseFloat(status.elapsed);
-    if (Number.isFinite(pos)) {
-      this.track.position = pos;
-    }
-  }
-
   reset() {
-    this._stopPositionPolling();
     this.state = 'stopped';
     this.volume = 70;
     this.track = null;
@@ -458,4 +491,5 @@ class MusicService extends EventEmitter {
 
 const singleton = new MusicService();
 singleton.MusicService = MusicService;
+singleton.parseListAllInfo = parseListAllInfo;
 module.exports = singleton;

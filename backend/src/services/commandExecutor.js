@@ -24,6 +24,11 @@ const musicService = require('./musicService');
 const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
 
+// Config-tool cue authoring serializes booleans as the strings 'true'/'false'
+// via a <select>; GM Scanner live controls send real booleans. `!!"false"` is
+// truthy, so naive coercion silently inverts disabled flags from cue payloads.
+const coerceBool = (v) => v === true || v === 'true';
+
 // Service dependency map for pre-dispatch health checks
 const SERVICE_DEPENDENCIES = {
   'video:play': 'vlc',
@@ -628,12 +633,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'music:setShuffle': {
-        // Coerce defensively: GM Scanner live controls send real booleans
-        // (checkbox.checked), but config-tool cue authoring uses a select
-        // with string values 'true'/'false'. `!!"false"` is true (string is
-        // truthy), so a cue authored with shuffle=false would silently enable
-        // shuffle without this normalization.
-        const enabled = (payload.enabled === true || payload.enabled === 'true');
+        const enabled = coerceBool(payload.enabled);
         await musicService.setShuffle(enabled);
         resultMessage = `Music shuffle: ${enabled ? 'on' : 'off'}`;
         logger.info('Music shuffle set', { source, deviceId, enabled });
@@ -641,7 +641,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       }
 
       case 'music:setLoop': {
-        const enabled = (payload.enabled === true || payload.enabled === 'true');
+        const enabled = coerceBool(payload.enabled);
         await musicService.setLoop(enabled);
         resultMessage = `Music loop: ${enabled ? 'on' : 'off'}`;
         logger.info('Music loop set', { source, deviceId, enabled });
@@ -766,6 +766,10 @@ async function validateCommand(action, payload = {}) {
     case 'audio:route:set':
       if (!audioRoutingService.sinkExists(payload.sink))
         errors.push({ type: 'resource', message: `Audio sink not found: ${payload.sink}` });
+      break;
+    case 'music:loadPlaylist':
+      if (!musicService.getPlaylist(payload.playlistId))
+        errors.push({ type: 'resource', message: `Playlist not found: ${payload.playlistId}` });
       break;
   }
 

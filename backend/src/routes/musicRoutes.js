@@ -1,51 +1,28 @@
 'use strict';
 
 const express = require('express');
-const fs = require('fs');
-
-function parseListAllInfo(stdout) {
-  const tracks = [];
-  let current = null;
-  for (const line of String(stdout).split('\n')) {
-    const idx = line.indexOf(':');
-    if (idx === -1) continue;
-    const key = line.slice(0, idx).trim();
-    const val = line.slice(idx + 1).trim();
-    if (key === 'file') {
-      if (current) tracks.push(current);
-      current = { file: val, title: val, artist: '', album: '', duration: 0 };
-    } else if (current) {
-      if (key === 'Title') current.title = val;
-      else if (key === 'Artist') current.artist = val;
-      else if (key === 'Album') current.album = val;
-      else if (key === 'Time') current.duration = parseInt(val, 10) || 0;
-    }
-  }
-  if (current) tracks.push(current);
-  return tracks;
-}
 
 function createMusicRouter({ musicService }) {
   const router = express.Router();
 
   router.get('/tracks', async (req, res) => {
-    if (!musicService._mpd) {
-      return res.status(503).json({ error: 'Music service not connected' });
-    }
     try {
-      const stdout = await musicService._mpd.sendCommand('listallinfo');
-      res.json({ tracks: parseListAllInfo(stdout) });
+      const tracks = await musicService.listAllTracks();
+      res.json({ tracks });
     } catch (err) {
+      if (/not connected/i.test(err.message)) {
+        return res.status(503).json({ error: 'Music service not connected' });
+      }
       res.status(500).json({ error: err.message });
     }
   });
 
   router.get('/playlists', (req, res) => {
-    if (!musicService._playlistFile) {
+    if (!musicService.hasPlaylistFile()) {
       return res.status(503).json({ error: 'Playlist file not configured' });
     }
     try {
-      const raw = fs.readFileSync(musicService._playlistFile, 'utf8');
+      const raw = musicService.readPlaylistFileRaw();
       res.type('json').send(raw);
     } catch (err) {
       if (err.code === 'ENOENT') {
@@ -56,17 +33,14 @@ function createMusicRouter({ musicService }) {
   });
 
   router.put('/playlists', (req, res) => {
-    if (!musicService._playlistFile) {
+    if (!musicService.hasPlaylistFile()) {
       return res.status(503).json({ error: 'Playlist file not configured' });
     }
     const body = req.body;
     const err = validatePlaylistsBody(body);
     if (err) return res.status(400).json({ error: err });
     try {
-      const target = musicService._playlistFile;
-      const tmp = `${target}.tmp.${process.pid}`;
-      fs.writeFileSync(tmp, JSON.stringify(body, null, 2));
-      fs.renameSync(tmp, target);
+      musicService.writePlaylistFile(body);
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -106,4 +80,5 @@ function validatePlaylistsBody(body) {
 }
 
 module.exports = createMusicRouter;
-module.exports.parseListAllInfo = parseListAllInfo;
+// Re-export from musicService for tests that still import via this path.
+module.exports.parseListAllInfo = require('../services/musicService').parseListAllInfo;

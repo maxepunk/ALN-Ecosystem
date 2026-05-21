@@ -4,6 +4,7 @@ const path = require('path');
 const request = require('supertest');
 const express = require('express');
 const createRouter = require('../../../src/routes/musicRoutes');
+const { MusicService } = require('../../../src/services/musicService');
 
 describe('musicRoutes — GET /tracks', () => {
   let app;
@@ -11,12 +12,10 @@ describe('musicRoutes — GET /tracks', () => {
 
   beforeEach(() => {
     musicService = {
-      _mpd: {
-        sendCommand: jest.fn(async () =>
-          'file: a.mp3\nTitle: A\nArtist: x\nTime: 180\n' +
-          'file: b.mp3\nTitle: B\nArtist: y\nAlbum: Beta\nTime: 220\n'
-        ),
-      },
+      listAllTracks: jest.fn().mockResolvedValue([
+        { file: 'a.mp3', title: 'A', artist: 'x', album: '', duration: 180 },
+        { file: 'b.mp3', title: 'B', artist: 'y', album: 'Beta', duration: 220 },
+      ]),
     };
     app = express();
     app.use('/api/music', createRouter({ musicService }));
@@ -32,20 +31,20 @@ describe('musicRoutes — GET /tracks', () => {
   });
 
   it('returns 503 when music service not connected', async () => {
-    musicService._mpd = null;
+    musicService.listAllTracks = jest.fn().mockRejectedValue(new Error('Music service not connected'));
     const res = await request(app).get('/api/music/tracks');
     expect(res.status).toBe(503);
   });
 
-  it('returns 500 when sendCommand throws', async () => {
-    musicService._mpd.sendCommand = jest.fn().mockRejectedValue(new Error('boom'));
+  it('returns 500 when listAllTracks throws other error', async () => {
+    musicService.listAllTracks = jest.fn().mockRejectedValue(new Error('boom'));
     const res = await request(app).get('/api/music/tracks');
     expect(res.status).toBe(500);
     expect(res.body.error).toContain('boom');
   });
 
   it('handles empty track list', async () => {
-    musicService._mpd.sendCommand = jest.fn().mockResolvedValue('');
+    musicService.listAllTracks = jest.fn().mockResolvedValue([]);
     const res = await request(app).get('/api/music/tracks');
     expect(res.status).toBe(200);
     expect(res.body.tracks).toEqual([]);
@@ -66,7 +65,8 @@ describe('musicRoutes — playlists', () => {
         { id: 'p1', name: 'P1', shuffle: false, loop: true, crossfadeMs: 1000, tracks: ['a.mp3'] },
       ],
     }));
-    musicService = { _playlistFile: plFile };
+    // Use a real MusicService so PUT atomic-write tests can verify on-disk state.
+    musicService = new MusicService({ playlistFile: plFile });
     app = express();
     app.use(express.json());
     app.use('/api/music', createRouter({ musicService }));
@@ -87,6 +87,13 @@ describe('musicRoutes — playlists', () => {
     musicService._playlistFile = null;
     const res = await request(app).get('/api/music/playlists');
     expect(res.status).toBe(503);
+  });
+
+  it('GET /playlists returns empty list on ENOENT', async () => {
+    fs.rmSync(plFile);
+    const res = await request(app).get('/api/music/playlists');
+    expect(res.status).toBe(200);
+    expect(res.body.playlists).toEqual([]);
   });
 
   it('PUT /playlists writes atomically', async () => {
@@ -140,6 +147,23 @@ describe('musicRoutes — playlists', () => {
         { id: 'dup', name: 'A', shuffle: false, loop: false, crossfadeMs: 0, tracks: [] },
         { id: 'dup', name: 'B', shuffle: false, loop: false, crossfadeMs: 0, tracks: [] },
       ],
+    };
+    const res = await request(app).put('/api/music/playlists').send(bad);
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT /playlists rejects absolute paths in tracks', async () => {
+    const bad = {
+      playlists: [{ id: 'x', name: 'X', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['/etc/passwd'] }],
+    };
+    const res = await request(app).put('/api/music/playlists').send(bad);
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/relative/i);
+  });
+
+  it('PUT /playlists rejects .. segments in tracks', async () => {
+    const bad = {
+      playlists: [{ id: 'x', name: 'X', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['../../etc/passwd'] }],
     };
     const res = await request(app).put('/api/music/playlists').send(bad);
     expect(res.status).toBe(400);
