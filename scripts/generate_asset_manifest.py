@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -86,12 +87,32 @@ def build_manifest(assets_root: Path) -> dict:
 
 
 def write_manifest(assets_root: Path, manifest: Optional[dict] = None) -> Path:
-    """Write `manifest.json` into `assets_root`, returning its path."""
+    """Write `manifest.json` into `assets_root`, returning its path.
+
+    Uses temp file + `Path.replace()` so a kill mid-write can never
+    leave the manifest truncated. POSIX rename is atomic on the same
+    filesystem (which `assets_root` always is). If the rename itself
+    fails, the temp file is unlinked so we don't leave orphans behind.
+    """
     manifest = manifest if manifest is not None else build_manifest(assets_root)
     out = assets_root / "manifest.json"
+    tmp = assets_root / "manifest.json.tmp"
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w") as f:
+    with tmp.open("w") as f:
         json.dump(manifest, f, indent=2, sort_keys=True)
+        f.flush()
+        os.fsync(f.fileno())
+    try:
+        tmp.replace(out)
+    except Exception:
+        # Best-effort cleanup. We swallow the unlink error (file may not
+        # exist if replace partially succeeded on some filesystems) and
+        # re-raise the original failure so callers see it.
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     return out
 
 
