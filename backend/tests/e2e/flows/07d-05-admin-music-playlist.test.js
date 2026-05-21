@@ -13,7 +13,7 @@
  *     swaps from "No track" to a real MPD-reported title within 5 seconds)
  *
  * Skips automatically if the music service is unhealthy (e.g., MPD not
- * spawned), mirroring the 07d-04 spotify pattern.
+ * spawned).
  *
  * @group admin-panel
  * @group music

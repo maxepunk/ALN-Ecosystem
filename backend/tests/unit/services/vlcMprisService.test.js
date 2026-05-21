@@ -70,7 +70,7 @@ describe('VlcMprisService', () => {
       expect(vlcMprisService._healthServiceId).toBe('vlc');
     });
 
-    it('should use 100ms signal debounce (less chatty than Spotify)', () => {
+    it('should use 100ms signal debounce (less chatty than other MPRIS players)', () => {
       expect(vlcMprisService._signalDebounceMs).toBe(100);
     });
 

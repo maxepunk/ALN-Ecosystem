@@ -17,13 +17,13 @@ jest.mock('../../../src/services/commandExecutor', () => ({
     'video:stop': 'vlc',
     'video:skip': 'vlc',
     'video:queue:add': 'vlc',
-    'spotify:play': 'spotify',
-    'spotify:pause': 'spotify',
-    'spotify:stop': 'spotify',
-    'spotify:next': 'spotify',
-    'spotify:previous': 'spotify',
-    'spotify:playlist': 'spotify',
-    'spotify:volume': 'spotify',
+    'music:play': 'music',
+    'music:pause': 'music',
+    'music:stop': 'music',
+    'music:next': 'music',
+    'music:previous': 'music',
+    'music:loadPlaylist': 'music',
+    'music:setVolume': 'music',
     'sound:play': 'sound',
     'sound:stop': 'sound',
     'lighting:scene:activate': 'lighting',
@@ -36,8 +36,6 @@ jest.mock('../../../src/services/commandExecutor', () => ({
     'bluetooth:scan:stop': 'bluetooth',
     'audio:route:set': 'audio',
     'audio:volume:set': 'audio',
-    'audio:combine:create': 'audio',
-    'audio:combine:destroy': 'audio',
   },
 }));
 
@@ -73,13 +71,13 @@ describe('CueEngineService', () => {
         'video:stop': 'vlc',
         'video:skip': 'vlc',
         'video:queue:add': 'vlc',
-        'spotify:play': 'spotify',
-        'spotify:pause': 'spotify',
-        'spotify:stop': 'spotify',
-        'spotify:next': 'spotify',
-        'spotify:previous': 'spotify',
-        'spotify:playlist': 'spotify',
-        'spotify:volume': 'spotify',
+        'music:play': 'music',
+        'music:pause': 'music',
+        'music:stop': 'music',
+        'music:next': 'music',
+        'music:previous': 'music',
+        'music:loadPlaylist': 'music',
+        'music:setVolume': 'music',
         'sound:play': 'sound',
         'sound:stop': 'sound',
         'lighting:scene:activate': 'lighting',
@@ -92,8 +90,6 @@ describe('CueEngineService', () => {
         'bluetooth:scan:stop': 'bluetooth',
         'audio:route:set': 'audio',
         'audio:volume:set': 'audio',
-        'audio:combine:create': 'audio',
-        'audio:combine:destroy': 'audio',
       },
     }));
 
@@ -104,7 +100,7 @@ describe('CueEngineService', () => {
 
     // Set all services healthy by default (Phase 3: service health checks in fireCue)
     const registry = require('../../../src/services/serviceHealthRegistry');
-    for (const svc of ['sound', 'lighting', 'vlc', 'spotify', 'bluetooth', 'audio']) {
+    for (const svc of ['sound', 'lighting', 'vlc', 'music', 'bluetooth', 'audio']) {
       registry.report(svc, 'healthy', 'test default');
     }
   });
@@ -1551,7 +1547,7 @@ describe('CueEngineService', () => {
       registry.report('sound', 'healthy', 'available');
       registry.report('lighting', 'healthy', 'available');
       registry.report('vlc', 'healthy', 'available');
-      registry.report('spotify', 'healthy', 'available');
+      registry.report('music', 'healthy', 'available');
       registry.report('bluetooth', 'healthy', 'available');
       registry.report('audio', 'healthy', 'available');
     });

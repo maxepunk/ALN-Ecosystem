@@ -25,7 +25,6 @@ const {
 } = require('../setup/test-server');
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
-const { setupSpotify } = require('../setup/spotify-service');
 const { setupHA } = require('../setup/ha-service');
 const { setupSound, cleanupTestAudioFixtures } = require('../setup/sound-service');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
@@ -48,7 +47,6 @@ const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
-let spotifyInfo = null;
 let haInfo = null;
 let soundInfo = null;
 let testTokens = null;
@@ -73,8 +71,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // Setup all services (parallel where possible)
     vlcInfo = await setupVLC();
-    [spotifyInfo, haInfo, soundInfo] = await Promise.all([
-      setupSpotify(),
+    [haInfo, soundInfo] = await Promise.all([
       setupHA(),
       setupSound(),
     ]);
@@ -82,7 +79,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // ═══════════════════════════════════════════════
     // SERVICE STATUS BANNER
     // ═══════════════════════════════════════════════
-    const serviceStatus = { vlc: vlcInfo, spotify: spotifyInfo, ha: haInfo, sound: soundInfo };
+    const serviceStatus = { vlc: vlcInfo, ha: haInfo, sound: soundInfo };
     console.log('\n╔══════════════════════════════════════════╗');
     console.log('║  E2E SERVICE STATUS                      ║');
     for (const [name, info] of Object.entries(serviceStatus)) {
@@ -473,19 +470,6 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       console.log('✓ Video-driven compound cue completed');
     } else {
       console.log(`  Skipping video compound cue (VLC: ${vlcInfo.type})`);
-    }
-
-    // 1.6.7: Spotify status check (verify DOM reflects connection state)
-    const spotifyConnected = await gmScanner1.isSpotifyConnected();
-    if (spotifyInfo.type === 'real') {
-      // With spotifyd running, we should see connected or disconnected
-      // depending on whether an active Spotify Connect session exists
-      console.log(`✓ Spotify status rendered in UI (connected: ${spotifyConnected})`);
-      if (spotifyInfo.reason) {
-        console.log(`  Note: ${spotifyInfo.reason}`);
-      }
-    } else {
-      console.log(`  Spotify status: disconnected (service ${spotifyInfo.type}: ${spotifyInfo.reason || 'N/A'})`);
     }
 
     console.log('=== Phase 1.6 Complete ===\n');

@@ -133,10 +133,9 @@ describe('State Synchronization Integration - REAL Scanner', () => {
     scanner.socket.emit('sync:request');
     const syncEvent = await syncPromise;
 
-    // Validate: serviceHealth structure (registry snapshot with all 9 services)
+    // Validate: serviceHealth structure (registry snapshot with all 8 services)
     expect(syncEvent.data.serviceHealth).toBeDefined();
     expect(syncEvent.data.serviceHealth).toHaveProperty('vlc');
-    expect(syncEvent.data.serviceHealth).toHaveProperty('spotify');
     expect(syncEvent.data.serviceHealth).toHaveProperty('music');
     expect(syncEvent.data.serviceHealth).toHaveProperty('lighting');
     expect(syncEvent.data.serviceHealth.vlc).toHaveProperty('status');

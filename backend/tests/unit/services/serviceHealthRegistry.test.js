@@ -14,7 +14,7 @@ describe('ServiceHealthRegistry', () => {
   describe('initialization', () => {
     it('should initialize all known services as down', () => {
       const snapshot = registry.getSnapshot();
-      const services = ['vlc', 'spotify', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'];
+      const services = ['vlc', 'music', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'];
 
       for (const id of services) {
         expect(snapshot[id]).toBeDefined();
@@ -22,9 +22,9 @@ describe('ServiceHealthRegistry', () => {
       }
     });
 
-    it('should have 9 registered services', () => {
+    it('should have 8 registered services', () => {
       const snapshot = registry.getSnapshot();
-      expect(Object.keys(snapshot)).toHaveLength(9);
+      expect(Object.keys(snapshot)).toHaveLength(8);
     });
   });
 
@@ -70,14 +70,14 @@ describe('ServiceHealthRegistry', () => {
     });
 
     it('should emit on transition from healthy to down', () => {
-      registry.report('spotify', 'healthy');
+      registry.report('music', 'healthy');
       const handler = jest.fn();
       registry.on('health:changed', handler);
 
-      registry.report('spotify', 'down', 'D-Bus unreachable');
+      registry.report('music', 'down', 'D-Bus unreachable');
 
       expect(handler).toHaveBeenCalledWith({
-        serviceId: 'spotify',
+        serviceId: 'music',
         status: 'down',
         message: 'D-Bus unreachable',
         previousStatus: 'healthy'
@@ -143,8 +143,8 @@ describe('ServiceHealthRegistry', () => {
 
   describe('getStatus()', () => {
     it('should return full status object', () => {
-      registry.report('spotify', 'healthy', 'D-Bus active');
-      const status = registry.getStatus('spotify');
+      registry.report('music', 'healthy', 'D-Bus active');
+      const status = registry.getStatus('music');
       expect(status).toEqual({
         status: 'healthy',
         message: 'D-Bus active',
@@ -164,20 +164,20 @@ describe('ServiceHealthRegistry', () => {
       expect(snapshot).not.toBeInstanceOf(Map);
     });
 
-    it('should include all 9 services', () => {
+    it('should include all 8 services', () => {
       const snapshot = registry.getSnapshot();
       expect(Object.keys(snapshot)).toEqual(
-        expect.arrayContaining(['vlc', 'spotify', 'music', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'])
+        expect.arrayContaining(['vlc', 'music', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'])
       );
     });
 
     it('should reflect current health state', () => {
       registry.report('vlc', 'healthy', 'OK');
-      registry.report('spotify', 'down', 'No D-Bus');
+      registry.report('music', 'down', 'MPD unreachable');
 
       const snapshot = registry.getSnapshot();
       expect(snapshot.vlc.status).toBe('healthy');
-      expect(snapshot.spotify.status).toBe('down');
+      expect(snapshot.music.status).toBe('down');
       expect(snapshot.sound.status).toBe('down');
     });
 
@@ -195,17 +195,17 @@ describe('ServiceHealthRegistry', () => {
   describe('reset()', () => {
     it('should set all healthy services back to down', () => {
       registry.report('vlc', 'healthy');
-      registry.report('spotify', 'healthy');
+      registry.report('music', 'healthy');
 
       registry.reset();
 
       expect(registry.isHealthy('vlc')).toBe(false);
-      expect(registry.isHealthy('spotify')).toBe(false);
+      expect(registry.isHealthy('music')).toBe(false);
     });
 
     it('should emit health:changed for each service that was healthy', () => {
       registry.report('vlc', 'healthy');
-      registry.report('spotify', 'healthy');
+      registry.report('music', 'healthy');
 
       const handler = jest.fn();
       registry.on('health:changed', handler);
@@ -234,12 +234,12 @@ describe('ServiceHealthRegistry', () => {
   describe('multiple services', () => {
     it('should track services independently', () => {
       registry.report('vlc', 'healthy');
-      registry.report('spotify', 'down', 'No D-Bus');
+      registry.report('music', 'down', 'No D-Bus');
       registry.report('lighting', 'healthy');
       registry.report('sound', 'healthy');
 
       expect(registry.isHealthy('vlc')).toBe(true);
-      expect(registry.isHealthy('spotify')).toBe(false);
+      expect(registry.isHealthy('music')).toBe(false);
       expect(registry.isHealthy('lighting')).toBe(true);
       expect(registry.isHealthy('sound')).toBe(true);
       expect(registry.isHealthy('bluetooth')).toBe(false);

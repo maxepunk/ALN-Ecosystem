@@ -3,7 +3,7 @@
 // Mock services with checkHealth/checkConnection
 const mockServices = {
   vlc: { checkConnection: jest.fn().mockResolvedValue(true) },
-  spotify: { checkConnection: jest.fn().mockResolvedValue(true) },
+  music: { checkConnection: jest.fn().mockResolvedValue(true) },
   sound: { checkHealth: jest.fn().mockResolvedValue(true) },
   bluetooth: { checkHealth: jest.fn().mockResolvedValue(true) },
   audio: { checkHealth: jest.fn().mockResolvedValue(true) },
@@ -38,7 +38,7 @@ describe('ServiceHealthRegistry - Proactive Revalidation', () => {
     await jest.advanceTimersByTimeAsync(15000);
 
     expect(mockServices.vlc.checkConnection).toHaveBeenCalled();
-    expect(mockServices.spotify.checkConnection).toHaveBeenCalled();
+    expect(mockServices.music.checkConnection).toHaveBeenCalled();
     expect(mockServices.sound.checkHealth).toHaveBeenCalled();
     expect(mockServices.bluetooth.checkHealth).toHaveBeenCalled();
     expect(mockServices.audio.checkHealth).toHaveBeenCalled();

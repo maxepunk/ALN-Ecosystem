@@ -274,25 +274,6 @@ describe('Service getState() Methods', () => {
     });
   });
 
-  describe('spotifyService.getState()', () => {
-    let spotifyService;
-
-    beforeEach(() => {
-      jest.isolateModules(() => {
-        spotifyService = require('../../../src/services/spotifyService');
-      });
-    });
-
-    it('should return expected shape', () => {
-      const state = spotifyService.getState();
-      expect(state).toHaveProperty('connected');
-      expect(state).toHaveProperty('state');
-      expect(state).toHaveProperty('volume');
-      expect(state).toHaveProperty('track');
-      expect(state).toHaveProperty('pausedByGameClock');
-    });
-  });
-
   describe('vlcMprisService.getState()', () => {
     let vlcService;
 

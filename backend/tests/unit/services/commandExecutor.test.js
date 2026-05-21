@@ -118,21 +118,6 @@ jest.mock('../../../src/services/scoreboardControlService', () => ({
   jumpToOwner: jest.fn(),
 }));
 
-jest.mock('../../../src/services/spotifyService', () => ({
-  play: jest.fn().mockResolvedValue(),
-  pause: jest.fn().mockResolvedValue(),
-  stop: jest.fn().mockResolvedValue(),
-  next: jest.fn().mockResolvedValue(),
-  previous: jest.fn().mockResolvedValue(),
-  setPlaylist: jest.fn().mockResolvedValue(),
-  setVolume: jest.fn().mockResolvedValue(),
-  checkConnection: jest.fn().mockResolvedValue(true),
-  activate: jest.fn().mockResolvedValue(true),
-  verifyCacheStatus: jest.fn().mockResolvedValue({ status: 'verified', trackCount: 42 }),
-  getState: jest.fn().mockReturnValue({ connected: true, state: 'playing', volume: 80 }),
-  reset: jest.fn(),
-}));
-
 describe('commandExecutor', () => {
   const sessionService = require('../../../src/services/sessionService');
   const transactionService = require('../../../src/services/transactionService');
@@ -143,7 +128,6 @@ describe('commandExecutor', () => {
   const audioRoutingService = require('../../../src/services/audioRoutingService');
   const lightingService = require('../../../src/services/lightingService');
   const soundService = require('../../../src/services/soundService');
-  const spotifyService = require('../../../src/services/spotifyService');
   const registry = require('../../../src/services/serviceHealthRegistry');
 
   beforeEach(() => {
@@ -206,16 +190,6 @@ describe('commandExecutor', () => {
 
     registry.isHealthy.mockReturnValue(true);
     registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
-
-    spotifyService.play.mockResolvedValue();
-    spotifyService.pause.mockResolvedValue();
-    spotifyService.stop.mockResolvedValue();
-    spotifyService.next.mockResolvedValue();
-    spotifyService.previous.mockResolvedValue();
-    spotifyService.setPlaylist.mockResolvedValue();
-    spotifyService.setVolume.mockResolvedValue();
-    spotifyService.verifyCacheStatus.mockResolvedValue({ status: 'verified', trackCount: 42 });
-    spotifyService.getState.mockReturnValue({ connected: true, state: 'playing', volume: 80 });
   });
 
   it('should export executeCommand function', () => {
@@ -676,108 +650,15 @@ describe('commandExecutor', () => {
     });
   });
 
-  describe('spotify commands', () => {
-    it('should execute spotify:play', async () => {
-      const result = await executeCommand({ action: 'spotify:play', payload: {}, source: 'gm' });
-      expect(result.success).toBe(true);
-      expect(spotifyService.play).toHaveBeenCalled();
-    });
-
-    it('should execute spotify:pause', async () => {
-      const result = await executeCommand({ action: 'spotify:pause', payload: {}, source: 'gm' });
-      expect(result.success).toBe(true);
-      expect(spotifyService.pause).toHaveBeenCalled();
-    });
-
-    it('should execute spotify:stop', async () => {
-      const result = await executeCommand({ action: 'spotify:stop', payload: {}, source: 'gm' });
-      expect(result.success).toBe(true);
-      expect(spotifyService.stop).toHaveBeenCalled();
-    });
-
-    it('should execute spotify:next', async () => {
-      const result = await executeCommand({ action: 'spotify:next', payload: {}, source: 'gm' });
-      expect(result.success).toBe(true);
-      expect(spotifyService.next).toHaveBeenCalled();
-    });
-
-    it('should execute spotify:previous', async () => {
-      const result = await executeCommand({ action: 'spotify:previous', payload: {}, source: 'gm' });
-      expect(result.success).toBe(true);
-      expect(spotifyService.previous).toHaveBeenCalled();
-    });
-
-    it('should execute spotify:playlist with uri', async () => {
-      const result = await executeCommand({
-        action: 'spotify:playlist',
-        payload: { uri: 'spotify:playlist:act2' },
-        source: 'gm'
-      });
-      expect(result.success).toBe(true);
-      expect(spotifyService.setPlaylist).toHaveBeenCalledWith('spotify:playlist:act2');
-    });
-
-    it('should reject spotify:playlist without uri', async () => {
-      const result = await executeCommand({
-        action: 'spotify:playlist',
-        payload: {},
-        source: 'gm'
-      });
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('uri required');
-    });
-
-    it('should execute spotify:volume with clamping', async () => {
-      const result = await executeCommand({
-        action: 'spotify:volume',
-        payload: { volume: 80 },
-        source: 'gm'
-      });
-      expect(result.success).toBe(true);
-      expect(spotifyService.setVolume).toHaveBeenCalledWith(80);
-    });
-
-    it('should reject spotify:volume without volume', async () => {
-      const result = await executeCommand({
-        action: 'spotify:volume',
-        payload: {},
-        source: 'gm'
-      });
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('volume required');
-    });
-
-    it('should execute spotify:cache:verify', async () => {
-      const result = await executeCommand({
-        action: 'spotify:cache:verify',
-        payload: {},
-        source: 'gm'
-      });
-      expect(result.success).toBe(true);
-      expect(result.data.status).toBe('verified');
-      expect(result.data.trackCount).toBe(42);
-    });
-
-    it('should reject spotify:reconnect as unknown action (removed)', async () => {
-      const result = await executeCommand({
-        action: 'spotify:reconnect',
-        payload: {},
-        source: 'gm'
-      });
-      expect(result.success).toBe(false);
-      expect(result.message).toContain('Unknown action');
-    });
-  });
-
   describe('audio:volume:set', () => {
     it('should set per-stream volume', async () => {
       const result = await executeCommand({
         action: 'audio:volume:set',
-        payload: { stream: 'spotify', volume: 60 },
+        payload: { stream: 'music', volume: 60 },
         source: 'gm'
       });
       expect(result.success).toBe(true);
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('spotify', 60);
+      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 60);
     });
 
     it('should reject without stream', async () => {
@@ -793,7 +674,7 @@ describe('commandExecutor', () => {
     it('should reject without volume', async () => {
       const result = await executeCommand({
         action: 'audio:volume:set',
-        payload: { stream: 'spotify' },
+        payload: { stream: 'music' },
         source: 'gm'
       });
       expect(result.success).toBe(false);
@@ -835,14 +716,14 @@ describe('commandExecutor', () => {
     it('should check all services when no serviceId given', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
       const vlcService = require('../../../src/services/vlcMprisService');
-      const spotifyService = require('../../../src/services/spotifyService');
+      const musicService = require('../../../src/services/musicService');
       const lightingService = require('../../../src/services/lightingService');
       const bluetoothService = require('../../../src/services/bluetoothService');
       const audioRoutingService = require('../../../src/services/audioRoutingService');
       const soundService = require('../../../src/services/soundService');
 
       vlcService.checkConnection.mockResolvedValue(true);
-      spotifyService.checkConnection.mockResolvedValue(true);
+      musicService.checkConnection.mockResolvedValue(true);
       lightingService.checkConnection.mockResolvedValue(undefined);
       bluetoothService.isAvailable.mockResolvedValue(true);
       audioRoutingService.checkHealth.mockResolvedValue(true);
@@ -856,7 +737,7 @@ describe('commandExecutor', () => {
 
       expect(result.success).toBe(true);
       expect(vlcService.checkConnection).toHaveBeenCalled();
-      expect(spotifyService.checkConnection).toHaveBeenCalled();
+      expect(musicService.checkConnection).toHaveBeenCalled();
       expect(lightingService.checkConnection).toHaveBeenCalled();
       expect(bluetoothService.isAvailable).toHaveBeenCalled();
       expect(audioRoutingService.checkHealth).toHaveBeenCalled();
@@ -1212,15 +1093,16 @@ describe('commandExecutor', () => {
       expect(videoQueueService.resumeCurrent).not.toHaveBeenCalled();
     });
 
-    it('should reject spotify:play when spotify is down', async () => {
-      registry.isHealthy.mockImplementation((id) => id !== 'spotify');
-      registry.getStatus.mockReturnValue({ status: 'down', message: 'D-Bus unavailable' });
+    it('should reject music:play when music is down', async () => {
+      const musicService = require('../../../src/services/musicService');
+      registry.isHealthy.mockImplementation((id) => id !== 'music');
+      registry.getStatus.mockReturnValue({ status: 'down', message: 'MPD unavailable' });
 
-      const result = await executeCommand({ action: 'spotify:play', source: 'gm' });
+      const result = await executeCommand({ action: 'music:play', source: 'gm' });
 
       expect(result.success).toBe(false);
-      expect(result.message).toContain('spotify');
-      expect(spotifyService.play).not.toHaveBeenCalled();
+      expect(result.message).toContain('music');
+      expect(musicService.play).not.toHaveBeenCalled();
     });
 
     it('should reject sound:play when sound is down', async () => {
@@ -1298,14 +1180,6 @@ describe('commandExecutor', () => {
 
       expect(result.success).toBe(true);
       expect(videoQueueService.reorderQueue).toHaveBeenCalled();
-    });
-
-    it('should allow spotify:cache:verify even when spotify is down', async () => {
-      registry.isHealthy.mockImplementation((id) => id !== 'spotify');
-
-      const result = await executeCommand({ action: 'spotify:cache:verify', source: 'gm' });
-
-      expect(result.success).toBe(true);
     });
 
     it('should allow video:play when VLC is healthy', async () => {

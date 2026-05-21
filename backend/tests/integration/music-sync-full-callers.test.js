@@ -186,7 +186,7 @@ describe('sync:full caller audit — every site passes musicService', () => {
         await buildSyncFullPayload({
           sessionService,
           transactionService,
-          spotifyService,
+          someOtherService,
           soundService,
         });
       `;
@@ -225,7 +225,7 @@ describe('sync:full caller audit — every site passes musicService', () => {
         buildSyncFullPayload({
           sessionService,
           // TODO: add musicService once Phase 7 lands
-          spotifyService,
+          someOtherService,
         })
       `;
       const sites = findCallSites(fakeSource);
@@ -239,7 +239,7 @@ describe('sync:full caller audit — every site passes musicService', () => {
         buildSyncFullPayload({
           sessionService,
           /* musicService is added in Phase 7 */
-          spotifyService,
+          someOtherService,
         })
       `;
       const sites = findCallSites(fakeSource);

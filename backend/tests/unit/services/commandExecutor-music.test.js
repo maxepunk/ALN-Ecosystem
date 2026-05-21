@@ -1,4 +1,4 @@
-// Music command dispatch (mirrors the spotify pattern in commandExecutor.js).
+// Music command dispatch via commandExecutor.js.
 
 jest.mock('../../../src/services/musicService', () => ({
   play: jest.fn().mockResolvedValue(undefined),

@@ -606,11 +606,6 @@ class MockDataManager extends EventTarget {
     this.dispatchEvent(new CustomEvent('cue-state:updated', { detail: cueEngine }));
   }
 
-  // Called by networkedSession.js for spotify:status events and sync:full spotify state
-  updateSpotifyState(payload) {
-    this.dispatchEvent(new CustomEvent('spotify-state:updated', { detail: payload }));
-  }
-
   // Phase 4: Called by networkedSession.js for individual service:health events
   updateServiceHealth(data) {
     if (!this.serviceHealth) this.serviceHealth = {};

@@ -86,7 +86,7 @@ describe('GET /api/state', () => {
     expect(response.body).toHaveProperty('environment');
     expect(response.body).toHaveProperty('gameClock');
     expect(response.body).toHaveProperty('cueEngine');
-    expect(response.body).toHaveProperty('spotify');
+    expect(response.body).toHaveProperty('music');
     expect(response.body).toHaveProperty('heldItems');
 
     // Type validation
@@ -94,7 +94,7 @@ describe('GET /api/state', () => {
     expect(typeof response.body.environment).toBe('object');
     expect(typeof response.body.gameClock).toBe('object');
     expect(typeof response.body.cueEngine).toBe('object');
-    expect(typeof response.body.spotify).toBe('object');
+    expect(typeof response.body.music).toBe('object');
     expect(Array.isArray(response.body.heldItems)).toBe(true);
   });
 

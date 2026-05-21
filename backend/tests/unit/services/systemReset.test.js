@@ -1,7 +1,7 @@
 /**
  * Unit tests for systemReset.js — performSystemReset()
  *
- * Validates that all services (including Phase 2 spotifyService) are properly
+ * Validates that all services are properly
  * reset and that infrastructure is re-initialized with all required services.
  */
 
@@ -101,48 +101,10 @@ describe('performSystemReset', () => {
         reset: jest.fn(),
         checkHealth: jest.fn().mockResolvedValue(true),
       },
-      spotifyService: {
-        reset: jest.fn(),
-        checkConnection: jest.fn().mockResolvedValue(true),
-        startPlaybackMonitor: jest.fn(),
-        _resolveOwner: jest.fn().mockResolvedValue(undefined),
-      },
     };
   });
 
-  it('should call spotifyService.reset() during system reset', async () => {
-    await performSystemReset(mockIo, mockServices);
-
-    expect(mockServices.spotifyService.reset).toHaveBeenCalledTimes(1);
-  });
-
-  it('should not throw when spotifyService is not provided', async () => {
-    const { spotifyService, ...servicesWithout } = mockServices;
-    await expect(performSystemReset(mockIo, servicesWithout)).resolves.not.toThrow();
-  });
-
-  it('should pass spotifyService to setupBroadcastListeners', async () => {
-    await performSystemReset(mockIo, mockServices);
-
-    expect(broadcasts.setupBroadcastListeners).toHaveBeenCalledWith(
-      mockIo,
-      expect.objectContaining({
-        spotifyService: mockServices.spotifyService,
-      })
-    );
-  });
-
-  it('should pass spotifyService to setupCueEngineForwarding', async () => {
-    await performSystemReset(mockIo, mockServices);
-
-    expect(cueEngineWiring.setupCueEngineForwarding).toHaveBeenCalledWith(
-      expect.objectContaining({
-        spotifyService: mockServices.spotifyService,
-      })
-    );
-  });
-
-  it('should reset all Phase 1 and Phase 2 services', async () => {
+  it('should reset all Phase 1 services', async () => {
     await performSystemReset(mockIo, mockServices);
 
     // Core services
@@ -160,9 +122,6 @@ describe('performSystemReset', () => {
     expect(mockServices.gameClockService.reset).toHaveBeenCalled();
     expect(mockServices.cueEngineService.reset).toHaveBeenCalled();
     expect(mockServices.soundService.reset).toHaveBeenCalled();
-
-    // Phase 2 services
-    expect(mockServices.spotifyService.reset).toHaveBeenCalled();
   });
 
   it('should reset serviceHealthRegistry during system reset', async () => {
@@ -182,18 +141,6 @@ describe('performSystemReset', () => {
     const broadcastIdx = callOrder.indexOf('setupBroadcast');
     expect(registryIdx).toBeGreaterThanOrEqual(0);
     expect(registryIdx).toBeLessThan(broadcastIdx);
-  });
-
-  it('should reset spotifyService before re-initializing infrastructure', async () => {
-    const callOrder = [];
-    mockServices.spotifyService.reset = jest.fn(() => callOrder.push('spotifyReset'));
-    broadcasts.setupBroadcastListeners.mockImplementation(() => callOrder.push('setupBroadcast'));
-
-    await performSystemReset(mockIo, mockServices);
-
-    const spotifyIdx = callOrder.indexOf('spotifyReset');
-    const broadcastIdx = callOrder.indexOf('setupBroadcast');
-    expect(spotifyIdx).toBeLessThan(broadcastIdx);
   });
 
   it('should call vlcService.reset() during step 4 (service reset)', async () => {
@@ -230,20 +177,8 @@ describe('performSystemReset', () => {
     expect(mockServices.vlcService._resolveOwner).toHaveBeenCalledTimes(1);
   });
 
-  it('should re-resolve D-Bus owner for Spotify after monitor restart', async () => {
-    await performSystemReset(mockIo, mockServices);
-
-    expect(mockServices.spotifyService._resolveOwner).toHaveBeenCalledTimes(1);
-  });
-
   it('should not throw when VLC _resolveOwner rejects', async () => {
     mockServices.vlcService._resolveOwner = jest.fn().mockRejectedValue(new Error('D-Bus unavailable'));
-
-    await expect(performSystemReset(mockIo, mockServices)).resolves.not.toThrow();
-  });
-
-  it('should not throw when Spotify _resolveOwner rejects', async () => {
-    mockServices.spotifyService._resolveOwner = jest.fn().mockRejectedValue(new Error('D-Bus unavailable'));
 
     await expect(performSystemReset(mockIo, mockServices)).resolves.not.toThrow();
   });
