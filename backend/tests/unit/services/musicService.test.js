@@ -362,6 +362,34 @@ describe('MusicService — idle events', () => {
     service._stopPositionPolling();
   });
 
+  // Anti-confidence regression: real MPD returns raw protocol strings
+  // (`play`/`pause`/`stop`), not the canonical names. The unit tests above
+  // mock with canonical names which masked a bug found in E2E — pauseForGameClock,
+  // position-polling trigger, and the frontend MusicRenderer all compare against
+  // `'playing'`, so raw `'play'` silently failed every check. The normalization
+  // map in _handlePlayerEvent is the fix; this test locks it in.
+  it.each([
+    ['play', 'playing'],
+    ['pause', 'paused'],
+    ['stop', 'stopped'],
+  ])('normalizes raw MPD state "%s" → canonical "%s"', async (raw, canonical) => {
+    service._mpd.sendCommand = jest.fn(async (cmd) => {
+      if (cmd === 'status') return `state: ${raw}\n`;
+      if (cmd === 'currentsong') return '';
+      return '';
+    });
+    const handler = jest.fn();
+    service.on('playback:changed', handler);
+    service._mpd.emit('system-player');
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    expect(service.state).toBe(canonical);
+    if (canonical !== 'stopped') {
+      expect(handler).toHaveBeenCalledWith({ state: canonical });
+    }
+    service._stopPositionPolling();
+  });
+
   it('on "system-mixer" event, emits volume:changed when volume changes', async () => {
     service._mpd.sendCommand = jest.fn().mockResolvedValue('volume: 55\n');
     const handler = jest.fn();

@@ -335,20 +335,16 @@ test.describe('GM Scanner - Environment Control', () => {
       );
 
       try {
-        // Register BOTH ducking listeners BEFORE triggering video.
-        // service:state for audio domain is NOT cached — both listeners must exist before
-        // the trigger to avoid a race if the video is very short.
-        // Concurrent listeners on the same event work because waitForEvent uses
-        // predicate filtering: duckingOnPromise matches ducking active, duckingOffPromise
-        // skips active state and waits for ducking sources to clear.
+        // Wait specifically for VIDEO to be in the duck source list — not just
+        // any ducking activity. Site-specific cues (e.g., attention-before-video
+        // playing a sound on video:loading) can independently duck music BY
+        // 'sound', which would falsely satisfy a generic `length > 0` predicate.
+        // The test's intent is "video triggers ducking", so be explicit.
         // Events arrive wrapped in AsyncAPI envelope: {event, data: {domain, state}, timestamp}
-        const duckingOnPromise = waitForEvent(wsSocket, 'service:state',
-          (data) => data.data?.domain === 'audio' &&
-            data.data?.state?.ducking?.music?.length > 0, 20000);
-        const duckingOffPromise = waitForEvent(wsSocket, 'service:state',
+        const duckingByVideoPromise = waitForEvent(wsSocket, 'service:state',
           (data) => data.data?.domain === 'audio' &&
             Array.isArray(data.data?.state?.ducking?.music) &&
-            data.data.state.ducking.music.length === 0, 120000); // Videos can be long
+            data.data.state.ducking.music.includes('video'), 30000);
 
         // Queue video via admin command (triggers VLC playback + ducking)
         await sendGMCommand(orchestratorInfo.url, 'video:queue:add', {
@@ -356,15 +352,23 @@ test.describe('GM Scanner - Environment Control', () => {
         });
         console.log(`Video queued: ${videoToken.video}`);
 
-        // Wait for ducking to activate
-        const duckingActive = await duckingOnPromise;
+        // Wait for video-driven ducking to activate
+        const duckingActive = await duckingByVideoPromise;
         expect(duckingActive.data.state.ducking.music).toContain('video');
         console.log(`Music ducked by: ${duckingActive.data.state.ducking.music.join(', ')}`);
 
-        // Wait for ducking to deactivate after video completes
-        const duckingOff = await duckingOffPromise;
-        expect(duckingOff.data.state.ducking.music).toHaveLength(0);
-        console.log('Ducking restored after video completion');
+        // Register the duck-end listener AFTER duck-on matched so we only catch
+        // the post-video-end clear, not any earlier sound-duck clears that may
+        // have fired before video started.
+        const duckingByVideoEndedPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'audio' &&
+            Array.isArray(data.data?.state?.ducking?.music) &&
+            !data.data.state.ducking.music.includes('video'), 120000); // Videos can be long
+
+        // Wait for ducking by video to deactivate when video completes
+        const duckingOff = await duckingByVideoEndedPromise;
+        expect(duckingOff.data.state.ducking.music).not.toContain('video');
+        console.log('Video-driven ducking ended after video completion');
 
       } finally {
         disconnectSocket(wsSocket);

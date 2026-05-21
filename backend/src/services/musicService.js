@@ -4,6 +4,15 @@ const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
 
+/**
+ * MPD's `status` command returns raw protocol strings (`play`/`pause`/`stop`).
+ * The rest of the system uses canonical `playing`/`paused`/`stopped` everywhere
+ * (pauseForGameClock guard, position-polling trigger, frontend MusicRenderer).
+ * Normalizing in one place prevents the bug class where E2E real-MPD output
+ * silently fails canonical-name comparisons.
+ */
+const MPD_STATE_MAP = { play: 'playing', pause: 'paused', stop: 'stopped' };
+
 class MusicService extends EventEmitter {
   constructor({
     socketPath = '/tmp/aln-mpd.sock',
@@ -282,7 +291,13 @@ class MusicService extends EventEmitter {
     const status = this._parseKV(statusRaw);
     const song = this._parseKV(songRaw);
 
-    const newState = status.state || 'stopped';
+    // MPD's status returns raw protocol strings (`play`/`pause`/`stop`).
+    // Normalize to the canonical names that the rest of the system uses
+    // (pauseForGameClock guard, position-polling trigger, frontend renderer
+    // all check === 'playing' / 'paused' / 'stopped'). Falls through unchanged
+    // for any unknown value so test mocks supplying canonical names directly
+    // also work.
+    const newState = MPD_STATE_MAP[status.state] || status.state || 'stopped';
     if (newState !== this.state) {
       this.state = newState;
       this.emit('playback:changed', { state: this.state });
