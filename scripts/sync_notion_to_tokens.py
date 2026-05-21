@@ -44,7 +44,8 @@ ELEMENTS_DATABASE_ID = "18c2f33d-583f-8020-91bc-d84c7dd94306"
 CHARACTERS_DATABASE_ID = "18c2f33d-583f-8060-a6ab-de32ff06bca2"
 
 # File paths (relative to ALN-Ecosystem root)
-ECOSYSTEM_ROOT = Path("/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem")
+# scripts/ lives one level below the repo root; resolve to ALN-Ecosystem/.
+ECOSYSTEM_ROOT = Path(__file__).resolve().parent.parent
 ASSETS_ROOT = ECOSYSTEM_ROOT / "aln-memory-scanner/assets"
 ASSETS_IMAGES = ASSETS_ROOT / "images"
 ASSETS_AUDIO = ASSETS_ROOT / "audio"
