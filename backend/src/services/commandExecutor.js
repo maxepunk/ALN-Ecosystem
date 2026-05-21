@@ -20,7 +20,6 @@ const bluetoothService = require('./bluetoothService');
 const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
-const spotifyService = require('./spotifyService');
 const musicService = require('./musicService');
 const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
@@ -35,14 +34,6 @@ const SERVICE_DEPENDENCIES = {
   // video:queue:reorder and video:queue:clear intentionally UNGATED —
   // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
   'display:idle-loop': 'vlc',
-  'spotify:play': 'spotify',
-  'spotify:pause': 'spotify',
-  'spotify:stop': 'spotify',
-  'spotify:next': 'spotify',
-  'spotify:previous': 'spotify',
-  'spotify:playlist': 'spotify',
-  'spotify:volume': 'spotify',
-  // spotify:cache:verify intentionally UNGATED — cache check, no D-Bus needed
   // service:check intentionally UNGATED — health probe bypasses health gate
   'sound:play': 'sound',
   'sound:stop': 'sound',
@@ -65,15 +56,6 @@ const SERVICE_DEPENDENCIES = {
   'music:setShuffle': 'music',
   'music:setLoop': 'music',
   'music:loadPlaylist': 'music',
-};
-
-// Lookup tables for command dispatch
-const SPOTIFY_TRANSPORT = {
-  'spotify:play': 'play',
-  'spotify:pause': 'pause',
-  'spotify:stop': 'stop',
-  'spotify:next': 'next',
-  'spotify:previous': 'previous',
 };
 
 /**
@@ -622,46 +604,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
-      // --- Spotify commands (Phase 2) ---
-
-      case 'spotify:play':
-      case 'spotify:pause':
-      case 'spotify:stop':
-      case 'spotify:next':
-      case 'spotify:previous': {
-        const method = SPOTIFY_TRANSPORT[action];
-        await spotifyService[method]();
-        resultMessage = `Spotify: ${method}`;
-        logger.info(`Spotify ${method}`, { source, deviceId });
-        break;
-      }
-
-      case 'spotify:playlist': {
-        const { uri } = payload;
-        if (!uri) throw new Error('uri required');
-        await spotifyService.setPlaylist(uri);
-        resultMessage = `Spotify playlist: ${uri}`;
-        logger.info('Spotify playlist set', { source, deviceId, uri });
-        break;
-      }
-
-      case 'spotify:volume': {
-        const { volume } = payload;
-        if (volume === undefined) throw new Error('volume required');
-        await spotifyService.setVolume(volume);
-        resultMessage = `Spotify volume: ${volume}`;
-        logger.info('Spotify volume set', { source, deviceId, volume });
-        break;
-      }
-
-      case 'spotify:cache:verify': {
-        const status = await spotifyService.verifyCacheStatus();
-        resultData = status;
-        resultMessage = 'Cache verification complete';
-        logger.info('Spotify cache verified', { source, deviceId, status: status.status });
-        break;
-      }
-
       // --- Music commands (MPD) ---
 
       case 'music:play':
@@ -713,7 +655,6 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'service:check': {
         const HEALTH_CHECKS = {
           vlc: () => require('./vlcMprisService').checkConnection(),
-          spotify: () => spotifyService.checkConnection(),
           music: () => musicService.checkConnection(),
           lighting: () => lightingService.checkConnection(),
           bluetooth: () => bluetoothService.isAvailable(),
