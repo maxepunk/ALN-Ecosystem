@@ -416,13 +416,17 @@ async function clearSessionData() {
       // - Worker 2 clears data → may run before Worker 1's write completes
       // - Result: Worker 2 restores stale session from Worker 1
       //
-      // Direct file deletion eliminates the async timing dependency
-      const files = await fs.readdir(dataDir);
+      // Direct file deletion eliminates the async timing dependency.
+      // Subdirectories (e.g., aln-mpd-playlists/ owned by MPD) are left
+      // alone — only files in the data dir are clearable session state.
+      const entries = await fs.readdir(dataDir, { withFileTypes: true });
       await Promise.all(
-        files.map(file => fs.unlink(path.join(dataDir, file)).catch(err => {
-          // Ignore file not found (may have been deleted by another worker)
-          if (err.code !== 'ENOENT') throw err;
-        }))
+        entries
+          .filter(entry => entry.isFile())
+          .map(entry => fs.unlink(path.join(dataDir, entry.name)).catch(err => {
+            // Ignore file not found (may have been deleted by another worker)
+            if (err.code !== 'ENOENT') throw err;
+          }))
       );
 
       logger.debug('Session data cleared via direct file deletion');

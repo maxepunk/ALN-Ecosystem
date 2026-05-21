@@ -174,6 +174,24 @@ describe('AudioRoutingService', () => {
       ].join('\n');
       expect(audioRoutingService._parseSinkInputs(output, 'spotifyd')).toBe('20');
     });
+
+    // Anti-confidence regression: MPD hardcodes application.name to
+    // "Music Player Daemon" regardless of config, and its binary is `mpd`
+    // (not `aln-music`). Our MPD config's `name "aln-music"` field lands
+    // in PipeWire as `media.name`. Without the media.name fallback,
+    // STREAM_APP_NAMES.music = 'aln-music' would never match MPD's
+    // sink-input → audio:volume:set / audio:route:set / ducking silently
+    // no-op for music. This test locks in the media.name match path.
+    it('finds MPD by media.name when application.name and binary are generic', () => {
+      const output = [
+        'Sink Input #1957',
+        '\t\tapplication.name = "Music Player Daemon"',
+        '\t\tapplication.process.binary = "mpd"',
+        '\t\tmedia.name = "aln-music"',
+        '\t\tnode.name = "Music Player Daemon"',
+      ].join('\n');
+      expect(audioRoutingService._parseSinkInputs(output, 'aln-music')).toBe('1957');
+    });
   });
 
   // ── classifySink() ──

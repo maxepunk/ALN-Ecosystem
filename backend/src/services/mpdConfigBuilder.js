@@ -42,8 +42,11 @@ bind_to_address   "${socketPath}"
 audio_output {
   type           "pulse"
   name           "${appName}"
-  application_name "${appName}"
 }
+# The 'name' field above lands in PipeWire as media.name, which is
+# what audioRoutingService._parseSinkInputs matches on to identify
+# our specific MPD instance (since MPD hardcodes application.name to
+# "Music Player Daemon" regardless of config).
 
 audio_buffer_size "4096"
 restore_paused    "yes"

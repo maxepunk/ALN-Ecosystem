@@ -182,6 +182,12 @@ async function shutdown(signal) {
     bluetoothService.cleanup();
     audioRoutingService.cleanup();
     await lightingService.cleanup();
+    // Music: cleanup() disconnects the mpd2 client; stopMpd() tears down the
+    // supervised MPD process. Both are needed — leaving stopMpd() out causes
+    // MPD to outlive orchestrator restarts and creates a socket-bind race
+    // when the next orchestrator instance tries to spawn its own MPD.
+    await musicService.cleanup();
+    musicService.stopMpd();
     const displayDriver = require('./utils/displayDriver');
     await displayDriver.cleanup();
 

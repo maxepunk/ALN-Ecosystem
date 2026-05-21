@@ -16,14 +16,24 @@ describe('mpdConfigBuilder', () => {
     const cfg = buildMpdConfig(validArgs);
     expect(cfg).toContain('music_directory   "/abs/music"');
     expect(cfg).toContain('bind_to_address   "/tmp/x.sock"');
-    expect(cfg).toContain('application_name "aln-music"');
+    expect(cfg).toContain('name           "aln-music"');
+    // application_name is intentionally NOT emitted — MPD's pulse backend
+    // doesn't recognize it (logs "option ... not recognized" every restart).
+    // The `name` field above lands in PipeWire as media.name instead, which
+    // audioRoutingService matches on to identify our specific MPD instance.
+    expect(cfg).not.toContain('application_name');
     expect(cfg).toContain('type           "pulse"');
   });
 
   it('uses default appName when omitted', () => {
     const { appName, ...rest } = validArgs;
     const cfg = buildMpdConfig(rest);
-    expect(cfg).toContain('application_name "aln-music"');
+    expect(cfg).toContain('name           "aln-music"');
+    // application_name is intentionally NOT emitted — MPD's pulse backend
+    // doesn't recognize it (logs "option ... not recognized" every restart).
+    // The `name` field above lands in PipeWire as media.name instead, which
+    // audioRoutingService matches on to identify our specific MPD instance.
+    expect(cfg).not.toContain('application_name');
   });
 
   it('uses default paths when omitted', () => {

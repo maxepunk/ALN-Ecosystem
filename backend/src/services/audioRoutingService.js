@@ -1092,11 +1092,16 @@ class AudioRoutingService extends EventEmitter {
         currentIdx = idxMatch[1];
       }
 
-      // Match application.name = "..." or application.process.binary = "..."
-      // Fallback to process.binary handles spotifyd which sets application.name = ""
+      // Match against the three identity keys PipeWire/PulseAudio exposes:
+      //   application.name           - VLC sets this to "VLC media player (...)"
+      //   application.process.binary - spotifyd sets application.name="" so we fall through to "spotifyd"
+      //   media.name                 - MPD hardcodes application.name="Music Player Daemon" but
+      //                                our config's `name "aln-music"` lands here uniquely
+      // First field with content wins (`includes(appName)` is a substring test).
       const nameMatch = line.match(/application\.name\s*=\s*"([^"]+)"/);
       const binaryMatch = line.match(/application\.process\.binary\s*=\s*"([^"]+)"/);
-      const match = nameMatch || binaryMatch;
+      const mediaMatch = line.match(/media\.name\s*=\s*"([^"]+)"/);
+      const match = nameMatch || binaryMatch || mediaMatch;
       if (match && currentIdx) {
         if (match[1].includes(appName)) {
           return currentIdx;

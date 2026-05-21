@@ -561,7 +561,8 @@ describe('MusicService — spawnMpd', () => {
     const cfg = fs.readFileSync(path.join(tmpDir, 'mpd.conf'), 'utf8');
     expect(cfg).toContain(`music_directory   "${path.join(tmpDir, 'music')}"`);
     expect(cfg).toContain(`bind_to_address   "${path.join(tmpDir, 'mpd.sock')}"`);
-    expect(cfg).toContain('application_name "aln-music"');
+    expect(cfg).toContain('name           "aln-music"');
+    expect(cfg).not.toContain('application_name');
   });
 
   it('creates playlist directory under dataDir', async () => {
