@@ -372,7 +372,9 @@ function buildPayloadSummary(entry) {
   if (p.uri) parts.push(p.uri);
   if (p.playlistId) parts.push(p.playlistId);
   if (p.volume !== undefined) parts.push(`vol:${p.volume}`);
-  if (p.enabled !== undefined) parts.push(p.enabled ? 'on' : 'off');
+  // `enabled` is sent as the string 'true'/'false' from the select field type,
+  // so a naive `p.enabled ? 'on' : 'off'` would always show 'on' (string 'false' is truthy).
+  if (p.enabled !== undefined) parts.push((p.enabled === true || p.enabled === 'true') ? 'on' : 'off');
   if (p.stream) parts.push(p.stream);
   if (p.sink) parts.push(p.sink);
   if (p.target) parts.push(`→${p.target}`);

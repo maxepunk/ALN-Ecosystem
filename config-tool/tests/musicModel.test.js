@@ -123,11 +123,9 @@ describe('MusicModel', () => {
     assert.strictEqual(model.getPlaylist('a').crossfadeMs, 5000);
   });
 
-  it('setCrossfadeMs ignores non-numeric (no throw, no mutation)', () => {
+  it('setCrossfadeMs with non-numeric coerces to 0 (NaN clamps to CROSSFADE_MIN)', () => {
     model.createPlaylist('A');
-    const before = model.getPlaylist('a').crossfadeMs;
     model.setCrossfadeMs('a', 'fast');
-    // Coerces to 0 by design (NaN clamps to 0). Documented expectation.
     assert.strictEqual(model.getPlaylist('a').crossfadeMs, 0);
   });
 
