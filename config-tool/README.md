@@ -57,7 +57,7 @@ The formula preview updates live as you change values, showing example calculati
 
 ### Show Control
 
-Author and edit cues that drive the automated show control system (sound, lighting, video, Spotify).
+Author and edit cues that drive the automated show control system (sound, lighting, video, music).
 
 **Cue List (left panel)** — Lists all cues with filter dropdown:
 - **All Cues** — Shows everything
@@ -75,9 +75,9 @@ Use **+ New** to create a cue, **Dup** to duplicate the selected cue, and **Del*
   - **Event triggers** select from 13 game events (Token Processed, Video Completed, Group Completed, etc.) with optional conditions (e.g., "when valueRating >= 4")
   - **Clock triggers** fire at a specific game elapsed time (HH:MM:SS format)
   - **Conditions** support operators: equals, not equals, greater than, at least, less than, at most, is one of
-- **Sequential Commands** — Ordered list of actions to execute. Each command has a dynamic form based on the action type. Use the categorized dropdown to pick an action (Sound, Lighting, Video, Spotify, Audio, Cue, Display).
+- **Sequential Commands** — Ordered list of actions to execute. Each command has a dynamic form based on the action type. Use the categorized dropdown to pick an action (Sound, Lighting, Video, Music, Audio, Cue, Display).
 - **Timeline** (compound cues) — Visual timeline with color-coded blocks. Drag blocks to reposition (snaps to 0.5s). Use the zoom slider to adjust scale. Each entry has an "at" time (in seconds) and an action with payload. Click the pencil icon on an entry to expand inline editing.
-- **Routing Override** — Override the global audio routing for this cue's commands (sound → sink, video → sink, spotify → sink). Leave as "(default)" to use the global routing.
+- **Routing Override** — Override the global audio routing for this cue's commands (sound → sink, video → sink, music → sink). Leave as "(default)" to use the global routing.
 - **Convert** button at the bottom switches between sequential and timeline modes.
 
 **Picker fields** in command forms:
@@ -91,11 +91,11 @@ Use **+ New** to create a cue, **Dup** to duplicate the selected cue, and **Del*
 
 Configure audio routing, ducking, Bluetooth, and lighting.
 
-**Stream Routing** — For each audio stream (video, spotify, sound), set the primary and fallback output sink. Options: hdmi, bluetooth, combine-bt. The "Default Output" dropdown sets the global default.
+**Stream Routing** — For each audio stream (video, music, sound), set the primary and fallback output sink. Options: hdmi, bluetooth. The "Default Output" dropdown sets the global default.
 
 **Ducking Rules** — Automatically reduce one stream's volume when another is playing. Each rule specifies:
 - **When** — The triggering stream (e.g., "video")
-- **Duck** — The stream to reduce (e.g., "spotify")
+- **Duck** — The stream to reduce (e.g., "music")
 - **To** — Target volume percentage (0-100%)
 - **Fade** — Transition time in milliseconds
 

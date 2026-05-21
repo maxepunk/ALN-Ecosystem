@@ -9,7 +9,6 @@ const CATEGORY_COLORS = {
   sound: '#4285f4',
   lighting: '#fbbc04',
   video: '#ea4335',
-  spotify: '#1ed760',
   music: '#9c27b0',
   cue: '#a855f7',
   display: '#9ca3af',

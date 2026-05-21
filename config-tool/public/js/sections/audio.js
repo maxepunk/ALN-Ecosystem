@@ -7,7 +7,7 @@ import { el } from '../utils/formatting.js';
 import { makeEnvField } from '../utils/formFields.js';
 
 const SINK_OPTIONS = ['hdmi', 'bluetooth'];
-const STREAMS = ['video', 'spotify', 'music', 'sound'];
+const STREAMS = ['video', 'music', 'sound'];
 
 let routingData = null;
 let envData = null;
@@ -178,7 +178,7 @@ function buildDuckingRow(index, rulesContainer) {
 }
 
 function addDuckingRule(rulesContainer) {
-  routingData.ducking.push({ when: 'video', duck: 'spotify', to: 20, fadeMs: 500 });
+  routingData.ducking.push({ when: 'video', duck: 'music', to: 20, fadeMs: 500 });
   ctx.markDirty('audio');
   refreshDuckingRules(rulesContainer);
 }

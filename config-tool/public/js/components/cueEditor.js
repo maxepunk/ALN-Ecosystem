@@ -19,7 +19,6 @@ const TRIGGER_EVENTS = {
   'session:created': { label: 'Session Created', fields: ['sessionId'] },
   'cue:completed': { label: 'Cue Completed', fields: ['cueId'] },
   'sound:completed': { label: 'Sound Completed', fields: ['file'] },
-  'spotify:track:changed': { label: 'Spotify Track Changed', fields: ['title', 'artist'] },
   'music:track:changed': { label: 'Music Track Changed', fields: ['title', 'artist', 'file'] },
   'gameclock:started': { label: 'Game Clock Started', fields: ['gameStartTime'] },
 };
@@ -269,7 +268,7 @@ function renderRoutingOverride(container, cue, editorCtx) {
   const body = el('div', { className: 'config-group__body' });
   const grid = el('div', { className: 'form-grid' });
 
-  for (const stream of ['sound', 'video', 'spotify', 'music']) {
+  for (const stream of ['sound', 'video', 'music']) {
     const currentVal = cue.routing?.[stream] || '(default)';
 
     const group = el('div', { className: 'form-group' },
