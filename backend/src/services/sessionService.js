@@ -487,7 +487,7 @@ class SessionService extends EventEmitter {
 
   /**
    * Update session status
-   * Cascades pause/resume to game clock, cue engine, and Spotify.
+   * Cascades pause/resume to game clock, cue engine, and music.
    * @param {string} status - New status
    * @private
    */
@@ -505,7 +505,6 @@ class SessionService extends EventEmitter {
 
     // Lazy-require to avoid circular dependency at module load time
     const cueEngineService = require('./cueEngineService');
-    const spotifyService = require('./spotifyService');
     const musicService = require('./musicService');
 
     switch (status) {
@@ -513,9 +512,6 @@ class SessionService extends EventEmitter {
         this.currentSession.pause();
         gameClockService.pause();
         cueEngineService.suspend();
-        spotifyService.pauseForGameClock().catch(err =>
-          logger.warn('Failed to pause Spotify during session pause', { error: err.message })
-        );
         musicService.pauseForGameClock().catch(err =>
           logger.warn('Failed to pause music during session pause', { error: err.message })
         );
@@ -526,9 +522,6 @@ class SessionService extends EventEmitter {
         if (oldStatus === 'paused') {
           gameClockService.resume();
           cueEngineService.activate();
-          spotifyService.resumeFromGameClock().catch(err =>
-            logger.warn('Failed to resume Spotify during session resume', { error: err.message })
-          );
           musicService.resumeFromGameClock().catch(err =>
             logger.warn('Failed to resume music during session resume', { error: err.message })
           );

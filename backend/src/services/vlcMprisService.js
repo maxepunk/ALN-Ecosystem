@@ -15,7 +15,7 @@ class VlcMprisService extends MprisPlayerBase {
       destination: 'org.mpris.MediaPlayer2.vlc',
       label: 'VLC',
       healthServiceId: 'vlc',
-      signalDebounceMs: 100, // VLC signals are less chatty than Spotify
+      signalDebounceMs: 100, // VLC signals are less chatty than other MPRIS players
     });
     this._previousDelta = { state: 'stopped', filename: null };
     this._loopEnabled = false;
@@ -452,7 +452,7 @@ class VlcMprisService extends MprisPlayerBase {
     this._previousDelta = { state: 'stopped', filename: null };
     this._loopEnabled = false;
     this._rawVolume = 1.0;
-    // VLC ProcessMonitor intentionally NOT stopped (process preserved, same as Spotify's spotifyd)
+    // VLC ProcessMonitor intentionally NOT stopped (process preserved across resets)
   }
 
   /**

@@ -24,7 +24,6 @@ const lightingService = require('./services/lightingService');
 const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
-const spotifyService = require('./services/spotifyService');
 const musicService = require('./services/musicService');
 const serviceHealthRegistry = require('./services/serviceHealthRegistry');
 
@@ -183,11 +182,6 @@ async function initializeServices() {
     await lightingService.init();         // Non-blocking HA connection check
     await soundService.init();            // Check pw-play availability
 
-    // Initialize Phase 2 services
-    spotifyService.init().catch(err =>
-      logger.warn('Spotify init failed (non-blocking)', { error: err.message })
-    );
-
     // Initialize Music service (MPD)
     // Set service paths so spawnMpd and playlist watcher work
     const pathMod = require('path');
@@ -236,7 +230,6 @@ async function initializeServices() {
       gameClockService,
       cueEngineService,
       soundService,
-      spotifyService,
       musicService
     });
 
@@ -293,7 +286,6 @@ async function initializeServices() {
     // Start periodic health revalidation (catches stale services like pipewire-pulse)
     serviceHealthRegistry.startRevalidation({
       vlc: vlcService,
-      spotify: spotifyService,
       music: musicService,
       sound: soundService,
       bluetooth: bluetoothService,

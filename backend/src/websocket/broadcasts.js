@@ -65,7 +65,7 @@ function setupBroadcastListeners(io, services) {
 
   const { sessionService, videoQueueService, offlineQueueService, transactionService,
     bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
-    spotifyService, musicService, vlcService, displayControlService } = services;
+    musicService, vlcService, displayControlService } = services;
 
 
   // Session events - session:update replaces session:new/paused/resumed/ended
@@ -98,7 +98,7 @@ function setupBroadcastListeners(io, services) {
       const syncPayload = await buildSyncFullPayload({
         sessionService, transactionService, videoQueueService,
         bluetoothService, audioRoutingService, lightingService,
-        gameClockService, cueEngineService, spotifyService, musicService, soundService,
+        gameClockService, cueEngineService, musicService, soundService,
       });
       emitToRoom(io, 'gm', 'sync:full', syncPayload);
       logger.info('Broadcasted sync:full after session creation', { sessionId: session.id });
@@ -311,7 +311,6 @@ function setupBroadcastListeners(io, services) {
         lightingService,
         gameClockService,
         cueEngineService,
-        spotifyService,
         musicService,
         soundService,
         deviceFilter: { connectedOnly: true },
@@ -353,7 +352,6 @@ function setupBroadcastListeners(io, services) {
         lightingService,
         gameClockService,
         cueEngineService,
-        spotifyService,
         musicService,
         soundService,
         deviceFilter: { connectedOnly: true },
@@ -462,13 +460,6 @@ function setupBroadcastListeners(io, services) {
       delete _pushTimers[domain];
       emitToRoom(io, 'gm', 'service:state', { domain, state: service.getState() });
     }, 50);
-  }
-
-  // Spotify → service:state { domain: 'spotify' }
-  if (spotifyService) {
-    for (const event of ['playback:changed', 'volume:changed', 'track:changed']) {
-      addTrackedListener(spotifyService, event, () => pushServiceState('spotify', spotifyService));
-    }
   }
 
   // Music → service:state { domain: 'music' }

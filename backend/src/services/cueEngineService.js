@@ -50,7 +50,6 @@ const EVENT_NORMALIZERS = {
   'session:created': (payload) => ({ sessionId: payload.sessionId }),
   'cue:completed': (payload) => ({ cueId: payload.cueId }),
   'sound:completed': (payload) => ({ file: payload.file }),
-  'spotify:track:changed': (payload) => ({ title: payload.title, artist: payload.artist }),
   // Music events — musicService emits these via cueEngineWiring
   'music:track:changed': (payload) => ({
     title: payload.track?.title ?? null,

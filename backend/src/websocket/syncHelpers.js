@@ -28,7 +28,6 @@ const logger = require('../utils/logger');
  * @param {Object} [options.lightingService]
  * @param {Object} [options.gameClockService]
  * @param {Object} [options.cueEngineService]
- * @param {Object} [options.spotifyService]
  * @param {Object} [options.musicService]
  * @param {Object} [options.soundService]
  * @param {Object} [options.deviceFilter] - Optional filter options
@@ -44,7 +43,6 @@ async function buildSyncFullPayload({
   lightingService,
   gameClockService,
   cueEngineService,
-  spotifyService,
   musicService,
   soundService,
   deviceFilter = {},
@@ -116,9 +114,6 @@ async function buildSyncFullPayload({
   // Phase 1: Cue Engine state
   const cueEngine = buildCueEngineState(cueEngineService);
 
-  // Phase 2: Spotify state
-  const spotify = buildSpotifyState(spotifyService);
-
   // Music state (MPD)
   const music = buildMusicState(musicService);
 
@@ -146,7 +141,6 @@ async function buildSyncFullPayload({
     environment,
     gameClock,
     cueEngine,
-    spotify,
     music,
     heldItems,
     sound,
@@ -200,25 +194,6 @@ function buildCueEngineState(cueEngineService) {
   } catch (err) {
     logger.warn('Failed to gather cue engine state for sync:full', { error: err.message });
     return { loaded: false, cues: [], activeCues: [], disabledCues: [] };
-  }
-}
-
-/**
- * Build Spotify state for sync:full payload.
- * Gracefully degrades when service is unavailable.
- *
- * @param {Object} spotifyService - SpotifyService instance (optional)
- * @returns {Object} Spotify state
- */
-function buildSpotifyState(spotifyService) {
-  try {
-    if (!spotifyService) {
-      return { connected: false, state: 'stopped', volume: 100, pausedByGameClock: false };
-    }
-    return spotifyService.getState();
-  } catch (err) {
-    logger.warn('Failed to gather Spotify state for sync:full', { error: err.message });
-    return { connected: false, state: 'stopped', volume: 100, pausedByGameClock: false };
   }
 }
 

@@ -15,7 +15,6 @@ const audioRoutingService = require('../services/audioRoutingService');
 const lightingService = require('../services/lightingService');
 const gameClockService = require('../services/gameClockService');
 const cueEngineService = require('../services/cueEngineService');
-const spotifyService = require('../services/spotifyService');
 const musicService = require('../services/musicService');
 const soundService = require('../services/soundService');
 const { buildSyncFullPayload } = require('../websocket/syncHelpers');
@@ -41,7 +40,6 @@ router.get('/', async (req, res) => {
       lightingService,
       gameClockService,
       cueEngineService,
-      spotifyService,
       musicService,
       soundService,
     });
