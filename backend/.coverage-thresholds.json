@@ -1,8 +1,8 @@
 {
   "./src/app.js": {
-    "branches": 25,
+    "branches": 30,
     "functions": 40,
-    "lines": 75
+    "lines": 70
   },
   "./src/config/index.js": {
     "branches": 50,
@@ -20,9 +20,9 @@
     "lines": 55
   },
   "./src/models/deviceConnection.js": {
-    "branches": 35,
-    "functions": 15,
-    "lines": 25
+    "branches": 70,
+    "functions": 90,
+    "lines": 85
   },
   "./src/models/session.js": {
     "branches": 70,
@@ -30,9 +30,9 @@
     "lines": 80
   },
   "./src/models/teamScore.js": {
-    "branches": 35,
-    "functions": 35,
-    "lines": 45
+    "branches": 75,
+    "functions": 65,
+    "lines": 75
   },
   "./src/models/token.js": {
     "branches": 25,
@@ -45,9 +45,9 @@
     "lines": 65
   },
   "./src/models/videoQueueItem.js": {
-    "branches": 25,
-    "functions": 65,
-    "lines": 55
+    "branches": 75,
+    "functions": 90,
+    "lines": 85
   },
   "./src/routes/adminRoutes.js": {
     "branches": 60,
@@ -57,7 +57,12 @@
   "./src/routes/healthRoutes.js": {
     "branches": 10,
     "functions": 100,
-    "lines": 45
+    "lines": 50
+  },
+  "./src/routes/musicRoutes.js": {
+    "branches": 85,
+    "functions": 100,
+    "lines": 85
   },
   "./src/routes/resourceRoutes.js": {
     "branches": 0,
@@ -65,7 +70,7 @@
     "lines": 80
   },
   "./src/routes/scanRoutes.js": {
-    "branches": 60,
+    "branches": 65,
     "functions": 85,
     "lines": 75
   },
@@ -100,14 +105,14 @@
     "lines": 90
   },
   "./src/services/cueEngineService.js": {
-    "branches": 75,
+    "branches": 70,
     "functions": 70,
     "lines": 75
   },
   "./src/services/cueEngineWiring.js": {
     "branches": 100,
     "functions": 25,
-    "lines": 60
+    "lines": 65
   },
   "./src/services/discoveryService.js": {
     "branches": 50,
@@ -125,19 +130,29 @@
     "lines": 90
   },
   "./src/services/heartbeatMonitorService.js": {
-    "branches": 25,
-    "functions": 70,
-    "lines": 50
+    "branches": 85,
+    "functions": 100,
+    "lines": 95
   },
   "./src/services/lightingService.js": {
     "branches": 80,
     "functions": 100,
     "lines": 90
   },
+  "./src/services/mpdConfigBuilder.js": {
+    "branches": 90,
+    "functions": 100,
+    "lines": 100
+  },
   "./src/services/mprisPlayerBase.js": {
     "branches": 90,
     "functions": 90,
     "lines": 95
+  },
+  "./src/services/musicService.js": {
+    "branches": 70,
+    "functions": 90,
+    "lines": 85
   },
   "./src/services/offlineQueueService.js": {
     "branches": 15,
@@ -148,6 +163,11 @@
     "branches": 60,
     "functions": 95,
     "lines": 85
+  },
+  "./src/services/scoreboardControlService.js": {
+    "branches": 0,
+    "functions": 100,
+    "lines": 100
   },
   "./src/services/serviceHealthRegistry.js": {
     "branches": 90,
@@ -163,11 +183,6 @@
     "branches": 70,
     "functions": 90,
     "lines": 85
-  },
-  "./src/services/spotifyService.js": {
-    "branches": 90,
-    "functions": 90,
-    "lines": 95
   },
   "./src/services/systemReset.js": {
     "branches": 55,
@@ -185,12 +200,12 @@
     "lines": 75
   },
   "./src/services/videoQueueService.js": {
-    "branches": 40,
+    "branches": 45,
     "functions": 55,
-    "lines": 50
+    "lines": 55
   },
   "./src/services/vlcMprisService.js": {
-    "branches": 75,
+    "branches": 80,
     "functions": 80,
     "lines": 90
   },
@@ -215,14 +230,14 @@
     "lines": 5
   },
   "./src/utils/dbusSignalParser.js": {
-    "branches": 95,
+    "branches": 90,
     "functions": 100,
     "lines": 100
   },
   "./src/utils/displayDriver.js": {
     "branches": 80,
-    "functions": 85,
-    "lines": 80
+    "functions": 90,
+    "lines": 90
   },
   "./src/utils/dockerHelper.js": {
     "branches": 100,
@@ -249,19 +264,24 @@
     "functions": 10,
     "lines": 20
   },
+  "./src/utils/timezone.js": {
+    "branches": 80,
+    "functions": 100,
+    "lines": 90
+  },
   "./src/utils/validators.js": {
     "branches": 50,
     "functions": 100,
     "lines": 90
   },
   "./src/websocket/adminEvents.js": {
-    "branches": 40,
+    "branches": 70,
     "functions": 100,
-    "lines": 50
+    "lines": 90
   },
   "./src/websocket/broadcasts.js": {
-    "branches": 80,
-    "functions": 70,
+    "branches": 75,
+    "functions": 65,
     "lines": 80
   },
   "./src/websocket/deviceHelpers.js": {

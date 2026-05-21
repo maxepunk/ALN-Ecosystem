@@ -6,10 +6,10 @@
  * connection health checks, and state management.
  *
  * Subclasses override:
- *   _getDestination()      — static (VLC) or dynamic discovery (Spotify)
+ *   _getDestination()      — static (VLC) or dynamic discovery
  *   _processStateChange()  — service-specific property handling
  *   _parseMetadata()       — service-specific metadata parsing
- *   _dbusCall()            — override entirely for recovery logic (Spotify)
+ *   _dbusCall()            — override entirely for custom recovery logic
  */
 
 'use strict';
@@ -291,7 +291,7 @@ class MprisPlayerBase extends EventEmitter {
   /**
    * Resolve our well-known D-Bus destination to its unique bus name.
    * Used for sender filtering in _handleMprisSignal to prevent
-   * cross-contamination between MPRIS players (e.g., VLC vs Spotify).
+   * cross-contamination between MPRIS players.
    * Non-fatal: if resolution fails, _ownerBusName stays null and
    * all signals are processed (fallback to pre-filter behavior).
    */
@@ -321,7 +321,7 @@ class MprisPlayerBase extends EventEmitter {
 
   /**
    * Re-resolve D-Bus owner after sender mismatch.
-   * Default: re-resolve same destination. Spotify overrides to re-discover.
+   * Default: re-resolve same destination. Subclasses may override to re-discover.
    * On failure, preserves old _ownerBusName to prevent cross-contamination.
    */
   async _refreshOwner() {

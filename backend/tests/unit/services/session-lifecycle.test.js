@@ -140,25 +140,25 @@ describe('Session Lifecycle', () => {
     });
   });
 
-  describe('pause cascade includes Spotify', () => {
-    it('should pause Spotify on session:pause', async () => {
-      const spotifyService = require('../../../src/services/spotifyService');
-      jest.spyOn(spotifyService, 'pauseForGameClock').mockResolvedValue();
+  describe('pause cascade includes music', () => {
+    it('should pause music on session:pause', async () => {
+      const musicService = require('../../../src/services/musicService');
+      jest.spyOn(musicService, 'pauseForGameClock').mockResolvedValue();
       await sessionService.createSession({ name: 'Test' });
       await sessionService.startGame();
       await sessionService.updateSession({ status: 'paused' });
-      expect(spotifyService.pauseForGameClock).toHaveBeenCalled();
+      expect(musicService.pauseForGameClock).toHaveBeenCalled();
     });
 
-    it('should resume Spotify on session:resume only if pausedByGameClock', async () => {
-      const spotifyService = require('../../../src/services/spotifyService');
-      jest.spyOn(spotifyService, 'pauseForGameClock').mockResolvedValue();
-      jest.spyOn(spotifyService, 'resumeFromGameClock').mockResolvedValue();
+    it('should resume music on session:resume only if pausedByGameClock', async () => {
+      const musicService = require('../../../src/services/musicService');
+      jest.spyOn(musicService, 'pauseForGameClock').mockResolvedValue();
+      jest.spyOn(musicService, 'resumeFromGameClock').mockResolvedValue();
       await sessionService.createSession({ name: 'Test' });
       await sessionService.startGame();
       await sessionService.updateSession({ status: 'paused' });
       await sessionService.updateSession({ status: 'active' });
-      expect(spotifyService.resumeFromGameClock).toHaveBeenCalled();
+      expect(musicService.resumeFromGameClock).toHaveBeenCalled();
     });
   });
 

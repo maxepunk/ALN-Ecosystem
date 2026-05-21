@@ -155,12 +155,12 @@ describe('adminEvents.js', () => {
 
     test('handles flat data (no envelope) for backwards compatibility', async () => {
       await handleGmCommand(mockSocket, {
-        action: 'spotify:play',
+        action: 'music:play',
         payload: {}
       }, mockIo);
 
       expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
-        action: 'spotify:play'
+        action: 'music:play'
       }));
     });
   });

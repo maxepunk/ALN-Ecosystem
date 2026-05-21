@@ -23,23 +23,29 @@ const ACTION_DEFS = {
   'video:play': { label: 'Resume Video', category: 'video', fields: [] },
   'video:pause': { label: 'Pause Video', category: 'video', fields: [] },
   'video:stop': { label: 'Stop Video', category: 'video', fields: [] },
-  'spotify:play': { label: 'Play Spotify', category: 'spotify', fields: [] },
-  'spotify:pause': { label: 'Pause Spotify', category: 'spotify', fields: [] },
-  'spotify:stop': { label: 'Stop Spotify', category: 'spotify', fields: [] },
-  'spotify:next': { label: 'Next Track', category: 'spotify', fields: [] },
-  'spotify:previous': { label: 'Previous Track', category: 'spotify', fields: [] },
-  'spotify:playlist': { label: 'Set Playlist', category: 'spotify', fields: [
-    { key: 'uri', type: 'text', label: 'Playlist URI', required: true },
-  ]},
-  'spotify:volume': { label: 'Spotify Volume', category: 'spotify', fields: [
+  'music:play': { label: 'Play Music', category: 'music', fields: [] },
+  'music:pause': { label: 'Pause Music', category: 'music', fields: [] },
+  'music:stop': { label: 'Stop Music', category: 'music', fields: [] },
+  'music:next': { label: 'Next Music Track', category: 'music', fields: [] },
+  'music:previous': { label: 'Previous Music Track', category: 'music', fields: [] },
+  'music:setVolume': { label: 'Music Volume', category: 'music', fields: [
     { key: 'volume', type: 'range', label: 'Volume', min: 0, max: 100 },
   ]},
+  'music:setShuffle': { label: 'Music Shuffle', category: 'music', fields: [
+    { key: 'enabled', type: 'select', label: 'Enabled', options: ['true', 'false'], required: true },
+  ]},
+  'music:setLoop': { label: 'Music Loop', category: 'music', fields: [
+    { key: 'enabled', type: 'select', label: 'Enabled', options: ['true', 'false'], required: true },
+  ]},
+  'music:loadPlaylist': { label: 'Load Music Playlist', category: 'music', fields: [
+    { key: 'playlistId', type: 'playlist-picker', label: 'Playlist', required: true },
+  ]},
   'audio:volume:set': { label: 'Set Stream Volume', category: 'audio', fields: [
-    { key: 'stream', type: 'select', label: 'Stream', options: ['video', 'spotify', 'sound'], required: true },
+    { key: 'stream', type: 'select', label: 'Stream', options: ['video', 'music', 'sound'], required: true },
     { key: 'volume', type: 'range', label: 'Volume', min: 0, max: 100 },
   ]},
   'audio:route:set': { label: 'Route Stream', category: 'audio', fields: [
-    { key: 'stream', type: 'select', label: 'Stream', options: ['video', 'spotify', 'sound'], required: true },
+    { key: 'stream', type: 'select', label: 'Stream', options: ['video', 'music', 'sound'], required: true },
     { key: 'sink', type: 'sink-picker', label: 'Sink', required: true },
   ]},
   'cue:fire': { label: 'Fire Cue', category: 'cue', fields: [
@@ -61,6 +67,7 @@ export { ACTION_DEFS };
 let soundsCache = null;
 let videosCache = null;
 let scenesCache = null;
+let playlistsCache = null;
 
 export async function ensureAssets() {
   if (!soundsCache) {
@@ -72,12 +79,16 @@ export async function ensureAssets() {
   if (!scenesCache) {
     try { scenesCache = await api.getScenes(); } catch { scenesCache = []; }
   }
+  if (!playlistsCache) {
+    try { playlistsCache = (await api.getMusicPlaylists()).playlists || []; } catch { playlistsCache = []; }
+  }
 }
 
 export function invalidateAssetCache() {
   soundsCache = null;
   videosCache = null;
   scenesCache = null;
+  playlistsCache = null;
 }
 
 export function getAssetDuration(action, filename) {
@@ -302,6 +313,26 @@ export function buildPayloadField(field, cmd, allCues, editorCtx) {
       // Fallback to text input when HA is unreachable
       const input = el('input', {
         type: 'text', value: currentVal || '', placeholder: 'e.g. scene.game',
+        onInput: () => { cmd.payload[field.key] = input.value; editorCtx.markDirty(); },
+      });
+      group.appendChild(input);
+    }
+
+  } else if (field.type === 'playlist-picker') {
+    if (playlistsCache && playlistsCache.length > 0) {
+      const select = el('select', {
+        onChange: () => { cmd.payload[field.key] = select.value; editorCtx.markDirty(); },
+      },
+        el('option', { value: '' }, '— select —'),
+        ...playlistsCache.map(p =>
+          el('option', { value: p.id, ...(p.id === currentVal ? { selected: true } : {}) }, `${p.name} (${p.id})`)
+        ),
+      );
+      group.appendChild(select);
+    } else {
+      // Fallback to text input when orchestrator is unreachable
+      const input = el('input', {
+        type: 'text', value: currentVal || '', placeholder: 'e.g. all-tracks',
         onInput: () => { cmd.payload[field.key] = input.value; editorCtx.markDirty(); },
       });
       group.appendChild(input);

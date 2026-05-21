@@ -113,7 +113,7 @@ async function setupIntegrationTestServer() {
           lightingService,
           gameClockService,
           cueEngineService,
-          spotifyService,
+          musicService,
           soundService,
           deviceFilter: { connectedOnly: true },
         });
@@ -157,7 +157,7 @@ async function setupIntegrationTestServer() {
   const gameClockService = require('../../src/services/gameClockService');
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
-  const spotifyService = require('../../src/services/spotifyService');
+  const musicService = require('../../src/services/musicService');
   const vlcService = require('../../src/services/vlcMprisService');
 
   setupBroadcastListeners(io, {
@@ -171,7 +171,7 @@ async function setupIntegrationTestServer() {
     gameClockService,
     cueEngineService,
     soundService,
-    spotifyService,
+    musicService,
     vlcService,
   });
 
@@ -238,7 +238,7 @@ async function cleanupIntegrationTestServer(context) {
   const gameClockService = require('../../src/services/gameClockService');
   const cueEngineService = require('../../src/services/cueEngineService');
   const soundService = require('../../src/services/soundService');
-  const spotifyService = require('../../src/services/spotifyService');
+  const musicService = require('../../src/services/musicService');
   const vlcService = require('../../src/services/vlcMprisService');
 
   await sessionService.reset();
@@ -255,8 +255,8 @@ async function cleanupIntegrationTestServer(context) {
   cueEngineService.reset();
   soundService.reset();
 
-  // Reset Phase 2+ services (monitors, state caches)
-  spotifyService.reset();
+  // Reset music + VLC (monitors, state caches)
+  musicService.reset();
   vlcService.reset();
 
   // Remove remaining event listeners

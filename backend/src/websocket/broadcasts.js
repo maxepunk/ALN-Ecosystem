@@ -6,7 +6,7 @@
 const logger = require('../utils/logger');
 const listenerRegistry = require('./listenerRegistry');
 const { emitWrapped, emitToRoom } = require('./eventWrapper');
-const { buildSyncFullPayload, buildHeldItemsState } = require('./syncHelpers');
+const { buildSyncFullPayload, buildHeldItemsState, buildMusicState } = require('./syncHelpers');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 const scoreboardControlService = require('../services/scoreboardControlService');
 
@@ -65,7 +65,7 @@ function setupBroadcastListeners(io, services) {
 
   const { sessionService, videoQueueService, offlineQueueService, transactionService,
     bluetoothService, audioRoutingService, lightingService, gameClockService, cueEngineService, soundService,
-    spotifyService, vlcService, displayControlService } = services;
+    musicService, vlcService, displayControlService } = services;
 
 
   // Session events - session:update replaces session:new/paused/resumed/ended
@@ -98,7 +98,7 @@ function setupBroadcastListeners(io, services) {
       const syncPayload = await buildSyncFullPayload({
         sessionService, transactionService, videoQueueService,
         bluetoothService, audioRoutingService, lightingService,
-        gameClockService, cueEngineService, spotifyService, soundService,
+        gameClockService, cueEngineService, musicService, soundService,
       });
       emitToRoom(io, 'gm', 'sync:full', syncPayload);
       logger.info('Broadcasted sync:full after session creation', { sessionId: session.id });
@@ -311,7 +311,7 @@ function setupBroadcastListeners(io, services) {
         lightingService,
         gameClockService,
         cueEngineService,
-        spotifyService,
+        musicService,
         soundService,
         deviceFilter: { connectedOnly: true },
       });
@@ -352,7 +352,7 @@ function setupBroadcastListeners(io, services) {
         lightingService,
         gameClockService,
         cueEngineService,
-        spotifyService,
+        musicService,
         soundService,
         deviceFilter: { connectedOnly: true },
       });
@@ -462,10 +462,18 @@ function setupBroadcastListeners(io, services) {
     }, 50);
   }
 
-  // Spotify → service:state { domain: 'spotify' }
-  if (spotifyService) {
-    for (const event of ['playback:changed', 'volume:changed', 'track:changed']) {
-      addTrackedListener(spotifyService, event, () => pushServiceState('spotify', spotifyService));
+  // Music → service:state { domain: 'music' }
+  // Use buildMusicState (not raw getState) so playlists array travels with each push.
+  if (musicService) {
+    const pushMusicState = () => {
+      if (_pushTimers.music) clearTimeout(_pushTimers.music);
+      _pushTimers.music = setTimeout(() => {
+        delete _pushTimers.music;
+        emitToRoom(io, 'gm', 'service:state', { domain: 'music', state: buildMusicState(musicService) });
+      }, 50);
+    };
+    for (const event of ['playback:changed', 'volume:changed', 'track:changed', 'playlist:changed', 'playlists:reloaded']) {
+      addTrackedListener(musicService, event, pushMusicState);
     }
   }
 

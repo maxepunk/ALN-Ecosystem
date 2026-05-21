@@ -1,7 +1,7 @@
 /**
- * Unit Tests: sync:full Payload - Spotify, Cue Engine, Service Health, Held Items
+ * Unit Tests: sync:full Payload - Cue Engine, Service Health, Held Items
  *
- * Tests that sync:full payload includes spotify, cueEngine, serviceHealth,
+ * Tests that sync:full payload includes cueEngine, serviceHealth,
  * and heldItems state from their respective services.
  */
 
@@ -24,7 +24,6 @@ describe('Phase 2 Broadcasts', () => {
   let mockGameClockService;
   let mockCueEngineService;
   let mockSoundService;
-  let mockSpotifyService;
 
   /**
    * Helper: Setup broadcast listeners with all mock services
@@ -41,7 +40,6 @@ describe('Phase 2 Broadcasts', () => {
       gameClockService: mockGameClockService,
       cueEngineService: mockCueEngineService,
       soundService: mockSoundService,
-      spotifyService: mockSpotifyService,
     });
   };
 
@@ -129,18 +127,6 @@ describe('Phase 2 Broadcasts', () => {
     mockSoundService = new EventEmitter();
     mockSoundService.getPlaying = jest.fn().mockReturnValue([]);
     mockSoundService.getState = jest.fn().mockReturnValue({ playing: [] });
-
-    // Mock Phase 2 service: Spotify
-    mockSpotifyService = new EventEmitter();
-    mockSpotifyService.getState = jest.fn().mockReturnValue({
-      connected: true,
-      state: 'playing',
-      volume: 80,
-      pausedByGameClock: false,
-    });
-    mockSpotifyService.connected = true;
-    mockSpotifyService.state = 'playing';
-    mockSpotifyService.volume = 80;
   });
 
   afterEach(() => {
@@ -152,83 +138,6 @@ describe('Phase 2 Broadcasts', () => {
   // ================================================================
 
   describe('sync:full Payload - Phase 2 Expansion', () => {
-    it('should include spotify state in sync:full payload', async () => {
-      const mockServices = {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        spotifyService: mockSpotifyService,
-        soundService: mockSoundService,
-      };
-
-      const payload = await syncHelpers.buildSyncFullPayload(mockServices);
-
-      expect(payload.spotify).toBeDefined();
-      expect(payload.spotify).toEqual({
-        connected: true,
-        state: 'playing',
-        volume: 80,
-        pausedByGameClock: false,
-      });
-    });
-
-    it('should gracefully degrade when spotifyService is unavailable', async () => {
-      const mockServices = {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        spotifyService: null,
-      };
-
-      const payload = await syncHelpers.buildSyncFullPayload(mockServices);
-
-      expect(payload.spotify).toBeDefined();
-      expect(payload.spotify).toEqual({
-        connected: false,
-        state: 'stopped',
-        volume: 100,
-        pausedByGameClock: false,
-      });
-    });
-
-    it('should gracefully degrade when spotifyService.getState throws', async () => {
-      const brokenSpotify = new EventEmitter();
-      brokenSpotify.getState = jest.fn().mockImplementation(() => {
-        throw new Error('D-Bus not available');
-      });
-
-      const mockServices = {
-        sessionService: mockSessionService,
-        transactionService: mockTransactionService,
-        videoQueueService: mockVideoQueueService,
-        offlineQueueService: mockOfflineQueueService,
-        bluetoothService: mockBluetoothService,
-        audioRoutingService: mockAudioRoutingService,
-        lightingService: mockLightingService,
-        gameClockService: mockGameClockService,
-        cueEngineService: mockCueEngineService,
-        spotifyService: brokenSpotify,
-        soundService: mockSoundService,
-      };
-
-      const payload = await syncHelpers.buildSyncFullPayload(mockServices);
-
-      expect(payload.spotify).toBeDefined();
-      expect(payload.spotify.connected).toBe(false);
-    });
-
     it('should include activeCues from cueEngineService in sync:full payload', async () => {
       // Configure mock to return active cues
       mockCueEngineService.getActiveCues.mockReturnValue([
@@ -246,7 +155,6 @@ describe('Phase 2 Broadcasts', () => {
         lightingService: mockLightingService,
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
-        spotifyService: mockSpotifyService,
         soundService: mockSoundService,
       };
 
@@ -275,7 +183,6 @@ describe('Phase 2 Broadcasts', () => {
         lightingService: mockLightingService,
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
-        spotifyService: mockSpotifyService,
         soundService: mockSoundService,
       };
 
@@ -297,7 +204,6 @@ describe('Phase 2 Broadcasts', () => {
         lightingService: mockLightingService,
         gameClockService: mockGameClockService,
         cueEngineService: mockCueEngineService,
-        spotifyService: mockSpotifyService,
         soundService: mockSoundService,
       };
 

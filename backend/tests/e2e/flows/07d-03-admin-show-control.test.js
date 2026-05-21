@@ -418,7 +418,7 @@ test.describe('GM Scanner - Show Control', () => {
 
     // Map service to a gated command (audio uses route:set, not volume:set which needs active playback)
     const serviceCommandMap = {
-      spotify: { action: 'spotify:play', payload: {} },
+      music: { action: 'music:play', payload: {} },
       lighting: { action: 'lighting:scene:activate', payload: { sceneId: 'scene.test' } },
       sound: { action: 'sound:play', payload: { file: 'test.wav' } },
       bluetooth: { action: 'bluetooth:scan:start', payload: {} },

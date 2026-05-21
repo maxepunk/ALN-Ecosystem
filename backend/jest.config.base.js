@@ -11,6 +11,11 @@
 if (!process.env.ENABLE_VIDEO_PLAYBACK) {
   process.env.ENABLE_VIDEO_PLAYBACK = 'false';
 }
+// Prevent unit/contract tests from spawning real MPD processes.
+// Integration tests that need MPD should explicitly set ENABLE_MUSIC_PLAYBACK=true.
+if (!process.env.ENABLE_MUSIC_PLAYBACK) {
+  process.env.ENABLE_MUSIC_PLAYBACK = 'false';
+}
 
 module.exports = {
   // Test environment

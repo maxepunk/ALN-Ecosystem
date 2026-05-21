@@ -176,7 +176,7 @@ describe('Session Events - Contract Validation', () => {
 
       // Validate: serviceHealth field (registry snapshot with service entries)
       expect(event.data.serviceHealth).toHaveProperty('vlc');
-      expect(event.data.serviceHealth).toHaveProperty('spotify');
+      expect(event.data.serviceHealth).toHaveProperty('music');
       expect(event.data.serviceHealth.vlc).toHaveProperty('status');
       expect(event.data.serviceHealth.vlc).toHaveProperty('message');
       expect(['healthy', 'down']).toContain(event.data.serviceHealth.vlc.status);

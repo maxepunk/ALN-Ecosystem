@@ -48,7 +48,7 @@ async function performSystemReset(io, services) {
     gameClockService,     // Optional (Phase 1)
     cueEngineService,     // Optional (Phase 1)
     soundService,         // Optional (Phase 1)
-    spotifyService        // Optional (Phase 2)
+    musicService          // Optional (music feature)
   } = services;
 
   logger.info('Starting system reset');
@@ -117,9 +117,9 @@ async function performSystemReset(io, services) {
     vlcService.reset();
   }
 
-  // Reset Phase 2 services
-  if (spotifyService) {
-    spotifyService.reset();
+  // Reset music service
+  if (musicService) {
+    musicService.reset();
   }
 
   // Reset health registry (clears stale health state from previous session)
@@ -140,7 +140,7 @@ async function performSystemReset(io, services) {
     gameClockService,
     cueEngineService,
     soundService,
-    spotifyService,
+    musicService,
     vlcService,
     displayControlService,
   });
@@ -179,7 +179,7 @@ async function performSystemReset(io, services) {
       gameClockService,
       cueEngineService,
       soundService,
-      spotifyService
+      musicService
     });
   }
 
@@ -257,28 +257,10 @@ async function performSystemReset(io, services) {
       logger.debug('VLC health re-check failed after reset:', err.message);
     }
     vlcService.startPlaybackMonitor();
-    // Re-resolve D-Bus owner for sender filtering (prevents cross-contamination with Spotify)
+    // Re-resolve D-Bus owner for sender filtering
     vlcService._resolveOwner().catch(err => {
       logger.debug('VLC owner re-resolution failed after reset:', err.message);
     });
-  }
-
-  // Spotify: re-check connection and restart D-Bus monitor (stopped by reset)
-  if (spotifyService) {
-    if (typeof spotifyService.checkConnection === 'function') {
-      try { await spotifyService.checkConnection(); } catch (err) {
-        logger.debug('Spotify health re-check failed after reset:', err.message);
-      }
-    }
-    if (typeof spotifyService.startPlaybackMonitor === 'function') {
-      spotifyService.startPlaybackMonitor();
-    }
-    // Re-resolve D-Bus owner for sender filtering (prevents cross-contamination with VLC)
-    if (typeof spotifyService._resolveOwner === 'function') {
-      spotifyService._resolveOwner().catch(err => {
-        logger.debug('Spotify owner re-resolution failed after reset:', err.message);
-      });
-    }
   }
 
   logger.debug('Service health re-initialized');
@@ -286,7 +268,7 @@ async function performSystemReset(io, services) {
   // Restart health revalidation (stopped by registry.reset())
   serviceHealthRegistry.startRevalidation({
     vlc: require('./vlcMprisService'),
-    spotify: require('./spotifyService'),
+    music: require('./musicService'),
     sound: require('./soundService'),
     bluetooth: require('./bluetoothService'),
     audio: require('./audioRoutingService'),

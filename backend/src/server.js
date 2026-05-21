@@ -35,7 +35,7 @@ const lightingService = require('./services/lightingService');
 const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
-const spotifyService = require('./services/spotifyService');
+const musicService = require('./services/musicService');
 const vlcService = require('./services/vlcMprisService');
 const displayControlService = require('./services/displayControlService');
 const serviceHealthRegistry = require('./services/serviceHealthRegistry');
@@ -71,7 +71,7 @@ function setupWebSocketHandlers(ioInstance) {
   // If handlers are registered after an await, events arriving during
   // the async gap are silently dropped (no listener exists yet).
 
-  // State sync request — uses shared payload builder (includes gameClock, cueEngine, spotify)
+  // State sync request — uses shared payload builder (includes gameClock, cueEngine, music)
   socket.on('sync:request', async () => {
     try {
       const syncPayload = await buildSyncFullPayload({
@@ -83,7 +83,7 @@ function setupWebSocketHandlers(ioInstance) {
         lightingService,
         gameClockService,
         cueEngineService,
-        spotifyService,
+        musicService,
         soundService,
         deviceFilter: { connectedOnly: true },
       });
@@ -138,7 +138,7 @@ function setupServiceListeners(ioInstance) {
     gameClockService,
     cueEngineService,
     soundService,
-    spotifyService,
+    musicService,
     vlcService,
     displayControlService,
   });
@@ -179,6 +179,12 @@ async function shutdown(signal) {
     bluetoothService.cleanup();
     audioRoutingService.cleanup();
     await lightingService.cleanup();
+    // Music: cleanup() disconnects the mpd2 client; stopMpd() tears down the
+    // supervised MPD process. Both are needed — leaving stopMpd() out causes
+    // MPD to outlive orchestrator restarts and creates a socket-bind race
+    // when the next orchestrator instance tries to spawn its own MPD.
+    await musicService.cleanup();
+    musicService.stopMpd();
     const displayDriver = require('./utils/displayDriver');
     await displayDriver.cleanup();
 

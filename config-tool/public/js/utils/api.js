@@ -70,3 +70,8 @@ export async function importPreset(file) {
   form.append('file', file);
   return request('POST', '/presets/import', form);
 }
+
+// Music
+export const getMusicTracks = () => request('GET', '/music/tracks');
+export const getMusicPlaylists = () => request('GET', '/music/playlists');
+export const putMusicPlaylists = (data) => request('PUT', '/music/playlists', data);

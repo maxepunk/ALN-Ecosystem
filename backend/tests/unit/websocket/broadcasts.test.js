@@ -577,7 +577,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     let mockBluetoothService;
     let mockAudioRoutingService;
     let mockLightingService;
-    let mockSpotifyService;
     let mockVlcService;
 
     // service:state pushes are debounced 50ms — use fake timers so unit tests
@@ -597,12 +596,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
           connected: true, activeScene: 'scene.test', scenes: [{ id: 'scene.test', name: 'Test' }],
         }),
       });
-      // spotifyService and vlcService are not in the mock factories (not in task scope)
-      // but still needed here — keep inline
-      mockSpotifyService = new EventEmitter();
-      mockSpotifyService.getState = jest.fn().mockReturnValue({
-        connected: true, state: 'playing', volume: 80, track: { title: 'Test' },
-      });
+      // vlcService is not in the mock factories (not in task scope) — keep inline
       mockVlcService = new EventEmitter();
       mockVlcService.getState = jest.fn().mockReturnValue({
         connected: true, state: 'playing', volume: 100, track: {},
@@ -619,7 +613,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         bluetoothService: mockBluetoothService,
         audioRoutingService: mockAudioRoutingService,
         lightingService: mockLightingService,
-        spotifyService: mockSpotifyService,
         vlcService: mockVlcService,
       });
     }
@@ -657,17 +650,6 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       }));
     });
 
-    it('should emit service:state with domain spotify on playback:changed', () => {
-      setupWithAllServices();
-      mockSpotifyService.emit('playback:changed', { state: 'playing' });
-      jest.advanceTimersByTime(51); // advance past 50ms debounce
-
-      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
-        event: 'service:state',
-        data: { domain: 'spotify', state: mockSpotifyService.getState() },
-      }));
-    });
-
     it('should emit service:state with domain video on video:loading', () => {
       setupWithAllServices();
       mockVideoQueueService.emit('video:loading', { tokenId: 'test' });
@@ -694,7 +676,7 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       const serviceHealthRegistry = require('../../../src/services/serviceHealthRegistry');
       const originalGetState = serviceHealthRegistry.getState;
       serviceHealthRegistry.getState = jest.fn().mockReturnValue({
-        vlc: { status: 'healthy' }, spotify: { status: 'down' },
+        vlc: { status: 'healthy' }, music: { status: 'down' },
       });
 
       setupWithAllServices();

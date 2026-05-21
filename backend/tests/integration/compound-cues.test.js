@@ -30,9 +30,9 @@ jest.mock('../../src/services/commandExecutor', () => ({
         'video:stop': 'vlc',
         'video:skip': 'vlc',
         'video:queue:add': 'vlc',
-        'spotify:play': 'spotify',
-        'spotify:pause': 'spotify',
-        'spotify:stop': 'spotify',
+        'music:play': 'music',
+        'music:pause': 'music',
+        'music:stop': 'music',
         'sound:play': 'sound',
         'sound:stop': 'sound',
         'lighting:scene:activate': 'lighting',
@@ -103,7 +103,7 @@ describe('Compound Cue Integration (Phase 2)', () => {
         mockGetElapsed.mockReturnValue(0);
 
         // Set all services healthy (Phase 3: fireCue checks service health)
-        for (const svc of ['sound', 'lighting', 'vlc', 'spotify', 'bluetooth', 'audio']) {
+        for (const svc of ['sound', 'lighting', 'vlc', 'music', 'bluetooth', 'audio']) {
             registry.report(svc, 'healthy', 'test default');
         }
 
@@ -143,7 +143,7 @@ describe('Compound Cue Integration (Phase 2)', () => {
 
         it('should register compound cue as active after fire', async () => {
             const cue = makeCompoundCue('bg-music', [
-                { at: 0, action: 'spotify:play', payload: {} },
+                { at: 0, action: 'music:play', payload: {} },
                 { at: 30, action: 'sound:play', payload: { file: 'sting.wav' } },
             ]);
 

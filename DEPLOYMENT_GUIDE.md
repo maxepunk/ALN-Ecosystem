@@ -46,9 +46,14 @@ git submodule update --init --recursive
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# Install VLC and display management tools
+# Install VLC, MPD, and display management tools
 sudo apt-get update
-sudo apt-get install -y vlc xdotool wmctrl
+sudo apt-get install -y vlc mpd xdotool wmctrl
+
+# Disable the system MPD — the orchestrator spawns and supervises its own
+# MPD instance via ProcessMonitor.
+sudo systemctl stop mpd && sudo systemctl disable mpd
+sudo systemctl stop mpd.socket 2>/dev/null && sudo systemctl disable mpd.socket 2>/dev/null
 
 # Install PM2 globally
 sudo npm install -g pm2
@@ -57,6 +62,17 @@ sudo npm install -g pm2
 cd backend
 npm install
 ```
+
+After install, regenerate the All Tracks bootstrap playlist whenever MP3 files
+under `backend/public/music/` change:
+
+```bash
+cd backend && npm run music:seed
+```
+
+The orchestrator controls MPD over the Unix socket `/tmp/aln-mpd.sock` using
+the `mpd2` Node client. MPD's audio output is named `aln-music`, which is the
+identifier `audioRoutingService` matches on (`pactl list sink-inputs | grep -i aln-music`).
 
 #### Windows (WSL2)
 

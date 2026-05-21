@@ -24,7 +24,7 @@ const lightingService = require('./services/lightingService');
 const gameClockService = require('./services/gameClockService');
 const cueEngineService = require('./services/cueEngineService');
 const soundService = require('./services/soundService');
-const spotifyService = require('./services/spotifyService');
+const musicService = require('./services/musicService');
 const serviceHealthRegistry = require('./services/serviceHealthRegistry');
 
 // Import routes (6 files after health extraction)
@@ -34,6 +34,7 @@ const sessionRoutes = require('./routes/sessionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const createMusicRouter = require('./routes/musicRoutes');
 
 // Create Express app
 const app = express();
@@ -112,6 +113,7 @@ app.use('/api/scan', scanRoutes);           // POST /api/scan, POST /api/scan/ba
 app.use('/api/session', sessionRoutes);     // GET /api/session
 app.use('/api/state', stateRoutes);         // GET /api/state
 app.use('/api/admin', adminRoutes);         // POST /api/admin/auth, GET /api/admin/logs
+app.use('/api/music', createMusicRouter({ musicService })); // GET /api/music/{tracks,playlists}, PUT /api/music/playlists
 app.use('/api', resourceRoutes);            // GET /api/tokens
 app.use('/', healthRoutes);                 // GET /health (with optional device tracking)
 app.use('/', resourceRoutes);               // GET /scoreboard
@@ -180,10 +182,26 @@ async function initializeServices() {
     await lightingService.init();         // Non-blocking HA connection check
     await soundService.init();            // Check pw-play availability
 
-    // Initialize Phase 2 services
-    spotifyService.init().catch(err =>
-      logger.warn('Spotify init failed (non-blocking)', { error: err.message })
-    );
+    // Initialize Music service (MPD)
+    // Set service paths so spawnMpd and playlist watcher work
+    const pathMod = require('path');
+    musicService._musicDir = pathMod.resolve(__dirname, '../public/music');
+    musicService._dataDir = pathMod.resolve(__dirname, '../data');
+    musicService._playlistFile = pathMod.resolve(__dirname, '../config/music-playlists.json');
+    musicService._configFile = '/tmp/aln-mpd.conf';
+    if (process.env.ENABLE_MUSIC_PLAYBACK !== 'false') {
+      try {
+        await musicService.spawnMpd();
+        // Allow MPD a moment to bind its Unix socket before connecting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await musicService.init();
+      } catch (err) {
+        logger.warn('Music service init failed (non-blocking)', { error: err.message });
+      }
+    } else {
+      // Tests/CI: skip MPD spawn but still load playlists from disk
+      musicService._loadPlaylistsFromDisk();
+    }
 
     // Initialize Phase 1 services (game clock, cue engine, sound)
     // Load cue definitions from config
@@ -212,7 +230,7 @@ async function initializeServices() {
       gameClockService,
       cueEngineService,
       soundService,
-      spotifyService
+      musicService
     });
 
     // Load ducking rules from routing config
@@ -268,7 +286,7 @@ async function initializeServices() {
     // Start periodic health revalidation (catches stale services like pipewire-pulse)
     serviceHealthRegistry.startRevalidation({
       vlc: vlcService,
-      spotify: spotifyService,
+      music: musicService,
       sound: soundService,
       bluetooth: bluetoothService,
       audio: audioRoutingService,

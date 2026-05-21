@@ -20,9 +20,14 @@ const bluetoothService = require('./bluetoothService');
 const audioRoutingService = require('./audioRoutingService');
 const lightingService = require('./lightingService');
 const soundService = require('./soundService');
-const spotifyService = require('./spotifyService');
+const musicService = require('./musicService');
 const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
+
+// Config-tool cue authoring serializes booleans as the strings 'true'/'false'
+// via a <select>; GM Scanner live controls send real booleans. `!!"false"` is
+// truthy, so naive coercion silently inverts disabled flags from cue payloads.
+const coerceBool = (v) => v === true || v === 'true';
 
 // Service dependency map for pre-dispatch health checks
 const SERVICE_DEPENDENCIES = {
@@ -34,14 +39,6 @@ const SERVICE_DEPENDENCIES = {
   // video:queue:reorder and video:queue:clear intentionally UNGATED —
   // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
   'display:idle-loop': 'vlc',
-  'spotify:play': 'spotify',
-  'spotify:pause': 'spotify',
-  'spotify:stop': 'spotify',
-  'spotify:next': 'spotify',
-  'spotify:previous': 'spotify',
-  'spotify:playlist': 'spotify',
-  'spotify:volume': 'spotify',
-  // spotify:cache:verify intentionally UNGATED — cache check, no D-Bus needed
   // service:check intentionally UNGATED — health probe bypasses health gate
   'sound:play': 'sound',
   'sound:stop': 'sound',
@@ -55,15 +52,15 @@ const SERVICE_DEPENDENCIES = {
   'bluetooth:scan:stop': 'bluetooth',
   'audio:route:set': 'audio',
   'audio:volume:set': 'audio',
-};
-
-// Lookup tables for command dispatch
-const SPOTIFY_TRANSPORT = {
-  'spotify:play': 'play',
-  'spotify:pause': 'pause',
-  'spotify:stop': 'stop',
-  'spotify:next': 'next',
-  'spotify:previous': 'previous',
+  'music:play': 'music',
+  'music:pause': 'music',
+  'music:stop': 'music',
+  'music:next': 'music',
+  'music:previous': 'music',
+  'music:setVolume': 'music',
+  'music:setShuffle': 'music',
+  'music:setLoop': 'music',
+  'music:loadPlaylist': 'music',
 };
 
 /**
@@ -612,43 +609,51 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         break;
       }
 
-      // --- Spotify commands (Phase 2) ---
+      // --- Music commands (MPD) ---
 
-      case 'spotify:play':
-      case 'spotify:pause':
-      case 'spotify:stop':
-      case 'spotify:next':
-      case 'spotify:previous': {
-        const method = SPOTIFY_TRANSPORT[action];
-        await spotifyService[method]();
-        resultMessage = `Spotify: ${method}`;
-        logger.info(`Spotify ${method}`, { source, deviceId });
+      case 'music:play':
+      case 'music:pause':
+      case 'music:stop':
+      case 'music:next':
+      case 'music:previous': {
+        const method = action.split(':')[1];
+        await musicService[method]();
+        resultMessage = `Music: ${method}`;
+        logger.info(`Music ${method}`, { source, deviceId });
         break;
       }
 
-      case 'spotify:playlist': {
-        const { uri } = payload;
-        if (!uri) throw new Error('uri required');
-        await spotifyService.setPlaylist(uri);
-        resultMessage = `Spotify playlist: ${uri}`;
-        logger.info('Spotify playlist set', { source, deviceId, uri });
-        break;
-      }
-
-      case 'spotify:volume': {
+      case 'music:setVolume': {
         const { volume } = payload;
         if (volume === undefined) throw new Error('volume required');
-        await spotifyService.setVolume(volume);
-        resultMessage = `Spotify volume: ${volume}`;
-        logger.info('Spotify volume set', { source, deviceId, volume });
+        await musicService.setVolume(volume);
+        resultMessage = `Music volume: ${volume}`;
+        logger.info('Music volume set', { source, deviceId, volume });
         break;
       }
 
-      case 'spotify:cache:verify': {
-        const status = await spotifyService.verifyCacheStatus();
-        resultData = status;
-        resultMessage = 'Cache verification complete';
-        logger.info('Spotify cache verified', { source, deviceId, status: status.status });
+      case 'music:setShuffle': {
+        const enabled = coerceBool(payload.enabled);
+        await musicService.setShuffle(enabled);
+        resultMessage = `Music shuffle: ${enabled ? 'on' : 'off'}`;
+        logger.info('Music shuffle set', { source, deviceId, enabled });
+        break;
+      }
+
+      case 'music:setLoop': {
+        const enabled = coerceBool(payload.enabled);
+        await musicService.setLoop(enabled);
+        resultMessage = `Music loop: ${enabled ? 'on' : 'off'}`;
+        logger.info('Music loop set', { source, deviceId, enabled });
+        break;
+      }
+
+      case 'music:loadPlaylist': {
+        const { playlistId } = payload;
+        if (!playlistId) throw new Error('playlistId required');
+        await musicService.loadPlaylist(playlistId);
+        resultMessage = `Music playlist loaded: ${playlistId}`;
+        logger.info('Music playlist loaded', { source, deviceId, playlistId });
         break;
       }
 
@@ -657,7 +662,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'service:check': {
         const HEALTH_CHECKS = {
           vlc: () => require('./vlcMprisService').checkConnection(),
-          spotify: () => spotifyService.checkConnection(),
+          music: () => musicService.checkConnection(),
           lighting: () => lightingService.checkConnection(),
           bluetooth: () => bluetoothService.isAvailable(),
           audio: () => audioRoutingService.checkHealth(),
@@ -761,6 +766,10 @@ async function validateCommand(action, payload = {}) {
     case 'audio:route:set':
       if (!audioRoutingService.sinkExists(payload.sink))
         errors.push({ type: 'resource', message: `Audio sink not found: ${payload.sink}` });
+      break;
+    case 'music:loadPlaylist':
+      if (!musicService.getPlaylist(payload.playlistId))
+        errors.push({ type: 'resource', message: `Playlist not found: ${payload.playlistId}` });
       break;
   }
 

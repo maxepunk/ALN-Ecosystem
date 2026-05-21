@@ -28,7 +28,6 @@ const bluetoothService = require('../../src/services/bluetoothService');
 const audioRoutingService = require('../../src/services/audioRoutingService');
 const lightingService = require('../../src/services/lightingService');
 const vlcService = require('../../src/services/vlcMprisService');
-const spotifyService = require('../../src/services/spotifyService');
 const serviceHealthRegistry = require('../../src/services/serviceHealthRegistry');
 
 /** Helper: wait for service:state with a specific domain */
@@ -60,7 +59,6 @@ describe('External State Propagation', () => {
       bluetoothService,
       audioRoutingService,
       lightingService,
-      spotifyService,
       vlcService,
     });
 
@@ -107,35 +105,6 @@ describe('External State Propagation', () => {
       const payload = data.data || data;
       expect(payload.domain).toBe('bluetooth');
       expect(payload.state).toBeDefined();
-    });
-  });
-
-  // ── Spotify ──
-
-  describe('Spotify', () => {
-    it('should push service:state spotify when playback state changes externally', async () => {
-      const eventPromise = waitForServiceState(gm1, 'spotify');
-
-      spotifyService.emit('playback:changed', { state: 'playing' });
-
-      const data = await eventPromise;
-      const payload = data.data || data;
-      expect(payload.domain).toBe('spotify');
-      expect(payload.state).toHaveProperty('state');
-    });
-
-    it('should push service:state spotify when track changes externally', async () => {
-      const eventPromise = waitForServiceState(gm1, 'spotify');
-
-      spotifyService.emit('track:changed', {
-        title: 'New Song',
-        artist: 'New Artist',
-      });
-
-      const data = await eventPromise;
-      const payload = data.data || data;
-      expect(payload.domain).toBe('spotify');
-      expect(payload.state).toHaveProperty('connected');
     });
   });
 

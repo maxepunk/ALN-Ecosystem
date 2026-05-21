@@ -212,6 +212,108 @@ describe('Cue Engine Integration', () => {
     });
   });
 
+  describe('cue dispatches music command', () => {
+    it('cue with music:loadPlaylist action invokes musicService.loadPlaylist', async () => {
+      const musicService = require('../../src/services/musicService');
+      const registry = require('../../src/services/serviceHealthRegistry');
+
+      // Music service must be healthy for commandExecutor to dispatch the action
+      // (SERVICE_DEPENDENCIES gates pre-dispatch — see commandExecutor.js).
+      registry.report('music', 'healthy', 'test setup');
+      const loadSpy = jest.spyOn(musicService, 'loadPlaylist').mockResolvedValue(undefined);
+
+      try {
+        cueEngineService.loadCues([
+          {
+            id: 'test-music-cue',
+            label: 'Test Music Cue',
+            trigger: { event: 'transaction:accepted' },
+            commands: [
+              { action: 'music:loadPlaylist', payload: { playlistId: 'all-tracks' } },
+            ],
+          },
+        ]);
+
+        await createAndStartSession(gm1, 'Music Cue Test', ['Team Alpha']);
+        cueEngineService.activate();
+
+        const cueFiredPromise = waitForEvent(gm1, 'cue:fired');
+        const testToken = TestTokens.STANDALONE_TOKENS[0];
+        submitTransaction(gm1, testToken.id, 'Team Alpha');
+
+        const cueFired = await cueFiredPromise;
+        expect(cueFired.data.cueId).toBe('test-music-cue');
+
+        // commandExecutor invocation is async — give the event loop a tick.
+        await new Promise(r => setImmediate(r));
+
+        expect(loadSpy).toHaveBeenCalledWith('all-tracks');
+      } finally {
+        loadSpy.mockRestore();
+      }
+    });
+
+    it('music:track:changed payload is normalized to flat fields for cue conditions', async () => {
+      // Proves the EVENT_NORMALIZERS music entries added in commit 5ff8c9e5
+      // actually flatten the nested payload for condition evaluation. Without
+      // the normalizer, condition.field=title would resolve to undefined
+      // (raw payload is { track: { title } } — nested), and the cue would
+      // never match.
+      //
+      // We exercise handleGameEvent directly rather than emitting on the
+      // service singleton because integration tests inherit cueEngineWiring
+      // listeners from prior test files via process-wide module state — that
+      // works but is fragile and adds an extra hop. Direct invocation tests
+      // the normalizer + condition-eval path in isolation.
+      const musicService = require('../../src/services/musicService');
+      const registry = require('../../src/services/serviceHealthRegistry');
+      registry.report('music', 'healthy', 'test setup');
+      const stopSpy = jest.spyOn(musicService, 'stop').mockResolvedValue(undefined);
+
+      try {
+        cueEngineService.loadCues([
+          {
+            id: 'music-title-cue',
+            label: 'Stop music when "GameEnd" plays',
+            trigger: {
+              event: 'music:track:changed',
+              conditions: [{ field: 'title', op: 'eq', value: 'GameEnd' }],
+            },
+            commands: [{ action: 'music:stop', payload: {} }],
+          },
+          // Negative-match cue: ensures we don't fire when title differs
+          {
+            id: 'music-decoy-cue',
+            trigger: {
+              event: 'music:track:changed',
+              conditions: [{ field: 'title', op: 'eq', value: 'NEVER_MATCHES' }],
+            },
+            commands: [{ action: 'music:stop', payload: {} }],
+          },
+        ]);
+
+        await createAndStartSession(gm1, 'Music Normalizer Test', ['Team Alpha']);
+        cueEngineService.activate();
+
+        // Drive cueEngineService directly to test the normalizer path.
+        cueEngineService.handleGameEvent('music:track:changed', {
+          track: { title: 'GameEnd', artist: 'X', file: 'end.mp3' },
+        });
+
+        // Fire is async — let the microtask drain
+        await new Promise(r => setImmediate(r));
+        await new Promise(r => setImmediate(r));
+
+        // Positive match fired exactly once (decoy did NOT fire — confirms
+        // normalizer is producing the right field name AND condition eval
+        // is reading the normalized value).
+        expect(stopSpy).toHaveBeenCalledTimes(1);
+      } finally {
+        stopSpy.mockRestore();
+      }
+    });
+  });
+
   describe('pause cascade', () => {
     it('should pause game clock and suspend cue engine on session:pause', async () => {
       // Create session and start game
@@ -245,6 +347,48 @@ describe('Cue Engine Integration', () => {
       const result = await resultPromise;
       expect(result.data.status).toBe('error');
       expect(result.data.error).toBe('SESSION_PAUSED');
+    });
+
+    it('should call music.pauseForGameClock on session:pause', async () => {
+      // sessionService.setStatus uses a lazy require for musicService, so we
+      // spy on the actual singleton method.
+      const musicService = require('../../src/services/musicService');
+      const pauseSpy = jest.spyOn(musicService, 'pauseForGameClock')
+        .mockResolvedValue(undefined);
+
+      try {
+        await createAndStartSession(gm1, 'Music Pause Test Session', ['Team Alpha']);
+
+        sendGmCommand(gm1, 'session:pause', {});
+        await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'paused');
+
+        // sessionService fires music.pauseForGameClock() fire-and-forget;
+        // the await above guarantees the pause cascade has run.
+        expect(pauseSpy).toHaveBeenCalled();
+      } finally {
+        pauseSpy.mockRestore();
+      }
+    });
+
+    it('should call music.resumeFromGameClock on session:resume', async () => {
+      const musicService = require('../../src/services/musicService');
+      const resumeSpy = jest.spyOn(musicService, 'resumeFromGameClock')
+        .mockResolvedValue(undefined);
+
+      try {
+        await createAndStartSession(gm1, 'Music Resume Test Session', ['Team Alpha']);
+
+        sendGmCommand(gm1, 'session:pause', {});
+        await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'paused');
+
+        resumeSpy.mockClear();
+        sendGmCommand(gm1, 'session:resume', {});
+        await waitForServiceState(gm1, 'gameclock', (s) => s.status === 'running');
+
+        expect(resumeSpy).toHaveBeenCalled();
+      } finally {
+        resumeSpy.mockRestore();
+      }
     });
 
     it('should resume everything on session:resume', async () => {

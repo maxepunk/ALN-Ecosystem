@@ -172,7 +172,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           devices: [],
           serviceHealth: {
             vlc: { status: 'healthy', message: 'Connected', lastChecked: null },
-            spotify: { status: 'down', message: 'Not yet checked', lastChecked: null }
+            music: { status: 'down', message: 'Not yet checked', lastChecked: null }
           }
         },
         timestamp: new Date().toISOString()
@@ -197,7 +197,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           devices: [],
           serviceHealth: {
             vlc: { status: 'down', message: 'Disconnected', lastChecked: null },
-            spotify: { status: 'down', message: 'Not yet checked', lastChecked: null }
+            music: { status: 'down', message: 'Not yet checked', lastChecked: null }
           }
         },
         timestamp: new Date().toISOString()

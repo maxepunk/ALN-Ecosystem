@@ -28,7 +28,7 @@ const logger = require('../utils/logger');
  * @param {Object} [options.lightingService]
  * @param {Object} [options.gameClockService]
  * @param {Object} [options.cueEngineService]
- * @param {Object} [options.spotifyService]
+ * @param {Object} [options.musicService]
  * @param {Object} [options.soundService]
  * @param {Object} [options.deviceFilter] - Optional filter options
  * @param {boolean} [options.deviceFilter.connectedOnly=false] - Only include connected devices
@@ -43,7 +43,7 @@ async function buildSyncFullPayload({
   lightingService,
   gameClockService,
   cueEngineService,
-  spotifyService,
+  musicService,
   soundService,
   deviceFilter = {},
 }) {
@@ -114,8 +114,8 @@ async function buildSyncFullPayload({
   // Phase 1: Cue Engine state
   const cueEngine = buildCueEngineState(cueEngineService);
 
-  // Phase 2: Spotify state
-  const spotify = buildSpotifyState(spotifyService);
+  // Music state (MPD)
+  const music = buildMusicState(musicService);
 
   // Phase 3: Held items (blocked by service outage or resource contention)
   const heldItems = buildHeldItemsState(cueEngineService, videoQueueService);
@@ -141,7 +141,7 @@ async function buildSyncFullPayload({
     environment,
     gameClock,
     cueEngine,
-    spotify,
+    music,
     heldItems,
     sound,
     displayStatus,
@@ -198,21 +198,33 @@ function buildCueEngineState(cueEngineService) {
 }
 
 /**
- * Build Spotify state for sync:full payload.
- * Gracefully degrades when service is unavailable.
+ * Build music state for sync:full payload.
+ * Includes playlists array so GM Scanner can populate the picker without
+ * a second round-trip. Gracefully degrades when service is unavailable.
  *
- * @param {Object} spotifyService - SpotifyService instance (optional)
- * @returns {Object} Spotify state
+ * @param {Object} musicService - MusicService instance (optional)
+ * @returns {Object} Music state with playlists
  */
-function buildSpotifyState(spotifyService) {
+function buildMusicState(musicService) {
+  const defaultState = {
+    connected: false,
+    state: 'stopped',
+    volume: 70,
+    track: null,
+    playlist: null,
+    pausedByGameClock: false,
+    playlists: [],
+  };
   try {
-    if (!spotifyService) {
-      return { connected: false, state: 'stopped', volume: 100, pausedByGameClock: false };
-    }
-    return spotifyService.getState();
+    if (!musicService) return defaultState;
+    const state = musicService.getState();
+    const playlists = typeof musicService.getPlaylists === 'function'
+      ? musicService.getPlaylists()
+      : [];
+    return { ...state, playlists };
   } catch (err) {
-    logger.warn('Failed to gather Spotify state for sync:full', { error: err.message });
-    return { connected: false, state: 'stopped', volume: 100, pausedByGameClock: false };
+    logger.warn('Failed to gather music state for sync:full', { error: err.message });
+    return defaultState;
   }
 }
 
@@ -244,4 +256,4 @@ function buildHeldItemsState(cueEngineService, videoQueueService) {
   return items;
 }
 
-module.exports = { buildSyncFullPayload, buildHeldItemsState };
+module.exports = { buildSyncFullPayload, buildHeldItemsState, buildMusicState };

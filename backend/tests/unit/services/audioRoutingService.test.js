@@ -141,14 +141,14 @@ describe('AudioRoutingService', () => {
   });
 
   describe('_parseSinkInputs with application.process.binary fallback', () => {
-    it('finds spotifyd by application.process.binary when application.name is empty', () => {
+    it('finds app by application.process.binary when application.name is empty', () => {
       const output = [
         'Sink Input #42',
         '\tProperties:',
         '\t\tapplication.name = ""',
-        '\t\tapplication.process.binary = "spotifyd"',
+        '\t\tapplication.process.binary = "pw-play"',
       ].join('\n');
-      expect(audioRoutingService._parseSinkInputs(output, 'spotifyd')).toBe('42');
+      expect(audioRoutingService._parseSinkInputs(output, 'pw-play')).toBe('42');
     });
 
     it('still finds VLC by application.name when set', () => {
@@ -170,9 +170,27 @@ describe('AudioRoutingService', () => {
         'Sink Input #20',
         '\tProperties:',
         '\t\tapplication.name = ""',
-        '\t\tapplication.process.binary = "spotifyd"',
+        '\t\tapplication.process.binary = "pw-play"',
       ].join('\n');
-      expect(audioRoutingService._parseSinkInputs(output, 'spotifyd')).toBe('20');
+      expect(audioRoutingService._parseSinkInputs(output, 'pw-play')).toBe('20');
+    });
+
+    // Anti-confidence regression: MPD hardcodes application.name to
+    // "Music Player Daemon" regardless of config, and its binary is `mpd`
+    // (not `aln-music`). Our MPD config's `name "aln-music"` field lands
+    // in PipeWire as `media.name`. Without the media.name fallback,
+    // STREAM_APP_NAMES.music = 'aln-music' would never match MPD's
+    // sink-input → audio:volume:set / audio:route:set / ducking silently
+    // no-op for music. This test locks in the media.name match path.
+    it('finds MPD by media.name when application.name and binary are generic', () => {
+      const output = [
+        'Sink Input #1957',
+        '\t\tapplication.name = "Music Player Daemon"',
+        '\t\tapplication.process.binary = "mpd"',
+        '\t\tmedia.name = "aln-music"',
+        '\t\tnode.name = "Music Player Daemon"',
+      ].join('\n');
+      expect(audioRoutingService._parseSinkInputs(output, 'aln-music')).toBe('1957');
     });
   });
 
@@ -377,7 +395,7 @@ describe('AudioRoutingService', () => {
 
     it('should reject invalid stream name', async () => {
       await expect(
-        audioRoutingService.setStreamRoute('music', 'hdmi')
+        audioRoutingService.setStreamRoute('notastream', 'hdmi')
       ).rejects.toThrow('Invalid stream name');
     });
 
@@ -403,7 +421,7 @@ describe('AudioRoutingService', () => {
     });
 
     it('should reject invalid stream name', () => {
-      expect(() => audioRoutingService.getStreamRoute('music')).toThrow('Invalid stream name');
+      expect(() => audioRoutingService.getStreamRoute('notastream')).toThrow('Invalid stream name');
     });
   });
 
@@ -578,7 +596,7 @@ describe('AudioRoutingService', () => {
 
     it('should reject invalid stream name', async () => {
       await expect(
-        audioRoutingService.applyRouting('music')
+        audioRoutingService.applyRouting('notastream')
       ).rejects.toThrow('Invalid stream name');
     });
   });
@@ -974,7 +992,7 @@ describe('AudioRoutingService', () => {
   describe('reset() clears sink-input registry', () => {
     it('should clear _sinkInputRegistry on reset()', () => {
       audioRoutingService._sinkInputRegistry.set('42', { index: '42', appName: 'VLC media player' });
-      audioRoutingService._sinkInputRegistry.set('55', { index: '55', appName: 'spotifyd' });
+      audioRoutingService._sinkInputRegistry.set('55', { index: '55', appName: 'pw-play' });
 
       audioRoutingService.reset();
 
@@ -1031,7 +1049,7 @@ describe('AudioRoutingService', () => {
 
     it('should normalize all configured routes to strings', async () => {
       await audioRoutingService.setStreamRoute('video', 'hdmi');
-      await audioRoutingService.setStreamRoute('spotify', 'bluetooth');
+      await audioRoutingService.setStreamRoute('music', 'bluetooth');
       await audioRoutingService.setStreamRoute('sound', 'some-other-sink');
 
       mockExecFileSuccess('');
@@ -1039,7 +1057,7 @@ describe('AudioRoutingService', () => {
       const status = await audioRoutingService.getRoutingStatus();
 
       expect(status.routes.video).toBe('hdmi');
-      expect(status.routes.spotify).toBe('bluetooth');
+      expect(status.routes.music).toBe('bluetooth');
       expect(status.routes.sound).toBe('some-other-sink');
     });
   });
@@ -1309,7 +1327,7 @@ describe('AudioRoutingService', () => {
       jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
       mockExecFileSuccess('');
 
-      await audioRoutingService.setStreamVolume('spotify', 75);
+      await audioRoutingService.setStreamVolume('music', 75);
 
       expect(execFile).toHaveBeenCalledWith(
         'pactl', ['set-sink-input-volume', '42', '75%'],
@@ -1347,14 +1365,15 @@ describe('AudioRoutingService', () => {
             '\tState: RUNNING',
             '\tVolume: front-left: 49152 /  75% / -7.50 dB,   front-right: 49152 /  75% / -7.50 dB',
             '\tProperties:',
-            '\t\tapplication.name = "spotifyd"',
+            '\t\tapplication.name = "Music Player Daemon"',
+            '\t\tmedia.name = "aln-music"',
           ].join('\n'), '');
           return;
         }
         cb(new Error('unexpected'), '', '');
       });
 
-      const volume = await audioRoutingService.getStreamVolume('spotify');
+      const volume = await audioRoutingService.getStreamVolume('music');
 
       expect(volume).toBe(75);
       // Only ONE pactl call — not two (previously called findSinkInput + list sink-inputs separately)
@@ -1368,7 +1387,7 @@ describe('AudioRoutingService', () => {
         '\t\tapplication.name = "Firefox"',
       ].join('\n'));
 
-      const volume = await audioRoutingService.getStreamVolume('spotify');
+      const volume = await audioRoutingService.getStreamVolume('music');
       expect(volume).toBeNull();
     });
   });
@@ -1376,8 +1395,8 @@ describe('AudioRoutingService', () => {
   // ── VALID_STREAMS expansion ──
 
   describe('VALID_STREAMS expansion', () => {
-    it('should accept spotify as a valid stream', () => {
-      expect(audioRoutingService.isValidStream('spotify')).toBe(true);
+    it('should accept music as a valid stream', () => {
+      expect(audioRoutingService.isValidStream('music')).toBe(true);
     });
 
     it('should accept sound as a valid stream', () => {
@@ -1434,21 +1453,21 @@ describe('AudioRoutingService', () => {
     describe('loadDuckingRules()', () => {
       it('should load ducking rules', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         expect(audioRoutingService._duckingRules).toHaveLength(1);
         expect(audioRoutingService._duckingRules[0]).toEqual({
-          when: 'video', duck: 'spotify', to: 20, fadeMs: 500
+          when: 'video', duck: 'music', to: 20, fadeMs: 500
         });
       });
 
       it('should replace existing rules', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
         audioRoutingService.loadDuckingRules([
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 }
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 }
         ]);
 
         expect(audioRoutingService._duckingRules).toHaveLength(1);
@@ -1457,7 +1476,7 @@ describe('AudioRoutingService', () => {
 
       it('should clear active ducking state when rules are reloaded', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
         audioRoutingService.handleDuckingEvent('video', 'started');
 
@@ -1468,33 +1487,33 @@ describe('AudioRoutingService', () => {
     });
 
     describe('handleDuckingEvent() - started lifecycle', () => {
-      it('should duck Spotify when video starts', async () => {
+      it('should duck Music when video starts', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         // _handleDuckingStart is async (awaits volume capture) — flush microtask queue
         await flushPromises();
-        expect(setVolume).toHaveBeenCalledWith('spotify', 20);
+        expect(setVolume).toHaveBeenCalledWith('music', 20);
       });
 
       it('should duck lighter for sound effects', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 }
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 }
         ]);
 
         audioRoutingService.handleDuckingEvent('sound', 'started');
         // _handleDuckingStart is async (awaits volume capture) — flush microtask queue
         await flushPromises();
-        expect(setVolume).toHaveBeenCalledWith('spotify', 40);
+        expect(setVolume).toHaveBeenCalledWith('music', 40);
       });
 
       it('should store pre-duck volume before first duck', async () => {
         audioRoutingService.getStreamVolume.mockResolvedValue(80);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1502,22 +1521,22 @@ describe('AudioRoutingService', () => {
         // Wait for async getStreamVolume to resolve
         await new Promise(resolve => setTimeout(resolve, 10));
 
-        expect(audioRoutingService._preDuckVolumes.spotify).toBe(80);
+        expect(audioRoutingService._preDuckVolumes.music).toBe(80);
       });
 
       it('should not overwrite pre-duck volume if already stored', async () => {
         audioRoutingService.getStreamVolume.mockResolvedValue(80);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         await new Promise(resolve => setTimeout(resolve, 10));
 
         // Pre-duck volume stored as 80
-        expect(audioRoutingService._preDuckVolumes.spotify).toBe(80);
+        expect(audioRoutingService._preDuckVolumes.music).toBe(80);
 
         // Now change mock to return 20 (current ducked volume)
         audioRoutingService.getStreamVolume.mockResolvedValue(20);
@@ -1526,27 +1545,27 @@ describe('AudioRoutingService', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
 
         // Should NOT have overwritten to 20 — still 80
-        expect(audioRoutingService._preDuckVolumes.spotify).toBe(80);
+        expect(audioRoutingService._preDuckVolumes.music).toBe(80);
       });
 
       it('should track active ducking sources per target stream', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
-        expect(audioRoutingService._activeDuckingSources.spotify).toContain('video');
+        expect(audioRoutingService._activeDuckingSources.music).toContain('video');
 
         audioRoutingService.handleDuckingEvent('sound', 'started');
-        expect(audioRoutingService._activeDuckingSources.spotify).toContain('video');
-        expect(audioRoutingService._activeDuckingSources.spotify).toContain('sound');
+        expect(audioRoutingService._activeDuckingSources.music).toContain('video');
+        expect(audioRoutingService._activeDuckingSources.music).toContain('sound');
       });
 
       it('should use lowest "to" value when multiple sources are active', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
@@ -1557,12 +1576,12 @@ describe('AudioRoutingService', () => {
 
         // Most recent call should still be 20 (lowest active)
         const lastCall = setVolume.mock.calls[setVolume.mock.calls.length - 1];
-        expect(lastCall).toEqual(['spotify', 20]);
+        expect(lastCall).toEqual(['music', 20]);
       });
 
       it('should not duck if no matching rule', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('sound', 'started');
@@ -1571,13 +1590,13 @@ describe('AudioRoutingService', () => {
 
       it('should not double-add the same source', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         audioRoutingService.handleDuckingEvent('video', 'started');
 
-        expect(audioRoutingService._activeDuckingSources.spotify).toHaveLength(1);
+        expect(audioRoutingService._activeDuckingSources.music).toHaveLength(1);
       });
 
       it('should capture pre-duck volume before applying duck (race fix)', async () => {
@@ -1590,7 +1609,7 @@ describe('AudioRoutingService', () => {
         audioRoutingService.getStreamVolume.mockReturnValue(volumePromise);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         // Start ducking — _handleDuckingStart awaits volume capture before setVolume
@@ -1599,55 +1618,55 @@ describe('AudioRoutingService', () => {
 
         // Volume read has NOT completed yet — setVolume should NOT have been called
         expect(setVolume).not.toHaveBeenCalled();
-        expect(audioRoutingService._preDuckVolumes.spotify).toBeUndefined();
+        expect(audioRoutingService._preDuckVolumes.music).toBeUndefined();
 
         // Now resolve the volume read with 75
         resolveVolume(75);
         await duckingPromise;
 
         // Volume captured BEFORE duck applied — pre-duck should be 75 (not 20)
-        expect(audioRoutingService._preDuckVolumes.spotify).toBe(75);
+        expect(audioRoutingService._preDuckVolumes.music).toBe(75);
         // Duck was applied after capture
-        expect(setVolume).toHaveBeenCalledWith('spotify', 20);
+        expect(setVolume).toHaveBeenCalledWith('music', 20);
       });
     });
 
     describe('handleDuckingEvent() - completed lifecycle', () => {
       it('should process all target streams even when first has no active ducking', () => {
-        // Rules: video ducks BOTH spotify AND sound
+        // Rules: video ducks BOTH music AND sound
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'video', duck: 'sound', to: 30, fadeMs: 200 },
         ]);
 
-        // Only start ducking for 'sound', NOT for 'spotify'
-        // Manually set up state so spotify has no active sources but sound does
+        // Only start ducking for 'sound', NOT for 'music'
+        // Manually set up state so music has no active sources but sound does
         audioRoutingService._activeDuckingSources = { sound: ['video'] };
         audioRoutingService._preDuckVolumes = { sound: 80 };
 
-        // Complete video — should restore 'sound' even though 'spotify' has no active sources
+        // Complete video — should restore 'sound' even though 'music' has no active sources
         audioRoutingService.handleDuckingEvent('video', 'completed');
 
         // 'sound' should be restored to pre-duck volume
         expect(setVolume).toHaveBeenCalledWith('sound', 80);
       });
 
-      it('should restore Spotify when video completes', () => {
+      it('should restore Music when video completes', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         audioRoutingService.handleDuckingEvent('video', 'completed');
 
         // Second call should restore to original volume (100 default)
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 100);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
       it('should not restore if another ducking source is still active', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
@@ -1655,13 +1674,13 @@ describe('AudioRoutingService', () => {
         audioRoutingService.handleDuckingEvent('sound', 'completed'); // Sound done
 
         // Should NOT restore — video is still ducking, should be at 20
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 20);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 20);
       });
 
       it('should restore when last source completes', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1670,13 +1689,13 @@ describe('AudioRoutingService', () => {
         audioRoutingService.handleDuckingEvent('sound', 'completed');
 
         // All sources done, should restore to 100
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 100);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
       it('should re-evaluate to higher ducking level when dominant source completes', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
@@ -1684,23 +1703,23 @@ describe('AudioRoutingService', () => {
         audioRoutingService.handleDuckingEvent('video', 'completed'); // Video done, sound still active
 
         // Should re-evaluate to sound's level (40), not restore fully
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 40);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 40);
       });
 
       it('should clean up pre-duck volume after full restore', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         audioRoutingService.handleDuckingEvent('video', 'completed');
 
-        expect(audioRoutingService._preDuckVolumes.spotify).toBeUndefined();
+        expect(audioRoutingService._preDuckVolumes.music).toBeUndefined();
       });
 
       it('should handle completed event with no active ducking gracefully', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         // Complete without starting — should not throw or set volume
@@ -1712,19 +1731,19 @@ describe('AudioRoutingService', () => {
     describe('handleDuckingEvent() - paused/resumed lifecycle', () => {
       it('should restore volume when source is paused', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         audioRoutingService.handleDuckingEvent('video', 'paused');
 
         // Should restore to 100 (like completed, but source is still tracked as paused)
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 100);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
       it('should re-duck when source is resumed', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1733,13 +1752,13 @@ describe('AudioRoutingService', () => {
         audioRoutingService.handleDuckingEvent('video', 'resumed');
         await flushPromises();
 
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 20);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 20);
       });
 
       it('should not fully restore on pause if another source is still active', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1747,7 +1766,7 @@ describe('AudioRoutingService', () => {
         audioRoutingService.handleDuckingEvent('video', 'paused');
 
         // Sound is still active at 40, should not restore to 100
-        expect(setVolume).toHaveBeenLastCalledWith('spotify', 40);
+        expect(setVolume).toHaveBeenLastCalledWith('music', 40);
       });
     });
 
@@ -1757,7 +1776,7 @@ describe('AudioRoutingService', () => {
         audioRoutingService.on('ducking:changed', handler);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1765,7 +1784,7 @@ describe('AudioRoutingService', () => {
         await flushPromises();
 
         expect(handler).toHaveBeenCalledWith({
-          stream: 'spotify',
+          stream: 'music',
           ducked: true,
           volume: 20,
           activeSources: ['video'],
@@ -1778,7 +1797,7 @@ describe('AudioRoutingService', () => {
         audioRoutingService.on('ducking:changed', handler);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1786,7 +1805,7 @@ describe('AudioRoutingService', () => {
 
         const lastCall = handler.mock.calls[handler.mock.calls.length - 1][0];
         expect(lastCall).toEqual({
-          stream: 'spotify',
+          stream: 'music',
           ducked: false,
           volume: 100,
           activeSources: [],
@@ -1799,8 +1818,8 @@ describe('AudioRoutingService', () => {
         audioRoutingService.on('ducking:changed', handler);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
-          { when: 'sound', duck: 'spotify', to: 40, fadeMs: 200 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1817,7 +1836,7 @@ describe('AudioRoutingService', () => {
     describe('reset integration', () => {
       it('should clear ducking state on reset()', () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
         audioRoutingService.handleDuckingEvent('video', 'started');
 
@@ -1838,7 +1857,7 @@ describe('AudioRoutingService', () => {
 
       it('should handle multiple target streams independently', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 },
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'video', duck: 'sound', to: 30, fadeMs: 300 },
         ]);
 
@@ -1846,7 +1865,7 @@ describe('AudioRoutingService', () => {
         // _handleDuckingStart is async — flush microtask queue
         await flushPromises();
 
-        expect(setVolume).toHaveBeenCalledWith('spotify', 20);
+        expect(setVolume).toHaveBeenCalledWith('music', 20);
         expect(setVolume).toHaveBeenCalledWith('sound', 30);
       });
 
@@ -1854,7 +1873,7 @@ describe('AudioRoutingService', () => {
         setVolume.mockRejectedValue(new Error('No active sink-input'));
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         // Should not throw
@@ -1868,12 +1887,12 @@ describe('AudioRoutingService', () => {
       it('should not log error when target stream has no sink-input', async () => {
         // Load ducking rules
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        // Mock setStreamVolume to throw (spotifyd not running)
+        // Mock setStreamVolume to throw (MPD not running)
         audioRoutingService.setStreamVolume = jest.fn()
-          .mockRejectedValue(new Error('No active sink-input found for stream \'spotify\''));
+          .mockRejectedValue(new Error('No active sink-input found for stream \'music\''));
 
         // Trigger ducking
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1894,13 +1913,13 @@ describe('AudioRoutingService', () => {
 
       it('should not log error when restoring volume and target has no sink-input', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         // Start ducking first (with successful volume set)
         const mockSetVolume = jest.fn()
           .mockResolvedValueOnce()  // First call (duck start) succeeds
-          .mockRejectedValue(new Error('No active sink-input found for stream \'spotify\''));  // Restore fails
+          .mockRejectedValue(new Error('No active sink-input found for stream \'music\''));  // Restore fails
         audioRoutingService.setStreamVolume = mockSetVolume;
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -1925,7 +1944,7 @@ describe('AudioRoutingService', () => {
 
       it('should still log error for unexpected volume failures', async () => {
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         // Mock setStreamVolume to throw an unexpected error
@@ -1947,7 +1966,7 @@ describe('AudioRoutingService', () => {
         audioRoutingService.on('ducking:failed', handler);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.setStreamVolume = jest.fn()
@@ -1957,7 +1976,7 @@ describe('AudioRoutingService', () => {
         await new Promise(r => setTimeout(r, 50));
 
         expect(handler).toHaveBeenCalledWith(expect.objectContaining({
-          target: 'spotify',
+          target: 'music',
           error: expect.stringContaining('PipeWire')
         }));
       });
@@ -1967,11 +1986,11 @@ describe('AudioRoutingService', () => {
         audioRoutingService.on('ducking:failed', handler);
 
         audioRoutingService.loadDuckingRules([
-          { when: 'video', duck: 'spotify', to: 20, fadeMs: 500 }
+          { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.setStreamVolume = jest.fn()
-          .mockRejectedValue(new Error('No active sink-input for spotify'));
+          .mockRejectedValue(new Error('No active sink-input for music'));
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         await new Promise(r => setTimeout(r, 50));

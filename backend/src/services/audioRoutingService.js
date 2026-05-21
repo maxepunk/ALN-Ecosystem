@@ -4,7 +4,7 @@
  * streams to PipeWire sinks. Uses pactl CLI for sink discovery, stream
  * routing, and sink monitoring.
  *
- * Supports video, spotify, and sound audio streams with configurable
+ * Supports video, music, and sound audio streams with configurable
  * routing between HDMI and Bluetooth sinks.
  *
  * Uses execFile (not exec) to prevent shell injection.
@@ -18,13 +18,13 @@ const { execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
 const ProcessMonitor = require('../utils/processMonitor');
 
-/** Valid stream names for Phase 1 */
-const VALID_STREAMS = ['video', 'spotify', 'sound'];
+/** Valid stream names */
+const VALID_STREAMS = ['video', 'music', 'sound'];
 
 /** Map stream names to application process names */
 const STREAM_APP_NAMES = {
   video: 'VLC',
-  spotify: 'spotifyd',
+  music: 'aln-music',
   sound: 'pw-play',
 };
 
@@ -239,7 +239,7 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Set the sink for a named stream and persist.
-   * @param {string} stream - Stream name ('video', 'spotify', or 'sound')
+   * @param {string} stream - Stream name ('video', 'music', or 'sound')
    * @param {string} sink - Target sink: 'hdmi', 'bluetooth', or specific sink name
    * @returns {Promise<void>}
    */
@@ -377,7 +377,7 @@ class AudioRoutingService extends EventEmitter {
    * Find a sink-input by application name.
    * Fast path: checks the reactive registry first (populated by pactl subscribe events).
    * Fallback: polls `pactl list sink-inputs` when the registry hasn't caught up yet.
-   * @param {string} appName - App name substring to match (e.g., 'VLC', 'spotifyd', 'pw-play')
+   * @param {string} appName - App name substring to match (e.g., 'VLC', 'aln-music', 'pw-play')
    * @returns {Promise<{index: string}|null>} Sink-input object with index or null
    */
   async findSinkInput(appName) {
@@ -425,7 +425,7 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Set volume for a named stream.
-   * @param {string} stream - Stream name (video, spotify, sound)
+   * @param {string} stream - Stream name (video, music, sound)
    * @param {number} volume - Volume percentage (0-100)
    * @returns {Promise<void>}
    */
@@ -514,7 +514,7 @@ class AudioRoutingService extends EventEmitter {
    *
    * @param {Array<{when: string, duck: string, to: number, fadeMs: number}>} rules - Ducking rules
    *   - when: source stream that triggers ducking (e.g., 'video', 'sound')
-   *   - duck: target stream to duck (e.g., 'spotify')
+   *   - duck: target stream to duck (e.g., 'music')
    *   - to: volume percentage to duck to (0-100)
    *   - fadeMs: fade duration in milliseconds (reserved for future use)
    */
@@ -1091,11 +1091,16 @@ class AudioRoutingService extends EventEmitter {
         currentIdx = idxMatch[1];
       }
 
-      // Match application.name = "..." or application.process.binary = "..."
-      // Fallback to process.binary handles spotifyd which sets application.name = ""
+      // Match against the three identity keys PipeWire/PulseAudio exposes:
+      //   application.name           - VLC sets this to "VLC media player (...)"
+      //   application.process.binary - process name fallback when application.name is empty
+      //   media.name                 - MPD hardcodes application.name="Music Player Daemon" but
+      //                                our config's `name "aln-music"` lands here uniquely
+      // First field with content wins (`includes(appName)` is a substring test).
       const nameMatch = line.match(/application\.name\s*=\s*"([^"]+)"/);
       const binaryMatch = line.match(/application\.process\.binary\s*=\s*"([^"]+)"/);
-      const match = nameMatch || binaryMatch;
+      const mediaMatch = line.match(/media\.name\s*=\s*"([^"]+)"/);
+      const match = nameMatch || binaryMatch || mediaMatch;
       if (match && currentIdx) {
         if (match[1].includes(appName)) {
           return currentIdx;

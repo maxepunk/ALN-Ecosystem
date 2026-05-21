@@ -21,7 +21,6 @@ const bluetoothService = require('../../src/services/bluetoothService');
 const audioRoutingService = require('../../src/services/audioRoutingService');
 const lightingService = require('../../src/services/lightingService');
 const vlcService = require('../../src/services/vlcMprisService');
-const spotifyService = require('../../src/services/spotifyService');
 const soundService = require('../../src/services/soundService');
 const gameClockService = require('../../src/services/gameClockService');
 const cueEngineService = require('../../src/services/cueEngineService');
@@ -48,7 +47,6 @@ describe('service:state Push Integration', () => {
       bluetoothService,
       audioRoutingService,
       lightingService,
-      spotifyService,
       vlcService,
       gameClockService,
       soundService,
@@ -67,36 +65,6 @@ describe('service:state Push Integration', () => {
     if (gm1?.connected) gm1.disconnect();
     gameClockService.reset();
     jest.restoreAllMocks();
-  });
-
-  describe('Spotify domain', () => {
-    it('should emit service:state with domain spotify on playback:changed', async () => {
-      const statePromise = waitForEvent(gm1, 'service:state',
-        (data) => (data.data || data).domain === 'spotify');
-
-      spotifyService.emit('playback:changed', { state: 'playing' });
-
-      const event = await statePromise;
-      const payload = event.data || event;
-      expect(payload.domain).toBe('spotify');
-      expect(payload.state).toHaveProperty('connected');
-      expect(payload.state).toHaveProperty('state');
-      expect(payload.state).toHaveProperty('volume');
-      expect(payload.state).toHaveProperty('pausedByGameClock');
-    });
-
-    it('should emit service:state spotify on track:changed', async () => {
-      const statePromise = waitForEvent(gm1, 'service:state',
-        (data) => (data.data || data).domain === 'spotify');
-
-      spotifyService.emit('track:changed', { title: 'Test', artist: 'Test' });
-
-      const event = await statePromise;
-      const payload = event.data || event;
-      expect(payload.domain).toBe('spotify');
-      expect(payload.state).toHaveProperty('connected');
-      expect(payload.state).toHaveProperty('state');
-    });
   });
 
   describe('Health domain', () => {
@@ -248,7 +216,7 @@ describe('service:state Push Integration', () => {
       // Full snapshot includes all 8 services, not just the one that changed
       expect(Object.keys(payload.state).length).toBeGreaterThanOrEqual(8);
       expect(payload.state).toHaveProperty('vlc');
-      expect(payload.state).toHaveProperty('spotify');
+      expect(payload.state).toHaveProperty('music');
     });
 
     it('should coalesce rapid changes into one push per domain (50ms debounce)', async () => {
@@ -261,7 +229,7 @@ describe('service:state Push Integration', () => {
 
       // Fire 3 rapid health changes — all within the 50ms debounce window
       serviceHealthRegistry.report('vlc', 'down', 'Change 1');
-      serviceHealthRegistry.report('spotify', 'down', 'Change 2');
+      serviceHealthRegistry.report('music', 'down', 'Change 2');
       serviceHealthRegistry.report('sound', 'down', 'Change 3');
 
       // Wait for debounce to settle (50ms) + network round-trip

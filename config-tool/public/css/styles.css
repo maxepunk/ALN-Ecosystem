@@ -638,7 +638,7 @@ details.config-group .config-group__body {
 .timeline-block--sound { background: rgba(66, 133, 244, 0.6); color: #c5dcfa; }
 .timeline-block--lighting { background: rgba(251, 188, 4, 0.5); color: #fef3c7; }
 .timeline-block--video { background: rgba(234, 67, 53, 0.5); color: #fecaca; }
-.timeline-block--spotify { background: rgba(30, 215, 96, 0.4); color: #bbf7d0; }
+.timeline-block--music { background: rgba(156, 39, 176, 0.4); color: #e1bee7; }
 .timeline-block--cue { background: rgba(168, 85, 247, 0.4); color: #e9d5ff; }
 .timeline-block--display { background: rgba(156, 163, 175, 0.4); color: #e5e7eb; }
 .timeline-block--audio { background: rgba(6, 182, 212, 0.4); color: #cffafe; }

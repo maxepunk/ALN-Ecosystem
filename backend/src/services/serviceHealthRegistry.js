@@ -11,7 +11,7 @@
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
 
-const KNOWN_SERVICES = ['vlc', 'spotify', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'];
+const KNOWN_SERVICES = ['vlc', 'music', 'sound', 'bluetooth', 'audio', 'lighting', 'gameclock', 'cueengine'];
 
 class ServiceHealthRegistry extends EventEmitter {
   constructor() {
@@ -112,7 +112,7 @@ class ServiceHealthRegistry extends EventEmitter {
 
     const HEALTH_CHECKS = {
       vlc: () => services.vlc?.checkConnection(),
-      spotify: () => services.spotify?.checkConnection(),
+      music: () => services.music?.checkConnection(),
       sound: () => services.sound?.checkHealth(),
       bluetooth: () => services.bluetooth?.checkHealth(),
       audio: () => services.audio?.checkHealth(),

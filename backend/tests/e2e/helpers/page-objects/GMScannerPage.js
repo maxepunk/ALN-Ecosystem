@@ -166,7 +166,7 @@ class GMScannerPage {
     this.audioOutputSection = page.locator('#audio-output-section');
     this.audioRoutingDropdowns = page.locator('#audio-routing-dropdowns');
     this.audioRouteVideo = page.locator('select[data-stream="video"]');
-    this.audioRouteSpotify = page.locator('select[data-stream="spotify"]');
+    this.audioRouteMusic = page.locator('select[data-stream="music"]');
     this.audioRouteSound = page.locator('select[data-stream="sound"]');
     this.btWarning = page.locator('#bt-warning');
     this.btSpeakerCount = page.locator('#bt-speaker-count');
@@ -184,7 +184,7 @@ class GMScannerPage {
     this.lightingRetryBtn = page.locator('button[data-action="admin.lightingRetry"]');
     this.haConnectionStatus = page.locator('#ha-connection-status');
 
-    // Phase 2: Game Clock, Active Cues, Spotify (MonitoringDisplay)
+    // Phase 2: Game Clock, Active Cues, Music (MonitoringDisplay)
     this.gameClockDisplay = page.locator('#game-clock-display');
     this.activeCuesList = page.locator('#active-cues-list');
     this.nowPlayingSection = page.locator('#now-playing-section');
@@ -873,7 +873,7 @@ class GMScannerPage {
 
   /**
    * Get selected audio route value for a stream
-   * @param {string} stream - Stream name ('video', 'spotify', 'sound')
+   * @param {string} stream - Stream name ('video', 'music', 'sound')
    * @returns {Promise<string>} Selected sink value (e.g., 'hdmi', 'bluez_output...')
    */
   async getAudioRouteValue(stream = 'video') {
@@ -982,7 +982,7 @@ class GMScannerPage {
     return {
       audioSectionVisible: await this.isAudioOutputSectionVisible(),
       videoRoute: await this.getAudioRouteValue('video'),
-      spotifyRoute: await this.getAudioRouteValue('spotify'),
+      musicRoute: await this.getAudioRouteValue('music'),
       soundRoute: await this.getAudioRouteValue('sound'),
       btWarningVisible: await this.isBtWarningVisible(),
       btUnavailable: await this.isBtUnavailable(),
@@ -1641,7 +1641,7 @@ class GMScannerPage {
   }
 
   // ==========================================================================
-  // Phase 2: Game Clock, Active Cues, Spotify
+  // Phase 2: Game Clock, Active Cues, Music
   // ==========================================================================
 
   /**
@@ -1715,13 +1715,6 @@ class GMScannerPage {
     return await stateEl.textContent();
   }
 
-  /**
-   * Check if Spotify Now Playing shows disconnected state
-   * @returns {Promise<boolean>}
-   */
-  async isSpotifyConnected() {
-    return await this.nowPlayingSection.locator('.now-playing--connected').isVisible();
-  }
 
   /**
    * Fire a cue via WebSocket (temporary admin connection, same pattern as startGame)
