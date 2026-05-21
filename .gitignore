@@ -19,8 +19,9 @@ backend/public/music/*.mp3
 # Runtime session data
 backend/data/
 
-# Root package lock (not needed)
-package-lock.json
+# Root-level package-lock.json (monorepo root has no real dependencies)
+# Anchored to root only — subdir lockfiles (config-tool/, etc.) ARE tracked
+/package-lock.json
 
 # Video processing temp files
 Video_Reencode_*
