@@ -469,6 +469,67 @@ describe('MusicService — idle events', () => {
     }
   });
 
+  it('playlist file: skips structurally invalid entries (no id / no tracks array)', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-music-test-'));
+    const plFile = path.join(tmpDir, 'music-playlists.json');
+    // Mixture: valid, missing id, missing tracks array, null, non-object — only the valid one survives
+    fs.writeFileSync(plFile, JSON.stringify({
+      playlists: [
+        { id: 'good', name: 'Good', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['a.mp3'] },
+        { name: 'NoId', tracks: [] },              // line 124 branch: missing id
+        { id: 'NoTracks' },                        // line 124 branch: missing tracks
+        null,                                      // line 124 branch: falsy entry
+      ],
+    }));
+    const s = new MusicService({ playlistFile: plFile });
+    await s.init();
+    try {
+      const loaded = s.getPlaylists();
+      expect(loaded).toHaveLength(1);
+      expect(loaded[0].id).toBe('good');
+    } finally {
+      await s.cleanup();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('playlist file: tolerates a parsed object with no `playlists` key (uses || [] fallback)', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-music-test-'));
+    const plFile = path.join(tmpDir, 'music-playlists.json');
+    fs.writeFileSync(plFile, JSON.stringify({ otherKey: 'x' })); // no playlists array
+    const s = new MusicService({ playlistFile: plFile });
+    await s.init();
+    try {
+      expect(s.getPlaylists()).toEqual([]);
+    } finally {
+      await s.cleanup();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it('cleanup() is safe to call without init() (no _mpd to disconnect)', async () => {
+    const s = new MusicService(); // never initted, _mpd is null
+    await expect(s.cleanup()).resolves.toBeUndefined();
+    expect(s.connected).toBe(false);
+  });
+
+  it('loadPlaylist rejects a playlist whose tracks is not an array (defensive guard)', async () => {
+    service._playlists.set('bad-tracks', { id: 'bad-tracks', name: 'Bad', shuffle: false, loop: false, crossfadeMs: 0, tracks: 'not-an-array' });
+    await expect(service.loadPlaylist('bad-tracks')).rejects.toThrow(/no tracks array/i);
+  });
+
+  it('loadPlaylist rejects a playlist with a non-string track entry (defensive guard)', async () => {
+    service._playlists.set('bad-track', { id: 'bad-track', name: 'Bad', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['ok.mp3', 42, 'also-ok.mp3'] });
+    await expect(service.loadPlaylist('bad-track')).rejects.toThrow(/non-string tracks/i);
+  });
+
+  it('_quoteMpdArg rejects MPD-control characters (newline / CR / NUL)', () => {
+    expect(() => service._quoteMpdArg('safe.mp3')).not.toThrow();
+    expect(() => service._quoteMpdArg('bad\nfile.mp3')).toThrow(/invalid character/i);
+    expect(() => service._quoteMpdArg('bad\rfile.mp3')).toThrow(/invalid character/i);
+    expect(() => service._quoteMpdArg('bad\x00file.mp3')).toThrow(/invalid character/i);
+  });
+
   it('clears track when no file is playing', async () => {
     service.track = { file: 'old.mp3', title: 'Old', artist: '', album: '', position: 0, duration: 0 };
     service._mpd.sendCommand = jest.fn(async (cmd) => {
