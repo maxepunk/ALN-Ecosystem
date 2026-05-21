@@ -52,8 +52,8 @@ VIDEOS_DIR = ECOSYSTEM_ROOT / "backend/public/videos"
 TOKENS_JSON = ECOSYSTEM_ROOT / "ALN-TokenData/tokens.json"
 # NOTE: BMPs/WAVs are no longer copied into the ESP32 SD-card tree. The CYD
 # scanner now syncs them wirelessly from the backend at boot; the canonical
-# asset set lives only at ASSETS_ROOT. See
-# `/root/.claude/plans/let-s-think-about-this-flickering-bubble.md`.
+# asset set lives only at ASSETS_ROOT. See CLAUDE.md "ESP32 Asset Sync
+# Issues" section for operational details.
 
 # Notion API headers
 headers = {

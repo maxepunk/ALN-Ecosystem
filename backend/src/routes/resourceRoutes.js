@@ -3,8 +3,7 @@
  * Provides token database, scoreboard HTML, and wireless asset sync endpoints.
  *
  * Asset sync (images + audio) is consumed by the ESP32 CYD scanner at boot.
- * See docs: root CLAUDE.md "deviceType Duplicate Detection" / plan
- * `/root/.claude/plans/let-s-think-about-this-flickering-bubble.md`.
+ * See root CLAUDE.md "ESP32 Asset Sync Issues" debug section.
  */
 
 const express = require('express');
