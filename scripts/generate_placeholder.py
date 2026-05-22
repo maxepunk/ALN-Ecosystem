@@ -12,7 +12,13 @@ from pathlib import Path
 # Add parent directory to path to import from sync_notion_to_tokens
 sys.path.insert(0, str(Path(__file__).parent))
 
-from sync_notion_to_tokens import generate_neurai_display, ASSETS_IMAGES, ESP32_SD_IMAGES
+from sync_notion_to_tokens import generate_neurai_display, ASSETS_IMAGES, ECOSYSTEM_ROOT
+
+# placeholder.bmp is part of the minimal ESP32 bootstrap set (flashed to
+# the SD card alongside config.txt) so the device has something to show if
+# WiFi / backend are unreachable on first boot. Game-token BMPs are no
+# longer written here — those sync wirelessly at boot.
+ESP32_BOOTSTRAP_IMAGES = ECOSYSTEM_ROOT / "arduino-cyd-player-scanner/sd-card-deploy/assets/images"
 
 def main():
     print("=" * 60)
@@ -129,9 +135,11 @@ def main():
 
         # Scanline effect removed - was too prominent
 
-        # Save to both PWA and ESP32 locations
+        # Save to both PWA and ESP32-bootstrap locations. Placeholder is one
+        # of the few files that ships on the SD card itself (rather than
+        # syncing wirelessly) so it's always available as a fallback.
         pwa_path = ASSETS_IMAGES / "placeholder.bmp"
-        esp32_path = ESP32_SD_IMAGES / "placeholder.bmp"
+        esp32_path = ESP32_BOOTSTRAP_IMAGES / "placeholder.bmp"
 
         # Ensure directories exist
         pwa_path.parent.mkdir(parents=True, exist_ok=True)
