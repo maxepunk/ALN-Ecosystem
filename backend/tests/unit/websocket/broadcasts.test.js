@@ -325,10 +325,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       // Mock transactionService.getTeamScores (needed by buildSyncFullPayload)
       mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
 
-      // Mock videoQueueService properties (needed by buildSyncFullPayload)
-      mockVideoQueueService.currentStatus = 'idle';
-      mockVideoQueueService.queue = [];
-      mockVideoQueueService.currentVideo = null;
+      // videoQueueService mocking is handled by createMockVideoQueueService()
+      // factory — provides a proper getState() returning the canonical shape.
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
@@ -392,9 +390,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
       };
       mockSessionService.getCurrentSession = jest.fn().mockReturnValue(mockSession);
       mockTransactionService.getTeamScores = jest.fn().mockReturnValue([]);
-      mockVideoQueueService.currentStatus = 'idle';
-      mockVideoQueueService.queue = [];
-      mockVideoQueueService.currentVideo = null;
+      // videoQueueService mocking via shared factory (createMockVideoQueueService)
+      // — provides a proper getState() returning the canonical shape.
 
       setupBroadcastListeners(mockIo, {
         sessionService: mockSessionService,
