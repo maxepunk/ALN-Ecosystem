@@ -88,6 +88,8 @@ jest.mock('../../../src/services/audioRoutingService', () => ({
   setStreamVolume: jest.fn(),
   sinkExists: jest.fn(),
   checkHealth: jest.fn(),
+  getStreamRoute: jest.fn(),
+  getAvailableSinks: jest.fn(),
 }));
 
 jest.mock('../../../src/services/lightingService', () => ({
@@ -1136,8 +1138,6 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'audio');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'PipeWire unavailable' });
 
-      audioRoutingService.getStreamRoute = jest.fn();
-      audioRoutingService.getAvailableSinks = jest.fn();
       soundService.play.mockReturnValue({ pid: 1234, file: 'test.wav' });
 
       const result = await executeCommand({
@@ -1151,6 +1151,29 @@ describe('commandExecutor', () => {
       expect(audioRoutingService.getStreamRoute).not.toHaveBeenCalled();
       expect(audioRoutingService.getAvailableSinks).not.toHaveBeenCalled();
       expect(soundService.play).toHaveBeenCalledWith(expect.objectContaining({ file: 'test.wav' }));
+    });
+
+    it('sound:play resolves routing when audio service is healthy and no target provided', async () => {
+      // Default beforeEach leaves all services healthy
+      audioRoutingService.getStreamRoute.mockReturnValue('bluetooth');
+      audioRoutingService.getAvailableSinks.mockResolvedValue([
+        { name: 'bluez_sink.AA_BB.a2dp_sink', type: 'bluetooth' },
+      ]);
+      soundService.play.mockReturnValue({ pid: 1234, file: 'test.wav' });
+
+      const result = await executeCommand({
+        action: 'sound:play',
+        payload: { file: 'test.wav' },
+        source: 'gm',
+        deviceId: 'test-device',
+      });
+
+      expect(result.success).toBe(true);
+      expect(audioRoutingService.getStreamRoute).toHaveBeenCalledWith('sound');
+      expect(audioRoutingService.getAvailableSinks).toHaveBeenCalled();
+      expect(soundService.play).toHaveBeenCalledWith(
+        expect.objectContaining({ file: 'test.wav', target: 'bluez_sink.AA_BB.a2dp_sink' })
+      );
     });
 
     it('should reject lighting:scene:activate when lighting is down', async () => {
