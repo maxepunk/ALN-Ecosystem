@@ -553,6 +553,7 @@ To install (one-time, CWD-independent — safe to run from anywhere, including
 a host without a repo checkout):
 
 ```bash
+sudo mkdir -p /etc/wireplumber/main.lua.d/
 sudo tee /etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua > /dev/null <<'EOF'
 -- ALN orchestrator: bypass WirePlumber's stream-restore for VLC streams.
 --

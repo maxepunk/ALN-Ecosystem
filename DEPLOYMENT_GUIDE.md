@@ -785,6 +785,7 @@ audio across reboots (2026-05-22 incident). See `backend/CLAUDE.md` →
 "WirePlumber Configuration Dependency" for the full rationale.
 
 ```bash
+sudo mkdir -p /etc/wireplumber/main.lua.d/
 sudo tee /etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua > /dev/null <<'EOF'
 -- ALN orchestrator: bypass WirePlumber's stream-restore for VLC streams.
 -- See backend/CLAUDE.md → "WirePlumber Configuration Dependency" for context.
