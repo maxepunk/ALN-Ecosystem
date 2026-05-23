@@ -66,55 +66,56 @@ describe('Audio Routing Phase 3 Integration', () => {
         { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
       ]);
 
-      // Mock setStreamVolume to avoid pactl calls
-      jest.spyOn(audioRoutingService, 'setStreamVolume').mockResolvedValue();
+      // Mock _setStreamVolumeLive to avoid pactl calls (ducking routes through
+      // the live-volume helper to avoid polluting _routingData.volumes)
+      jest.spyOn(audioRoutingService, '_setStreamVolumeLive').mockResolvedValue();
     });
 
     it('should duck music when video starts', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');
 
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 20);
+      expect(audioRoutingService._setStreamVolumeLive).toHaveBeenCalledWith('music', 20);
     });
 
     it('should restore music volume when video completes', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('video', 'completed');
 
       // Restore to pre-duck volume (100)
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 100);
+      expect(audioRoutingService._setStreamVolumeLive).toHaveBeenCalledWith('music', 100);
     });
 
     it('should keep lowest volume when multiple sources duck simultaneously', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');  // Duck to 20
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('sound', 'started');  // Also duck to 40
       // Video (20) is lower than sound (40), so music stays at 20
-      expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalledWith('music', 40);
+      expect(audioRoutingService._setStreamVolumeLive).not.toHaveBeenCalledWith('music', 40);
     });
 
     it('should NOT restore when one source completes but another is still ducking', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');  // Duck to 20
       await audioRoutingService.handleDuckingEvent('sound', 'started');  // Also active
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('sound', 'completed');  // Sound done
 
       // Video is still ducking — should NOT restore to 100
-      expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalledWith('music', 100);
+      expect(audioRoutingService._setStreamVolumeLive).not.toHaveBeenCalledWith('music', 100);
     });
 
     it('should restore when ALL ducking sources complete', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');
       await audioRoutingService.handleDuckingEvent('sound', 'started');
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('video', 'completed');
       await audioRoutingService.handleDuckingEvent('sound', 'completed');
 
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 100);
+      expect(audioRoutingService._setStreamVolumeLive).toHaveBeenCalledWith('music', 100);
     });
 
     it('should emit ducking:changed event', async () => {
@@ -137,25 +138,25 @@ describe('Audio Routing Phase 3 Integration', () => {
 
     it('should handle duck-on-pause and restore-on-resume', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');  // Duck
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('video', 'paused');
       // Pause should restore
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 100);
+      expect(audioRoutingService._setStreamVolumeLive).toHaveBeenCalledWith('music', 100);
 
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('video', 'resumed');
       // Resume should re-duck
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 20);
+      expect(audioRoutingService._setStreamVolumeLive).toHaveBeenCalledWith('music', 20);
     });
 
     it('should no-op when no ducking rules loaded', async () => {
       audioRoutingService.loadDuckingRules([]);
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('video', 'started');
-      expect(audioRoutingService.setStreamVolume).not.toHaveBeenCalled();
+      expect(audioRoutingService._setStreamVolumeLive).not.toHaveBeenCalled();
     });
   });
 
@@ -171,7 +172,7 @@ describe('Audio Routing Phase 3 Integration', () => {
         { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
         { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
       ]);
-      jest.spyOn(audioRoutingService, 'setStreamVolume').mockResolvedValue();
+      jest.spyOn(audioRoutingService, '_setStreamVolumeLive').mockResolvedValue();
     });
 
     it('captures live pre-duck music volume (not a hardcoded default)', async () => {
@@ -181,23 +182,23 @@ describe('Audio Routing Phase 3 Integration', () => {
         .mockImplementation(async (stream) => (stream === 'music' ? 55 : 100));
 
       await audioRoutingService.handleDuckingEvent('video', 'started');
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('video', 'completed');
 
-      const calls = audioRoutingService.setStreamVolume.mock.calls;
+      const calls = audioRoutingService._setStreamVolumeLive.mock.calls;
       expect(calls).toContainEqual(['music', 55]);
     });
 
     it('keeps lowest volume when video+sound both active for music', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');  // music → 20
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
       await audioRoutingService.handleDuckingEvent('sound', 'started');  // music would-be 40
 
       // Positive assertion: ANY music call must be to 20 (the lower of the
       // two ducks). A regression to 25, 30, or any other value would slip
       // past the original `not.toHaveBeenCalledWith(...,40)` check.
-      const musicCalls = audioRoutingService.setStreamVolume.mock.calls
+      const musicCalls = audioRoutingService._setStreamVolumeLive.mock.calls
         .filter(c => c[0] === 'music');
       // Engine may re-affirm the existing value (call with 20) or be a no-op
       // (call count 0). Both are acceptable. What's NOT acceptable is any
@@ -210,17 +211,17 @@ describe('Audio Routing Phase 3 Integration', () => {
     it('restores music only when ALL ducking sources complete', async () => {
       await audioRoutingService.handleDuckingEvent('video', 'started');
       await audioRoutingService.handleDuckingEvent('sound', 'started');
-      audioRoutingService.setStreamVolume.mockClear();
+      audioRoutingService._setStreamVolumeLive.mockClear();
 
       await audioRoutingService.handleDuckingEvent('sound', 'completed');
       // Video still active → music NOT restored
-      const musicRestoreCalls1 = audioRoutingService.setStreamVolume.mock.calls
+      const musicRestoreCalls1 = audioRoutingService._setStreamVolumeLive.mock.calls
         .filter(c => c[0] === 'music' && c[1] !== 20 && c[1] !== 40);
       expect(musicRestoreCalls1).toEqual([]);
 
       await audioRoutingService.handleDuckingEvent('video', 'completed');
       // Now ALL sources done → music restored (to pactl fallback 100)
-      expect(audioRoutingService.setStreamVolume).toHaveBeenCalledWith('music', 100);
+      expect(audioRoutingService._setStreamVolumeLive).toHaveBeenCalledWith('music', 100);
     });
   });
 

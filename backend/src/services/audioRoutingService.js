@@ -573,7 +573,7 @@ class AudioRoutingService extends EventEmitter {
    * Handle a ducking lifecycle event from a source stream.
    * Called when video/sound starts, completes, pauses, or resumes.
    * Returns a promise so callers can await completion when ordering matters
-   * (e.g., integration tests asserting on setStreamVolume calls).
+   * (e.g., integration tests asserting on _setStreamVolumeLive calls).
    * Fire-and-forget callers in broadcasts.js should attach .catch() for safety.
    *
    * @param {string} source - Source stream name (e.g., 'video', 'sound')
