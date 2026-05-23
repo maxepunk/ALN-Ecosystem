@@ -552,6 +552,57 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       expect(mockAudioRoutingService.applyRouting).toHaveBeenCalledWith('video');
     });
+
+    it('should invoke handleDuckingEvent on video:started', () => {
+      mockVideoQueueService.emit('video:started', {
+        queueItem: { tokenId: 'test-token', videoPath: 'test.mp4' },
+        duration: 30,
+        expectedEndTime: new Date().toISOString(),
+      });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('video', 'started');
+    });
+  });
+
+  describe('sound ducking via sound:started', () => {
+    let mockAudioRoutingService;
+    let mockSoundService;
+    let originalNodeEnv;
+
+    beforeEach(() => {
+      // Same NODE_ENV opt-out as the video-routing describe — see commit b48ad0f5.
+      // Verifies the soundService→audioRoutingService wire registers in production.
+      originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
+      mockAudioRoutingService = createMockAudioRoutingService();
+      mockSoundService = new EventEmitter();
+
+      setupBroadcastListeners(mockIo, {
+        sessionService: mockSessionService,
+        transactionService: mockTransactionService,
+        videoQueueService: mockVideoQueueService,
+        offlineQueueService: mockOfflineQueueService,
+        audioRoutingService: mockAudioRoutingService,
+        soundService: mockSoundService,
+      });
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it('should invoke handleDuckingEvent on sound:started', () => {
+      mockSoundService.emit('sound:started', { file: 'test.wav' });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'started');
+    });
+
+    it('should invoke handleDuckingEvent on sound:completed', () => {
+      mockSoundService.emit('sound:completed', { file: 'test.wav' });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
+    });
   });
 
   describe('Display mode:changed listener', () => {
