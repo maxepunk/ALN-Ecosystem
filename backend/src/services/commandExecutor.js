@@ -466,8 +466,9 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       // --- Sound commands ---
 
       case 'sound:play': {
-        // Resolve routing target if not explicitly provided
-        if (!payload.target) {
+        // Resolve routing target only when audio is healthy. If audio is down
+        // we can't query sinks anyway; soundService falls back to the default.
+        if (!payload.target && registry.isHealthy('audio')) {
           const route = audioRoutingService.getStreamRoute('sound');
           if (route && route !== 'hdmi') {
             const sinks = await audioRoutingService.getAvailableSinks();

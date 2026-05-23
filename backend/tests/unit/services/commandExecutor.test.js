@@ -1129,6 +1129,30 @@ describe('commandExecutor', () => {
       expect(soundService.play).not.toHaveBeenCalled();
     });
 
+    it('sound:play skips routing resolution when audio service is down', async () => {
+      // sound healthy, audio down — sound:play should still run but must NOT
+      // touch audioRoutingService.getStreamRoute / getAvailableSinks (those
+      // would call pactl and may hang on sick PipeWire).
+      registry.isHealthy.mockImplementation((id) => id !== 'audio');
+      registry.getStatus.mockReturnValue({ status: 'down', message: 'PipeWire unavailable' });
+
+      audioRoutingService.getStreamRoute = jest.fn();
+      audioRoutingService.getAvailableSinks = jest.fn();
+      soundService.play.mockReturnValue({ pid: 1234, file: 'test.wav' });
+
+      const result = await executeCommand({
+        action: 'sound:play',
+        payload: { file: 'test.wav' },
+        source: 'gm',
+        deviceId: 'test-device',
+      });
+
+      expect(result.success).toBe(true);
+      expect(audioRoutingService.getStreamRoute).not.toHaveBeenCalled();
+      expect(audioRoutingService.getAvailableSinks).not.toHaveBeenCalled();
+      expect(soundService.play).toHaveBeenCalledWith(expect.objectContaining({ file: 'test.wav' }));
+    });
+
     it('should reject lighting:scene:activate when lighting is down', async () => {
       registry.isHealthy.mockImplementation((id) => id !== 'lighting');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'HA container not running' });
