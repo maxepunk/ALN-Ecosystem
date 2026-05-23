@@ -2278,4 +2278,155 @@ describe('AudioRoutingService', () => {
       );
     });
   });
+
+  // ── Reactive volume application on _identifySinkInput ──
+  //
+  // When a new sink-input appears (e.g., VLC starts a video, MPD plays a track),
+  // _identifySinkInput() registers it AND re-applies the user's persisted volume.
+  // This makes the orchestrator the source of truth for per-stream volume across
+  // VLC/MPD restarts — instead of relying on WirePlumber's restore-stream.
+  describe('reactive volume application on _identifySinkInput()', () => {
+    const flushPromises = () => new Promise(r => setTimeout(r, 0));
+
+    it('applies persisted video volume when a VLC sink-input appears', async () => {
+      // Seed a persisted video volume
+      audioRoutingService._routingData.volumes = { video: 65 };
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #42',
+            '\tProperties:',
+            '\t\tapplication.name = "VLC media player (Pulse audio output)"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      await audioRoutingService._identifySinkInput('42');
+
+      // Registry populated
+      expect(audioRoutingService._sinkInputRegistry.has('42')).toBe(true);
+
+      // pactl set-sink-input-volume was called with the persisted value
+      const setVolCalls = execFile.mock.calls.filter(
+        c => c[1][0] === 'set-sink-input-volume'
+      );
+      expect(setVolCalls.length).toBe(1);
+      expect(setVolCalls[0][1]).toEqual(['set-sink-input-volume', '42', '65%']);
+    });
+
+    it('applies persisted music volume when an MPD (aln-music) sink-input appears', async () => {
+      audioRoutingService._routingData.volumes = { music: 80 };
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          // MPD sets application.name = "Music Player Daemon" but our config
+          // puts "aln-music" in media.name — the helper must match on media.name
+          cb(null, [
+            'Sink Input #55',
+            '\tProperties:',
+            '\t\tapplication.name = "Music Player Daemon"',
+            '\t\tmedia.name = "aln-music"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      await audioRoutingService._identifySinkInput('55');
+
+      // The registry registers what was found by app/binary first — but volume
+      // application must still resolve to the 'music' stream via media.name.
+      const setVolCalls = execFile.mock.calls.filter(
+        c => c[1][0] === 'set-sink-input-volume'
+      );
+      expect(setVolCalls.length).toBe(1);
+      expect(setVolCalls[0][1]).toEqual(['set-sink-input-volume', '55', '80%']);
+    });
+
+    it('does NOT apply volume when stream has no persisted entry', async () => {
+      // Empty volumes — nothing should be applied
+      audioRoutingService._routingData.volumes = {};
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #42',
+            '\tProperties:',
+            '\t\tapplication.name = "VLC media player"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      await audioRoutingService._identifySinkInput('42');
+
+      // Registry still populated
+      expect(audioRoutingService._sinkInputRegistry.has('42')).toBe(true);
+      // But NO volume application
+      const setVolCalls = execFile.mock.calls.filter(
+        c => c[1][0] === 'set-sink-input-volume'
+      );
+      expect(setVolCalls.length).toBe(0);
+    });
+
+    it('still registers the sink-input even if volume application fails', async () => {
+      audioRoutingService._routingData.volumes = { video: 65 };
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #42',
+            '\tProperties:',
+            '\t\tapplication.name = "VLC media player"',
+          ].join('\n'), '');
+          return;
+        }
+        if (args[0] === 'set-sink-input-volume') {
+          cb(new Error('pactl: connection refused'), '', '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      // Should not throw despite the failed volume application
+      await expect(audioRoutingService._identifySinkInput('42')).resolves.toBeUndefined();
+
+      // Registry still populated
+      expect(audioRoutingService._sinkInputRegistry.has('42')).toBe(true);
+      expect(audioRoutingService._sinkInputRegistry.get('42')).toEqual({
+        index: '42',
+        appName: 'VLC media player',
+      });
+    });
+
+    it('does NOT apply volume when sink-input is not a known stream (e.g., Firefox)', async () => {
+      audioRoutingService._routingData.volumes = { video: 65, music: 80 };
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (args[0] === 'list' && args[1] === 'sink-inputs') {
+          cb(null, [
+            'Sink Input #99',
+            '\tProperties:',
+            '\t\tapplication.name = "Firefox"',
+          ].join('\n'), '');
+          return;
+        }
+        cb(null, '', '');
+      });
+
+      await audioRoutingService._identifySinkInput('99');
+
+      // Registry populated for Firefox
+      expect(audioRoutingService._sinkInputRegistry.has('99')).toBe(true);
+      // No volume application — Firefox isn't a known stream
+      const setVolCalls = execFile.mock.calls.filter(
+        c => c[1][0] === 'set-sink-input-volume'
+      );
+      expect(setVolCalls.length).toBe(0);
+    });
+  });
 });

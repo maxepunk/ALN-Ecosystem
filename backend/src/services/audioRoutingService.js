@@ -937,30 +937,89 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
+   * Resolve a stream name from any identity string seen on a sink-input
+   * (application.name, application.process.binary, or media.name).
+   * Substring match against STREAM_APP_NAMES values.
+   * @param {string} identity - Identity string from pactl output
+   * @returns {string|null} Stream name (video/music/sound) or null
+   * @private
+   */
+  _streamForAppName(identity) {
+    if (!identity) return null;
+    const lower = identity.toLowerCase();
+    for (const [stream, appName] of Object.entries(STREAM_APP_NAMES)) {
+      if (lower.includes(appName.toLowerCase())) {
+        return stream;
+      }
+    }
+    return null;
+  }
+
+  /**
    * Identify a sink-input by its PulseAudio/PipeWire id and store it in the registry.
    * Runs `pactl list sink-inputs` once, parses the section for the given id, and
-   * extracts application.name or application.process.binary.
+   * extracts application.name, application.process.binary, or media.name.
    * Called on 'new' sink-input events from pactl subscribe.
+   *
+   * Reactive volume application: after registration, looks up the persisted
+   * volume for the resolved stream (if any) and applies it via pactl. This is
+   * how the orchestrator owns per-stream volume across VLC/MPD restarts — the
+   * persisted value in _routingData.volumes is the source of truth, not
+   * WirePlumber's restore-stream.
+   *
    * @param {string} id - Sink-input id from pactl subscribe event
    * @returns {Promise<void>}
    * @private
    */
   async _identifySinkInput(id) {
+    let appName = null;
+    let stream = null;
     try {
       const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
       const sections = stdout.split(/Sink Input #/);
       for (const section of sections) {
         const idMatch = section.match(/^(\d+)/);
         if (idMatch && idMatch[1] === id) {
-          const appMatch = section.match(/application\.name\s*=\s*"([^"]+)"/i) ||
-                           section.match(/application\.process\.binary\s*=\s*"([^"]+)"/i);
+          const nameMatch = section.match(/application\.name\s*=\s*"([^"]+)"/i);
+          const binaryMatch = section.match(/application\.process\.binary\s*=\s*"([^"]+)"/i);
+          const mediaMatch = section.match(/media\.name\s*=\s*"([^"]+)"/i);
+
+          // First identity with content wins for registry storage.
+          const appMatch = nameMatch || binaryMatch || mediaMatch;
           if (appMatch) {
-            this._sinkInputRegistry.set(id, { index: id, appName: appMatch[1] });
+            appName = appMatch[1];
+            this._sinkInputRegistry.set(id, { index: id, appName });
           }
+
+          // Stream resolution must check ALL three identity sources — MPD sets
+          // application.name = "Music Player Daemon" but our `name "aln-music"`
+          // in MPD config lands in media.name and is the only unique signal.
+          stream = this._streamForAppName(nameMatch && nameMatch[1])
+                || this._streamForAppName(binaryMatch && binaryMatch[1])
+                || this._streamForAppName(mediaMatch && mediaMatch[1]);
           break;
         }
       }
     } catch { /* non-fatal — registry just won't have this entry */ }
+
+    // Reactive volume application: re-apply user's persisted volume if any.
+    // Wrapped in its own try/catch so a failed pactl set doesn't undo the
+    // registry registration we already did above.
+    if (stream) {
+      const persistedVolume = this._routingData.volumes[stream];
+      if (typeof persistedVolume === 'number') {
+        try {
+          await this._execFile('pactl', ['set-sink-input-volume', id, `${persistedVolume}%`]);
+          logger.info('Applied persisted volume to new sink-input', {
+            stream, id, volume: persistedVolume, appName,
+          });
+        } catch (err) {
+          logger.warn('Failed to apply persisted volume to new sink-input', {
+            stream, id, volume: persistedVolume, error: err.message,
+          });
+        }
+      }
+    }
   }
 
   // ── Private helpers ──
