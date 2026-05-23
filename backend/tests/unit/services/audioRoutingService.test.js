@@ -1416,6 +1416,50 @@ describe('AudioRoutingService', () => {
         expect.any(Object), expect.any(Function)
       );
     });
+
+    it('persists the volume into _routingData.volumes', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('video', 75);
+
+      expect(audioRoutingService._routingData.volumes.video).toBe(75);
+    });
+
+    it('persists the clamped value, not the raw input', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('video', 150);
+
+      expect(audioRoutingService._routingData.volumes.video).toBe(100);
+    });
+
+    it('calls persistenceService.save with updated config', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('music', 60);
+
+      expect(persistenceService.save).toHaveBeenCalledWith(
+        'config:audioRouting',
+        expect.objectContaining({
+          volumes: expect.objectContaining({ music: 60 }),
+        })
+      );
+    });
+
+    it('does NOT persist when no sink-input is found (volume set failed)', async () => {
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue(null);
+
+      await expect(audioRoutingService.setStreamVolume('video', 50))
+        .rejects.toThrow(/No active sink-input/);
+
+      // _routingData.volumes should NOT have video — we don't want to persist
+      // volumes for streams that never got the pactl call through
+      expect(audioRoutingService._routingData.volumes.video).toBeUndefined();
+      expect(persistenceService.save).not.toHaveBeenCalled();
+    });
   });
 
   // ── getStreamVolume() ──

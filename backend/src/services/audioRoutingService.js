@@ -454,8 +454,15 @@ class AudioRoutingService extends EventEmitter {
       throw new Error(`No active sink-input found for stream '${stream}'`);
     }
 
-    // Set the volume
+    // Set the live volume
     await this._execFile('pactl', ['set-sink-input-volume', sinkInput.index, `${clampedVolume}%`]);
+
+    // Persist for next time this stream's app spawns a sink-input. The orchestrator
+    // owns video stream state — see Task 3 (_identifySinkInput) for the reactive
+    // application path. WirePlumber's restore-stream is bypassed for VLC via a
+    // separate config rule (Task 4).
+    this._routingData.volumes[stream] = clampedVolume;
+    await persistenceService.save(PERSISTENCE_KEY, this._routingData);
 
     logger.info('Stream volume set', { stream, volume: clampedVolume, sinkInputIdx: sinkInput.index });
   }
