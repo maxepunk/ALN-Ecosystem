@@ -14,6 +14,8 @@
 
 const audioRoutingService = require('../../src/services/audioRoutingService');
 const cueEngineService = require('../../src/services/cueEngineService');
+const videoQueueService = require('../../src/services/videoQueueService');
+const { setupBroadcastListeners, cleanupBroadcastListeners } = require('../../src/websocket/broadcasts');
 
 // Mock commandExecutor at module level so cueEngineService's require picks it up
 const mockExecuteCommand = jest.fn().mockResolvedValue({ success: true, broadcasts: [] });
@@ -347,5 +349,63 @@ describe('Audio Routing Phase 3 Integration', () => {
       const call = mockExecuteCommand.mock.calls[0][0];
       expect(call.payload.target).toBeUndefined();
     });
+  });
+});
+
+// ══════════════════════════════════════════════════════════════
+// Test-environment broadcast wiring
+// Verifies the inter-service audio-routing wires in broadcasts.js
+// are inert when NODE_ENV=test. Production paths exercise these
+// via the integration test server; tests that need ducking call
+// audioRoutingService.handleDuckingEvent directly.
+// ══════════════════════════════════════════════════════════════
+
+describe('test-environment broadcast wiring', () => {
+  beforeEach(() => {
+    // Wire broadcasts.js inter-service listeners against the real services
+    // so the test exercises the actual production code path.
+    setupBroadcastListeners({}, {
+      sessionService: require('../../src/services/sessionService'),
+      videoQueueService,
+      offlineQueueService: require('../../src/services/offlineQueueService'),
+      transactionService: require('../../src/services/transactionService'),
+      bluetoothService: require('../../src/services/bluetoothService'),
+      audioRoutingService,
+      lightingService: require('../../src/services/lightingService'),
+      gameClockService: require('../../src/services/gameClockService'),
+      cueEngineService,
+      soundService: require('../../src/services/soundService'),
+      musicService: require('../../src/services/musicService'),
+      vlcService: require('../../src/services/vlcMprisService'),
+    });
+  });
+
+  afterEach(() => {
+    cleanupBroadcastListeners();
+    jest.restoreAllMocks();
+  });
+
+  test('video:started does NOT auto-invoke audioRoutingService when NODE_ENV=test', async () => {
+    // Pre-arm rules so handleDuckingEvent would normally fire
+    audioRoutingService.loadDuckingRules([
+      { when: 'video', duck: 'music', to: 20, fadeMs: 0 },
+    ]);
+
+    const handleSpy = jest.spyOn(audioRoutingService, 'handleDuckingEvent');
+    const applySpy = jest.spyOn(audioRoutingService, 'applyRouting').mockResolvedValue();
+
+    // Simulate the production event that broadcasts.js listens for
+    videoQueueService.emit('video:started', { videoFile: 'fake.mp4' });
+
+    // Allow event loop drain
+    await new Promise(r => setImmediate(r));
+
+    // In production this would have fired both; in test env neither should
+    expect(handleSpy).not.toHaveBeenCalled();
+    expect(applySpy).not.toHaveBeenCalled();
+
+    handleSpy.mockRestore();
+    applySpy.mockRestore();
+    audioRoutingService.loadDuckingRules([]);  // cleanup
   });
 });

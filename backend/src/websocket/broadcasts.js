@@ -366,9 +366,11 @@ function setupBroadcastListeners(io, services) {
   // INTER-SERVICE COORDINATION (not broadcasts — service-to-service)
   // ============================================================
 
-  // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService
-  // handleDuckingEvent is async (awaits pre-duck volume capture) — attach .catch() for safety
-  if (audioRoutingService && videoQueueService) {
+  // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService.
+  // Skipped in tests (NODE_ENV=test) — these wires touch real pactl via handleDuckingEvent
+  // and applyRouting. Tests that exercise ducking call audioRoutingService methods directly.
+  // handleDuckingEvent is async (awaits pre-duck volume capture) — attach .catch() for safety.
+  if (audioRoutingService && videoQueueService && process.env.NODE_ENV !== 'test') {
     addTrackedListener(videoQueueService, 'video:started', () => {
       audioRoutingService.handleDuckingEvent('video', 'started').catch(err => {
         logger.warn('Ducking start failed on video:started', { error: err.message });
@@ -395,7 +397,7 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
-  if (audioRoutingService && soundService) {
+  if (audioRoutingService && soundService && process.env.NODE_ENV !== 'test') {
     addTrackedListener(soundService, 'sound:started', () => {
       audioRoutingService.handleDuckingEvent('sound', 'started').catch(err => {
         logger.warn('Ducking start failed on sound:started', { error: err.message });
