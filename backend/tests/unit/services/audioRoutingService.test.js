@@ -2224,6 +2224,22 @@ describe('AudioRoutingService', () => {
       const state = audioRoutingService.getState();
       expect(state.availableSinks).toEqual([]);
     });
+
+    test('getState returns a defensive copy of the persisted volumes', () => {
+      audioRoutingService._routingData.volumes = { video: 75, music: 40 };
+
+      const state = audioRoutingService.getState();
+
+      expect(state.volumes).toEqual({ video: 75, music: 40 });
+
+      state.volumes.video = 0;
+      expect(audioRoutingService._routingData.volumes.video).toBe(75);
+    });
+
+    test('getState returns empty volumes object when none persisted', () => {
+      audioRoutingService._routingData.volumes = {};
+      expect(audioRoutingService.getState().volumes).toEqual({});
+    });
   });
 
   // ── Persistence decoupling: ducking vs public setStreamVolume ──

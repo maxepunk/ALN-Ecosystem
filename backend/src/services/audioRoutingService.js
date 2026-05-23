@@ -291,6 +291,7 @@ class AudioRoutingService extends EventEmitter {
       defaultSink: this._routingData.defaultSink,
       ducking: { ...this._activeDuckingSources },
       availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || []),
+      volumes: { ...this._routingData.volumes },
     };
   }
 

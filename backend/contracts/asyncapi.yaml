@@ -2069,7 +2069,7 @@ components:
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
                   - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
-                  - **audio**: `{routes, defaultSink, ducking}`
+                  - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
                   - **lighting**: `{connected, activeScene, scenes[]}`
                   - **sound**: `{playing[]}`
                   - **gameclock**: `{status, elapsed, startTime, totalPausedMs}`

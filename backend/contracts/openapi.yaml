@@ -1748,7 +1748,7 @@ components:
               description: Bluetooth speaker state (paired devices, scan status)
             audio:
               type: object
-              description: Audio routing state (per-stream routes, available sinks, ducking)
+              description: Audio routing state (per-stream routes, available sinks, ducking, persisted volumes)
             lighting:
               type: object
               description: Lighting state (Home Assistant connection, available scenes)
