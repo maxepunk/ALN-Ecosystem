@@ -88,6 +88,10 @@ class AudioRoutingService extends EventEmitter {
     // own monitor starts since init() is called at startup.
     await this._killStaleMonitors();
 
+    // Verify WirePlumber config drop-in that disables restore-stream for VLC.
+    // Non-fatal — warns loudly if missing (incident 2026-05-22 defense).
+    await this._verifyWirePlumberRule();
+
     // Activate HDMI card profiles (handles boot-without-projector scenario)
     await this._activateHdmiCards();
 
@@ -562,6 +566,28 @@ class AudioRoutingService extends EventEmitter {
       }
     } catch {
       // pgrep exits 1 when no matches — expected when clean
+    }
+  }
+
+  /**
+   * Verify the WirePlumber config drop-in that disables restore-stream for VLC.
+   * Without this rule, WP persists VLC's mute/volume state and can silently
+   * restore a stale muted state across orchestrator restarts (incident 2026-05-22).
+   * Non-fatal — orchestrator continues with degraded protection if missing.
+   * @private
+   */
+  async _verifyWirePlumberRule() {
+    const rulePath = '/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua';
+    try {
+      await require('fs').promises.access(rulePath);
+    } catch {
+      logger.warn(
+        'WirePlumber rule missing — VLC mute/volume state may persist across sessions. ' +
+        'Without this rule, a stale muted state can silently break video audio after restart. ' +
+        'Install procedure: see backend/CLAUDE.md "WirePlumber Configuration Dependency" or ' +
+        'DEPLOYMENT_GUIDE.md Step 5.',
+        { rulePath }
+      );
     }
   }
 

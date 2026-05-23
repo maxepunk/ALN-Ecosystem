@@ -2504,4 +2504,52 @@ Sink Input #42
       expect(setVolCalls.length).toBe(0);
     });
   });
+
+  describe('_verifyWirePlumberRule', () => {
+    let warnSpy;
+    beforeEach(() => {
+      warnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      warnSpy.mockRestore();
+    });
+
+    test('logs a warning when the rule file is absent', async () => {
+      const accessSpy = jest.spyOn(require('fs').promises, 'access')
+        .mockRejectedValue(new Error('ENOENT'));
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('WirePlumber rule missing'),
+        expect.any(Object)
+      );
+      accessSpy.mockRestore();
+    });
+
+    test('does not warn when the rule file is present', async () => {
+      const accessSpy = jest.spyOn(require('fs').promises, 'access')
+        .mockResolvedValue(undefined);
+
+      await audioRoutingService._verifyWirePlumberRule();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      accessSpy.mockRestore();
+    });
+
+    test('is invoked from init()', async () => {
+      const verifySpy = jest.spyOn(audioRoutingService, '_verifyWirePlumberRule')
+        .mockResolvedValue(undefined);
+      // Mock the other init side effects that touch the host
+      jest.spyOn(audioRoutingService, '_killStaleMonitors').mockResolvedValue();
+      jest.spyOn(audioRoutingService, '_activateHdmiCards').mockResolvedValue();
+      jest.spyOn(audioRoutingService, 'startSinkMonitor').mockImplementation(() => {});
+      jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([]);
+      jest.spyOn(persistenceService, 'load').mockResolvedValue(null);
+
+      await audioRoutingService.init();
+
+      expect(verifySpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
