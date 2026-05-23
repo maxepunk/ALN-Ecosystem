@@ -86,6 +86,15 @@ describe('Cue Engine Integration', () => {
       cueEngineService
     });
 
+    // Isolate from host PipeWire state: performSystemReset re-loads ducking
+    // rules from routing.json, so sound:started / video:started events emitted
+    // by the cue engine would otherwise reach audioRoutingService.handleDuckingEvent
+    // and run real pactl reads/writes against the host. Stub the entry point so
+    // nothing in this file touches live volumes. Matches the isolation pattern
+    // used in audio-routing-phase3.test.js (commit f1cb7cb3).
+    const audioRoutingService = require('../../src/services/audioRoutingService');
+    jest.spyOn(audioRoutingService, 'handleDuckingEvent').mockResolvedValue();
+
     // Re-initialize tokens after reset
     const testTokens = TestTokens.getAllAsArray();
     await transactionService.init(testTokens);
