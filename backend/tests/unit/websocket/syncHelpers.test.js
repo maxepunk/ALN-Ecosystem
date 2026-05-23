@@ -23,9 +23,13 @@ describe('buildSyncFullPayload recentTransactions enrichment', () => {
         getToken: () => token,
       },
       videoQueueService: {
-        currentStatus: 'idle',
-        queue: [],
-        currentVideo: null,
+        getState: () => ({
+          status: 'idle',
+          currentVideo: null,
+          queue: [],
+          queueLength: 0,
+          connected: false,
+        }),
       },
     };
   }
@@ -83,9 +87,13 @@ describe('buildSyncFullPayload sound field', () => {
         getToken: () => null,
       },
       videoQueueService: {
-        currentStatus: 'idle',
-        queue: [],
-        currentVideo: null,
+        getState: () => ({
+          status: 'idle',
+          currentVideo: null,
+          queue: [],
+          queueLength: 0,
+          connected: false,
+        }),
       },
       soundService: { getState: () => soundState },
     };
@@ -120,6 +128,58 @@ describe('buildSyncFullPayload sound field', () => {
   });
 });
 
+describe('buildSyncFullPayload videoStatus shape', () => {
+  function makeServicesWithVideo(videoState) {
+    const session = {
+      id: 'test-session',
+      transactions: [],
+      connectedDevices: [],
+      playerScans: [],
+      toJSON: () => ({ id: 'test-session', teams: [], status: 'active' }),
+    };
+    return {
+      sessionService: { getCurrentSession: () => session },
+      transactionService: {
+        getTeamScores: () => [],
+        getToken: () => null,
+      },
+      videoQueueService: {
+        getState: () => videoState,
+      },
+    };
+  }
+
+  it('mirrors videoQueueService.getState() shape — playing state', async () => {
+    const playingState = {
+      status: 'playing',
+      currentVideo: { tokenId: 'tok-x', filename: 'tok-x.mp4', position: 0.42, duration: 30 },
+      queue: [],
+      queueLength: 0,
+      connected: true,
+    };
+    const services = makeServicesWithVideo(playingState);
+    const payload = await buildSyncFullPayload(services);
+
+    expect(payload.videoStatus).toEqual(playingState);
+  });
+
+  it('mirrors videoQueueService.getState() shape — idle state', async () => {
+    const idleState = {
+      status: 'idle',
+      currentVideo: null,
+      queue: [],
+      queueLength: 0,
+      connected: false,
+    };
+    const services = makeServicesWithVideo(idleState);
+    const payload = await buildSyncFullPayload(services);
+
+    expect(payload.videoStatus).toEqual(idleState);
+    expect(payload.videoStatus.status).toBe('idle');
+    expect(payload.videoStatus.currentVideo).toBeNull();
+  });
+});
+
 describe('buildGameClockState expectedDuration', () => {
   it('should derive expectedDuration from SESSION_TIMEOUT config', async () => {
     // Save original
@@ -137,7 +197,7 @@ describe('buildGameClockState expectedDuration', () => {
     const payload = await freshBuild({
       sessionService: { getCurrentSession: () => session },
       transactionService: { getTeamScores: () => [], getToken: () => null },
-      videoQueueService: { currentStatus: 'idle', queue: [], currentVideo: null },
+      videoQueueService: { getState: () => ({ status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false }) },
       gameClockService: null,  // null triggers fallback path
     });
 

@@ -49,15 +49,13 @@ async function buildSyncFullPayload({
 }) {
   const session = sessionService.getCurrentSession();
 
-  const videoStatus = {
-    status: videoQueueService.currentStatus || 'idle',
-    queueLength: (videoQueueService.queue || []).length,
-    tokenId: videoQueueService.currentVideo?.tokenId || null,
-    duration: videoQueueService.currentVideo?.duration || null,
-    progress: videoQueueService.currentVideo?.progress || null,
-    expectedEndTime: videoQueueService.currentVideo?.expectedEndTime || null,
-    error: videoQueueService.currentVideo?.error || null,
-  };
+  // Video state — single source of truth is videoQueueService.getState().
+  // Same shape as service:state video-domain pushes; both write to the GM
+  // Scanner's 'video' store domain so shapes MUST match (StateStore.update
+  // is a shallow merge — shape drift would leave orphan fields forever).
+  // Previously read videoQueueService.currentStatus / .currentVideo which
+  // were removed in commit 756ee7fa (2026-02-28 getState() migration).
+  const videoStatus = videoQueueService.getState();
 
   const scores = transactionService.getTeamScores();
 

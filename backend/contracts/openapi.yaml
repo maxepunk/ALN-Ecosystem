@@ -1034,11 +1034,13 @@ paths:
                 videoStatus:
                   status: "playing"
                   queueLength: 2
-                  tokenId: "534e2b03"
-                  duration: 30
-                  progress: 45
-                  expectedEndTime: "2025-10-15T20:16:00.000Z"
-                  error: null
+                  currentVideo:
+                    tokenId: "534e2b03"
+                    filename: "534e2b03.mp4"
+                    position: 0.42
+                    duration: 30
+                  queue: []
+                  connected: true
                 devices:
                   - deviceId: "GM_Station_1"
                     type: "gm"
@@ -1615,49 +1617,51 @@ components:
                 example: "jaw_group"
         videoStatus:
           type: object
+          description: |
+            Current video playback state. Mirrors videoQueueService.getState()
+            shape — same as the `service:state` event for domain `video`.
           required:
             - status
             - queueLength
-          description: Current video playback status (per Decision 5)
+            - currentVideo
+            - queue
+            - connected
           properties:
             status:
               type: string
               enum: [idle, loading, playing, paused, completed, error]
-              description: Video playback status
-              example: "playing"
+              description: Current playback state
+            currentVideo:
+              oneOf:
+                - type: object
+                  properties:
+                    tokenId:
+                      type: string
+                    filename:
+                      type: string
+                    position:
+                      type: number
+                      description: Playback position as ratio 0.0-1.0
+                    duration:
+                      type: number
+                      description: Video duration in seconds
+                - type: 'null'
+              description: Current video metadata (null when no video playing)
+            queue:
+              type: array
+              items:
+                type: object
+                properties:
+                  tokenId:
+                    type: string
+                  filename:
+                    type: string
             queueLength:
               type: integer
-              description: Number of videos in queue (per Decision 5 - ADDED FIELD)
-              minimum: 0
-              example: 2
-            tokenId:
-              type: string
-              nullable: true
-              description: Currently playing token ID (null if idle)
-              example: "534e2b03"
-            duration:
-              type: number
-              nullable: true
-              description: Video duration in seconds (null if no video)
-              example: 30
-            progress:
-              type: number
-              nullable: true
-              description: Playback progress percentage (0-100)
-              minimum: 0
-              maximum: 100
-              example: 45
-            expectedEndTime:
-              type: string
-              format: date-time
-              nullable: true
-              description: Expected completion time (null if no video)
-              example: "2025-10-15T20:16:00.000Z"
-            error:
-              type: string
-              nullable: true
-              description: Error message if status=error
-              example: null
+              description: Number of pending items in queue
+            connected:
+              type: boolean
+              description: Whether VLC is reachable via D-Bus
         devices:
           type: array
           description: Connected devices

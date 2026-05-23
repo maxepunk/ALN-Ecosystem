@@ -115,7 +115,7 @@ describe('State Synchronization Integration - REAL Scanner', () => {
 
     // When no video playing, status should be idle
     expect(syncEvent.data.videoStatus.status).toBe('idle');
-    expect(syncEvent.data.videoStatus.tokenId).toBeNull();
+    expect(syncEvent.data.videoStatus.currentVideo).toBeNull();
   });
 
   it('should include serviceHealth in sync:full', async () => {
