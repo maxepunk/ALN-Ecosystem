@@ -578,7 +578,7 @@ describe('MusicService — spawnMpd', () => {
       socketPath: path.join(tmpDir, 'mpd.sock'),
       configFile: path.join(tmpDir, 'mpd.conf'),
       musicDir,
-      dataDir: tmpDir,
+      mpdRuntimeDir: tmpDir,
     });
   });
 
@@ -596,7 +596,7 @@ describe('MusicService — spawnMpd', () => {
     expect(cfg).not.toContain('application_name');
   });
 
-  it('creates playlist directory under dataDir', async () => {
+  it('creates playlist directory under the MPD runtime dir', async () => {
     await service.spawnMpd();
     expect(fs.existsSync(path.join(tmpDir, 'aln-mpd-playlists'))).toBe(true);
   });
@@ -671,5 +671,46 @@ describe('MusicService — reset', () => {
     expect(service.track).toBe(null);
     expect(service.playlist).toBe(null);
     expect(service._pausedByGameClock).toBe(false);
+  });
+});
+
+// Regression guard: 2026-05-22 incident — MPD working files (pid/db/log/state/m3u)
+// were placed inside config.storage.dataDir, causing node-persist's
+// expiredKeysInterval to crash every ~2 min on the non-JSON files.
+// spawnMpd() must refuse to spawn when _mpdRuntimeDir overlaps persistence.
+describe('MusicService — node-persist isolation guard', () => {
+  let tmpRoot;
+  let musicDir;
+
+  beforeEach(() => {
+    tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-guard-test-'));
+    musicDir = path.join(tmpRoot, 'music');
+    fs.mkdirSync(musicDir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  });
+
+  it('refuses to spawn MPD when mpdRuntimeDir equals persistence dataDir', async () => {
+    const config = require('../../../src/config');
+    const bad = new MusicService({ mpdRuntimeDir: config.storage.dataDir, musicDir });
+    await expect(bad.spawnMpd()).rejects.toThrow(/must not be inside persistence dataDir/);
+  });
+
+  it('refuses to spawn MPD when mpdRuntimeDir is nested inside persistence dataDir', async () => {
+    const config = require('../../../src/config');
+    const nested = path.join(config.storage.dataDir, 'some-subdir');
+    const bad = new MusicService({ mpdRuntimeDir: nested, musicDir });
+    await expect(bad.spawnMpd()).rejects.toThrow(/must not be inside persistence dataDir/);
+  });
+
+  it('singleton exported by musicService.js does not violate the invariant', () => {
+    const config = require('../../../src/config');
+    const singleton = require('../../../src/services/musicService');
+    const persistAbs = path.resolve(config.storage.dataDir);
+    const mpdAbs = path.resolve(singleton._mpdRuntimeDir);
+    expect(mpdAbs).not.toBe(persistAbs);
+    expect(mpdAbs.startsWith(persistAbs + path.sep)).toBe(false);
   });
 });

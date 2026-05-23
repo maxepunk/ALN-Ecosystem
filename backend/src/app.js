@@ -186,7 +186,10 @@ async function initializeServices() {
     // Set service paths so spawnMpd and playlist watcher work
     const pathMod = require('path');
     musicService._musicDir = pathMod.resolve(__dirname, '../public/music');
-    musicService._dataDir = pathMod.resolve(__dirname, '../data');
+    // _mpdRuntimeDir intentionally not overridden — the constructor default
+    // '/tmp' is correct. MPD's working files (db/log/state/pid/m3u) must NOT
+    // share a directory with persistenceService's node-persist storage; the
+    // guard in musicService.spawnMpd() enforces this invariant.
     musicService._playlistFile = pathMod.resolve(__dirname, '../config/music-playlists.json');
     musicService._configFile = '/tmp/aln-mpd.conf';
     if (process.env.ENABLE_MUSIC_PLAYBACK !== 'false') {

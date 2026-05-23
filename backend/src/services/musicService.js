@@ -46,14 +46,19 @@ class MusicService extends EventEmitter {
     socketPath = '/tmp/aln-mpd.sock',
     configFile = '/tmp/aln-mpd.conf',
     musicDir = null,
-    dataDir = '/tmp',
+    mpdRuntimeDir = '/tmp',
     playlistFile = null,
   } = {}) {
     super();
     this._socketPath = socketPath;
     this._configFile = configFile;
     this._musicDir = musicDir;
-    this._dataDir = dataDir;
+    // _mpdRuntimeDir holds MPD's working files (db/log/state/pid/m3u). It must
+    // NOT overlap with config.storage.dataDir — node-persist iterates that
+    // directory every expiredInterval (~2 min) and parses every file as JSON,
+    // which crashes on MPD's non-JSON working files. The spawnMpd() guard
+    // enforces this invariant at the point of consumption.
+    this._mpdRuntimeDir = mpdRuntimeDir;
     this._playlistFile = playlistFile;
     this._playlists = new Map();
     this._procMon = null;
@@ -446,20 +451,38 @@ class MusicService extends EventEmitter {
    */
   async spawnMpd() {
     if (!this._musicDir) throw new Error('musicDir not configured');
+
+    // Guard: MPD writes non-JSON files (pid/db/log/state/m3u) that crash
+    // node-persist's expiredKeysInterval (~2 min sweep) if they share a
+    // directory with config.storage.dataDir. Checked here at the point of
+    // consumption — not in the constructor — because the field can be
+    // reassigned post-construction by app.js mutation.
+    const config = require('../config');
+    const persistAbs = path.resolve(config.storage.dataDir);
+    const mpdAbs = path.resolve(this._mpdRuntimeDir);
+    if (mpdAbs === persistAbs || mpdAbs.startsWith(persistAbs + path.sep)) {
+      throw new Error(
+        `MPD runtime dir (${mpdAbs}) must not be inside persistence dataDir ` +
+        `(${persistAbs}). node-persist's directory scans will crash on MPD's ` +
+        `non-JSON working files. Set _mpdRuntimeDir to a path outside ` +
+        `config.storage.dataDir.`
+      );
+    }
+
     const { buildMpdConfig } = require('./mpdConfigBuilder');
     const ProcessMonitor = require('../utils/processMonitor');
     const logger = require('../utils/logger');
 
-    const playlistDir = path.join(this._dataDir, 'aln-mpd-playlists');
+    const playlistDir = path.join(this._mpdRuntimeDir, 'aln-mpd-playlists');
     fs.mkdirSync(playlistDir, { recursive: true });
 
     const cfg = buildMpdConfig({
       musicDir: this._musicDir,
       socketPath: this._socketPath,
-      dbFile: path.join(this._dataDir, 'aln-mpd.db'),
-      logFile: path.join(this._dataDir, 'aln-mpd.log'),
-      stateFile: path.join(this._dataDir, 'aln-mpd.state'),
-      pidFile: path.join(this._dataDir, 'aln-mpd-internal.pid'),
+      dbFile: path.join(this._mpdRuntimeDir, 'aln-mpd.db'),
+      logFile: path.join(this._mpdRuntimeDir, 'aln-mpd.log'),
+      stateFile: path.join(this._mpdRuntimeDir, 'aln-mpd.state'),
+      pidFile: path.join(this._mpdRuntimeDir, 'aln-mpd-internal.pid'),
       playlistDir,
     });
     fs.writeFileSync(this._configFile, cfg);
