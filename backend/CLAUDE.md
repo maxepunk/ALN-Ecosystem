@@ -538,6 +538,26 @@ HTTP_REDIRECT_PORT=8000
 2. Browser shows "not private" warning → "Advanced" → "Proceed to [IP] (unsafe)"
 3. Certificate trusted, NFC now works
 
+### WirePlumber Configuration Dependency
+
+The orchestrator's video stream state ownership requires a WirePlumber config
+drop-in at `/etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua`. This file
+disables WirePlumber's `restore-stream` for VLC processes — the orchestrator
+manages video stream volume itself (see `audioRoutingService._identifySinkInput`).
+
+Without this file, WirePlumber will compete with the orchestrator to restore
+stale stream state and silently break video audio when a previously-saved mute
+or low-volume state is restored.
+
+To install (one-time):
+
+    sudo tee /etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua > /dev/null < \
+        docs/wireplumber/51-aln-vlc-no-restore.lua
+    systemctl --user restart wireplumber
+
+The canonical version of this config file lives at
+`docs/wireplumber/51-aln-vlc-no-restore.lua` in this repo.
+
 ## Deployment
 
 For full deployment procedures, see '../DEPLOYMENT_GUIDE.md'.
