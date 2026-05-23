@@ -1550,12 +1550,14 @@ describe('AudioRoutingService', () => {
   // ── Ducking Engine ──
 
   describe('ducking engine', () => {
+    // setVolume spies on _setStreamVolumeLive (the no-persist path used by ducking),
+    // NOT setStreamVolume — ducking must not persist transient duck/restore values.
     let setVolume;
     // Flush all pending microtasks and macro-tasks so async _handleDuckingStart completes
     const flushPromises = () => new Promise(r => setTimeout(r, 0));
 
     beforeEach(() => {
-      setVolume = jest.spyOn(audioRoutingService, 'setStreamVolume').mockResolvedValue();
+      setVolume = jest.spyOn(audioRoutingService, '_setStreamVolumeLive').mockResolvedValue();
       jest.spyOn(audioRoutingService, 'getStreamVolume').mockResolvedValue(100);
     });
 
@@ -1999,8 +2001,8 @@ describe('AudioRoutingService', () => {
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        // Mock setStreamVolume to throw (MPD not running)
-        audioRoutingService.setStreamVolume = jest.fn()
+        // Mock _setStreamVolumeLive to throw (MPD not running) — ducking uses the no-persist path
+        audioRoutingService._setStreamVolumeLive = jest.fn()
           .mockRejectedValue(new Error('No active sink-input found for stream \'music\''));
 
         // Trigger ducking
@@ -2029,7 +2031,7 @@ describe('AudioRoutingService', () => {
         const mockSetVolume = jest.fn()
           .mockResolvedValueOnce()  // First call (duck start) succeeds
           .mockRejectedValue(new Error('No active sink-input found for stream \'music\''));  // Restore fails
-        audioRoutingService.setStreamVolume = mockSetVolume;
+        audioRoutingService._setStreamVolumeLive = mockSetVolume;
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         await new Promise(r => setTimeout(r, 10));
@@ -2056,8 +2058,8 @@ describe('AudioRoutingService', () => {
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        // Mock setStreamVolume to throw an unexpected error
-        audioRoutingService.setStreamVolume = jest.fn()
+        // Mock _setStreamVolumeLive to throw an unexpected error
+        audioRoutingService._setStreamVolumeLive = jest.fn()
           .mockRejectedValue(new Error('PipeWire connection refused'));
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -2078,7 +2080,7 @@ describe('AudioRoutingService', () => {
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        audioRoutingService.setStreamVolume = jest.fn()
+        audioRoutingService._setStreamVolumeLive = jest.fn()
           .mockRejectedValue(new Error('PipeWire daemon not responding'));
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -2098,7 +2100,7 @@ describe('AudioRoutingService', () => {
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        audioRoutingService.setStreamVolume = jest.fn()
+        audioRoutingService._setStreamVolumeLive = jest.fn()
           .mockRejectedValue(new Error('No active sink-input for music'));
 
         audioRoutingService.handleDuckingEvent('video', 'started');
@@ -2221,6 +2223,59 @@ describe('AudioRoutingService', () => {
     it('should return empty availableSinks when cache is empty', () => {
       const state = audioRoutingService.getState();
       expect(state.availableSinks).toEqual([]);
+    });
+  });
+
+  // ── Persistence decoupling: ducking vs public setStreamVolume ──
+  //
+  // Regression guard: setStreamVolume() persists to _routingData.volumes (user intent).
+  // The ducking engine MUST NOT persist its transient duck/restore volumes — otherwise,
+  // a restart mid-duck (or session end mid-duck) would leave the ducked value persisted,
+  // and the reactive _identifySinkInput path would re-apply it on the next sink-input.
+  // Ducking must use the live-only path (_setStreamVolumeLive); setStreamVolume is reserved
+  // for user intent (live + persist).
+  describe('ducking persistence decoupling', () => {
+    // Flush microtasks for fire-and-forget paths in ducking
+    const flushPromises = () => new Promise(r => setTimeout(r, 0));
+
+    it('ducking does NOT persist via persistenceService.save', async () => {
+      // Reset persistence mock so we only see calls made during the ducking event
+      persistenceService.save.mockReset();
+      persistenceService.save.mockResolvedValue();
+
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      jest.spyOn(audioRoutingService, 'getStreamVolume').mockResolvedValue(80);
+      mockExecFileSuccess('');
+
+      audioRoutingService.loadDuckingRules([
+        { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
+      ]);
+      await audioRoutingService.handleDuckingEvent('video', 'started');
+      // Allow any fire-and-forget promises (the _setVolumeForDucking chain) to settle
+      await flushPromises();
+
+      // The ducking engine should NOT have persisted anything
+      expect(persistenceService.save).not.toHaveBeenCalled();
+      // And the in-memory state should NOT have music in volumes
+      expect(audioRoutingService._routingData.volumes.music).toBeUndefined();
+    });
+
+    it('setStreamVolume (public) still persists', async () => {
+      persistenceService.save.mockReset();
+      persistenceService.save.mockResolvedValue();
+
+      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
+      mockExecFileSuccess('');
+
+      await audioRoutingService.setStreamVolume('video', 75);
+
+      expect(audioRoutingService._routingData.volumes.video).toBe(75);
+      expect(persistenceService.save).toHaveBeenCalledWith(
+        'config:audioRouting',
+        expect.objectContaining({
+          volumes: expect.objectContaining({ video: 75 })
+        })
+      );
     });
   });
 });

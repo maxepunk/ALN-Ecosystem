@@ -434,12 +434,22 @@ class AudioRoutingService extends EventEmitter {
   // ── Volume Control ──
 
   /**
-   * Set volume for a named stream.
+   * Apply a stream volume to the live pactl sink-input WITHOUT persisting.
+   * Internal helper shared by setStreamVolume (user intent — also persists) and
+   * _setVolumeForDucking (transient duck/restore — no persistence).
+   *
+   * Persistence decoupling rationale: _routingData.volumes represents user intent
+   * and is re-applied reactively when new sink-inputs spawn (see _identifySinkInput).
+   * Ducking writes transient values — if those were persisted, an orchestrator
+   * restart mid-duck (or session end mid-duck) would persist the ducked value as
+   * user intent, and the next sink-input would come up ducked.
+   *
    * @param {string} stream - Stream name (video, music, sound)
    * @param {number} volume - Volume percentage (0-100)
-   * @returns {Promise<void>}
+   * @returns {Promise<number>} The clamped volume actually applied
+   * @private
    */
-  async setStreamVolume(stream, volume) {
+  async _setStreamVolumeLive(stream, volume) {
     this._validateStream(stream);
 
     // Clamp volume to 0-100 range
@@ -457,14 +467,30 @@ class AudioRoutingService extends EventEmitter {
     // Set the live volume
     await this._execFile('pactl', ['set-sink-input-volume', sinkInput.index, `${clampedVolume}%`]);
 
-    // Persist for next time this stream's app spawns a sink-input. The orchestrator
-    // owns video stream state — see Task 3 (_identifySinkInput) for the reactive
-    // application path. WirePlumber's restore-stream is bypassed for VLC via a
-    // separate config rule (Task 4).
+    logger.info('Stream volume set', { stream, volume: clampedVolume, sinkInputIdx: sinkInput.index });
+
+    return clampedVolume;
+  }
+
+  /**
+   * Set volume for a named stream (user intent: live + persist).
+   * Applies the volume via pactl AND persists it into _routingData.volumes so that
+   * future sink-inputs for this stream come up at the user-chosen level (the
+   * orchestrator re-applies reactively from _identifySinkInput; WirePlumber's
+   * restore-stream is bypassed for our streams via a separate config drop-in).
+   *
+   * For transient volume changes that should NOT be persisted (e.g., ducking),
+   * use _setStreamVolumeLive directly.
+   *
+   * @param {string} stream - Stream name (video, music, sound)
+   * @param {number} volume - Volume percentage (0-100)
+   * @returns {Promise<void>}
+   */
+  async setStreamVolume(stream, volume) {
+    const clampedVolume = await this._setStreamVolumeLive(stream, volume);
+
     this._routingData.volumes[stream] = clampedVolume;
     await persistenceService.save(PERSISTENCE_KEY, this._routingData);
-
-    logger.info('Stream volume set', { stream, volume: clampedVolume, sinkInputIdx: sinkInput.index });
   }
 
   /**
@@ -731,15 +757,21 @@ class AudioRoutingService extends EventEmitter {
   }
 
   /**
-   * Set stream volume with graceful handling for missing sink-inputs.
+   * Set stream volume for ducking with graceful handling for missing sink-inputs.
    * Shared by ducking start, restore, and re-evaluate paths.
+   *
+   * Uses _setStreamVolumeLive (live-only — no persistence) because ducking values
+   * are transient. Persisting them would overwrite user intent: an orchestrator
+   * restart mid-duck would persist the ducked value, and the next sink-input
+   * would come up at the ducked volume.
+   *
    * @param {string} target - Target stream name
    * @param {number} volume - Volume to set
    * @param {string} context - Context label for logging (e.g., 'apply', 'restore', 're-evaluate')
    * @private
    */
   _setVolumeForDucking(target, volume, context) {
-    this.setStreamVolume(target, volume).catch(err => {
+    this._setStreamVolumeLive(target, volume).catch(err => {
       if (err.message.includes('No active sink-input')) {
         logger.warn(`Ducking ${context} skipped: sink-input not available`, { target, volume });
       } else {
