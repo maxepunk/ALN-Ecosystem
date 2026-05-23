@@ -474,43 +474,54 @@ components:
                       example: "jaw_group"
               videoStatus:
                 type: object
-                description: Current video status (per Decision 5)
+                description: |
+                  Current video playback state. Mirrors videoQueueService.getState()
+                  shape — same as the `service:state` event for domain `video`.
                 required:
                   - status
                   - queueLength
+                  - currentVideo
+                  - queue
+                  - connected
                 properties:
                   status:
                     type: string
                     enum: [idle, loading, playing, paused, completed, error]
+                    description: Current playback state
                     example: "playing"
+                  currentVideo:
+                    oneOf:
+                      - type: object
+                        properties:
+                          tokenId:
+                            type: string
+                          filename:
+                            type: string
+                          position:
+                            type: number
+                            description: Playback position as ratio 0.0-1.0
+                          duration:
+                            type: number
+                            description: Video duration in seconds
+                      - type: 'null'
+                    description: Current video metadata (null when no video playing)
+                  queue:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tokenId:
+                          type: string
+                        filename:
+                          type: string
                   queueLength:
                     type: integer
-                    description: Queue length (per Decision 5 - ADDED FIELD)
+                    description: Number of pending items in queue
                     minimum: 0
                     example: 2
-                  tokenId:
-                    type: string
-                    nullable: true
-                    example: "534e2b03"
-                  duration:
-                    type: number
-                    nullable: true
-                    example: 30
-                  progress:
-                    type: number
-                    nullable: true
-                    minimum: 0
-                    maximum: 100
-                    example: 45
-                  expectedEndTime:
-                    type: string
-                    format: date-time
-                    nullable: true
-                    example: "2025-10-15T20:16:00.000Z"
-                  error:
-                    type: string
-                    nullable: true
-                    example: null
+                  connected:
+                    type: boolean
+                    description: Whether VLC is reachable via D-Bus
               devices:
                 type: array
                 description: Connected devices
