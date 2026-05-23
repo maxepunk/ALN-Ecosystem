@@ -58,15 +58,6 @@ describe('service:state Push Integration', () => {
     jest.spyOn(bluetoothService, 'getPairedDevices').mockResolvedValue([]);
     jest.spyOn(bluetoothService, 'getConnectedDevices').mockResolvedValue([]);
 
-    // Isolate from host PipeWire state: performSystemReset re-loads ducking
-    // rules from routing.json. The Sound-domain test below emits
-    // soundService.emit('sound:started') directly, which broadcasts.js forwards
-    // to audioRoutingService.handleDuckingEvent('sound', 'started'). Without
-    // this stub, the ducking engine runs real pactl reads/writes against the
-    // host music sink-input. Matches the isolation pattern used in
-    // audio-routing-phase3.test.js (commit f1cb7cb3).
-    jest.spyOn(audioRoutingService, 'handleDuckingEvent').mockResolvedValue();
-
     gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_STATE_001');
   });
 
