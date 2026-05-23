@@ -69,6 +69,16 @@ describe('Audio Routing Phase 3 Integration', () => {
       // Mock _setStreamVolumeLive to avoid pactl calls (ducking routes through
       // the live-volume helper to avoid polluting _routingData.volumes)
       jest.spyOn(audioRoutingService, '_setStreamVolumeLive').mockResolvedValue();
+      // Mock getStreamVolume to return a deterministic 100 — this isolates
+      // _capturePreDuckVolume() from the host PipeWire state. Without this,
+      // ducking tests read whatever the host's live music sink-input volume
+      // happens to be, which leaks live state into "pre-duck" capture and
+      // breaks restore-to-100 assertions.
+      //
+      // The "captures live pre-duck music volume" test at line ~178 deliberately
+      // overrides this with its own per-test mock to verify the live-capture
+      // mechanism — its override stays in scope.
+      jest.spyOn(audioRoutingService, 'getStreamVolume').mockResolvedValue(100);
     });
 
     it('should duck music when video starts', async () => {
@@ -173,6 +183,16 @@ describe('Audio Routing Phase 3 Integration', () => {
         { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
       ]);
       jest.spyOn(audioRoutingService, '_setStreamVolumeLive').mockResolvedValue();
+      // Mock getStreamVolume to return a deterministic 100 — this isolates
+      // _capturePreDuckVolume() from the host PipeWire state. Without this,
+      // ducking tests read whatever the host's live music sink-input volume
+      // happens to be, which leaks live state into "pre-duck" capture and
+      // breaks restore-to-100 assertions.
+      //
+      // The "captures live pre-duck music volume" test at line ~178 deliberately
+      // overrides this with its own per-test mock to verify the live-capture
+      // mechanism — its override stays in scope.
+      jest.spyOn(audioRoutingService, 'getStreamVolume').mockResolvedValue(100);
     });
 
     it('captures live pre-duck music volume (not a hardcoded default)', async () => {
