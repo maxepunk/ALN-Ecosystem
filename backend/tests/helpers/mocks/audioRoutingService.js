@@ -30,7 +30,7 @@ function createMockAudioRoutingService(overrides = {}) {
 
   // State
   mock.getState = jest.fn().mockReturnValue({
-    routes: {}, defaultSink: 'hdmi', ducking: {}, availableSinks: [],
+    routes: {}, defaultSink: 'hdmi', ducking: {}, availableSinks: [], volumes: {},
   });
   mock.getRoutingStatus = jest.fn().mockResolvedValue({
     routes: {}, defaultSink: 'hdmi', availableSinks: [],
