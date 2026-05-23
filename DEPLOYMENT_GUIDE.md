@@ -777,6 +777,32 @@ pm2 startup
 # Run the command it outputs
 ```
 
+### 5. Install WirePlumber Rule (Required for Video Audio)
+
+The orchestrator owns VLC's stream volume. Without this drop-in, WirePlumber's
+`restore-stream` competes with the orchestrator and can silently mute video
+audio across reboots (2026-05-22 incident). See `backend/CLAUDE.md` →
+"WirePlumber Configuration Dependency" for the full rationale.
+
+```bash
+sudo tee /etc/wireplumber/main.lua.d/51-aln-vlc-no-restore.lua > /dev/null <<'EOF'
+-- ALN orchestrator: bypass WirePlumber's stream-restore for VLC streams.
+-- See backend/CLAUDE.md → "WirePlumber Configuration Dependency" for context.
+table.insert(stream_defaults.rules, {
+  matches = {
+    {
+      { "application.process.binary", "matches", "vlc" },
+    },
+  },
+  apply_properties = {
+    ["state.restore-props"]  = false,
+    ["state.restore-target"] = false,
+  },
+})
+EOF
+systemctl --user restart wireplumber
+```
+
 ## Network Configuration
 
 ### Finding Your IP Address
