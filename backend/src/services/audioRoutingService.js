@@ -37,6 +37,10 @@ const DEFAULT_ROUTING = {
     video: { sink: 'hdmi' },
   },
   defaultSink: 'hdmi',
+  // Per-stream persisted volumes (0-100). Empty by default.
+  // Populated by setStreamVolume() and applied reactively in _identifySinkInput().
+  // Orchestrator-owned (we don't rely on WirePlumber's restore-stream for our streams).
+  volumes: {},
 };
 
 /** Timeout for pactl one-shot commands (ms) */
@@ -91,8 +95,14 @@ class AudioRoutingService extends EventEmitter {
     const persisted = await persistenceService.load(PERSISTENCE_KEY);
     if (persisted && persisted.routes) {
       this._routingData = persisted;
+      // Backward compat: legacy configs lack the volumes field. Add empty object
+      // so callers can safely read this._routingData.volumes without optional chaining.
+      if (!this._routingData.volumes) {
+        this._routingData.volumes = {};
+      }
       logger.info('Audio routing config restored from persistence', {
         routes: persisted.routes,
+        volumes: this._routingData.volumes,
       });
     } else {
       logger.info('Audio routing using defaults', {

@@ -1065,7 +1065,7 @@ describe('AudioRoutingService', () => {
   // ── Persistence format ──
 
   describe('Persistence format', () => {
-    it('should persist in correct format: { routes: { video: { sink } }, defaultSink }', async () => {
+    it('should persist in correct format: { routes: { video: { sink } }, defaultSink, volumes }', async () => {
       await audioRoutingService.setStreamRoute('video', 'bluetooth');
 
       expect(persistenceService.save).toHaveBeenCalledWith(
@@ -1075,6 +1075,7 @@ describe('AudioRoutingService', () => {
             video: { sink: 'bluetooth' },
           },
           defaultSink: 'hdmi',
+          volumes: {},
         }
       );
     });
@@ -1166,6 +1167,70 @@ describe('AudioRoutingService', () => {
         expect.stringContaining('Killing 2 stale pactl subscribe'),
         expect.any(Object)
       );
+    });
+  });
+
+  // ── persisted config schema (volumes field) ──
+
+  describe('persisted config schema (volumes field)', () => {
+    beforeEach(() => {
+      persistenceService.load.mockReset();
+    });
+
+    it('init() tolerates legacy config without volumes field', async () => {
+      persistenceService.load.mockResolvedValue({
+        routes: { video: { sink: 'hdmi' } },
+        defaultSink: 'hdmi',
+      });
+      // sinks short and HDMI card activation
+      mockExecFileSuccess('');
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      // Should have loaded routes
+      expect(audioRoutingService.getStreamRoute('video')).toBe('hdmi');
+      // Should have an empty volumes object (default)
+      expect(audioRoutingService._routingData.volumes).toEqual({});
+
+      audioRoutingService.cleanup();
+    });
+
+    it('init() loads volumes field when present', async () => {
+      persistenceService.load.mockResolvedValue({
+        routes: { video: { sink: 'hdmi' } },
+        defaultSink: 'hdmi',
+        volumes: { video: 75, music: 80 },
+      });
+      mockExecFileSuccess('');
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      expect(audioRoutingService._routingData.volumes).toEqual({ video: 75, music: 80 });
+
+      audioRoutingService.cleanup();
+    });
+
+    it('init() with no persisted config initializes empty volumes', async () => {
+      persistenceService.load.mockResolvedValue(null);
+      mockExecFileSuccess('');
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      expect(audioRoutingService._routingData.volumes).toEqual({});
+
+      audioRoutingService.cleanup();
+    });
+
+    it('reset() restores empty volumes', () => {
+      audioRoutingService._routingData.volumes = { video: 50 };
+      audioRoutingService.reset();
+      expect(audioRoutingService._routingData.volumes).toEqual({});
     });
   });
 
