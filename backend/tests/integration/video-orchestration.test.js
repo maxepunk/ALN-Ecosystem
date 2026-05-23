@@ -131,17 +131,6 @@ describe('Video Orchestration Integration - REAL Player Scanner', () => {
     // Setup VLC mocks AFTER reset (reset clears service state)
     setupVlcMocks();
 
-    // Isolate from host PipeWire state: performSystemReset re-loads ducking
-    // rules from routing.json, so the video:started events this file triggers
-    // would otherwise reach audioRoutingService.handleDuckingEvent and run real
-    // pactl reads/writes against the host music sink-input. Stub the entry
-    // point so video orchestration tests never touch live volumes. Matches the
-    // isolation pattern used in audio-routing-phase3.test.js (commit f1cb7cb3).
-    const audioRoutingService = require('../../src/services/audioRoutingService');
-    jest.spyOn(audioRoutingService, 'handleDuckingEvent').mockResolvedValue();
-    // applyRouting also runs real pactl move-sink-input on video:started — stub it too.
-    jest.spyOn(audioRoutingService, 'applyRouting').mockResolvedValue();
-
     // Create test session
     await sessionService.createSession({
       name: 'Video Orchestration Test Session',
