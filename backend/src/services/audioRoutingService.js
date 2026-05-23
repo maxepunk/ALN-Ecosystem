@@ -279,7 +279,7 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Get current audio routing state snapshot (sync).
-   * @returns {{routes: Object, defaultSink: string, ducking: Object, availableSinks: Array}}
+   * @returns {{routes: Object, defaultSink: string, ducking: Object, availableSinks: Array, volumes: Object}}
    */
   getState() {
     const routes = {};
@@ -392,8 +392,23 @@ class AudioRoutingService extends EventEmitter {
    * @returns {Promise<{index: string}|null>} Sink-input object with index or null
    */
   async findSinkInput(appName) {
-    // Fast path: check reactive registry (avoids pactl call on the common path)
+    // Map the queried appName back to a canonical stream name (e.g., 'aln-music' → 'music')
+    // so registry entries that resolved their stream during _identifySinkInput hit the fast
+    // path even when application.name doesn't substring-match (the MPD case).
+    let queriedStream = null;
+    for (const [stream, configuredName] of Object.entries(STREAM_APP_NAMES)) {
+      if (configuredName.toLowerCase() === appName.toLowerCase()) {
+        queriedStream = stream;
+        break;
+      }
+    }
+
     for (const [id, entry] of this._sinkInputRegistry) {
+      // Fast path A: match by resolved stream (catches MPD)
+      if (queriedStream && entry.stream === queriedStream) {
+        return { index: id };
+      }
+      // Fast path B: appName substring (existing path, catches VLC/pw-play)
       if (entry.appName && entry.appName.toLowerCase().includes(appName.toLowerCase())) {
         return { index: id };
       }
@@ -985,19 +1000,22 @@ class AudioRoutingService extends EventEmitter {
           const binaryMatch = section.match(/application\.process\.binary\s*=\s*"([^"]+)"/i);
           const mediaMatch = section.match(/media\.name\s*=\s*"([^"]+)"/i);
 
-          // First identity with content wins for registry storage.
-          const appMatch = nameMatch || binaryMatch || mediaMatch;
-          if (appMatch) {
-            appName = appMatch[1];
-            this._sinkInputRegistry.set(id, { index: id, appName });
-          }
-
           // Stream resolution must check ALL three identity sources — MPD sets
           // application.name = "Music Player Daemon" but our `name "aln-music"`
           // in MPD config lands in media.name and is the only unique signal.
           stream = this._streamForAppName(nameMatch && nameMatch[1])
                 || this._streamForAppName(binaryMatch && binaryMatch[1])
                 || this._streamForAppName(mediaMatch && mediaMatch[1]);
+
+          // First identity with content wins for registry storage.
+          const appMatch = nameMatch || binaryMatch || mediaMatch;
+          if (appMatch) {
+            appName = appMatch[1];
+            // Persist resolved stream alongside appName so findSinkInput's fast path
+            // works for MPD (where application.name="Music Player Daemon" doesn't
+            // substring-match 'aln-music').
+            this._sinkInputRegistry.set(id, { index: id, appName, stream });
+          }
           break;
         }
       }

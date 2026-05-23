@@ -692,6 +692,63 @@ describe('AudioRoutingService', () => {
     });
   });
 
+  describe('findSinkInput fast-path resolves by stream name', () => {
+    beforeEach(() => {
+      audioRoutingService._sinkInputRegistry.clear();
+    });
+
+    test('hits fast path for MPD even when appName is "Music Player Daemon"', async () => {
+      // Simulate what _identifySinkInput would store after seeing an MPD sink-input
+      audioRoutingService._sinkInputRegistry.set('42', {
+        index: '42',
+        appName: 'Music Player Daemon',
+        stream: 'music',
+      });
+
+      // Spy on pactl call — fast path should NOT touch it
+      const execSpy = jest.spyOn(audioRoutingService, '_execFile').mockResolvedValue('');
+
+      const result = await audioRoutingService.findSinkInput('aln-music');
+
+      expect(result).toEqual({ index: '42' });
+      expect(execSpy).not.toHaveBeenCalled();
+    });
+
+    test('falls back to pactl when registry entry has no resolved stream', async () => {
+      // Pre-stream-resolution state (registry written but stream not yet set)
+      audioRoutingService._sinkInputRegistry.set('42', {
+        index: '42',
+        appName: 'Music Player Daemon',
+        stream: null,
+      });
+
+      const execSpy = jest.spyOn(audioRoutingService, '_execFile').mockResolvedValue(`
+Sink Input #42
+	media.name = "aln-music"
+    `.trim());
+
+      const result = await audioRoutingService.findSinkInput('aln-music');
+
+      expect(result).toEqual({ index: '42' });
+      expect(execSpy).toHaveBeenCalled();
+    });
+
+    test('still hits appName substring fast path for VLC', async () => {
+      audioRoutingService._sinkInputRegistry.set('17', {
+        index: '17',
+        appName: 'VLC media player (LibVLC 3.0.21)',
+        stream: 'video',
+      });
+
+      const execSpy = jest.spyOn(audioRoutingService, '_execFile').mockResolvedValue('');
+
+      const result = await audioRoutingService.findSinkInput('VLC');
+
+      expect(result).toEqual({ index: '17' });
+      expect(execSpy).not.toHaveBeenCalled();
+    });
+  });
+
   // ── Sink Monitor ──
 
   describe('startSinkMonitor()', () => {
@@ -944,6 +1001,7 @@ describe('AudioRoutingService', () => {
       expect(audioRoutingService._sinkInputRegistry.get('42')).toEqual({
         index: '42',
         appName: 'VLC media player',
+        stream: 'video',
       });
     });
 
@@ -2416,6 +2474,7 @@ describe('AudioRoutingService', () => {
       expect(audioRoutingService._sinkInputRegistry.get('42')).toEqual({
         index: '42',
         appName: 'VLC media player',
+        stream: 'video',
       });
     });
 
