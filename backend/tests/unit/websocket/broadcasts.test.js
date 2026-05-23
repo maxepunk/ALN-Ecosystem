@@ -516,8 +516,17 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
   describe('video routing via video:started', () => {
     let mockAudioRoutingService;
+    let originalNodeEnv;
 
     beforeEach(() => {
+      // The inter-service audio-routing wires in broadcasts.js are gated to skip
+      // when NODE_ENV=test (prevents host-state leaks in integration tests — see
+      // commit b48ad0f5). This unit test exists to verify the wire registers
+      // correctly in production, so override NODE_ENV for the duration of the
+      // setupBroadcastListeners() call and restore in afterEach.
+      originalNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+
       mockAudioRoutingService = createMockAudioRoutingService();
 
       setupBroadcastListeners(mockIo, {
@@ -528,6 +537,10 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
         offlineQueueService: mockOfflineQueueService,
         audioRoutingService: mockAudioRoutingService,
       });
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = originalNodeEnv;
     });
 
     it('should apply video routing on video:started event', () => {
