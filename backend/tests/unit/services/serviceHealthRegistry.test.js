@@ -229,6 +229,25 @@ describe('ServiceHealthRegistry', () => {
 
       expect(handler).not.toHaveBeenCalled();
     });
+
+    it('should LOG each health transition (so a system:reset is never invisible)', () => {
+      // 0523game: system:reset silently flipped music healthy→down with no log
+      // line, which made the music outage invisible in the logs. reset() must
+      // log its transitions the same way report() does.
+      const logger = require('../../../src/utils/logger');
+      const infoSpy = jest.spyOn(logger, 'info').mockImplementation(() => {});
+
+      registry.report('music', 'healthy', 'MPD connected');
+      infoSpy.mockClear(); // drop the report()'s own "healthy" log line
+
+      registry.reset();
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Service health changed: music'),
+        expect.anything()
+      );
+      infoSpy.mockRestore();
+    });
   });
 
   describe('multiple services', () => {

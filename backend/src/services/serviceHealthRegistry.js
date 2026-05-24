@@ -150,21 +150,11 @@ class ServiceHealthRegistry extends EventEmitter {
    */
   reset() {
     this.stopRevalidation();
+    // Route through report() so each transition is LOGGED (a silent reset hid
+    // the music outage in 0523game) as well as emitted. report() no-ops any
+    // service already 'down', preserving the prior "only emit on change" semantics.
     for (const id of KNOWN_SERVICES) {
-      const current = this._services.get(id);
-      if (current.status !== 'down') {
-        this._services.set(id, {
-          status: 'down',
-          message: 'Reset',
-          lastChecked: new Date()
-        });
-        this.emit('health:changed', {
-          serviceId: id,
-          status: 'down',
-          message: 'Reset',
-          previousStatus: current.status
-        });
-      }
+      this.report(id, 'down', 'Reset');
     }
   }
 }
