@@ -274,6 +274,11 @@
     "functions": 100,
     "lines": 90
   },
+  "./src/utils/withTimeout.js": {
+    "branches": 100,
+    "functions": 100,
+    "lines": 100
+  },
   "./src/websocket/adminEvents.js": {
     "branches": 70,
     "functions": 100,

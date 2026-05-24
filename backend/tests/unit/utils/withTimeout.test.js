@@ -23,4 +23,9 @@ describe('withTimeout', () => {
     expect(spy).toHaveBeenCalled();
     spy.mockRestore();
   });
+
+  it('uses a default label when none is provided', async () => {
+    const never = new Promise(() => {});
+    await expect(withTimeout(never, 20)).rejects.toThrow(/operation timed out after 20ms/);
+  });
 });
