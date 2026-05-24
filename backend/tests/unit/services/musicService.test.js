@@ -128,6 +128,20 @@ describe('MusicService — lifecycle', () => {
     expect(service._mpd).toBeNull();
     expect(service.connected).toBe(false);
   });
+
+  it('checkConnection() reports music healthy on a successful ping', async () => {
+    // Regression: the 0523game incident. A system:reset marks music 'down' in
+    // the health registry while the mpd2 client stays alive. The 15s
+    // revalidation then pings successfully — but if the ping-success path does
+    // not re-report 'healthy', music stays 'down' forever and commandExecutor's
+    // SERVICE_DEPENDENCIES gate silently rejects every music:* command.
+    // Every other service's health check reports BOTH directions; music must too.
+    await service.init();
+    registry.report.mockClear(); // drop init()'s 'healthy' call so we observe checkConnection alone
+    const ok = await service.checkConnection();
+    expect(ok).toBe(true);
+    expect(registry.report).toHaveBeenCalledWith('music', 'healthy', expect.any(String));
+  });
 });
 
 describe('MusicService — transports', () => {

@@ -94,7 +94,6 @@ class MusicService extends EventEmitter {
 
   async init() {
     const mpd2 = require('mpd2');
-    const registry = require('./serviceHealthRegistry');
     this._stopped = false;
     this._loadPlaylistsFromDisk();
     this._startPlaylistWatcher();
@@ -102,11 +101,9 @@ class MusicService extends EventEmitter {
       this._mpd = await mpd2.connect({ path: this._socketPath });
       this._eventsWired = false;  // fresh client; events not yet wired
       this._wireMpdEvents();
-      this.connected = true;
-      registry.report('music', 'healthy', 'MPD connected');
+      this._setConnected(true, 'MPD connected');
     } catch (err) {
-      this.connected = false;
-      registry.report('music', 'down', `MPD connect failed: ${err.message}`);
+      this._setConnected(false, `MPD connect failed: ${err.message}`);
     }
   }
 
@@ -184,9 +181,7 @@ class MusicService extends EventEmitter {
         this._mpd = await mpd2.connect({ path: this._socketPath });
         this._eventsWired = false;  // fresh client; events not yet wired
         this._wireMpdEvents();
-        this.connected = true;
-        const registry = require('./serviceHealthRegistry');
-        registry.report('music', 'healthy', 'MPD reconnected');
+        this._setConnected(true, 'MPD reconnected');
         return true;
       } catch (_) {
         return false;
@@ -197,6 +192,7 @@ class MusicService extends EventEmitter {
     const client = this._mpd;
     try {
       await withTimeout(client.sendCommand('ping'), this._opTimeoutMs, 'MPD ping');
+      this._setConnected(true, 'MPD ping ok');
       return true;
     } catch (_) {
       // Connection went stale — drop the client so next checkConnection
@@ -209,8 +205,7 @@ class MusicService extends EventEmitter {
         try { await client.disconnect(); } catch (__) { /* ignore */ }
         this._mpd = null;
         this._eventsWired = false;
-        this.connected = false;
-        require('./serviceHealthRegistry').report('music', 'down', 'MPD ping failed');
+        this._setConnected(false, 'MPD ping failed');
       }
       return false;
     }
@@ -220,6 +215,21 @@ class MusicService extends EventEmitter {
     if (!this._mpd || !this.connected) {
       throw new Error('Music service not connected');
     }
+  }
+
+  /**
+   * Single chokepoint for connection state + health reporting (mirrors
+   * mprisPlayerBase._setConnected). A successful probe — init, reconnect, or
+   * ping — reports 'healthy'; a failure — connect error, ping/op timeout, or
+   * MPD exit — reports 'down'. Centralizing this prevents the bug class where
+   * one path forgot to re-report 'healthy', leaving music permanently gated
+   * 'down' in the registry after an out-of-band system:reset (0523game), so
+   * commandExecutor's SERVICE_DEPENDENCIES gate silently rejected every
+   * music:* command while MPD was perfectly healthy.
+   */
+  _setConnected(connected, message) {
+    this.connected = connected;
+    require('./serviceHealthRegistry').report('music', connected ? 'healthy' : 'down', message);
   }
 
   /**
@@ -243,8 +253,7 @@ class MusicService extends EventEmitter {
       if (err instanceof TimeoutError && this._mpd === client) {
         this._mpd = null;
         this._eventsWired = false;
-        this.connected = false;
-        require('./serviceHealthRegistry').report('music', 'down', 'MPD operation timed out');
+        this._setConnected(false, 'MPD operation timed out');
         client.disconnect().catch(() => {}); // fire-and-forget cleanup of the dead client
       }
       throw err;
@@ -531,14 +540,13 @@ class MusicService extends EventEmitter {
     });
     this._procMon.on('exited', ({ code, signal }) => {
       logger.warn(`[Music] MPD exited code=${code} signal=${signal}`);
-      this.connected = false;
       // Drop the stale mpd2 client so the next checkConnection reconnects
       // cleanly to the respawned MPD instance.
       this._mpd = null;
       // CRITICAL: also flip the health registry — without this, the
       // commandExecutor SERVICE_DEPENDENCIES gate keeps thinking music
       // is healthy and dispatches commands to a dead service.
-      require('./serviceHealthRegistry').report('music', 'down', `MPD exited code=${code} signal=${signal}`);
+      this._setConnected(false, `MPD exited code=${code} signal=${signal}`);
     });
     this._procMon.start();
   }
