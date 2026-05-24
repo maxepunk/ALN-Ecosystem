@@ -175,6 +175,13 @@ async function resetAllServices(options = {}) {
     await offlineQueueService.reset(); // Async
   }
 
+  // Stop the health revalidation timer if a prior initializeServices() started
+  // it (contract tests do, in beforeAll). Left running, its 15s interval keeps
+  // firing musicService.checkConnection() — and now that the ping is bounded
+  // and reaches its catch, that fires after the Jest environment tears down,
+  // producing import-after-teardown noise. No-op when not running.
+  require('../../src/services/serviceHealthRegistry').stopRevalidation();
+
   // Centralized post-reset wiring (mirrors systemReset.js)
   if (typeof transactionService.registerSessionListener === 'function') {
     transactionService.registerSessionListener();

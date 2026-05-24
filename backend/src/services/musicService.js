@@ -194,19 +194,24 @@ class MusicService extends EventEmitter {
         this._reconnecting = false;
       }
     }
+    const client = this._mpd;
     try {
-      await withTimeout(this._mpd.sendCommand('ping'), this._opTimeoutMs, 'MPD ping');
+      await withTimeout(client.sendCommand('ping'), this._opTimeoutMs, 'MPD ping');
       return true;
     } catch (_) {
       // Connection went stale — drop the client so next checkConnection
       // attempts a fresh connect. Report 'down' so the commandExecutor
       // SERVICE_DEPENDENCIES gate rejects music:* cleanly with a service
       // error instead of letting the handler throw "not connected" mid-flight.
-      try { await this._mpd.disconnect(); } catch (__) { /* ignore */ }
-      this._mpd = null;
-      this._eventsWired = false;
-      this.connected = false;
-      require('./serviceHealthRegistry').report('music', 'down', 'MPD ping failed');
+      // Same-reference guard (mirrors _send): a concurrent reconnect may have
+      // already installed a fresh client — don't tear that one down.
+      if (this._mpd === client) {
+        try { await client.disconnect(); } catch (__) { /* ignore */ }
+        this._mpd = null;
+        this._eventsWired = false;
+        this.connected = false;
+        require('./serviceHealthRegistry').report('music', 'down', 'MPD ping failed');
+      }
       return false;
     }
   }
