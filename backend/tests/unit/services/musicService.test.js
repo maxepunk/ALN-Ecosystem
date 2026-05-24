@@ -793,3 +793,22 @@ describe('MusicService — checkConnection recovery', () => {
     expect(service.connected).toBe(true);
   });
 });
+
+describe('MusicService — listAllTracks', () => {
+  it('parses listallinfo output into track metadata (covers the _send arrow + parseListAllInfo)', async () => {
+    const service = new MusicService({ opTimeoutMs: 50 });
+    await service.init();
+    service._mpd.sendCommand.mockResolvedValue(
+      'file: 001 - Song.mp3\nTitle: Song\nArtist: Artist\nAlbum: Album\nTime: 180\n' +
+      'file: 002 - Two.mp3\nTitle: Two\nTime: 90\n'
+    );
+
+    const tracks = await service.listAllTracks();
+
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('listallinfo');
+    expect(tracks).toEqual([
+      { file: '001 - Song.mp3', title: 'Song', artist: 'Artist', album: 'Album', duration: 180 },
+      { file: '002 - Two.mp3', title: 'Two', artist: '', album: '', duration: 90 },
+    ]);
+  });
+});
