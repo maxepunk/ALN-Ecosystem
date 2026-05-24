@@ -167,7 +167,10 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           recentTransactions: [],
           videoStatus: {
             status: 'idle',
-            queueLength: 0
+            currentVideo: null,
+            queue: [],
+            queueLength: 0,
+            connected: true
           },
           devices: [],
           serviceHealth: {
@@ -192,7 +195,10 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           recentTransactions: [],
           videoStatus: {
             status: 'idle',
-            queueLength: 0
+            currentVideo: null,
+            queue: [],
+            queueLength: 0,
+            connected: true
           },
           devices: [],
           serviceHealth: {
@@ -226,7 +232,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             },
             scores: [],
             recentTransactions: [],
-            videoStatus: { status: 'idle', queueLength: 0 },
+            videoStatus: { status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: true },
             devices: [],
             serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
           },
@@ -251,12 +257,12 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             recentTransactions: [],
             videoStatus: {
               status: videoStatus,
+              currentVideo: videoStatus === 'playing'
+                ? { tokenId: 'test_token', filename: 'test_token.mp4', position: 0.5, duration: 30 }
+                : null,
+              queue: [{ tokenId: 'q1', filename: 'q1.mp4' }, { tokenId: 'q2', filename: 'q2.mp4' }],
               queueLength: 2,
-              tokenId: videoStatus === 'playing' ? 'test_token' : null,
-              duration: videoStatus === 'playing' ? 30 : null,
-              progress: videoStatus === 'playing' ? 50 : null,
-              expectedEndTime: null,
-              error: videoStatus === 'error' ? 'Test error' : null
+              connected: true
             },
             devices: [],
             serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
@@ -621,7 +627,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               session: null,
               scores: [],
               recentTransactions: [],
-              videoStatus: { status: 'idle', queueLength: 0 },
+              videoStatus: { status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: true },
               devices: [],
               serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
             },
