@@ -19,6 +19,7 @@ jest.mock('mpd2', () => {
 const mpd2 = require('mpd2');
 const registry = require('../../../src/services/serviceHealthRegistry');
 const { MusicService } = require('../../../src/services/musicService');
+const { TimeoutError } = require('../../../src/utils/withTimeout');
 
 // resetMocks: true in jest.config.base.js wipes mock implementations
 // between tests, so we must re-establish the mpd2.connect impl here.
@@ -712,5 +713,83 @@ describe('MusicService — node-persist isolation guard', () => {
     const mpdAbs = path.resolve(singleton._mpdRuntimeDir);
     expect(mpdAbs).not.toBe(persistAbs);
     expect(mpdAbs.startsWith(persistAbs + path.sep)).toBe(false);
+  });
+});
+
+describe('MusicService — bounded I/O (_send)', () => {
+  it('passes a normal command through and resolves', async () => {
+    const service = new MusicService({ opTimeoutMs: 50 });
+    await service.init();
+    service._mpd.sendCommand.mockResolvedValue('OK');
+    await expect(service.play()).resolves.toBeDefined();
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('play');
+  });
+
+  it('rejects with TimeoutError and drops the client when a command hangs', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    const reportSpy = jest.spyOn(registry, 'report');
+    const wedged = service._mpd;
+    wedged.sendCommand.mockImplementation(() => new Promise(() => {})); // never settles
+
+    await expect(service.play()).rejects.toBeInstanceOf(TimeoutError);
+
+    expect(service._mpd).toBeNull();          // shared ref dropped
+    expect(service.connected).toBe(false);
+    expect(reportSpy).toHaveBeenCalledWith('music', 'down', expect.stringContaining('timed out'));
+    expect(wedged.disconnect).toHaveBeenCalled(); // dead client cleaned up
+  });
+
+  it('does not tear down a client that was already replaced (same-reference guard)', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    const wedged = service._mpd;
+    wedged.sendCommand.mockImplementation(() => new Promise(() => {}));
+
+    const p = service.play();                 // captures `wedged`
+    // Simulate checkConnection reconnecting a fresh client mid-flight:
+    const fresh = { sendCommand: jest.fn().mockResolvedValue(''), disconnect: jest.fn() };
+    service._mpd = fresh;
+
+    await expect(p).rejects.toBeInstanceOf(TimeoutError);
+    expect(service._mpd).toBe(fresh);         // fresh client preserved
+    expect(fresh.disconnect).not.toHaveBeenCalled();
+  });
+
+  it('loadPlaylist times out cleanly when sendCommands hangs', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    service._playlists = new Map([['p1', { id: 'p1', name: 'P1', tracks: ['a.mp3'] }]]);
+    service._mpd.sendCommands.mockImplementation(() => new Promise(() => {}));
+    await expect(service.loadPlaylist('p1')).rejects.toBeInstanceOf(TimeoutError);
+    expect(service._mpd).toBeNull();
+  });
+});
+
+describe('MusicService — checkConnection recovery', () => {
+  it('reports down and drops the client when ping hangs', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    const reportSpy = jest.spyOn(registry, 'report');
+    service._mpd.sendCommand.mockImplementation(() => new Promise(() => {})); // ping hangs
+
+    const ok = await service.checkConnection();
+
+    expect(ok).toBe(false);
+    expect(service._mpd).toBeNull();
+    expect(reportSpy).toHaveBeenCalledWith('music', 'down', expect.stringContaining('ping'));
+  });
+
+  it('reconnects a fresh client on the next check after a drop', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    service._mpd = null;          // simulate post-drop state
+    service.connected = false;
+
+    const ok = await service.checkConnection(); // hits the !this._mpd reconnect branch
+
+    expect(ok).toBe(true);
+    expect(service._mpd).not.toBeNull();
+    expect(service.connected).toBe(true);
   });
 });

@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const EventEmitter = require('events');
+const { withTimeout, TimeoutError } = require('../utils/withTimeout');
 
 /**
  * MPD's `status` command returns raw protocol strings (`play`/`pause`/`stop`).
@@ -48,6 +49,7 @@ class MusicService extends EventEmitter {
     musicDir = null,
     mpdRuntimeDir = '/tmp',
     playlistFile = null,
+    opTimeoutMs = 3000,
   } = {}) {
     super();
     this._socketPath = socketPath;
@@ -60,6 +62,11 @@ class MusicService extends EventEmitter {
     // enforces this invariant at the point of consumption.
     this._mpdRuntimeDir = mpdRuntimeDir;
     this._playlistFile = playlistFile;
+    // Hard ceiling for any single mpd2 round-trip. mpd2@1.0.7 can wedge (its
+    // single positional response/idle FIFO desyncs and commands then never
+    // settle); a timeout is the only reliable signal. Chosen < the GM Scanner's
+    // 5s command-ack timeout so the backend fails before the client gives up.
+    this._opTimeoutMs = opTimeoutMs;
     this._playlists = new Map();
     this._procMon = null;
 
@@ -188,7 +195,7 @@ class MusicService extends EventEmitter {
       }
     }
     try {
-      await this._mpd.sendCommand('ping');
+      await withTimeout(this._mpd.sendCommand('ping'), this._opTimeoutMs, 'MPD ping');
       return true;
     } catch (_) {
       // Connection went stale — drop the client so next checkConnection
@@ -210,31 +217,57 @@ class MusicService extends EventEmitter {
     }
   }
 
-  async play()     { this._assertConnected(); await this._mpd.sendCommand('play'); }
-  async pause()    { this._assertConnected(); await this._mpd.sendCommand('pause 1'); }
-  async stop()     { this._assertConnected(); await this._mpd.sendCommand('stop'); }
-  async next()     { this._assertConnected(); await this._mpd.sendCommand('next'); }
-  async previous() { this._assertConnected(); await this._mpd.sendCommand('previous'); }
+  /**
+   * Execute a single mpd2 round-trip under a hard timeout. mpd2@1.0.7 matches
+   * responses to callers positionally (one FIFO shared by commands AND idle),
+   * so a desynced client never rejects — it hangs forever. On timeout we
+   * abandon the client: drop the shared ref (so checkConnection's reconnect
+   * path rebuilds a fresh one) and rethrow so callers fail fast instead of
+   * hanging.
+   *
+   * @param {(client: object) => Promise} op - receives the captured mpd2 client
+   */
+  async _send(op) {
+    this._assertConnected();
+    const client = this._mpd; // capture for the same-reference guard
+    try {
+      return await withTimeout(op(client), this._opTimeoutMs, 'MPD command');
+    } catch (err) {
+      // Only tear down on a timeout, and only if nobody replaced the client
+      // meanwhile (checkConnection's reconnect path also assigns this._mpd).
+      if (err instanceof TimeoutError && this._mpd === client) {
+        this._mpd = null;
+        this._eventsWired = false;
+        this.connected = false;
+        require('./serviceHealthRegistry').report('music', 'down', 'MPD operation timed out');
+        client.disconnect().catch(() => {}); // fire-and-forget cleanup of the dead client
+      }
+      throw err;
+    }
+  }
+
+  async play()     { return this._send(c => c.sendCommand('play')); }
+  async pause()    { return this._send(c => c.sendCommand('pause 1')); }
+  async stop()     { return this._send(c => c.sendCommand('stop')); }
+  async next()     { return this._send(c => c.sendCommand('next')); }
+  async previous() { return this._send(c => c.sendCommand('previous')); }
 
   async setVolume(v) {
-    this._assertConnected();
     if (typeof v !== 'number' || !Number.isFinite(v)) {
       throw new Error(`Invalid volume: ${v}`);
     }
     if (v < 0 || v > 100) {
       throw new Error(`Volume out of range: ${v}`);
     }
-    await this._mpd.sendCommand(`setvol ${Math.round(v)}`);
+    return this._send(c => c.sendCommand(`setvol ${Math.round(v)}`));
   }
 
   async setShuffle(enabled) {
-    this._assertConnected();
-    await this._mpd.sendCommand(`random ${enabled ? 1 : 0}`);
+    return this._send(c => c.sendCommand(`random ${enabled ? 1 : 0}`));
   }
 
   async setLoop(enabled) {
-    this._assertConnected();
-    await this._mpd.sendCommand(`repeat ${enabled ? 1 : 0}`);
+    return this._send(c => c.sendCommand(`repeat ${enabled ? 1 : 0}`));
   }
 
   _quoteMpdArg(s) {
@@ -273,7 +306,7 @@ class MusicService extends EventEmitter {
       ...playlist.tracks.map(t => `add ${this._quoteMpdArg(t)}`),
       'play',
     ];
-    await this._mpd.sendCommands(cmds);
+    await this._send(c => c.sendCommands(cmds));
 
     this.playlist = {
       id: playlist.id,
@@ -300,7 +333,7 @@ class MusicService extends EventEmitter {
   /** Fetches the MPD library and returns parsed track metadata. */
   async listAllTracks() {
     this._assertConnected();
-    const stdout = await this._mpd.sendCommand('listallinfo');
+    const stdout = await this._send(c => c.sendCommand('listallinfo'));
     return parseListAllInfo(stdout);
   }
 
@@ -328,15 +361,13 @@ class MusicService extends EventEmitter {
 
   async pauseForGameClock() {
     if (this.state !== 'playing') return;
-    this._assertConnected();
-    await this._mpd.sendCommand('pause 1');
+    await this._send(c => c.sendCommand('pause 1'));
     this._pausedByGameClock = true;
   }
 
   async resumeFromGameClock() {
     if (!this._pausedByGameClock) return;
-    this._assertConnected();
-    await this._mpd.sendCommand('play');
+    await this._send(c => c.sendCommand('play'));
     this._pausedByGameClock = false;
   }
 
