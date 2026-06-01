@@ -30,10 +30,11 @@
 | **1** | Reconnect & lifecycle resilience | 14 | the two CRITICAL/HIGH churn roots (RL-1, RL-2, SW-1) |
 | **2** | Transaction durability | 10 | the lost-scan CRITICAL (TQ-1/TQ-2) + the `error` consumer |
 | **3** | Operator-visible error surfacing | 3 | makes Phases 1–2 observable during a show |
-| **4** | Contract drift & remaining hardening | 35 | closes the long tail (NFC, auth/HTTP, renderers, contracts) |
+| **4** | Contract drift & remaining hardening | 34 | closes the long tail (NFC, auth/HTTP, renderers, contracts) |
 
 Phase 1 = **P1a** (reconnect logic, 7) + **P1b** (lifecycle + service worker, 4) + **P1c** (connect-time HTTP, 3).
-Phase 4 = **P4a** (contract drift, 10) + **P4b** (NFC, 5) + **P4c** (auth/HTTP, 8) + **P4d** (renderers/state, 12).
+Phase 4 = **P4a** (contract drift, 10) + **P4b** (NFC, 5) + **P4c** (auth/HTTP, 8) + **P4d** (renderers/state, 11).
+(Grand total: 66 tasks. P4d.10 was **removed** during pre-implementation review — it was a redundant, weaker duplicate of P0.2's source-scanning conformance test; see the P4d.10 note below. Task numbering is left stable, so P4d skips from .9 to .11.)
 
 ## Sequencing & cross-phase dependencies (read before reordering)
 
@@ -42,7 +43,7 @@ Phase 4 = **P4a** (contract drift, 10) + **P4b** (NFC, 5) + **P4c** (auth/HTTP, 
    - **P0.4** (forwarding-list vs AsyncAPI subscribe set) ↔ goes green after **P0.3** export + a contract reconciliation (add `BatchAck`/`PlayerScan` to the subscribe `oneOf`, or prune client orphans; decide `scoreboard:page` direction).
    - **P0.5** (`dist/sw.js` exists) ↔ goes green when **P1b** makes the build emit a real service worker (SW-1).
 2. **Pull P4b.1 forward into Phase 1.** P1b's "abort the NFC scan when hidden" (NFC-3) depends on the `AbortController` introduced by **P4b.1** (NFC-1). Do **P4b.1 before P1b's NFC-3 task**.
-3. **Contract-first, in separate commits.** Tasks editing `asyncapi.yaml` / `openapi.yaml` (**P2.1** status enum, **P4a.3** SyncFull schema, **P4a.5** SyncRequest, **P4a.7** device `connectionStatus`) precede their scanner consumers. P0, P2, and P4a all touch `asyncapi.yaml` — land each contract edit as its own commit to keep merges clean. P4a and P4d both touch `EnvironmentRenderer.js` and `app.js` — coordinate edit order.
+3. **Contract-first, in separate commits.** Tasks editing `asyncapi.yaml` / `openapi.yaml` (**P2.1** status enum, **P4a.3** SyncFull schema, **P4a.5** SyncRequest, **P4a.7** device `connectionStatus`) precede their scanner consumers. P0, P2, and P4a all touch `asyncapi.yaml` — land each contract edit as its own commit to keep merges clean. `EnvironmentRenderer.js` is touched by **P4a.10 + P4d.5 + P4d.6**; `app.js` is touched by **P1b.4, P3.2, P4a.2, P4b.3, P4b.5** (NOT by any P4d task — P4d.11 only edits `AdminOperations.js`). Coordinate edit order across those (the cited edits target non-overlapping line regions, but re-anchor each before applying).
 4. **Phase 2 before P3.3.** P3's `AUTH_*` routing (AUTH-7) rides on the `error`-event consumer added in Phase 2 (CC-4/WS-3).
 
 ## The dependency-collapse principle (why the order matters)
@@ -53,12 +54,14 @@ Do **not** reorder to "knock out the easy lows first." Each phase's roots dissol
 - **Phase 2 roots** — TQ-1 (persist-before-emit), TQ-2 (clear only on definitive result), + the `error` consumer — **dissolve** TQ-3, TQ-4, TQ-6, TQ-7.
 - **Phase 0** **dismantles** the "phantom-mock" pattern (AC-4, CC-5, SR-1, WS-2, SW-4) — tests that mocked the wrong contract shape and passed against it, which is *how* the two criticals shipped under a green suite.
 
-## Open decisions to confirm during execution
+## Open decisions — RESOLVED during pre-implementation review (2026-06-01)
 
-- **CC-8b / P4a.6–8:** confirm via a live `GET /api/state` (with a connected GM) whether `devices[].connectionStatus` is present. Code inspection says it's omitted (the `syncHelpers` device `.map()` doesn't call `DeviceConnection.toJSON()`); if a running orchestrator proves otherwise, skip P4a.7/.8.
-- **NFC-5 / P4b:** confirm the production NFC tag encoding before deleting the URL-record branch. If URL tags are in use, switch to token-segment extraction instead of deletion.
-- **CC-3 / P4a.5:** `sync:request` currently has no envelope and no payload; the plan documents it as-is and **defers** migrating the client to the envelope (that needs a server-handler change and risks breaking live admin refresh). Decide separately.
-- **HTTP-8 / P4c.8:** `GET /api/videos` does **not** exist in the contract or backend — resolved as a docs fix, not an implementation, unless a video-picker feature is built (which would be its own contract-first effort).
+All four were resolved by static code/contract inspection; no live orchestrator is required.
+
+- **CC-8b / P4a.6–8: RESOLVED — `connectionStatus` IS omitted; do BOTH P4a.7 and P4a.8.** The `syncHelpers` device `.map()` (`backend/src/websocket/syncHelpers.js:91-97`) builds `{deviceId,type,name,connectionTime,ipAddress}` and never calls `DeviceConnection.toJSON()` (which would include `connectionStatus`, default `'connected'` at `deviceConnection.js:23-24`). `/api/state` delegates to the SAME `buildSyncFullPayload()` (`stateRoutes.js:32`), and `connectionStatus` appears nowhere in `openapi.yaml` (0 grep matches). The consumer filter (`connectionWizard.js:210-211`) was already correct, just starved of data. **P4a.6 is therefore a no-op confirmation — skip the live check and proceed straight to P4a.7/.8.**
+- **NFC-5 / P4b.4: RESOLVED — production tags are text-encoded; dropping the URL-record branch is safe (no token-segment extraction needed).** Corroborated three ways: the Player Scanner reads only `recordType==='text'` (`aln-memory-scanner/index.html:430-436`, no url branch); the parallel QR encoding for the same tokens is the bare `token_id` (`aln-memory-scanner/generate-qr.py:47,95`); and GM `findToken` normalization only strips `[:-]`+lowercases (`tokenManager.js:219`), so a raw URL can never match a token key (it falls to the Unknown-queue path).
+- **CC-3 / P4a.5: RESOLVED — keep the defer decision.** `sync:request` is a bare `socket.emit('sync:request')` with no args (`MonitoringDisplay.js:151`); the server handler takes no data argument and responds with `sync:full` (`server.js:75,90`). Documenting it as payload-less (`type: null`) without a client/server change is consistent with the wire reality.
+- **HTTP-8 / P4c.8: RESOLVED — docs-only fix is correct.** `GET /api/videos` exists nowhere (0 grep matches across `backend/contracts`, `backend/src`, `ALNScanner/src`); `VideoController` is pure WebSocket (`video:queue:add` with `{videoFile}`).
 
 ---
 
@@ -567,7 +570,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ### Task P0.5: Add a build-artifact test asserting dist/sw.js exists after a production build (RED-exposes SW-1/SW-4)
 
-No test asserts the real service-worker artifact ships; every existing `initializationSteps.test.js` fully mocks `navigator.serviceWorker.register` (`tests/unit/app/initializationSteps.test.js:192,196,200`), which is why the `/gm-scanner/sw.js` 404 shipped undetected (SW-1). Add a build-artifact assertion that runs the production build and checks `dist/sw.js` exists. **This test will START RED**: `sw.js` lives at the submodule root (`ALNScanner/sw.js`), is neither a Rollup `input` (`vite.config.js:20-24` only lists `main: './index.html'`) nor inside `publicDir:'data'` (`vite.config.js:7`), so the build never emits it. The test stays red until the SW-1 fix makes the build emit `sw.js` (e.g., via `vite-plugin-pwa` or by placing/copying it into `publicDir`). The build runs in-test via `child_process.execSync('npm run build:backend')` (the `/gm-scanner/`-based build used in production); it uses a long Jest timeout because a Vite build takes longer than the default 5s.
+No test asserts the real service-worker artifact ships; every existing `initializationSteps.test.js` fully mocks `navigator.serviceWorker.register` (`tests/unit/app/initializationSteps.test.js:194,200,206` — re-anchor; nothing relevant at the old 192/196), which is why the `/gm-scanner/sw.js` 404 shipped undetected (SW-1). Add a build-artifact assertion that runs the production build and checks `dist/sw.js` exists. **This test will START RED**: `sw.js` lives at the submodule root (`ALNScanner/sw.js`), is neither a Rollup `input` (`vite.config.js:20-24` only lists `main: './index.html'`) nor inside `publicDir:'data'` (`vite.config.js:7`), so the build never emits it. The test stays red until the SW-1 fix makes the build emit `sw.js` (e.g., via `vite-plugin-pwa` or by placing/copying it into `publicDir`). The build runs in-test via `child_process.execSync('npm run build:backend')` (the `/gm-scanner/`-based build used in production); it uses a long Jest timeout because a Vite build takes longer than the default 5s.
 
 **Files:**
 - Test (Create): `/home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner/tests/unit/build/swArtifact.test.js`
@@ -869,11 +872,25 @@ And the persistent handler (`orchestratorClient.js:227`):
     });
 ```
 
+**Step 3b — Fix the existing `socket:error` assertion (REQUIRED — it goes RED otherwise).** Adding `reason` to the dispatched detail breaks the existing `'should emit socket:error event on connection failure'` test (`orchestratorClient.test.js:97-99`). That test asserts:
+
+```javascript
+expect(errorHandler).toHaveBeenCalledWith(expect.objectContaining({ detail: { error: expect.any(Error) } }));
+```
+
+`expect.objectContaining(...)` wraps only the OUTER event object — the nested `detail` is a plain object literal, which Jest matches with **exact** structural equality. The mock fires `_simulateError(new Error('Connection failed'))` (no `CONSTANT_CASE:` prefix), so `_parseErrorReason` returns `null` and the received detail becomes `{ error, reason: null }` — an extra key vs the expected `{ error }`, which FAILS. Wrap `detail` in `objectContaining` too:
+
+```javascript
+expect(errorHandler).toHaveBeenCalledWith(expect.objectContaining({
+  detail: expect.objectContaining({ error: expect.any(Error) })
+}));
+```
+
 **Step 4 — Run it, expect PASS.**
 
 Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/network/orchestratorClient.test.js`
 
-Expected: PASS — new test green; the existing `'should emit socket:error event on connection failure'` test still passes (it asserts `detail: { error: expect.any(Error) }` which `objectContaining` does not require here — note that test uses an exact-shape `objectContaining` on the outer event only, so the added `reason: null` for a non-prefixed `'Connection failed'` message does not break it).
+Expected: PASS — full file green: the new test passes, AND the existing `'should emit socket:error event on connection failure'` test passes only AFTER the Step-3b edit (without it, the file stays RED on the extra `reason: null` key).
 
 **Step 5 — Commit.**
 
@@ -1350,7 +1367,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
     });
 ```
 
-Also update the "Integration - Full Initialization Flow" expectation at initializationSteps.test.js:583 (`expect(mockUIManager.showError).toHaveBeenCalled();`) if it asserts SW failure surfaces a toast — read that block first; only change it if it relies on the SW-failure-toast behavior (the token-database failure path also calls `showError`, so verify which one it targets before editing).
+Also check the `showError` expectation near initializationSteps.test.js:582 — NOTE: there is no "Integration - Full Initialization Flow" describe block; the nearest `showError` assertion lives in `'should handle initialization failure gracefully'` and targets the **token-database** failure path (`loadTokenDatabase()`), NOT `registerServiceWorker()`. So it almost certainly does NOT need changing. Read that block first; only change it if it actually asserts the SW-failure-toast behavior (it doesn't, per current inspection).
 
 **Step 2 — Run it (expect FAIL).**
 Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/app/initializationSteps.test.js -t "non-SSL errors"`
@@ -2370,7 +2387,7 @@ And to `TransactionResult.payload.properties.data.properties` (after `error`, ar
     };
 ```
 
-(c) `backend/src/utils/validators.js` — in `gmTransactionSchema`, add `clientTxId: Joi.string().optional()` so the field survives validation (Joi strips unknown keys by default — confirm by grepping the schema; if it uses `.unknown(false)` the field MUST be declared).
+(c) `backend/src/utils/validators.js` — in `gmTransactionSchema`, add `clientTxId: Joi.string().optional()`. This declaration is REQUIRED (not optional): the shared `validate()` helper (`validators.js:178-180`) calls `schema.validate(data, { stripUnknown: true })`, so any undeclared field is silently STRIPPED before it reaches the handler — `gmTransactionSchema` does NOT use `.unknown(false)` (only `sessionUpdateSchema` does), but `stripUnknown: true` has the same effect here. Without the declaration, `clientTxId` would be dropped and never echoed back.
 
 **Step 4 — Run it (expect PASS).**
 Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/backend && npx jest tests/contract/websocket/transaction-events.test.js -t "echoes the client-supplied clientTxId"`
@@ -2400,7 +2417,7 @@ The backend `error` event (validation failure, `QUEUE_FULL`, post-connection `AU
 - Modify: `ALNScanner/src/network/networkedQueueManager.js:167-186` (also handle `type === 'error'` in the replay handler)
 - Test: `ALNScanner/tests/unit/network/networkedQueueManager.test.js` (new test in `describe('replayTransaction')`)
 
-**Step 1 — Write the failing test.** Add to `ALNScanner/tests/unit/network/networkedQueueManager.test.js` inside `describe('replayTransaction', ...)` (after line 443):
+**Step 1 — Write the failing test.** Add to `ALNScanner/tests/unit/network/networkedQueueManager.test.js` inside `describe('replayTransaction', ...)` — insert it BEFORE the describe block's closing brace (around line 444; line 443 is the close of the preceding `it`, and 444 is the describe's own closing `});`, so "after 443" must mean "before 444" to stay inside the block):
 
 ```js
     it('should reject fast when a backend error matches the submission', async () => {
@@ -2509,86 +2526,62 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ### Task P2.5: Add a `networkedSession` test asserting a forwarded `error` reaches a visible sink (CC-4 / WS-3 verification)
 
-P2.4 added the `case 'error'` but the lock-in test for the dispatch lives with `networkedSession`. There is no existing `networkedSession.test.js` unit harness for `_messageHandler` in isolation, so we test the handler behavior by constructing the handler the same way the session wires it. Use the same import/jsdom style as `networkedQueueManager.test.js` (`@jest/globals`, jsdom is the ALNScanner default per `jest` config). We test via a minimal fake: drive `_messageHandler` by dispatching `message:received` on a stub client and asserting `backend:error` fires.
+P2.4 added the `case 'error'`; this task locks in its dispatch behavior. **Use the EXISTING harness — do NOT create a new file.** `ALNScanner/tests/unit/network/networkedSession.test.js` already has a `describe('global WebSocket event handlers')` block whose `beforeEach` calls `session.initialize()` and captures the REAL `message:received` handler via `mockClient.addEventListener.mock.calls.find(c => c[0] === 'message:received')[1]`. Existing tests in that block drive it directly (e.g. `messageHandler({ detail: { type: 'score:adjusted', payload: {...} } })`). Add the two error-routing tests there, in the same style — this exercises the genuine wiring through `session.initialize()` and is simpler than a hand-rolled `_wireEventHandlers` stub.
+
+(The earlier-drafted claim that "there is no existing `networkedSession.test.js` harness for `_messageHandler`" was WRONG — the file exists (~957 lines) and the block above is the canonical isolation harness. Re-anchor to its actual `session` / `mockClient` bindings before editing.)
 
 **Files:**
-- Test: `ALNScanner/tests/unit/network/networkedSession.error.test.js` (new file)
+- Test (Modify): `ALNScanner/tests/unit/network/networkedSession.test.js` — add two `it(...)` inside the existing `describe('global WebSocket event handlers')` block.
 
-**Step 1 — Write the failing test.** Create `ALNScanner/tests/unit/network/networkedSession.error.test.js`. Because `NetworkedSession._createServices()` constructs real `OrchestratorClient`/`ConnectionManager`, we exercise just the message routing by building the handler closure the session installs. The simplest robust approach: instantiate the session, stub `_createServices` to install a fake client, wire handlers, then dispatch.
+**Step 1 — Write the failing test.** Add to the `describe('global WebSocket event handlers')` block. Each test captures the registered `message:received` handler the same way the block's siblings do (via `mockClient.addEventListener.mock.calls`), so it does not depend on a particular `beforeEach` variable name:
 
 ```js
-import { describe, it, expect, jest } from '@jest/globals';
-import NetworkedSession from '../../../src/network/networkedSession.js';
+    it('dispatches backend:error when a backend error event arrives', () => {
+      const messageHandler = mockClient.addEventListener.mock.calls
+        .find(c => c[0] === 'message:received')[1];
 
-function makeFakeClient() {
-  const target = new EventTarget();
-  return {
-    addEventListener: target.addEventListener.bind(target),
-    removeEventListener: target.removeEventListener.bind(target),
-    dispatchEvent: target.dispatchEvent.bind(target),
-    destroy: jest.fn()
-  };
-}
+      const seen = [];
+      session.addEventListener('backend:error', (e) => seen.push(e.detail));
 
-describe('NetworkedSession error routing', () => {
-  it('dispatches backend:error when a backend error event arrives', () => {
-    const dataManager = {};
-    const session = new NetworkedSession({ url: 'x', deviceId: 'd' }, dataManager);
+      messageHandler({ detail: { type: 'error', payload: { code: 'QUEUE_FULL', message: 'Offline queue is full' } } });
 
-    // Install the message handler against a fake client (skip real socket setup)
-    session.services = {
-      client: makeFakeClient(),
-      connectionManager: { addEventListener: jest.fn() }
-    };
-    session._wireEventHandlers();
+      expect(seen).toEqual([{ code: 'QUEUE_FULL', message: 'Offline queue is full' }]);
+    });
 
-    const seen = [];
-    session.addEventListener('backend:error', (e) => seen.push(e.detail));
+    it('routes AUTH_REQUIRED error into the auth:required flow', () => {
+      const messageHandler = mockClient.addEventListener.mock.calls
+        .find(c => c[0] === 'message:received')[1];
 
-    session.services.client.dispatchEvent(new CustomEvent('message:received', {
-      detail: { type: 'error', payload: { code: 'QUEUE_FULL', message: 'Offline queue is full' } }
-    }));
+      const authSpy = jest.fn();
+      session.addEventListener('auth:required', authSpy);
 
-    expect(seen).toEqual([{ code: 'QUEUE_FULL', message: 'Offline queue is full' }]);
-  });
+      messageHandler({ detail: { type: 'error', payload: { code: 'AUTH_REQUIRED', message: 'Not identified' } } });
 
-  it('routes AUTH_REQUIRED error into the auth:required flow', () => {
-    const session = new NetworkedSession({ url: 'x', deviceId: 'd' }, {});
-    session.services = { client: makeFakeClient(), connectionManager: { addEventListener: jest.fn() } };
-    session._wireEventHandlers();
-
-    const authSpy = jest.fn();
-    session.addEventListener('auth:required', authSpy);
-
-    session.services.client.dispatchEvent(new CustomEvent('message:received', {
-      detail: { type: 'error', payload: { code: 'AUTH_REQUIRED', message: 'Not identified' } }
-    }));
-
-    expect(authSpy).toHaveBeenCalledTimes(1);
-  });
-});
+      expect(authSpy).toHaveBeenCalledTimes(1);
+    });
 ```
 
-Note: `_wireEventHandlers()` references `this.services.connectionManager.addEventListener` and `this.services.client.addEventListener` — both are satisfied by the stubs above. It also reads `this.services.adminController`/`queueManager` only inside the connected/disconnected callbacks (not invoked here), so the partial `services` object is safe.
+> The second test passes once P2.4's `case 'error'` routes `AUTH_REQUIRED` to `auth:required`. If your P2.4 implementation only emits `backend:error` (deferring all auth routing to P3.3/AUTH-7), move this second test into P3.3 instead and keep only the `backend:error` test here. Match whichever split your P2.4 actually shipped.
 
-**Step 2 — Run it (expect FAIL only if P2.4 not applied; here it should PASS).** To prove the test is meaningful, with P2.4's `case 'error'` removed it fails: first test `expect(seen).toEqual([...])  Received: []`.
-Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/network/networkedSession.error.test.js`
+**Step 2 — Run it (with P2.4's `case 'error'` removed it FAILS).** To prove the test is meaningful, temporarily comment out P2.4's `case 'error'` and confirm `expect(seen).toEqual([...])` fails with `Received: []`; then restore.
+Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/network/networkedSession.test.js -t "backend:error"`
 Expected (without P2.4) FAIL: `Received: []`.
 
 **Step 3 — Implementation.** None beyond P2.4 (this task is the lock-in test). If it fails, P2.4's `case 'error'` is missing or wrong.
 
 **Step 4 — Run it (expect PASS).**
-Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/network/networkedSession.error.test.js`
-Expected PASS: `2 passed`.
+Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/network/networkedSession.test.js`
+Expected PASS: full file green (the two new tests plus all existing `global WebSocket event handlers` tests).
 
 **Step 5 — Commit.**
 ```bash
-git add ALNScanner/tests/unit/network/networkedSession.error.test.js
+git add ALNScanner/tests/unit/network/networkedSession.test.js
 git commit -m "test(scanner): assert backend error event reaches a visible sink
 
 Locks in networkedSession case 'error': QUEUE_FULL/VALIDATION_ERROR surface
-via backend:error, AUTH_REQUIRED routes into auth:required. Prevents
-regression to the silent-drop behavior (AsyncAPI Decision #10).
+via backend:error, AUTH_REQUIRED routes into auth:required. Added to the
+existing 'global WebSocket event handlers' harness. Prevents regression to
+the silent-drop behavior (AsyncAPI Decision #10).
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -2766,9 +2759,14 @@ Expected FAIL examples: `should keep queued entries...` → `Expected to contain
 
 Note: the existing `'should clear queue even if some transactions fail'` test (lines 197-224) now contradicts the new behavior (a rejected replay no longer means "clear everything"). Update its assertion: a mocked `.mockResolvedValueOnce({status:'accepted'})` then `.mockRejectedValueOnce(...)` should leave the THROWN entry in the queue. Change `expect(queueManager.tempQueue).toHaveLength(0)` to `expect(queueManager.tempQueue).toHaveLength(1)` and update its mocks to resolve with `{status:'accepted'}` for the first.
 
+**Step 3c — REQUIRED: fix the sibling tests broken by stamping `clientTxId` onto the persisted entry.** Because `queueTransaction` now pushes `{ ...transaction, clientTxId }` instead of the bare `transaction`, every existing assertion that compares the stored entry to the bare object breaks (`toContainEqual`/`JSON.stringify` use exact structural equality, and the extra `clientTxId` key fails the match). These are NOT covered by the note above — update each (re-anchor the line numbers first):
+- `'should queue transaction when disconnected'` (~lines 110-114): change `expect(queueManager.tempQueue).toContainEqual(transaction)` → `toContainEqual(expect.objectContaining({ tokenId: 'token1', teamId: '001' }))`; and the `localStorage.setItem(..., JSON.stringify([transaction]))` assertion → assert with `expect.stringContaining('token1')` (the persisted JSON now also carries `clientTxId`).
+- `'should handle missing client gracefully'` (~line 143): same `toContainEqual(transaction)` → `toContainEqual(expect.objectContaining({ ... }))`.
+- `'should emit queue:changed event after sync'` (~lines 250-264): it mocks `replayTransaction` to resolve `{ status: 'success' }` and asserts `queuedCount: 0`. Under the new branching `'success'` is NOT a real backend status, so it falls to the keep-for-reconnect branch, the entry is KEPT, and `queuedCount` becomes 1. Change the mock to `{ status: 'accepted' }`.
+
 **Step 4 — Run them (expect PASS).**
 Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/network/networkedQueueManager.test.js`
-Expected PASS: all tests in the file pass (existing `'should replay all transactions'` resolves with `{status:'accepted'}`-shaped mocks; if that test mocks `{status:'success'}` it will now KEEP the entries — update those mocks to `{ status: 'accepted' }` so they reflect a real backend status, since `'success'` is not a real backend status).
+Expected PASS: full file green — but ONLY after the Step-3c edits above. Any existing test that mocks `{status:'success'}` (e.g. `'should replay all transactions'`, `'should emit queue:changed event after sync'`) must switch to `{ status: 'accepted' }`, since `'success'` is not a real backend status and now lands in the keep-for-reconnect branch (it would wrongly KEEP the entry and fail a `length 0` / `queuedCount 0` assertion otherwise).
 
 **Step 5 — Commit.**
 ```bash
@@ -3016,54 +3014,85 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task P2.9: Persist `scannedTokens` keyed by sessionId (TQ-7)
+### Task P2.9: Persist `scannedTokens` keyed by sessionId — REDESIGNED to actually close TQ-7
 
-In networked mode the `scannedTokens` Set is in-memory only (`NetworkedStorage.js:30`, surfaced via `unifiedDataManager.js:142-143`). After a reload it is empty until `sync:full` repopulates it, so during that gap the local duplicate guard misses and a reloaded-then-offline operator can enqueue a token twice. We persist `scannedTokens` to localStorage keyed by sessionId so the guard survives reloads, and rehydrate on construction / session set. We scope this to `NetworkedStorage` (LocalStorage already persists via its own transactions).
+> **Redesigned during pre-implementation review (2026-06-01).** The first draft hooked rehydration into `setSessionId`, replaced the Set, and asserted against the strategy Set directly. That does NOT work: (1) the only production caller of `setSessionId` is `resetForNewSession`, which runs *during* `sync:full` processing — i.e. AFTER connect, never during the vulnerable pre-`sync:full` window; (2) the rehydrated Set was immediately overwritten by `setScannedTokensFromServer`; and (3) replacing the Set desynced `UnifiedDataManager`'s shared reference (the real guard `isTokenScanned` reads), so the test passed while the live guard stayed broken. The corrected design rehydrates at **strategy init** (before `sync:full`), **unions** the server overwrite instead of replacing, mutates the Set **in place** (preserving the shared ref), and asserts through the **UDM facade**.
+
+In networked mode the `scannedTokens` Set is in-memory only (`NetworkedStorage.js:30`, adopted by `UnifiedDataManager` via the shared reference in `_syncScannedTokens()`, `unifiedDataManager.js:141-143`). After a reload it is empty until `sync:full` repopulates it, so during that gap the local duplicate guard (`UnifiedDataManager.isTokenScanned`, `unifiedDataManager.js:440-442`, called from `app.js:669`) misses and a reloaded-then-offline operator can enqueue a token twice. We persist `scannedTokens` to localStorage keyed by sessionId and **rehydrate at strategy init** so the guard survives reloads even before `sync:full`. Scope: `NetworkedStorage` only (LocalStorage persists via its own transactions).
 
 **Files:**
-- Modify: `ALNScanner/src/core/storage/NetworkedStorage.js` (persist/rehydrate `scannedTokens` keyed by `currentSessionId`)
-- Test: `ALNScanner/tests/unit/core/storage/NetworkedStorage.test.js` (new `describe`)
+- Modify: `ALNScanner/src/core/storage/NetworkedStorage.js` (persist + rehydrate-at-init; union-on-server-sync, in place)
+- Modify: `ALNScanner/src/core/unifiedDataManager.js` (`markTokenAsScanned` persists via the networked strategy — `markTokenAsScanned` is the live mark path, `app.js:742`, NOT `NetworkedStorage.addTransaction` which is dead per P2.10)
+- Test: `ALNScanner/tests/unit/core/unifiedDataManager.test.js` (facade-level: rehydrate-before-sync:full + union) and `ALNScanner/tests/unit/core/storage/NetworkedStorage.test.js` (strategy-level persistence)
 
-**Step 1 — Write the failing test.** Add to `ALNScanner/tests/unit/core/storage/NetworkedStorage.test.js`. The existing harness (lines 11-30) does not set up localStorage, so add a minimal in-memory mock in this `describe` (mirror the networkedQueueManager pattern at `networkedQueueManager.test.js:16-33`):
+**Step 1 — Write the failing tests.**
+
+(A) **Facade tests** in `tests/unit/core/unifiedDataManager.test.js` — these assert through the REAL guard `isTokenScanned`, so they catch the shared-reference desync the strategy-only test missed. Model the setup on the existing `'should initialize networked mode with NetworkedStorage'` test (`new UnifiedDataManager({...})` + `await manager.initializeNetworkedMode(mockSocket)`). Add an in-memory `localStorage` mock in this describe's `beforeEach` (mirror `networkedQueueManager.test.js:16-33`):
 
 ```js
-  describe('scannedTokens persistence (TQ-7)', () => {
-    let store;
-    beforeEach(() => {
-      store = {};
-      Object.defineProperty(global, 'localStorage', {
-        value: {
-          getItem: (k) => store[k] ?? null,
-          setItem: (k, v) => { store[k] = String(v); },
-          removeItem: (k) => { delete store[k]; }
-        },
-        writable: true, configurable: true
-      });
+  describe('scannedTokens reload durability (TQ-7)', () => {
+    const mockSocket = { on: jest.fn(), off: jest.fn(), emit: jest.fn(), connected: true };
+
+    it('rehydrates the duplicate guard from persisted state BEFORE sync:full', async () => {
+      // A prior session persisted a scan, then the page reloaded.
+      localStorage.setItem('networkedSessionId', 'sess-1');
+      localStorage.setItem('networkedScannedTokens:sess-1', JSON.stringify(['tok-9']));
+
+      mockSessionModeManager.isNetworked.mockReturnValue(true);
+      mockSessionModeManager.isStandalone.mockReturnValue(false);
+      manager = new UnifiedDataManager({ tokenManager: mockTokenManager, sessionModeManager: mockSessionModeManager });
+      await manager.initializeNetworkedMode(mockSocket); // NO sync:full yet
+
+      // Assert via the FACADE (the guard app.js actually uses), not the strategy Set.
+      expect(manager.isTokenScanned('tok-9')).toBe(true);
     });
 
-    it('persists scanned tokens under a session-scoped key', () => {
-      storage.setSessionId('sess-1');
-      storage.addTransaction({ tokenId: 'tok-1', teamId: '001', mode: 'blackmarket' });
+    it('keeps a gap-scanned token after the server overwrite (union, not replace)', async () => {
+      localStorage.setItem('networkedSessionId', 'sess-1');
+      mockSessionModeManager.isNetworked.mockReturnValue(true);
+      mockSessionModeManager.isStandalone.mockReturnValue(false);
+      manager = new UnifiedDataManager({ tokenManager: mockTokenManager, sessionModeManager: mockSessionModeManager });
+      await manager.initializeNetworkedMode(mockSocket);
 
-      expect(JSON.parse(store['networkedScannedTokens:sess-1'])).toContain('tok-1');
-    });
+      manager.markTokenAsScanned('tok-gap');            // scanned during the reconnect gap (still queued)
+      manager.setScannedTokensFromServer(['tok-server']); // sync:full that does not yet know about tok-gap
 
-    it('rehydrates scanned tokens for the current session', () => {
-      store['networkedScannedTokens:sess-2'] = JSON.stringify(['tok-9']);
-      storage.setSessionId('sess-2');
-
-      expect(storage.scannedTokens.has('tok-9')).toBe(true);
+      expect(manager.isTokenScanned('tok-gap')).toBe(true);    // survived the overwrite
+      expect(manager.isTokenScanned('tok-server')).toBe(true); // server mark added
     });
   });
 ```
 
-**Step 2 — Run it (expect FAIL).**
-Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/core/storage/NetworkedStorage.test.js -t "scannedTokens persistence"`
-Expected FAIL: `persists scanned tokens...` → `Cannot read properties of null (reading ...)` / `JSON.parse(undefined)` because nothing writes the session-scoped key; `rehydrates...` → `Received: false` (no rehydrate on `setSessionId`).
+(B) **Strategy persistence test** in `tests/unit/core/storage/NetworkedStorage.test.js` (in-memory localStorage mock as before):
 
-**Step 3 — Minimal implementation.** In `ALNScanner/src/core/storage/NetworkedStorage.js`:
+```js
+  describe('scannedTokens persistence (TQ-7)', () => {
+    beforeEach(() => { /* in-memory localStorage mock — see networkedQueueManager.test.js:16-33 */ });
 
-Add a private persistence key helper and a save/load pair, hook `addTransaction` (after `this.scannedTokens.add` at line 102), `setScannedTokens` (line 361), and `setSessionId` (line 388):
+    it('persists marks under a session-scoped key when marked', () => {
+      storage.setSessionId('sess-1');
+      storage.scannedTokens.add('tok-1');
+      storage.persistScannedTokens();
+      expect(JSON.parse(localStorage.getItem('networkedScannedTokens:sess-1'))).toContain('tok-1');
+    });
+
+    it('rehydrates marks for the persisted session at init', async () => {
+      localStorage.setItem('networkedSessionId', 'sess-2');
+      localStorage.setItem('networkedScannedTokens:sess-2', JSON.stringify(['tok-9']));
+      const s = new NetworkedStorage({ socket: { connected: false }, tokenManager: mockTokenManager, debug: mockDebug });
+      await s.initialize();
+      expect(s.scannedTokens.has('tok-9')).toBe(true);
+    });
+  });
+```
+
+**Step 2 — Run them (expect FAIL).**
+Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/core/unifiedDataManager.test.js -t "reload durability" tests/unit/core/storage/NetworkedStorage.test.js -t "scannedTokens persistence"`
+Expected FAIL: `rehydrates ... BEFORE sync:full` → `isTokenScanned('tok-9')` is `false` (no init-time rehydrate); `keeps a gap-scanned token` → `isTokenScanned('tok-gap')` is `false` (current `setScannedTokens` REPLACES); strategy persist → key absent.
+
+**Step 3 — Minimal implementation.**
+
+In `ALNScanner/src/core/storage/NetworkedStorage.js`:
 
 ```js
   /** @private */
@@ -3071,64 +3100,78 @@ Add a private persistence key helper and a save/load pair, hook `addTransaction`
     return this.currentSessionId ? `networkedScannedTokens:${this.currentSessionId}` : null;
   }
 
-  /** @private */
-  _saveScannedTokens() {
+  persistScannedTokens() {
     const key = this._scannedKey();
     if (!key) return;
+    try { localStorage.setItem(key, JSON.stringify([...this.scannedTokens])); }
+    catch (e) { this.debug?.log(`[NetworkedStorage] persist scannedTokens failed: ${e.message}`, true); }
+  }
+
+  /** @private — rehydrate the dedup guard from persisted state (covers the pre-sync:full window after a reload). */
+  _rehydrateScannedTokens() {
     try {
-      localStorage.setItem(key, JSON.stringify([...this.scannedTokens]));
-    } catch (e) {
-      this.debug?.log(`[NetworkedStorage] Failed to persist scannedTokens: ${e.message}`, true);
-    }
-  }
-
-  /** @private */
-  _loadScannedTokens() {
-    const key = this._scannedKey();
-    if (!key) return;
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved) this.scannedTokens = new Set(JSON.parse(saved));
-    } catch (e) {
-      this.debug?.log(`[NetworkedStorage] Failed to load scannedTokens: ${e.message}`, true);
-    }
+      const sid = localStorage.getItem('networkedSessionId');
+      if (!sid) return;
+      this.currentSessionId = sid;
+      const saved = localStorage.getItem(this._scannedKey());
+      if (saved) {
+        const arr = JSON.parse(saved);
+        if (Array.isArray(arr)) arr.forEach(t => this.scannedTokens.add(t)); // IN PLACE — preserve the Set ref
+      }
+    } catch (e) { this.debug?.log(`[NetworkedStorage] rehydrate scannedTokens failed: ${e.message}`, true); }
   }
 ```
 
-In `addTransaction`, after `this.scannedTokens.add(transaction.tokenId);` (line 102):
+`initialize()` (currently a no-op at `:62-64`) — rehydrate here. This runs in `initializeNetworkedMode` BEFORE `_syncScannedTokens()` (`unifiedDataManager.js:103,107`), so UDM adopts the populated Set:
 ```js
-      this._saveScannedTokens();
-```
-
-In `setScannedTokens(tokens)` (line 361-363), after building the Set:
-```js
-  setScannedTokens(tokens) {
-    this.scannedTokens = new Set(tokens);
-    this._saveScannedTokens();
+  async initialize() {
+    this._rehydrateScannedTokens();
   }
 ```
 
-In `setSessionId(sessionId)` (line 388-390):
+`setSessionId(sessionId)` (`:388-389`) — persist the session id so a future reload can rehydrate it:
 ```js
   setSessionId(sessionId) {
     this.currentSessionId = sessionId;
-    this._loadScannedTokens();
+    try { localStorage.setItem('networkedSessionId', sessionId); } catch { /* ignore */ }
   }
 ```
 
-**Step 4 — Run it (expect PASS).**
-Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/core/storage/NetworkedStorage.test.js -t "scannedTokens persistence"`
-Expected PASS: `2 passed`. Run the full file to ensure existing `addTransaction`/`setSessionId` tests still pass (they run without a localStorage mock — guard the helpers with `typeof localStorage !== 'undefined'` if any existing test crashes, OR confirm jsdom provides `localStorage` by default; jsdom DOES provide it, so existing tests are unaffected).
+`setScannedTokens(tokens)` (`:361-362`) — change from REPLACE to UNION in place (so a gap-scanned-but-not-yet-confirmed token survives the server sync), and persist. In-place mutation keeps `UnifiedDataManager`'s shared reference valid:
+```js
+  setScannedTokens(tokens) {
+    (tokens || []).forEach(t => this.scannedTokens.add(t)); // union, in place (NOT new Set — that desyncs UDM)
+    this.persistScannedTokens();
+  }
+```
+> Tradeoff: union means the server sync can no longer *remove* a mark in bulk. That is the safe direction for dedup (a stale mark blocks a re-scan; a missing mark loses dedup). Explicit removals still flow through `unmarkTokenAsScanned` (`unifiedDataManager.js:456-457`), so an admin transaction-delete that should re-enable a re-scan is handled there, not here. `resetForNewSession` still `.clear()`s the Set in place for a genuine new session (`unifiedDataManager.js:514`), so union does not carry marks across sessions.
+
+In `ALNScanner/src/core/unifiedDataManager.js`, `markTokenAsScanned(tokenId)` (`:448-449`) — persist after marking on the live path. The optional chain is the mode guard (`_networkedStrategy` is null in standalone):
+```js
+  markTokenAsScanned(tokenId) {
+    this.scannedTokens.add(tokenId);
+    this._networkedStrategy?.persistScannedTokens?.();
+  }
+```
+
+> Note: `setScannedTokensFromServer` (`unifiedDataManager.js:867-869`) already calls `_syncScannedTokens()` after `setScannedTokens`; with the in-place union that call is now a harmless no-op (the ref never changes) — leave it.
+
+**Step 4 — Run them (expect PASS).**
+Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npx jest tests/unit/core/unifiedDataManager.test.js tests/unit/core/storage/NetworkedStorage.test.js`
+Expected PASS: full files green. Note: jsdom provides `localStorage`, so existing `NetworkedStorage`/UDM tests that don't set a session id hit `_scannedKey() === null` and the persist/rehydrate helpers early-return — they are unaffected. Verify any existing test that asserted `setScannedTokens` REPLACES (e.g. expecting a token to be *gone* after a server set that omits it) — if one exists, update it to reflect the union semantics (it should be rare; `setScannedTokensFromServer` is normally fed a superset).
 
 **Step 5 — Commit.**
 ```bash
-git add ALNScanner/src/core/storage/NetworkedStorage.js ALNScanner/tests/unit/core/storage/NetworkedStorage.test.js
-git commit -m "fix(scanner): persist networked scannedTokens keyed by sessionId (TQ-7)
+git add ALNScanner/src/core/storage/NetworkedStorage.js ALNScanner/src/core/unifiedDataManager.js ALNScanner/tests/unit/core/storage/NetworkedStorage.test.js ALNScanner/tests/unit/core/unifiedDataManager.test.js
+git commit -m "fix(scanner): make networked scannedTokens survive reloads (TQ-7)
 
 The duplicate guard was in-memory only in networked mode, so a reload left it
 empty until sync:full arrived, allowing a reloaded-then-offline operator to
-enqueue a token twice. Persist/rehydrate scannedTokens under
-networkedScannedTokens:<sessionId> so re-scan protection survives reloads.
+enqueue a token twice. Rehydrate the guard at strategy init (before sync:full)
+from networkedScannedTokens:<sessionId>, persist on every live mark, and UNION
+(not replace) the server sync so gap-scanned-but-unconfirmed tokens survive.
+Mutate the Set in place to preserve UnifiedDataManager's shared reference (the
+guard isTokenScanned actually reads).
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -3353,7 +3396,7 @@ This is the REAL current ack callback (`app.js:1106-1118`):
         });
 ```
 
-**Step 1 — Write the failing test.** Create a focused test that drives `adminResetAndCreateNew` with a fake socket whose `once('gm:command:ack', ...)` we can replay. We emit a *foreign* ack first (`action: 'session:create'`), then the genuine `system:reset` ack. With the filter, the foreign ack must be ignored and the reset must succeed.
+**Step 1 — Write the failing test.** Create a focused test that drives `adminResetAndCreateNew` with a fake socket that models real `socket.once` one-shot semantics (each `once` registers a SINGLE handler that is removed before it fires — so the production re-arm is actually exercised). We deliver a *foreign* ack first with **`success: false`** (`action: 'session:create'`), then the genuine `system:reset` ack with `success: true`. This is what makes the test genuinely RED against current code: unfiltered, the foreign `success:false` ack rejects the reset promise; with the filter it is ignored and the reset succeeds on the matching ack. (A `success:true` foreign ack would resolve the promise under BOTH old and new code, so the test would not discriminate — that was the original draft's flaw.)
 
 ```javascript
 /**
@@ -3364,7 +3407,10 @@ This is the REAL current ack callback (`app.js:1106-1118`):
  * reset promise on the wrong event).
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import App from '../../../src/app/app.js';
+// NOTE: app.js default-exports the singleton INSTANCE (`export default appInstance`);
+// the class is the NAMED export. Use the named import (matches error-propagation.test.js:6
+// and app-nfc-errors.test.js:7) or `new App(...)` throws "App is not a constructor".
+import { App } from '../../../src/app/app.js';
 
 describe('app.adminResetAndCreateNew - ack action filter (AC-3)', () => {
   let app;
@@ -3378,11 +3424,19 @@ describe('app.adminResetAndCreateNew - ack action filter (AC-3)', () => {
     global.prompt = jest.fn(() => 'New Game');
     global.alert = jest.fn();
 
-    // Collect handlers registered via socket.once so we can replay acks
-    ackHandlers = [];
+    // Fake socket modelling real socket.once one-shot semantics: only ONE
+    // gm:command:ack handler is registered at a time, and it is removed BEFORE
+    // it fires (so the production re-arm via socket.once(...) inside the handler
+    // is genuinely exercised, and an un-re-armed handler drops the next ack).
     fakeSocket = {
-      once: jest.fn((event, cb) => { if (event === 'gm:command:ack') ackHandlers.push(cb); }),
+      _ackHandler: null,
+      once: jest.fn((event, cb) => { if (event === 'gm:command:ack') fakeSocket._ackHandler = cb; }),
       emit: jest.fn(),
+      _deliverAck(payload) {
+        const cb = this._ackHandler;
+        this._ackHandler = null; // one-shot removal before invoke (real socket.once)
+        if (cb) cb(payload);
+      },
     };
 
     sessionManager = {
@@ -3398,18 +3452,19 @@ describe('app.adminResetAndCreateNew - ack action filter (AC-3)', () => {
     app.viewController = { adminInstances: { sessionManager } };
   });
 
-  it('ignores a foreign ack and resolves on the system:reset ack', async () => {
+  it('ignores a foreign (failed) ack and resolves on the system:reset ack', async () => {
     const resetPromise = app.adminResetAndCreateNew();
 
-    // Wait a microtask for socket.once to register, then replay acks.
+    // Wait a microtask for socket.once to register.
     await Promise.resolve();
-    const handler = ackHandlers[0];
-    expect(handler).toBeDefined();
+    expect(fakeSocket._ackHandler).toBeDefined();
 
-    // A racing ack for a DIFFERENT action arrives first — must be ignored.
-    handler({ event: 'gm:command:ack', data: { action: 'session:create', success: true }, timestamp: '' });
+    // A racing ack for a DIFFERENT action arrives first, and it FAILED — under
+    // current (unfiltered) code this rejects the reset promise (the bug). With
+    // the action filter it must be ignored and the listener re-armed.
+    fakeSocket._deliverAck({ event: 'gm:command:ack', data: { action: 'session:create', success: false, message: 'nope' }, timestamp: '' });
     // The genuine reset ack arrives next — must resolve the wait.
-    handler({ event: 'gm:command:ack', data: { action: 'system:reset', success: true }, timestamp: '' });
+    fakeSocket._deliverAck({ event: 'gm:command:ack', data: { action: 'system:reset', success: true }, timestamp: '' });
 
     await expect(resetPromise).resolves.toBeUndefined();
     expect(sessionManager.createSession).toHaveBeenCalledWith('New Game');
@@ -3421,7 +3476,7 @@ describe('app.adminResetAndCreateNew - ack action filter (AC-3)', () => {
 
 Run: `cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner && npm test -- tests/unit/app/system-reset-ack.test.js`
 
-Expected: FAIL. With the unfiltered `socket.once`, the FIRST (foreign) ack fires the handler and self-removes; `response.data.success` is `true` for `session:create`, so the promise resolves early — but the genuine reset ack is never matched. Worse, because the test registers a single replayable handler, the current code resolves on the wrong (`session:create`) ack: the test fails its intent because the second `system:reset` ack is delivered to an already-removed-in-production handler. The assertion that catches the regression: `createSession` is invoked on the wrong ack timing, and (with real `socket.once`) the genuine ack would be dropped. Expect a failure message similar to `received resolves but for the wrong ack` / `expect(handler).toBeDefined()` mismatch — confirming the missing action guard.
+Expected: FAIL with a clear signal. Under the unfiltered `socket.once`, the FIRST (foreign) ack fires the single registered handler; `response.data.success` is `false`, so the current code takes the `else` branch and `reject(new Error('Reset failed'))`s the reset promise. The handler is one-shot (already removed), so the genuine `system:reset` ack is dropped. The assertion `await expect(resetPromise).resolves.toBeUndefined()` therefore FAILS because the promise REJECTED (received a rejection, expected a resolve) — proving a racing foreign ack can spuriously fail the reset.
 
 **Step 3 — Minimal implementation.** Add the action filter (same guard as `CommandSender.js:43-44`) at the top of the ack callback:
 
@@ -4159,7 +4214,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ### Task P4a.6: VERIFY whether `GET /api/state` device entries include `connectionStatus` (CC-8b)
 
-CC-8b is `needs-confirmation`. `connectionWizard.js:210-212` filters `devices.filter(d => d.type === 'gm' && d.connectionStatus === 'connected')` to compute existing station numbers, but the device map in `syncHelpers.js:91-97` emits `{deviceId, type, name, connectionTime, ipAddress}` — `connectionStatus` is NOT mapped. If absent, the filter matches nothing and auto-numbering always returns `GM_Station_1` (feeding the deviceId collisions in M-2). Confirm before fixing.
+CC-8b is **RESOLVED by static inspection (2026-06-01) — `connectionStatus` IS omitted; proceed to P4a.7/.8.** `connectionWizard.js:210-212` filters `devices.filter(d => d.type === 'gm' && d.connectionStatus === 'connected')` to compute existing station numbers, but the device map in `syncHelpers.js:91-97` emits `{deviceId, type, name, connectionTime, ipAddress}` — `connectionStatus` is NOT mapped (and `connectionStatus` appears nowhere in `openapi.yaml`). So the filter matches nothing and auto-numbering always returns `GM_Station_1` (feeding the deviceId collisions in M-2). This is a code-level certainty (no running orchestrator required); the live curl in Step 2 is an optional belt-and-suspenders check, not a gate.
 
 **Files:**
 - Reference (read only): `backend/src/websocket/syncHelpers.js:91-97` (device `.map()`), `ALNScanner/src/ui/connectionWizard.js:210-212` (the filter)
@@ -4566,7 +4621,11 @@ Expected FAIL (the renderer compared `scene.id === activeScene.id`; `'tension'.i
     this._activeSceneId = activeScene || null;
 ```
 
-**Step 4 — Run + expected PASS** (and the full EnvironmentRenderer suite — the `activeScene: null` cases at `:53` and `:96` still work since `null || null === null`):
+**Step 3b — REQUIRED: fix the other tests that still feed the object shape.** The same test file has a separate `describe('Lighting - differential updates')` block (~lines 119-184) with tests that pass `activeScene: { id: 'arrival' }` / `{ id: 'tension' }` and assert active-tile presence. After the string-comparison fix, an object never equals a string `scene.id`, so no tile gets `scene-tile--active` — `'should toggle active scene without rebuilding grid'` fails its `expect(arrivalTile.classList.contains('scene-tile--active')).toBe(true)` (~line 133), and `'should reset scene cache when disconnected'` throws on `document.querySelector('.scene-tile--active').dataset.sceneId` (null deref, ~line 182). Convert the object-shape values to strings in that block (re-anchor the lines first):
+- `activeScene: { id: 'arrival' }` → `activeScene: 'arrival'` (~lines 128, 138, 152)
+- `activeScene: { id: 'tension' }` → `activeScene: 'tension'` (~lines 168, 178)
+
+**Step 4 — Run + expected PASS** (full EnvironmentRenderer suite — but ONLY after Step 3b; the `activeScene: null` cases at `:53`/`:96` already work since `null || null === null`):
 
 ```bash
 npx jest tests/unit/ui/renderers/EnvironmentRenderer.test.js
@@ -5621,7 +5680,7 @@ Current code (verified, `connectionWizard.js:395-401`):
   }
 ```
 
-**Step 1 — Write the failing test.** Add a `#connectionModal` element to the shared DOM fixture (`document.body.innerHTML` in the top `beforeEach`) by appending `<div id="connectionModal"></div>` inside the form fixture, then add:
+**Step 1 — Write the failing test.** Add TWO elements to the shared DOM fixture (`document.body.innerHTML` in the top `beforeEach`): `<div id="connectionModal"></div>` AND `<button id="scanServersBtn"></button>`. The button is REQUIRED for the concurrency-cap test below: the real `scanForServers()` does `document.getElementById('scanServersBtn').disabled = true` at `connectionWizard.js:48` — BEFORE its `try` (`:54`). The shared fixture currently has no `#scanServersBtn`, so without it `scanForServers()` throws `TypeError: Cannot set properties of null (setting 'disabled')` before any fetch fires (maxInFlight stays 0), and the test would fail with that TypeError in BOTH the RED and GREEN runs rather than measuring concurrency. Then add:
 
 ```javascript
   describe('auto-scan gating (HTTP-6)', () => {
@@ -6249,7 +6308,7 @@ Also extend the `mockStore` definition in this block's `beforeEach` (line ~798):
         };
 ```
 
-> NOTE: the existing assertions in this block (lines 828-905) assert `mockStore.update` was called for each domain. Those assertions must be flipped to `replace` in the same edit — they are now testing the wrong method. Update each `expect(mockStore.update).toHaveBeenCalledWith('music', ...)` → `expect(mockStore.replace).toHaveBeenCalledWith('music', ...)` etc. (music/health/bluetooth/audio/lighting/gameclock/cueengine/held/video). Leave the `service:state → StateStore` block (lines 741-792) on `update` — service:state stays incremental.
+> NOTE: the existing assertions in this block (lines ~828-935 — the block runs to ~935, not 905) assert `mockStore.update` was called for each domain. Those assertions must be flipped to `replace` in the same edit — they are now testing the wrong method. Update each `expect(mockStore.update).toHaveBeenCalledWith('music', ...)` → `expect(mockStore.replace).toHaveBeenCalledWith('music', ...)` etc. (music/health/bluetooth/audio/lighting/gameclock/cueengine/held/video). **Don't miss the two stragglers in the same block:** `expect(mockStore.update).toHaveBeenCalledTimes(9)` (~line 914) → `expect(mockStore.replace).toHaveBeenCalledTimes(9)`, and the `'should populate store (not UDM)'` test's `mockStore.update` assertions for `'music'`/`'health'` (~lines 933-934) → `mockStore.replace`. (The negative tests at ~843/~922 still pass on `update` since they assert a method was NOT called.) Leave the `service:state → StateStore` block (lines 741-792) on `update` — service:state stays incremental.
 
 **Step 2 — Run + expect FAIL.**
 
@@ -6466,7 +6525,14 @@ And simplify `_mergeDevices` (remove the `discoveredDevices` parameter + its loo
   }
 ```
 
-Also update the `renderBluetooth` JSDoc (line 258) and the `else` branch in `_renderDeviceItem` (lines 361-368) — the "Pair" button branch is now unreachable since no `discovered`-status devices exist. Leave the Pair branch only if `pairedDevices` can include un-paired entries; per `getState()` it cannot, so the branch is dead too. **Keep `_renderDeviceItem`'s Pair branch** for now (harmless, no test covers it) OR remove it and note in commit — recommend removing for cleanliness and assert in test that no Pair button renders.
+Also update the `renderBluetooth` JSDoc (line 258) and the `else` branch in `_renderDeviceItem` (lines 361-368) — the "Pair" button branch is now unreachable since no `discovered`-status devices exist. **Note:** the Pair branch IS currently exercised by the existing test `'should show pair button for discovered devices'` (~lines 386-395) — so removing the branch requires deleting/rewriting that test (handled in Step 3b). Recommend removing the dead branch for cleanliness.
+
+**Step 3b — REQUIRED: delete/rewrite the existing tests that depend on discovered devices rendering.** This is NOT optional — removing the merge path makes at least 5 existing `EnvironmentRenderer.test.js` tests fail (one *throws*, the rest assert-fail), because they construct devices ONLY as `discoveredDevices` and assert they render. Re-anchor the line numbers, then delete or rewrite each:
+- `'should show pair button for discovered devices'` (~386-395) — DELETE (covered the now-removed Pair branch).
+- `'should update speaker count'` (~439-447) — feeds 1 connected + 1 discovered, asserts count `'2'`; rewrite to use a paired (not discovered) device, or assert `'1'`.
+- `'should use address as fallback name'` (~483-491) — feeds only a discovered device; after removal `document.querySelector('.bt-device-name')` is null and `.textContent` THROWS. Rewrite to feed a paired/connected device.
+- `'should rebuild when device status changes'` (~512-530) — starts from a discovered device; rewrite to paired/connected.
+- `'should rebuild when new device added'` (~532-552) — asserts 2 discovered items; rewrite to paired/connected.
 
 **Step 4 — Run + expect PASS.**
 
@@ -6475,7 +6541,7 @@ cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner
 npx jest tests/unit/ui/renderers/EnvironmentRenderer.test.js
 ```
 
-Expected: PASS. If any existing test fed `discoveredDevices` and expected it rendered, update it to reflect the removed feature.
+Expected: PASS — but ONLY after the Step-3b rewrites. Without them the full file is RED (5 failures, including a `TypeError` from the null `.bt-device-name` deref in `'should use address as fallback name'`).
 
 **Step 5 — Commit.**
 
@@ -6495,12 +6561,15 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ### Task P4d.6: CSS.escape renderer querySelector id lookups (SR-5)
 
 **Files:**
+- Create: `ALNScanner/src/utils/escapeCssAttrValue.js` — the shared helper (sits beside the existing `src/utils/escapeHtml.js`)
 - Modify: `ALNScanner/src/ui/renderers/HealthRenderer.js:112` — `this.container.querySelector(\`[data-service="${s.id}"]\`)`
 - Modify: `ALNScanner/src/ui/renderers/CueRenderer.js:121` and `:215` — `querySelector(\`[data-cue-id="${cue.id}"]\`)` / `${cueId}`
 - Modify: `ALNScanner/src/ui/renderers/EnvironmentRenderer.js:120` — `this.sceneGrid.querySelector(\`[data-scene-id="${scene.id}"]\`)`
 - Test: add to each renderer's existing test file
 
-The id is `escapeHtml`'d into the attribute (`innerHTML`) but the cache-lookup `querySelector` uses the raw id. If an id ever contains a quote/metacharacter, the escaped attribute and the raw selector disagree (silent cache miss → no differential update) or the selector throws. `CSS.escape` makes the selector match the rendered attribute. (jsdom provides `CSS.escape`.)
+The id is `escapeHtml`'d into the attribute (`innerHTML`) but the cache-lookup `querySelector` uses the raw id. If an id ever contains a quote/metacharacter, the escaped attribute and the raw selector disagree (silent cache miss → no differential update) or the selector throws. A tiny `escapeCssAttrValue()` helper makes the selector match the rendered attribute.
+
+> ⚠ **Do NOT use the global `CSS.escape`** — verified against this repo's Jest env: jsdom 27.1.0 does **not** implement `CSS` (`window.CSS === undefined`), so a bare `CSS.escape(...)` throws `TypeError: Cannot read properties of undefined (reading 'escape')` and would crash **every** existing renderer unit test that hits these cache-lookup lines (a large regression, not the predicted green). A local helper has zero global dependency and works identically in jsdom and real browsers. (All three renderers already import a sibling util this way: `import { escapeHtml } from '../../utils/escapeHtml.js'`.)
 
 **Step 1 — Write failing test.** Add to `HealthRenderer.test.js` (the harness builds `#health-dashboard`). A service id with a quote forces a degraded (expanded) render and a cache lookup:
 
@@ -6525,29 +6594,60 @@ npx jest tests/unit/ui/renderers/HealthRenderer.test.js -t "selector metachar"
 
 Expected: FAIL — `querySelector('[data-service="vlc"x"]')` throws `SyntaxError` (unescaped quote) OR returns null, so `_serviceEls['vlc"x']` is `undefined`.
 
-**Step 3 — Minimal implementation.** Wrap each raw-id selector with `CSS.escape`:
+**Step 3 — Minimal implementation.** First create the shared helper, then use it (NOT `CSS.escape`).
+
+Create `ALNScanner/src/utils/escapeCssAttrValue.js`:
+```js
+/**
+ * Escape a value for safe embedding inside a DOUBLE-QUOTED CSS attribute
+ * selector, e.g. `[data-service="${escapeCssAttrValue(id)}"]`.
+ *
+ * Intentionally does NOT use the global `CSS.escape`: jsdom (the Jest test
+ * environment) does not implement `CSS`, so `CSS.escape(...)` throws and would
+ * crash every renderer unit test. Inside a double-quoted attribute selector
+ * only `\` and `"` (and, defensively, raw newlines) need escaping — which is
+ * all a service/cue/scene id can ever contain. Works identically in jsdom and
+ * real browsers.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+export function escapeCssAttrValue(value) {
+  return String(value).replace(/[\\"\n\r\f]/g, (ch) => {
+    if (ch === '\n') return '\\a ';
+    if (ch === '\r') return '\\d ';
+    if (ch === '\f') return '\\c ';
+    return '\\' + ch; // backslash and double-quote
+  });
+}
+```
+
+Add the import to the top of each of the three renderers (beside the existing `escapeHtml` import):
+```js
+import { escapeCssAttrValue } from '../../utils/escapeCssAttrValue.js';
+```
+
+Then wrap each raw-id selector (the surrounding `"..."` quotes stay):
 
 `HealthRenderer.js:112`:
 ```js
-      const card = this.container.querySelector(`[data-service="${CSS.escape(s.id)}"]`);
+      const card = this.container.querySelector(`[data-service="${escapeCssAttrValue(s.id)}"]`);
 ```
 
 `CueRenderer.js:121`:
 ```js
-      const item = this.standingListEl.querySelector(`[data-cue-id="${CSS.escape(cue.id)}"]`);
+      const item = this.standingListEl.querySelector(`[data-cue-id="${escapeCssAttrValue(cue.id)}"]`);
 ```
 
 `CueRenderer.js:215`:
 ```js
-      const item = this.activeListEl.querySelector(`[data-cue-id="${CSS.escape(cueId)}"]`);
+      const item = this.activeListEl.querySelector(`[data-cue-id="${escapeCssAttrValue(cueId)}"]`);
 ```
 
 `EnvironmentRenderer.js:120`:
 ```js
-      const btn = this.sceneGrid.querySelector(`[data-scene-id="${CSS.escape(scene.id)}"]`);
+      const btn = this.sceneGrid.querySelector(`[data-scene-id="${escapeCssAttrValue(scene.id)}"]`);
 ```
-
-(No import needed — `CSS` is a global in jsdom and browsers.)
 
 **Step 4 — Run + expect PASS.**
 
@@ -6561,12 +6661,13 @@ Expected: PASS — all three renderer suites green.
 **Step 5 — Commit.**
 
 ```bash
-git add ALNScanner/src/ui/renderers/HealthRenderer.js ALNScanner/src/ui/renderers/CueRenderer.js ALNScanner/src/ui/renderers/EnvironmentRenderer.js ALNScanner/tests/unit/ui/renderers/HealthRenderer.test.js
-git commit -m "fix(gm-scanner): CSS.escape id lookups in renderer querySelectors (SR-5)
+git add ALNScanner/src/utils/escapeCssAttrValue.js ALNScanner/src/ui/renderers/HealthRenderer.js ALNScanner/src/ui/renderers/CueRenderer.js ALNScanner/src/ui/renderers/EnvironmentRenderer.js ALNScanner/tests/unit/ui/renderers/HealthRenderer.test.js
+git commit -m "fix(gm-scanner): escape id lookups in renderer querySelectors (SR-5)
 
 Ids are escapeHtml'd into attributes but matched with raw selectors —
-a metachar would cause a silent cache miss or a selector throw. CSS.escape
-aligns the lookup with the rendered attribute.
+a metachar would cause a silent cache miss or a selector throw. A local
+escapeCssAttrValue() helper aligns the lookup with the rendered attribute
+(NOT CSS.escape — jsdom does not implement the CSS global).
 
 Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 ```
@@ -6813,114 +6914,14 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 ---
 
-### Task P4d.10: Add a GmCommand action-enum conformance test in the scanner (AC-4/P0 enabler)
+### Task P4d.10: ~~Add a GmCommand action-enum conformance test in the scanner~~ — REMOVED (redundant with P0.2)
 
-**Files:**
-- Create: `ALNScanner/tests/unit/admin/command-action-conformance.test.js`
-- Reference contract: `backend/contracts/asyncapi.yaml:1456+` (GmCommand `action.enum`) — accessible from ALNScanner via `../backend/contracts/asyncapi.yaml`
-
-This is the conformance test the review (AC-4) calls for: load the AsyncAPI `GmCommand` action enum and assert every action string the scanner's controllers emit is a member. It makes the dead `system:restart`/`system:clear` (P4d.11) a hard failure and prevents future drift. ALNScanner has no YAML parser dependency — read the enum with a small regex against the raw file (no new dependency) OR `require('node:fs')` + minimal parse. Keep it dependency-free.
-
-**Step 1 — Write the test (expected to FAIL until P4d.11 removes the dead actions).**
-
-```js
-/**
- * Contract conformance: every gm:command action a controller emits must be
- * a member of the AsyncAPI GmCommand action enum. Guards against drift like
- * the dead system:restart / system:clear (AC-1/CC-6).
- */
-import { describe, it, expect } from '@jest/globals';
-import fs from 'node:fs';
-import path from 'node:path';
-
-// Extract the GmCommand action enum from the AsyncAPI contract (no yaml dep).
-function loadActionEnum() {
-  const file = path.resolve(__dirname, '../../../../backend/contracts/asyncapi.yaml');
-  const text = fs.readFileSync(file, 'utf8');
-  // Find the GmCommand action enum block: an "enum:" under an "action:" property
-  // followed by "- value" lines. Scope to the gm:command publish message.
-  const start = text.indexOf('action:\n');
-  const enumIdx = text.indexOf('enum:', start);
-  const after = text.slice(enumIdx + 'enum:'.length);
-  const actions = [];
-  for (const line of after.split('\n').slice(1)) {
-    const m = line.match(/^\s+-\s+([a-z][a-z0-9:_-]+)\s*$/i);
-    if (m) actions.push(m[1]);
-    else if (line.trim() && !line.trim().startsWith('-')) break; // end of enum block
-  }
-  return new Set(actions);
-}
-
-// Action strings the scanner controllers emit (sendCommand 2nd arg).
-const SCANNER_ACTIONS = [
-  'session:create', 'session:addTeam', 'session:pause', 'session:resume',
-  'session:end', 'session:start',
-  'video:play', 'video:pause', 'video:stop', 'video:skip',
-  'video:queue:add', 'video:queue:reorder', 'video:queue:clear',
-  'display:idle-loop', 'display:scoreboard', 'display:return-to-video', 'display:status',
-  'score:adjust', 'score:reset', 'transaction:delete',
-  'system:reset',
-  'bluetooth:scan:start', 'bluetooth:scan:stop', 'bluetooth:pair', 'bluetooth:unpair',
-  'bluetooth:connect', 'bluetooth:disconnect',
-  'audio:route:set', 'audio:volume:set',
-  'lighting:scene:activate', 'lighting:scenes:refresh',
-  'cue:fire', 'cue:stop', 'cue:pause', 'cue:resume', 'cue:enable', 'cue:disable',
-  'service:check',
-];
-
-describe('gm:command action conformance (AC-4)', () => {
-  const enumSet = loadActionEnum();
-
-  it('parses a non-trivial action enum from the contract', () => {
-    expect(enumSet.size).toBeGreaterThan(20);
-    expect(enumSet.has('session:create')).toBe(true);
-  });
-
-  it.each(SCANNER_ACTIONS)('action "%s" is in the GmCommand enum', (action) => {
-    expect(enumSet.has(action)).toBe(true);
-  });
-
-  it('does NOT reference the dead system:restart / system:clear actions', () => {
-    expect(SCANNER_ACTIONS).not.toContain('system:restart');
-    expect(SCANNER_ACTIONS).not.toContain('system:clear');
-  });
-});
-```
-
-> `service:check` IS in the enum (verify against the contract; `AdminOperations.checkService` sends it). If the contract lacks `service:check`, that is a separate finding — confirm before listing it. Run the parse-only test first to sanity-check the regex against the real file.
-
-**Step 2 — Run + expect FAIL (or PASS for the list, then verify it would catch drift).**
-
-```bash
-cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner
-npx jest tests/unit/admin/command-action-conformance.test.js
-```
-
-Expected: PASS for the curated `SCANNER_ACTIONS` list (all are in the enum) AND the parse-sanity test. This test's value is regression protection — to prove it catches drift, temporarily add `'system:restart'` to `SCANNER_ACTIONS` and confirm the `it.each` row FAILs with `expect(enumSet.has('system:restart')).toBe(true)` → received false; then remove it. (Document this manual RED check in the PR.)
-
-**Step 3 — Implementation:** none beyond the test (this task adds the guard; P4d.11 removes the dead methods so no controller emits them).
-
-**Step 4 — Run + expect PASS.**
-
-```bash
-cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner
-npx jest tests/unit/admin/command-action-conformance.test.js
-```
-
-Expected: PASS.
-
-**Step 5 — Commit.**
-
-```bash
-git add ALNScanner/tests/unit/admin/command-action-conformance.test.js
-git commit -m "test(gm-scanner): conformance test for gm:command action enum (AC-4)
-
-Loads the AsyncAPI GmCommand action enum and asserts every controller
-action is a member — guards against drift like the dead
-system:restart/system:clear and replaces the phantom always-success mock.
-
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
-```
+> **Removed during pre-implementation review (2026-06-01).** This task duplicated **P0.2** (`tests/unit/network/gmCommandActionConformance.test.js`), which is the authoritative GmCommand action-enum conformance guard. Two reasons it had to go:
+>
+> 1. **Redundant and strictly weaker.** P0.2 *dynamically* regex-scans the live controller source (`sendCommand(this.connection, '<action>', ...)` across `src/admin/`), so it genuinely catches `system:restart`/`system:clear` and intentionally **starts RED**, going green only when P4d.11 deletes those methods. P4d.10 asserted a *hardcoded* `SCANNER_ACTIONS` list that deliberately omits the dead actions — so it passes immediately and **cannot** detect the drift it claims to guard. P0.1 already names P0.2 "the single source of truth for action-string validity."
+> 2. **Its parser was broken.** The proposed `loadActionEnum()` did `text.indexOf('action:\n')`, which lands inside `transaction:` (asyncapi.yaml:792) whose first `enum:` is the inline `[detective, blackmarket]` — so it parsed an **empty set** (verified by running it against the real contract) and every assertion would have failed.
+>
+> **Action:** do nothing here — P0.2 already provides the source-scanning conformance guard. P4d.11's dependency line now points at **P0.2** (the test that goes RED→GREEN when the dead methods are deleted).
 
 ---
 
@@ -6931,7 +6932,7 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 - Modify: `ALNScanner/tests/unit/admin/AdminOperations.test.js:21-46` — delete the `restartSystem`/`clearData` describe blocks (they lock in invalid actions via an always-success mock)
 - Modify: `ALNScanner/tests/unit/admin/adminModule.test.js:249-282` — delete the two `it('should send system restart/clear command')` cases
 
-Confirmed via grep: `restartSystem`/`clearData`/`system:restart`/`system:clear` appear ONLY in `AdminOperations.js` and these two test files — no production caller. Depends on P4d.10 (the conformance test exists so the enum is the authority).
+Confirmed via grep: `restartSystem`/`clearData`/`system:restart`/`system:clear` appear ONLY in `AdminOperations.js` and these two test files — no production caller. **Depends on P0.2** (the source-scanning `gmCommandActionConformance.test.js` that started RED on these two dead actions — deleting the methods turns it GREEN, which is the authoritative regression signal).
 
 **Step 1 — Write the failing assertion FIRST (TDD red): assert the methods are gone.** Add to `AdminOperations.test.js`:
 
@@ -6963,10 +6964,10 @@ Expected: FAIL — `restartSystem`/`clearData` are still functions (`typeof` is 
 
 ```bash
 cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner
-npx jest tests/unit/admin/AdminOperations.test.js tests/unit/admin/adminModule.test.js tests/unit/admin/command-action-conformance.test.js
+npx jest tests/unit/admin/AdminOperations.test.js tests/unit/admin/adminModule.test.js tests/unit/network/gmCommandActionConformance.test.js
 ```
 
-Expected: PASS — dead-action tests gone, the "dead system actions removed" assertions pass, the conformance test (P4d.10) passes.
+Expected: PASS — dead-action tests gone, the "dead system actions removed" assertions pass, and **P0.2's** `gmCommandActionConformance.test.js` now goes GREEN (it had started RED on `system:restart`/`system:clear`).
 
 **Step 5 — Commit.**
 
@@ -7094,7 +7095,7 @@ cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem/ALNScanner
 npx jest tests/unit/network/orchestratorClient.test.js
 ```
 
-Expected: PASS — serialization test green; existing single-command `sendCommand` tests unaffected (a lone command's `prior` is a resolved promise).
+Expected: PASS — serialization test green. (There are no existing dedicated `sendCommand` unit tests in `orchestratorClient.test.js` to regress — the only `gm:command` reference there is in the forwarding-list test; so just confirm the new serialization test passes and the file stays green.)
 
 **Step 5 — Commit.**
 
