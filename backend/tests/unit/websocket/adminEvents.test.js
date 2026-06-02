@@ -209,27 +209,48 @@ describe('adminEvents.js', () => {
       }));
     });
 
-    test('rejects when no session exists (SESSION_NOT_FOUND)', async () => {
+    test('rejects when no session exists (SESSION_NOT_FOUND) and echoes clientTxId', async () => {
       sessionService.getCurrentSession.mockReturnValue(null);
 
       await handleTransactionSubmit(mockSocket, {
-        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket' }
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket', clientTxId: 'ctx-nf' }
       }, mockIo);
 
+      // clientTxId MUST be echoed so the scanner's replay fast-fails instead of
+      // hanging the 30s timeout (the matcher always carries a clientTxId).
       expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'error', expect.objectContaining({
-        code: 'SESSION_NOT_FOUND'
+        code: 'SESSION_NOT_FOUND',
+        clientTxId: 'ctx-nf'
       }));
     });
 
-    test('rejects when session is paused (SESSION_PAUSED)', async () => {
+    test('rejects when session is paused (SESSION_PAUSED) and echoes clientTxId', async () => {
       sessionService.getCurrentSession.mockReturnValue({ id: 's1', status: 'paused' });
 
       await handleTransactionSubmit(mockSocket, {
-        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket' }
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket', clientTxId: 'ctx-pause' }
       }, mockIo);
 
+      // Most reachable case: scanning into a paused session (normal lifecycle).
+      // Without the echo the scanner hangs 30s then retries; with it, it fast-fails
+      // and keeps the entry to retry on resume.
       expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'transaction:result', expect.objectContaining({
-        error: 'SESSION_PAUSED'
+        error: 'SESSION_PAUSED',
+        clientTxId: 'ctx-pause'
+      }));
+    });
+
+    test('echoes clientTxId on AUTH_REQUIRED when socket is unidentified', async () => {
+      mockSocket.deviceId = null;
+
+      await handleTransactionSubmit(mockSocket, {
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket', clientTxId: 'ctx-auth' }
+      }, mockIo);
+
+      // Read from the raw envelope (validate() has not run yet at this guard).
+      expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'error', expect.objectContaining({
+        code: 'AUTH_REQUIRED',
+        clientTxId: 'ctx-auth'
       }));
     });
 
@@ -263,6 +284,22 @@ describe('adminEvents.js', () => {
         tokenId: 'tok1',
         teamId: 'Team1',
         points: 0
+      }));
+    });
+
+    test('echoes clientTxId on QUEUE_FULL when the offline queue is full', async () => {
+      offlineQueueService.isOffline = true;
+      offlineQueueService.enqueueGmTransaction = jest.fn().mockReturnValue(null);  // queue full
+
+      await handleTransactionSubmit(mockSocket, {
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket', clientTxId: 'ctx-full' }
+      }, mockIo);
+
+      // Without the echo, a full-queue rejection would hang the replay 30s (the
+      // exact failure the durability feature exists to prevent).
+      expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'error', expect.objectContaining({
+        code: 'QUEUE_FULL',
+        clientTxId: 'ctx-full'
       }));
     });
 

@@ -134,7 +134,8 @@ async function handleTransactionSubmit(socket, data, _io) {
     if (!socket.deviceId) {
       emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
-        message: 'Not identified'
+        message: 'Not identified',
+        clientTxId: data.data?.clientTxId  // echo (validate() hasn't run; read raw envelope) so the scanner's replay fast-fails (TQ-2)
       });
       return;
     }
@@ -206,6 +207,7 @@ async function handleTransactionSubmit(socket, data, _io) {
       emitWrapped(socket, 'error', {
         code: 'SESSION_NOT_FOUND',
         message: 'No active session',
+        clientTxId: scanRequest.clientTxId  // echo so the replay fast-fails instead of hanging the 30s timeout (TQ-2)
       });
       return;
     }
@@ -221,7 +223,8 @@ async function handleTransactionSubmit(socket, data, _io) {
         teamId: scanRequest.teamId,
         points: 0,
         message: errorMsg,
-        error: errorCode
+        error: errorCode,
+        clientTxId: scanRequest.clientTxId  // echo so the scanner matches (it always carries a clientTxId) and retries on resume without a 30s hang (TQ-2)
       });
       logger.info(`Transaction blocked (session ${session.status})`, {
         deviceId: socket.deviceId,

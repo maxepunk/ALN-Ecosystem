@@ -344,4 +344,22 @@ describe('TransactionResult status enum (contract)', () => {
       expect.arrayContaining(['accepted', 'duplicate', 'error', 'queued', 'rejected'])
     );
   });
+
+  it('declares an OPTIONAL clientTxId on submit, result, and error (echoed correlation id)', () => {
+    const msgs = asyncapi.components.messages;
+    const submitData = msgs.TransactionSubmit.payload.properties.data;
+    const resultData = msgs.TransactionResult.payload.properties.data;
+    const errorData = msgs.Error.payload.properties.data;
+
+    // Present in all three messages' data.properties (runtime echo is asserted
+    // separately via .toBe(); this locks the contract DOCUMENT itself).
+    expect(submitData.properties.clientTxId).toBeDefined();
+    expect(resultData.properties.clientTxId).toBeDefined();
+    expect(errorData.properties.clientTxId).toBeDefined();
+
+    // ...and OPTIONAL — never in data.required, so old clients that omit it still validate.
+    expect(submitData.required || []).not.toContain('clientTxId');
+    expect(resultData.required || []).not.toContain('clientTxId');
+    expect(errorData.required || []).not.toContain('clientTxId');
+  });
 });
