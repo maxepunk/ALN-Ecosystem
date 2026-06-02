@@ -176,6 +176,12 @@ async function handleTransactionSubmit(socket, data, _io) {
           status: 'queued',
           queued: true,
           transactionId: queuedItem.transactionId,
+          // Carry the contract-required identity fields so the result validates
+          // and the scanner can correlate it by tokenId+teamId (points not yet
+          // scored — awarded when the queue is processed online).
+          tokenId: scanRequest.tokenId,
+          teamId: scanRequest.teamId,
+          points: 0,
           message: 'Transaction queued for processing when system comes online'
         });
 

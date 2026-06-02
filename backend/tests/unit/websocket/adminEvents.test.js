@@ -256,8 +256,13 @@ describe('adminEvents.js', () => {
       }, mockIo);
 
       expect(offlineQueueService.enqueueGmTransaction).toHaveBeenCalled();
+      // Offline result must be contract-complete (tokenId/teamId/points are
+      // required by the AsyncAPI TransactionResult schema; points=0 pre-scoring).
       expect(emitWrapped).toHaveBeenCalledWith(mockSocket, 'transaction:result', expect.objectContaining({
-        status: 'queued'
+        status: 'queued',
+        tokenId: 'tok1',
+        teamId: 'Team1',
+        points: 0
       }));
     });
 

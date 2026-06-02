@@ -94,6 +94,37 @@ describe('Transaction Events - Contract Validation', () => {
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'transaction:result');
     });
+
+    it('returns status:queued and a valid envelope when system is offline', async () => {
+      const offlineQueueService = require('../../../src/services/offlineQueueService');
+      offlineQueueService.setOfflineStatus(true);
+
+      try {
+        const resultPromise = waitForEvent(socket, 'transaction:result');
+        socket.emit('transaction:submit', {
+          event: 'transaction:submit',
+          data: {
+            tokenId: '534e2b03',
+            teamId: 'Team Alpha',
+            deviceId: 'GM_CONTRACT_TEST',
+            deviceType: 'gm',
+            mode: 'blackmarket'
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const event = await resultPromise;
+        expect(event.data.status).toBe('queued');
+        // Passes only because P2.1 widened the enum AND the offline emit carries
+        // the contract-required tokenId/teamId/points (P2.2 production fix).
+        validateWebSocketEvent(event, 'transaction:result');
+      } finally {
+        // Deterministic teardown: reset() clears the queue and sets isOffline=false
+        // directly, so the offline->online transition does NOT schedule a
+        // setImmediate replay of the queued tx against the live session.
+        await offlineQueueService.reset();
+      }
+    });
   });
 
   describe('transaction:new broadcast', () => {
