@@ -727,8 +727,8 @@ components:
             properties:
               status:
                 type: string
-                enum: [accepted, duplicate, error]
-                description: Transaction status
+                enum: [accepted, duplicate, error, queued, rejected]
+                description: Transaction status (accepted/duplicate/error per Decision #10; queued = offline-buffered; rejected = no active session)
                 example: "accepted"
               transactionId:
                 type: string

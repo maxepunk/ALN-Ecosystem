@@ -272,3 +272,25 @@ describe('Transaction Events - Contract Validation', () => {
     });
   });
 });
+
+describe('TransactionResult status enum (contract)', () => {
+  const yaml = require('js-yaml');
+  const fs = require('fs');
+  const path = require('path');
+
+  const asyncapi = yaml.load(
+    fs.readFileSync(path.join(__dirname, '../../../contracts/asyncapi.yaml'), 'utf8')
+  );
+  const statusEnum =
+    asyncapi.components.messages.TransactionResult.payload.properties.data.properties.status.enum;
+
+  it('includes every status the backend actually emits', () => {
+    // accepted/duplicate: transactionService.createScanResponse
+    // error: invalid-token reject() (transaction.js maps reject -> 'error')
+    // queued: adminEvents.js offline path
+    // rejected: transactionService.processScan no-active-session early return
+    expect(statusEnum).toEqual(
+      expect.arrayContaining(['accepted', 'duplicate', 'error', 'queued', 'rejected'])
+    );
+  });
+});
