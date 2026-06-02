@@ -2,7 +2,7 @@
  * Error Propagation Integration Tests
  *
  * Tests error handling across service boundaries:
- * - Invalid token errors → transaction:result with status='error'
+ * - Invalid token errors → transaction:result with status='rejected' (permanent rejection)
  * - Handler errors → error event to submitter
  * - Service errors → error event broadcast to all clients
  * - System stability after multiple errors
@@ -95,7 +95,7 @@ describe('Error Propagation Integration', () => {
 
       // Validate: Error response structure
       expect(result.event).toBe('transaction:result');
-      expect(result.data.status).toBe('error');
+      expect(result.data.status).toBe('rejected');
       expect(result.data.message).toContain('Invalid token');
       expect(result.data.points).toBe(0);
       expect(result.data.transactionId).toBeDefined();
@@ -126,7 +126,7 @@ describe('Error Propagation Integration', () => {
 
       const result = await resultPromise;
 
-      expect(result.data.status).toBe('error');
+      expect(result.data.status).toBe('rejected');
       expect(result.data.message).toContain('Invalid token');
       expect(result.data.points).toBe(0);
     });
@@ -211,7 +211,7 @@ describe('Error Propagation Integration', () => {
 
       // Validate: All errors handled gracefully
       results.forEach(result => {
-        expect(result.data.status).toBe('error');
+        expect(result.data.status).toBe('rejected');
         expect(result.data.message).toContain('Invalid token');
       });
 
@@ -276,8 +276,8 @@ describe('Error Propagation Integration', () => {
         const [result1, result2] = await Promise.all([gm1Promise, gm2Promise]);
 
         // Both errors should be handled independently
-        expect(result1.data.status).toBe('error');
-        expect(result2.data.status).toBe('error');
+        expect(result1.data.status).toBe('rejected');
+        expect(result2.data.status).toBe('rejected');
 
         // System should still be functional
         const validPromise = waitForEvent(gmSocket, 'transaction:result');
@@ -382,7 +382,7 @@ describe('Error Propagation Integration', () => {
         timestamp: new Date().toISOString()
       });
       const errorResult = await errorPromise;
-      expect(errorResult.data.status).toBe('error');
+      expect(errorResult.data.status).toBe('rejected');
 
       // Step 2: Submit valid transaction (recovery)
       const validPromise = waitForEvent(gmSocket, 'transaction:result');
@@ -446,7 +446,7 @@ describe('Error Propagation Integration', () => {
           expect(result.data.points).toBe(tx.points);
           expectedScore += tx.points;
         } else {
-          expect(result.data.status).toBe('error');
+          expect(result.data.status).toBe('rejected');
           expect(result.data.points).toBe(0);
         }
       }

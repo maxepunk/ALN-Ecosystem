@@ -145,6 +145,32 @@ describe('Transaction Events - Contract Validation', () => {
       expect(event.data.clientTxId).toBe('ctx-abc-123');
       validateWebSocketEvent(event, 'transaction:result');
     });
+
+    it('returns status:rejected for an invalid (unknown) token — a permanent rejection', async () => {
+      const resultPromise = waitForEvent(socket, 'transaction:result');
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'NONEXISTENT_FAKE_TOKEN_999',
+          teamId: 'Team Alpha',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'blackmarket',
+          clientTxId: 'ctx-invalid'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const event = await resultPromise;
+      // Permanent rejection (an invalid token never becomes valid) → 'rejected',
+      // NOT transient 'error'. This lets the GM scanner remove the queued entry,
+      // unmark the token for re-scan, and stop retrying it forever (paused/
+      // not-active stay 'error' = transient, retried on resume).
+      expect(event.data.status).toBe('rejected');
+      expect(event.data.message).toContain('Invalid token');
+      expect(event.data.clientTxId).toBe('ctx-invalid');
+      validateWebSocketEvent(event, 'transaction:result');
+    });
   });
 
   describe('transaction:new broadcast', () => {

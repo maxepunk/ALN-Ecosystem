@@ -153,7 +153,14 @@ class TransactionService extends EventEmitter {
       if (!token) {
         transaction.reject('Invalid token ID');
         logger.warn('Scan rejected: invalid token', { tokenId: transaction.tokenId });
-        return this.createScanResponse(transaction, token);
+        const response = this.createScanResponse(transaction, token);
+        // Permanent rejection (an invalid token never becomes valid): surface as
+        // 'rejected' (not transient 'error') so the GM scanner removes the queued
+        // entry, unmarks the token for re-scan, and stops retrying it forever.
+        // Paused/not-active rejections (handled in adminEvents) stay 'error' =
+        // transient and are retried on resume.
+        response.status = 'rejected';
+        return response;
       }
 
       // CRITICAL: Enrich transaction with token's default summary if not provided

@@ -732,7 +732,7 @@ components:
               status:
                 type: string
                 enum: [accepted, duplicate, error, queued, rejected]
-                description: Transaction status (accepted/duplicate/error per Decision #10; queued = offline-buffered; rejected = no active session)
+                description: Transaction status (accepted/duplicate/error per Decision #10; queued = offline-buffered; rejected = permanent rejection, e.g. invalid token — distinct from transient 'error' such as paused/not-active)
                 example: "accepted"
               transactionId:
                 type: string
