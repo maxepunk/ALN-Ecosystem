@@ -27,4 +27,20 @@ Items that a functional re-examination promoted from "defer" to "fix now":
 | H | Reconnect `done()` tests use real ~1s timers (slow suite) instead of fake timers | low | `tests/unit/network/connectionManager.test.js` | Suite-speed only; deterministic (well within Jest's 5s). Convert to fake timers if suite time becomes a concern. |
 | I | `NETWORKED_MODE_USER_FLOW.md` still documents the removed `lastStationNum` counter (P1c.3/RL-7 deleted it) | low | `ALNScanner/docs/NETWORKED_MODE_USER_FLOW.md:149,215` | Doc drift only; no runtime impact. Update to describe server-driven station assignment (query `/api/state` for the next gap) + the unreachable→block-with-error path. (Code fixed in `cd3df40`; the functional fix itself, R10/`56916d4`, also corrected the timeout message to match `TimeoutError`.) |
 
-**Status:** revisit after the comms-fixes plan is fully implemented. None blocks any remaining phase (1c, 2, 3, 4a–4d).
+## Phase 2 boundary-review deferrals (2026-06-02)
+
+The 4-lens Phase 2 review fixed 4 issues in-place (R1 clientTxId parity, R2 cross-session
+queue clear, R3 clientTxId handler key, R5/R6 test gaps). These were deliberately deferred:
+
+**Carry-over to Phase 3 (NOT a ledger defer — a hard Phase 3 requirement):**
+- **transaction:failed / backend:error has no consumer + dedup guard never cleared on permanent failure.** A rejected/invalid/paused scan drops the queue entry AND locks the token out of re-scan with no GM feedback (lost-scan-equivalent). Pre-existing; user approved deferring to Phase 3. **Phase 3 MUST wire a listener that surfaces the error AND `unmarkTokenAsScanned` on non-duplicate permanent failure.**
+
+| ID | Item | Sev | File | Why safe to defer |
+|----|------|-----|------|-------------------|
+| J | `resetForNewSession` doesn't clear the old session's persisted `networkedScannedTokens:<oldSid>` key | low | `unifiedDataManager.js` resetForNewSession | Harmless — new session uses a different key; just a localStorage leak across sessions. Remove the old key on session change when convenient. |
+| K | session-not-active `transaction:result` emits `transactionId: null` but the AsyncAPI schema requires a non-null string | nit | `adminEvents.js` not-active emit | Pre-existing; not validated by any test, and the scanner ignores transactionId on a status:'error' result. Relax the contract to `[string,'null']` for non-accepted results or omit the field. |
+| L | `rejected` status in the enum is dead on the GM WS path | low | `asyncapi.yaml` + `adminEvents.js` | No-session = `error` event (SESSION_NOT_FOUND); not-active = `transaction:result` status `error`. The scanner handles `rejected` defensively, so it's harmless. Decide keep-for-completeness vs remove in a later contract cleanup. |
+| M | No fallback if `sync:full` never arrives after connect (queue flush only fires from sync:full) | low | `networkedSession.js` | Backend auto-sends `sync:full` on every successful GM connect (gmAuth.js), so the queue always flushes in practice. Entries stay persisted regardless (no loss) — only a delayed flush in a rare dropped-emit edge. Add a defensive post-connect timer only if this is ever observed. |
+| N | sync:full re-entrancy: a 2nd sync:full mid-`syncQueue` can restore reconcile-dropped entries (stale `survivors` snapshot) | low | `networkedQueueManager.js` syncQueue | Self-healing — the restored entry is one the server already recorded, so the next replay returns `duplicate` and it's removed. Redundant replay, no double-count/loss. Recompute survivors from the live array (not the batch snapshot) if it ever matters. |
+
+**Status:** revisit after the comms-fixes plan is fully implemented. None blocks any remaining phase. The Phase 3 carry-over above is the one item that MUST be honored during Phase 3 (not after).
