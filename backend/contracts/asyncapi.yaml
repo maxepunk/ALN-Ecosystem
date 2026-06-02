@@ -685,6 +685,10 @@ components:
                 description: Optional custom summary for detective mode scans (overrides token default)
                 maxLength: 350
                 example: "Security footage from warehouse district - timestamp 23:47"
+              clientTxId:
+                type: string
+                description: Client-generated correlation id, echoed back on transaction:result for replay matching
+                example: "ctx-abc-123"
           timestamp:
             type: string
             format: date-time
@@ -756,6 +760,10 @@ components:
                 nullable: true
                 description: Error code if status=error
                 example: null
+              clientTxId:
+                type: string
+                description: Correlation id echoed from the originating transaction:submit (absent for server-originated results)
+                example: "ctx-abc-123"
           timestamp:
             type: string
             format: date-time

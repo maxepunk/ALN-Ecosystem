@@ -125,6 +125,26 @@ describe('Transaction Events - Contract Validation', () => {
         await offlineQueueService.reset();
       }
     });
+
+    it('echoes the client-supplied clientTxId back on the result', async () => {
+      const resultPromise = waitForEvent(socket, 'transaction:result');
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: '534e2b03',
+          teamId: 'Team Alpha',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'blackmarket',
+          clientTxId: 'ctx-abc-123'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const event = await resultPromise;
+      expect(event.data.clientTxId).toBe('ctx-abc-123');
+      validateWebSocketEvent(event, 'transaction:result');
+    });
   });
 
   describe('transaction:new broadcast', () => {

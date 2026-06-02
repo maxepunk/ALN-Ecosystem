@@ -182,6 +182,7 @@ async function handleTransactionSubmit(socket, data, _io) {
           tokenId: scanRequest.tokenId,
           teamId: scanRequest.teamId,
           points: 0,
+          clientTxId: scanRequest.clientTxId,  // echo correlation id (TQ-3) so the scanner can match the queued result
           message: 'Transaction queued for processing when system comes online'
         });
 
@@ -240,7 +241,8 @@ async function handleTransactionSubmit(socket, data, _io) {
       teamId: result.transaction?.teamId || scanRequest.teamId,
       points: result.points || 0,
       message: result.message,
-      error: result.error || null
+      error: result.error || null,
+      clientTxId: scanRequest.clientTxId  // echo correlation id (TQ-3)
     };
 
     // Add duplicate-specific fields if present (from createScanResponse)
