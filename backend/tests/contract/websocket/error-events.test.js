@@ -133,5 +133,30 @@ describe('Error Events - Contract Validation', () => {
       // Validate: Against AsyncAPI contract
       validateWebSocketEvent(event, 'error');
     });
+
+    it('echoes the submitted clientTxId on an error from a failed transaction:submit', async () => {
+      // Drives the REAL handleTransactionSubmit catch path: an invalid mode makes
+      // validate() throw -> emit 'error' with VALIDATION_ERROR. The scanner's
+      // replayTransaction fast-fail matcher correlates by clientTxId, so the error
+      // MUST echo it (else a rejected replay hangs the full 30s timeout). TQ-2/CC-4.
+      const eventPromise = waitForEvent(socket, 'error');
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: '534e2b03',
+          teamId: 'Team Alpha',
+          deviceId: 'TEST_GM_ERROR',
+          deviceType: 'gm',
+          mode: 'not-a-valid-mode',  // fails gmTransactionSchema -> validate() throws
+          clientTxId: 'ctx-err-9'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const event = await eventPromise;
+      expect(event.data.code).toBe('VALIDATION_ERROR');
+      expect(event.data.clientTxId).toBe('ctx-err-9');
+      validateWebSocketEvent(event, 'error');
+    });
   });
 });

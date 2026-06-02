@@ -194,7 +194,8 @@ async function handleTransactionSubmit(socket, data, _io) {
       } else {
         emitWrapped(socket, 'error', {
           code: 'QUEUE_FULL',
-          message: 'Offline queue is full'
+          message: 'Offline queue is full',
+          clientTxId: scanRequest.clientTxId  // echo correlation id so a rejected replay fast-fails (TQ-2)
         });
         return;
       }
@@ -275,6 +276,9 @@ async function handleTransactionSubmit(socket, data, _io) {
       details: (error.details && !Array.isArray(error.details))
         ? error.details
         : { error: error.message, validationErrors: error.details },  // Must be object per contract
+      // Echo correlation id (validate() may have thrown before scanRequest was
+      // assigned, so read from the raw envelope) so a rejected replay fast-fails (TQ-2).
+      clientTxId: data.data?.clientTxId,
     });
   }
 }

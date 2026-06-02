@@ -2034,6 +2034,10 @@ components:
                 nullable: true
                 description: Optional error details
                 example: null
+              clientTxId:
+                type: string
+                description: Correlation id echoed from the originating transaction:submit (present only on errors responding to a specific submission)
+                example: "ctx-err-9"
           timestamp:
             type: string
             format: date-time
