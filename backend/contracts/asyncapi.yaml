@@ -1520,7 +1520,7 @@ components:
         - `bluetooth:unpair` — `{address: string}` (required)
         - `bluetooth:connect` — `{address: string}` (required)
         - `bluetooth:disconnect` — `{address: string}` (required)
-        - `audio:route:set` — `{stream: 'video'|'music'|'sound', sink: 'hdmi'|'bluetooth'}`.
+        - `audio:route:set` — `{stream: 'video'|'music'|'sound', sink: 'hdmi'|'bluetooth'|<pipewire-sink-name>}`. The logical aliases `hdmi`/`bluetooth` resolve to the first matching sink; a specific PipeWire sink name (e.g. `bluez_output.AA_BB_CC_DD_EE_FF.1`) targets that exact device. The GM dropdown sends the specific sink name.
           Per-stream routing for all three streams. The GM sends a logical alias;
           audioRoutingService resolves it to an actual PipeWire sink name.
         - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
