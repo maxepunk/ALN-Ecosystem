@@ -345,6 +345,10 @@ test.describe('GM Scanner - Environment Control', () => {
   });
 
   test('Music auto-ducks when video plays', async () => {
+    // The duck-off wait below allows up to 120s for the video to complete — that alone
+    // exceeds the global 60s budget. Also give slow VLC start + duck-on headroom under
+    // full-suite CPU load (this test runs the real video→ducking wire end-to-end).
+    test.setTimeout(150000);
     const musicHealthy = serviceHealth.music?.status === 'healthy';
     const vlcHealthy = serviceHealth.vlc?.status === 'healthy';
     const videoToken = testTokens?.videoToken;
@@ -401,7 +405,17 @@ test.describe('GM Scanner - Environment Control', () => {
         const duckingByVideoPromise = waitForEvent(wsSocket, 'service:state',
           (data) => data.data?.domain === 'audio' &&
             Array.isArray(data.data?.state?.ducking?.music) &&
-            data.data.state.ducking.music.includes('video'), 30000);
+            data.data.state.ducking.music.includes('video'), 60000);
+
+        // Re-confirm VLC is healthy right before queuing. vlc health was checked at the top,
+        // but under full-suite load it can momentarily flap 'down', and video:queue:add is
+        // REJECTED (not queued) when its vlc dependency is down → no video:started → no
+        // ducking → the duck-on wait times out. (Duck-on bumped to 60s for slow VLC start.)
+        await gmScanner.waitForBackendState(
+          orchestratorInfo.url,
+          (s) => s.serviceHealth?.vlc?.status === 'healthy',
+          10000
+        );
 
         // Queue video via admin command (triggers VLC playback + ducking)
         await sendGMCommand(orchestratorInfo.url, 'video:queue:add', {

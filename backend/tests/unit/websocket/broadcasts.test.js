@@ -513,16 +513,16 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
   describe('video routing via video:started', () => {
     let mockAudioRoutingService;
-    let originalNodeEnv;
+    let originalAudioWires;
 
     beforeEach(() => {
-      // The inter-service audio-routing wires in broadcasts.js are gated to skip
-      // when NODE_ENV=test (prevents host-state leaks in integration tests — see
-      // commit b48ad0f5). This unit test exists to verify the wire registers
-      // correctly in production, so override NODE_ENV for the duration of the
-      // setupBroadcastListeners() call and restore in afterEach.
-      originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      // The inter-service audio-routing wires in broadcasts.js are gated to skip when
+      // ENABLE_AUDIO_WIRES=false (set in jest.config.base.js so the jest layers stay
+      // pactl-free; E2E/production leave it unset → wire ON). This unit test verifies the
+      // wire registers when enabled, so unset the flag for the setupBroadcastListeners()
+      // call and restore in afterEach.
+      originalAudioWires = process.env.ENABLE_AUDIO_WIRES;
+      delete process.env.ENABLE_AUDIO_WIRES;
 
       mockAudioRoutingService = createMockAudioRoutingService();
 
@@ -537,7 +537,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
 
     afterEach(() => {
-      process.env.NODE_ENV = originalNodeEnv;
+      if (originalAudioWires === undefined) delete process.env.ENABLE_AUDIO_WIRES;
+      else process.env.ENABLE_AUDIO_WIRES = originalAudioWires;
     });
 
     it('should apply video routing on video:started event', () => {
@@ -564,13 +565,13 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
   describe('sound ducking via sound:started', () => {
     let mockAudioRoutingService;
     let mockSoundService;
-    let originalNodeEnv;
+    let originalAudioWires;
 
     beforeEach(() => {
-      // Same NODE_ENV opt-out as the video-routing describe — see commit b48ad0f5.
-      // Verifies the soundService→audioRoutingService wire registers in production.
-      originalNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'production';
+      // Same ENABLE_AUDIO_WIRES opt-in as the video-routing describe above — verifies the
+      // soundService→audioRoutingService wire registers when the wiring is enabled.
+      originalAudioWires = process.env.ENABLE_AUDIO_WIRES;
+      delete process.env.ENABLE_AUDIO_WIRES;
 
       mockAudioRoutingService = createMockAudioRoutingService();
       mockSoundService = new EventEmitter();
@@ -586,7 +587,8 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
     });
 
     afterEach(() => {
-      process.env.NODE_ENV = originalNodeEnv;
+      if (originalAudioWires === undefined) delete process.env.ENABLE_AUDIO_WIRES;
+      else process.env.ENABLE_AUDIO_WIRES = originalAudioWires;
     });
 
     it('should invoke handleDuckingEvent on sound:started', () => {

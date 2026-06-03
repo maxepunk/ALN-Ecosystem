@@ -49,6 +49,9 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
     });
 
     test('Video State: GM1 queue command updates GM2 UI', async () => {
+        // Two-GM setup plus VLC's loading→playing confirmation latency can exceed the
+        // global 60s budget under full-suite CPU load; give this multi-client video test headroom.
+        test.setTimeout(120000);
         const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
         const page1 = await createPage(context1);
         const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
@@ -99,11 +102,13 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             // 3. VERIFY: GM2 UI shows the video playing
             // The #now-showing-value element should update to show the video name
             const nowShowingValue = page2.locator('#now-showing-value');
-            await expect(nowShowingValue).toContainText(videoFilename, { timeout: 15000 });
+            await expect(nowShowingValue).toContainText(videoFilename, { timeout: 20000 });
 
-            // Verify play icon appears
+            // Verify play icon appears. Explicit generous timeout (was the 5s expect default):
+            // the loading→playing transition and its service:state push to GM2 can lag well
+            // past 5s while VLC confirms playback under load.
             const nowShowingIcon = page2.locator('#now-showing-icon');
-            await expect(nowShowingIcon).toHaveText('▶️');
+            await expect(nowShowingIcon).toHaveText('▶️', { timeout: 30000 });
 
         } finally {
             await context1.close();
