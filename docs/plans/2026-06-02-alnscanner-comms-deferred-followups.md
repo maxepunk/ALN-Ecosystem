@@ -49,3 +49,47 @@ The Phase 3 review fixed the MEDIUM (gate scanning while paused) + the leaks/in-
 | O | Double-replay / double-toast on reconnect-during-in-flight | low | `networkedQueueManager.js` `_submitDurable`/`syncQueue` | A connected scan's `_submitDurable` keeps the entry in `tempQueue` until its result; if a reconnect fires `syncQueue` in that window, the same entry is replayed again under the same clientTxId → two live handlers → both resolve → double `transaction:failed` (double toast) + a leaked listener (cleaned at +30s/destroy). NO scoring/dedup bug (idempotent unmark, no-op remove). Clean fix: an `_inFlight` Set — `_submitDurable` adds the clientTxId before replay (removes on settle) and `syncQueue` skips+keeps in-flight entries (push to survivors, don't re-replay). Also subsumes item N. Optional hardening — narrow reconnect-timing edge. |
 
 **Status:** revisit after the comms-fixes plan is fully implemented. None blocks any remaining phase. The Phase 3 carry-over (transaction:failed/unmark) was HONORED during Phase 3 (P3.4 + the gate/in-flight-reject redesign per the user's pause-semantics decision).
+
+## Scoreboard rendering unification — DEFERRED FEATURE (2026-06-02, user-scoped)
+
+During Phase 4 prep the P0.4 reconciliation surfaced a larger latent opportunity. The user
+scoped the immediate work to **remote-control + de-dup only** (no GM scoreboard view, no
+cross-build refactor) and asked to **track the rest separately**. Recorded here so the
+mapping analysis (workflow wf_c225b2b7-a7f) isn't lost:
+
+**What was deliberately NOT done (a future feature, its own plan):**
+- **GM-scanner embedded scoreboard mirror.** The GM scanner renders team *standings*
+  (`uiManager.renderScoreboard`) + an owner *picker* (`EvidencePickerRenderer`), but NOT the
+  owner-grouped evidence cards/pages that `backend/public/scoreboard.html` shows. An embedded
+  live mirror would be a real feature.
+- **Cross-component shared rendering module.** `scoreboard.html` is a standalone non-bundled
+  vanilla-JS file → it can't import ALNScanner ES6 modules. Genuinely sharing owner-grouping /
+  currency / `escapeHtml` / `calculatePages` between the two requires a build/serving decision
+  (make scoreboard.html a Vite target, or extract a framework-agnostic module both load).
+- **`scoreboard:page` architectural fork (must resolve before any GM mirror).** `scoreboard:page`
+  is NOT "show page N" — it's "next/prev/to-owner" against each client's OWN,
+  `window.innerHeight`-dependent page set (`calculatePages`, scoreboard.html:1018). So two
+  displays (or a display + a GM mirror) on different-size screens paginate differently → a
+  `scoreboard:page:owner` can land on different pages. A GM mirror needs either forced-identical
+  page math OR a **server-authoritative page model** (scoreboardControlService computes &
+  broadcasts the resolved page index). This is a latent correctness issue in the EXISTING
+  multi-display remote-control too (out of scope to fix now).
+
+**What IS in scope now (Phase 4a P0.4 cluster):** contract oneOf += BatchAck/PlayerScan;
+MESSAGE_TYPES += scoreboard:page (→ strict P0.4 toEqual passes); a minimal `scoreboard:page`
+consumer (confirmation hint in EvidencePicker — parity-free: reflects owner for `owner`, a
+brief next/prev confirmation otherwise); fix the owner-sort parity bug (GM picker sorts
+ALPHABETICAL @uDM:301 but the display sorts recency-DESC @scoreboard.html:994 → align the GM
+picker to the display order); extract a GM-internal currency formatter helper (≈8 duplicated
+`$n.toLocaleString()` sites in uiManager). De-dup is GM-INTERNAL + behavioral-parity only — NOT
+cross-component code-sharing (blocked by the build boundary, excluded by the user).
+
+## Phase 4a boundary-review deferrals (2026-06-02)
+The 4-lens Phase 4a review fixed 3 issues in-place (R1 phantom CC-8b guard → discriminating; R2 sync:full music.playlist object|null contract type; R3 networkedSession scoreboard:page routing test). These NITs were deferred (no live-game impact):
+
+| ID | Item | Sev | File | Why safe to defer |
+|----|------|-----|------|-------------------|
+| P | `showGroupCompletionNotification(data)` is dead code (zero `src/` callers; only its unit test) AND reads `data.bonus`/`data.groupId`/`data.multiplier` — none of which exist in the backend `group:completed` payload (`{teamId, group, bonusPoints, completedAt}`). The live toast goes through `app.js` (correctly uses `bonusPoints`). P4a.13's formatCurrency switch on its `$` line now makes it render `+$0` instead of throwing on `undefined.toLocaleString()` — masking the field mismatch if ever re-wired. | nit | `ALNScanner/src/ui/uiManager.js:739-774` | Dead code, not on any live path. Either DELETE the method+test, or align field names to `{teamId, group, bonusPoints}` before any future wire-up. |
+| Q | `getExposedOwners` adds an alphabetical `localeCompare` tie-break that the wall scoreboard's sort does NOT have (scoreboard.html sorts purely by `lastExposed DESC`, ties fall to Map-insertion order); scanner also tracks MAX exposure time vs scoreboard's last-written. Diverges only on exact-timestamp ties or out-of-order arrival. | nit | `ALNScanner/src/core/unifiedDataManager.js:311` | Benign picker-vs-wall ordering nuance on rare ties; the deterministic tie-break is arguably an improvement. Full page-set parity already ledgered out of scope. |
+| R | `lighting-state.test.js` first assertion `expect(['string','object']).toContain(typeof activeScene)` is near-tautological (`typeof null==='object'`), satisfied by string OR null. The `if (!==null) toBe('string')` check + the second test carry the real SR-1 pin. | nit | `backend/tests/contract/websocket/lighting-state.test.js:8-15` | Cosmetic; SR-1 is adequately covered. Drop the tautological line when convenient. |
+| S | `app.js` group:completed toast uses inline `$${bonusPoints.toLocaleString()}` rather than the new `formatCurrency()` helper (the one currency site the de-dup skipped — app.js didn't already import it). | nit | `ALNScanner/src/app/app.js:159` | Output identical; cosmetic consistency only. Import + use `formatCurrency` if app.js gains other currency sites. |
