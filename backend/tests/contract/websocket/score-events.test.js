@@ -187,6 +187,27 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
       }).not.toThrow();
     });
 
+    it('should REJECT legacy `bonus` field — contract field is `bonusPoints` (CC-1)', () => {
+      // Regression guard: a payload that uses the old `bonus` field name (the
+      // bug the GM Scanner consumer had) is missing the required `bonusPoints`
+      // and must fail AsyncAPI validation. This pins the contract field name
+      // that the scanner's group:completed handler is required to read.
+      const legacyEvent = {
+        event: 'group:completed',
+        data: {
+          teamId: 'Team Alpha',
+          group: 'jaw_group',
+          bonus: 500,            // WRONG legacy name
+          completedAt: new Date().toISOString()
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      expect(() => {
+        validateWebSocketEvent(legacyEvent, 'group:completed');
+      }).toThrow(/required/i);
+    });
+
     it('should accept special characters in teamId (no pattern restriction)', () => {
       // These were previously rejected - now they're all valid
       const validTeamIds = [
