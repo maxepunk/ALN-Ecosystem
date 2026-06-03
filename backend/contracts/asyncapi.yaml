@@ -573,6 +573,10 @@ components:
                       type: string
                       format: date-time
                       example: "2025-10-15T19:00:30.000Z"
+                    connectionStatus:
+                      type: string
+                      enum: [connected, disconnected, reconnecting]
+                      example: "connected"
                     ipAddress:
                       type: string
                       example: "10.0.0.81"
