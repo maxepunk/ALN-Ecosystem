@@ -106,9 +106,27 @@ channels:
         oneOf:
           - $ref: '#/components/messages/TransactionSubmit'
           - $ref: '#/components/messages/GmCommand'
+          - $ref: '#/components/messages/SyncRequest'
 
 components:
   messages:
+    SyncRequest:
+      name: sync:request
+      title: Request Full State Resync
+      summary: Admin panel asks the orchestrator to re-send sync:full
+      description: |
+        Client→server request emitted by the GM Scanner admin panel
+        (MonitoringDisplay) to pull the current full state on demand. The
+        server responds by emitting a fresh `sync:full` to the requesting
+        socket.
+
+        **Envelope exception**: Unlike other client→server events, this event
+        carries NO payload — it is emitted as the bare event name
+        (`socket.emit('sync:request')`). The server handler (server.js) takes
+        no data argument. Documented here as payload-less to match the wire.
+      payload:
+        type: 'null'
+
     # ============================================================================
     # DEVICE TRACKING (2 events)
     # Note: Authentication happens via Socket.io handshake middleware (not events)
