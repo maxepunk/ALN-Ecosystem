@@ -688,7 +688,7 @@ components:
                   state: { type: string }
                   volume: { type: integer }
                   track: { type: [object, 'null'] }
-                  playlist: { type: [string, 'null'] }
+                  playlist: { type: [object, 'null'] }
                   pausedByGameClock: { type: boolean }
                   playlists: { type: array }
               sound:

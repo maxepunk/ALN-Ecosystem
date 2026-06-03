@@ -331,4 +331,25 @@ describe('buildSyncFullPayload contract conformance (CC-2)', () => {
     const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
     expect(() => validateWebSocketEvent(event, 'sync:full')).toThrow(/required/i);
   });
+
+  it('validates a sync:full carrying a LOADED playlist (object, not string)', async () => {
+    // Regression for the R2 review finding: musicService.getState().playlist is
+    // an OBJECT (or null) — never a string. The default CC-2 factory has no
+    // musicService, so buildMusicState returns playlist:null and never exercises
+    // the loaded-playlist path. This builds the most common in-game state (music
+    // playing, a playlist loaded) and asserts it conforms to the SyncFull schema.
+    const services = makeServices();
+    services.musicService = {
+      getState: () => ({
+        connected: true, state: 'playing', volume: 70, track: { title: 'X' },
+        playlist: { id: 'pl1', name: 'Ambient', position: 0, total: 5, shuffle: false, loop: true, crossfadeMs: 0 },
+        pausedByGameClock: false,
+      }),
+      getPlaylists: () => [],
+    };
+    const data = await buildSyncFullPayload(services);
+    expect(data.music.playlist).toEqual(expect.objectContaining({ id: 'pl1' }));
+    const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
+    expect(() => validateWebSocketEvent(event, 'sync:full')).not.toThrow();
+  });
 });
