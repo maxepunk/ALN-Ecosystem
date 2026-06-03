@@ -284,6 +284,14 @@ components:
               - videoStatus
               - devices
               - serviceHealth
+              - heldItems
+              - playerScans
+              - environment
+              - gameClock
+              - cueEngine
+              - music
+              - sound
+              - displayStatus
             properties:
               session:
                 description: Current session (matches Session schema from OpenAPI)
@@ -618,6 +626,60 @@ components:
                       description: Services that are down (for service_down reason)
                       example: ["vlc"]
                 example: []
+              playerScans:
+                type: array
+                description: Persisted player-scanner scans (session.playerScans)
+                items:
+                  type: object
+              environment:
+                type: object
+                description: Bluetooth/audio/lighting environment snapshot (buildEnvironmentState)
+                properties:
+                  bluetooth: { type: object }
+                  audio: { type: object }
+                  lighting: { type: object }
+              gameClock:
+                type: object
+                description: Game clock state (buildGameClockState)
+                required: [status, elapsed, expectedDuration]
+                properties:
+                  status: { type: string }
+                  elapsed: { type: number }
+                  expectedDuration: { type: number }
+              cueEngine:
+                type: object
+                description: Cue engine state (buildCueEngineState)
+                required: [loaded, cues, activeCues, disabledCues]
+                properties:
+                  loaded: { type: boolean }
+                  cues: { type: array }
+                  activeCues: { type: array }
+                  disabledCues: { type: array }
+              music:
+                type: object
+                description: MPD music state with playlists (buildMusicState)
+                required: [connected, state, volume, playlists]
+                properties:
+                  connected: { type: boolean }
+                  state: { type: string }
+                  volume: { type: integer }
+                  track: { type: [object, 'null'] }
+                  playlist: { type: [string, 'null'] }
+                  pausedByGameClock: { type: boolean }
+                  playlists: { type: array }
+              sound:
+                type: object
+                description: Active pw-play sound playback (soundService.getState)
+                required: [playing]
+                properties:
+                  playing: { type: array }
+              displayStatus:
+                type: object
+                description: HDMI display mode (displayControlService.getStatus, timestamp stripped)
+                properties:
+                  currentMode: { type: string }
+                  previousMode: { type: string }
+                  pendingVideo: { type: [string, 'null'] }
           timestamp:
             type: string
             format: date-time

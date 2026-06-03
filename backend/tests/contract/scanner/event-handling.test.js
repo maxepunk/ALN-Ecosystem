@@ -22,6 +22,20 @@ const { validateWebSocketEvent } = require('../../helpers/contract-validator');
 
 describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
 
+  // CC-2: sync:full now REQUIRES the full reconnect-restore field set. These are
+  // minimal valid shapes for the hand-built fixtures below (real callers fill
+  // these via buildSyncFullPayload). Spread into each sync:full data object.
+  const RECONNECT_RESTORE_FIELDS = {
+    heldItems: [],
+    playerScans: [],
+    environment: { bluetooth: {}, audio: {}, lighting: {} },
+    gameClock: { status: 'stopped', elapsed: 0, expectedDuration: 7200 },
+    cueEngine: { loaded: false, cues: [], activeCues: [], disabledCues: [] },
+    music: { connected: false, state: 'stopped', volume: 50, playlists: [] },
+    sound: { playing: [] },
+    displayStatus: { currentMode: 'idle', previousMode: 'idle', pendingVideo: null },
+  };
+
   describe('device:connected - Device Connection Broadcast', () => {
 
     it('should validate device:connected event structure', () => {
@@ -165,6 +179,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             }
           ],
           recentTransactions: [],
+          ...RECONNECT_RESTORE_FIELDS,
           videoStatus: {
             status: 'idle',
             currentVideo: null,
@@ -193,6 +208,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
           session: null,
           scores: [],
           recentTransactions: [],
+          ...RECONNECT_RESTORE_FIELDS,
           videoStatus: {
             status: 'idle',
             currentVideo: null,
@@ -232,6 +248,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             },
             scores: [],
             recentTransactions: [],
+          ...RECONNECT_RESTORE_FIELDS,
             videoStatus: { status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: true },
             devices: [],
             serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
@@ -255,6 +272,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
             session: null,
             scores: [],
             recentTransactions: [],
+          ...RECONNECT_RESTORE_FIELDS,
             videoStatus: {
               status: videoStatus,
               currentVideo: videoStatus === 'playing'
@@ -627,6 +645,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
               session: null,
               scores: [],
               recentTransactions: [],
+          ...RECONNECT_RESTORE_FIELDS,
               videoStatus: { status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: true },
               devices: [],
               serviceHealth: { vlc: { status: 'healthy', message: 'Connected', lastChecked: null } }
