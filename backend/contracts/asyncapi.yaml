@@ -89,6 +89,8 @@ channels:
           - $ref: '#/components/messages/OfflineQueueProcessed'
           - $ref: '#/components/messages/GroupCompleted'
           - $ref: '#/components/messages/DisplayMode'
+          - $ref: '#/components/messages/BatchAck'
+          - $ref: '#/components/messages/PlayerScan'
           - $ref: '#/components/messages/ScoreboardPage'
           - $ref: '#/components/messages/CueFired'
           - $ref: '#/components/messages/CueCompleted'
