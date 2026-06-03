@@ -627,4 +627,85 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     console.log(`✓ Team Detectives still functional after rejection: $${score2.toLocaleString()} from different token`);
   });
+
+  // ========================================
+  // TEST: Durable queue — transient WS drop, flush on auto-reconnect
+  // ========================================
+
+  test('queues a scan during a transient connection drop and flushes it on auto-reconnect (durable queue)', async () => {
+    const teamAlpha = `Team Alpha ${Date.now()}`;
+    const token = testTokens.personalToken;
+    const expectedScore = calculateExpectedScore(token);
+
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    // Intercept the socket.io WebSocket to simulate a transient transport drop
+    // WITHOUT stopping the orchestrator (server stays up, JWT stays valid, session
+    // stays in memory — the realistic "wifi blip" the durable queue exists for, and
+    // the only path where the client auto-reconnects rather than hitting its
+    // 5-retry give-up). connectToServer() with NO onMessage handlers is a transparent
+    // bidirectional proxy (Playwright default), so socket.io's Engine.IO heartbeat
+    // and framing pass through verbatim. `online=false` makes the route refuse new
+    // connections (the outage window); the client keeps retrying and reconnects once
+    // we re-allow, well within its retry budget. Registered before
+    // initializeGMScannerWithMode so it's active for the very first handshake;
+    // page-level routes survive the navigation that helper performs.
+    let online = true;
+    let liveWs = null;
+    await page.routeWebSocket(/\/socket\.io\//, (ws) => {
+      if (!online) { ws.close(); return; }
+      ws.connectToServer();
+      liveWs = ws;
+    });
+
+    try {
+      const scanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await scanner.createSessionWithTeams('Durable Queue Test', [teamAlpha]);
+      await scanner.scannerTab.click();
+      await scanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await scanner.waitForTeamInList(teamAlpha);
+      await scanner.selectTeamFromList(teamAlpha);
+
+      // Begin the outage: refuse new connections, then drop the live socket. Closing
+      // the page side also closes the server side (Playwright default), so the
+      // orchestrator cleanly marks the device disconnected.
+      online = false;
+      await liveWs.close();
+      await scanner.waitForDisconnected();
+
+      // Scan while disconnected. The cached sessionState.status stays 'active' (a
+      // disconnect does not reset it), so the scan is NOT gate-blocked — the durable
+      // queue persists it and the result screen shows optimistically. The submit
+      // simply can't reach the server through the closed socket.
+      await scanner.manualScan(token.SF_RFID);
+      expect(await scanner.getResultTitle()).not.toContain('Error');
+
+      // End the outage: the next reconnect retry proxies through and succeeds (server
+      // up, token valid) → sync:full → the durable queue reconciles and flushes.
+      online = true;
+      await scanner.waitForReconnected();
+
+      // The queued scan reaches the backend WITHOUT a re-scan and scores exactly once
+      // (the durable queue must not double-submit; expectedScore, not 2×).
+      await scanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.scores?.find(s => s.teamId === teamAlpha)?.currentScore === expectedScore,
+        20000
+      );
+      const score = await getTeamScore(page, teamAlpha, 'networked', orchestratorInfo.url);
+      expect(score).toBe(expectedScore);
+
+      console.log(`✓ Durable queue: transient-drop scan flushed once on auto-reconnect ($${expectedScore.toLocaleString()})`);
+
+    } finally {
+      online = true; // never let the route block teardown
+      await page.close();
+      await context.close();
+    }
+  });
 });
