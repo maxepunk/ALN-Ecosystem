@@ -5,6 +5,7 @@
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
+const { clearEventCache } = require('../helpers/websocket-core');
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
@@ -137,6 +138,57 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       expect(result2.data.status).toBe('duplicate');
       expect(result2.data.points).toBe(0);
+    });
+
+    it('CD-1: should include deviceScannedTokens in sync:full triggered by sync:request', async () => {
+      // Task CD-1: sync:request handler must include deviceScannedTokens (gmAuth parity)
+      // The scanner reconciles offline queue against server-recorded scans only when
+      // deviceScannedTokens is an array — so a sync:request-triggered flush must also
+      // carry the field to preserve the reconcile-before-flush ordering.
+
+      const submitTransaction = (socket, data) => {
+        return new Promise((resolve) => {
+          socket.once('transaction:result', resolve);
+          socket.emit('transaction:submit', {
+            event: 'transaction:submit',
+            data: data,
+            timestamp: new Date().toISOString()
+          });
+        });
+      };
+
+      // Step 1: Create and start session
+      await sessionService.createSession({
+        name: 'CD-1 sync:request deviceScannedTokens Test',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      // Step 2: Connect GM and scan a token
+      gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
+      // Consume the initial gmAuth sync:full so waitForEvent below catches only the
+      // sync:request-triggered one.
+      await waitForEvent(gm1, 'sync:full', 3000);
+
+      await submitTransaction(gm1, {
+        tokenId: 'jaw001',
+        teamId: 'Team Alpha',
+        mode: 'blackmarket'
+      });
+
+      // Step 3: Emit sync:request and capture the resulting sync:full.
+      // Clear the event cache so waitForEvent does NOT return the stale initial
+      // gmAuth sync:full (which has deviceScannedTokens: [] from before the scan).
+      // Register the listener BEFORE emitting to avoid missing the event.
+      clearEventCache(gm1);
+      const syncPromise = waitForEvent(gm1, 'sync:full', 5000);
+      gm1.emit('sync:request');
+      const syncEvent = await syncPromise;
+
+      // Step 4: deviceScannedTokens must be present and contain the scanned token
+      expect(syncEvent.data).toHaveProperty('deviceScannedTokens');
+      expect(Array.isArray(syncEvent.data.deviceScannedTokens)).toBe(true);
+      expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
     });
 
     it('should only restore tokens for the specific device', async () => {
