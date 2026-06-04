@@ -158,5 +158,53 @@ describe('Error Events - Contract Validation', () => {
       expect(event.data.clientTxId).toBe('ctx-err-9');
       validateWebSocketEvent(event, 'error');
     });
+
+    it('should match AsyncAPI schema with QUEUE_FULL code (offline queue overflow)', async () => {
+      const eventPromise = waitForEvent(socket, 'error');
+
+      // Trigger: QUEUE_FULL emitted from adminEvents when offline queue is at capacity
+      const testError = new Error('Offline queue is full. Please try again later.');
+      testError.code = 'QUEUE_FULL';
+      sessionService.emit('error', testError);
+
+      const event = await eventPromise;
+
+      // Validate: Wrapped envelope
+      expect(event).toHaveProperty('event', 'error');
+      expect(event).toHaveProperty('data');
+      expect(event).toHaveProperty('timestamp');
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // Validate: Payload content
+      expect(event.data.code).toBe('QUEUE_FULL');
+      expect(event.data.message).toBe('Offline queue is full. Please try again later.');
+
+      // Validate: Against AsyncAPI contract schema
+      validateWebSocketEvent(event, 'error');
+    });
+
+    it('should match AsyncAPI schema with INVALID_DATA code (identify payload malformed)', async () => {
+      const eventPromise = waitForEvent(socket, 'error');
+
+      // Trigger: INVALID_DATA emitted from gmAuth handleGmIdentify when identify payload is malformed
+      const testError = new Error('Invalid identify payload: missing required fields');
+      testError.code = 'INVALID_DATA';
+      sessionService.emit('error', testError);
+
+      const event = await eventPromise;
+
+      // Validate: Wrapped envelope
+      expect(event).toHaveProperty('event', 'error');
+      expect(event).toHaveProperty('data');
+      expect(event).toHaveProperty('timestamp');
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // Validate: Payload content
+      expect(event.data.code).toBe('INVALID_DATA');
+      expect(event.data.message).toBe('Invalid identify payload: missing required fields');
+
+      // Validate: Against AsyncAPI contract schema
+      validateWebSocketEvent(event, 'error');
+    });
   });
 });
