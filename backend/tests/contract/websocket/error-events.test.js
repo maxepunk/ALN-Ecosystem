@@ -206,5 +206,31 @@ describe('Error Events - Contract Validation', () => {
       // Validate: Against AsyncAPI contract schema
       validateWebSocketEvent(event, 'error');
     });
+
+    it('should match AsyncAPI schema with DEVICE_LIMIT_REACHED code (max GM stations reached)', async () => {
+      // Mirror Pattern B: direct service emission, mirrors QUEUE_FULL test above.
+      // DEVICE_LIMIT_REACHED is a display-only code — must NOT be AUTH_*/PERMISSION_DENIED
+      // because the GM scanner clears the stored token on those and forces re-auth.
+      const eventPromise = waitForEvent(socket, 'error');
+
+      const testError = new Error('Maximum GM stations reached');
+      testError.code = 'DEVICE_LIMIT_REACHED';
+      sessionService.emit('error', testError);
+
+      const event = await eventPromise;
+
+      // Validate: Wrapped envelope
+      expect(event).toHaveProperty('event', 'error');
+      expect(event).toHaveProperty('data');
+      expect(event).toHaveProperty('timestamp');
+      expect(event.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // Validate: Payload content
+      expect(event.data.code).toBe('DEVICE_LIMIT_REACHED');
+      expect(event.data.message).toBe('Maximum GM stations reached');
+
+      // Validate: Against AsyncAPI contract schema
+      validateWebSocketEvent(event, 'error');
+    });
   });
 });

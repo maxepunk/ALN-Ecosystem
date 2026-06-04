@@ -2102,6 +2102,7 @@ components:
                   - AUTH_REQUIRED
                   - AUTH_INVALID
                   - DEVICE_ID_COLLISION
+                  - DEVICE_LIMIT_REACHED
                   - PERMISSION_DENIED
                   - VALIDATION_ERROR
                   - INVALID_DATA

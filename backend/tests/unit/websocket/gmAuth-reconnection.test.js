@@ -248,4 +248,27 @@ describe('GM Auth - Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       expect(eventData.data.deviceScannedTokens).toEqual([]);
     });
   });
+
+  describe('GM station capacity rejection', () => {
+    it('should emit DEVICE_LIMIT_REACHED code when maximum GM stations are reached', async () => {
+      // Asserting the EXACT code (not PERMISSION_DENIED/AUTH_*) is load-bearing because
+      // the GM scanner clears the stored auth token on those codes and forces re-auth.
+      // "Maximum GM stations reached" is a transient capacity limit with a valid token —
+      // clearing the token and forcing re-auth would be wrong and useless.
+
+      const spy = jest.spyOn(sessionService, 'canAcceptGmStation').mockReturnValue(false);
+      try {
+        await handleGmIdentify(mockSocket, { deviceId: 'GM_001', version: '2.1.0' }, mockIo);
+
+        const errorCall = mockSocket.emit.mock.calls.find(c => c[0] === 'error');
+
+        expect(errorCall).toBeDefined();
+        expect(errorCall[1].data.code).toBe('DEVICE_LIMIT_REACHED');
+        expect(errorCall[1].data.message).toBe('Maximum GM stations reached');
+        expect(mockSocket.disconnect).toHaveBeenCalledWith(true);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
 });

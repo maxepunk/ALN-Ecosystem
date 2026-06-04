@@ -70,7 +70,9 @@ async function handleGmIdentify(socket, data, io) {
 
     // Check if can accept GM station
     if (!sessionService.canAcceptGmStation()) {
+      // Capacity limit is display-only — must NOT use AUTH_*/PERMISSION_DENIED (scanner clears the token on those).
       emitWrapped(socket, 'error', {
+        code: 'DEVICE_LIMIT_REACHED',
         message: 'Maximum GM stations reached',
       });
       socket.disconnect(true);
