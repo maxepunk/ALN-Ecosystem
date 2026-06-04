@@ -49,9 +49,11 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
     });
 
     test('Video State: GM1 queue command updates GM2 UI', async () => {
-        // Two-GM setup plus VLC's loading→playing confirmation latency can exceed the
-        // global 60s budget under full-suite CPU load; give this multi-client video test headroom.
-        test.setTimeout(120000);
+        // Headroom over the global 60s for two-GM setup + VLC loading→playing confirmation
+        // under full-suite CPU load. (The earlier deterministic hang was an in-page
+        // evaluate(fetch) with no timeout — fixed below by using page.request; this is just
+        // load headroom, not a hang workaround.)
+        test.setTimeout(90000);
         const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
         const page1 = await createPage(context1);
         const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
@@ -72,11 +74,11 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
             const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
 
-            // Check VLC is actually connected to the orchestrator
-            const stateResp = await page1.evaluate(async (url) => {
-                const resp = await fetch(`${url}/api/state`, { method: 'GET' });
-                return resp.json();
-            }, orchestratorInfo.url);
+            // Check VLC is actually connected to the orchestrator. Use page.request
+            // (gm1.getStateFromBackend) rather than an in-page evaluate(fetch): the in-page
+            // fetch runs through the page's service worker / JS context and was hanging here
+            // with no timeout. page.request bypasses the SW and is the established pattern.
+            const stateResp = await gm1.getStateFromBackend(orchestratorInfo.url);
             if (stateResp?.serviceHealth?.vlc?.status !== 'healthy') {
                 test.skip('VLC not connected to orchestrator - skipping video reactivity test');
                 return;
