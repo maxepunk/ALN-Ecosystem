@@ -181,23 +181,28 @@ describe('Session Lifecycle Integration - REAL Scanner', () => {
       });
       await pauseAckPromise;
 
-      // Try to scan while paused using REAL scanner API (should be REJECTED per FR 1.2)
-      const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
+      // Wait until the scanner has OBSERVED the pause (session:update → sessionState)
+      const pausedAt = Date.now();
+      while (scanner.App.dataManager.sessionState?.status !== 'paused' && Date.now() - pausedAt < 2000) {
+        await new Promise(r => setTimeout(r, 15));
+      }
+      expect(scanner.App.dataManager.sessionState?.status).toBe('paused');
 
+      // Per FR 1.2, a paused session must not accept transactions. The GM scanner now
+      // enforces this at the source: it surfaces an error and does NOT submit, mark, or
+      // queue the token (a still-valid token is re-scanned after resume).
+      const showErrorSpy = jest.spyOn(scanner.App.uiManager, 'showError');
       scanner.App.currentTeamId = 'Team Alpha';
-      scanner.App.processNFCRead({ id: '534e2b03' });
+      await scanner.App.processNFCRead({ id: '534e2b03' });
 
-      const result = await resultPromise;
+      expect(showErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/paused|not active/i));
+      expect(scanner.App.dataManager.isTokenScanned('534e2b03')).toBe(false);
+      showErrorSpy.mockRestore();
 
-      // Validate: Transaction REJECTED (per FR 1.2: "Transactions rejected with error: Session is paused")
-      expect(result.data.status).toBe('error');
-      expect(result.data.message).toContain('paused'); // Error message indicates paused state
-      expect(result.data.points).toBe(0); // No points awarded
-
-      // Validate: Team score unchanged (transaction was blocked)
+      // Validate: Team score unchanged (no transaction was processed)
       const scores = transactionService.getTeamScores();
       const teamScore = scores.find(s => s.teamId === 'Team Alpha');
-      expect(teamScore.currentScore).toBe(0);
+      expect(teamScore ? teamScore.currentScore : 0).toBe(0);
     });
   });
 

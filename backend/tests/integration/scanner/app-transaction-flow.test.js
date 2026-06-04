@@ -115,9 +115,10 @@ describe('App - Transaction Flow Integration [Phase 1.1]', () => {
       const tx = queueSpy.mock.calls[0][0];
       expect(tx.tokenId).toBe('UNKNOWN_FAKE_TOKEN_12345');
 
-      // VERIFY: Server correctly rejects unknown tokens
-      // (This is expected behavior - server validates tokens exist in database)
-      expect(result.data.status).toBe('error');
+      // VERIFY: Server PERMANENTLY rejects unknown tokens — status 'rejected'
+      // (not transient 'error'): an invalid token never becomes valid, so the
+      // scanner drops it rather than retrying. See transactionService.createScanResponse.
+      expect(result.data.status).toBe('rejected');
       expect(result.data.message).toMatch(/invalid|not found|unknown/i);
     });
   });
