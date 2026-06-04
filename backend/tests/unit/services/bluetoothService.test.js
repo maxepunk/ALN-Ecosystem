@@ -600,6 +600,15 @@ describe('BluetoothService', () => {
       expect(result).toBe(false);
     });
 
+    it('should return false (not throw) when bluetoothctl info fails', async () => {
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        cb(new Error('Device not available'), '', '');
+      });
+
+      const result = await bluetoothService.isAudioDevice('2C:81:BF:0D:E4:C1');
+      expect(result).toBe(false);
+    });
+
     it('should validate MAC address before checking', async () => {
       await expect(
         bluetoothService.isAudioDevice('invalid')
@@ -782,6 +791,43 @@ describe('BluetoothService', () => {
       mockPairProc.emit('close', 1);
 
       await expect(pairPromise).rejects.toThrow(/bluetoothctl exited/);
+    });
+
+    it('should reject immediately when a pair is already in progress', async () => {
+      // Guard against concurrent pairing (a second pair while one is mid-flight).
+      bluetoothService._pairProc = { kill: jest.fn() };
+      try {
+        await expect(
+          bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF')
+        ).rejects.toThrow('Pairing already in progress');
+      } finally {
+        bluetoothService._pairProc = null; // don't leak to other tests
+      }
+    });
+
+    it('should still resolve (paired) but NOT emit device:connected when auto-connect fails', async () => {
+      // Speakers are auto-connected after pair; if that connect fails the pair
+      // itself still succeeded, so pairDevice resolves and only warns.
+      bluetoothService._execFile = jest.fn().mockRejectedValue(new Error('connect failed'));
+      const pairedHandler = jest.fn();
+      const connectedHandler = jest.fn();
+      bluetoothService.on('device:paired', pairedHandler);
+      bluetoothService.on('device:connected', connectedHandler);
+
+      const pairPromise = bluetoothService.pairDevice('AA:BB:CC:DD:EE:FF');
+      await jest.advanceTimersByTimeAsync(500);
+
+      mockPairProc.stdout.emit('data', Buffer.from('Discovery started\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('[NEW] Device AA:BB:CC:DD:EE:FF Speaker\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('Pairing successful\n'));
+      mockPairProc.stdout.emit('data', Buffer.from('trust succeeded\n'));
+
+      await pairPromise; // resolves despite auto-connect failure
+
+      expect(pairedHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ address: 'AA:BB:CC:DD:EE:FF' })
+      );
+      expect(connectedHandler).not.toHaveBeenCalled();
     });
   });
 
@@ -1013,6 +1059,16 @@ describe('BluetoothService', () => {
 
     it('should be safe to call when no scan is active', () => {
       expect(() => bluetoothService.cleanup()).not.toThrow();
+    });
+
+    it('should kill a pending pair process so it is not orphaned', () => {
+      const killSpy = jest.fn();
+      bluetoothService._pairProc = { kill: killSpy };
+
+      bluetoothService.cleanup();
+
+      expect(killSpy).toHaveBeenCalled();
+      expect(bluetoothService._pairProc).toBeNull();
     });
   });
 

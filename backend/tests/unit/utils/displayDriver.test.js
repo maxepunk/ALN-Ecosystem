@@ -129,6 +129,67 @@ describe('displayDriver — window management', () => {
       expect(result).toBe(true);
     });
 
+    // Production-relevant failure paths. These run on the Pi when Chromium crashes
+    // or window management fails; previously they were only covered incidentally on
+    // ubuntu CI (no Chromium). Drive them deterministically so they're tested on any host.
+    test('browser process "error" event clears state (Chromium crash)', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+
+      await displayDriver.showScoreboard();
+      expect(displayDriver.getStatus().browserPid).toBe(1234);
+
+      // Simulate Chromium emitting 'error' after launch (e.g. GPU init failure / crash)
+      const errorHandler = mockProc.on.mock.calls.find(([evt]) => evt === 'error')[1];
+      errorHandler(new Error('chromium crashed'));
+
+      const status = displayDriver.getStatus();
+      expect(status.browserPid).toBeNull();
+      expect(status.scoreboardVisible).toBe(false);
+    });
+
+    test('returns false when window activation fails', async () => {
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+        else if (cmd === 'xdotool' && args[0] === 'windowactivate') cb(new Error('xdotool windowactivate failed'), '', '');
+        else cb(null, '', '');
+      });
+
+      const result = await displayDriver.showScoreboard();
+      expect(result).toBe(false);
+    });
+
+    test('launch survives a PID-file write failure (best-effort)', async () => {
+      const { spawn, execFile } = require('child_process');
+      const fs = require('fs');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+        else cb(null, '', '');
+      });
+      // The PID file write (orphan-recovery aid) is best-effort — if it throws,
+      // launch must still succeed.
+      fs.writeFileSync.mockImplementationOnce(() => { throw new Error('disk full'); });
+
+      const result = await displayDriver.showScoreboard();
+      expect(result).toBe(true);
+    });
+
     test('returns false when browser running but window title not found', async () => {
       const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };
