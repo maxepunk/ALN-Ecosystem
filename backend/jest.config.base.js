@@ -16,6 +16,18 @@ if (!process.env.ENABLE_VIDEO_PLAYBACK) {
 if (!process.env.ENABLE_MUSIC_PLAYBACK) {
   process.env.ENABLE_MUSIC_PLAYBACK = 'false';
 }
+// Disable the audio-routing/ducking broadcast wires (src/websocket/broadcasts.js) in the
+// jest layers. Those wires forward video/sound lifecycle events to
+// audioRoutingService.handleDuckingEvent()/applyRouting(), which touch REAL pactl — unit/
+// contract tests don't want the side effects, and integration tests that exercise ducking
+// call audioRoutingService methods directly (see cue-engine, video-orchestration,
+// service-state-push, audio-routing-phase3). E2E (the spawned real orchestrator) leaves
+// this unset so the wiring runs end-to-end; production likewise. broadcasts.js reads
+// `process.env.ENABLE_AUDIO_WIRES !== 'false'`. (Replaces a NODE_ENV=test gate that also
+// wrongly disabled the wiring in E2E, since the E2E orchestrator runs NODE_ENV=test too.)
+if (!process.env.ENABLE_AUDIO_WIRES) {
+  process.env.ENABLE_AUDIO_WIRES = 'false';
+}
 
 module.exports = {
   // Test environment

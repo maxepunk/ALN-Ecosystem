@@ -1691,6 +1691,11 @@ components:
                 format: date-time
                 description: Connection timestamp
                 example: "2025-10-15T19:00:30.000Z"
+              connectionStatus:
+                type: string
+                enum: [connected, disconnected, reconnecting]
+                description: Device connection status (used for station auto-numbering)
+                example: "connected"
               ipAddress:
                 type: string
                 description: Device IP address

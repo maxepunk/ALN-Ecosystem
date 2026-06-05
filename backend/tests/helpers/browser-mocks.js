@@ -36,6 +36,19 @@ global.window = {
   DataManager: null  // Will be set to global.DataManager after it's defined (see below)
 };
 
+// Mock navigator — the harness runs real browser code (App.init() reads
+// `navigator` to pass into registerServiceWorker; see ALNScanner src/app/app.js).
+// Provide it explicitly, the same way window/document/localStorage are shimmed
+// above, so the harness never depends on whichever Navigator the host Node
+// happens to expose. defineProperty (not plain assignment) because Node's
+// built-in `navigator` is a getter-only accessor. Deliberately omit
+// `serviceWorker` so registerServiceWorker() no-ops via `!('serviceWorker' in nav)`.
+Object.defineProperty(global, 'navigator', {
+  value: { userAgent: 'node-test' },
+  configurable: true,
+  writable: true,
+});
+
 // Mock document (minimal - only what scanner uses)
 // Create a reusable mock element factory
 const createMockElement = () => ({
@@ -382,6 +395,14 @@ class MockDataManager extends EventTarget {
 
   markTokenAsScanned(tokenId) {
     this.scannedTokens.add(tokenId);
+  }
+
+  // Mirrors UnifiedDataManager.unmarkTokenAsScanned — App.init() wires a
+  // transaction:failed/rejected handler that unmarks the token so it can be
+  // re-scanned (P3.4). Without this method the scanner crashes when a rejected
+  // transaction comes back. (New UDM methods MUST be mirrored here.)
+  unmarkTokenAsScanned(tokenId) {
+    this.scannedTokens.delete(tokenId);
   }
 
   isTokenScanned(tokenId) {

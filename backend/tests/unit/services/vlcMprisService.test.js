@@ -939,6 +939,45 @@ describe('VlcMprisService', () => {
       process.env.VLC_HW_ACCEL = '--vout=gl --extra';
       expect(vlcMprisService._getHwAccelArgs()).toEqual(['--vout=gl', '--extra']);
     });
+
+    // Hardware auto-detection (no env override). These paths run in PRODUCTION on
+    // the Pi but were never exercised by tests on any platform — the Pi-5 branch is
+    // the exact path behind the --vout=gl regression. Mock /proc/device-tree/model
+    // so the selection is verified deterministically regardless of test host.
+    describe('hardware auto-detection (mocked /proc/device-tree/model)', () => {
+      const fs = require('fs');
+      let readSpy;
+
+      beforeEach(() => {
+        delete process.env.VLC_HW_ACCEL;
+      });
+
+      afterEach(() => {
+        if (readSpy) readSpy.mockRestore();
+      });
+
+      it('selects --vout=gles2 on a Raspberry Pi 5', () => {
+        readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('Raspberry Pi 5 Model B Rev 1.0');
+        expect(vlcMprisService._getHwAccelArgs()).toEqual(['--vout=gles2']);
+      });
+
+      it('selects v4l2_m2m avcodec on a Raspberry Pi 4', () => {
+        readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('Raspberry Pi 4 Model B Rev 1.4');
+        expect(vlcMprisService._getHwAccelArgs()).toEqual(['--codec=avcodec', '--avcodec-hw=v4l2_m2m']);
+      });
+
+      it('returns [] on recognized-but-non-Pi hardware', () => {
+        readSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue('Some Generic x86 Board');
+        expect(vlcMprisService._getHwAccelArgs()).toEqual([]);
+      });
+
+      it('returns [] when /proc/device-tree/model is unavailable (dev machine / CI)', () => {
+        readSpy = jest.spyOn(fs, 'readFileSync').mockImplementation(() => {
+          throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        });
+        expect(vlcMprisService._getHwAccelArgs()).toEqual([]);
+      });
+    });
   });
 
 });

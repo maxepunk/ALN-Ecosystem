@@ -136,6 +136,7 @@ const gmTransactionSchema = Joi.object({
   deviceType: Joi.string().valid('gm').required(),  // P0.1 Correction: Required, must be 'gm'
   mode: Joi.string().valid('detective', 'blackmarket').required(),  // REQUIRED - no default
   summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for detective mode (per AsyncAPI contract)
+  clientTxId: Joi.string().max(100).optional(),  // OPTIONAL - client correlation id echoed on transaction:result (TQ-3); MUST be declared or validate()'s stripUnknown:true drops it
   timestamp: isoDate.optional(),
 });
 

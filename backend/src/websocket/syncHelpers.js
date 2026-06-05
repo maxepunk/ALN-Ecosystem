@@ -93,6 +93,7 @@ async function buildSyncFullPayload({
       type: device.type,
       name: device.name,
       connectionTime: device.connectionTime,
+      connectionStatus: device.connectionStatus,
       ipAddress: device.ipAddress,
     }));
   }

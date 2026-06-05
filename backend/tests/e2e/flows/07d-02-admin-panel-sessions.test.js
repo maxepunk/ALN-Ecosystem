@@ -543,4 +543,90 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await context.close();
     }
   });
+
+  test('blocks scans while paused, allows them after resume (session-active gate)', async () => {
+    const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+    addConsoleCapture(page, 'Test7-PauseGate');
+
+    const token = testTokens.personalToken;
+
+    try {
+      const gmScanner = await initializeGMScannerWithMode(page, 'networked', 'blackmarket', {
+        orchestratorUrl: orchestratorInfo.url,
+        password: ADMIN_PASSWORD
+      });
+
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.createSessionWithTeams('Pause Gate Test', ['Team Alpha']);
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.session?.status === 'active',
+        5000
+      );
+
+      // Pause from the admin panel. pauseSession() waits for the CLIENT to render
+      // .session-status--paused, i.e. dataManager.sessionState.status (the value
+      // the scan gate reads in processNFCRead) is now 'paused' on this page.
+      await gmScanner.pauseSession();
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.session?.status === 'paused',
+        5000
+      );
+
+      // Go to the scanner and select the team — UI navigation is allowed while
+      // paused (the gate is only at scan time) — then attempt a scan. The new
+      // networked session-active gate must BLOCK it (error toast, no result screen).
+      await gmScanner.scannerTab.click();
+      await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+      await gmScanner.selectTeamFromList('Team Alpha');
+      await gmScanner.expectScanBlocked(token.SF_RFID, 'paused');
+
+      // The blocked scan must NOT have recorded a transaction on the backend.
+      const pausedState = await gmScanner.getStateFromBackend(orchestratorInfo.url);
+      expect((pausedState.session?.transactions || []).length).toBe(0);
+
+      // Resume. resumeSession() waits for the client to render active again.
+      await gmScanner.navigateToAdminPanel();
+      await gmScanner.resumeSession();
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => state.session?.status === 'active',
+        5000
+      );
+
+      // Back to the scanner: the same token (never marked, since the scan was
+      // blocked) now scans successfully and scores. The scanner view returns to
+      // whichever screen was last active — handle scanScreen or teamEntryScreen.
+      await gmScanner.scannerTab.click();
+      const onScan = await gmScanner.scanScreen.waitFor({ state: 'visible', timeout: 3000 })
+        .then(() => true).catch(() => false);
+      if (!onScan) {
+        await gmScanner.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
+        await gmScanner.selectTeamFromList('Team Alpha');
+      }
+      await gmScanner.manualScan(token.SF_RFID);
+
+      const resultTitle = await gmScanner.getResultTitle();
+      expect(resultTitle).not.toContain('Error');
+      expect(resultTitle).not.toContain('Cannot scan');
+
+      const expectedScore = calculateExpectedScore(token);
+      await gmScanner.waitForBackendState(
+        orchestratorInfo.url,
+        (state) => {
+          const teamScore = state.scores?.find(s => s.teamId === 'Team Alpha');
+          return teamScore?.currentScore === expectedScore;
+        },
+        5000
+      );
+
+      console.log('✓ Scan blocked while paused; succeeded after resume');
+
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
 });

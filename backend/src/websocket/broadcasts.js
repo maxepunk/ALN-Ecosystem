@@ -366,11 +366,17 @@ function setupBroadcastListeners(io, services) {
   // INTER-SERVICE COORDINATION (not broadcasts — service-to-service)
   // ============================================================
 
-  // Ducking engine wiring: forward video/sound lifecycle events to audioRoutingService.
-  // Skipped in tests (NODE_ENV=test) — these wires touch real pactl via handleDuckingEvent
-  // and applyRouting. Tests that exercise ducking call audioRoutingService methods directly.
+  // Ducking + routing engine wiring: forward video/sound lifecycle events to
+  // audioRoutingService. These wires call handleDuckingEvent()/applyRouting(), which touch
+  // REAL pactl, so they are disabled in the jest layers (unit/contract/integration) via
+  // ENABLE_AUDIO_WIRES=false set in jest.config.base.js — those layers either don't want
+  // pactl side effects or exercise ducking by calling audioRoutingService methods directly.
+  // The wiring REMAINS enabled for E2E (the spawned real orchestrator, which has real pactl
+  // and must exercise it end-to-end via video:queue:add) and for production. (Previously
+  // gated on NODE_ENV!=='test', which ALSO wrongly disabled the wiring in E2E — the E2E
+  // orchestrator likewise runs NODE_ENV=test — so E2E never exercised real ducking/routing.)
   // handleDuckingEvent is async (awaits pre-duck volume capture) — attach .catch() for safety.
-  if (audioRoutingService && videoQueueService && process.env.NODE_ENV !== 'test') {
+  if (audioRoutingService && videoQueueService && process.env.ENABLE_AUDIO_WIRES !== 'false') {
     addTrackedListener(videoQueueService, 'video:started', () => {
       audioRoutingService.handleDuckingEvent('video', 'started').catch(err => {
         logger.warn('Ducking start failed on video:started', { error: err.message });
@@ -397,7 +403,7 @@ function setupBroadcastListeners(io, services) {
     });
   }
 
-  if (audioRoutingService && soundService && process.env.NODE_ENV !== 'test') {
+  if (audioRoutingService && soundService && process.env.ENABLE_AUDIO_WIRES !== 'false') {
     addTrackedListener(soundService, 'sound:started', () => {
       audioRoutingService.handleDuckingEvent('sound', 'started').catch(err => {
         logger.warn('Ducking start failed on sound:started', { error: err.message });

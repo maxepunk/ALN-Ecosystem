@@ -134,7 +134,8 @@ async function handleTransactionSubmit(socket, data, _io) {
     if (!socket.deviceId) {
       emitWrapped(socket, 'error', {
         code: 'AUTH_REQUIRED',
-        message: 'Not identified'
+        message: 'Not identified',
+        clientTxId: data.data?.clientTxId  // echo (validate() hasn't run; read raw envelope) so the scanner's replay fast-fails (TQ-2)
       });
       return;
     }
@@ -176,6 +177,13 @@ async function handleTransactionSubmit(socket, data, _io) {
           status: 'queued',
           queued: true,
           transactionId: queuedItem.transactionId,
+          // Carry the contract-required identity fields so the result validates
+          // and the scanner can correlate it by tokenId+teamId (points not yet
+          // scored — awarded when the queue is processed online).
+          tokenId: scanRequest.tokenId,
+          teamId: scanRequest.teamId,
+          points: 0,
+          clientTxId: scanRequest.clientTxId,  // echo correlation id (TQ-3) so the scanner can match the queued result
           message: 'Transaction queued for processing when system comes online'
         });
 
@@ -187,7 +195,8 @@ async function handleTransactionSubmit(socket, data, _io) {
       } else {
         emitWrapped(socket, 'error', {
           code: 'QUEUE_FULL',
-          message: 'Offline queue is full'
+          message: 'Offline queue is full',
+          clientTxId: scanRequest.clientTxId  // echo correlation id so a rejected replay fast-fails (TQ-2)
         });
         return;
       }
@@ -198,6 +207,7 @@ async function handleTransactionSubmit(socket, data, _io) {
       emitWrapped(socket, 'error', {
         code: 'SESSION_NOT_FOUND',
         message: 'No active session',
+        clientTxId: scanRequest.clientTxId  // echo so the replay fast-fails instead of hanging the 30s timeout (TQ-2)
       });
       return;
     }
@@ -213,7 +223,8 @@ async function handleTransactionSubmit(socket, data, _io) {
         teamId: scanRequest.teamId,
         points: 0,
         message: errorMsg,
-        error: errorCode
+        error: errorCode,
+        clientTxId: scanRequest.clientTxId  // echo so the scanner matches (it always carries a clientTxId) and retries on resume without a 30s hang (TQ-2)
       });
       logger.info(`Transaction blocked (session ${session.status})`, {
         deviceId: socket.deviceId,
@@ -234,7 +245,8 @@ async function handleTransactionSubmit(socket, data, _io) {
       teamId: result.transaction?.teamId || scanRequest.teamId,
       points: result.points || 0,
       message: result.message,
-      error: result.error || null
+      error: result.error || null,
+      clientTxId: scanRequest.clientTxId  // echo correlation id (TQ-3)
     };
 
     // Add duplicate-specific fields if present (from createScanResponse)
@@ -267,6 +279,9 @@ async function handleTransactionSubmit(socket, data, _io) {
       details: (error.details && !Array.isArray(error.details))
         ? error.details
         : { error: error.message, validationErrors: error.details },  // Must be object per contract
+      // Echo correlation id (validate() may have thrown before scanRequest was
+      // assigned, so read from the raw envelope) so a rejected replay fast-fails (TQ-2).
+      clientTxId: data.data?.clientTxId,
     });
   }
 }

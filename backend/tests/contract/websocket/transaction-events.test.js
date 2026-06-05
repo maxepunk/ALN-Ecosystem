@@ -94,6 +94,83 @@ describe('Transaction Events - Contract Validation', () => {
       // Validate: Against AsyncAPI contract schema (ajv)
       validateWebSocketEvent(event, 'transaction:result');
     });
+
+    it('returns status:queued and a valid envelope when system is offline', async () => {
+      const offlineQueueService = require('../../../src/services/offlineQueueService');
+      offlineQueueService.setOfflineStatus(true);
+
+      try {
+        const resultPromise = waitForEvent(socket, 'transaction:result');
+        socket.emit('transaction:submit', {
+          event: 'transaction:submit',
+          data: {
+            tokenId: '534e2b03',
+            teamId: 'Team Alpha',
+            deviceId: 'GM_CONTRACT_TEST',
+            deviceType: 'gm',
+            mode: 'blackmarket'
+          },
+          timestamp: new Date().toISOString()
+        });
+
+        const event = await resultPromise;
+        expect(event.data.status).toBe('queued');
+        // Passes only because P2.1 widened the enum AND the offline emit carries
+        // the contract-required tokenId/teamId/points (P2.2 production fix).
+        validateWebSocketEvent(event, 'transaction:result');
+      } finally {
+        // Deterministic teardown: reset() clears the queue and sets isOffline=false
+        // directly, so the offline->online transition does NOT schedule a
+        // setImmediate replay of the queued tx against the live session.
+        await offlineQueueService.reset();
+      }
+    });
+
+    it('echoes the client-supplied clientTxId back on the result', async () => {
+      const resultPromise = waitForEvent(socket, 'transaction:result');
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: '534e2b03',
+          teamId: 'Team Alpha',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'blackmarket',
+          clientTxId: 'ctx-abc-123'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const event = await resultPromise;
+      expect(event.data.clientTxId).toBe('ctx-abc-123');
+      validateWebSocketEvent(event, 'transaction:result');
+    });
+
+    it('returns status:rejected for an invalid (unknown) token — a permanent rejection', async () => {
+      const resultPromise = waitForEvent(socket, 'transaction:result');
+      socket.emit('transaction:submit', {
+        event: 'transaction:submit',
+        data: {
+          tokenId: 'NONEXISTENT_FAKE_TOKEN_999',
+          teamId: 'Team Alpha',
+          deviceId: 'GM_CONTRACT_TEST',
+          deviceType: 'gm',
+          mode: 'blackmarket',
+          clientTxId: 'ctx-invalid'
+        },
+        timestamp: new Date().toISOString()
+      });
+
+      const event = await resultPromise;
+      // Permanent rejection (an invalid token never becomes valid) → 'rejected',
+      // NOT transient 'error'. This lets the GM scanner remove the queued entry,
+      // unmark the token for re-scan, and stop retrying it forever (paused/
+      // not-active stay 'error' = transient, retried on resume).
+      expect(event.data.status).toBe('rejected');
+      expect(event.data.message).toContain('Invalid token');
+      expect(event.data.clientTxId).toBe('ctx-invalid');
+      validateWebSocketEvent(event, 'transaction:result');
+    });
   });
 
   describe('transaction:new broadcast', () => {
@@ -270,5 +347,45 @@ describe('Transaction Events - Contract Validation', () => {
       expect(event.data.teamScore).toHaveProperty('currentScore');
       expect(typeof event.data.teamScore.currentScore).toBe('number');
     });
+  });
+});
+
+describe('TransactionResult status enum (contract)', () => {
+  const yaml = require('js-yaml');
+  const fs = require('fs');
+  const path = require('path');
+
+  const asyncapi = yaml.load(
+    fs.readFileSync(path.join(__dirname, '../../../contracts/asyncapi.yaml'), 'utf8')
+  );
+  const statusEnum =
+    asyncapi.components.messages.TransactionResult.payload.properties.data.properties.status.enum;
+
+  it('includes every status the backend actually emits', () => {
+    // accepted/duplicate: transactionService.createScanResponse
+    // error: invalid-token reject() (transaction.js maps reject -> 'error')
+    // queued: adminEvents.js offline path
+    // rejected: transactionService.processScan no-active-session early return
+    expect(statusEnum).toEqual(
+      expect.arrayContaining(['accepted', 'duplicate', 'error', 'queued', 'rejected'])
+    );
+  });
+
+  it('declares an OPTIONAL clientTxId on submit, result, and error (echoed correlation id)', () => {
+    const msgs = asyncapi.components.messages;
+    const submitData = msgs.TransactionSubmit.payload.properties.data;
+    const resultData = msgs.TransactionResult.payload.properties.data;
+    const errorData = msgs.Error.payload.properties.data;
+
+    // Present in all three messages' data.properties (runtime echo is asserted
+    // separately via .toBe(); this locks the contract DOCUMENT itself).
+    expect(submitData.properties.clientTxId).toBeDefined();
+    expect(resultData.properties.clientTxId).toBeDefined();
+    expect(errorData.properties.clientTxId).toBeDefined();
+
+    // ...and OPTIONAL — never in data.required, so old clients that omit it still validate.
+    expect(submitData.required || []).not.toContain('clientTxId');
+    expect(resultData.required || []).not.toContain('clientTxId');
+    expect(errorData.required || []).not.toContain('clientTxId');
   });
 });

@@ -288,3 +288,68 @@ describe('buildHeldItemsState()', () => {
     expect(result).toEqual([]);
   });
 });
+
+const { validateWebSocketEvent } = require('../../helpers/contract-validator');
+
+describe('buildSyncFullPayload contract conformance (CC-2)', () => {
+  function makeServices() {
+    // NOTE: session.id MUST be a valid UUID — SyncFull.data.session.id has
+    // format:uuid and the contract validator loads ajv-formats (enforced even
+    // under strict:false). A non-UUID id (e.g. 'sess-1') makes the first test
+    // throw a format error before the reconnect-restore-field assertions run.
+    const session = {
+      id: '2a2f9d45-5d2d-441d-b32c-52c939f3c103', transactions: [], connectedDevices: [], playerScans: [],
+      toJSON: () => ({
+        id: '2a2f9d45-5d2d-441d-b32c-52c939f3c103', name: 'Test', startTime: new Date().toISOString(),
+        status: 'active', teams: [], metadata: {},
+      }),
+    };
+    return {
+      sessionService: { getCurrentSession: () => session },
+      transactionService: { getTeamScores: () => [], getToken: () => null },
+      videoQueueService: {
+        getState: () => ({
+          status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false,
+        }),
+      },
+    };
+  }
+
+  it('produces an envelope that validates against the SyncFull schema', async () => {
+    const data = await buildSyncFullPayload(makeServices());
+    const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
+    expect(() => validateWebSocketEvent(event, 'sync:full')).not.toThrow();
+  });
+
+  it('SyncFull schema documents all reconnect-restore fields', async () => {
+    // Fail-first lever: a payload missing the newly-required fields must be
+    // REJECTED, proving the schema now documents (and requires) them.
+    const data = await buildSyncFullPayload(makeServices());
+    for (const field of ['playerScans', 'environment', 'gameClock', 'cueEngine', 'music', 'sound', 'displayStatus']) {
+      delete data[field];
+    }
+    const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
+    expect(() => validateWebSocketEvent(event, 'sync:full')).toThrow(/required/i);
+  });
+
+  it('validates a sync:full carrying a LOADED playlist (object, not string)', async () => {
+    // Regression for the R2 review finding: musicService.getState().playlist is
+    // an OBJECT (or null) — never a string. The default CC-2 factory has no
+    // musicService, so buildMusicState returns playlist:null and never exercises
+    // the loaded-playlist path. This builds the most common in-game state (music
+    // playing, a playlist loaded) and asserts it conforms to the SyncFull schema.
+    const services = makeServices();
+    services.musicService = {
+      getState: () => ({
+        connected: true, state: 'playing', volume: 70, track: { title: 'X' },
+        playlist: { id: 'pl1', name: 'Ambient', position: 0, total: 5, shuffle: false, loop: true, crossfadeMs: 0 },
+        pausedByGameClock: false,
+      }),
+      getPlaylists: () => [],
+    };
+    const data = await buildSyncFullPayload(services);
+    expect(data.music.playlist).toEqual(expect.objectContaining({ id: 'pl1' }));
+    const event = { event: 'sync:full', data, timestamp: new Date().toISOString() };
+    expect(() => validateWebSocketEvent(event, 'sync:full')).not.toThrow();
+  });
+});

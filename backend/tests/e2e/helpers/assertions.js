@@ -185,6 +185,24 @@ function assertSyncFullStructure(syncData) {
   expect(syncData.serviceHealth).toHaveProperty('vlc');
   expect(syncData.serviceHealth.vlc).toHaveProperty('status');
   expect(['healthy', 'down']).toContain(syncData.serviceHealth.vlc.status);
+
+  // Newly-required sync:full fields (AsyncAPI SyncFull required[] expansion).
+  // Guards the recurring "silent state desync" regression class — a dropped
+  // service domain in buildSyncFullPayload() (has shipped 4×: scores:reset,
+  // offline:queue:processed, integration-test-server, soundService omission).
+  // Presence for all, plus the shapes restore actually relies on.
+  expect(syncData).toHaveProperty('playerScans');
+  expect(Array.isArray(syncData.playerScans)).toBe(true);
+  expect(syncData).toHaveProperty('environment');
+  expect(syncData).toHaveProperty('gameClock');
+  expect(syncData.gameClock).toHaveProperty('status');
+  expect(syncData).toHaveProperty('cueEngine');
+  expect(syncData).toHaveProperty('music');
+  expect(syncData.music).toHaveProperty('playlists');
+  expect(syncData).toHaveProperty('heldItems');
+  expect(syncData).toHaveProperty('sound');
+  expect(syncData.sound).toHaveProperty('playing');
+  expect(syncData).toHaveProperty('displayStatus');
 }
 
 /**
@@ -315,8 +333,15 @@ function assertTransactionResultStructure(result) {
   expect(result).toHaveProperty('points');
   expect(result).toHaveProperty('message');
 
-  // Validate status enum
-  expect(['accepted', 'duplicate', 'error']).toContain(result.status);
+  // Validate status enum (matches AsyncAPI transaction:result status enum:
+  // accepted/duplicate/error plus queued (offline-buffered) and rejected
+  // (invalid token / not-active session) added with the durable-queue work).
+  expect(['accepted', 'duplicate', 'error', 'queued', 'rejected']).toContain(result.status);
+
+  // clientTxId is echoed on every submit response path (durable-queue correlation).
+  if (result.clientTxId !== undefined) {
+    expect(typeof result.clientTxId).toBe('string');
+  }
 }
 
 module.exports = {

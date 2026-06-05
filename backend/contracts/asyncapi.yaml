@@ -89,6 +89,8 @@ channels:
           - $ref: '#/components/messages/OfflineQueueProcessed'
           - $ref: '#/components/messages/GroupCompleted'
           - $ref: '#/components/messages/DisplayMode'
+          - $ref: '#/components/messages/BatchAck'
+          - $ref: '#/components/messages/PlayerScan'
           - $ref: '#/components/messages/ScoreboardPage'
           - $ref: '#/components/messages/CueFired'
           - $ref: '#/components/messages/CueCompleted'
@@ -106,9 +108,27 @@ channels:
         oneOf:
           - $ref: '#/components/messages/TransactionSubmit'
           - $ref: '#/components/messages/GmCommand'
+          - $ref: '#/components/messages/SyncRequest'
 
 components:
   messages:
+    SyncRequest:
+      name: sync:request
+      title: Request Full State Resync
+      summary: Admin panel asks the orchestrator to re-send sync:full
+      description: |
+        Client→server request emitted by the GM Scanner admin panel
+        (MonitoringDisplay) to pull the current full state on demand. The
+        server responds by emitting a fresh `sync:full` to the requesting
+        socket.
+
+        **Envelope exception**: Unlike other client→server events, this event
+        carries NO payload — it is emitted as the bare event name
+        (`socket.emit('sync:request')`). The server handler (server.js) takes
+        no data argument. Documented here as payload-less to match the wire.
+      payload:
+        type: 'null'
+
     # ============================================================================
     # DEVICE TRACKING (2 events)
     # Note: Authentication happens via Socket.io handshake middleware (not events)
@@ -284,6 +304,14 @@ components:
               - videoStatus
               - devices
               - serviceHealth
+              - heldItems
+              - playerScans
+              - environment
+              - gameClock
+              - cueEngine
+              - music
+              - sound
+              - displayStatus
             properties:
               session:
                 description: Current session (matches Session schema from OpenAPI)
@@ -547,6 +575,10 @@ components:
                       type: string
                       format: date-time
                       example: "2025-10-15T19:00:30.000Z"
+                    connectionStatus:
+                      type: string
+                      enum: [connected, disconnected, reconnecting]
+                      example: "connected"
                     ipAddress:
                       type: string
                       example: "10.0.0.81"
@@ -618,6 +650,60 @@ components:
                       description: Services that are down (for service_down reason)
                       example: ["vlc"]
                 example: []
+              playerScans:
+                type: array
+                description: Persisted player-scanner scans (session.playerScans)
+                items:
+                  type: object
+              environment:
+                type: object
+                description: Bluetooth/audio/lighting environment snapshot (buildEnvironmentState)
+                properties:
+                  bluetooth: { type: object }
+                  audio: { type: object }
+                  lighting: { type: object }
+              gameClock:
+                type: object
+                description: Game clock state (buildGameClockState)
+                required: [status, elapsed, expectedDuration]
+                properties:
+                  status: { type: string }
+                  elapsed: { type: number }
+                  expectedDuration: { type: number }
+              cueEngine:
+                type: object
+                description: Cue engine state (buildCueEngineState)
+                required: [loaded, cues, activeCues, disabledCues]
+                properties:
+                  loaded: { type: boolean }
+                  cues: { type: array }
+                  activeCues: { type: array }
+                  disabledCues: { type: array }
+              music:
+                type: object
+                description: MPD music state with playlists (buildMusicState)
+                required: [connected, state, volume, playlists]
+                properties:
+                  connected: { type: boolean }
+                  state: { type: string }
+                  volume: { type: integer }
+                  track: { type: [object, 'null'] }
+                  playlist: { type: [object, 'null'] }
+                  pausedByGameClock: { type: boolean }
+                  playlists: { type: array }
+              sound:
+                type: object
+                description: Active pw-play sound playback (soundService.getState)
+                required: [playing]
+                properties:
+                  playing: { type: array }
+              displayStatus:
+                type: object
+                description: HDMI display mode (displayControlService.getStatus, timestamp stripped)
+                properties:
+                  currentMode: { type: string }
+                  previousMode: { type: string }
+                  pendingVideo: { type: [string, 'null'] }
           timestamp:
             type: string
             format: date-time
@@ -685,6 +771,10 @@ components:
                 description: Optional custom summary for detective mode scans (overrides token default)
                 maxLength: 350
                 example: "Security footage from warehouse district - timestamp 23:47"
+              clientTxId:
+                type: string
+                description: Client-generated correlation id, echoed back on transaction:result for replay matching
+                example: "ctx-abc-123"
           timestamp:
             type: string
             format: date-time
@@ -727,8 +817,8 @@ components:
             properties:
               status:
                 type: string
-                enum: [accepted, duplicate, error]
-                description: Transaction status
+                enum: [accepted, duplicate, error, queued, rejected]
+                description: Transaction status (accepted/duplicate/error per Decision #10; queued = offline-buffered; rejected = permanent rejection, e.g. invalid token — distinct from transient 'error' such as paused/not-active)
                 example: "accepted"
               transactionId:
                 type: string
@@ -756,6 +846,10 @@ components:
                 nullable: true
                 description: Error code if status=error
                 example: null
+              clientTxId:
+                type: string
+                description: Correlation id echoed from the originating transaction:submit (absent for server-originated results)
+                example: "ctx-abc-123"
           timestamp:
             type: string
             format: date-time
@@ -1426,7 +1520,7 @@ components:
         - `bluetooth:unpair` — `{address: string}` (required)
         - `bluetooth:connect` — `{address: string}` (required)
         - `bluetooth:disconnect` — `{address: string}` (required)
-        - `audio:route:set` — `{stream: 'video'|'music'|'sound', sink: 'hdmi'|'bluetooth'}`.
+        - `audio:route:set` — `{stream: 'video'|'music'|'sound', sink: 'hdmi'|'bluetooth'|<pipewire-sink-name>}`. The logical aliases `hdmi`/`bluetooth` resolve to the first matching sink; a specific PipeWire sink name (e.g. `bluez_output.AA_BB_CC_DD_EE_FF.1`) targets that exact device. The GM dropdown sends the specific sink name.
           Per-stream routing for all three streams. The GM sends a logical alias;
           audioRoutingService resolves it to an actual PipeWire sink name.
         - `lighting:scene:activate` — `{sceneId: string}` (required, HA entity ID)
@@ -2008,12 +2102,15 @@ components:
                   - AUTH_REQUIRED
                   - AUTH_INVALID
                   - DEVICE_ID_COLLISION
+                  - DEVICE_LIMIT_REACHED
                   - PERMISSION_DENIED
                   - VALIDATION_ERROR
+                  - INVALID_DATA
                   - SESSION_NOT_FOUND
                   - TOKEN_NOT_FOUND
                   - DUPLICATE_TRANSACTION
                   - INVALID_REQUEST
+                  - QUEUE_FULL
                   - VLC_ERROR
                   - INTERNAL_ERROR
                 example: "TOKEN_NOT_FOUND"
@@ -2026,6 +2123,10 @@ components:
                 nullable: true
                 description: Optional error details
                 example: null
+              clientTxId:
+                type: string
+                description: Correlation id echoed from the originating transaction:submit (present only on errors responding to a specific submission)
+                example: "ctx-err-9"
           timestamp:
             type: string
             format: date-time

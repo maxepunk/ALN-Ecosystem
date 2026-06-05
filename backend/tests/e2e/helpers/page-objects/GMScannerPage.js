@@ -308,6 +308,38 @@ class GMScannerPage {
   }
 
   /**
+   * Assert a manual scan is BLOCKED by the networked session-active gate
+   * (processNFCRead in app.js). The gate calls uiManager.showError(
+   * `Cannot scan: session is ${label}`) and returns WITHOUT showing the result
+   * screen whenever dataManager.sessionState.status !== 'active'.
+   *
+   * showError() renders a `.error-message` div (auto-dismiss 5s). We assert that
+   * message appears AND that no result screen is shown (the scan did not proceed).
+   *
+   * @param {string} tokenId - token to attempt
+   * @param {string} expectedStatus - the gate label, e.g. 'paused' | 'setup' | 'ended'
+   */
+  async expectScanBlocked(tokenId, expectedStatus) {
+    // Pure dialog handler (no assertions inside — an assertion failure here
+    // becomes an unhandled rejection that crashes the Playwright worker).
+    this.page.once('dialog', dialog => dialog.accept(tokenId));
+    await this.manualEntryBtn.click();
+
+    // Gate fired: the error-message carrying the expected status must appear...
+    const blockMsg = this.page.locator('.error-message', {
+      hasText: `Cannot scan: session is ${expectedStatus}`,
+    });
+    await blockMsg.waitFor({ state: 'visible', timeout: 4000 }); // < 5s auto-dismiss
+
+    // ...and the result screen must NOT have appeared (scan stopped at the gate).
+    if (await this.resultScreen.isVisible()) {
+      throw new Error(
+        `expectScanBlocked: result screen appeared — scan was NOT blocked (expected status=${expectedStatus})`
+      );
+    }
+  }
+
+  /**
    * Wait for result screen to appear
    */
   async waitForResult() {
@@ -487,21 +519,28 @@ class GMScannerPage {
     // Fill server URL - this triggers production's assignStationName() with 500ms debounce
     await this.page.fill('#serverUrl', url);
 
-    // CONDITION-BASED WAITING: Wait for production's auto-assignment to complete
-    // Production flow: URL input → 500ms debounce → /api/state query → set stationNameDisplay.dataset.deviceId
-    // We must wait for the ACTUAL condition (deviceId being set) not guess at timing.
-    // This prevents race where we override early, then production overwrites our value.
+    // CONDITION-BASED WAITING: wait for production's auto-assignment to SETTLE,
+    // then override. Production flow: URL input → 500ms debounce → /api/state query.
+    // We wait for the wizard to finish (so it can't overwrite our override after),
+    // but "finished" now means EITHER outcome:
+    //   • success → stationNameDisplay.dataset.deviceId is set, OR
+    //   • failure → RL-7 (connectionWizard.assignStationName) no longer falls back
+    //     to a guessable GM_Station_N; it clears deviceId and shows a ⚠️ message.
+    // Keying only on deviceId.length>0 would hang for 5s if /api/state transiently
+    // times out under load. We force-set the deviceId ourselves below regardless.
     await this.page.waitForFunction(
       () => {
         const display = document.getElementById('stationNameDisplay');
-        // Condition: production has finished auto-assignment (deviceId is non-empty)
-        return display && display.dataset.deviceId && display.dataset.deviceId.length > 0;
+        if (!display) return false;
+        const assigned = display.dataset.deviceId && display.dataset.deviceId.length > 0;
+        const failed = (display.textContent || '').includes('⚠️'); // RL-7 unreachable marker
+        return assigned || failed;
       },
       { timeout: 5000 }
     );
 
-    // NOW safe to override - production's auto-assignment is complete
-    // handleConnectionSubmit() reads from stationNameDisplay.dataset.deviceId on submit
+    // NOW safe to override - production's auto-assignment has settled.
+    // handleConnectionSubmit() reads from stationNameDisplay.dataset.deviceId on submit.
     if (stationName) {
       await this.page.evaluate((uniqueId) => {
         const display = document.getElementById('stationNameDisplay');
@@ -509,6 +548,13 @@ class GMScannerPage {
           display.dataset.deviceId = uniqueId;
           display.textContent = uniqueId;
         }
+        // RL-7: if /api/state transiently failed, the wizard wrote a ❌ into
+        // #connectionStatusMsg. We supply our own deviceId, so that station-
+        // assignment failure is moot — clear the stale message, otherwise
+        // waitForConnection() throws on the leftover ❌ even though the WS
+        // connection itself is about to succeed.
+        const statusMsg = document.getElementById('connectionStatusMsg');
+        if (statusMsg) { statusMsg.textContent = ''; statusMsg.style.color = ''; }
       }, stationName);
     }
 
@@ -555,39 +601,33 @@ class GMScannerPage {
   }
 
   /**
-   * Disconnect WebSocket (for testing reconnection scenarios)
-   * Uses page.evaluate to programmatically disconnect the socket
+   * Wait for ConnectionManager to OBSERVE that the socket has dropped (e.g. after
+   * the orchestrator is stopped). ConnectionManager maintains the header
+   * #connectionStatus indicator (class connected|connecting|disconnected, via
+   * _updateGlobalConnectionStatus). The header is present across ALL views, so
+   * this is reliable regardless of the active screen — e.g. the result screen
+   * left up after an optimistic offline scan, where waitForConnection() (which
+   * asserts the teamEntry screen) would not apply.
+   *
+   * Replaces the old disconnectWebSocket/reconnectWebSocket helpers, which poked
+   * window.orchestratorClient/window.connectionManager — globals removed in the
+   * Nov-2025 refactor (they were silent no-ops). Tests drive the actual drop via
+   * the orchestrator lifecycle (stopOrchestrator/restartOrchestrator) and use
+   * these to await the client's observation of it.
    */
-  async disconnectWebSocket() {
-    // Programmatically disconnect via the exposed window objects
-    await this.page.evaluate(() => {
-      // Try to access the orchestrator client and disconnect
-      if (window.orchestratorClient?.socket) {
-        window.orchestratorClient.socket.disconnect();
-      } else if (window.connectionManager?.client?.socket) {
-        window.connectionManager.client.socket.disconnect();
-      }
-    });
-
-    // Wait for disconnected status in UI
-    await this.page.waitForTimeout(1000);
+  async waitForDisconnected(timeout = 30000) {
+    await this.page.locator('#connectionStatus:not(.connected)')
+      .waitFor({ state: 'attached', timeout });
   }
 
   /**
-   * Reconnect WebSocket after disconnection
+   * Wait for ConnectionManager to auto-reconnect (header returns to 'connected').
+   * Use after restartOrchestrator() (same port) when the page is NOT on the
+   * teamEntry screen, so waitForConnection() cannot be used.
    */
-  async reconnectWebSocket() {
-    // Programmatically reconnect via the exposed window objects
-    await this.page.evaluate(() => {
-      if (window.orchestratorClient?.socket) {
-        window.orchestratorClient.socket.connect();
-      } else if (window.connectionManager?.client?.socket) {
-        window.connectionManager.client.socket.connect();
-      }
-    });
-
-    // Wait for reconnection
-    await this.waitForConnection();
+  async waitForReconnected(timeout = 30000) {
+    await this.page.locator('#connectionStatus.connected')
+      .waitFor({ state: 'attached', timeout });
   }
 
   /**
@@ -1131,8 +1171,15 @@ class GMScannerPage {
       disconnectSocket(tempSocket);
     }
 
-    // Wait briefly for the session:update broadcast to reach the scanner page
-    await this.page.waitForTimeout(500);
+    // Wait for the session:update broadcast to actually flip the scanner's
+    // CLIENT-SIDE session state to active. The networked scan gate in
+    // processNFCRead (app.js) blocks scans unless dataManager.sessionState.status
+    // === 'active', so a fixed delay is not enough — wait for the rendered
+    // active state, which is driven by the SAME sessionState the gate reads
+    // (SessionRenderer). Mirrors resumeSession(). Both startGame() call sites
+    // (createSessionWithTeams, resetAndCreateNew) reach #session-status-container
+    // first, so this locator is attached/visible here.
+    await this.sessionActive.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**

@@ -14,6 +14,7 @@ const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
 const transactionService = require('../../../src/services/transactionService');
 const videoQueueService = require('../../../src/services/videoQueueService');
+const DeviceConnection = require('../../../src/models/deviceConnection');
 
 describe('GET /api/state', () => {
   let createdSession;
@@ -157,5 +158,22 @@ describe('GET /api/state', () => {
       name: 'Test Session for State Validation'
     });
     await sessionService.startGame();
+  });
+
+  describe('device connectionStatus (CC-8b)', () => {
+    it('includes connectionStatus on device entries for station auto-numbering', async () => {
+      await sessionService.updateDevice(new DeviceConnection({
+        id: 'GM_Station_1', type: 'gm', name: 'GM Station',
+      }));
+
+      const response = await request(app.app).get('/api/state').expect(200);
+
+      const gm = (response.body.devices || []).find(d => d.deviceId === 'GM_Station_1');
+      expect(gm).toBeDefined();
+      expect(gm.connectionStatus).toBe('connected');
+
+      // Response still conforms to the (updated) OpenAPI GameState schema
+      validateHTTPResponse(response, '/api/state', 'get', 200);
+    });
   });
 });

@@ -87,7 +87,16 @@ function setupWebSocketHandlers(ioInstance) {
         soundService,
         deviceFilter: { connectedOnly: true },
       });
-      emitWrapped(socket, 'sync:full', syncPayload);
+      // Mirror gmAuth: include device-specific scanned tokens so the scanner can
+      // reconcile its offline queue against server-recorded scans before flushing.
+      const session = sessionService.getCurrentSession();
+      const deviceScannedTokens = session
+        ? Array.from(session.getDeviceScannedTokens(socket.deviceId))
+        : [];
+      emitWrapped(socket, 'sync:full', {
+        ...syncPayload,
+        deviceScannedTokens,
+      });
       logger.debug('Sent sync:full in response to sync:request', { deviceId: socket.deviceId });
     } catch (error) {
       logger.error('sync:request handler error', { error: error.message, deviceId: socket.deviceId });

@@ -81,8 +81,9 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       // WAIT: For transaction result
       const result = await waitForEvent(scanner.socket, 'transaction:result');
 
-      // VERIFY: Server returned error status
-      expect(result.data.status).toBe('error');
+      // VERIFY: Server PERMANENTLY rejects an unknown token (status 'rejected',
+      // not transient 'error') so the scanner drops it instead of retrying forever.
+      expect(result.data.status).toBe('rejected');
       expect(result.data.message).toMatch(/invalid|not found|unknown/i);
       expect(result.data.points).toBe(0);
 
@@ -93,25 +94,28 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       consoleSpy.mockRestore();
     });
 
-    it('should handle session paused error gracefully', async () => {
+    it('should block a scan client-side when the session is paused', async () => {
       scanner.App.currentTeamId = 'Team Alpha';
 
-      // Pause the session (server will reject transactions)
+      // Pause the session, then wait until the scanner has actually OBSERVED the
+      // paused state (session:update → sessionState) before scanning — the GM
+      // scanner is now the authority on its own session state and gates at the source.
       await sessionService.updateSessionStatus('paused');
+      const pausedAt = Date.now();
+      while (scanner.App.dataManager.sessionState?.status !== 'paused' && Date.now() - pausedAt < 2000) {
+        await new Promise(r => setTimeout(r, 15));
+      }
+      expect(scanner.App.dataManager.sessionState?.status).toBe('paused');
 
-      // ACT: Try to submit transaction during paused state
-      scanner.App.processNFCRead({ id: '534e2b03' });
+      // ACT: a paused scan is blocked locally — surfaced to the GM, NOT submitted,
+      // marked, or queued (so the token can be re-scanned after resume).
+      const showErrorSpy = jest.spyOn(scanner.App.uiManager, 'showError');
+      await scanner.App.processNFCRead({ id: '534e2b03' });
 
-      // WAIT: For error result
-      const result = await waitForEvent(scanner.socket, 'transaction:result');
-
-      // VERIFY: Transaction rejected with paused status
-      expect(result.data.status).toBe('error');
-      expect(result.data.message).toMatch(/paused/i);
-      expect(result.data.points).toBe(0);
-
-      // VERIFY: Scanner queue should be empty (transaction rejected, not queued)
+      expect(showErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/paused|not active/i));
+      expect(scanner.App.dataManager.isTokenScanned('534e2b03')).toBe(false);
       expect(scanner.queueManager.tempQueue).toHaveLength(0);
+      showErrorSpy.mockRestore();
     });
   });
 
@@ -347,12 +351,12 @@ describe('Scanner - Error Path Handling [Phase 2.1]', () => {
       // SPY: Check UI updates (if UIManager.showError exists)
       // Note: This requires scanner to expose UIManager or error display methods
 
-      // Submit transaction that will error
+      // Submit transaction that will be permanently rejected (unknown token)
       scanner.App.processNFCRead({ id: 'INVALID_TOKEN_999' });
 
       const result = await waitForEvent(scanner.socket, 'transaction:result');
 
-      expect(result.data.status).toBe('error');
+      expect(result.data.status).toBe('rejected');
 
       // EXPECTED BUG: Scanner might only log errors to console
       // TODO: Verify scanner calls UIManager.showError() or similar

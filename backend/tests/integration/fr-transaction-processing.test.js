@@ -196,17 +196,24 @@ describe('Transaction Processing (via App entry point)', () => {
       const pauseEvent = await pausePromise;
       expect(pauseEvent.data.status).toBe('paused');
 
+      // Wait until the scanner has OBSERVED the pause before scanning
+      const pausedAt = Date.now();
+      while (scanner.App.dataManager.sessionState?.status !== 'paused' && Date.now() - pausedAt < 2000) {
+        await new Promise(r => setTimeout(r, 15));
+      }
+      expect(scanner.App.dataManager.sessionState?.status).toBe('paused');
+
       clearEventCache(scanner.socket);
 
-      // Attempt transaction while paused
-      const resultPromise = waitForEvent(scanner.socket, 'transaction:result');
+      // A paused session must not accept transactions; the GM scanner gates the scan
+      // at the source (surfaces an error, does not submit/mark/queue it).
+      const showErrorSpy = jest.spyOn(scanner.App.uiManager, 'showError');
       scanner.App.currentTeamId = 'Team Alpha';
-      scanner.App.processNFCRead({ id: 'hos001' });
+      await scanner.App.processNFCRead({ id: 'hos001' });
 
-      const result = await resultPromise;
-
-      expect(result.data.status).toBe('error');
-      expect(result.data.message).toMatch(/paused|not active/i);
+      expect(showErrorSpy).toHaveBeenCalledWith(expect.stringMatching(/paused|not active/i));
+      expect(scanner.App.dataManager.isTokenScanned('hos001')).toBe(false);
+      showErrorSpy.mockRestore();
     });
 
     it('should allow transactions when session is active', async () => {

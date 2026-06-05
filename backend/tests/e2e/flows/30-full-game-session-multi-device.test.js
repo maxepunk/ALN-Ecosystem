@@ -449,11 +449,21 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       // Wait for VLC to be idle before firing video compound cue
       // (prevents video_busy hold if previous activity left VLC in use)
       await gmScanner1.waitForVideoIdle(10000);
-      console.log('  → VLC idle, firing video-driven compound cue: e2e-video-compound');
+      // Also require VLC to report HEALTHY before firing. Under heavy load a momentary vlc
+      // health flap holds the cue (service_down) with no active-cue element — and a held cue
+      // auto-cancels, it never becomes active — so waitForActiveCue would just time out.
+      // waitForVideoIdle (now-showing === 'Idle Loop') does not cover the health-flap path.
+      await gmScanner1.waitForBackendState(
+        orchestratorInfo.url,
+        (s) => s.serviceHealth?.vlc?.status === 'healthy',
+        10000
+      );
+      console.log('  → VLC idle + healthy, firing video-driven compound cue: e2e-video-compound');
       await gmScanner1.fireCue('e2e-video-compound');
 
-      // Verify active cue appears
-      await gmScanner1.waitForActiveCue('e2e-video-compound', 5000);
+      // Verify active cue appears (bumped from 5s: the active-cue render rides a debounced
+      // cueengine service:state push that can lag under load).
+      await gmScanner1.waitForActiveCue('e2e-video-compound', 10000);
       console.log('✓ Video compound cue active in UI');
 
       // Verify VLC is playing (video progress bar should appear)
