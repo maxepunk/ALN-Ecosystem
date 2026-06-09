@@ -432,8 +432,17 @@ already points the way; no work needed now beyond keeping the seams clean:
 
 ## Part 4: Working Agreements
 
-- **Order is load-bearing:** 0 → 1 → 2 → 3 → 4. Phase 1 review units can run
-  in parallel; Phase 3 extractions are sequential PRs.
+- **Order is load-bearing, with one flexibility:** Phase 1 is read-only
+  (reports committed to the parent repo) and may run before or alongside
+  Phase 0; Phase 0 MUST complete before Phase 2 (no code changes without
+  lint/ratchet gates in place). Then 2 → 3 → 4. Phase 1 review units can
+  run in parallel; Phase 3 extractions are sequential PRs.
+- **Session scoping note:** remote sessions scoped only to the parent repo
+  can execute all of Phase 1 (review reads submodules, reports land in
+  `docs/reviews/`) and parent-side Phase 0 (backend lint CI, config-tool),
+  but NOT submodule-side Phase 0/2 work (ALNScanner/aln-memory-scanner lint
+  configs, scanner refactors) — those need the scanner repos added to the
+  session scope.
 - **Every finding gets a tag** before any refactor starts (prevents double
   work and scope creep).
 - **Failing test first for every confirmed defect:** a `runtime-defect` is
