@@ -200,7 +200,9 @@ and every system-originated update through its full cross-component chain.
 | Backend: show control | `cueEngineService`, `audioRoutingService`, `videoQueueService`, `commandExecutor` (the 4 biggest files) |
 | Backend: websocket/broadcast layer | `broadcasts.js`, `adminEvents.js`, sync:full assembly |
 | GM Scanner (static) | `app.js`, `uiManager.js`, storage strategies, networked session — structure, duplication, test gaps |
-| Player scanners (web + ESP32) | inline-script architecture, offline queues, asset sync |
+| Player scanner: web PWA (static) | inline-script architecture, offline queue, collection log, service worker |
+| Player scanner: ESP32 (static) | `ALNScanner_v5/` services + UI layers, SD queue, asset sync, batch upload |
+| **Player-scanner parity audit** | The web PWA and ESP32 are two implementations of ONE role (see below) — behavior-by-behavior parity matrix |
 | config-tool + scripts | route handlers, Notion sync robustness |
 | Cross-cutting | scoring parity audit, token schema consistency, contract conformance, **session-report output format** (external contract — see GenAI pipeline note below) |
 | **End-to-end flow traces (cross-component)** | See below — the wiring-defect hunt, organized by *flow*, not by component |
@@ -221,9 +223,18 @@ dead code or missing features):
 2. **GM transaction flows** — scan → transaction → `transaction:accepted` →
    score/scoreboard/Game Activity updates; duplicate-rejection paths; BOTH
    networked (backend-authoritative) and standalone (LocalStorage) variants
-3. **Player-scan flows** — web player scanner HTTP scan → backend →
-   `player:scan` broadcast → GM Game Activity; video-token scan → video
-   queue → display + `display:mode:changed` → GM Now Playing; same for ESP32
+3. **Player-scan flows — traced separately per implementation** (web PWA
+   and ESP32 are peer implementations; "same as web" is never assumed):
+   - Web: QR/NFC scan → token lookup → POST `/api/scan` → `player:scan`
+     broadcast → GM Game Activity; video token → video queue → display +
+     `display:mode:changed` → GM Now Playing; collection log update
+   - ESP32: RFID/NDEF read → local token-DB gate (UNKNOWN TOKEN refusal) →
+     POST `/api/scan` → same downstream chain; video token → 2.5s modal +
+     orchestrator playback; 409-duplicate display path
+   - **Replay semantics parity**: ESP32 batch upload (`/api/scan/batch`,
+     10 at a time) vs web queue replay — do late-replayed scans trigger
+     videos? Do both produce identical `player:scan` broadcasts, Game
+     Activity entries, and `session.playerScans` persistence?
 4. **Reconnection/sync flows** — connect/reconnect → `sync:full` → every
    consuming panel restores (playerScans, gameClock, cueEngine, music,
    serviceHealth, heldItems, sound)
@@ -241,6 +252,32 @@ Each flow trace flags links that are missing, duplicated, inconsistent
 between components, or divergent between deployment topologies. The
 Phase 1.0 defect classes apply at every link. `data-flow-tracer`
 methodology; contracts are the reference for intended behavior.
+
+**Player-scanner parity audit (dedicated deliverable).** The ESP32 scanner
+is not an accessory — it is a *hardware implementation of the player-scanner
+role*, intended to have feature parity with the web PWA. The audit produces
+a behavior-by-behavior matrix across both implementations:
+
+| Behavior | Compare |
+|----------|---------|
+| Scan input → token resolution | QR/Web-NFC + normalize (web) vs RFID/NDEF + cleanTokenId (ESP32) — same tokenId semantics? |
+| Unknown-token handling | ESP32 gates on local DB (refuses to send); does web do the same? |
+| Media display | image+audio rendering, video-token behavior (processingImage vs 2.5s modal + "Sending...") |
+| Duplicate (409) handling | both must allow re-viewing — identical UX outcome? |
+| Offline queue + replay | localStorage queue (max 100) vs SD `queue.jsonl` + batch upload — ordering, dedup, video-trigger-on-replay semantics |
+| Collection / memory log | web keeps localStorage collection; ESP32 equivalent absent — gap or decision? |
+| Standalone operation | web: yes (path-based); ESP32: networked-only by design — confirm as explicit spec decision, not silent drift |
+| Token/asset sync | submodule + service worker (web) vs manifest-based wireless sync (ESP32) |
+| Team association | optional teamId (web) vs config.txt TEAM_ID (ESP32) |
+| Connection awareness | exponential-backoff monitoring (web) vs 10s health polling + ConnectionState (ESP32) |
+| Backend payload conformance | both validated by `backend/tests/contract/scanner/request-schema-validation.test.js` — extend, don't duplicate |
+
+Every divergence is classified: **intentional** (hardware constraint —
+document in the role spec), **drift** (accidental — fix), or **missing
+feature** (backlog with owner decision). The output doubles as the first
+draft of the *player-scanner role spec*, which Phase 3 treats as an engine
+artifact (each game pack runs on both implementations; deviations stay
+documented in one place).
 
 **Output per unit:** ranked findings with file:line refs, each tagged:
 - `runtime-defect` — confirmed misbehavior (gets a failing test before any fix)
@@ -317,7 +354,10 @@ the test matrix for Phase 4.
       downloads tokens + assets via the backend manifest API — extend the
       manifest to carry strings/theming/behavior config so the firmware
       stays game-agnostic; audit `ALNScanner_v5/` for hardcoded ALN strings
-      and pull them into config delivered at sync time.
+      and pull them into config delivered at sync time. Governed by the
+      **player-scanner role spec** (Phase 1 parity-audit output): the spec
+      defines the role once; web PWA and ESP32 each implement it, and any
+      game pack must run on BOTH implementations to count as supported.
    g. Generalize cue-engine event normalizers / stream names (only if a real
       second game needs it — defer otherwise)
 3. **Frontend UX restructure (GM Scanner).** Owner-directed redesign of the
@@ -437,3 +477,10 @@ already points the way; no work needed now beyond keeping the seams clean:
    accusation capture) to streamline post-game processes. → Added as a
    designed-for stretch goal in the Game Admin domain (Phase 3.3); session
    bundle format anticipated in the Phase 2.6 report schema.
+10. **ESP32 = hardware player scanner with feature-parity intent** (not a
+    peripheral accessory). → Dedicated player-scanner parity audit added to
+    Phase 1 (behavior matrix, divergences classified as intentional / drift /
+    missing); its output becomes the player-scanner *role spec*, an engine
+    artifact in Phase 3. Player-scan flow traces run per-implementation.
+    Open spec question to resolve during the audit: should ESP32 gain
+    standalone-mode support (web has it; ESP32 is networked-only today)?
