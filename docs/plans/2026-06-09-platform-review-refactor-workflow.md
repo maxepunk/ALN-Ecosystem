@@ -179,12 +179,9 @@ vague UX feel. Known defect classes to hunt for explicitly:
   action going through different code paths with different behavior)
 
 The intake walkthrough is still valuable for prioritization (which screens
-hurt most), but the discovery burden shifts to review: the GM Scanner unit
-must trace **every interactive element end-to-end** through the full chain
-(DOM handler → `gm:command`/scan event → backend service → `service:state`/
-broadcast → UI update), flagging any link that's missing, duplicated, or
-inconsistent. The `data-flow-tracer` methodology applies; the AsyncAPI
-contract is the reference for what each command/event *should* do.
+hurt most), but the discovery burden shifts to review — specifically to the
+**end-to-end flow traces** unit below, which traces every interactive element
+and every system-originated update through its full cross-component chain.
 
 **Rubric (in priority order):**
 1. Correctness bugs, race conditions, and *incomplete implementations*
@@ -202,15 +199,48 @@ contract is the reference for what each command/event *should* do.
 | Backend: transaction/session/scoring | `transactionService`, `sessionService`, scoring parity vs scanner |
 | Backend: show control | `cueEngineService`, `audioRoutingService`, `videoQueueService`, `commandExecutor` (the 4 biggest files) |
 | Backend: websocket/broadcast layer | `broadcasts.js`, `adminEvents.js`, sync:full assembly |
-| GM Scanner | `app.js`, `uiManager.js`, storage strategies, networked session — PLUS full interactive-element wiring trace (see Phase 1.0 defect classes) |
+| GM Scanner (static) | `app.js`, `uiManager.js`, storage strategies, networked session — structure, duplication, test gaps |
 | Player scanners (web + ESP32) | inline-script architecture, offline queues, asset sync |
 | config-tool + scripts | route handlers, Notion sync robustness |
 | Cross-cutting | scoring parity audit, token schema consistency, contract conformance, **session-report output format** (external contract — see GenAI pipeline note below) |
-| **Runtime behavior (exploratory)** | Drive the *built* GM scanner + player scanner against a live backend (Playwright); exercise every admin-panel function and gameplay flow; verify behavior matches contract + intent, not just "doesn't crash". Seeded by `known-issues.md`. |
+| **End-to-end flow traces (cross-component)** | See below — the wiring-defect hunt, organized by *flow*, not by component |
+| **Runtime behavior (exploratory)** | Drive the *built* GM scanner + player scanner against a live backend (Playwright); exercise every admin-panel function and gameplay flow; verify behavior matches contract + intent, not just "doesn't crash". Seeded by `known-issues.md` and the flow-trace findings. |
 
-The runtime-behavior unit is deliberately different in kind from the static
-reviews: static review finds structural debt, but "feels kind of broken"
-defects only surface when the real UI is driven end-to-end.
+**The flow-trace unit is deliberately NOT component-scoped.** The submodules
+are deeply interdependent — a GM-scanner-only wiring trace would miss
+defects in flows that *originate* elsewhere and only *terminate* at the GM
+interface (or vice versa). The unit of analysis is the end-to-end flow,
+traced across every component it touches, in every applicable deployment
+topology. The flow inventory (derived from the AsyncAPI/OpenAPI contracts —
+every channel/event/endpoint must appear in at least one flow; orphans are
+dead code or missing features):
+
+1. **GM command flows** — each admin control: DOM handler → `gm:command` →
+   `commandExecutor` → service → `service:state`/broadcast → UI update,
+   including `gm:command:ack` handling and failure paths
+2. **GM transaction flows** — scan → transaction → `transaction:accepted` →
+   score/scoreboard/Game Activity updates; duplicate-rejection paths; BOTH
+   networked (backend-authoritative) and standalone (LocalStorage) variants
+3. **Player-scan flows** — web player scanner HTTP scan → backend →
+   `player:scan` broadcast → GM Game Activity; video-token scan → video
+   queue → display + `display:mode:changed` → GM Now Playing; same for ESP32
+4. **Reconnection/sync flows** — connect/reconnect → `sync:full` → every
+   consuming panel restores (playerScans, gameClock, cueEngine, music,
+   serviceHealth, heldItems, sound)
+5. **Cue-engine-originated flows** — game event → cue fires → commands →
+   service effects → broadcasts → GM active-cues display; held-item paths
+   (outage → held → release/discard)
+6. **Offline-queue flows** — GM queue, player-scanner queue, ESP32 SD queue:
+   queue → reconnect → replay → dedup/ordering on arrival
+7. **Scoreboard display flows** — transactions (both modes) →
+   `backend/public/scoreboard.html` updates
+8. **Service-health flows** — service failure/recovery → registry →
+   `service:state(health)` → GM dashboard + command gating
+
+Each flow trace flags links that are missing, duplicated, inconsistent
+between components, or divergent between deployment topologies. The
+Phase 1.0 defect classes apply at every link. `data-flow-tracer`
+methodology; contracts are the reference for intended behavior.
 
 **Output per unit:** ranked findings with file:line refs, each tagged:
 - `runtime-defect` — confirmed misbehavior (gets a failing test before any fix)
