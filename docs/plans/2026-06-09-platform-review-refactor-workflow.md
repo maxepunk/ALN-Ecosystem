@@ -206,7 +206,23 @@ and every system-originated update through its full cross-component chain.
 | config-tool + scripts | route handlers, Notion sync robustness |
 | Cross-cutting | scoring parity audit, token schema consistency, contract conformance, **session-report output format** (external contract — see GenAI pipeline note below) |
 | **End-to-end flow traces (cross-component)** | See below — the wiring-defect hunt, organized by *flow*, not by component |
-| **Runtime behavior (exploratory)** | Drive the *built* GM scanner + player scanner against a live backend (Playwright); exercise every admin-panel function and gameplay flow; verify behavior matches contract + intent, not just "doesn't crash". Seeded by `known-issues.md` and the flow-trace findings. |
+| **Capability classification matrix** (moved from Phase 3.0) | Read-only classification walk over the same code: every capability tagged engine-fixed / game-configurable / game-content, and required / networked-only / standalone-only / optional. Produced DURING discovery because the `subsumed-by-platform-refactor` tag depends on it — reviewers can't judge subsumption without knowing what the platform refactor will touch. Phase 3.0 then finalizes this matrix into the game.json schema rather than starting from scratch. |
+| **Runtime behavior (exploratory)** | Drive the *built* GM scanner + player scanner against a live backend (Playwright); exercise every admin-panel function and gameplay flow; verify behavior matches contract + intent, not just "doesn't crash". Seeded by `known-issues.md` and the flow-trace findings. Sequenced last in discovery (needs environment setup; static findings direct the exploration). |
+
+**Two lenses applied by EVERY unit (finding classes, not separate units):**
+- **Doc drift**: verify the component's CLAUDE.md / README claims against the
+  code; flag overstatements and understatements. (Motivating case: root
+  CLAUDE.md's "ESP32 Standalone: No" misrepresents verified offline
+  capability.) Doc drift misleads future agent sessions — treat it as a
+  defect, not a nitpick.
+- **Test quality**: the coverage ratchet proves tests *exist*, not that they
+  assert real behavior. Flag tests that mirror implementation, mock the
+  thing under test, or pass vacuously — Phase 2's safety depends on knowing
+  which tests can actually be leaned on.
+
+**Opportunistic check**: if real past-game session data exists in the repo
+(`logs/`, session storage), run `npm run session:validate` against it —
+real-game discrepancies are evidence, not speculation.
 
 **The flow-trace unit is deliberately NOT component-scoped.** The submodules
 are deeply interdependent — a GM-scanner-only wiring trace would miss
@@ -322,11 +338,15 @@ exists in exactly one place per runtime; ratchets all green.
 
 ### Phase 3 — Engine/game-pack separation (≈5-7 sessions, design doc first)
 
-**Phase 3.0 — Capability classification matrix (the systematic walk-through).**
-Since there is no concrete second game yet, the schema design is grounded in a
-systematic inventory instead: walk every capability across backend services,
-GM scanner, both player scanners, and config-tool, and classify each along two
-independent axes:
+**Phase 3.0 — Finalize the capability classification matrix.**
+The matrix is *produced* during Phase 1 discovery (see review units — it had
+to move there because finding-tagging depends on it). Phase 3.0 revisits it
+with the review findings and triage decisions in hand, resolves the
+classification calls that were marked uncertain, and carries it into the
+game.json schema design. Since there is no concrete second game yet, the
+schema design is grounded in this systematic inventory: every capability
+across backend services, GM scanner, both player scanners, and config-tool,
+classified along two independent axes:
 
 | Axis | Values |
 |------|--------|
@@ -437,12 +457,15 @@ already points the way; no work needed now beyond keeping the seams clean:
   Phase 0; Phase 0 MUST complete before Phase 2 (no code changes without
   lint/ratchet gates in place). Then 2 → 3 → 4. Phase 1 review units can
   run in parallel; Phase 3 extractions are sequential PRs.
-- **Session scoping note:** remote sessions scoped only to the parent repo
-  can execute all of Phase 1 (review reads submodules, reports land in
-  `docs/reviews/`) and parent-side Phase 0 (backend lint CI, config-tool),
-  but NOT submodule-side Phase 0/2 work (ALNScanner/aln-memory-scanner lint
-  configs, scanner refactors) — those need the scanner repos added to the
-  session scope.
+- **Two-track access model:** the real split is not read-vs-write phases but
+  *parent-writable* vs *submodule-write-required*. Parent-writable now:
+  `backend/`, `config-tool/`, `scripts/`, `docs/`, `contracts/`, CI
+  workflows — so parent-side Phase 0 (backend lint CI job, config-tool
+  lint/tests) can land at any time, and backend-side Phase 2 items unblock
+  immediately after triage. Submodule-write-required (needs scanner repos
+  added to session scope, or a scoped fine-grained PAT as an environment
+  secret): ALNScanner/aln-memory-scanner lint configs, all scanner
+  refactors, ALN-TokenData restructuring.
 - **Every finding gets a tag** before any refactor starts (prevents double
   work and scope creep).
 - **Failing test first for every confirmed defect:** a `runtime-defect` is
