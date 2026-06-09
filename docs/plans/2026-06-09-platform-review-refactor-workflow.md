@@ -38,6 +38,27 @@ date above.
 | 7 | Cue condition operators, stream/sink names | `cueEngineService.js`, `audioRoutingService.js` | 🟡 Engine-level, lower priority |
 | 8 | Token schema | No JSON Schema file; validation scattered across backend validators, scanner parsing, sync script | 🟡 |
 
+### External dependency: GenAI post-game report pipeline
+
+**Not visible from this codebase** (owner disclosure, 2026-06-09): the
+post-game session report feeds a GenAI pipeline in a separate repo
+(`aboutlastnight/reports`) that generates a bespoke fictional blog article
+narrating the game's events/story. Implications:
+
+1. **The session-report output format is an external contract.** Changes to
+   `ALNScanner/src/core/sessionReportGenerator.js` output (and the backend
+   session data it derives from) can silently break the downstream pipeline.
+   Treat report-format changes contract-first, same as OpenAPI/AsyncAPI —
+   ideally with a documented schema this repo owns.
+2. **For the platform goal**, narrative generation is a *game-pack concern*:
+   the prompts/templates/fictional framing are ALN content, while "emit a
+   structured machine-readable session record" is engine. The game.json /
+   pack design (Phase 3) should reserve a slot for narrative-pipeline config.
+3. The reports repo is outside this session's current access scope; reviewing
+   it (what fields it actually consumes = the real contract surface) needs
+   the repo added to a session, or the owner pasting in its input-parsing
+   code.
+
 ### Quality infrastructure: strong tests, weak lint enforcement, several God files
 
 **Strong:** Backend 4-layer test strategy (154 test files, per-file coverage
@@ -127,13 +148,25 @@ Component-by-component review with a fixed rubric, executed by parallel
 review agents, consolidated into `docs/reviews/2026-06-platform-review/`.
 
 **Phase 1.0 — Known-issues intake (FIRST, requires owner).**
-The owner has firsthand knowledge of "works well enough to run ALN but feels
-broken" areas — notably parts of the GM scanner interface. This knowledge
-exists nowhere in the codebase and is the cheapest defect-discovery mechanism
-available. Before any agent review: a structured walkthrough capturing each
-known issue into `known-issues.md` (symptom, where it appears, severity,
-current workaround, repro steps if known). These entries direct reviewer
-attention and become the seed of the defect backlog.
+Owner clarification (2026-06-09): most "works but feels broken" defects are
+*objectively findable by good code review* — they are wiring defects, not
+vague UX feel. Known defect classes to hunt for explicitly:
+- Frontend inputs that don't actually communicate with the backend
+  (handler fires but command never sent, or sent malformed)
+- Interface not updating when backend state changes (broadcast emitted but
+  no UI subscriber, or subscriber updates the wrong element)
+- **Missing UI controls** relative to what a standard interface for the task
+  would have (e.g., playback controls lacking expected affordances)
+- **Duplicated UI elements wired up differently** (two buttons for the "same"
+  action going through different code paths with different behavior)
+
+The intake walkthrough is still valuable for prioritization (which screens
+hurt most), but the discovery burden shifts to review: the GM Scanner unit
+must trace **every interactive element end-to-end** through the full chain
+(DOM handler → `gm:command`/scan event → backend service → `service:state`/
+broadcast → UI update), flagging any link that's missing, duplicated, or
+inconsistent. The `data-flow-tracer` methodology applies; the AsyncAPI
+contract is the reference for what each command/event *should* do.
 
 **Rubric (in priority order):**
 1. Correctness bugs, race conditions, and *incomplete implementations*
@@ -151,10 +184,10 @@ attention and become the seed of the defect backlog.
 | Backend: transaction/session/scoring | `transactionService`, `sessionService`, scoring parity vs scanner |
 | Backend: show control | `cueEngineService`, `audioRoutingService`, `videoQueueService`, `commandExecutor` (the 4 biggest files) |
 | Backend: websocket/broadcast layer | `broadcasts.js`, `adminEvents.js`, sync:full assembly |
-| GM Scanner | `app.js`, `uiManager.js`, storage strategies, networked session |
+| GM Scanner | `app.js`, `uiManager.js`, storage strategies, networked session — PLUS full interactive-element wiring trace (see Phase 1.0 defect classes) |
 | Player scanners (web + ESP32) | inline-script architecture, offline queues, asset sync |
 | config-tool + scripts | route handlers, Notion sync robustness |
-| Cross-cutting | scoring parity audit, token schema consistency, contract conformance |
+| Cross-cutting | scoring parity audit, token schema consistency, contract conformance, **session-report output format** (external contract — see GenAI pipeline note below) |
 | **Runtime behavior (exploratory)** | Drive the *built* GM scanner + player scanner against a live backend (Playwright); exercise every admin-panel function and gameplay flow; verify behavior matches contract + intent, not just "doesn't crash". Seeded by `known-issues.md`. |
 
 The runtime-behavior unit is deliberately different in kind from the static
@@ -176,8 +209,17 @@ Only `fix-now` and `fix-in-phase-2` items. Likely contents (pre-validated by
 this survey, confirm against Phase 1 reports):
 1. **Shared rules module** for group completion + mode scoring (kills the
    backend/LocalStorage duplication — see D3). This is the flagship item.
-2. Split `app.js` (GM Scanner) by responsibility: NFC input / screen
-   coordination / admin actions.
+2. Split `app.js` + `uiManager.js` (GM Scanner) — and split them along the
+   **target UX domain boundaries** (see Phase 3 frontend track), not
+   arbitrary technical seams:
+   - **Game Operations** — scanning, scores, logged memories, transactions
+   - **Environment** — lighting, music/soundtrack volume, audio routing,
+     bluetooth
+   - **Game Admin** — pregame setup, session lifecycle, postgame report
+   This way the structural refactor (Phase 2) and the UX restructure
+   (Phase 3) are the same cut, done once. Phase 2 moves code into these
+   modules without redesigning screens; Phase 3 redesigns the screens on
+   top of the already-separated modules.
 3. Split `audioRoutingService.js` (routing vs ducking engine).
 4. Migrate `aln-memory-scanner` inline script to ES6 modules (mirror
    ALNScanner's earlier migration; its plan docs are in `docs/plans/`).
@@ -225,10 +267,25 @@ the test matrix for Phase 4.
       and pull them into config delivered at sync time.
    g. Generalize cue-engine event normalizers / stream names (only if a real
       second game needs it — defer otherwise)
-3. **Restructure** ALN content as the first game pack (likely: evolve the
+3. **Frontend UX restructure (GM Scanner).** Owner-directed redesign of the
+   entire frontend around three separated domains:
+   | Domain | Contains |
+   |--------|----------|
+   | **Game Operations** | scanning, scores, logged memories, transactions |
+   | **Environment** | lights, soundtrack/volume, audio routing, speakers |
+   | **Game Admin** | pregame setup, session lifecycle, postgame report |
+   Sequenced here (not Phase 2) because it rebuilds the same surfaces the
+   strings/theming extraction (3.2a) touches — design them together, build
+   once. Prerequisite: Phase 2's module split along the same boundaries.
+   Phase 1's wiring-defect inventory feeds this directly: rather than
+   patching duplicated/miswired controls in the old layout, each control is
+   rebuilt *correctly once* in its proper domain. (Defects in flows that
+   survive into the new UX still get failing tests first; defects in UI that
+   the restructure deletes get tagged `subsumed-by-platform-refactor`.)
+4. **Restructure** ALN content as the first game pack (likely: evolve the
    ALN-TokenData submodule into the pack, since distribution plumbing to all
    scanners already exists).
-4. Update contracts (OpenAPI/AsyncAPI) wherever payloads gain game-pack
+5. Update contracts (OpenAPI/AsyncAPI) wherever payloads gain game-pack
    indirection.
 
 ### Phase 4 — Prove it (≈2-3 sessions)
@@ -290,3 +347,14 @@ already points the way; no work needed now beyond keeping the seams clean:
 5. **Deployment topologies** (player-scanner-only, no-orchestrator) are
    designed but not field-tested. → Deployment axis added to Phase 3.0
    matrix; topology validation added to Phase 4.
+6. **"Feels broken" = mostly review-findable wiring defects** (inputs not
+   reaching backend, stale UI, missing/duplicated controls). → GM Scanner
+   review unit upgraded to a full interactive-element wiring trace
+   (Phase 1.0 defect classes).
+7. **Frontend needs a UX restructure** into Game Operations / Environment /
+   Game Admin domains. → Phase 3.3 added; Phase 2 module split aligned to
+   the same boundaries so the cut happens once.
+8. **GenAI report pipeline exists downstream** (`aboutlastnight/reports`
+   repo, generates fictional blog article from post-game report). → Session
+   report format treated as an external contract; cross-cutting review unit
+   covers it; narrative config reserved as a game-pack slot.
