@@ -183,6 +183,26 @@ hurt most), but the discovery burden shifts to review — specifically to the
 **end-to-end flow traces** unit below, which traces every interactive element
 and every system-originated update through its full cross-component chain.
 
+**Owner-elicitation track (parallel to discovery — the TOP-DOWN half of
+planning).** Discovery is bottom-up (what the code is); these artifacts are
+top-down (what the platform should be), they come from the owner's head, not
+the repos, and they gate later phases:
+
+1. **Known-issues braindump** (described above) — gates: triage ranking.
+2. **Platform requirements & variability spec** — what kinds of games should
+   this support? Which dimensions must vary (scoring? token mechanics? team
+   structure? narrative output? venue/AV setup?) and which are explicitly
+   fixed or out of scope? Two or three sketched hypothetical games, even
+   rough ones. Gates: Phase 3 design. Without this, Phase 3 produces "ALN,
+   generalized" — baking ALN's shape into the engine by default.
+3. **GM UX workflow requirements** — what must be visible at a glance during
+   a live game; what must be reachable in ≤2 taps under pressure; what is
+   deliberately hard to hit (destructive actions); pregame/postgame
+   checklists as the GM actually runs them. Gates: Phase 3.3 UX design.
+
+None of these depend on discovery output — they can be elicited in
+structured conversations at any time, and discovery runs concurrently.
+
 **Rubric (in priority order):**
 1. Correctness bugs, race conditions, and *incomplete implementations*
    (handlers that never fire, unwired UI, dead branches, half-finished
@@ -307,8 +327,11 @@ The tagging step is what prevents refactoring twice — and prevents polishing
 UI code that Phase 3 will replace with themeable/configurable equivalents.
 
 ### Phase 2 — Debt paydown (≈2-4 sessions, driven by Phase 1 tags)
-Only `fix-now` and `fix-in-phase-2` items. Likely contents (pre-validated by
-this survey, confirm against Phase 1 reports):
+Only `fix-now` and `fix-in-phase-2` items. The list below is a set of
+**hypotheses from the initial survey, not commitments** — each is confirmed,
+re-ranked, or killed at the triage checkpoint based on discovery findings
+and the platform requirements (see owner-elicitation track). Nothing here is
+authorized to start until triage:
 1. **Shared rules module** for group completion + mode scoring (kills the
    backend/LocalStorage duplication — see D3). This is the flagship item.
 2. Split `app.js` + `uiManager.js` (GM Scanner) — and split them along the
@@ -397,6 +420,14 @@ the test matrix for Phase 4.
    survive into the new UX still get failing tests first; defects in UI that
    the restructure deletes get tagged `subsumed-by-platform-refactor`.)
 
+   **UX design stage (REQUIRED, before any rebuild).** The restructure is a
+   design problem before it is a code problem. Sequence: (a) GM UX workflow
+   requirements from the owner-elicitation track + Phase 1 defect inventory
+   → (b) wireframes/interactive mockups for the three domains → (c) owner
+   review checkpoint (walk through a simulated game night against the
+   mockups) → (d) only then implementation. No screen is rebuilt without an
+   approved design for it.
+
    **Game Admin stretch goal — report-pipeline intake (owner direction).**
    The GenAI pipeline's manual runtime inputs (`roster`, `accusation`,
    `directorNotes`, session photos, whiteboard photo — see external-
@@ -472,6 +503,10 @@ already points the way; no work needed now beyond keeping the seams clean:
   not "fixed" until a test that reproduced it passes. This converts the
   owner's "feels broken" knowledge into permanent regression protection.
 - **Contract-first** for every API/event/schema change, including game.json.
+- **Decisions get recorded:** architecturally significant choices during
+  Phases 2-3 (seam placements, schema shapes, what stays engine-fixed) are
+  captured as short decision records in `docs/decisions/` — the *why*
+  survives the session that decided it.
 - **Submodule discipline:** scanner-affecting changes follow
   `SUBMODULE_MANAGEMENT.md`; rebuild ALNScanner dist before backend E2E.
 - **Session reports:** after risky phases, `npm run session:validate latest`
