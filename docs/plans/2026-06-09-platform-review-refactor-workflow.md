@@ -305,6 +305,27 @@ the test matrix for Phase 4.
    rebuilt *correctly once* in its proper domain. (Defects in flows that
    survive into the new UX still get failing tests first; defects in UI that
    the restructure deletes get tagged `subsumed-by-platform-refactor`.)
+
+   **Game Admin stretch goal — report-pipeline intake (owner direction).**
+   The GenAI pipeline's manual runtime inputs (`roster`, `accusation`,
+   `directorNotes`, session photos, whiteboard photo — see external-
+   dependency section) are all things the GM *has or does during the game*.
+   The Game Admin domain should be designed with capture points for them so
+   the post-game process is assembled instead of reconstructed:
+   - **Pregame setup** already exists → capture character roster there
+   - **During game**: lightweight quick-capture director notes (timestamped,
+     optionally linked to a team/transaction — GM is busy, so one-tap +
+     dictation-friendly) and photo capture/annotation via the PWA camera
+   - **Endgame**: accusation capture + whiteboard photo as explicit
+     post-game checklist steps
+   - **Output**: a session bundle (report markdown + photos + notes +
+     accusation + roster) mapping 1:1 onto the pipeline's `rawSessionInput`
+     — ultimately submittable straight to its `POST /api/session/{id}/start`
+     endpoint, with curation/approval remaining in the pipeline's console
+   Design the Game Admin UX with these capture points from the start even if
+   implementation lands after the core platform work; retrofitting capture
+   flows into a finished UX is far costlier than reserving space for them.
+   The Phase 2.6 report schema should anticipate this bundle format.
 4. **Restructure** ALN content as the first game pack (likely: evolve the
    ALN-TokenData submodule into the pack, since distribution plumbing to all
    scanners already exists).
@@ -381,3 +402,8 @@ already points the way; no work needed now beyond keeping the seams clean:
    repo, generates fictional blog article from post-game report). → Session
    report format treated as an external contract; cross-cutting review unit
    covers it; narrative config reserved as a game-pack slot.
+9. **Best-of-all-worlds goal: GM interface absorbs report-pipeline intake**
+   (photo capture/curation/annotation, director note-taking, roster and
+   accusation capture) to streamline post-game processes. → Added as a
+   designed-for stretch goal in the Game Admin domain (Phase 3.3); session
+   bundle format anticipated in the Phase 2.6 report schema.
