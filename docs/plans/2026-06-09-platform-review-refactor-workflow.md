@@ -266,7 +266,8 @@ a behavior-by-behavior matrix across both implementations:
 | Duplicate (409) handling | both must allow re-viewing — identical UX outcome? |
 | Offline queue + replay | localStorage queue (max 100) vs SD `queue.jsonl` + batch upload — ordering, dedup, video-trigger-on-replay semantics |
 | Collection / memory log | web keeps localStorage collection; ESP32 equivalent absent — gap or decision? |
-| Standalone operation | web: yes (path-based); ESP32: networked-only by design — confirm as explicit spec decision, not silent drift |
+| Offline core function | **Both do the core job offline** (scan → display content): web via service worker + localStorage, ESP32 via SD assets + local token DB (verified: `Application.h` displays regardless of connection state). Parity ✓ — only video triggering + reporting need the orchestrator on either |
+| Standalone *deployment stance* | web: explicit never-connect mode (path-based); ESP32: no equivalent stance — offline it still queues for eventual sync (100-entry FIFO cap) and shows disconnected status. Open spec question: does ESP32 need an explicit "no orchestrator exists" config (suppress queue/status), or is de facto offline operation sufficient? |
 | Token/asset sync | submodule + service worker (web) vs manifest-based wireless sync (ESP32) |
 | Team association | optional teamId (web) vs config.txt TEAM_ID (ESP32) |
 | Connection awareness | exponential-backoff monitoring (web) vs 10s health polling + ConnectionState (ESP32) |
@@ -482,5 +483,12 @@ already points the way; no work needed now beyond keeping the seams clean:
     Phase 1 (behavior matrix, divergences classified as intentional / drift /
     missing); its output becomes the player-scanner *role spec*, an engine
     artifact in Phase 3. Player-scan flow traces run per-implementation.
-    Open spec question to resolve during the audit: should ESP32 gain
-    standalone-mode support (web has it; ESP32 is networked-only today)?
+    **Correction (owner + code-verified):** the ESP32 is NOT network-
+    dependent for its core job — scan → display works fully offline (local
+    token DB + SD assets; `Application.h` displays regardless of connection
+    state). "Always networked" in the root CLAUDE.md describes its sync
+    *intent*, not a functional requirement. The narrower open question:
+    should it gain an explicit standalone deployment stance (never-sync
+    config) to mirror the web scanner's, or is offline-resilient operation
+    sufficient? Root CLAUDE.md's mode table ("Standalone: No") should be
+    clarified either way — documentation finding for Phase 1.
