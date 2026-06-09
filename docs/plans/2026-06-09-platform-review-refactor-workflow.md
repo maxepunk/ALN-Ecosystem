@@ -41,23 +41,41 @@ date above.
 ### External dependency: GenAI post-game report pipeline
 
 **Not visible from this codebase** (owner disclosure, 2026-06-09): the
-post-game session report feeds a GenAI pipeline in a separate repo
-(`aboutlastnight/reports`) that generates a bespoke fictional blog article
-narrating the game's events/story. Implications:
+post-game session report feeds a GenAI pipeline in
+`github.com/maxepunk/aboutlastnight` (the `reports/` directory) that
+generates a bespoke fictional news article narrating the game's events.
+Surveyed 2026-06-09 (public repo; LangGraph + Claude SDK, 43 nodes, 10 human
+checkpoints, Express console).
 
-1. **The session-report output format is an external contract.** Changes to
-   `ALNScanner/src/core/sessionReportGenerator.js` output (and the backend
-   session data it derives from) can silently break the downstream pipeline.
-   Treat report-format changes contract-first, same as OpenAPI/AsyncAPI —
-   ideally with a documented schema this repo owns.
-2. **For the platform goal**, narrative generation is a *game-pack concern*:
-   the prompts/templates/fictional framing are ALN content, while "emit a
-   structured machine-readable session record" is engine. The game.json /
-   pack design (Phase 3) should reserve a slot for narrative-pipeline config.
-3. The reports repo is outside this session's current access scope; reviewing
-   it (what fields it actually consumes = the real contract surface) needs
-   the repo added to a session, or the owner pasting in its input-parsing
-   code.
+**The effective input contract** (what the pipeline's `parseRawInput` /
+`SESSION_REPORT_SCHEMA` actually consumes from this ecosystem):
+
+| Input | Source in ALN-Ecosystem | What the pipeline parses |
+|-------|------------------------|--------------------------|
+| `sessionReport` (markdown) | `ALNScanner/src/core/sessionReportGenerator.js` output | **"Detective Evidence Log" table** (exposed token IDs, leftmost column); **"Scoring Timeline" table** (`Time \| Type \| Detail \| Team \| Amount`; only `Type=Sale` rows; `Detail` = `tokenId/CharacterName`); **"Final Standings/Totals"** (shell-account name, total, rank, token count) |
+| Token content + paper evidence | **Notion, fetched directly** by the pipeline | Full memory content, owner→character mapping |
+| `roster`, `accusation`, `directorNotes`, photos, whiteboard | Manual GM input at pipeline runtime | Not this repo's concern |
+
+Implications:
+
+1. **The session-report markdown is an external contract** — specifically the
+   three table structures above (section titles, column order, the
+   `tokenId/CharacterName` Detail format, `Type=Sale` row semantics).
+   Renaming a column heading in `sessionReportGenerator.js` breaks the
+   pipeline silently. Action (Phase 2): document this as a versioned schema
+   in this repo + add a contract test snapshotting the table structures.
+2. **Notion is dual-consumed.** The reports pipeline fetches token content
+   from Notion independently of `sync_notion_to_tokens.py`. The future
+   in-house content DB (Phase 5) therefore has TWO consumers to serve, and
+   the source-adapter design (Phase 3.2e) should account for the reports
+   pipeline as a second client of the content source.
+3. **For the platform goal**, the pipeline mirrors this repo's situation: a
+   reusable engine (LangGraph workflow, evidence layers, theming system with
+   journalist/detective themes already separated) wrapped in ALN-specific
+   content (Nova/Marcus/NPC framing, prompts, shell-account economy). A new
+   game's narrative output = a new theme + prompt pack there, plus whatever
+   session-report sections its mechanics produce here. The game.json / pack
+   design (Phase 3) should reserve a slot for narrative-pipeline config.
 
 ### Quality infrastructure: strong tests, weak lint enforcement, several God files
 
@@ -225,6 +243,11 @@ this survey, confirm against Phase 1 reports):
    ALNScanner's earlier migration; its plan docs are in `docs/plans/`).
 5. Tighten validation: memoryType enum check (or explicit UNKNOWN warning),
    tokens.json JSON Schema.
+6. **Session-report contract test**: versioned schema doc for the report
+   markdown (the three table structures the GenAI pipeline parses — see
+   external-dependency section) + a test snapshotting section titles,
+   column order, and the `tokenId/CharacterName` Detail format in
+   `sessionReportGenerator.js` output.
 
 **Exit criteria:** no file > ~1000 lines in critical paths; group/mode logic
 exists in exactly one place per runtime; ratchets all green.
