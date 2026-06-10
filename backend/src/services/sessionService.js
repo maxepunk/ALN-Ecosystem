@@ -19,6 +19,10 @@ class SessionService extends EventEmitter {
 
   initState() {
     this.currentSession = null;
+    // F-BCORE-07: promise-chain write queue — session persistence writes
+    // must land in call order (node-persist setItem is not atomic; two
+    // overlapping saves could leave the OLDER snapshot on disk)
+    this._writeQueue = Promise.resolve();
   }
 
   /**
@@ -808,10 +812,26 @@ class SessionService extends EventEmitter {
 
   /**
    * Save current session to persistence
+   * Serialized through a promise-chain write queue (F-BCORE-07): concurrent
+   * callers' writes land in call order, and each write snapshots the LIVE
+   * session at write time (latest state wins, never an older snapshot).
    * @returns {Promise<void>}
    * @private
    */
-  async saveCurrentSession() {
+  saveCurrentSession() {
+    const task = this._writeQueue.then(() => this._persistCurrentSession());
+    // Keep the chain alive even if a write fails (the caller still sees the
+    // rejection via the returned task)
+    this._writeQueue = task.then(() => undefined, () => undefined);
+    return task;
+  }
+
+  /**
+   * Perform the actual persistence write (only ever invoked via the queue)
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _persistCurrentSession() {
     if (this.currentSession) {
       // Persist game clock state on session
       if (gameClockService.status !== 'stopped') {

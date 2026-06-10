@@ -747,6 +747,80 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('saveCurrentSession write serialization (F-BCORE-07)', () => {
+    it('serializes concurrent saves so writes land in call order', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Write Queue Test',
+        teams: []
+      });
+
+      const events = [];
+      let releaseFirst;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async () => {
+          events.push('saveSession:start');
+          if (firstCall) {
+            firstCall = false;
+            // Hold the FIRST write open so an unserialized second call would overlap
+            await new Promise(resolve => { releaseFirst = resolve; });
+          }
+          events.push('saveSession:end');
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async () => {
+          events.push('save:current');
+        });
+
+      try {
+        const p1 = sessionService.saveCurrentSession();
+        const p2 = sessionService.saveCurrentSession();
+
+        // Let microtasks run — the first write is now blocked mid-flight
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Without serialization both saveSession calls have already started
+        expect(events.filter(e => e === 'saveSession:start')).toHaveLength(1);
+
+        releaseFirst();
+        await Promise.all([p1, p2]);
+
+        // Each save must fully complete (saveSession + session:current alias)
+        // before the next one starts
+        expect(events).toEqual([
+          'saveSession:start', 'saveSession:end', 'save:current',
+          'saveSession:start', 'saveSession:end', 'save:current'
+        ]);
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+      }
+    });
+
+    it('keeps accepting writes after a failed save', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Write Queue Failure Test',
+        teams: []
+      });
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockRejectedValueOnce(new Error('disk full'));
+
+      try {
+        await expect(sessionService.saveCurrentSession()).rejects.toThrow('disk full');
+        // The queue must not be poisoned by the failure
+        await expect(sessionService.saveCurrentSession()).resolves.toBeUndefined();
+      } finally {
+        saveSessionSpy.mockRestore();
+      }
+    });
+  });
+
   describe('scores:reset listener — full restart semantics (F-BCORE-02 / F-BCORE-04, decision A3)', () => {
     const transactionService = require('../../../src/services/transactionService');
     const persistenceService = require('../../../src/services/persistenceService');
