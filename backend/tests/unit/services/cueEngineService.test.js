@@ -1805,4 +1805,100 @@ describe('CueEngineService', () => {
       });
     });
   });
+
+  // ── Runtime persistence (F-SHOW-01/03, decision E1) ──
+
+  describe('runtime persistence (toPersistence/restore)', () => {
+    const CUES = [
+      {
+        id: 'clock-past', label: 'Past Clock Cue',
+        trigger: { clock: '00:30:00' }, // 1800s
+        commands: [{ action: 'sound:play', payload: { file: 'past.wav' } }],
+      },
+      {
+        id: 'clock-future', label: 'Future Clock Cue',
+        trigger: { clock: '01:30:00' }, // 5400s
+        commands: [{ action: 'sound:play', payload: { file: 'future.wav' } }],
+      },
+      {
+        id: 'standing-event', label: 'Event Cue',
+        trigger: { event: 'group:completed' },
+        commands: [{ action: 'sound:play', payload: { file: 'group.wav' } }],
+      },
+    ];
+
+    it('toPersistence() returns active flag, fired clock cues, and disabled cues', () => {
+      cueEngineService.loadCues(CUES);
+      cueEngineService.activate();
+      cueEngineService.firedClockCues.add('clock-past');
+      cueEngineService.disableCue('standing-event');
+
+      expect(cueEngineService.toPersistence()).toEqual({
+        active: true,
+        firedClockCues: ['clock-past'],
+        disabledCues: ['standing-event'],
+      });
+    });
+
+    it('restore() marks past clock cues as fired WITHOUT firing them (E1)', async () => {
+      cueEngineService.loadCues(CUES);
+      const firedEvents = [];
+      cueEngineService.on('cue:fired', (d) => firedEvents.push(d.cueId));
+
+      // Restore mid-game at elapsed=3600s (past clock-past's 1800s threshold)
+      cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+
+      expect(cueEngineService.active).toBe(true);
+      expect(cueEngineService.firedClockCues.has('clock-past')).toBe(true);
+      expect(firedEvents).toHaveLength(0);
+      expect(executeCommand).not.toHaveBeenCalled();
+
+      // Past clock cue must NOT fire on the next tick
+      cueEngineService.handleClockTick(3601);
+      await flushAsync();
+      expect(firedEvents).not.toContain('clock-past');
+
+      // Future clock cue still fires at its threshold
+      cueEngineService.handleClockTick(5400);
+      await flushAsync();
+      expect(firedEvents).toContain('clock-future');
+    });
+
+    it('restore() before loadCues() still marks past clock cues (app init order)', () => {
+      // sessionService.init() runs BEFORE app.js loads cues.json
+      cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+      cueEngineService.loadCues(CUES);
+
+      expect(cueEngineService.firedClockCues.has('clock-past')).toBe(true);
+      expect(cueEngineService.firedClockCues.has('clock-future')).toBe(false);
+    });
+
+    it('restore() preserves persisted disabled cues and active flag', () => {
+      cueEngineService.loadCues(CUES);
+      cueEngineService.restore(
+        { active: false, firedClockCues: ['clock-future'], disabledCues: ['standing-event'] },
+        100
+      );
+
+      expect(cueEngineService.active).toBe(false);
+      expect(cueEngineService.firedClockCues.has('clock-future')).toBe(true);
+      expect(cueEngineService.disabledCues.has('standing-event')).toBe(true);
+    });
+
+    it('standing event cue fires on next event after restore+activate', async () => {
+      cueEngineService.loadCues(CUES);
+      const firedEvents = [];
+      cueEngineService.on('cue:fired', (d) => firedEvents.push(d.cueId));
+
+      cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+      cueEngineService.activate();
+
+      cueEngineService.handleGameEvent('group:completed', {
+        teamId: 't1', groupId: 'g1', multiplier: 2, bonus: 100,
+      });
+      await flushAsync();
+
+      expect(firedEvents).toContain('standing-event');
+    });
+  });
 });

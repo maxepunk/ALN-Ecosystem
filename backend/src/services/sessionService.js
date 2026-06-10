@@ -293,6 +293,21 @@ class SessionService extends EventEmitter {
             clockStatus: gameClockService.status
           });
         }
+
+        // Restore cue engine runtime state (F-SHOW-01/03, decision E1).
+        // restore() marks past clock cues as fired WITHOUT firing them;
+        // an active session re-activates standing cue evaluation.
+        if (this.currentSession.cueEngine && this.currentSession.status !== 'ended') {
+          const cueEngineService = require('./cueEngineService');
+          cueEngineService.restore(this.currentSession.cueEngine, gameClockService.getElapsed());
+          if (this.currentSession.status === 'active') {
+            cueEngineService.activate();
+          }
+          logger.info('Cue engine restored from session', {
+            sessionId: this.currentSession.id,
+            cueEngineActive: cueEngineService.active
+          });
+        }
       }
 
       // Set up cross-service event listeners for score sync (legacy - will be removed in Slice 6)
@@ -787,6 +802,9 @@ class SessionService extends EventEmitter {
       if (gameClockService.status !== 'stopped') {
         this.currentSession.gameClock = gameClockService.toPersistence();
       }
+      // Persist cue engine runtime state beside gameClock (F-SHOW-01/03)
+      // Lazy require: circular dependency (cueEngineService → commandExecutor → sessionService)
+      this.currentSession.cueEngine = require('./cueEngineService').toPersistence();
       const sessionData = this.currentSession.toJSON();
       await persistenceService.saveSession(sessionData);
       await persistenceService.save('session:current', sessionData);

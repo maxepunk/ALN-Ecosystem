@@ -200,6 +200,50 @@ describe('GameClockService', () => {
       // Active time was 30s (60s ago start, paused 30s ago)
       expect(gameClockService.getElapsed()).toBe(30);
     });
+
+    // F-SHOW-01: overtime threshold was lost across restarts
+    it('toPersistence() includes the overtime threshold', () => {
+      gameClockService.setOvertimeThreshold(7200);
+      gameClockService.start();
+
+      expect(gameClockService.toPersistence()).toEqual(
+        expect.objectContaining({ overtimeThreshold: 7200 })
+      );
+    });
+
+    it('restore() re-arms a future overtime threshold', () => {
+      const handler = jest.fn();
+      gameClockService.on('gameclock:overtime', handler);
+
+      gameClockService.restore({
+        startTime: Date.now() - 60000, // 60s elapsed
+        pausedAt: null,
+        totalPausedMs: 0,
+        overtimeThreshold: 120, // fires at 120s
+      });
+
+      jest.advanceTimersByTime(59000); // elapsed ~119s
+      expect(handler).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(2000); // elapsed ~121s
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('restore() marks an already-passed overtime threshold as fired (mark-don\'t-fire)', () => {
+      const handler = jest.fn();
+      gameClockService.on('gameclock:overtime', handler);
+
+      gameClockService.restore({
+        startTime: Date.now() - 200000, // 200s elapsed
+        pausedAt: null,
+        totalPausedMs: 0,
+        overtimeThreshold: 120, // already past
+      });
+
+      jest.advanceTimersByTime(5000);
+      expect(handler).not.toHaveBeenCalled();
+      expect(gameClockService.overtimeFired).toBe(true);
+    });
   });
 
   describe('reset()', () => {

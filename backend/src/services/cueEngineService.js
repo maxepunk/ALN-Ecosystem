@@ -125,7 +125,70 @@ class CueEngineService extends EventEmitter {
     this.conflictTimers = new Map();
     /** @type {Array<Object>} Cues held due to service health or video contention */
     this._heldCues = [];
+    /** @type {number|null} Game clock elapsed at restore time (re-applied by loadCues) */
+    this._restoredClockElapsed = null;
     heldIdCounter = 0;
+  }
+
+  /**
+   * Serialize runtime state for session persistence (F-SHOW-01/03).
+   * Persisted beside session.gameClock so cue automation survives restarts.
+   * @returns {{active: boolean, firedClockCues: string[], disabledCues: string[]}}
+   */
+  toPersistence() {
+    return {
+      active: this.active,
+      firedClockCues: [...this.firedClockCues],
+      disabledCues: [...this.disabledCues],
+    };
+  }
+
+  /**
+   * Restore runtime state from persisted session data (backend restart recovery).
+   *
+   * Per decision E1 (mark-don't-fire): clock cues whose thresholds are below the
+   * restored elapsed time are marked as fired WITHOUT firing them — a restart
+   * must neither replay past cues (catch-up storm) nor leave automation dead.
+   *
+   * Cue definitions may not be loaded yet (sessionService.init() runs before
+   * app.js loads cues.json), so the restored elapsed is remembered and the
+   * marking is re-applied by loadCues().
+   *
+   * @param {{active: boolean, firedClockCues: string[], disabledCues: string[]}} data
+   * @param {number} [elapsedSeconds=0] - Restored game clock elapsed time
+   */
+  restore(data, elapsedSeconds = 0) {
+    if (!data) return;
+    this.firedClockCues = new Set(data.firedClockCues || []);
+    this.disabledCues = new Set(data.disabledCues || []);
+    this.active = !!data.active;
+    this._restoredClockElapsed = elapsedSeconds;
+    this._markPastClockCuesFired(elapsedSeconds);
+    logger.info('[CueEngine] Runtime state restored', {
+      active: this.active,
+      firedClockCues: this.firedClockCues.size,
+      disabledCues: this.disabledCues.size,
+      elapsedSeconds,
+    });
+  }
+
+  /**
+   * Mark all clock cues whose threshold has already passed as fired (E1).
+   * Does NOT fire them — restore policy is mark-don't-fire.
+   * @param {number} elapsedSeconds - Game clock elapsed time
+   * @private
+   */
+  _markPastClockCuesFired(elapsedSeconds) {
+    for (const cue of this.getStandingCues()) {
+      if (!cue.trigger.clock) continue;
+      try {
+        if (parseClockTime(cue.trigger.clock) <= elapsedSeconds) {
+          this.firedClockCues.add(cue.id);
+        }
+      } catch (err) {
+        logger.warn(`[CueEngine] Skipping clock cue with invalid time during restore: ${cue.id}`, err.message);
+      }
+    }
   }
 
   /**
@@ -163,6 +226,13 @@ class CueEngineService extends EventEmitter {
     }
 
     this.cues = newCues;
+
+    // Re-apply E1 mark-don't-fire if a session restore happened before cue
+    // definitions were loaded (app init order: sessionService.init() runs first)
+    if (this._restoredClockElapsed !== null) {
+      this._markPastClockCuesFired(this._restoredClockElapsed);
+    }
+
     registry.report('cueengine', 'healthy', `Loaded ${newCues.size} cues`);
     logger.info(`[CueEngine] Loaded ${newCues.size} cues (${this.getStandingCues().length} standing)`);
   }

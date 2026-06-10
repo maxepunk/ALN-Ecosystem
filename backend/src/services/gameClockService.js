@@ -112,6 +112,15 @@ class GameClockService extends EventEmitter {
       this.status = 'running';
       this._startInterval();
     }
+
+    // Re-arm overtime detection (F-SHOW-01: threshold was lost across restarts).
+    // Mark-don't-fire (E1): if the threshold already passed before the restart,
+    // mark it fired so the warning is not re-emitted after restore.
+    if (typeof clockData.overtimeThreshold === 'number' && clockData.overtimeThreshold > 0) {
+      this.overtimeThreshold = clockData.overtimeThreshold;
+      this.overtimeFired = this.getElapsed() >= clockData.overtimeThreshold;
+    }
+
     logger.info(`[GameClock] Restored: status=${this.status}, elapsed=${this.getElapsed()}s`);
   }
 
@@ -120,7 +129,8 @@ class GameClockService extends EventEmitter {
     return {
       startTime: this.gameStartTime,
       pausedAt: this.pauseStartTime,
-      totalPausedMs: this.totalPausedMs
+      totalPausedMs: this.totalPausedMs,
+      overtimeThreshold: this.overtimeThreshold
     };
   }
 
