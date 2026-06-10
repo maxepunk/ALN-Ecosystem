@@ -335,8 +335,11 @@ class SessionService extends EventEmitter {
    */
   async createSession(sessionData) {
     try {
-      // End current session if exists
-      if (this.currentSession && this.currentSession.isActive()) {
+      // End current session if exists — regardless of status (F-BCORE-05:
+      // the old isActive() guard silently orphaned paused/setup sessions:
+      // never complete()d, never backed up, persisted forever as
+      // paused/setup). endSession() handles setup/active/paused itself.
+      if (this.currentSession) {
         await this.endSession();
       }
 

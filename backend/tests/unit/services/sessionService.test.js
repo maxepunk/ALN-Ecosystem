@@ -159,6 +159,51 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(sessionService.getCurrentSession().id).toBe(session2.id);
     });
 
+    it('should complete and back up a PAUSED previous session when creating a new one (F-BCORE-05)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      const first = await sessionService.createSession({
+        name: 'Paused Orphan',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+      sessionService.updateSessionStatus('paused');
+      expect(first.status).toBe('paused');
+
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession');
+      try {
+        await sessionService.createSession({ name: 'Replacement', teams: [] });
+
+        // Previous session must be properly ended (not silently overwritten)
+        expect(first.status).toBe('ended');
+        expect(first.endTime).toBeTruthy();
+        expect(backupSpy).toHaveBeenCalledWith(expect.objectContaining({ id: first.id }));
+      } finally {
+        backupSpy.mockRestore();
+      }
+    });
+
+    it('should complete and back up a SETUP previous session when creating a new one (F-BCORE-05)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      const first = await sessionService.createSession({
+        name: 'Setup Orphan',
+        teams: []
+      });
+      expect(first.status).toBe('setup');
+
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession');
+      try {
+        await sessionService.createSession({ name: 'Replacement 2', teams: [] });
+
+        expect(first.status).toBe('ended');
+        expect(first.endTime).toBeTruthy();
+        expect(backupSpy).toHaveBeenCalledWith(expect.objectContaining({ id: first.id }));
+      } finally {
+        backupSpy.mockRestore();
+      }
+    });
+
     it('should initialize team scores from teams array', async () => {
       const session = await sessionService.createSession({
         name: 'Score Init Test',
