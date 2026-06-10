@@ -286,9 +286,12 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Scanner should not crash
       const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
-      // Should queue offline (fire-and-forget simplicity)
-      expect(result.status).toBe('error');
-      expect(result.queued).toBe(true);
+      // Decision A5 (2026-06-09): 4xx responses are FINAL — never queued.
+      // Video-rejected 409 means the scan WAS recorded server-side; the
+      // player is told to rescan if they want the video.
+      expect(result.status).toBe('rejected');
+      expect(result.queued).toBeFalsy();
+      expect(orchestrator.offlineQueue.length).toBe(0);
     });
 
     it('should continue working on network timeout/failure', async () => {
@@ -321,8 +324,10 @@ describe('Player Scanner - HTTP Request Contract Compliance', () => {
       // Scanner should not crash (fire-and-forget)
       const result = await orchestrator.scanToken('test_token', 'Team Alpha');
 
-      // Should return error but not throw
-      expect(result.status).toBe('error');
+      // HTTP 200 with an unparseable body is still a delivered scan:
+      // fire-and-forget treats it as accepted (Decision A5 — only
+      // network-level failures queue; nothing about a 200 retries).
+      expect(result.status).toBe('accepted');
     });
   });
 });
