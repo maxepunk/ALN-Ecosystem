@@ -112,12 +112,13 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
 | Component | File | Notes |
 |-----------|------|-------|
 | Shared Config | `ALN-TokenData/scoring-config.json` | Single source of truth for values |
-| Backend Config | `backend/src/config/index.js` (valueRating map) | Loads shared config (env vars override) |
-| Backend Group Logic | `backend/src/services/transactionService.js` (`_checkGroupCompletion`) | Server-side group completion |
+| Token Schema | `ALN-TokenData/tokens.schema.json` | tokens.json format (enforced by backend contract test) |
+| Backend Config | `backend/src/config/index.js` (valueRating map) | Loads shared config (no env override; hardcoded fallback only if the file is missing) |
+| Backend Rules | `backend/src/gameRules/scoring.js` (pure functions) | Server-side scoring + group completion (transactionService adapts); GM duplicate rules in `gameRules/duplicatePolicy.js` |
 | GM Scanner Config | `ALNScanner/src/core/scoring.js` (SCORING_CONFIG export) | Loads shared config via Vite import |
 | GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` (`_checkGroupCompletion`) | Client-side group completion |
 
-**CRITICAL**: Values are shared, but group completion detection logic is independently implemented. Timing and approach differ between backend (session-based lookup) and GM Scanner (transaction filtering). When updating group logic, verify BOTH implementations.
+**CRITICAL**: Values are shared, but group completion detection logic is independently implemented between backend (`gameRules/scoring.js`, used by BOTH the live scan path and the post-deletion rebuild) and GM Scanner standalone mode. When updating group logic, verify both — the backend's `gameRules/` modules are the parity surface the scanner implementation must match (decision A1: blackmarket-only).
 
 ## Token Data Schema (Cross-Cutting)
 
@@ -168,13 +169,13 @@ All scan requests MUST include `deviceType` field:
 | Player Scanner (Web) | `player` | **Allowed** (players can re-view same memory) |
 | ESP32 Scanner | `esp32` | **Allowed** (players can re-view same memory) |
 
-**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. See `transactionService.js` `isDuplicate()` method for implementation.
+**CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. GM duplicate rules (per-device + first-come-first-served) live in `backend/src/gameRules/duplicatePolicy.js`; player/ESP32 scans go through `scanRoutes.js`, which performs no duplicate checks by design.
 
 **Scan Request Format:**
 ```javascript
 {
   tokenId: 'abc123',
-  teamId: 'Team Alpha',   // Optional for GM (alphanumeric, 1-30 chars)
+  teamId: 'Team Alpha',   // Optional for GM (any non-empty string — see Dynamic Team Creation)
   deviceId: 'device-uuid',
   deviceType: 'gm',       // REQUIRED
   timestamp: '2025-12-08T10:30:00Z'

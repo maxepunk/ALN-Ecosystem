@@ -133,13 +133,19 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
-**System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services (tear-down only), then re-initializes infrastructure via centralized post-reset wiring: `registerBroadcastListeners()`, `cueEngineWiring.registerCueEngineListeners()`, `sessionService.registerTransactionListeners()`, and `sessionService.registerBroadcastListeners()`.
+**System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services (tear-down only), then re-initializes infrastructure via centralized post-reset wiring: broadcast listeners, then `transactionService.registerSessionListener()`, `sessionService.setupScoreListeners()`, `sessionService.setupPersistenceListeners()`, `sessionService.setupGameClockListeners()`, then `cueEngineWiring.setupCueEngineForwarding()`.
 
 **transactionService API Note:** `processScan()` and `createManualTransaction()` no longer accept a `session` parameter. The service retrieves the current session internally via `sessionService.getCurrentSession()`.
 
 ### Session as Source of Truth
 
 **CRITICAL**: Session (`sessionService`) is the single source of truth — persisted to disk, survives restarts. There is no separate state service; game state is derived from the session and delivered via `sync:full` and `service:state` events.
+
+**Scores (Phase 2 collapse):** team scores live ONLY in `session.scores`, as live `TeamScore` instances hydrated by the Session model. `transactionService` mutates them in place — there is no second score store and no sync paths. Event `teamScore` payloads are broadcast snapshots, never synced back.
+
+### Pure Game Rules (`src/gameRules/`)
+
+All scoring and duplicate-rule COMPUTATIONS are pure functions in `src/gameRules/scoring.js` (pointsFor, isGroupComplete, groupMultiplier/groupBonusAmount, computeTeamScores) and `src/gameRules/duplicatePolicy.js` (checkDuplicate, findOriginalTransaction) — no I/O, no events, no service reads, plain token/transaction fields only. This is the engine/game seam and the scanner-parity surface. `transactionService` is the orchestration adapter (state mutation + event emission); the live scan path and the post-deletion rebuild share the SAME group-completion rule. Scan-response wire shaping lives in `src/websocket/scanResponse.js`. SessionService's persistence-listener bodies and content mutations live in `src/services/session/` (persistenceListeners.js, sessionRegistry.js); the singleton facade delegates.
 
 ### Event-Driven Service Coordination
 
