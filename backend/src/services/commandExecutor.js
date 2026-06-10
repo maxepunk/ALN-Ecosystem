@@ -174,38 +174,52 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       // --- Video commands ---
 
-      case 'video:play':
-        if (config.features.videoPlayback) {
-          await videoQueueService.resumeCurrent();
+      // Video transports use the service booleans for honest acks
+      // (F-GMCMD-08): a no-op must produce a failed ack, not phantom
+      // success. The services handle the videoPlayback feature flag
+      // internally (logical pause/skip works in test mode), so the old
+      // executor-level feature gate — which skipped the call but still
+      // claimed success — is gone.
+      case 'video:play': {
+        const resumed = await videoQueueService.resumeCurrent();
+        if (!resumed) {
+          throw new Error('No video playing');
         }
         resultMessage = 'Video playback resumed';
         logger.info('Video playback resumed', { source, deviceId });
         break;
+      }
 
-      case 'video:pause':
-        if (config.features.videoPlayback) {
-          await videoQueueService.pauseCurrent();
+      case 'video:pause': {
+        const paused = await videoQueueService.pauseCurrent();
+        if (!paused) {
+          throw new Error('No video playing');
         }
         resultMessage = 'Video playback paused';
         logger.info('Video playback paused', { source, deviceId });
         break;
+      }
 
-      case 'video:stop':
-        if (config.features.videoPlayback) {
-          await videoQueueService.skipCurrent();
-          videoQueueService.clearQueue();
+      case 'video:stop': {
+        const skipped = await videoQueueService.skipCurrent();
+        const cleared = videoQueueService.clearQueue();
+        if (!skipped && !cleared) {
+          throw new Error('No video playing and queue is empty');
         }
         resultMessage = 'Video playback stopped';
         logger.info('Video playback stopped', { source, deviceId });
         break;
+      }
 
-      case 'video:skip':
-        if (config.features.videoPlayback) {
-          await videoQueueService.skipCurrent();
+      case 'video:skip': {
+        const skipped = await videoQueueService.skipCurrent();
+        if (!skipped) {
+          throw new Error('No video playing');
         }
         resultMessage = 'Video skipped successfully';
         logger.info('Video skipped', { source, deviceId });
         break;
+      }
 
       case 'video:seek': {
         // Decision C4 (contract-first): payload {position} in seconds
@@ -213,9 +227,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
           throw new Error('position (seconds, >= 0) is required for video:seek');
         }
-        const seeked = config.features.videoPlayback
-          ? await videoQueueService.seekCurrent(position)
-          : false;
+        const seeked = await videoQueueService.seekCurrent(position);
         if (!seeked) {
           throw new Error('No video playing');
         }

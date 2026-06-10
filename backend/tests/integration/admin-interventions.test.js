@@ -384,9 +384,9 @@ describe('Admin Intervention Integration', () => {
   });
 
   describe('Video Control', () => {
-    it('should skip current video', async () => {
-      // TODO: This test requires video to be playing
-      // For now, test that command is acknowledged even with no video
+    it('should reject video:skip honestly when no video is playing (F-GMCMD-08)', async () => {
+      // No video is playing in this fixture — the ack must say so, not
+      // report phantom success (the GM would see nothing happen).
       const ackPromise = waitForEvent(gmAdmin.socket, 'gm:command:ack');
 
       gmAdmin.socket.emit('gm:command', {
@@ -400,14 +400,15 @@ describe('Admin Intervention Integration', () => {
 
       const ack = await ackPromise;
 
-      expect(ack.data.success).toBe(true);
+      expect(ack.data.success).toBe(false);
+      expect(ack.data.message).toMatch(/no video playing/i);
       expect(ack.data.action).toBe('video:skip');
     });
   });
 
   describe('Contract-Specified Commands (Not Yet Implemented)', () => {
     describe('Video Playback Control - FR 4.2.2', () => {
-      it('should play video via admin command', async () => {
+      it('should reject video:play honestly with no video (F-GMCMD-08)', async () => {
         // Per AsyncAPI contract line 1012 and FR 4.2.2 line 898
         const responsePromise = Promise.race([
           waitForEvent(gmAdmin.socket, 'gm:command:ack'),
@@ -425,13 +426,14 @@ describe('Admin Intervention Integration', () => {
 
         const result = await responsePromise;
 
-        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        // Honest no-op ack (F-GMCMD-08): nothing is playing in this fixture
         expect(result.event).toBe('gm:command:ack');
-        expect(result.data.success).toBe(true);
+        expect(result.data.success).toBe(false);
+        expect(result.data.message).toMatch(/no video playing/i);
         expect(result.data.action).toBe('video:play');
       });
 
-      it('should pause video via admin command', async () => {
+      it('should reject video:pause honestly with no video (F-GMCMD-08)', async () => {
         // Per AsyncAPI contract line 1013 and FR 4.2.2 line 899
         const responsePromise = Promise.race([
           waitForEvent(gmAdmin.socket, 'gm:command:ack'),
@@ -449,13 +451,14 @@ describe('Admin Intervention Integration', () => {
 
         const result = await responsePromise;
 
-        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        // Honest no-op ack (F-GMCMD-08): nothing is playing in this fixture
         expect(result.event).toBe('gm:command:ack');
-        expect(result.data.success).toBe(true);
+        expect(result.data.success).toBe(false);
+        expect(result.data.message).toMatch(/no video playing/i);
         expect(result.data.action).toBe('video:pause');
       });
 
-      it('should stop video via admin command', async () => {
+      it('should reject video:stop honestly with no video and empty queue (F-GMCMD-08)', async () => {
         // Per AsyncAPI contract line 1014 and FR 4.2.2 line 900
         const responsePromise = Promise.race([
           waitForEvent(gmAdmin.socket, 'gm:command:ack'),
@@ -473,9 +476,10 @@ describe('Admin Intervention Integration', () => {
 
         const result = await responsePromise;
 
-        // Test for CORRECT behavior - will FAIL if unimplemented (reveals gap)
+        // Honest no-op ack (F-GMCMD-08): nothing is playing in this fixture
         expect(result.event).toBe('gm:command:ack');
-        expect(result.data.success).toBe(true);
+        expect(result.data.success).toBe(false);
+        expect(result.data.message).toMatch(/no video playing/i);
         expect(result.data.action).toBe('video:stop');
       });
     });

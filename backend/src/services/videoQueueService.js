@@ -777,6 +777,7 @@ class VideoQueueService extends EventEmitter {
 
   /**
    * Clear entire queue
+   * @returns {boolean} True if anything was cleared (playing item or pending entries)
    */
   clearQueue() {
     // Stop current playback
@@ -809,6 +810,8 @@ class VideoQueueService extends EventEmitter {
     if (wasPlaying || hadPending) {
       this.emit('video:idle');
     }
+
+    return wasPlaying || hadPending;
   }
 
   /**
