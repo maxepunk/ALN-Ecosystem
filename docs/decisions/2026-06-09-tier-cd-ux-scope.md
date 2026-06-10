@@ -3,7 +3,7 @@
 **Date:** 2026-06-09
 **Decided by:** owner, via discovery-report triage (mobile chunk 4)
 
-## C1 — Admin domains: FOUR domains (Show Control added) — proposed, pending owner nod
+## C1 — Admin domains: FOUR domains (Show Control added) — **CONFIRMED by owner**
 
 Owner leaned "show control" and asked how it differs from Environment.
 Proposed taxonomy (see chat explanation):
@@ -67,7 +67,7 @@ After `/api/scan/batch` processing, push the drained scans to GM stations
 implementation choice in fix design). Resolves the stale-Game-Activity half
 of F-SCAN-05.
 
-## D2 — Backend "offline mode": EXPLAINED; recommendation = DELETE (pending owner confirm)
+## D2 — Backend "offline mode": DELETE — **CONFIRMED by owner**
 
 Verified during triage: **no production code ever sets the flag** — only
 tests call `setOfflineStatus(true)`. The 202 "queued for processing" path,
