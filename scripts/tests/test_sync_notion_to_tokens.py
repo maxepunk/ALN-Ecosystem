@@ -161,3 +161,38 @@ class TestSegmentLineForHighlighting:
     def test_line_without_names_is_single_segment(self):
         segments = segment_line_for_highlighting("nothing shouted here")
         assert segments == [("nothing shouted here", False)]
+
+
+class TestValidateAgainstSchema:
+    """Phase 2: JSON Schema validation (soft dependency on jsonschema)."""
+
+    def test_missing_schema_file_reports_one_warning(self, tmp_path):
+        from sync_notion_to_tokens import validate_against_schema
+        warnings = validate_against_schema({}, schema_path=tmp_path / "nope.json")
+        # Either the import-note (jsonschema absent) or the missing-file note
+        assert len(warnings) == 1
+        assert "schema" in warnings[0]
+
+    def test_returns_list_against_real_schema(self):
+        from sync_notion_to_tokens import validate_against_schema, ECOSYSTEM_ROOT
+        schema_path = ECOSYSTEM_ROOT / "ALN-TokenData/tokens.schema.json"
+        token = {
+            "tok001": {
+                "image": "assets/images/tok001.bmp",
+                "audio": None,
+                "video": None,
+                "processingImage": None,
+                "SF_RFID": "tok001",
+                "SF_ValueRating": 3,
+                "SF_MemoryType": "Personal",
+                "SF_Group": "",
+                "summary": "s",
+                "owner": "Alex Reeves",
+            }
+        }
+        warnings = validate_against_schema(token, schema_path=schema_path)
+        # With jsonschema installed: valid token -> no warnings.
+        # Without it: exactly the single skip note. Both are correct.
+        assert warnings == [] or (
+            len(warnings) == 1 and "jsonschema not installed" in warnings[0]
+        )

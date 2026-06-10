@@ -774,6 +774,36 @@ def validate_tokens(tokens, valid_memory_types):
     return warnings
 
 
+def validate_against_schema(tokens, schema_path=None):
+    """JSON Schema validation against ALN-TokenData/tokens.schema.json.
+
+    Soft dependency: validates when the 'jsonschema' package is installed,
+    otherwise returns a single note — the backend contract test
+    (backend/tests/contract/token-data/tokens-schema.test.js) is the
+    always-on enforcement gate for the same schema.
+    """
+    schema_path = schema_path if schema_path is not None else (
+        ECOSYSTEM_ROOT / "ALN-TokenData/tokens.schema.json"
+    )
+    try:
+        import jsonschema
+    except ImportError:
+        return [
+            "jsonschema not installed — schema validation skipped here "
+            "(backend contract test still enforces tokens.schema.json)"
+        ]
+    if not Path(schema_path).exists():
+        return [f"schema file missing: {schema_path}"]
+    schema = json.loads(Path(schema_path).read_text())
+    validator = jsonschema.Draft202012Validator(schema)
+    return [
+        "schema: "
+        + ("/".join(str(p) for p in error.absolute_path) or "(root)")
+        + f": {error.message}"
+        for error in validator.iter_errors(tokens)
+    ]
+
+
 # Asset files that are never tokens (kept out of alignment warnings).
 ALIGNMENT_EXEMPT_STEMS = frozenset({"placeholder", "idle-loop"})
 
@@ -949,6 +979,7 @@ def main(argv=None):
     validation_warnings = []
     validation_warnings.extend(duplicate_warnings)
     validation_warnings.extend(validate_tokens(sorted_tokens, load_valid_memory_types()))
+    validation_warnings.extend(validate_against_schema(sorted_tokens))
     validation_warnings.extend(check_asset_alignment(sorted_tokens))
 
     print("-" * 60)
