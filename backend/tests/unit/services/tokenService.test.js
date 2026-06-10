@@ -18,6 +18,10 @@ const calcExpected = (rating, type) => tokenService.calculateTokenValue(rating, 
 // Mock fs for file loading tests
 jest.mock('fs');
 
+// Mock Winston logger (tokenService must log through it, not console — F-BCORE-22)
+jest.mock('../../../src/utils/logger');
+const logger = require('../../../src/utils/logger');
+
 describe('TokenService - Utility Functions', () => {
   describe('parseGroupMultiplier', () => {
     it('should parse multiplier from group string', () => {
@@ -236,6 +240,49 @@ describe('TokenService - Token Loading', () => {
       fs.readFileSync.mockReturnValue('{ invalid json }');
 
       expect(() => tokenService.loadRawTokens()).toThrow();
+    });
+
+    it('should log through Winston, never the console (F-BCORE-22)', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        fs.readFileSync.mockReturnValue(JSON.stringify(mockTokensObject));
+
+        tokenService.loadRawTokens();
+        tokenService.loadTokens();
+
+        expect(console.log).not.toHaveBeenCalled();
+        expect(console.error).not.toHaveBeenCalled();
+        expect(console.warn).not.toHaveBeenCalled();
+        expect(logger.info).toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should not log an ERROR when the first path is missing but the second loads (F-BCORE-22)', () => {
+      // First path absent (normal on deployments without the ALN-TokenData
+      // checkout) — must not produce a scary error on every boot
+      fs.readFileSync
+        .mockImplementationOnce(() => {
+          throw new Error('ENOENT: no such file or directory');
+        })
+        .mockReturnValueOnce(JSON.stringify(mockTokensObject));
+
+      const rawTokens = tokenService.loadRawTokens();
+
+      expect(rawTokens).toEqual(mockTokensObject);
+      expect(console.error).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it('should log an error through Winston when ALL paths fail', () => {
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
+
+      expect(() => tokenService.loadRawTokens()).toThrow('CRITICAL');
+      expect(logger.error).toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
     });
   });
 

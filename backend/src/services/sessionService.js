@@ -19,6 +19,10 @@ class SessionService extends EventEmitter {
 
   initState() {
     this.currentSession = null;
+    // F-BCORE-07: promise-chain write queue — session persistence writes
+    // must land in call order (node-persist setItem is not atomic; two
+    // overlapping saves could leave the OLDER snapshot on disk)
+    this._writeQueue = Promise.resolve();
   }
 
   /**
@@ -33,7 +37,8 @@ class SessionService extends EventEmitter {
     // NOTE (Slice 6): score:updated listener removed - no longer emitted by transactionService
     // Score syncing now handled by setupPersistenceListeners() via transaction:accepted and score:adjusted
 
-    // Listen for scores:reset to reset session.scores to zero
+    // Listen for scores:reset to apply full-restart semantics to the session
+    // Decision A3 (2026-06-09): "Reset All Scores" = full game restart.
     // Per AsyncAPI contract: teams should still exist after reset with zero scores
     listenerRegistry.addTrackedListener(transactionService, 'scores:reset', async () => {
       if (!this.currentSession) {
@@ -42,17 +47,32 @@ class SessionService extends EventEmitter {
       }
 
       try {
-        // Reset each team's score to zero (preserve team membership)
-        this.currentSession.scores.forEach(score => {
-          score.currentScore = 0;
-          score.transactionCount = 0;
-          score.lastUpdated = new Date().toISOString();
+        // Zero the REAL TeamScore fields (F-BCORE-02: the old code wrote
+        // nonexistent transactionCount/lastUpdated fields, leaving stale
+        // baseScore/bonusPoints to resurrect scores after a restart).
+        // Round-tripping through TeamScore.reset() guarantees field parity
+        // with the in-memory teamScores Map (team membership and the
+        // adminAdjustments audit trail are preserved, everything else zeroed).
+        const TeamScore = require('../models/teamScore');
+        this.currentSession.scores = this.currentSession.scores.map(score => {
+          const teamScore = TeamScore.fromJSON(score);
+          teamScore.reset();
+          return teamScore.toJSON();
         });
+
+        // Decision A3: clear transaction history (F-BCORE-04: a later
+        // transaction:delete rebuild must not resurrect pre-reset scores)
+        // and dedup state so tokens become claimable again.
+        // playerScans are intel-tracking, not points — intentionally kept.
+        this.currentSession.transactions = [];
+        this.currentSession.metadata.totalScans = 0;
+        this.currentSession.metadata.uniqueTokensScanned = [];
+        this.currentSession.metadata.scannedTokensByDevice = {};
 
         await this.saveCurrentSession();
         this.emit('session:updated', this.currentSession);
 
-        logger.info('Session scores reset to zero', {
+        logger.info('Session reset (scores zeroed, transactions and dedup state cleared)', {
           sessionId: this.currentSession.id,
           teamsReset: this.currentSession.scores.map(s => s.teamId)
         });
@@ -175,12 +195,16 @@ class SessionService extends EventEmitter {
           return;
         }
 
-        const { transactionId, tokenId, teamId, updatedTeamScore } = payload;
+        const { transactionId, tokenId, teamId, updatedTeamScore, allTeamScores } = payload;
 
         try {
           // Transaction already removed from session by deleteTransaction()
-          // Update team score if provided
-          if (updatedTeamScore) {
+          // The rebuild recalculates EVERY team, so sync all of them —
+          // persisting only the affected team left session.scores diverged
+          // from the in-memory map for the others (F-BCORE-03)
+          if (Array.isArray(allTeamScores) && allTeamScores.length > 0) {
+            allTeamScores.forEach(score => this.upsertTeamScore(score));
+          } else if (updatedTeamScore) {
             this.upsertTeamScore(updatedTeamScore);
           }
 
@@ -315,8 +339,11 @@ class SessionService extends EventEmitter {
    */
   async createSession(sessionData) {
     try {
-      // End current session if exists
-      if (this.currentSession && this.currentSession.isActive()) {
+      // End current session if exists — regardless of status (F-BCORE-05:
+      // the old isActive() guard silently orphaned paused/setup sessions:
+      // never complete()d, never backed up, persisted forever as
+      // paused/setup). endSession() handles setup/active/paused itself.
+      if (this.currentSession) {
         await this.endSession();
       }
 
@@ -518,6 +545,13 @@ class SessionService extends EventEmitter {
         this.currentSession.gameClock = gameClockService.toPersistence();
         break;
       case 'active':
+        // F-BCORE-06: resuming from setup would activate the session without
+        // startGame()'s cascade (game clock, cue engine, overtime threshold,
+        // gameStartTime) yet start accepting transactions. Mirror startGame()'s
+        // state guard: setup → active is ONLY valid via startGame().
+        if (oldStatus === 'setup') {
+          throw new Error('Cannot resume: session is in "setup" state — use session:start to begin the game');
+        }
         this.currentSession.start();
         if (oldStatus === 'paused') {
           gameClockService.resume();
@@ -778,10 +812,26 @@ class SessionService extends EventEmitter {
 
   /**
    * Save current session to persistence
+   * Serialized through a promise-chain write queue (F-BCORE-07): concurrent
+   * callers' writes land in call order, and each write snapshots the LIVE
+   * session at write time (latest state wins, never an older snapshot).
    * @returns {Promise<void>}
    * @private
    */
-  async saveCurrentSession() {
+  saveCurrentSession() {
+    const task = this._writeQueue.then(() => this._persistCurrentSession());
+    // Keep the chain alive even if a write fails (the caller still sees the
+    // rejection via the returned task)
+    this._writeQueue = task.then(() => undefined, () => undefined);
+    return task;
+  }
+
+  /**
+   * Perform the actual persistence write (only ever invoked via the queue)
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _persistCurrentSession() {
     if (this.currentSession) {
       // Persist game clock state on session
       if (gameClockService.status !== 'stopped') {

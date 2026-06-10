@@ -159,6 +159,51 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(sessionService.getCurrentSession().id).toBe(session2.id);
     });
 
+    it('should complete and back up a PAUSED previous session when creating a new one (F-BCORE-05)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      const first = await sessionService.createSession({
+        name: 'Paused Orphan',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+      sessionService.updateSessionStatus('paused');
+      expect(first.status).toBe('paused');
+
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession');
+      try {
+        await sessionService.createSession({ name: 'Replacement', teams: [] });
+
+        // Previous session must be properly ended (not silently overwritten)
+        expect(first.status).toBe('ended');
+        expect(first.endTime).toBeTruthy();
+        expect(backupSpy).toHaveBeenCalledWith(expect.objectContaining({ id: first.id }));
+      } finally {
+        backupSpy.mockRestore();
+      }
+    });
+
+    it('should complete and back up a SETUP previous session when creating a new one (F-BCORE-05)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      const first = await sessionService.createSession({
+        name: 'Setup Orphan',
+        teams: []
+      });
+      expect(first.status).toBe('setup');
+
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession');
+      try {
+        await sessionService.createSession({ name: 'Replacement 2', teams: [] });
+
+        expect(first.status).toBe('ended');
+        expect(first.endTime).toBeTruthy();
+        expect(backupSpy).toHaveBeenCalledWith(expect.objectContaining({ id: first.id }));
+      } finally {
+        backupSpy.mockRestore();
+      }
+    });
+
     it('should initialize team scores from teams array', async () => {
       const session = await sessionService.createSession({
         name: 'Score Init Test',
@@ -203,6 +248,19 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       sessionService.updateSessionStatus('active');
       expect(sessionService.getCurrentSession().status).toBe('active');
+    });
+
+    it('should reject resume-from-setup — startGame is the only setup→active path (F-BCORE-06)', async () => {
+      await sessionService.createSession({
+        name: 'Setup Resume Test',
+        teams: []
+      });
+      expect(sessionService.getCurrentSession().status).toBe('setup');
+
+      // Activating from setup must throw: it would bypass startGame()'s
+      // cascade (game clock, cue engine, overtime threshold, gameStartTime)
+      expect(() => sessionService.updateSessionStatus('active')).toThrow(/setup/);
+      expect(sessionService.getCurrentSession().status).toBe('setup');
     });
 
     it('should end session and clear currentSession', async () => {
@@ -686,6 +744,248 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         expect(session.scores[0].teamId).toBe('New Team');
         expect(session.scores[0].currentScore).toBe(250);
       });
+    });
+  });
+
+  describe('saveCurrentSession write serialization (F-BCORE-07)', () => {
+    it('serializes concurrent saves so writes land in call order', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Write Queue Test',
+        teams: []
+      });
+
+      const events = [];
+      let releaseFirst;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async () => {
+          events.push('saveSession:start');
+          if (firstCall) {
+            firstCall = false;
+            // Hold the FIRST write open so an unserialized second call would overlap
+            await new Promise(resolve => { releaseFirst = resolve; });
+          }
+          events.push('saveSession:end');
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async () => {
+          events.push('save:current');
+        });
+
+      try {
+        const p1 = sessionService.saveCurrentSession();
+        const p2 = sessionService.saveCurrentSession();
+
+        // Let microtasks run — the first write is now blocked mid-flight
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Without serialization both saveSession calls have already started
+        expect(events.filter(e => e === 'saveSession:start')).toHaveLength(1);
+
+        releaseFirst();
+        await Promise.all([p1, p2]);
+
+        // Each save must fully complete (saveSession + session:current alias)
+        // before the next one starts
+        expect(events).toEqual([
+          'saveSession:start', 'saveSession:end', 'save:current',
+          'saveSession:start', 'saveSession:end', 'save:current'
+        ]);
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+      }
+    });
+
+    it('keeps accepting writes after a failed save', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Write Queue Failure Test',
+        teams: []
+      });
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockRejectedValueOnce(new Error('disk full'));
+
+      try {
+        await expect(sessionService.saveCurrentSession()).rejects.toThrow('disk full');
+        // The queue must not be poisoned by the failure
+        await expect(sessionService.saveCurrentSession()).resolves.toBeUndefined();
+      } finally {
+        saveSessionSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('scores:reset listener — full restart semantics (F-BCORE-02 / F-BCORE-04, decision A3)', () => {
+    const transactionService = require('../../../src/services/transactionService');
+    const persistenceService = require('../../../src/services/persistenceService');
+    const Session = require('../../../src/models/session');
+    const Token = require('../../../src/models/token');
+
+    const makeToken = (id, value) => new Token({
+      id,
+      name: `Token ${id}`,
+      value,
+      memoryType: 'Technical',
+      mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+      metadata: { rating: 3 }
+    });
+
+    const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+    beforeEach(async () => {
+      await resetAllServices();
+      await sessionService.createSession({
+        name: 'Reset Semantics Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+      transactionService.tokens.set('rst001', makeToken('rst001', 450000));
+      transactionService.tokens.set('rst002', makeToken('rst002', 150000));
+    });
+
+    afterEach(async () => {
+      if (sessionService.currentSession) {
+        await sessionService.endSession();
+      }
+      sessionService.removeAllListeners();
+      transactionService.removeAllListeners();
+    });
+
+    it('zeroes real TeamScore fields and clears transactions + dedup state in session', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      const session = sessionService.getCurrentSession();
+      expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(450000);
+
+      transactionService.resetScores();
+      await wait();
+
+      const score = session.scores.find(s => s.teamId === 'Team Alpha');
+      // Real TeamScore fields zeroed (not the nonexistent transactionCount/lastUpdated)
+      expect(score.currentScore).toBe(0);
+      expect(score.baseScore).toBe(0);
+      expect(score.bonusPoints).toBe(0);
+      expect(score.tokensScanned).toBe(0);
+      expect(score.completedGroups).toEqual([]);
+      expect(score.transactionCount).toBeUndefined();
+      expect(score.lastUpdated).toBeUndefined();
+
+      // Decision A3: full restart — history and dedup state cleared
+      expect(session.transactions).toEqual([]);
+      expect(session.metadata.scannedTokensByDevice).toEqual({});
+      expect(session.metadata.totalScans).toBe(0);
+      expect(session.metadata.uniqueTokensScanned).toEqual([]);
+    });
+
+    it('does not resurrect pre-reset scores after an orchestrator restart', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.resetScores();
+      await wait();
+
+      // Simulate restart: restore session + team scores from persisted state
+      const persisted = await persistenceService.load('session:current');
+      expect(persisted).toBeTruthy();
+      const restored = Session.fromJSON(persisted);
+      sessionService.currentSession = restored;
+      transactionService.teamScores.clear();
+      transactionService.restoreFromSession(restored);
+
+      // First post-restart scan must NOT include the pre-reset 450000
+      const result = await transactionService.processScan({
+        tokenId: 'rst002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
+      expect(teamScore.currentScore).toBe(150000);
+      expect(teamScore.baseScore).toBe(150000);
+    });
+
+    it('makes previously claimed tokens claimable again (full restart)', async () => {
+      const scanRequest = {
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      const first = await transactionService.processScan(scanRequest);
+      expect(first.status).toBe('accepted');
+      await wait();
+
+      const dup = await transactionService.processScan(scanRequest);
+      expect(dup.status).toBe('duplicate');
+
+      transactionService.resetScores();
+      await wait();
+
+      const rescan = await transactionService.processScan(scanRequest);
+      expect(rescan.status).toBe('accepted');
+    });
+
+    it('transaction:delete after reset cannot resurrect pre-reset scores (F-BCORE-04)', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.resetScores();
+      await wait();
+
+      const postReset = await transactionService.processScan({
+        tokenId: 'rst002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      const session = sessionService.getCurrentSession();
+      transactionService.deleteTransaction(postReset.transaction.id, session);
+      await wait();
+
+      // Rebuild must see ONLY post-reset history (now empty) — not the
+      // pre-reset rst001 transaction (ghost scoring)
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
+      expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(0);
     });
   });
 

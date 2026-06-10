@@ -735,6 +735,84 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('Group Completion — blackmarket-only (F-SCAN-06, decision A1)', () => {
+    // Uses the shared 2-token group fixture (MARCUS_SUCKS, x2) so the test
+    // mirrors real token data. E2E flow 07c still self-skips against
+    // production tokens.json (its only group has 1 token) — fixing that
+    // requires an ALN-TokenData change, out of scope here.
+    const fixtures = require('../../fixtures/test-tokens');
+    const Token = require('../../../src/models/token');
+
+    const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+    let groupTokens, groupName, multiplier, expectedBonus;
+
+    beforeEach(async () => {
+      await sessionService.createSession({
+        name: 'Group Parity Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      ({ groupName, multiplier } = fixtures.MARCUS_SUCKS);
+      groupTokens = fixtures.MARCUS_SUCKS.tokens.map(t => new Token(t));
+      groupTokens.forEach(t => transactionService.tokens.set(t.id, t));
+      expectedBonus = (multiplier - 1) * groupTokens.reduce((sum, t) => sum + t.value, 0);
+    });
+
+    const scan = (tokenId, mode) => transactionService.processScan({
+      tokenId,
+      teamId: 'Team Alpha',
+      deviceId: 'GM_GRP',
+      deviceType: 'gm',
+      mode,
+      timestamp: new Date().toISOString()
+    });
+
+    it('does NOT complete a group when a member token was processed as detective', async () => {
+      // Detective first, blackmarket last — the order that (pre-fix) paid
+      // the full bonus on the backend while standalone paid nothing
+      await scan(groupTokens[0].id, 'detective');
+      const result = await scan(groupTokens[1].id, 'blackmarket');
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
+      // Only the sold token's value — no group bonus
+      expect(teamScore.currentScore).toBe(groupTokens[1].value);
+      expect(teamScore.bonusPoints).toBe(0);
+      expect(teamScore.completedGroups).not.toContain(groupName);
+    });
+
+    it('completes the group and pays the bonus when ALL members are blackmarket', async () => {
+      await scan(groupTokens[0].id, 'blackmarket');
+      const result = await scan(groupTokens[1].id, 'blackmarket');
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const baseSum = groupTokens.reduce((sum, t) => sum + t.value, 0);
+      expect(teamScore.completedGroups).toContain(groupName);
+      expect(teamScore.bonusPoints).toBe(expectedBonus);
+      expect(teamScore.currentScore).toBe(baseSum + expectedBonus);
+    });
+
+    it('live path agrees with the rebuild path for detective-member groups', async () => {
+      await scan(groupTokens[0].id, 'detective');
+      await scan(groupTokens[1].id, 'blackmarket');
+      await wait();
+
+      const liveScore = transactionService.teamScores.get('Team Alpha').currentScore;
+
+      // Rebuild from the same history (what transaction:delete does)
+      const session = sessionService.getCurrentSession();
+      transactionService.rebuildScoresFromTransactions(session.transactions);
+      const rebuiltScore = transactionService.teamScores.get('Team Alpha').currentScore;
+
+      expect(rebuiltScore).toBe(liveScore);
+    });
+  });
+
   describe('Recent Transactions', () => {
     it('should track recent transactions', async () => {
       await sessionService.createSession({
@@ -903,6 +981,99 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       // (session didn't initialize team 001, and detective mode shouldn't add it)
       const teamScore = transactionService.teamScores.get('Team Alpha');
       expect(teamScore).not.toBeDefined();
+    });
+  });
+
+  describe('Session Metadata Tracking (F-BCORE-01)', () => {
+    it('should update totalScans and uniqueTokensScanned exactly once per accepted GM scan via processScan', async () => {
+      await sessionService.createSession({
+        name: 'Metadata Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      const Token = require('../../../src/models/token');
+      const makeToken = (id) => new Token({
+        id,
+        name: `Token ${id}`,
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      });
+      transactionService.tokens.set('meta001', makeToken('meta001'));
+      transactionService.tokens.set('meta002', makeToken('meta002'));
+
+      const session = sessionService.getCurrentSession();
+
+      await transactionService.processScan({
+        tokenId: 'meta001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_META',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+
+      // Let the async sessionService persistence listener run — its
+      // idempotent addTransaction() must NOT double-count the metadata
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(session.metadata.totalScans).toBe(1);
+      expect(session.metadata.uniqueTokensScanned).toEqual(['meta001']);
+
+      await transactionService.processScan({
+        tokenId: 'meta002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_META',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(session.metadata.totalScans).toBe(2);
+      expect(session.metadata.uniqueTokensScanned).toEqual(['meta001', 'meta002']);
+    });
+
+    it('should not count rejected or duplicate scans in metadata', async () => {
+      await sessionService.createSession({
+        name: 'Metadata Session 2',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      const Token = require('../../../src/models/token');
+      transactionService.tokens.set('meta003', new Token({
+        id: 'meta003',
+        name: 'Token meta003',
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      }));
+
+      const session = sessionService.getCurrentSession();
+      const scanRequest = {
+        tokenId: 'meta003',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_META',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      await transactionService.processScan(scanRequest);
+      // Duplicate scan (same device, same token) — must not increment
+      await transactionService.processScan(scanRequest);
+      // Invalid token — must not increment
+      await transactionService.processScan({ ...scanRequest, tokenId: 'nonexistent' });
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(session.metadata.totalScans).toBe(1);
+      expect(session.metadata.uniqueTokensScanned).toEqual(['meta003']);
     });
   });
 
@@ -1692,6 +1863,77 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const rescan = await transactionService.processScan(scanRequest, session, testToken);
       expect(rescan.transaction.status).toBe('accepted');
       expect(rescan.transaction.id).not.toBe(transactionId); // New transaction ID
+    });
+
+    it('should preserve ALL teams\' admin adjustments and keep session.scores in sync on delete (F-BCORE-03)', async () => {
+      const session = await sessionService.createSession({
+        name: 'Adjustment Preservation Session',
+        teams: ['Team Alpha', 'Team Beta']
+      });
+      await sessionService.startGame();
+
+      const Token = require('../../../src/models/token');
+      const makeToken = (id, value) => new Token({
+        id,
+        name: `Token ${id}`,
+        value,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      });
+      transactionService.tokens.set('adj001', makeToken('adj001', 300000));
+      transactionService.tokens.set('adj002', makeToken('adj002', 75000));
+
+      const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+      // Team Alpha scans + receives an admin adjustment
+      await transactionService.processScan({
+        tokenId: 'adj001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_ADJ',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      // Team Beta scans
+      const betaScan = await transactionService.processScan({
+        tokenId: 'adj002',
+        teamId: 'Team Beta',
+        deviceId: 'GM_ADJ',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.adjustTeamScore('Team Alpha', 123456, 'test bonus', 'GM_ADJ');
+      await wait();
+
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(423456);
+      expect(transactionService.teamScores.get('Team Alpha').adminAdjustments).toHaveLength(1);
+
+      // Delete TEAM BETA's transaction — must not touch Team Alpha's adjustment
+      transactionService.deleteTransaction(betaScan.transaction.id, session);
+      await wait();
+
+      // In-memory: Team Alpha keeps its adjustment (score AND audit trail)
+      const alpha = transactionService.teamScores.get('Team Alpha');
+      expect(alpha.currentScore).toBe(423456);
+      expect(alpha.adminAdjustments).toHaveLength(1);
+      expect(alpha.adminAdjustments[0].delta).toBe(123456);
+
+      // Team Beta rebuilt to zero (its only transaction was deleted)
+      expect(transactionService.teamScores.get('Team Beta').currentScore).toBe(0);
+
+      // Persisted session.scores must match the in-memory map for EVERY team
+      // (pre-fix: only the affected team was upserted — split-brain)
+      for (const [teamId, teamScore] of transactionService.teamScores) {
+        const sessionScore = session.scores.find(s => s.teamId === teamId);
+        expect(sessionScore).toBeDefined();
+        expect(sessionScore.currentScore).toBe(teamScore.currentScore);
+        expect(sessionScore.baseScore).toBe(teamScore.baseScore);
+        expect(sessionScore.adminAdjustments).toEqual(teamScore.adminAdjustments);
+      }
     });
 
     it('should recalculate team scores after deletion', async () => {

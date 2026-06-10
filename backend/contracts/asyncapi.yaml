@@ -821,9 +821,9 @@ components:
                 description: Transaction status (accepted/duplicate/error per Decision #10; queued = offline-buffered; rejected = permanent rejection, e.g. invalid token — distinct from transient 'error' such as paused/not-active)
                 example: "accepted"
               transactionId:
-                type: string
+                type: [string, "null"]
                 format: uuid
-                description: Generated transaction ID
+                description: Generated transaction ID. Null for transient rejections (status=error on paused/setup sessions) where no transaction was created — the scanner correlates the result via clientTxId and retries on resume.
                 example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
               tokenId:
                 type: string

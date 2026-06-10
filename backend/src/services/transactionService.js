@@ -94,8 +94,6 @@ class TransactionService extends EventEmitter {
     }
   }
 
-  // ... (skip to adjustTeamScore)
-
   /**
    * Adjust team score by delta (for admin interventions)
    * @param {string} teamId - Team ID to adjust
@@ -192,11 +190,14 @@ class TransactionService extends EventEmitter {
 
       // ATOMIC: Claim token immediately (prevents race condition)
       // Add transaction to session BEFORE accepting to ensure duplicate check sees it
-      // NOTE: sessionService persistence listener will also add via addTransaction() (idempotent)
+      // Session.addTransaction also increments session metadata (totalScans /
+      // uniqueTokensScanned) exactly once per transaction (F-BCORE-01) — the
+      // sessionService persistence listener's later addTransaction() call is an
+      // idempotent no-op for this already-claimed transaction.
       if (!session.transactions) {
         session.transactions = [];
       }
-      session.transactions.push(transaction);
+      session.addTransaction(transaction);
 
       // GM scanners don't care about video playback - that's player scanner territory
       // Accept the transaction with appropriate points (detective mode = 0 points)
@@ -433,13 +434,17 @@ class TransactionService extends EventEmitter {
     const session = sessionService.getCurrentSession();
     if (!session) return false;
 
-    // Get all token IDs this team has successfully scanned (using Set for performance)
+    // Get all token IDs this team has SOLD (blackmarket) — Decision A1:
+    // detective (0-point) transactions never count toward group completion.
+    // This matches the standalone scanner (LocalStorage._checkGroupCompletion)
+    // and this service's own rebuildScoresFromTransactions path (F-SCAN-06).
     const transactions = session.transactions || [];
     const teamScannedTokenIds = new Set(
       transactions
         .filter(tx =>
           tx.teamId === teamId &&
-          tx.status === 'accepted'
+          tx.status === 'accepted' &&
+          tx.mode === 'blackmarket'
         )
         .map(tx => tx.tokenId)
     );
@@ -796,11 +801,14 @@ class TransactionService extends EventEmitter {
 
     // Emit transaction deleted event with updated score
     // sessionService listens and persists, broadcasts.js broadcasts to clients
+    // allTeamScores: the rebuild touches EVERY team, so sessionService must
+    // sync session.scores for all of them, not just the affected team (F-BCORE-03)
     this.emit('transaction:deleted', {
       transactionId,
       teamId: affectedTeamId,
       tokenId: deletedTx.tokenId,
-      updatedTeamScore: updatedScore.toJSON()
+      updatedTeamScore: updatedScore.toJSON(),
+      allTeamScores: Array.from(this.teamScores.values()).map(ts => ts.toJSON())
     });
 
     logger.info('Transaction deleted', {
@@ -877,6 +885,17 @@ class TransactionService extends EventEmitter {
    * @private
    */
   rebuildScoresFromTransactions(transactions) {
+    // Step 0: Snapshot admin adjustments before clearing (F-BCORE-03:
+    // recreating teams via createInitial silently reverted every prior
+    // score:adjust and wiped the audit trail for ALL teams). They are
+    // replayed on top of the rebuilt scores in the final step.
+    const adjustmentsByTeam = new Map();
+    for (const [teamId, score] of this.teamScores) {
+      if (Array.isArray(score.adminAdjustments) && score.adminAdjustments.length > 0) {
+        adjustmentsByTeam.set(teamId, score.adminAdjustments);
+      }
+    }
+
     // Step 1: Get team membership from session (source of truth)
     const session = sessionService.getCurrentSession();
     const sessionTeamIds = new Set(
@@ -961,10 +980,31 @@ class TransactionService extends EventEmitter {
       });
     });
 
+    // Step 6: Replay admin adjustments on top of the rebuilt scores
+    // (restores both the applied deltas and the audit trail — F-BCORE-03)
+    for (const [teamId, adjustments] of adjustmentsByTeam) {
+      let teamScore = this.teamScores.get(teamId);
+      if (!teamScore) {
+        teamScore = TeamScore.createInitial(teamId);
+        this.teamScores.set(teamId, teamScore);
+      }
+      const totalDelta = adjustments.reduce((sum, adj) => sum + (adj.delta || 0), 0);
+      teamScore.adminAdjustments = adjustments;
+      teamScore.baseScore += totalDelta;
+      teamScore.currentScore = teamScore.baseScore + teamScore.bonusPoints;
+      logger.info('Replayed admin adjustments after rebuild', {
+        teamId,
+        adjustmentCount: adjustments.length,
+        totalDelta,
+        newScore: teamScore.currentScore
+      });
+    }
+
     logger.info('Score rebuild complete', {
       teamsInSession: sessionTeamIds.size,
       teamsWithScores: this.teamScores.size,
-      teamsWithTransactions: Object.keys(teamGroups).length
+      teamsWithTransactions: Object.keys(teamGroups).length,
+      teamsWithReplayedAdjustments: adjustmentsByTeam.size
     });
   }
 }
