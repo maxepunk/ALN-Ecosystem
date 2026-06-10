@@ -52,3 +52,4 @@ __pycache__/
 .pytest_cache/
 backend/test_output.log
 backend/test_output.log
+.claude/worktrees/
