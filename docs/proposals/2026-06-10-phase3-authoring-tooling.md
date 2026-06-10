@@ -143,9 +143,9 @@ Pages, in build order (value ÷ effort):
 
 ## 7. Open design questions for the owner
 
-1. **Pack editing model**: edit-in-place on the live pack directory with
-   apply/rollback, or draft-copies with an explicit publish step? (Publish is
-   safer mid-rehearsal; in-place is simpler. Recommend: draft+publish.)
+1. **Pack editing model** — **DECIDED (owner): draft + publish.** Edits land
+   in a draft copy; an explicit Publish step makes them the active pack
+   (and is the natural unit for pack versioning + the Apply/staleness flow).
 2. **Auth posture for the Design workspace** (E7 said pre-show-only,
    localhost-bound): is that acceptable for game *design* sessions too, or
    should Design be reachable on the LAN (laptop in the venue) with the
