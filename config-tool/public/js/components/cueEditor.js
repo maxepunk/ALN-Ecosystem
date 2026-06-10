@@ -20,6 +20,8 @@ const TRIGGER_EVENTS = {
   'cue:completed': { label: 'Cue Completed', fields: ['cueId'] },
   'sound:completed': { label: 'Sound Completed', fields: ['file'] },
   'music:track:changed': { label: 'Music Track Changed', fields: ['title', 'artist', 'file'] },
+  'music:playback:changed': { label: 'Music Playback Changed', fields: ['state'] },
+  'music:playlist:changed': { label: 'Music Playlist Changed', fields: ['playlistId', 'playlistName', 'shuffle', 'loop'] },
   'gameclock:started': { label: 'Game Clock Started', fields: ['gameStartTime'] },
 };
 

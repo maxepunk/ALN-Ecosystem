@@ -341,6 +341,46 @@ describe('CueEngineService', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       expect(executeCommand).toHaveBeenCalled();
     });
+
+    // F-TOOL-09/E6: video:paused and video:resumed must drive standing-cue
+    // evaluation (in addition to compound-cue lifecycle control)
+    it('should fire a standing cue triggered by video:paused', async () => {
+      cueEngineService.loadCues([{
+        id: 'on-video-pause',
+        label: 'Lights Up On Pause',
+        trigger: { event: 'video:paused' },
+        commands: [{ action: 'sound:play', payload: { file: 'pause.wav' } }]
+      }]);
+
+      cueEngineService.activate();
+
+      cueEngineService.handleGameEvent('video:paused', { tokenId: 'T1' });
+
+      await flushAsync();
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'sound:play',
+        payload: { file: 'pause.wav' }
+      }));
+    });
+
+    it('should fire a standing cue triggered by video:resumed', async () => {
+      cueEngineService.loadCues([{
+        id: 'on-video-resume',
+        label: 'Lights Down On Resume',
+        trigger: { event: 'video:resumed' },
+        commands: [{ action: 'sound:play', payload: { file: 'resume.wav' } }]
+      }]);
+
+      cueEngineService.activate();
+
+      cueEngineService.handleGameEvent('video:resumed', { tokenId: 'T1' });
+
+      await flushAsync();
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'sound:play',
+        payload: { file: 'resume.wav' }
+      }));
+    });
   });
 
   describe('condition operators', () => {

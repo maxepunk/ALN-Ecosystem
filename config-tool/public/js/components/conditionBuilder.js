@@ -76,7 +76,14 @@ function buildConditionRow(index, conditions, availableFields, editorCtx, parent
     placeholder: cond.op === 'in' ? 'comma-separated values' : 'value',
     onInput: () => {
       if (cond.op === 'in') {
-        cond.value = valueInput.value.split(',').map(v => v.trim()).filter(Boolean);
+        // Coerce numeric entries to numbers (matches the eq/gt branch below):
+        // the backend's `in` operator uses strict includes, so "4" !== 4 and
+        // a string-typed list would silently never match numeric fields.
+        cond.value = valueInput.value.split(',').map(v => v.trim()).filter(Boolean)
+          .map(v => {
+            const num = Number(v);
+            return !isNaN(num) ? num : v;
+          });
       } else {
         const raw = valueInput.value;
         const num = Number(raw);

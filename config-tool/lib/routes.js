@@ -2,6 +2,17 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+const { ValidationError } = require('./validators');
+const { maskSecrets } = require('./secrets');
+
+// Map errors to HTTP: schema violations are the client's fault (400 with
+// details, F-TOOL-04); everything else stays a 500.
+function sendError(res, err) {
+  if (err instanceof ValidationError) {
+    return res.status(400).json({ error: err.message, details: err.details });
+  }
+  res.status(500).json({ error: err.message });
+}
 
 function createRouter(configManager) {
   const router = express.Router();
@@ -10,7 +21,10 @@ function createRouter(configManager) {
 
   router.get('/config', (req, res) => {
     try {
-      res.json(configManager.readAll());
+      const config = configManager.readAll();
+      // Never serve secret values to the browser (E7). Writes accept new
+      // values; the sentinel round-trips as "unchanged".
+      res.json({ ...config, env: maskSecrets(config.env) });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -21,7 +35,7 @@ function createRouter(configManager) {
       configManager.writeEnvValues(req.body);
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   });
 
@@ -30,7 +44,7 @@ function createRouter(configManager) {
       configManager.writeScoring(req.body);
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   });
 
@@ -39,7 +53,7 @@ function createRouter(configManager) {
       configManager.writeCues(req.body);
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   });
 
@@ -48,7 +62,7 @@ function createRouter(configManager) {
       configManager.writeRouting(req.body);
       res.json({ success: true });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   });
 
@@ -177,7 +191,7 @@ function createRouter(configManager) {
       const preset = configManager.loadPreset(req.params.filename);
       res.json({ success: true, preset });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      sendError(res, err);
     }
   });
 
@@ -207,9 +221,14 @@ function createRouter(configManager) {
       if (!data.name || !data.env || !data.scoringConfig || !data.cues || !data.routing) {
         return res.status(400).json({ error: 'Invalid preset format. Required: name, env, scoringConfig, cues, routing' });
       }
+      // Deep section validation happens in importPreset (same validators as
+      // direct writes); ValidationError surfaces here as 400 with details.
       const filename = configManager.importPreset(data);
       res.json({ success: true, filename });
     } catch (err) {
+      if (err instanceof ValidationError) {
+        return res.status(400).json({ error: err.message, details: err.details });
+      }
       res.status(400).json({ error: err.message });
     }
   });

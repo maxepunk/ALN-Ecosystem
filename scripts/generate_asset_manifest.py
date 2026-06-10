@@ -32,6 +32,12 @@ from typing import Iterable, Optional
 # Filenames must match the ESP32's tokenId validation (lowercased, [a-z0-9_]+).
 TOKEN_ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
 
+# Stems that look like legal tokenIds but are NOT game tokens. These are
+# exempt from both the manifest and prune_orphans (F-TOOL-06: the tokenId
+# pattern alone matches "placeholder", so an explicit exempt list is needed
+# to keep the ESP32's unknown-token fallback image alive across syncs).
+EXEMPT_STEMS = frozenset({"placeholder"})
+
 # Supported extensions per asset type. Keep in sync with OpenAPI
 # `/api/assets/audio/{tokenId}.{ext}` enum and the backend route regex.
 IMAGE_EXTS = (".bmp",)
@@ -50,8 +56,9 @@ def _sha1_file(path: Path) -> str:
 def _scan_dir(dirpath: Path, valid_exts: tuple[str, ...]) -> dict[str, dict]:
     """Walk a directory and produce `{tokenId: {sha1, size, ext?}}` entries.
 
-    Files whose stem isn't a legal tokenId (e.g. `placeholder.bmp`) are
-    skipped deliberately — only game tokens belong in the manifest.
+    Files whose stem isn't a legal tokenId are skipped, as are explicitly
+    exempt non-token files (`EXEMPT_STEMS`, e.g. `placeholder.bmp`) — only
+    game tokens belong in the manifest.
     """
     entries: dict[str, dict] = {}
     if not dirpath.exists():
@@ -63,7 +70,7 @@ def _scan_dir(dirpath: Path, valid_exts: tuple[str, ...]) -> dict[str, dict]:
         if ext not in valid_exts:
             continue
         stem = child.stem.lower()
-        if not TOKEN_ID_PATTERN.match(stem):
+        if stem in EXEMPT_STEMS or not TOKEN_ID_PATTERN.match(stem):
             continue
         entry: dict[str, object] = {
             "sha1": _sha1_file(child),
@@ -126,7 +133,8 @@ def prune_orphans(
 
     The canonical token set lives in Notion; anything here that isn't in that
     set is stale from a since-deleted token. `placeholder.bmp` is preserved
-    because its stem isn't a legal tokenId so it never matches the filter.
+    via the explicit `EXEMPT_STEMS` list (its stem WOULD match the tokenId
+    pattern), as is any file whose stem isn't a legal tokenId.
 
     Returns the list of (would-be) deleted paths.
     """
@@ -143,8 +151,8 @@ def prune_orphans(
             if ext not in exts:
                 continue
             stem = child.stem.lower()
-            if not TOKEN_ID_PATTERN.match(stem):
-                continue  # keep non-token files like placeholder.bmp
+            if stem in EXEMPT_STEMS or not TOKEN_ID_PATTERN.match(stem):
+                continue  # keep exempt/non-token files like placeholder.bmp
             if stem not in allowed:
                 removed.append(child)
                 if not dry_run:
