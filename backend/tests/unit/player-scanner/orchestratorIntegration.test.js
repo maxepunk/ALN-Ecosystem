@@ -148,8 +148,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
       expect(orchestrator.offlineQueue[0]).toMatchObject({
         tokenId: 'test_token',
         teamId: 'Team Alpha',
-        timestamp: expect.any(Number),
-        retryCount: 0
+        timestamp: expect.any(Number)
+        // retryCount removed with the dead retry scaffolding (F-PARITY-16)
       });
     });
 
