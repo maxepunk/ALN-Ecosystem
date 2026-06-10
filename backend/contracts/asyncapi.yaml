@@ -707,6 +707,24 @@ components:
                   currentMode: { type: string }
                   previousMode: { type: string }
                   pendingVideo: { type: [string, 'null'] }
+              deviceScannedTokens:
+                type: array
+                items:
+                  type: string
+                description: |
+                  Token IDs already scanned by THIS device in the current session
+                  (per-device view from session.getDeviceScannedTokens). Sent only
+                  on the GM connect/reconnect path (gmAuth.js) — NOT included in
+                  broadcast sync:full re-emissions, hence optional. Load-bearing
+                  for the GM Scanner's duplicate-detection restore (TQ-7) and
+                  offline-queue reconciliation (TQ-6). (F-GMS-12)
+                example: ["kaa001", "kaa002"]
+              reconnection:
+                type: boolean
+                description: |
+                  True when this sync:full follows a Socket.io connection recovery
+                  (socket.recovered). GM connect path only — optional elsewhere.
+                example: false
           timestamp:
             type: string
             format: date-time
