@@ -841,10 +841,11 @@ describe('CueEngineService', () => {
       // Call handleVideoProgress directly with 330 seconds
       cueEngineService.handleVideoProgress('vd-progress', 330);
 
+      // F-SHOW-20 (decision 2026-06-10): progress is 0-1, not 0-100
       expect(statusHandler).toHaveBeenCalledWith(expect.objectContaining({
         cueId: 'vd-progress',
         state: 'running',
-        progress: 50,  // 330/660 * 100 = 50
+        progress: 0.5,  // 330/660 = 0.5
         duration: 660,
       }));
     });
@@ -867,9 +868,10 @@ describe('CueEngineService', () => {
       // videoDuration is 0 (no progress event yet), maxAt is 100
       cueEngineService.handleVideoProgress('vd-maxat', 50);
 
+      // F-SHOW-20 (decision 2026-06-10): progress is 0-1, not 0-100
       expect(statusHandler).toHaveBeenCalledWith(expect.objectContaining({
         cueId: 'vd-maxat',
-        progress: 50,  // 50/100 * 100 = 50
+        progress: 0.5,  // 50/100 = 0.5
         duration: 100,  // Falls back to maxAt
       }));
     });
@@ -929,14 +931,17 @@ describe('CueEngineService', () => {
       await cueEngineService.fireCue('vd-no-elapsed-complete');
       completedHandler.mockClear();
 
-      // Set videoStarted and advance past maxAt
+      // E5: Set videoStarted + driveMode='video' and advance past maxAt
+      // checkCompletion skips video-driven cues (they complete via handleVideoLifecycle)
       const activeCue = cueEngineService.activeCues.get('vd-no-elapsed-complete');
       activeCue.videoStarted = true;
+      activeCue.driveMode = 'video';  // E5: explicitly in video drive mode
       activeCue.elapsed = 600;  // past maxAt of 541
       activeCue.firedEntries = new Set([0, 1]);
 
       // This should NOT complete the cue (video hasn't completed yet)
-      cueEngineService._checkCompoundCueCompletion('vd-no-elapsed-complete');
+      // _checkCompoundCueCompletion moved to _timeline.checkCompletion() post-refactor
+      cueEngineService._timeline.checkCompletion('vd-no-elapsed-complete');
 
       expect(completedHandler).not.toHaveBeenCalled();
       expect(cueEngineService.activeCues.has('vd-no-elapsed-complete')).toBe(true);
@@ -957,10 +962,14 @@ describe('CueEngineService', () => {
       await cueEngineService.fireCue('vd-video-complete');
       completedHandler.mockClear();
 
-      // Simulate video started
+      // E5: set driveMode='video' + videoStarted to put cue in video-driven state.
+      // Also mark both entries as fired (completedCommands represents the same state)
+      // so no post-video entries remain and the cue completes on video:completed.
       const activeCue = cueEngineService.activeCues.get('vd-video-complete');
       activeCue.videoStarted = true;
+      activeCue.driveMode = 'video';  // E5: required — lifecycle handler skips non-video-mode cues
       activeCue.completedCommands = [{ action: 'video:queue:add' }, { action: 'sound:play' }];
+      activeCue.firedEntries = new Set([0, 1]); // both entries already fired during video
 
       // Simulate video:completed lifecycle event
       cueEngineService.handleVideoLifecycleEvent('completed', {});
@@ -1370,23 +1379,31 @@ describe('CueEngineService', () => {
       expect(cueEngineService.activeCues.size).toBe(0);
     });
 
-    it('should clear conflictTimers and cancel timeouts on reset', () => {
+    it('should clear auto-discard timers on reset (F-SHOW-16)', () => {
+      // F-SHOW-16: conflictTimers replaced by _heldStore._autoDiscardTimers keyed by heldId.
+      // Test via behavior: a held cue's auto-discard timer must not fire after reset.
       jest.useFakeTimers();
 
-      // Manually add a conflict timer
-      const callback = jest.fn();
-      const timer = setTimeout(callback, 10000);
-      cueEngineService.conflictTimers.set('conflict-cue', timer);
+      const discardHandler = jest.fn();
+      cueEngineService.on('cue:discarded', discardHandler);
 
-      expect(cueEngineService.conflictTimers.size).toBe(1);
+      // Manually register a timer on the held store (simulates video_busy hold)
+      const fakeHeldId = 'held-99999';
+      cueEngineService._heldStore._autoDiscardTimers.set(
+        fakeHeldId,
+        setTimeout(() => discardHandler({ heldId: fakeHeldId }), 10000)
+      );
+
+      expect(cueEngineService._heldStore._autoDiscardTimers.size).toBe(1);
 
       cueEngineService.reset();
 
-      expect(cueEngineService.conflictTimers.size).toBe(0);
+      // After reset the timer map must be empty
+      expect(cueEngineService._heldStore._autoDiscardTimers.size).toBe(0);
 
-      // Advance time past the timer — callback should NOT fire (was cleared)
+      // Advance time — callback must NOT have fired
       jest.advanceTimersByTime(15000);
-      expect(callback).not.toHaveBeenCalled();
+      expect(discardHandler).not.toHaveBeenCalled();
 
       jest.useRealTimers();
     });
@@ -1718,8 +1735,9 @@ describe('CueEngineService', () => {
 
         const held = cueEngineService.getHeldCues();
         expect(held).toHaveLength(1);
+        // F-SHOW-16: unified HeldItemsStore — IDs are held-N (not held-cue-N)
         expect(held[0]).toEqual(expect.objectContaining({
-          id: expect.stringMatching(/^held-cue-/),
+          id: expect.stringMatching(/^held-/),
           type: 'cue',
           heldAt: expect.any(String),
           blockedBy: ['sound'],
