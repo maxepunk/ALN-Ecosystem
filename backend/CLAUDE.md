@@ -192,6 +192,8 @@ Note: Player scan broadcast is handled directly in `scanRoutes.js` (not via broa
 
 Player scans are tracked for Game Activity (token lifecycle visibility) but do not affect scoring.
 
+**Session-status gating (Decision A6, 2026-06-09):** Player scans are accepted whenever a session EXISTS, regardless of status (setup/active/paused) — INTENTIONAL, so GMs can flow-test scanners during the setup phase. Only GM transactions are active-only. Do not "fix" the missing status check in `scanRoutes.js`.
+
 **Key Files:** `src/websocket/broadcasts.js`
 
 **Layer 2: WebSocket (AsyncAPI)**

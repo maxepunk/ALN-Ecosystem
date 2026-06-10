@@ -34,7 +34,12 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Check for active session
+    // Check that a session EXISTS — deliberately NOT that it is active.
+    // Decision A6 (2026-06-09): player scans during setup/paused sessions
+    // are INTENTIONAL (GMs flow-test scanners during the setup phase).
+    // Any session status (setup/active/paused) accepts player scans; only
+    // GM transactions are active-only (enforced in transactionService).
+    // Ended sessions reject with 409 because endSession() nulls the session.
     const session = sessionService.getCurrentSession();
     if (!session) {
       logger.warn('Scan rejected: no active session');
