@@ -414,6 +414,20 @@ function setupBroadcastListeners(io, services) {
         logger.warn('Ducking stop failed on sound:completed', { error: err.message });
       });
     });
+    // F-SHOW-02: sounds ending via sound:stop (kill → exit code null) or a
+    // pw-play failure emit sound:stopped / sound:error, NOT sound:completed.
+    // Both must map to the 'completed' ducking lifecycle or music stays ducked
+    // forever after a stopped/failed sound.
+    addTrackedListener(soundService, 'sound:stopped', () => {
+      audioRoutingService.handleDuckingEvent('sound', 'completed').catch(err => {
+        logger.warn('Ducking stop failed on sound:stopped', { error: err.message });
+      });
+    });
+    addTrackedListener(soundService, 'sound:error', () => {
+      audioRoutingService.handleDuckingEvent('sound', 'completed').catch(err => {
+        logger.warn('Ducking stop failed on sound:error', { error: err.message });
+      });
+    });
   }
 
   // ============================================================
@@ -545,7 +559,7 @@ function setupBroadcastListeners(io, services) {
 
   // Game Clock → service:state { domain: 'gameclock' }
   if (gameClockService) {
-    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed']) {
+    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed', 'gameclock:stopped']) {
       addTrackedListener(gameClockService, event, () => pushServiceState('gameclock', gameClockService));
     }
   }

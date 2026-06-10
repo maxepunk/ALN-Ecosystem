@@ -54,6 +54,7 @@ jest.mock('../../../src/services/videoQueueService', () => ({
   skipCurrent: jest.fn(),
   pauseCurrent: jest.fn(),
   resumeCurrent: jest.fn(),
+  seekCurrent: jest.fn(),
   videoFileExists: jest.fn(),
 }));
 
@@ -173,9 +174,11 @@ describe('commandExecutor', () => {
     videoQueueService.addVideoByFilename.mockReturnValue(undefined);
     videoQueueService.reorderQueue.mockReturnValue(undefined);
     videoQueueService.clearQueue.mockReturnValue(undefined);
-    videoQueueService.skipCurrent.mockResolvedValue(undefined);
-    videoQueueService.pauseCurrent.mockResolvedValue(undefined);
-    videoQueueService.resumeCurrent.mockResolvedValue(undefined);
+    videoQueueService.skipCurrent.mockResolvedValue(true);
+    videoQueueService.pauseCurrent.mockResolvedValue(true);
+    videoQueueService.resumeCurrent.mockResolvedValue(true);
+    videoQueueService.clearQueue.mockReturnValue(false);
+    videoQueueService.seekCurrent.mockResolvedValue(true);
     videoQueueService.videoFileExists.mockReturnValue(true);
 
     displayControlService.setIdleLoop.mockResolvedValue({ success: true });
@@ -312,8 +315,8 @@ describe('commandExecutor', () => {
 
     it('should route video:stop through videoQueueService (skip then clear)', async () => {
       const callOrder = [];
-      videoQueueService.skipCurrent.mockImplementation(() => { callOrder.push('skip'); return Promise.resolve(); });
-      videoQueueService.clearQueue.mockImplementation(() => { callOrder.push('clear'); });
+      videoQueueService.skipCurrent.mockImplementation(() => { callOrder.push('skip'); return Promise.resolve(true); });
+      videoQueueService.clearQueue.mockImplementation(() => { callOrder.push('clear'); return false; });
 
       const result = await executeCommand({
         action: 'video:stop',
@@ -346,6 +349,85 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain('test.mp4');
+    });
+
+    // F-GMCMD-08: transports returned 'success' for no-ops — the GM saw
+    // nothing happen after an apparently accepted command
+    describe('honest no-op acks (F-GMCMD-08)', () => {
+      it('video:play fails when nothing is paused/playing', async () => {
+        videoQueueService.resumeCurrent.mockResolvedValue(false);
+        const result = await executeCommand({ action: 'video:play', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:pause fails when nothing is playing', async () => {
+        videoQueueService.pauseCurrent.mockResolvedValue(false);
+        const result = await executeCommand({ action: 'video:pause', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:skip fails when nothing is playing', async () => {
+        videoQueueService.skipCurrent.mockResolvedValue(false);
+        const result = await executeCommand({ action: 'video:skip', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:stop fails when nothing was playing AND the queue was empty', async () => {
+        videoQueueService.skipCurrent.mockResolvedValue(false);
+        videoQueueService.clearQueue.mockReturnValue(false);
+        const result = await executeCommand({ action: 'video:stop', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:stop succeeds when only pending items were cleared', async () => {
+        videoQueueService.skipCurrent.mockResolvedValue(false);
+        videoQueueService.clearQueue.mockReturnValue(true);
+        const result = await executeCommand({ action: 'video:stop', payload: {}, source: 'gm' });
+        expect(result.success).toBe(true);
+      });
+    });
+
+    // C4: video:seek added contract-first; payload {position} in seconds
+    describe('video:seek (C4, F-GMCMD-21)', () => {
+      it('routes through videoQueueService.seekCurrent with position', async () => {
+        const result = await executeCommand({
+          action: 'video:seek',
+          payload: { position: 42 },
+          source: 'gm'
+        });
+        expect(videoQueueService.seekCurrent).toHaveBeenCalledWith(42);
+        expect(result.success).toBe(true);
+        expect(result.message).toMatch(/42/);
+      });
+
+      it('fails honestly when nothing is playing', async () => {
+        videoQueueService.seekCurrent.mockResolvedValue(false);
+        const result = await executeCommand({
+          action: 'video:seek',
+          payload: { position: 10 },
+          source: 'gm'
+        });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('rejects a missing or invalid position', async () => {
+        for (const payload of [{}, { position: -5 }, { position: 'abc' }]) {
+          const result = await executeCommand({ action: 'video:seek', payload, source: 'gm' });
+          expect(result.success).toBe(false);
+          expect(result.message).toMatch(/position/i);
+        }
+        expect(videoQueueService.seekCurrent).not.toHaveBeenCalled();
+      });
+
+      it('is gated on VLC health (SERVICE_DEPENDENCIES)', () => {
+        expect(SERVICE_DEPENDENCIES['video:seek']).toBe('vlc');
+        expect(SERVICE_DEPENDENCIES['music:seek']).toBe('music');
+      });
     });
   });
 

@@ -366,6 +366,14 @@ class VideoQueueService extends EventEmitter {
         // Video is playing/paused, reset grace counter
         nonPlayingChecks = 0;
 
+        // While paused, the position is constant — emitting per-second
+        // video:progress would keep feeding the cue engine and the GM with
+        // no-op updates (F-SHOW-21). The monitor stays alive so a stop is
+        // still detected.
+        if (status.state === 'paused') {
+          return;
+        }
+
         // Emit progress updates
         if (status.position !== undefined && status.length > 0) {
           const progress = Math.round(status.position * 100);
@@ -377,8 +385,15 @@ class VideoQueueService extends EventEmitter {
           });
         }
 
-        // Check if near end
-        if (status.position >= 0.95) {
+        // Check if near end — time-based margin (F-SHOW-04, decision E2).
+        // The old ratio check (position >= 0.95) truncated the final ~5% of
+        // every video (~9s of a 3-minute video). Complete only within the
+        // last second; the stopped-state grace path above catches natural
+        // ends. Ratio fallback retained for videos with unknown length.
+        const nearEnd = status.length > 0
+          ? status.position * status.length >= status.length - 1
+          : status.position >= 0.95;
+        if (nearEnd) {
           clearInterval(this.progressTimer);
           this.progressTimer = null;
           this.completePlayback(queueItem);
@@ -407,6 +422,12 @@ class VideoQueueService extends EventEmitter {
 
     // Fallback timeout in case monitoring fails.
     // Use 30 min ceiling for unknown durations (standalone videos where VLC hasn't reported length).
+    // Clear any prior fallback first (F-SHOW-21): resumeCurrent restarts
+    // monitoring and would otherwise leak the previous timer.
+    if (this.playbackTimer) {
+      clearTimeout(this.playbackTimer);
+      this.playbackTimer = null;
+    }
     const fallbackDuration = expectedDuration > 0 ? expectedDuration + 5 : 1800;
     this.playbackTimer = setTimeout(() => {
       clearInterval(this.progressTimer);
@@ -453,7 +474,8 @@ class VideoQueueService extends EventEmitter {
    * @returns {Promise<boolean>} True if skipped, false if nothing playing
    */
   async skipCurrent() {
-    if (!this.currentItem || !this.currentItem.isPlaying()) {
+    if (!this.currentItem
+        || !(this.currentItem.isPlaying() || this.currentItem.isPaused())) {
       return false;
     }
 
@@ -494,6 +516,12 @@ class VideoQueueService extends EventEmitter {
       await vlcService.pause();
     }
 
+    // Freeze the wall-clock-derived position at pause time (F-GMCMD-01):
+    // getState() reports this instead of a drifting Date.now() computation.
+    const elapsed = (Date.now() - new Date(this.currentItem.playbackStart).getTime()) / 1000;
+    this.currentItem.pausedPosition = Math.max(0, elapsed);
+    this.currentItem.pausePlayback();
+
     if (this.playbackTimer) {
       clearTimeout(this.playbackTimer);
       this.playbackTimer = null;
@@ -504,13 +532,23 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
-   * Resume current video
+   * Resume current video.
+   * Requires a PAUSED video (F-GMCMD-01/F-SHOW-21): resuming a playing video
+   * is a no-op — it must not restart monitoring (timer leak) or re-emit
+   * video:resumed (which re-fires ducking 'started').
    * @returns {Promise<boolean>} True if resumed, false if nothing to resume
    */
   async resumeCurrent() {
-    if (!this.currentItem || !this.currentItem.isPlaying()) {
+    if (!this.currentItem || !this.currentItem.isPaused()) {
       return false;
     }
+
+    // Rebase the wall-clock playbackStart from the frozen position so derived
+    // positions continue from where the video paused (no pause-time drift)
+    const pausedPosition = this.currentItem.pausedPosition || 0;
+    this.currentItem.playbackStart = new Date(Date.now() - pausedPosition * 1000).toISOString();
+    this.currentItem.resumePlayback();
+    delete this.currentItem.pausedPosition;
 
     if (config.features.videoPlayback) {
       await vlcService.resume();
@@ -521,9 +559,8 @@ class VideoQueueService extends EventEmitter {
       this.monitorVlcPlayback(this.currentItem, remaining);
     } else {
       // Test mode - calculate remaining time
-      const elapsed = (Date.now() - new Date(this.currentItem.playbackStart).getTime()) / 1000;
       const duration = this.getVideoDuration(this.currentItem.tokenId);
-      const remaining = Math.max(0, duration - elapsed);
+      const remaining = Math.max(0, duration - pausedPosition);
 
       // Set new timer for remaining time
       this.playbackTimer = setTimeout(() => {
@@ -532,6 +569,32 @@ class VideoQueueService extends EventEmitter {
     }
 
     this.emit('video:resumed', this.currentItem);
+    return true;
+  }
+
+  /**
+   * Seek the current video to an absolute position (decision C4, F-GMCMD-21).
+   * Rebases the wall-clock playbackStart so getState()'s derived position
+   * reflects the seek target.
+   * @param {number} position - Absolute position in seconds
+   * @returns {Promise<boolean>} True if seeked, false if nothing to seek
+   */
+  async seekCurrent(position) {
+    const current = this.currentItem;
+    if (!current || !(current.isPlaying() || current.isPaused())) {
+      return false;
+    }
+
+    if (config.features.videoPlayback) {
+      await vlcService.seek(position);
+    }
+
+    // Keep wall-clock-derived position reporting consistent with the seek;
+    // while paused, the frozen position is what getState() reports
+    current.playbackStart = new Date(Date.now() - position * 1000).toISOString();
+    if (current.isPaused()) {
+      current.pausedPosition = position;
+    }
     return true;
   }
 
@@ -572,6 +635,8 @@ class VideoQueueService extends EventEmitter {
     if (current) {
       if (current.isPlaying()) {
         status = 'playing';
+      } else if (current.isPaused()) {
+        status = 'paused';
       } else if (current.isPending()) {
         status = 'loading';
       } else if (current.hasFailed()) {
@@ -581,7 +646,12 @@ class VideoQueueService extends EventEmitter {
         tokenId: current.tokenId,
         filename: current.videoPath,
       };
-      if (current.isPlaying() && current.duration > 0) {
+      if (current.isPaused() && current.duration > 0) {
+        // FROZEN position captured at pause time (F-GMCMD-01) — a wall-clock
+        // computation would drift during the pause and jump on resume
+        currentVideo.position = Math.min((current.pausedPosition || 0) / current.duration, 1);
+        currentVideo.duration = current.duration;
+      } else if (current.isPlaying() && current.duration > 0) {
         const elapsed = (Date.now() - new Date(current.playbackStart).getTime()) / 1000;
         currentVideo.position = Math.min(elapsed / current.duration, 1);
         currentVideo.duration = current.duration;
@@ -594,6 +664,9 @@ class VideoQueueService extends EventEmitter {
       queue: pendingItems.map(item => ({
         tokenId: item.tokenId,
         filename: item.videoPath,
+        // F-GMCMD-18: the GM renderer shows per-entry duration — omitting it
+        // made every queue row read "0s"
+        duration: item.duration || 0,
       })),
       queueLength: pendingItems.length,
       connected: vlcState.connected,
@@ -748,6 +821,7 @@ class VideoQueueService extends EventEmitter {
 
   /**
    * Clear entire queue
+   * @returns {boolean} True if anything was cleared (playing item or pending entries)
    */
   clearQueue() {
     // Stop current playback
@@ -780,6 +854,8 @@ class VideoQueueService extends EventEmitter {
     if (wasPlaying || hadPending) {
       this.emit('video:idle');
     }
+
+    return wasPlaying || hadPending;
   }
 
   /**
@@ -935,15 +1011,6 @@ class VideoQueueService extends EventEmitter {
     const elapsed = (Date.now() - new Date(this.currentItem.playbackStart).getTime()) / 1000;
     const duration = this.getVideoDuration(this.currentItem.tokenId);
     return Math.max(0, Math.ceil(duration - elapsed));
-  }
-
-  /**
-   * Update queue from session
-   * @param {Array} videoQueue - Video queue from session
-   */
-  updateFromSession(videoQueue) {
-    this.queue = videoQueue.map(item => VideoQueueItem.fromJSON(item));
-    this.currentItem = this.queue.find(item => item.isPlaying()) || null;
   }
 
   /**

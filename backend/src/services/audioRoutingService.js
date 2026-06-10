@@ -69,6 +69,10 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [];
     this._activeDuckingSources = {};  // { targetStream: ['video', 'sound'] }
     this._preDuckVolumes = {};        // { targetStream: originalVolume }
+    // Per-target promise chains serializing duck/restore pactl writes
+    // (F-SHOW-06: unordered fire-and-forget writes let a fast restore land
+    // before a slow apply, leaving music stuck at duck volume)
+    this._duckingWriteQueues = {};    // { targetStream: Promise }
 
     // Sink-input registry: populated reactively from pactl subscribe events
     // Maps sink-input id (string) → { index, appName }
@@ -122,7 +126,10 @@ class AudioRoutingService extends EventEmitter {
       logger.warn('Failed to pre-populate sink cache', { error: err.message });
     });
 
-    registry.report('audio', 'healthy', 'Audio routing initialized');
+    // Report health via a real probe (F-SHOW-23) — an unconditional 'healthy'
+    // here let audio commands pass the SERVICE_DEPENDENCIES gate and fail
+    // downstream for up to 15s (until revalidation) when PipeWire was down.
+    await this.checkHealth();
   }
 
   /**
@@ -167,6 +174,7 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [];
     this._activeDuckingSources = {};
     this._preDuckVolumes = {};
+    this._duckingWriteQueues = {};
 
     // Clear sink-input registry
     this._sinkInputRegistry.clear();
@@ -510,6 +518,15 @@ class AudioRoutingService extends EventEmitter {
     const clampedVolume = await this._setStreamVolumeLive(stream, volume);
 
     this._routingData.volumes[stream] = clampedVolume;
+
+    // Decision E3: a GM volume adjustment DURING an active duck refreshes the
+    // captured restore target — the capture tracks current operator intent,
+    // so the eventual restore lands on the GM's latest value, not a stale one.
+    if (Array.isArray(this._activeDuckingSources[stream])
+        && this._activeDuckingSources[stream].length > 0) {
+      this._preDuckVolumes[stream] = clampedVolume;
+    }
+
     await persistenceService.save(PERSISTENCE_KEY, this._routingData);
   }
 
@@ -607,6 +624,7 @@ class AudioRoutingService extends EventEmitter {
     this._duckingRules = [...rules];
     this._activeDuckingSources = {};
     this._preDuckVolumes = {};
+    this._duckingWriteQueues = {};
 
     logger.info('Ducking rules loaded', { ruleCount: rules.length });
   }
@@ -640,7 +658,7 @@ class AudioRoutingService extends EventEmitter {
         break;
       case 'completed':
       case 'paused':
-        this._handleDuckingStop(source, matchingRules);
+        await this._handleDuckingStop(source, matchingRules);
         break;
       default:
         logger.warn('Unknown ducking lifecycle event', { source, lifecycle });
@@ -663,6 +681,7 @@ class AudioRoutingService extends EventEmitter {
   async _handleDuckingStart(source, matchingRules) {
     // Group rules by target stream
     const targetStreams = new Set(matchingRules.map(r => r.duck));
+    const writes = [];
 
     for (const target of targetStreams) {
       // Initialize active sources array for this target if needed
@@ -691,8 +710,9 @@ class AudioRoutingService extends EventEmitter {
       // Calculate the lowest "to" value among all active sources for this target
       const effectiveVolume = this._calculateEffectiveVolume(target);
 
-      // Apply the ducked volume
-      this._setVolumeForDucking(target, effectiveVolume, 'apply');
+      // Apply the ducked volume (queued per target — awaited below so callers
+      // observing the returned promise see the write completed)
+      writes.push(this._setVolumeForDucking(target, effectiveVolume, 'apply'));
 
       // Emit ducking:changed event
       this.emit('ducking:changed', {
@@ -700,8 +720,7 @@ class AudioRoutingService extends EventEmitter {
         ducked: true,
         volume: effectiveVolume,
         activeSources: [...this._activeDuckingSources[target]],
-        restoredVolume: this._preDuckVolumes[target] !== undefined
-          ? this._preDuckVolumes[target] : 100,
+        restoredVolume: this._getRestoreVolume(target),
       });
 
       logger.info('Ducking applied', {
@@ -709,6 +728,9 @@ class AudioRoutingService extends EventEmitter {
         activeSources: this._activeDuckingSources[target],
       });
     }
+
+    // Errors are handled inside _setVolumeForDucking — this never rejects
+    await Promise.all(writes);
   }
 
   /**
@@ -721,9 +743,15 @@ class AudioRoutingService extends EventEmitter {
    */
   _handleDuckingStop(source, matchingRules) {
     const targetStreams = new Set(matchingRules.map(r => r.duck));
+    const writes = [];
 
     for (const target of targetStreams) {
-      if (!this._activeDuckingSources[target]) {
+      // Guard BOTH missing and empty-but-truthy arrays (F-SHOW-05): a prior
+      // restore (e.g., pause) leaves [], and a redundant stop (pause→skip,
+      // duplicate completion) must be a no-op — not a forced restore that
+      // clobbers the operator's volume.
+      if (!this._activeDuckingSources[target]
+          || this._activeDuckingSources[target].length === 0) {
         continue; // No active ducking for this target — check next
       }
 
@@ -732,11 +760,11 @@ class AudioRoutingService extends EventEmitter {
         .filter(s => s !== source);
 
       if (this._activeDuckingSources[target].length === 0) {
-        // No more active sources — restore to pre-duck volume
-        const restoreVolume = this._preDuckVolumes[target] !== undefined
-          ? this._preDuckVolumes[target] : 100;
+        // No more active sources — restore to pre-duck volume (decision E3:
+        // captured value first, persisted user volume only as fallback)
+        const restoreVolume = this._getRestoreVolume(target);
 
-        this._setVolumeForDucking(target, restoreVolume, 'restore');
+        writes.push(this._setVolumeForDucking(target, restoreVolume, 'restore'));
 
         // Emit ducking:changed — no longer ducked
         this.emit('ducking:changed', {
@@ -747,15 +775,16 @@ class AudioRoutingService extends EventEmitter {
           restoredVolume: restoreVolume,
         });
 
-        // Clean up pre-duck volume
+        // Clean up duck state for this target
         delete this._preDuckVolumes[target];
+        delete this._activeDuckingSources[target];
 
         logger.info('Ducking restored', { source, target, volume: restoreVolume });
       } else {
         // Other sources still active — re-evaluate to new lowest
         const effectiveVolume = this._calculateEffectiveVolume(target);
 
-        this._setVolumeForDucking(target, effectiveVolume, 're-evaluate');
+        writes.push(this._setVolumeForDucking(target, effectiveVolume, 're-evaluate'));
 
         // Emit ducking:changed — still ducked but at different level
         this.emit('ducking:changed', {
@@ -763,8 +792,7 @@ class AudioRoutingService extends EventEmitter {
           ducked: true,
           volume: effectiveVolume,
           activeSources: [...this._activeDuckingSources[target]],
-          restoredVolume: this._preDuckVolumes[target] !== undefined
-            ? this._preDuckVolumes[target] : 100,
+          restoredVolume: this._getRestoreVolume(target),
         });
 
         logger.info('Ducking re-evaluated', {
@@ -773,6 +801,9 @@ class AudioRoutingService extends EventEmitter {
         });
       }
     }
+
+    // Errors are handled inside _setVolumeForDucking — this never rejects
+    return Promise.all(writes);
   }
 
   /**
@@ -813,7 +844,12 @@ class AudioRoutingService extends EventEmitter {
    * @private
    */
   _setVolumeForDucking(target, volume, context) {
-    this._setStreamVolumeLive(target, volume).catch(err => {
+    // Serialize per target (F-SHOW-06): each duck/restore write waits for the
+    // previous one to finish. A fast restore (registry fast-path) must not
+    // land before a slow apply (pactl list round-trip) — that inversion left
+    // music stuck at duck volume while state said restored.
+    const prev = this._duckingWriteQueues[target] || Promise.resolve();
+    const next = prev.then(() => this._setStreamVolumeLive(target, volume)).catch(err => {
       if (err.message.includes('No active sink-input')) {
         logger.warn(`Ducking ${context} skipped: sink-input not available`, { target, volume });
       } else {
@@ -821,11 +857,40 @@ class AudioRoutingService extends EventEmitter {
         this.emit('ducking:failed', { target, volume, context, error: err.message });
       }
     });
+    this._duckingWriteQueues[target] = next;
+    return next;
+  }
+
+  /**
+   * Resolve the volume to restore a target stream to when ducking ends.
+   * Decision E3 (owner override): the CAPTURED pre-duck volume is the restore
+   * target (closest to live operator intent); the persisted user volume is the
+   * fallback ONLY when capture is missing. 100 is the last resort when neither
+   * exists — never a substitute for known state.
+   *
+   * @param {string} target - Target stream name
+   * @returns {number} Restore volume (0-100)
+   * @private
+   */
+  _getRestoreVolume(target) {
+    if (this._preDuckVolumes[target] !== undefined) {
+      return this._preDuckVolumes[target];
+    }
+    const userVolume = this._routingData?.volumes?.[target];
+    if (userVolume !== undefined) {
+      return userVolume;
+    }
+    return 100;
   }
 
   /**
    * Capture the pre-duck volume for a target stream asynchronously.
    * Only stores if not already captured (prevents overwriting during active ducking).
+   *
+   * When the live volume cannot be read (sink-input not up yet, pactl failure),
+   * falls back to the persisted user volume (F-SHOW-27 / decision E3) — never
+   * hardcoded 100. With no persisted volume either, nothing is stored and
+   * _getRestoreVolume resolves the fallback at restore time.
    *
    * @param {string} target - Target stream name
    * @private
@@ -834,90 +899,24 @@ class AudioRoutingService extends EventEmitter {
     return this.getStreamVolume(target)
       .then(volume => {
         // Only store if still not set (race condition guard)
-        if (this._preDuckVolumes[target] === undefined) {
-          this._preDuckVolumes[target] = volume !== null ? volume : 100;
+        if (this._preDuckVolumes[target] !== undefined) {
+          return;
+        }
+        if (volume !== null) {
+          this._preDuckVolumes[target] = volume;
+        } else if (this._routingData?.volumes?.[target] !== undefined) {
+          this._preDuckVolumes[target] = this._routingData.volumes[target];
         }
       })
       .catch(err => {
-        // Default to 100 if we can't read current volume
-        if (this._preDuckVolumes[target] === undefined) {
-          this._preDuckVolumes[target] = 100;
+        if (this._preDuckVolumes[target] === undefined
+            && this._routingData?.volumes?.[target] !== undefined) {
+          this._preDuckVolumes[target] = this._routingData.volumes[target];
         }
-        logger.warn('Failed to capture pre-duck volume, defaulting to 100', {
+        logger.warn('Failed to capture pre-duck volume, falling back to persisted user volume', {
           target, error: err.message
         });
       });
-  }
-
-  // ── Routing with Fallback ──
-
-  /**
-   * Apply routing for a stream with fallback support.
-   * Tries primary sink from route config, falls back to fallback sink if specified.
-   * @param {string} stream - Stream name
-   * @returns {Promise<void>}
-   */
-  async applyRoutingWithFallback(stream) {
-    this._validateStream(stream);
-
-    const route = this.getStreamRoute(stream);
-    const appName = STREAM_APP_NAMES[stream];
-
-    // Find the sink-input for this stream
-    const sinkInput = await this.findSinkInput(appName);
-    if (!sinkInput || !sinkInput.index) {
-      logger.warn('No active sink-input found for fallback routing', { stream });
-      return;
-    }
-
-    // Get route config (may have fallback field)
-    const routeConfig = this._routingData.routes[stream];
-    const primarySink = routeConfig?.sink || route;
-    const fallbackSink = routeConfig?.fallback;
-
-    // Try primary sink first
-    try {
-      const availableSinks = await this.getAvailableSinks();
-      const targetSink = this._resolveTargetSink(primarySink, availableSinks);
-
-      if (!targetSink) {
-        throw new Error(`Primary sink '${primarySink}' not available`);
-      }
-
-      await this.moveStreamToSink(sinkInput.index, targetSink.name);
-      logger.info('Applied routing with primary sink', { stream, sink: targetSink.name });
-      return;
-    } catch (primaryErr) {
-      logger.warn('Primary sink failed, trying fallback', {
-        stream,
-        primarySink,
-        error: primaryErr.message,
-      });
-
-      // Try fallback if specified
-      if (!fallbackSink) {
-        throw new Error(`Primary sink failed and no fallback configured: ${primaryErr.message}`);
-      }
-
-      const availableSinks = await this.getAvailableSinks();
-      const fallbackTarget = this._resolveTargetSink(fallbackSink, availableSinks);
-
-      if (!fallbackTarget) {
-        throw new Error(`Fallback sink '${fallbackSink}' not available`);
-      }
-
-      await this.moveStreamToSink(sinkInput.index, fallbackTarget.name);
-      logger.info('Applied routing with fallback sink', {
-        stream,
-        fallbackSink: fallbackTarget.name,
-      });
-
-      this.emit('routing:fallback', {
-        stream,
-        requestedSink: primarySink,
-        actualSink: fallbackTarget.name,
-      });
-    }
   }
 
   // ── Sink Monitor ──

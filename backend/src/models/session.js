@@ -271,6 +271,7 @@ class Session {
       status: this.status,
       gameStartTime: this.gameStartTime || null,
       gameClock: this.gameClock || null,
+      cueEngine: this.cueEngine || null,
       teams: this.scores.map(score => score.teamId),
       transactions: this.transactions,
       playerScans: this.playerScans,

@@ -57,6 +57,15 @@ class VideoQueueItem {
   }
 
   /**
+   * Check if item is paused (F-GMCMD-01: pause was previously
+   * unrepresentable — the state machine had no paused state)
+   * @returns {boolean}
+   */
+  isPaused() {
+    return this.status === 'paused';
+  }
+
+  /**
    * Check if item is completed
    * @returns {boolean}
    */
@@ -85,10 +94,30 @@ class VideoQueueItem {
   }
 
   /**
-   * Complete the video playback
+   * Pause the video playback
+   */
+  pausePlayback() {
+    if (this.status !== 'playing') {
+      throw new Error(`Cannot pause playback for item with status ${this.status}`);
+    }
+    this.status = 'paused';
+  }
+
+  /**
+   * Resume the video playback
+   */
+  resumePlayback() {
+    if (this.status !== 'paused') {
+      throw new Error(`Cannot resume playback for item with status ${this.status}`);
+    }
+    this.status = 'playing';
+  }
+
+  /**
+   * Complete the video playback (allowed from paused: skip-while-paused)
    */
   completePlayback() {
-    if (this.status !== 'playing') {
+    if (this.status !== 'playing' && this.status !== 'paused') {
       throw new Error(`Cannot complete playback for item with status ${this.status}`);
     }
     this.status = 'completed';
@@ -100,7 +129,7 @@ class VideoQueueItem {
    * @param {string} error - Error message
    */
   failPlayback(error) {
-    const wasPlaying = this.status === 'playing';
+    const wasPlaying = this.status === 'playing' || this.status === 'paused';
     this.status = 'failed';
     this.error = error;
     if (wasPlaying && !this.playbackEnd) {

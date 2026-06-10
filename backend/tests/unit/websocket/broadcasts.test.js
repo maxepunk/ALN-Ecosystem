@@ -602,6 +602,21 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
     });
+
+    // F-SHOW-02: sounds ending via sound:stop or pw-play failure emit
+    // sound:stopped / sound:error — without these wires, music stays
+    // ducked forever after a stopped/failed sound.
+    it('should invoke handleDuckingEvent(completed) on sound:stopped', () => {
+      mockSoundService.emit('sound:stopped', { file: 'test.wav', reason: 'killed' });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
+    });
+
+    it('should invoke handleDuckingEvent(completed) on sound:error', () => {
+      mockSoundService.emit('sound:error', { file: 'test.wav', error: 'spawn failed' });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
+    });
   });
 
   describe('Display mode:changed listener', () => {
