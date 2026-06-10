@@ -53,6 +53,14 @@ class SoundService extends EventEmitter {
   play({ file, target, volume }) {
     const filePath = path.resolve(this.audioDir, file);
 
+    // Path containment (F-SHOW-18): same guard as fileExists() — supports
+    // subdirectories but rejects traversal out of public/audio
+    if (!filePath.startsWith(this.audioDir + path.sep)) {
+      logger.error(`[Sound] Path escapes audio directory: ${file}`);
+      this.emit('sound:error', { file, error: `Path escapes audio directory: ${file}` });
+      return null;
+    }
+
     if (!fs.existsSync(filePath)) {
       logger.error(`[Sound] File not found: ${filePath}`);
       this.emit('sound:error', { file, error: `File not found: ${file}` });
