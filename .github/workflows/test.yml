@@ -111,6 +111,10 @@ jobs:
         working-directory: config-tool
         run: npm ci && npm test
 
+      - name: Config Tool lint
+        working-directory: config-tool
+        run: npm run lint
+
   esp32-tests:
     name: ESP32 Native Tests
     runs-on: ubuntu-latest
