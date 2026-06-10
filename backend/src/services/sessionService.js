@@ -191,12 +191,16 @@ class SessionService extends EventEmitter {
           return;
         }
 
-        const { transactionId, tokenId, teamId, updatedTeamScore } = payload;
+        const { transactionId, tokenId, teamId, updatedTeamScore, allTeamScores } = payload;
 
         try {
           // Transaction already removed from session by deleteTransaction()
-          // Update team score if provided
-          if (updatedTeamScore) {
+          // The rebuild recalculates EVERY team, so sync all of them —
+          // persisting only the affected team left session.scores diverged
+          // from the in-memory map for the others (F-BCORE-03)
+          if (Array.isArray(allTeamScores) && allTeamScores.length > 0) {
+            allTeamScores.forEach(score => this.upsertTeamScore(score));
+          } else if (updatedTeamScore) {
             this.upsertTeamScore(updatedTeamScore);
           }
 

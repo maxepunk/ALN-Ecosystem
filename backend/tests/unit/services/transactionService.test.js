@@ -1787,6 +1787,77 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(rescan.transaction.id).not.toBe(transactionId); // New transaction ID
     });
 
+    it('should preserve ALL teams\' admin adjustments and keep session.scores in sync on delete (F-BCORE-03)', async () => {
+      const session = await sessionService.createSession({
+        name: 'Adjustment Preservation Session',
+        teams: ['Team Alpha', 'Team Beta']
+      });
+      await sessionService.startGame();
+
+      const Token = require('../../../src/models/token');
+      const makeToken = (id, value) => new Token({
+        id,
+        name: `Token ${id}`,
+        value,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      });
+      transactionService.tokens.set('adj001', makeToken('adj001', 300000));
+      transactionService.tokens.set('adj002', makeToken('adj002', 75000));
+
+      const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+      // Team Alpha scans + receives an admin adjustment
+      await transactionService.processScan({
+        tokenId: 'adj001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_ADJ',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      // Team Beta scans
+      const betaScan = await transactionService.processScan({
+        tokenId: 'adj002',
+        teamId: 'Team Beta',
+        deviceId: 'GM_ADJ',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.adjustTeamScore('Team Alpha', 123456, 'test bonus', 'GM_ADJ');
+      await wait();
+
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(423456);
+      expect(transactionService.teamScores.get('Team Alpha').adminAdjustments).toHaveLength(1);
+
+      // Delete TEAM BETA's transaction — must not touch Team Alpha's adjustment
+      transactionService.deleteTransaction(betaScan.transaction.id, session);
+      await wait();
+
+      // In-memory: Team Alpha keeps its adjustment (score AND audit trail)
+      const alpha = transactionService.teamScores.get('Team Alpha');
+      expect(alpha.currentScore).toBe(423456);
+      expect(alpha.adminAdjustments).toHaveLength(1);
+      expect(alpha.adminAdjustments[0].delta).toBe(123456);
+
+      // Team Beta rebuilt to zero (its only transaction was deleted)
+      expect(transactionService.teamScores.get('Team Beta').currentScore).toBe(0);
+
+      // Persisted session.scores must match the in-memory map for EVERY team
+      // (pre-fix: only the affected team was upserted — split-brain)
+      for (const [teamId, teamScore] of transactionService.teamScores) {
+        const sessionScore = session.scores.find(s => s.teamId === teamId);
+        expect(sessionScore).toBeDefined();
+        expect(sessionScore.currentScore).toBe(teamScore.currentScore);
+        expect(sessionScore.baseScore).toBe(teamScore.baseScore);
+        expect(sessionScore.adminAdjustments).toEqual(teamScore.adminAdjustments);
+      }
+    });
+
     it('should recalculate team scores after deletion', async () => {
       // Setup: Create session with multiple transactions
       const session = await sessionService.createSession({
