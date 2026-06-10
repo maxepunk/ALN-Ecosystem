@@ -689,6 +689,174 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('scores:reset listener — full restart semantics (F-BCORE-02 / F-BCORE-04, decision A3)', () => {
+    const transactionService = require('../../../src/services/transactionService');
+    const persistenceService = require('../../../src/services/persistenceService');
+    const Session = require('../../../src/models/session');
+    const Token = require('../../../src/models/token');
+
+    const makeToken = (id, value) => new Token({
+      id,
+      name: `Token ${id}`,
+      value,
+      memoryType: 'Technical',
+      mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+      metadata: { rating: 3 }
+    });
+
+    const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+    beforeEach(async () => {
+      await resetAllServices();
+      await sessionService.createSession({
+        name: 'Reset Semantics Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+      transactionService.tokens.set('rst001', makeToken('rst001', 450000));
+      transactionService.tokens.set('rst002', makeToken('rst002', 150000));
+    });
+
+    afterEach(async () => {
+      if (sessionService.currentSession) {
+        await sessionService.endSession();
+      }
+      sessionService.removeAllListeners();
+      transactionService.removeAllListeners();
+    });
+
+    it('zeroes real TeamScore fields and clears transactions + dedup state in session', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      const session = sessionService.getCurrentSession();
+      expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(450000);
+
+      transactionService.resetScores();
+      await wait();
+
+      const score = session.scores.find(s => s.teamId === 'Team Alpha');
+      // Real TeamScore fields zeroed (not the nonexistent transactionCount/lastUpdated)
+      expect(score.currentScore).toBe(0);
+      expect(score.baseScore).toBe(0);
+      expect(score.bonusPoints).toBe(0);
+      expect(score.tokensScanned).toBe(0);
+      expect(score.completedGroups).toEqual([]);
+      expect(score.transactionCount).toBeUndefined();
+      expect(score.lastUpdated).toBeUndefined();
+
+      // Decision A3: full restart — history and dedup state cleared
+      expect(session.transactions).toEqual([]);
+      expect(session.metadata.scannedTokensByDevice).toEqual({});
+      expect(session.metadata.totalScans).toBe(0);
+      expect(session.metadata.uniqueTokensScanned).toEqual([]);
+    });
+
+    it('does not resurrect pre-reset scores after an orchestrator restart', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.resetScores();
+      await wait();
+
+      // Simulate restart: restore session + team scores from persisted state
+      const persisted = await persistenceService.load('session:current');
+      expect(persisted).toBeTruthy();
+      const restored = Session.fromJSON(persisted);
+      sessionService.currentSession = restored;
+      transactionService.teamScores.clear();
+      transactionService.restoreFromSession(restored);
+
+      // First post-restart scan must NOT include the pre-reset 450000
+      const result = await transactionService.processScan({
+        tokenId: 'rst002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
+      expect(teamScore.currentScore).toBe(150000);
+      expect(teamScore.baseScore).toBe(150000);
+    });
+
+    it('makes previously claimed tokens claimable again (full restart)', async () => {
+      const scanRequest = {
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      const first = await transactionService.processScan(scanRequest);
+      expect(first.status).toBe('accepted');
+      await wait();
+
+      const dup = await transactionService.processScan(scanRequest);
+      expect(dup.status).toBe('duplicate');
+
+      transactionService.resetScores();
+      await wait();
+
+      const rescan = await transactionService.processScan(scanRequest);
+      expect(rescan.status).toBe('accepted');
+    });
+
+    it('transaction:delete after reset cannot resurrect pre-reset scores (F-BCORE-04)', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.resetScores();
+      await wait();
+
+      const postReset = await transactionService.processScan({
+        tokenId: 'rst002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      const session = sessionService.getCurrentSession();
+      transactionService.deleteTransaction(postReset.transaction.id, session);
+      await wait();
+
+      // Rebuild must see ONLY post-reset history (now empty) — not the
+      // pre-reset rst001 transaction (ghost scoring)
+      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
+      expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(0);
+    });
+  });
+
   describe('Team Sync Infrastructure (Slice 1)', () => {
     const transactionService = require('../../../src/services/transactionService');
 

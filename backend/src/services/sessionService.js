@@ -33,7 +33,8 @@ class SessionService extends EventEmitter {
     // NOTE (Slice 6): score:updated listener removed - no longer emitted by transactionService
     // Score syncing now handled by setupPersistenceListeners() via transaction:accepted and score:adjusted
 
-    // Listen for scores:reset to reset session.scores to zero
+    // Listen for scores:reset to apply full-restart semantics to the session
+    // Decision A3 (2026-06-09): "Reset All Scores" = full game restart.
     // Per AsyncAPI contract: teams should still exist after reset with zero scores
     listenerRegistry.addTrackedListener(transactionService, 'scores:reset', async () => {
       if (!this.currentSession) {
@@ -42,17 +43,32 @@ class SessionService extends EventEmitter {
       }
 
       try {
-        // Reset each team's score to zero (preserve team membership)
-        this.currentSession.scores.forEach(score => {
-          score.currentScore = 0;
-          score.transactionCount = 0;
-          score.lastUpdated = new Date().toISOString();
+        // Zero the REAL TeamScore fields (F-BCORE-02: the old code wrote
+        // nonexistent transactionCount/lastUpdated fields, leaving stale
+        // baseScore/bonusPoints to resurrect scores after a restart).
+        // Round-tripping through TeamScore.reset() guarantees field parity
+        // with the in-memory teamScores Map (team membership and the
+        // adminAdjustments audit trail are preserved, everything else zeroed).
+        const TeamScore = require('../models/teamScore');
+        this.currentSession.scores = this.currentSession.scores.map(score => {
+          const teamScore = TeamScore.fromJSON(score);
+          teamScore.reset();
+          return teamScore.toJSON();
         });
+
+        // Decision A3: clear transaction history (F-BCORE-04: a later
+        // transaction:delete rebuild must not resurrect pre-reset scores)
+        // and dedup state so tokens become claimable again.
+        // playerScans are intel-tracking, not points — intentionally kept.
+        this.currentSession.transactions = [];
+        this.currentSession.metadata.totalScans = 0;
+        this.currentSession.metadata.uniqueTokensScanned = [];
+        this.currentSession.metadata.scannedTokensByDevice = {};
 
         await this.saveCurrentSession();
         this.emit('session:updated', this.currentSession);
 
-        logger.info('Session scores reset to zero', {
+        logger.info('Session reset (scores zeroed, transactions and dedup state cleared)', {
           sessionId: this.currentSession.id,
           teamsReset: this.currentSession.scores.map(s => s.teamId)
         });
