@@ -193,6 +193,68 @@ describe('Player Scan Event - Contract Validation', () => {
       validateWebSocketEvent(event, 'player:scan');
     });
 
+    // Decision D1 (2026-06-09): after batch processing persists entries,
+    // each persisted scan is broadcast to the GM room as player:scan with
+    // replayed:true so Game Activity reflects drained offline queues
+    // (previously nothing was pushed — Game Activity stayed stale until a
+    // GM reconnected, F-SCAN-05).
+    it('should broadcast player:scan with replayed:true for batch-persisted scans', async () => {
+      const received = [];
+      gmSocket.on('player:scan', (event) => received.push(event));
+
+      await request(testContext.url)
+        .post('/api/scan/batch')
+        .send({
+          batchId: `batch-d1-${Date.now()}`,
+          transactions: [
+            {
+              tokenId: 'tac001',
+              deviceId: 'PLAYER_batch_1',
+              deviceType: 'player',
+              timestamp: '2026-04-16T23:10:00.000Z'
+            },
+            {
+              tokenId: 'jaw001',  // Video token — replay must NOT queue video (A4)
+              deviceId: 'PLAYER_batch_1',
+              deviceType: 'player',
+              timestamp: '2026-04-16T23:11:00.000Z'
+            }
+          ]
+        })
+        .expect(200);
+
+      // Wait for both broadcasts to arrive
+      await new Promise((resolve, reject) => {
+        const deadline = setTimeout(
+          () => reject(new Error(`Expected 2 player:scan broadcasts, got ${received.length}`)),
+          2000
+        );
+        const check = setInterval(() => {
+          if (received.length >= 2) {
+            clearTimeout(deadline);
+            clearInterval(check);
+            resolve();
+          }
+        }, 25);
+      });
+
+      const tokenIds = received.map(e => e.data.tokenId).sort();
+      expect(tokenIds).toEqual(['jaw001', 'tac001']);
+
+      for (const event of received) {
+        expect(event).toHaveProperty('event', 'player:scan');
+        expect(event.data).toHaveProperty('replayed', true);
+        expect(event.data).toHaveProperty('videoQueued', false);  // A4: never queued on replay
+        expect(event.data).toHaveProperty('scanId');
+        expect(event.data.scanId).toMatch(/^[0-9a-f-]{36}$/);
+        validateWebSocketEvent(event, 'player:scan');
+      }
+
+      // Scans were persisted (broadcast correlates with persisted records)
+      const session = sessionService.getCurrentSession();
+      expect(session.playerScans).toHaveLength(2);
+    });
+
     it('should persist player scan to session', async () => {
       // Setup: Listen for player:scan
       const eventPromise = waitForEvent(gmSocket, 'player:scan');

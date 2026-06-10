@@ -271,8 +271,9 @@ router.post('/batch', async (req, res) => {
 
       // Persist valid entries to session.playerScans so offline-drained
       // scans are visible to post-session analysis (session:validate).
-      // No player:scan WebSocket broadcast — batches represent past
-      // activity, not live events; GMs will see them via next sync:full.
+      // Decision D1 (2026-06-09): each persisted scan is broadcast to the
+      // GM room as player:scan with replayed:true so Game Activity reflects
+      // drained offline queues without waiting for a GM reconnect.
       // If no session is active, log and skip persistence (batch shape
       // is still acknowledged).
       const session = sessionService.getCurrentSession();
@@ -283,13 +284,28 @@ router.post('/batch', async (req, res) => {
           SF_Group: token.metadata.group || null,
           summary: token.metadata.summary || null
         };
-        await sessionService.addPlayerScan({
+        const playerScan = await sessionService.addPlayerScan({
           tokenId: scanRequest.tokenId,
           deviceId: scanRequest.deviceId,
           deviceType: scanRequest.deviceType || 'player',
           timestamp: scanRequest.timestamp || new Date().toISOString(),
           tokenData
         });
+
+        const io = req.app.locals.io;
+        if (io) {
+          const { emitToRoom } = require('../websocket/eventWrapper');
+          emitToRoom(io, 'gm', 'player:scan', {
+            scanId: playerScan.id,
+            tokenId: scanRequest.tokenId,
+            deviceId: scanRequest.deviceId,
+            videoQueued: false,  // A4: replayed scans never trigger video
+            memoryType: token.memoryType,
+            timestamp: playerScan.timestamp,
+            tokenData,
+            replayed: true
+          });
+        }
       } else {
         logger.warn('Batch scan: no active session — entry not persisted', {
           tokenId: scanRequest.tokenId,

@@ -2028,6 +2028,15 @@ components:
                   playback. False when the video was rejected (VLC down /
                   video busy) and always false for batch-replayed scans.
                 example: false
+              replayed:
+                type: boolean
+                description: |
+                  True when this scan was persisted from a batch upload
+                  (POST /api/scan/batch — offline queue drain) rather than a
+                  live scan (decision D1). Absent/false for live scans. The
+                  data.timestamp field carries the ORIGINAL scan time, which
+                  may be hours before the broadcast.
+                example: true
               memoryType:
                 type: string
                 nullable: true
