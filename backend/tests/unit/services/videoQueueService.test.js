@@ -224,6 +224,111 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('pause/resume lifecycle (F-GMCMD-01 backend, F-SHOW-21)', () => {
+    const vlcService = require('../../../src/services/vlcMprisService');
+    let item;
+
+    beforeEach(() => {
+      item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      item.duration = 180;
+      videoQueueService.currentItem = item;
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      jest.useRealTimers();
+    });
+
+    it('pauseCurrent sets the item to paused and getState reports it', async () => {
+      const paused = await videoQueueService.pauseCurrent();
+
+      expect(paused).toBe(true);
+      expect(item.isPaused()).toBe(true);
+      expect(videoQueueService.getState().status).toBe('paused');
+    });
+
+    it('getState reports a FROZEN position while paused (no wall-clock drift)', async () => {
+      jest.useFakeTimers();
+      // 60s into a 180s video
+      item.playbackStart = new Date(Date.now() - 60000).toISOString();
+
+      await videoQueueService.pauseCurrent();
+      const positionAtPause = videoQueueService.getState().currentVideo.position;
+      expect(positionAtPause).toBeCloseTo(60 / 180, 2);
+
+      jest.advanceTimersByTime(30000); // 30s pass while paused
+
+      const positionLater = videoQueueService.getState().currentVideo.position;
+      expect(positionLater).toBe(positionAtPause); // frozen, not drifting
+    });
+
+    it('resumeCurrent requires a paused video — no-op resume must not re-fire video:resumed', async () => {
+      // item is PLAYING (not paused)
+      const resumedHandler = jest.fn();
+      videoQueueService.on('video:resumed', resumedHandler);
+
+      const result = await videoQueueService.resumeCurrent();
+
+      expect(result).toBe(false);
+      expect(resumedHandler).not.toHaveBeenCalled(); // would re-fire ducking 'started'
+    });
+
+    it('resume after pause continues from the frozen position', async () => {
+      jest.useFakeTimers();
+      item.playbackStart = new Date(Date.now() - 60000).toISOString();
+
+      await videoQueueService.pauseCurrent();
+      jest.advanceTimersByTime(30000); // paused for 30s
+      await videoQueueService.resumeCurrent();
+
+      expect(item.isPlaying()).toBe(true);
+      // Position resumes from 60s, not 90s
+      const { position } = videoQueueService.getState().currentVideo;
+      expect(position).toBeCloseTo(60 / 180, 2);
+    });
+
+    it('monitor emits no video:progress while VLC is paused (F-SHOW-21)', async () => {
+      jest.useFakeTimers();
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'paused', position: 0.33, length: 180,
+      });
+      const progressHandler = jest.fn();
+      videoQueueService.on('video:progress', progressHandler);
+
+      await videoQueueService.monitorVlcPlayback(item, 180);
+      await jest.advanceTimersByTimeAsync(3000); // 3 monitor ticks
+
+      expect(progressHandler).not.toHaveBeenCalled();
+    });
+
+    it('monitorVlcPlayback clears a prior playbackTimer before setting a new one (F-SHOW-21)', async () => {
+      jest.useFakeTimers();
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.1, length: 180,
+      });
+      const stale = setTimeout(() => {}, 999999);
+      videoQueueService.playbackTimer = stale;
+
+      await videoQueueService.monitorVlcPlayback(item, 180);
+
+      // Exactly 2 timers must remain: progress interval + new fallback.
+      // A leaked stale timer (resumeCurrent → monitorVlcPlayback without
+      // clearing) would make this 3.
+      expect(jest.getTimerCount()).toBe(2);
+      expect(videoQueueService.playbackTimer).not.toBe(stale);
+    });
+
+    it('skipCurrent works on a paused video', async () => {
+      await videoQueueService.pauseCurrent();
+
+      const skipped = await videoQueueService.skipCurrent();
+
+      expect(skipped).toBe(true);
+      expect(item.isCompleted()).toBe(true);
+    });
+  });
+
   describe('seekCurrent() (C4, F-GMCMD-21)', () => {
     const vlcService = require('../../../src/services/vlcMprisService');
 

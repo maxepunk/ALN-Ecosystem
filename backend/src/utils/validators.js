@@ -76,7 +76,7 @@ const videoQueueItemSchema = Joi.object({
   tokenId: Joi.string().required().min(1).max(100),
   requestedBy: Joi.string().required().min(1).max(100),
   requestTime: isoDate.required(),
-  status: Joi.string().valid('pending', 'playing', 'completed', 'failed').required(),
+  status: Joi.string().valid('pending', 'playing', 'paused', 'completed', 'failed').required(),
   videoPath: Joi.string().required(),
   playbackStart: isoDate.optional().allow(null),
   playbackEnd: isoDate.optional().allow(null),
