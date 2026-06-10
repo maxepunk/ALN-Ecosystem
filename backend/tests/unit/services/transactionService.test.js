@@ -906,6 +906,99 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('Session Metadata Tracking (F-BCORE-01)', () => {
+    it('should update totalScans and uniqueTokensScanned exactly once per accepted GM scan via processScan', async () => {
+      await sessionService.createSession({
+        name: 'Metadata Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      const Token = require('../../../src/models/token');
+      const makeToken = (id) => new Token({
+        id,
+        name: `Token ${id}`,
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      });
+      transactionService.tokens.set('meta001', makeToken('meta001'));
+      transactionService.tokens.set('meta002', makeToken('meta002'));
+
+      const session = sessionService.getCurrentSession();
+
+      await transactionService.processScan({
+        tokenId: 'meta001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_META',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+
+      // Let the async sessionService persistence listener run — its
+      // idempotent addTransaction() must NOT double-count the metadata
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(session.metadata.totalScans).toBe(1);
+      expect(session.metadata.uniqueTokensScanned).toEqual(['meta001']);
+
+      await transactionService.processScan({
+        tokenId: 'meta002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_META',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(session.metadata.totalScans).toBe(2);
+      expect(session.metadata.uniqueTokensScanned).toEqual(['meta001', 'meta002']);
+    });
+
+    it('should not count rejected or duplicate scans in metadata', async () => {
+      await sessionService.createSession({
+        name: 'Metadata Session 2',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      const Token = require('../../../src/models/token');
+      transactionService.tokens.set('meta003', new Token({
+        id: 'meta003',
+        name: 'Token meta003',
+        value: 100,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 3 }
+      }));
+
+      const session = sessionService.getCurrentSession();
+      const scanRequest = {
+        tokenId: 'meta003',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_META',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      await transactionService.processScan(scanRequest);
+      // Duplicate scan (same device, same token) — must not increment
+      await transactionService.processScan(scanRequest);
+      // Invalid token — must not increment
+      await transactionService.processScan({ ...scanRequest, tokenId: 'nonexistent' });
+
+      await new Promise(resolve => setTimeout(resolve, 25));
+
+      expect(session.metadata.totalScans).toBe(1);
+      expect(session.metadata.uniqueTokensScanned).toEqual(['meta003']);
+    });
+  });
+
   describe('Per-Device Duplicate Detection (Phase 1.1 P0.1)', () => {
     let session, token1;
 

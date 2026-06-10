@@ -192,11 +192,14 @@ class TransactionService extends EventEmitter {
 
       // ATOMIC: Claim token immediately (prevents race condition)
       // Add transaction to session BEFORE accepting to ensure duplicate check sees it
-      // NOTE: sessionService persistence listener will also add via addTransaction() (idempotent)
+      // Session.addTransaction also increments session metadata (totalScans /
+      // uniqueTokensScanned) exactly once per transaction (F-BCORE-01) — the
+      // sessionService persistence listener's later addTransaction() call is an
+      // idempotent no-op for this already-claimed transaction.
       if (!session.transactions) {
         session.transactions = [];
       }
-      session.transactions.push(transaction);
+      session.addTransaction(transaction);
 
       // GM scanners don't care about video playback - that's player scanner territory
       // Accept the transaction with appropriate points (detective mode = 0 points)
