@@ -13,7 +13,7 @@ describe('configManager', () => {
     fs.writeFileSync(path.join(tmpDir, '.env'), 'PORT=3000\nHOST=0.0.0.0\n');
     fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
       version: '1.0',
-      baseValues: { '1': 10000, '2': 25000 },
+      baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
       typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
@@ -55,9 +55,15 @@ describe('configManager', () => {
   });
 
   it('writes scoring config', () => {
-    configManager.writeScoring({ version: '1.0', baseValues: { '1': 99999 }, typeMultipliers: {} });
+    configManager.writeScoring({
+      version: '1.0',
+      baseValues: { '1': 99999, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+      typeMultipliers: { Personal: 1, UNKNOWN: 0 },
+    });
     const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
     assert.strictEqual(reread.baseValues['1'], 99999);
+    // atomic write leaves no tmp file behind (F-TOOL-10)
+    assert.ok(!fs.existsSync(path.join(tmpDir, 'scoring-config.json.tmp')));
   });
 
   it('writes env values preserving structure', () => {
@@ -80,7 +86,7 @@ describe('configManager', () => {
   });
 
   it('writes cues config', () => {
-    const cues = { cues: [{ id: 'test', label: 'Test', commands: [] }] };
+    const cues = { cues: [{ id: 'test', label: 'Test', quickFire: true, commands: [] }] };
     configManager.writeCues(cues);
     const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
     assert.strictEqual(reread.cues[0].id, 'test');

@@ -96,7 +96,16 @@ function readEnv(filePath) {
  * @param {{ values: Object, lines: Array }} parsed - Parsed env to write
  */
 function writeEnv(filePath, parsed) {
-  fs.writeFileSync(filePath, serializeEnv(parsed), 'utf8');
+  // Atomic write (tmp + rename) — a crash mid-write must not truncate
+  // backend/.env (F-TOOL-10).
+  const tmp = `${filePath}.tmp`;
+  try {
+    fs.writeFileSync(tmp, serializeEnv(parsed), 'utf8');
+    fs.renameSync(tmp, filePath);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ }
+    throw err;
+  }
 }
 
 module.exports = { parseEnvFile, serializeEnv, readEnv, writeEnv };
