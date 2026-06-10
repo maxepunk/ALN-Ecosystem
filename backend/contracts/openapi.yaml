@@ -728,6 +728,16 @@ paths:
           not start playback at upload time. `videoQueued` is always false
           in batch results.
 
+        **Per-Item Validation (F-SCAN-14)**:
+        Each entry is validated against the same schema as POST /api/scan
+        (tokenId, deviceId, deviceType required; timestamp ISO8601, normalized
+        to UTC). Invalid entries are returned as `status: failed` results —
+        the rest of the batch still processes — and are NOT persisted to the
+        session. Entries with pre-sync timestamps (before 2020-01-01, e.g.
+        ESP32 scans stamped 1970+uptime before NTP sync) are likewise rejected
+        as failed: epoch-era scan times would corrupt session timelines and
+        post-session analysis.
+
         **Breaking Changes**:
         - Field: scannerId → deviceId (Decision #4)
       operationId: playerScanBatch
@@ -836,6 +846,10 @@ paths:
                       properties:
                         tokenId:
                           type: string
+                          nullable: true
+                          description: |
+                            Token ID echoed from the entry (null when the
+                            entry was malformed and had no tokenId).
                           example: "534e2b02"
                         status:
                           type: string
@@ -853,7 +867,10 @@ paths:
                           example: null
                         error:
                           type: string
-                          description: Error message if status=failed
+                          description: |
+                            Error message if status=failed (unknown token,
+                            per-item schema validation failure, or pre-sync
+                            1970-era timestamp — F-SCAN-14).
                           example: null
               example:
                 batchId: "a3f4b2c1-5678-90ab-cdef-1234567890ab"

@@ -227,11 +227,13 @@ describe('POST /api/scan/batch', () => {
           {
             tokenId: 'rem001',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
+            deviceType: 'player',  // F-SCAN-14: required per entry
             timestamp: new Date().toISOString()
           },
           {
             tokenId: 'fli001',  // Valid non-video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
+            deviceType: 'player',  // F-SCAN-14: required per entry
             teamId: 'Team Alpha',
             timestamp: new Date().toISOString()
           }
@@ -251,6 +253,7 @@ describe('POST /api/scan/batch', () => {
           {
             tokenId: 'rem001',  // Valid video token from ALN-TokenData
             deviceId: 'PLAYER_SCANNER_01',
+            deviceType: 'player',  // F-SCAN-14: required per entry
             timestamp: new Date().toISOString()
           }
         ]

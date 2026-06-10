@@ -223,5 +223,44 @@ describe('Scan Error Response Schema Validation (F-SCAN-12)', () => {
       expect(response.body.failedCount).toBe(1);
       expect(response.body.results[0].status).toBe('failed');
     });
+
+    it('200 with failed entry (per-item validation, F-SCAN-14) matches OpenAPI schema', async () => {
+      const response = await request(app.app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: `b-validation-${Date.now()}`,
+          transactions: [
+            { tokenId: 'fli001', deviceId: 'PLAYER_01' }  // missing deviceType
+          ]
+        })
+        .expect(200);
+
+      validateHTTPResponse(response, '/api/scan/batch', 'post', 200);
+      expect(response.body.failedCount).toBe(1);
+      expect(response.body.results[0].status).toBe('failed');
+    });
+
+    it('200 with failed entry (pre-sync 1970 timestamp, F-SCAN-14) matches OpenAPI schema', async () => {
+      const response = await request(app.app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: `b-epoch-${Date.now()}`,
+          transactions: [
+            {
+              tokenId: 'fli001',
+              deviceId: 'SCANNER_001',
+              deviceType: 'esp32',
+              timestamp: '1970-01-01T01:23:45.000Z'  // ESP32 pre-NTP placeholder
+            }
+          ]
+        })
+        .expect(200);
+
+      validateHTTPResponse(response, '/api/scan/batch', 'post', 200);
+      expect(response.body.failedCount).toBe(1);
+      expect(response.body.results[0].status).toBe('failed');
+      // Not persisted
+      expect(sessionService.getCurrentSession().playerScans).toHaveLength(0);
+    });
   });
 });

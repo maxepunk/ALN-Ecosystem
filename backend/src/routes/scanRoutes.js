@@ -165,6 +165,10 @@ router.post('/', async (req, res) => {
   }
 });
 
+// F-SCAN-14: timestamps earlier than this are treated as un-synced device
+// clocks (ESP32 pre-NTP scans are stamped 1970 + uptime) and rejected.
+const MIN_VALID_SCAN_TIME_MS = Date.parse('2020-01-01T00:00:00Z');
+
 // PHASE 1.2 (P0.2): Track processed batches for idempotency
 // In-memory cache with automatic cleanup after 1 hour
 const processedBatches = new Map();
@@ -225,7 +229,52 @@ router.post('/batch', async (req, res) => {
 
   const results = [];
 
-  for (const scanRequest of transactions) {
+  for (const rawScan of transactions) {
+    // F-SCAN-14: validate each entry against the same schema as POST
+    // /api/scan (playerScanRequestSchema). Invalid entries become failed
+    // results (the rest of the batch still processes) and are NOT
+    // persisted to the session.
+    let scanRequest;
+    try {
+      scanRequest = validate(rawScan, playerScanRequestSchema);
+    } catch (validationError) {
+      const echo = (rawScan && typeof rawScan === 'object') ? rawScan : {};
+      logger.warn('Batch scan: entry failed validation', {
+        tokenId: echo.tokenId,
+        deviceId: echo.deviceId,
+        error: validationError.message
+      });
+      results.push({
+        ...echo,
+        tokenId: echo.tokenId ?? null,
+        status: 'failed',
+        videoQueued: false,
+        error: validationError.message
+      });
+      continue;
+    }
+
+    // F-SCAN-14: ESP32 scans taken before SNTP sync are stamped
+    // 1970-01-01 + uptime (Application.h generateTimestamp pre-sync
+    // branch). Persisting epoch-era times corrupts session timelines,
+    // the EventTimeline validator, and the GenAI pipeline — reject them
+    // as failed results. Floor is generous (2020): anything earlier can
+    // only be an unset device clock, never a real scan.
+    if (scanRequest.timestamp && Date.parse(scanRequest.timestamp) < MIN_VALID_SCAN_TIME_MS) {
+      logger.warn('Batch scan: pre-sync timestamp rejected', {
+        tokenId: scanRequest.tokenId,
+        deviceId: scanRequest.deviceId,
+        timestamp: scanRequest.timestamp
+      });
+      results.push({
+        ...scanRequest,
+        status: 'failed',
+        videoQueued: false,
+        error: 'Pre-sync timestamp (device clock not set at scan time)'
+      });
+      continue;
+    }
+
     try {
       // Log the scan
       logger.info('Batch scan received', {
@@ -236,7 +285,7 @@ router.post('/batch', async (req, res) => {
       });
 
       // Check if token exists
-      const token = scanRequest.tokenId ? transactionService.tokens.get(scanRequest.tokenId) : null;
+      const token = transactionService.tokens.get(scanRequest.tokenId);
 
       if (!token) {
         logger.warn('Batch scan: token not found', { tokenId: scanRequest.tokenId });
