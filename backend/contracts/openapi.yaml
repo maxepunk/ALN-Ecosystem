@@ -711,12 +711,16 @@ paths:
 
         **Usage**:
         When Player Scanner reconnects after offline period, uploads queued scans in batch.
-        Orchestrator processes each scan (logging, video queueing).
+        Orchestrator processes each scan (logging only).
 
         **Game Mechanics**:
         - NO SCORING - This is NOT a game transaction
         - Scans logged for audit trail
-        - Videos queued if tokens have video property
+        - Videos are NEVER queued for batch-replayed scans (decision A4,
+          2026-06-09): batches represent past activity. If video playback was
+          unavailable at scan time the player was alerted then; replay must
+          not start playback at upload time. `videoQueued` is always false
+          in batch results.
 
         **Breaking Changes**:
         - Field: scannerId → deviceId (Decision #4)
@@ -833,11 +837,13 @@ paths:
                           example: "processed"
                         videoQueued:
                           type: boolean
-                          description: Whether video was queued
+                          description: |
+                            Always false — batch-replayed scans never trigger
+                            video playback (decision A4).
                           example: false
                         message:
                           type: string
-                          description: Optional message (e.g., "Video already playing")
+                          description: Optional informational message
                           example: null
                         error:
                           type: string
@@ -857,7 +863,7 @@ paths:
                     videoQueued: false
                   - tokenId: "534e2b03"
                     status: "processed"
-                    videoQueued: true
+                    videoQueued: false
         '400':
           $ref: '#/components/responses/ValidationError'
 

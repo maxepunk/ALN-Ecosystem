@@ -1983,7 +1983,10 @@ components:
         - scanId: UUID of persisted scan record (for correlation)
         - tokenId: Token scanned by player
         - deviceId: Player scanner device ID
-        - videoQueued: True if token has video property (queued for TV playback)
+        - videoQueued: True only if the token's video was ACTUALLY queued for
+          TV playback. False when the token has no video, when the video was
+          rejected (VLC down / video busy), and always for batch-replayed
+          scans (decision A4).
         - memoryType: Token type from token data (Personal, Business, etc.)
         - tokenData: Full token metadata for display
       payload:
@@ -2020,7 +2023,10 @@ components:
                 example: "PLAYER_8a7b9c1d"
               videoQueued:
                 type: boolean
-                description: True if token has video property and was queued for TV playback
+                description: |
+                  True only if the token's video was actually queued for TV
+                  playback. False when the video was rejected (VLC down /
+                  video busy) and always false for batch-replayed scans.
                 example: false
               memoryType:
                 type: string

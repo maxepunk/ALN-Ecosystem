@@ -102,6 +102,22 @@ router.post('/', async (req, res) => {
       tokenData
     });
 
+    // Decide video queueing BEFORE broadcasting so videoQueued is truthful
+    // (F-RT-01: the broadcast used to claim videoQueued:true for scans whose
+    // video was actually rejected by the canAcceptVideo() check below).
+    let videoQueued = false;
+    let videoRejection = null;
+    if (token.hasVideo()) {
+      // Check if system can accept a new video (VLC health + queue state)
+      const videoCheck = videoQueueService.canAcceptVideo();
+      if (videoCheck.available) {
+        videoQueueService.addToQueue(token, scanRequest.deviceId);
+        videoQueued = true;
+      } else {
+        videoRejection = videoCheck;
+      }
+    }
+
     // Emit player:scan WebSocket event to gm room (not admin-monitors)
     // GM scanners ARE the admin panels - they need to see player activity
     const io = req.app.locals.io;
@@ -111,7 +127,7 @@ router.post('/', async (req, res) => {
         scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        videoQueued: token.hasVideo(),
+        videoQueued,
         memoryType: token.memoryType,
         timestamp: playerScan.timestamp,
         tokenData
@@ -120,47 +136,32 @@ router.post('/', async (req, res) => {
         scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        videoQueued: token.hasVideo()
+        videoQueued
       });
     }
 
-    // Check if token has video
-    if (token.hasVideo()) {
-      // Check if system can accept a new video (VLC health + queue state)
-      const videoCheck = videoQueueService.canAcceptVideo();
-      if (!videoCheck.available) {
-        return res.status(409).json({
-          status: 'rejected',
-          message: videoCheck.reason === 'vlc_down'
-            ? 'Video playback unavailable'
-            : 'Video already playing, please wait',
-          tokenId: scanRequest.tokenId,
-          mediaAssets: token.mediaAssets || {},
-          videoQueued: false,
-          ...(videoCheck.reason === 'video_busy' && { waitTime: videoCheck.waitTime || 30 })
-        });
-      }
-
-      // Add video to queue
-      videoQueueService.addToQueue(token, scanRequest.deviceId);
-
-      return res.status(200).json({
-        status: 'accepted',
-        message: 'Video queued for playback',
+    if (videoRejection) {
+      // Scan was persisted above; only the video trigger is rejected.
+      // Decision A5: the scanner must NOT requeue this scan — rescan to retry.
+      return res.status(409).json({
+        status: 'rejected',
+        message: videoRejection.reason === 'vlc_down'
+          ? 'Video playback unavailable'
+          : 'Video already playing, please wait',
         tokenId: scanRequest.tokenId,
         mediaAssets: token.mediaAssets || {},
-        videoQueued: true
-      });
-    } else {
-      // No video - just acknowledge scan
-      return res.status(200).json({
-        status: 'accepted',
-        message: 'Scan logged',
-        tokenId: scanRequest.tokenId,
-        mediaAssets: token.mediaAssets || {},
-        videoQueued: false
+        videoQueued: false,
+        ...(videoRejection.reason === 'video_busy' && { waitTime: videoRejection.waitTime || 30 })
       });
     }
+
+    return res.status(200).json({
+      status: 'accepted',
+      message: videoQueued ? 'Video queued for playback' : 'Scan logged',
+      tokenId: scanRequest.tokenId,
+      mediaAssets: token.mediaAssets || {},
+      videoQueued
+    });
   } catch (error) {
     if (error instanceof ValidationError) {
       // Include field names in message for better test compatibility
@@ -296,33 +297,15 @@ router.post('/batch', async (req, res) => {
         });
       }
 
-      // Process video if applicable
-      if (token.hasVideo()) {
-        const videoCheck = videoQueueService.canAcceptVideo();
-        if (videoCheck.available) {
-          videoQueueService.addToQueue(token, scanRequest.deviceId);
-          results.push({
-            ...scanRequest,
-            status: 'processed',
-            videoQueued: true
-          });
-        } else {
-          results.push({
-            ...scanRequest,
-            status: 'processed',
-            videoQueued: false,
-            message: videoCheck.reason === 'vlc_down'
-              ? 'Video playback unavailable'
-              : 'Video already playing'
-          });
-        }
-      } else {
-        results.push({
-          ...scanRequest,
-          status: 'processed',
-          videoQueued: false
-        });
-      }
+      // Decision A4 (2026-06-09): replayed scans NEVER trigger video playback.
+      // Batches represent past activity — if a video couldn't play at scan
+      // time, the player was alerted then; draining an offline queue must not
+      // start playback at upload time (F-SCAN-05). videoQueued is always false.
+      results.push({
+        ...scanRequest,
+        status: 'processed',
+        videoQueued: false
+      });
     } catch (error) {
       results.push({
         ...scanRequest,

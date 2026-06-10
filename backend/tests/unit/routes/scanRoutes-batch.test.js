@@ -58,8 +58,18 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
       metadata: { rfid: 'kaa002', rating: 4 }
     });
 
+    const videoToken = new Token({
+      id: 'vid001',
+      name: 'Test Video Memory',
+      value: 200,
+      memoryType: 'Personal',
+      mediaAssets: { image: null, audio: null, video: 'vid001.mp4', processingImage: null },
+      metadata: { rfid: 'vid001', rating: 5 }
+    });
+
     transactionService.tokens.set('kaa001', token1);
     transactionService.tokens.set('kaa002', token2);
+    transactionService.tokens.set('vid001', videoToken);
   });
 
   afterEach(async () => {
@@ -390,6 +400,59 @@ describe('POST /api/scan/batch - Phase 1.2 (P0.2)', () => {
         failedCount: expect.any(Number),
         results: expect.any(Array)
       });
+    });
+  });
+
+  // Decision A4 (2026-06-09): replayed scans NEVER trigger video playback.
+  // If video was unavailable at scan time, the player is alerted at scan time;
+  // a drained offline queue must not start playback hours later (F-SCAN-05).
+  describe('video tokens in batch replay (A4)', () => {
+    let addToQueueSpy;
+
+    beforeEach(() => {
+      const videoQueueService = require('../../../src/services/videoQueueService');
+      addToQueueSpy = jest.spyOn(videoQueueService, 'addToQueue').mockImplementation(() => {});
+
+      // VLC healthy — even with video available, batch must never queue
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      registry.report('vlc', 'healthy', 'Batch A4 test');
+    });
+
+    afterEach(() => {
+      addToQueueSpy.mockRestore();
+    });
+
+    test('never queues videos for batch-replayed scans (with session)', async () => {
+      const response = await request(app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: 'batch-a4-video',
+          transactions: [
+            { tokenId: 'vid001', deviceId: 'PLAYER_01', deviceType: 'player', timestamp: new Date().toISOString() }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(addToQueueSpy).not.toHaveBeenCalled();
+      expect(response.body.results[0].status).toBe('processed');
+      expect(response.body.results[0].videoQueued).toBe(false);
+    });
+
+    test('never queues videos for batch-replayed scans (no session)', async () => {
+      await sessionService.endSession();
+
+      const response = await request(app)
+        .post('/api/scan/batch')
+        .send({
+          batchId: 'batch-a4-video-nosession',
+          transactions: [
+            { tokenId: 'vid001', deviceId: 'PLAYER_01', deviceType: 'player', timestamp: new Date().toISOString() }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(addToQueueSpy).not.toHaveBeenCalled();
+      expect(response.body.results[0].videoQueued).toBe(false);
     });
   });
 
