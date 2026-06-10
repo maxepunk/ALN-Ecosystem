@@ -778,6 +778,39 @@ describe('MusicService — bounded I/O (_send)', () => {
     await expect(service.loadPlaylist('p1')).rejects.toBeInstanceOf(TimeoutError);
     expect(service._mpd).toBeNull();
   });
+
+  // F-SHOW-11: the idle handlers are the highest-frequency mpd2 round-trips
+  // in the system. Raw sendCommand calls hang forever on a desynced client
+  // and never tear it down — they must ride the same _send chokepoint.
+  it('_handlePlayerEvent routes through _send — wedged client torn down (F-SHOW-11)', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    const reportSpy = jest.spyOn(registry, 'report');
+    const wedged = service._mpd;
+    wedged.sendCommand.mockImplementation(() => new Promise(() => {})); // never settles
+
+    wedged.emit('system-player');
+    await new Promise(r => setTimeout(r, 80));
+
+    expect(service._mpd).toBeNull();          // shared ref dropped
+    expect(service.connected).toBe(false);
+    expect(reportSpy).toHaveBeenCalledWith('music', 'down', expect.stringContaining('timed out'));
+  });
+
+  it('_handleMixerEvent routes through _send — wedged client torn down (F-SHOW-11)', async () => {
+    const service = new MusicService({ opTimeoutMs: 20 });
+    await service.init();
+    const reportSpy = jest.spyOn(registry, 'report');
+    const wedged = service._mpd;
+    wedged.sendCommand.mockImplementation(() => new Promise(() => {}));
+
+    wedged.emit('system-mixer');
+    await new Promise(r => setTimeout(r, 80));
+
+    expect(service._mpd).toBeNull();
+    expect(service.connected).toBe(false);
+    expect(reportSpy).toHaveBeenCalledWith('music', 'down', expect.stringContaining('timed out'));
+  });
 });
 
 describe('MusicService — checkConnection recovery', () => {
