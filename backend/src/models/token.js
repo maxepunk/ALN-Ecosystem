@@ -65,13 +65,8 @@ class Token {
     return !!this.groupId;
   }
 
-  /**
-   * Get group multiplier
-   * @returns {number}
-   */
-  getGroupMultiplier() {
-    return this.groupMultiplier || 1;
-  }
+  // NOTE: getGroupMultiplier() removed — group multiplier rules read the
+  // plain groupMultiplier field via gameRules/scoring (scanner-parity surface)
 
   /**
    * Convert to JSON representation
