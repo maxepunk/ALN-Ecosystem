@@ -74,4 +74,43 @@ describe('envParser', () => {
       assert.ok(output.includes('SECRET="has spaces here"'));
     });
   });
+
+  describe('injection hardening (F-TOOL-03)', () => {
+    it('rejects values containing newlines (env line injection)', () => {
+      const parsed = parseEnvFile('HOST=localhost');
+      parsed.values.HOST = '0.0.0.0\nADMIN_PASSWORD=hacked';
+      assert.throws(() => serializeEnv(parsed), /newline/i);
+    });
+
+    it('rejects values containing carriage returns', () => {
+      const parsed = parseEnvFile('HOST=localhost');
+      parsed.values.HOST = '0.0.0.0\rADMIN_PASSWORD=hacked';
+      assert.throws(() => serializeEnv(parsed), /newline/i);
+    });
+
+    it('escapes embedded double quotes and round-trips them', () => {
+      const parsed = parseEnvFile('MSG=plain');
+      parsed.values.MSG = 'he said "do it" loudly';
+      const output = serializeEnv(parsed);
+      assert.ok(output.includes('MSG="he said \\"do it\\" loudly"'));
+      const reparsed = parseEnvFile(output);
+      assert.strictEqual(reparsed.values.MSG, 'he said "do it" loudly');
+    });
+
+    it('round-trips a value that is only a quote character', () => {
+      const parsed = parseEnvFile('Q=x');
+      parsed.values.Q = '"';
+      const reparsed = parseEnvFile(serializeEnv(parsed));
+      assert.strictEqual(reparsed.values.Q, '"');
+    });
+
+    it('round-trips values with spaces and hashes unchanged', () => {
+      const parsed = parseEnvFile('A=x\nB=y');
+      parsed.values.A = 'value with # hash';
+      parsed.values.B = 'spaced value';
+      const reparsed = parseEnvFile(serializeEnv(parsed));
+      assert.strictEqual(reparsed.values.A, 'value with # hash');
+      assert.strictEqual(reparsed.values.B, 'spaced value');
+    });
+  });
 });

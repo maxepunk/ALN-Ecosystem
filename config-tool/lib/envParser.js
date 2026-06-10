@@ -28,9 +28,11 @@ function parseEnvFile(content) {
       const key = trimmed.substring(0, eqIndex).trim();
       let value = trimmed.substring(eqIndex + 1).trim();
 
-      // Strip surrounding quotes
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
+      // Strip surrounding quotes. Double-quoted values unescape \" → "
+      // (mirror of serializeEnv's escaping — F-TOOL-03 round-trip).
+      if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1).replace(/\\"/g, '"');
+      } else if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
         value = value.slice(1, -1);
       }
 
@@ -59,10 +61,16 @@ function serializeEnv(parsed) {
     } else if (line.type === 'comment') {
       outputLines.push(line.raw);
     } else if (line.type === 'keyvalue') {
-      const val = values[line.key] ?? '';
-      // Quote values containing spaces, #, or special chars
-      const needsQuotes = val.includes(' ') || val.includes('#') || val.includes('"');
-      const formatted = needsQuotes ? `"${val}"` : val;
+      const val = String(values[line.key] ?? '');
+      // Reject newlines outright — a value containing \n or \r would inject
+      // arbitrary additional env lines into backend/.env (F-TOOL-03).
+      if (/[\n\r]/.test(val)) {
+        throw new Error(`env value for ${line.key} must not contain newlines`);
+      }
+      // Quote values containing spaces, #, or quotes; escape embedded
+      // double quotes so they survive the round-trip.
+      const needsQuotes = val.includes(' ') || val.includes('#') || val.includes('"') || val.includes("'");
+      const formatted = needsQuotes ? `"${val.replace(/"/g, '\\"')}"` : val;
       outputLines.push(`${line.key}=${formatted}`);
     }
   }
