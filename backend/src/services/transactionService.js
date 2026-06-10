@@ -19,7 +19,6 @@ class TransactionService extends EventEmitter {
     super();
     this.recentTransactions = [];
     this.tokens = new Map();  // Expose for testing
-    this.teamScores = new Map();
   }
 
   /**
@@ -34,8 +33,7 @@ class TransactionService extends EventEmitter {
     });
 
     logger.info('Transaction service initialized', {
-      tokenCount: this.tokens.size,
-      teamCount: this.teamScores.size
+      tokenCount: this.tokens.size
     });
 
     // Register session listener (moved from constructor to support reset lifecycle)
@@ -50,30 +48,13 @@ class TransactionService extends EventEmitter {
     // Remove any previously registered listeners to prevent accumulation
     this._removeSessionListeners();
 
-    this._onSessionCreated = (sessionData) => {
-      // CRITICAL: Clear map FIRST to prevent state leakage from previous sessions
-      this.teamScores.clear();
-
-      if (sessionData.teams) {
-        sessionData.teams.forEach(teamId => {
-          this.teamScores.set(teamId, TeamScore.createInitial(teamId));
-        });
-        logger.info('Team scores initialized for new session', {
-          teams: sessionData.teams,
-          count: this.teamScores.size
-        });
-      }
-    };
-
     this._onSessionUpdated = (sessionData) => {
       if (sessionData.status === 'ended') {
-        this.teamScores.clear();
         this.recentTransactions = [];
-        logger.info('Scores cleared due to session end');
+        logger.info('Recent transactions cleared due to session end');
       }
     };
 
-    sessionService.on('session:created', this._onSessionCreated);
     sessionService.on('session:updated', this._onSessionUpdated);
 
     logger.info('Session event listener registered');
@@ -84,14 +65,32 @@ class TransactionService extends EventEmitter {
    * @private
    */
   _removeSessionListeners() {
-    if (this._onSessionCreated) {
-      sessionService.removeListener('session:created', this._onSessionCreated);
-      this._onSessionCreated = null;
-    }
     if (this._onSessionUpdated) {
       sessionService.removeListener('session:updated', this._onSessionUpdated);
       this._onSessionUpdated = null;
     }
+  }
+
+  /**
+   * Get the canonical score store: session.scores (live TeamScore instances).
+   * There is NO second store — all score reads and writes go through here.
+   * @returns {Array<TeamScore>|null} null when no session exists
+   * @private
+   */
+  _getSessionScores() {
+    const session = sessionService.getCurrentSession();
+    return session ? session.scores : null;
+  }
+
+  /**
+   * Find a team's live TeamScore in session.scores
+   * @param {string} teamId - Team ID
+   * @returns {TeamScore|undefined}
+   * @private
+   */
+  _getTeamScore(teamId) {
+    const scores = this._getSessionScores();
+    return scores ? scores.find(s => s.teamId === teamId) : undefined;
   }
 
   /**
@@ -103,7 +102,7 @@ class TransactionService extends EventEmitter {
    * @returns {TeamScore} Updated team score
    */
   adjustTeamScore(teamId, delta, reason = '', gmStation = 'unknown') {
-    const teamScore = this.teamScores.get(teamId);
+    const teamScore = this._getTeamScore(teamId);
     if (!teamScore) {
       throw new Error(`Team ${teamId} not found`);
     }
@@ -354,14 +353,17 @@ class TransactionService extends EventEmitter {
    * @private
    */
   updateTeamScore(teamId, token) {
-    let teamScore = this.teamScores.get(teamId);
+    let teamScore = this._getTeamScore(teamId);
     let groupBonusInfo = null;
 
-    // Team should already exist via sessionService.addTeamToSession() -> syncTeamFromSession()
-    // But handle gracefully if not (backwards compatibility during migration)
+    // Team should already exist via sessionService.addTeamToSession()
+    // But handle gracefully if not (auto-create directly in the canonical store)
     if (!teamScore) {
       teamScore = TeamScore.createInitial(teamId);
-      this.teamScores.set(teamId, teamScore);
+      const scores = this._getSessionScores();
+      if (scores) {
+        scores.push(teamScore);
+      }
       logger.warn('Team auto-created in updateTeamScore (should use addTeamToSession)', { teamId });
     }
 
@@ -596,26 +598,32 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Get team scores
-   * @returns {Array} Team scores array
+   * Get team scores (read from session.scores, the canonical store)
+   * @returns {Array} Team scores as JSON, sorted by currentScore descending
    */
   getTeamScores() {
-    return Array.from(this.teamScores.values())
-      .map(score => score.toJSON())
+    const scores = this._getSessionScores() || [];
+    return scores
+      .map(score => (score.toJSON ? score.toJSON() : score))
       .sort((a, b) => b.currentScore - a.currentScore);
   }
 
   /**
    * Reset scores - resets all team scores to zero while preserving team membership
    * Per AsyncAPI contract: teams should still exist after reset with zero scores
+   * Mutates the live TeamScore instances in session.scores in place;
+   * sessionService's scores:reset listener clears transactions and persists.
    */
   resetScores() {
+    const scores = this._getSessionScores() || [];
+
     // Capture team IDs for broadcast
-    const teams = Array.from(this.teamScores.keys());
+    const teams = scores.map(s => s.teamId);
 
     // Reset each team's score to zero using TeamScore.reset() method
-    // This preserves team membership but clears: currentScore, tokensScanned, bonusPoints, completedGroups
-    for (const teamScore of this.teamScores.values()) {
+    // This preserves team membership (and adminAdjustments audit trail) but
+    // clears: currentScore, baseScore, tokensScanned, bonusPoints, completedGroups
+    for (const teamScore of scores) {
       teamScore.reset();
     }
 
@@ -658,63 +666,10 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Sync a team from sessionService to the local teamScores Map
-   * This ensures transactionService.teamScores stays in sync with sessionService.currentSession.scores
-   * Called by sessionService.addTeamToSession() for single source of truth on team creation
-   * @param {Object|TeamScore} teamScoreData - Team score data (JSON or TeamScore instance)
-   */
-  syncTeamFromSession(teamScoreData) {
-    // Handle null/undefined gracefully
-    if (!teamScoreData) {
-      logger.warn('syncTeamFromSession called with null/undefined data');
-      return;
-    }
-
-    // Handle both JSON objects and TeamScore instances
-    const teamId = teamScoreData.teamId;
-    if (!teamId) {
-      logger.warn('syncTeamFromSession called with invalid data (missing teamId)', { teamScoreData });
-      return;
-    }
-
-    // Only add if not already present (idempotent)
-    if (!this.teamScores.has(teamId)) {
-      // Convert to TeamScore if needed
-      const teamScore = teamScoreData instanceof TeamScore
-        ? teamScoreData
-        : TeamScore.fromJSON(teamScoreData);
-      this.teamScores.set(teamId, teamScore);
-      logger.info('Team synced from sessionService', { teamId });
-    }
-  }
-
-  /**
-   * Restore team scores from a session (for session restoration on startup)
-   * @param {Object} session - Session object with scores array
-   */
-  restoreFromSession(session) {
-    if (!session || !session.scores) {
-      return;
-    }
-
-    // Sync all teams from session.scores to teamScores Map
-    for (const scoreData of session.scores) {
-      if (scoreData.teamId && !this.teamScores.has(scoreData.teamId)) {
-        this.teamScores.set(scoreData.teamId, TeamScore.fromJSON(scoreData));
-        logger.debug('Team restored from session', { teamId: scoreData.teamId });
-      }
-    }
-
-    logger.info('Teams restored from session', {
-      teamCount: this.teamScores.size,
-      teams: Array.from(this.teamScores.keys())
-    });
-  }
-
-  /**
    * Reset entire transaction service state
    * Used primarily for testing to ensure clean state between tests
    * NOTE: Contract tests should NOT call reset() - follow auth-events.test.js pattern
+   * NOTE: Scores live in session.scores (sessionService owns their lifecycle)
    */
   reset() {
     // Remove listeners on sessionService to prevent accumulation
@@ -725,9 +680,6 @@ class TransactionService extends EventEmitter {
 
     // Clear all transaction history
     this.recentTransactions = [];
-
-    // Clear team scores completely
-    this.teamScores.clear();
 
     logger.info('Transaction service reset');
   }
@@ -793,22 +745,21 @@ class TransactionService extends EventEmitter {
     // Remove from session
     session.transactions.splice(txIndex, 1);
 
-    // Rebuild scores from remaining transactions
+    // Rebuild scores from remaining transactions (mutates session.scores in place)
     this.rebuildScoresFromTransactions(session.transactions);
 
-    // Get updated team score
-    const updatedScore = this.teamScores.get(affectedTeamId) || TeamScore.createInitial(affectedTeamId);
+    // Get updated team score from the canonical store
+    const updatedScore = this._getTeamScore(affectedTeamId) || TeamScore.createInitial(affectedTeamId);
 
     // Emit transaction deleted event with updated score
     // sessionService listens and persists, broadcasts.js broadcasts to clients
-    // allTeamScores: the rebuild touches EVERY team, so sessionService must
-    // sync session.scores for all of them, not just the affected team (F-BCORE-03)
+    // allTeamScores: the rebuild touches EVERY team (snapshot for broadcast)
     this.emit('transaction:deleted', {
       transactionId,
       teamId: affectedTeamId,
       tokenId: deletedTx.tokenId,
       updatedTeamScore: updatedScore.toJSON(),
-      allTeamScores: Array.from(this.teamScores.values()).map(ts => ts.toJSON())
+      allTeamScores: (this._getSessionScores() || []).map(ts => ts.toJSON())
     });
 
     logger.info('Transaction deleted', {
@@ -879,39 +830,29 @@ class TransactionService extends EventEmitter {
 
   /**
    * Rebuild team scores from transaction history
-   * CRITICAL: Preserves team membership from sessionService (source of truth)
-   * Uses clear-and-rebuild pattern for simplicity (KISS)
+   * Mutates the live TeamScore instances in session.scores in place
+   * (the canonical store — team membership is whatever session.scores holds)
    * @param {Array} transactions - Historical transactions from session
    * @private
    */
   rebuildScoresFromTransactions(transactions) {
-    // Step 0: Snapshot admin adjustments before clearing (F-BCORE-03:
-    // recreating teams via createInitial silently reverted every prior
-    // score:adjust and wiped the audit trail for ALL teams). They are
-    // replayed on top of the rebuilt scores in the final step.
-    const adjustmentsByTeam = new Map();
-    for (const [teamId, score] of this.teamScores) {
-      if (Array.isArray(score.adminAdjustments) && score.adminAdjustments.length > 0) {
-        adjustmentsByTeam.set(teamId, score.adminAdjustments);
-      }
+    const scores = this._getSessionScores();
+    if (!scores) {
+      logger.warn('rebuildScoresFromTransactions called with no session — nothing to rebuild');
+      return;
     }
 
-    // Step 1: Get team membership from session (source of truth)
-    const session = sessionService.getCurrentSession();
-    const sessionTeamIds = new Set(
-      (session?.scores || []).map(s => s.teamId)
-    );
-
-    // Step 2: Clear and rebuild fresh (simpler than in-place mutation)
-    this.teamScores.clear();
-
-    // Step 3: Initialize all teams from session with fresh zero-score instances
-    // This preserves teams that have no black market transactions
-    for (const teamId of sessionTeamIds) {
-      this.teamScores.set(teamId, TeamScore.createInitial(teamId));
+    // Step 1: Zero every team in place. TeamScore.reset() preserves teamId
+    // and the adminAdjustments audit trail (F-BCORE-03: wiping adjustments
+    // silently reverted every prior score:adjust); the applied deltas are
+    // re-applied on top of the rebuilt scores in the final step.
+    for (const teamScore of scores) {
+      teamScore.reset();
+      teamScore.lastTokenTime = null;
     }
+    const byTeam = new Map(scores.map(s => [s.teamId, s]));
 
-    // Step 4: Group accepted transactions by team (skip detective mode for scoring)
+    // Step 2: Group accepted transactions by team (skip detective mode for scoring)
     const teamGroups = {};
     transactions
       .filter(tx => tx.status === 'accepted' && tx.mode !== 'detective')
@@ -922,13 +863,15 @@ class TransactionService extends EventEmitter {
         teamGroups[tx.teamId].push(tx);
       });
 
-    // Step 5: Rebuild scores for teams that have transactions
+    // Step 3: Rebuild scores for teams that have transactions
     Object.entries(teamGroups).forEach(([teamId, txs]) => {
-      // Get or create team score (should already exist from session sync above)
-      let teamScore = this.teamScores.get(teamId);
+      // Get or create team score (transactions for a team missing from
+      // session.scores shouldn't happen, but don't drop their points)
+      let teamScore = byTeam.get(teamId);
       if (!teamScore) {
         teamScore = TeamScore.createInitial(teamId);
-        this.teamScores.set(teamId, teamScore);
+        scores.push(teamScore);
+        byTeam.set(teamId, teamScore);
         logger.warn('Team created during rebuild (should exist in session)', { teamId });
       }
 
@@ -980,20 +923,18 @@ class TransactionService extends EventEmitter {
       });
     });
 
-    // Step 6: Replay admin adjustments on top of the rebuilt scores
-    // (restores both the applied deltas and the audit trail — F-BCORE-03)
-    for (const [teamId, adjustments] of adjustmentsByTeam) {
-      let teamScore = this.teamScores.get(teamId);
-      if (!teamScore) {
-        teamScore = TeamScore.createInitial(teamId);
-        this.teamScores.set(teamId, teamScore);
-      }
+    // Step 4: Re-apply admin adjustment deltas on top of the rebuilt scores
+    // (the audit trail survived reset() in place — F-BCORE-03)
+    let teamsWithReplayedAdjustments = 0;
+    for (const teamScore of scores) {
+      const adjustments = teamScore.adminAdjustments || [];
+      if (adjustments.length === 0) continue;
       const totalDelta = adjustments.reduce((sum, adj) => sum + (adj.delta || 0), 0);
-      teamScore.adminAdjustments = adjustments;
       teamScore.baseScore += totalDelta;
       teamScore.currentScore = teamScore.baseScore + teamScore.bonusPoints;
+      teamsWithReplayedAdjustments++;
       logger.info('Replayed admin adjustments after rebuild', {
-        teamId,
+        teamId: teamScore.teamId,
         adjustmentCount: adjustments.length,
         totalDelta,
         newScore: teamScore.currentScore
@@ -1001,10 +942,9 @@ class TransactionService extends EventEmitter {
     }
 
     logger.info('Score rebuild complete', {
-      teamsInSession: sessionTeamIds.size,
-      teamsWithScores: this.teamScores.size,
+      teamsInSession: scores.length,
       teamsWithTransactions: Object.keys(teamGroups).length,
-      teamsWithReplayedAdjustments: adjustmentsByTeam.size
+      teamsWithReplayedAdjustments
     });
   }
 }

@@ -14,8 +14,8 @@ function createMockTransactionService(overrides = {}) {
   const mock = new EventEmitter();
 
   // Exposed state (used by tests and other services)
+  // NOTE: no teamScores Map — scores live in session.scores (Phase 2 collapse)
   mock.tokens = new Map();
-  mock.teamScores = new Map();
   mock.recentTransactions = [];
 
   // Initialization
@@ -40,10 +40,6 @@ function createMockTransactionService(overrides = {}) {
   mock.adjustTeamScore = jest.fn();
   mock.resetScores = jest.fn();
   mock.getRecentTransactions = jest.fn().mockReturnValue([]);
-
-  // Team sync
-  mock.syncTeamFromSession = jest.fn();
-  mock.restoreFromSession = jest.fn();
 
   // Transaction management
   mock.deleteTransaction = jest.fn().mockReturnValue({

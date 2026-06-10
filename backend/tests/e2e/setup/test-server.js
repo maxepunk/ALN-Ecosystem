@@ -392,7 +392,7 @@ function getOrchestratorUrl() {
 async function clearSessionData() {
   // CRITICAL: Handle both file storage AND memory storage
   // Tests use STORAGE_TYPE=memory, but this function only clears files
-  // Result: In-memory state (teamScores Map, etc) persists across tests
+  // Result: In-memory state (current session, scores, etc) persists across tests
 
   if (process.env.STORAGE_TYPE === 'memory') {
     // Clear in-memory storage via persistenceService

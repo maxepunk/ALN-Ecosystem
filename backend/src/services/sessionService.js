@@ -47,18 +47,10 @@ class SessionService extends EventEmitter {
       }
 
       try {
-        // Zero the REAL TeamScore fields (F-BCORE-02: the old code wrote
-        // nonexistent transactionCount/lastUpdated fields, leaving stale
-        // baseScore/bonusPoints to resurrect scores after a restart).
-        // Round-tripping through TeamScore.reset() guarantees field parity
-        // with the in-memory teamScores Map (team membership and the
-        // adminAdjustments audit trail are preserved, everything else zeroed).
-        const TeamScore = require('../models/teamScore');
-        this.currentSession.scores = this.currentSession.scores.map(score => {
-          const teamScore = TeamScore.fromJSON(score);
-          teamScore.reset();
-          return teamScore.toJSON();
-        });
+        // The TeamScore instances in session.scores (the single canonical
+        // store) were already zeroed in place by transactionService.resetScores()
+        // before this event fired — nothing to sync here (F-BCORE-02 class of
+        // bug is structurally gone with the dual-store collapse).
 
         // Decision A3: clear transaction history (F-BCORE-04: a later
         // transaction:delete rebuild must not resurrect pre-reset scores)
@@ -126,10 +118,9 @@ class SessionService extends EventEmitter {
               this.currentSession.addDeviceScannedToken(deviceTracking.deviceId, deviceTracking.tokenId);
             }
 
-            // Update team score in session.scores (source of truth)
-            if (teamScore) {
-              this.upsertTeamScore(teamScore);
-            }
+            // No score sync needed: transactionService already mutated the
+            // live TeamScore instance in session.scores (the canonical store).
+            // payload.teamScore is a snapshot for broadcast consumers only.
 
             await this.saveCurrentSession();
 
@@ -169,7 +160,8 @@ class SessionService extends EventEmitter {
         }
 
         try {
-          this.upsertTeamScore(teamScore);
+          // The adjustment already mutated the live TeamScore instance in
+          // session.scores (canonical store) — this listener only persists.
           await this.saveCurrentSession();
           this.emit('session:updated', this.currentSession);
 
@@ -195,19 +187,13 @@ class SessionService extends EventEmitter {
           return;
         }
 
-        const { transactionId, tokenId, teamId, updatedTeamScore, allTeamScores } = payload;
+        const { transactionId, tokenId, teamId, updatedTeamScore } = payload;
 
         try {
-          // Transaction already removed from session by deleteTransaction()
-          // The rebuild recalculates EVERY team, so sync all of them —
-          // persisting only the affected team left session.scores diverged
-          // from the in-memory map for the others (F-BCORE-03)
-          if (Array.isArray(allTeamScores) && allTeamScores.length > 0) {
-            allTeamScores.forEach(score => this.upsertTeamScore(score));
-          } else if (updatedTeamScore) {
-            this.upsertTeamScore(updatedTeamScore);
-          }
-
+          // Transaction already removed and scores already rebuilt in place
+          // on session.scores (canonical store) by deleteTransaction() —
+          // this listener only persists. (The old per-team upsert dance and
+          // its F-BCORE-03 desync class are structurally gone.)
           await this.saveCurrentSession();
           this.emit('session:updated', this.currentSession);
 
@@ -226,25 +212,6 @@ class SessionService extends EventEmitter {
       }, 'sessionService->transactionService:transaction:deleted');
 
     logger.debug('SessionService: persistence listeners bound to transactionService');
-  }
-
-  /**
-   * Upsert a team score in session.scores
-   * Updates existing team or adds new team
-   * @param {Object} teamScore - TeamScore data (JSON or TeamScore instance)
-   * @private
-   */
-  upsertTeamScore(teamScore) {
-    if (!this.currentSession) return;
-
-    const scoreData = teamScore.toJSON ? teamScore.toJSON() : teamScore;
-    const idx = this.currentSession.scores.findIndex(s => s.teamId === scoreData.teamId);
-
-    if (idx >= 0) {
-      this.currentSession.scores[idx] = scoreData;
-    } else {
-      this.currentSession.scores.push(scoreData);
-    }
   }
 
   /**
@@ -304,10 +271,9 @@ class SessionService extends EventEmitter {
           }
         }
 
-        // CRITICAL: Sync teams to transactionService on session restoration
-        // This ensures transactionService.teamScores Map matches session.scores after restart
-        const transactionService = require('./transactionService');
-        transactionService.restoreFromSession(this.currentSession);
+        // Scores need no restore step: Session.fromJSON hydrated session.scores
+        // into live TeamScore instances — the single canonical store that
+        // transactionService reads and mutates directly.
 
         // Restore game clock from session data (if session was active/paused)
         if (this.currentSession.gameClock && this.currentSession.status !== 'ended') {
@@ -505,7 +471,12 @@ class SessionService extends EventEmitter {
       }
 
       if (updates.scores !== undefined) {
-        this.currentSession.scores = updates.scores;
+        // Hydrate into live TeamScore instances (session.scores is the
+        // canonical store and must hold instances, not plain JSON)
+        const TeamScore = require('../models/teamScore');
+        this.currentSession.scores = updates.scores.map(s =>
+          s instanceof TeamScore ? s : TeamScore.fromJSON(s)
+        );
       }
 
       if (updates.transactions !== undefined) {
@@ -707,7 +678,8 @@ class SessionService extends EventEmitter {
       return []; // Return empty array if no teams provided
     }
     const TeamScore = require('../models/teamScore');
-    return teams.map(teamId => TeamScore.createInitial(teamId).toJSON());
+    // Live instances — session.scores is the canonical store
+    return teams.map(teamId => TeamScore.createInitial(teamId));
   }
 
   /**
@@ -734,14 +706,9 @@ class SessionService extends EventEmitter {
     const TeamScore = require('../models/teamScore');
     const newTeamScore = TeamScore.createInitial(normalizedTeamId);
 
-    // Add to session (source of truth)
-    this.currentSession.scores.push(newTeamScore.toJSON());
-
-    // CRITICAL: Sync to transactionService immediately
-    // This ensures transactionService.teamScores Map stays in sync with session.scores
-    // Single path for team creation - sessionService owns it, transactionService syncs from it
-    const transactionService = require('./transactionService');
-    transactionService.syncTeamFromSession(newTeamScore);
+    // Add the live instance to session.scores (the single canonical store —
+    // transactionService reads and mutates it directly, no sync step)
+    this.currentSession.scores.push(newTeamScore);
 
     // Persist and broadcast
     await this.saveCurrentSession();

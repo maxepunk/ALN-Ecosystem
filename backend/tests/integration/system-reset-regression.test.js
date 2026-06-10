@@ -229,7 +229,7 @@ describe('System Reset Regression Tests', () => {
 
       // Verify transaction exists
       expect(session.transactions.length).toBe(1);
-      expect(transactionService.teamScores.size).toBe(1);
+      expect(transactionService.getTeamScores()).toHaveLength(1);
 
       // Perform system reset
       const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
@@ -243,7 +243,7 @@ describe('System Reset Regression Tests', () => {
 
       // Verify all state cleared
       expect(sessionService.getCurrentSession()).toBeNull();
-      expect(transactionService.teamScores.size).toBe(0);
+      expect(transactionService.getTeamScores()).toHaveLength(0);
 
       // Create new session - should start fresh
       await sessionService.createSession({

@@ -97,8 +97,8 @@ describe('Offline Queue Synchronization Integration', () => {
     expect(result1.points).toBeGreaterThan(0);
 
     // Validate: Team scores updated
-    const team001Score = transactionService.teamScores.get('Team Alpha');
-    const team002Score = transactionService.teamScores.get('Detectives');
+    const team001Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Team Alpha');
+    const team002Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Detectives');
     expect(team001Score.currentScore).toBeGreaterThan(0); // GM transaction scored
     expect(team002Score.currentScore).toBeGreaterThan(0);
   });

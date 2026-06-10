@@ -436,7 +436,10 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       const scores = sessionService.initializeTeamScores(['Team Alpha', 'Detectives', 'Blue Squad']);
 
       expect(scores.length).toBe(3);
-      expect(scores[0]).toEqual({
+      // Live TeamScore instances — session.scores is the canonical store
+      const TeamScore = require('../../../src/models/teamScore');
+      expect(scores[0]).toBeInstanceOf(TeamScore);
+      expect(scores[0].toJSON()).toEqual({
         teamId: 'Team Alpha',
         adminAdjustments: [],  // Admin score adjustment audit trail
         currentScore: 0,
@@ -557,7 +560,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
 
     describe('transaction:accepted listener (new format)', () => {
-      it('should persist transaction and teamScore when new format payload received', async () => {
+      it('should persist transaction and device tracking when new format payload received', async () => {
         await sessionService.createSession({
           name: 'Persistence Test',
           teams: ['Team Alpha']
@@ -566,9 +569,11 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         const session = sessionService.getCurrentSession();
         const initialTxCount = session.transactions.length;
 
-        // Emit new format transaction:accepted with teamScore
-        const teamScore = TeamScore.createInitial('Team Alpha');
-        teamScore.addPoints(100);
+        // Simulate transactionService's flow: the live TeamScore instance in
+        // session.scores was already mutated BEFORE the event fired (single
+        // canonical store) — the payload teamScore is a broadcast snapshot.
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(100);
         const txId = uuidv4();
 
         transactionService.emit('transaction:accepted', {
@@ -583,7 +588,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
             points: 100,
             timestamp: new Date().toISOString()
           },
-          teamScore: teamScore.toJSON(),
+          teamScore: liveScore.toJSON(),
           deviceTracking: { deviceId: 'GM_001', tokenId: 'test-token' }
         });
 
@@ -595,9 +600,46 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         expect(updatedSession.transactions.length).toBe(initialTxCount + 1);
         expect(updatedSession.transactions[initialTxCount].id).toBe(txId);
 
-        // Verify team score was updated in session.scores
-        const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
-        expect(updatedTeamScore.currentScore).toBe(100);
+        // Verify device tracking was recorded for duplicate detection
+        expect(updatedSession.hasDeviceScannedToken('GM_001', 'test-token')).toBe(true);
+
+        // Canonical store untouched by the listener (same instance, same value)
+        expect(updatedSession.scores.find(s => s.teamId === 'Team Alpha')).toBe(liveScore);
+        expect(liveScore.currentScore).toBe(100);
+      });
+
+      it('should NOT overwrite the canonical store from the payload snapshot', async () => {
+        await sessionService.createSession({
+          name: 'No Clobber Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(300);
+
+        // Emit with a STALE snapshot (different from the live instance) —
+        // the listener must persist, not sync the snapshot back into
+        // session.scores (that upsert path died with the dual-store collapse)
+        transactionService.emit('transaction:accepted', {
+          transaction: {
+            id: uuidv4(),
+            tokenId: 'tok-stale',
+            teamId: 'Team Alpha',
+            deviceId: 'GM_001',
+            deviceType: 'gm',
+            sessionId: session.id,
+            status: 'accepted',
+            points: 100,
+            timestamp: new Date().toISOString()
+          },
+          teamScore: { ...liveScore.toJSON(), currentScore: 99999 },
+          deviceTracking: { deviceId: 'GM_001', tokenId: 'tok-stale' }
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(300);
       });
 
       it('should not double-persist when old format payload (Transaction object only)', async () => {
@@ -637,16 +679,16 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         });
 
         const session = sessionService.getCurrentSession();
-        const initialScore = session.scores.find(s => s.teamId === 'Team Alpha').currentScore;
 
-        // Create adjusted team score
-        const teamScore = TeamScore.createInitial('Team Alpha');
-        teamScore.addPoints(500);
-        teamScore.adjustScore(100, 'GM_001', 'Manual bonus');
+        // The adjustment mutates the live instance in session.scores BEFORE
+        // the event fires (canonical store); the listener only persists.
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(500);
+        liveScore.adjustScore(100, 'GM_001', 'Manual bonus');
 
-        // Emit score:adjusted
+        // Emit score:adjusted (snapshot payload, as adjustTeamScore does)
         transactionService.emit('score:adjusted', {
-          teamScore: teamScore.toJSON(),
+          teamScore: liveScore.toJSON(),
           reason: 'Manual bonus',
           isAdminAction: true
         });
@@ -654,15 +696,20 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         // Wait for async handler
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Verify score was updated
-        const updatedSession = sessionService.getCurrentSession();
-        const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
-        expect(updatedTeamScore.currentScore).toBe(teamScore.currentScore);
+        // Verify the adjusted score reached persistence
+        const persistenceService = require('../../../src/services/persistenceService');
+        const persisted = await persistenceService.load('session:current');
+        const persistedScore = persisted.scores.find(s => s.teamId === 'Team Alpha');
+        expect(persistedScore.currentScore).toBe(600);
+        expect(persistedScore.adminAdjustments).toHaveLength(1);
       });
     });
 
     describe('transaction:deleted listener', () => {
-      it('should persist updated team score after deletion', async () => {
+      // NOTE (Phase 2 collapse): upsertTeamScore is gone — the rebuild
+      // mutates session.scores in place before transaction:deleted fires,
+      // so this listener only persists.
+      it('should persist the rebuilt scores after deletion', async () => {
         await sessionService.createSession({
           name: 'Delete Test',
           teams: ['Team Alpha']
@@ -670,79 +717,28 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
         const session = sessionService.getCurrentSession();
 
-        // Add a transaction first
-        session.transactions.push({
-          id: 'tx-to-delete',
-          tokenId: 'test-token',
-          teamId: 'Team Alpha',
-          status: 'accepted',
-          points: 500
-        });
+        // Simulate deleteTransaction's flow: rebuild already zeroed the live
+        // instance in session.scores before the event fires
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(500);
+        liveScore.reset();
 
-        // Set initial score
-        session.scores[0].currentScore = 500;
-
-        // Create updated score (after deletion, score goes back to 0)
-        const updatedTeamScore = TeamScore.createInitial('Team Alpha');
-        updatedTeamScore.addPoints(0);
-
-        // Emit transaction:deleted with updated score
+        // Emit transaction:deleted (snapshot payload for broadcasts)
         transactionService.emit('transaction:deleted', {
           transactionId: 'tx-to-delete',
           tokenId: 'test-token',
           teamId: 'Team Alpha',
-          updatedTeamScore: updatedTeamScore.toJSON()
+          updatedTeamScore: liveScore.toJSON(),
+          allTeamScores: session.scores.map(s => s.toJSON())
         });
 
         // Wait for async handler
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Verify score was updated
-        const updatedSession = sessionService.getCurrentSession();
-        const teamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
-        expect(teamScore.currentScore).toBe(0);
-      });
-    });
-
-    describe('upsertTeamScore', () => {
-      it('should update existing team score', async () => {
-        await sessionService.createSession({
-          name: 'Upsert Test',
-          teams: ['Team Alpha']
-        });
-
-        const session = sessionService.getCurrentSession();
-        session.scores[0].currentScore = 100;
-
-        // Upsert with higher score
-        sessionService.upsertTeamScore({
-          teamId: 'Team Alpha',
-          currentScore: 500,
-          baseScore: 400,
-          bonusPoints: 100
-        });
-
-        expect(session.scores[0].currentScore).toBe(500);
-        expect(session.scores[0].bonusPoints).toBe(100);
-      });
-
-      it('should add new team if not exists', async () => {
-        await sessionService.createSession({
-          name: 'Upsert New Test',
-          teams: []
-        });
-
-        sessionService.upsertTeamScore({
-          teamId: 'New Team',
-          currentScore: 250,
-          baseScore: 250,
-          bonusPoints: 0
-        });
-
-        const session = sessionService.getCurrentSession();
-        expect(session.scores.length).toBe(1);
-        expect(session.scores[0].teamId).toBe('New Team');
-        expect(session.scores[0].currentScore).toBe(250);
+        // Verify the rebuilt (zeroed) score reached persistence
+        const persistenceService = require('../../../src/services/persistenceService');
+        const persisted = await persistenceService.load('session:current');
+        expect(persisted.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(0);
       });
     });
   });
@@ -905,13 +901,12 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.resetScores();
       await wait();
 
-      // Simulate restart: restore session + team scores from persisted state
+      // Simulate restart: hydrating the persisted session IS the restore —
+      // session.scores is the single canonical store (no restoreFromSession)
       const persisted = await persistenceService.load('session:current');
       expect(persisted).toBeTruthy();
       const restored = Session.fromJSON(persisted);
       sessionService.currentSession = restored;
-      transactionService.teamScores.clear();
-      transactionService.restoreFromSession(restored);
 
       // First post-restart scan must NOT include the pre-reset 450000
       const result = await transactionService.processScan({
@@ -925,7 +920,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       await wait();
 
       expect(result.status).toBe('accepted');
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = restored.scores.find(s => s.teamId === 'Team Alpha');
       expect(teamScore.currentScore).toBe(150000);
       expect(teamScore.baseScore).toBe(150000);
     });
@@ -984,7 +979,6 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       // Rebuild must see ONLY post-reset history (now empty) — not the
       // pre-reset rst001 transaction (ghost scoring)
-      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
       expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(0);
     });
   });
@@ -1004,24 +998,25 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.removeAllListeners();
     });
 
-    it('should sync new team to transactionService when addTeamToSession called', async () => {
+    it('should make new team visible to transactionService when addTeamToSession called', async () => {
       // Create session with no teams
       await sessionService.createSession({
         name: 'Team Sync Test',
         teams: []
       });
 
-      // Verify transactionService has no teams initially
-      expect(transactionService.teamScores.size).toBe(0);
+      // Verify transactionService sees no teams initially
+      expect(transactionService.getTeamScores()).toHaveLength(0);
 
       // Add team mid-game
-      const newTeamScore = await sessionService.addTeamToSession('New Team');
+      await sessionService.addTeamToSession('New Team');
 
-      // Verify team was synced to transactionService
-      expect(transactionService.teamScores.has('New Team')).toBe(true);
-      const syncedScore = transactionService.teamScores.get('New Team');
-      expect(syncedScore.teamId).toBe('New Team');
-      expect(syncedScore.currentScore).toBe(0);
+      // Visible through transactionService immediately (it reads
+      // session.scores directly — no sync step exists anymore)
+      const scores = transactionService.getTeamScores();
+      expect(scores).toHaveLength(1);
+      expect(scores[0].teamId).toBe('New Team');
+      expect(scores[0].currentScore).toBe(0);
     });
 
     it('should add team to session.scores as source of truth', async () => {
@@ -1058,7 +1053,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const session = sessionService.getCurrentSession();
       expect(session.scores[0].teamId).toBe('Spaced Team');
-      expect(transactionService.teamScores.has('Spaced Team')).toBe(true);
+      expect(transactionService.getTeamScores().map(s => s.teamId)).toContain('Spaced Team');
     });
 
     it('should emit session:updated after adding team', (done) => {

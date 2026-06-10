@@ -7,7 +7,11 @@
 const transactionService = require('../../../src/services/transactionService');
 const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
-const TeamScore = require('../../../src/models/teamScore');
+
+// session.scores is the single canonical score store (Phase 2 collapse).
+// Helper reads the live TeamScore instance for a team from the current session.
+const getScore = (teamId) =>
+  sessionService.getCurrentSession()?.scores.find(s => s.teamId === teamId);
 
 describe('TransactionService - Event Emission', () => {
   beforeEach(async () => {
@@ -68,7 +72,7 @@ describe('TransactionService - Event Emission', () => {
       await eventPromise;
     });
 
-    it('should NOT directly modify sessionService state', async () => {
+    it('should write scores directly into session.scores (single canonical store)', async () => {
       // Setup
       await sessionService.createSession({
         name: 'Test Session',
@@ -98,12 +102,13 @@ describe('TransactionService - Event Emission', () => {
       // Trigger: Update score for new team
       transactionService.updateTeamScore('Detectives', testToken);
 
-      // Verify: transactionService should NOT have modified sessionService.scores directly
+      // Verify: the write landed in session.scores — there is no second
+      // store kept in sync by listeners (Phase 2 dual-ownership collapse)
       const session = sessionService.getCurrentSession();
       const teamInSessionScores = session.scores.find(s => s.teamId === 'Detectives');
 
-      // Session should NOT have team 002 (transactionService shouldn't modify it directly)
-      expect(teamInSessionScores).toBeUndefined();
+      expect(teamInSessionScores).toBeDefined();
+      expect(teamInSessionScores.currentScore).toBe(100);
     });
   });
 
@@ -501,13 +506,11 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       });
       await sessionService.startGame();
 
-      // Wait for session:created event to propagate
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(transactionService.teamScores.size).toBe(3);
-      expect(transactionService.teamScores.has('Team Alpha')).toBe(true);
-      expect(transactionService.teamScores.has('Detectives')).toBe(true);
-      expect(transactionService.teamScores.has('Blue Squad')).toBe(true);
+      const scores = transactionService.getTeamScores();
+      expect(scores).toHaveLength(3);
+      expect(scores.map(s => s.teamId)).toEqual(
+        expect.arrayContaining(['Team Alpha', 'Detectives', 'Blue Squad'])
+      );
     });
 
     it('should clear teams when session ends (teams exist only within session)', async () => {
@@ -517,22 +520,16 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       });
       await sessionService.startGame();
 
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(transactionService.teamScores.size).toBe(2);
+      expect(transactionService.getTeamScores()).toHaveLength(2);
 
       // Add some points
-      const teamAlpha = transactionService.teamScores.get('Team Alpha');
-      if (teamAlpha) teamAlpha.addPoints(500);
+      getScore('Team Alpha').addPoints(500);
 
       await sessionService.endSession();
 
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // ARCHITECTURE: Teams exist only within a session
-      // When session ends, teams are cleared (no session = no teams)
-      // Teams are re-created when a new session starts
-      expect(transactionService.teamScores.size).toBe(0);
+      // ARCHITECTURE: Teams exist only within a session — scores live in
+      // session.scores, so no session means no teams
+      expect(transactionService.getTeamScores()).toHaveLength(0);
     });
 
     it('should get all team scores', async () => {
@@ -556,20 +553,18 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       });
       await sessionService.startGame();
 
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      expect(transactionService.teamScores.size).toBe(1);
+      expect(transactionService.getTeamScores()).toHaveLength(1);
 
       // Add some points to verify they get reset
-      const teamAlpha = transactionService.teamScores.get('Team Alpha');
-      if (teamAlpha) teamAlpha.addPoints(500);
+      const teamAlpha = getScore('Team Alpha');
+      teamAlpha.addPoints(500);
       expect(teamAlpha.currentScore).toBe(500);
 
       transactionService.resetScores();
 
       // Per AsyncAPI contract: teams should still exist after reset with zero scores
-      expect(transactionService.teamScores.size).toBe(1);
-      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
+      expect(transactionService.getTeamScores()).toHaveLength(1);
+      expect(getScore('Team Alpha').currentScore).toBe(0);
     });
   });
 
@@ -777,7 +772,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       await wait();
 
       expect(result.status).toBe('accepted');
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = getScore('Team Alpha');
       // Only the sold token's value — no group bonus
       expect(teamScore.currentScore).toBe(groupTokens[1].value);
       expect(teamScore.bonusPoints).toBe(0);
@@ -790,7 +785,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       await wait();
 
       expect(result.status).toBe('accepted');
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = getScore('Team Alpha');
       const baseSum = groupTokens.reduce((sum, t) => sum + t.value, 0);
       expect(teamScore.completedGroups).toContain(groupName);
       expect(teamScore.bonusPoints).toBe(expectedBonus);
@@ -802,12 +797,12 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       await scan(groupTokens[1].id, 'blackmarket');
       await wait();
 
-      const liveScore = transactionService.teamScores.get('Team Alpha').currentScore;
+      const liveScore = getScore('Team Alpha').currentScore;
 
       // Rebuild from the same history (what transaction:delete does)
       const session = sessionService.getCurrentSession();
       transactionService.rebuildScoresFromTransactions(session.transactions);
-      const rebuiltScore = transactionService.teamScores.get('Team Alpha').currentScore;
+      const rebuiltScore = getScore('Team Alpha').currentScore;
 
       expect(rebuiltScore).toBe(liveScore);
     });
@@ -936,7 +931,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.rebuildScoresFromTransactions([tx1]);
 
       // Verify score was rebuilt
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = getScore('Team Alpha');
       expect(teamScore).toBeDefined();
       expect(teamScore.tokensScanned).toBe(1);
     });
@@ -979,7 +974,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       // Verify detective mode transactions don't create scores
       // (session didn't initialize team 001, and detective mode shouldn't add it)
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = getScore('Team Alpha');
       expect(teamScore).not.toBeDefined();
     });
   });
@@ -1511,17 +1506,20 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
   });
 
   describe('resetScores', () => {
-    it('should emit scores:reset event with teamsReset array', () => {
-      // Clear any existing teams and set up fresh state
-      transactionService.teamScores.clear();
+    // NOTE (Phase 2 collapse): the old syncTeamFromSession/restoreFromSession
+    // describes were deleted with those methods — session.scores is the single
+    // canonical store now, so there is nothing to sync. The canonical-store
+    // contract is pinned in tests/unit/services/score-ownership.test.js.
 
-      // Setup: Add some team scores using proper TeamScore instances
-      const teamAlpha = TeamScore.createInitial('Team Alpha');
-      teamAlpha.addPoints(500);
-      const detectives = TeamScore.createInitial('Detectives');
-      detectives.addPoints(300);
-      transactionService.teamScores.set('Team Alpha', teamAlpha);
-      transactionService.teamScores.set('Detectives', detectives);
+    it('should emit scores:reset event with teamsReset array', async () => {
+      await sessionService.createSession({
+        name: 'Reset Event Session',
+        teams: ['Team Alpha', 'Detectives']
+      });
+      await sessionService.startGame();
+
+      getScore('Team Alpha').addPoints(500);
+      getScore('Detectives').addPoints(300);
 
       // Listen for event using Promise pattern
       const eventPromise = new Promise((resolve) => {
@@ -1532,212 +1530,29 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.resetScores();
 
       // Verify
-      return eventPromise.then((eventData) => {
-        expect(eventData.teamsReset).toEqual(expect.arrayContaining(['Team Alpha', 'Detectives']));
-        expect(eventData.teamsReset.length).toBe(2);
-      });
+      const eventData = await eventPromise;
+      expect(eventData.teamsReset).toEqual(expect.arrayContaining(['Team Alpha', 'Detectives']));
+      expect(eventData.teamsReset.length).toBe(2);
     });
 
-    it('should reset scores to zero while preserving team membership', () => {
-      // Clear any existing teams and set up fresh state
-      transactionService.teamScores.clear();
+    it('should reset scores to zero while preserving team membership', async () => {
+      await sessionService.createSession({
+        name: 'Reset Membership Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
 
-      // Setup: Add team score using proper TeamScore instance
-      const teamAlpha = TeamScore.createInitial('Team Alpha');
-      teamAlpha.addPoints(500);
-      transactionService.teamScores.set('Team Alpha', teamAlpha);
+      getScore('Team Alpha').addPoints(500);
 
-      expect(transactionService.teamScores.size).toBe(1);
-      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(500);
+      expect(transactionService.getTeamScores()).toHaveLength(1);
+      expect(getScore('Team Alpha').currentScore).toBe(500);
 
       // Execute
       transactionService.resetScores();
 
       // Verify: Team still exists but score is zero
-      expect(transactionService.teamScores.size).toBe(1);
-      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(0);
-    });
-  });
-
-  describe('Team Sync Infrastructure (Slice 1)', () => {
-    describe('syncTeamFromSession', () => {
-      it('should add team to teamScores Map from JSON data', () => {
-        // Ensure clean state
-        transactionService.teamScores.clear();
-
-        // Create team score JSON (as sessionService would provide)
-        const teamScoreData = {
-          teamId: 'New Team',
-          currentScore: 0,
-          baseScore: 0,
-          bonusPoints: 0,
-          tokensScanned: 0,
-          completedGroups: [],
-          adminAdjustments: [],
-          lastUpdate: new Date().toISOString(),
-          lastTokenTime: null
-        };
-
-        // Sync team
-        transactionService.syncTeamFromSession(teamScoreData);
-
-        // Verify team was added
-        expect(transactionService.teamScores.has('New Team')).toBe(true);
-        const syncedScore = transactionService.teamScores.get('New Team');
-        expect(syncedScore.teamId).toBe('New Team');
-        expect(syncedScore.currentScore).toBe(0);
-      });
-
-      it('should be idempotent - not duplicate teams', () => {
-        // Ensure clean state
-        transactionService.teamScores.clear();
-
-        const teamScoreData = {
-          teamId: 'Idempotent Team',
-          currentScore: 0,
-          baseScore: 0,
-          bonusPoints: 0,
-          tokensScanned: 0,
-          completedGroups: [],
-          adminAdjustments: [],
-          lastUpdate: new Date().toISOString(),
-          lastTokenTime: null
-        };
-
-        // Sync team twice
-        transactionService.syncTeamFromSession(teamScoreData);
-        transactionService.syncTeamFromSession(teamScoreData);
-
-        // Verify only one team exists
-        expect(transactionService.teamScores.size).toBe(1);
-      });
-
-      it('should accept TeamScore instance directly', () => {
-        transactionService.teamScores.clear();
-
-        const teamScore = TeamScore.createInitial('Direct Team');
-
-        transactionService.syncTeamFromSession(teamScore);
-
-        expect(transactionService.teamScores.has('Direct Team')).toBe(true);
-      });
-
-      it('should handle invalid data gracefully', () => {
-        transactionService.teamScores.clear();
-
-        // Should not throw
-        expect(() => {
-          transactionService.syncTeamFromSession({});
-        }).not.toThrow();
-
-        expect(() => {
-          transactionService.syncTeamFromSession(null);
-        }).not.toThrow();
-
-        expect(transactionService.teamScores.size).toBe(0);
-      });
-    });
-
-    describe('restoreFromSession', () => {
-      it('should restore all teams from session scores', () => {
-        transactionService.teamScores.clear();
-
-        // Create mock session with multiple teams
-        const mockSession = {
-          id: 'session-123',
-          scores: [
-            {
-              teamId: 'Restored Team 1',
-              currentScore: 100,
-              baseScore: 80,
-              bonusPoints: 20,
-              tokensScanned: 2,
-              completedGroups: [],
-              adminAdjustments: [],
-              lastUpdate: new Date().toISOString(),
-              lastTokenTime: null
-            },
-            {
-              teamId: 'Restored Team 2',
-              currentScore: 250,
-              baseScore: 200,
-              bonusPoints: 50,
-              tokensScanned: 4,
-              completedGroups: ['group-1'],
-              adminAdjustments: [],
-              lastUpdate: new Date().toISOString(),
-              lastTokenTime: null
-            }
-          ]
-        };
-
-        transactionService.restoreFromSession(mockSession);
-
-        expect(transactionService.teamScores.size).toBe(2);
-        expect(transactionService.teamScores.has('Restored Team 1')).toBe(true);
-        expect(transactionService.teamScores.has('Restored Team 2')).toBe(true);
-
-        // Verify scores were preserved
-        const team1 = transactionService.teamScores.get('Restored Team 1');
-        expect(team1.currentScore).toBe(100);
-
-        const team2 = transactionService.teamScores.get('Restored Team 2');
-        expect(team2.currentScore).toBe(250);
-        expect(team2.completedGroups).toContain('group-1');
-      });
-
-      it('should handle session with no scores gracefully', () => {
-        transactionService.teamScores.clear();
-
-        expect(() => {
-          transactionService.restoreFromSession({ id: 'empty-session' });
-        }).not.toThrow();
-
-        expect(transactionService.teamScores.size).toBe(0);
-      });
-
-      it('should handle null session gracefully', () => {
-        transactionService.teamScores.clear();
-
-        expect(() => {
-          transactionService.restoreFromSession(null);
-        }).not.toThrow();
-
-        expect(transactionService.teamScores.size).toBe(0);
-      });
-
-      it('should not overwrite existing teams', () => {
-        transactionService.teamScores.clear();
-
-        // Add team with high score
-        const existingTeam = TeamScore.createInitial('Existing Team');
-        existingTeam.addPoints(500);
-        transactionService.teamScores.set('Existing Team', existingTeam);
-
-        // Restore session with same team at lower score
-        const mockSession = {
-          id: 'session-123',
-          scores: [
-            {
-              teamId: 'Existing Team',
-              currentScore: 100,
-              baseScore: 100,
-              bonusPoints: 0,
-              tokensScanned: 1,
-              completedGroups: [],
-              adminAdjustments: [],
-              lastUpdate: new Date().toISOString(),
-              lastTokenTime: null
-            }
-          ]
-        };
-
-        transactionService.restoreFromSession(mockSession);
-
-        // Should NOT overwrite - existing team keeps high score
-        const team = transactionService.teamScores.get('Existing Team');
-        expect(team.currentScore).toBe(500);
-      });
+      expect(transactionService.getTeamScores()).toHaveLength(1);
+      expect(getScore('Team Alpha').currentScore).toBe(0);
     });
   });
 
@@ -1909,30 +1724,36 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.adjustTeamScore('Team Alpha', 123456, 'test bonus', 'GM_ADJ');
       await wait();
 
-      expect(transactionService.teamScores.get('Team Alpha').currentScore).toBe(423456);
-      expect(transactionService.teamScores.get('Team Alpha').adminAdjustments).toHaveLength(1);
+      expect(getScore('Team Alpha').currentScore).toBe(423456);
+      expect(getScore('Team Alpha').adminAdjustments).toHaveLength(1);
 
       // Delete TEAM BETA's transaction — must not touch Team Alpha's adjustment
+      const eventPromise = new Promise((resolve) => {
+        transactionService.once('transaction:deleted', resolve);
+      });
       transactionService.deleteTransaction(betaScan.transaction.id, session);
+      const deletedEvent = await eventPromise;
       await wait();
 
-      // In-memory: Team Alpha keeps its adjustment (score AND audit trail)
-      const alpha = transactionService.teamScores.get('Team Alpha');
+      // Team Alpha keeps its adjustment (score AND audit trail)
+      const alpha = getScore('Team Alpha');
       expect(alpha.currentScore).toBe(423456);
       expect(alpha.adminAdjustments).toHaveLength(1);
       expect(alpha.adminAdjustments[0].delta).toBe(123456);
 
       // Team Beta rebuilt to zero (its only transaction was deleted)
-      expect(transactionService.teamScores.get('Team Beta').currentScore).toBe(0);
+      expect(getScore('Team Beta').currentScore).toBe(0);
 
-      // Persisted session.scores must match the in-memory map for EVERY team
-      // (pre-fix: only the affected team was upserted — split-brain)
-      for (const [teamId, teamScore] of transactionService.teamScores) {
-        const sessionScore = session.scores.find(s => s.teamId === teamId);
+      // The broadcast snapshot must cover EVERY rebuilt team and match the
+      // canonical store (session.scores) — pre-collapse, only the affected
+      // team was synced, leaving the rest split-brained (F-BCORE-03)
+      expect(deletedEvent.allTeamScores).toHaveLength(session.scores.length);
+      for (const snapshot of deletedEvent.allTeamScores) {
+        const sessionScore = session.scores.find(s => s.teamId === snapshot.teamId);
         expect(sessionScore).toBeDefined();
-        expect(sessionScore.currentScore).toBe(teamScore.currentScore);
-        expect(sessionScore.baseScore).toBe(teamScore.baseScore);
-        expect(sessionScore.adminAdjustments).toEqual(teamScore.adminAdjustments);
+        expect(snapshot.currentScore).toBe(sessionScore.currentScore);
+        expect(snapshot.baseScore).toBe(sessionScore.baseScore);
+        expect(snapshot.adminAdjustments).toEqual(sessionScore.adminAdjustments);
       }
     });
 
@@ -1987,13 +1808,13 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       }, session, token2);
 
       // Get initial score (should be sum of both tokens)
-      const initialScore = transactionService.teamScores.get('Team Alpha').currentScore;
+      const initialScore = getScore('Team Alpha').currentScore;
 
       // Delete first transaction
       const deleteResult = transactionService.deleteTransaction(scan1.transaction.id, session);
 
       // Verify score recalculated (should only include token2 now)
-      const newScore = transactionService.teamScores.get('Team Alpha').currentScore;
+      const newScore = getScore('Team Alpha').currentScore;
       expect(newScore).toBeLessThan(initialScore);
       expect(deleteResult.updatedScore.currentScore).toBe(newScore);
     });

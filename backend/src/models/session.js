@@ -5,6 +5,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const { sessionSchema, validate } = require('../utils/validators');
+const TeamScore = require('./teamScore');
 
 class Session {
   /**
@@ -61,8 +62,18 @@ class Session {
       data.metadata.scannedTokensByDevice = {};
     }
 
-    this.validate(data);
+    this.validate({
+      ...data,
+      scores: data.scores.map(s => (s.toJSON ? s.toJSON() : s)),
+    });
     Object.assign(this, data);
+
+    // session.scores is the SINGLE canonical store for team scores: live
+    // TeamScore instances that transactionService mutates in place. Hydrate
+    // any plain-JSON entries (persistence restore, API updates).
+    this.scores = this.scores.map(s =>
+      s instanceof TeamScore ? s : TeamScore.fromJSON(s)
+    );
   }
 
   /**
@@ -146,8 +157,8 @@ class Session {
       this.metadata.uniqueTokensScanned.push(transaction.tokenId);
     }
 
-    // Scores are managed by transactionService, NOT by Session model
-    // Session only stores transactions for persistence
+    // Score MUTATION logic lives in transactionService; this model only
+    // holds the canonical TeamScore instances (this.scores) and transactions
   }
 
   /**
@@ -277,7 +288,7 @@ class Session {
       playerScans: this.playerScans,
       connectedDevices: this.connectedDevices,
       videoQueue: this.videoQueue,
-      scores: this.scores,
+      scores: this.scores.map(s => (s.toJSON ? s.toJSON() : s)),
       metadata: this.metadata,
     };
   }
