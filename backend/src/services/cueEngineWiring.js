@@ -54,8 +54,10 @@ function setupCueEngineForwarding({
   );
 
   // Video events (for standing cue evaluation)
-  // video:paused and video:resumed are handled by the explicit lifecycle registrations below
-  for (const event of ['video:started', 'video:completed']) {
+  // video:paused and video:resumed ALSO route to the explicit lifecycle
+  // registrations below (compound-cue timeline control) — standing-cue
+  // evaluation and timeline control are independent consumers (F-TOOL-09/E6)
+  for (const event of ['video:started', 'video:completed', 'video:paused', 'video:resumed']) {
     listenerRegistry.addTrackedListener(videoQueueService, event, (data) => {
       cueEngineService.handleGameEvent(event, data);
     }, `videoQueueService->${event}->cueEngineService`);
