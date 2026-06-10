@@ -107,6 +107,8 @@ TYPE_MULTIPLIERS: {Personal: 1x, Mention: 3x, Business: 3x, Party: 5x, Technical
 
 Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loaded by both backend and GM Scanner at runtime. No manual sync needed for base values.
 
+**CRITICAL**: The GM Scanner bakes scoring-config.json in at Vite BUILD time (`scoring.js` static import) — after editing scoring values, the backend picks them up on restart, but the GM Scanner requires an ALNScanner rebuild (`npm run build`) or standalone-mode scoring will use stale values (F-TOOL-05).
+
 | Component | File | Notes |
 |-----------|------|-------|
 | Shared Config | `ALN-TokenData/scoring-config.json` | Single source of truth for values |

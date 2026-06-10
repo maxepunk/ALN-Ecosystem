@@ -35,7 +35,14 @@ It also manages:
 - Video files in `backend/public/videos/`
 - Named configuration presets in `config-tool/presets/`
 
-Changes take effect when the backend is restarted (for .env changes) or immediately (for JSON config files that are loaded at runtime).
+**When changes take effect** — nothing is hot-reloaded by the running backend. A reload-backend action is planned (Phase 3 config-surface work); until then:
+
+| Config Source | Takes Effect |
+|---------------|--------------|
+| Backend .env | Backend restart |
+| Scoring Config | Backend restart. The GM Scanner additionally requires an ALNScanner rebuild — it bakes scoring-config.json in at Vite build time |
+| Cue Definitions | Backend restart or `system:reset` (GM Scanner admin panel) |
+| Audio Routing | Backend restart or `system:reset` (GM Scanner admin panel) |
 
 ## Sections
 
@@ -83,7 +90,7 @@ Use **+ New** to create a cue, **Dup** to duplicate the selected cue, and **Del*
 **Picker fields** in command forms:
 - Sound/Video pickers list files from the backend with an "Upload new..." option that opens a file dialog
 - Cue pickers list all other cues in the current config
-- Sink pickers offer: (default), hdmi, bluetooth, combine-bt
+- Sink pickers offer: (default), hdmi, bluetooth
 
 **Asset Manager (bottom of left panel)** — Browse, upload, preview, and delete sound and video files. Shows which cues use each file. Sound files can be previewed with the play button.
 
@@ -110,7 +117,7 @@ Edit all backend `.env` variables organized into collapsible groups:
 - **Server** — NODE_ENV, PORT, HOST, CORS
 - **HTTPS** — SSL certificate paths, HTTP redirect port
 - **Security** — JWT secret/expiry, admin password (password fields with show/hide toggle)
-- **VLC** — VLC host, port, password, reconnection settings
+- **Video** — Video directory, VLC hardware acceleration override
 - **Session** — Max players, duplicate window, session timeout
 - **Storage** — Data/logs directories, backup interval
 - **Rate Limiting** — Request window and max requests
@@ -123,9 +130,9 @@ Click a group heading to expand/collapse it. The Server group is expanded by def
 
 ### Presets
 
-Save and restore complete venue configurations.
+Save and restore named configuration snapshots.
 
-**Save Current** — Saves all four config sources (env, scoring, cues, routing) as a named preset file. Enter a name and optional description.
+**Save Current** — Saves the four config sources (env, scoring, cues, routing) as a named preset file. Enter a name and optional description. Note: presets do NOT include sound/video asset files, token data, or music playlists — restoring a preset does not restore assets that its cues reference.
 
 **Load** — Restores a preset, overwriting all config files. An automatic backup is created before loading so you can always recover. After loading, all sections refresh with the new data.
 
