@@ -3,6 +3,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const { ValidationError } = require('./validators');
+const { maskSecrets } = require('./secrets');
 
 // Map errors to HTTP: schema violations are the client's fault (400 with
 // details, F-TOOL-04); everything else stays a 500.
@@ -20,7 +21,10 @@ function createRouter(configManager) {
 
   router.get('/config', (req, res) => {
     try {
-      res.json(configManager.readAll());
+      const config = configManager.readAll();
+      // Never serve secret values to the browser (E7). Writes accept new
+      // values; the sentinel round-trips as "unchanged".
+      res.json({ ...config, env: maskSecrets(config.env) });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

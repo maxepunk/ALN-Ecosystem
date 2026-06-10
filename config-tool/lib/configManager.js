@@ -11,6 +11,7 @@ const {
   validatePresetSections,
   assertValid,
 } = require('./validators');
+const { MASK_SENTINEL } = require('./secrets');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
@@ -60,6 +61,9 @@ class ConfigManager {
     assertValid(validateEnvUpdates(updates), 'env updates');
     const parsed = readEnv(this.paths.envPath);
     for (const [key, value] of Object.entries(updates)) {
+      // Masked secrets round-trip from GET /config as the sentinel; that
+      // means "unchanged" — never overwrite the real value with bullets.
+      if (value === MASK_SENTINEL) continue;
       parsed.values[key] = String(value);
       // If key doesn't exist in lines, append it
       if (!parsed.lines.some(l => l.type === 'keyvalue' && l.key === key)) {

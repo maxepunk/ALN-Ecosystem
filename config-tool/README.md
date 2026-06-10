@@ -227,7 +227,23 @@ Uses Node.js built-in test runner (27 tests covering env parsing, config managem
 
 ## Security Notes
 
+**The config tool is a PRE-SHOW tool with no authentication.**
+
+- By default the server binds `127.0.0.1` — it is only reachable from the
+  machine it runs on. To expose it on a network, set `CONFIG_TOOL_HOST`
+  (e.g. `CONFIG_TOOL_HOST=0.0.0.0 npm start`).
+- **LAN-exposure warning:** the venue LAN is the *player* network — player
+  phones join it to use the PWA scanners. Exposing the tool there hands
+  every mutating endpoint (config writes, asset delete, preset load) to
+  anyone on that network. If you must expose it (e.g. configuring from a
+  laptop), do it before doors and stop the tool (`Ctrl-C` / pm2 stop)
+  before the game starts. Prefer an SSH tunnel
+  (`ssh -L 9000:localhost:9000 pi@orchestrator`) over a LAN bind.
+- `GET /api/config` masks secret values (any `*_PASSWORD` / `*_TOKEN` /
+  `*_SECRET` env key is returned as `••••••••`). Saving a form that still
+  shows the mask leaves the stored secret unchanged; typing a new value
+  rotates it. Note that preset **export** files still contain real env
+  values — treat exported presets as secrets.
 - File uploads are restricted by extension (.wav/.mp3 for sounds, .mp4 for videos) and size (50MB sounds, 2GB videos)
 - Path traversal is prevented via `path.basename()` on all user-supplied filenames
-- Preset imports validate required fields before writing
-- The config tool should only be run on the local network — it has no authentication
+- All config writes (including preset load/import) are schema-validated; violations return 400 with details

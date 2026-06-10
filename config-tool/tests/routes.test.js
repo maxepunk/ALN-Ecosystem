@@ -27,7 +27,10 @@ describe('routes (HTTP layer)', () => {
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-routes-test-'));
 
-    fs.writeFileSync(path.join(tmpDir, '.env'), 'PORT=3000\nHOST=0.0.0.0\n');
+    fs.writeFileSync(
+      path.join(tmpDir, '.env'),
+      'PORT=3000\nHOST=0.0.0.0\nADMIN_PASSWORD=super-secret\nJWT_SECRET=jwt-secret-value\nHOME_ASSISTANT_TOKEN=ha-token-value\nEMPTY_TOKEN=\n'
+    );
     fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
       version: '1.0',
       baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
@@ -271,5 +274,43 @@ describe('routes (HTTP layer)', () => {
     assert.ok(content.includes('PORT=4000'));
     assert.ok(content.includes('HOST=0.0.0.0'));
     assert.ok(content.includes('NEW_KEY=v'));
+  });
+
+  describe('secret masking in GET /api/config (F-TOOL-02 / E7)', () => {
+    const { MASK_SENTINEL } = require('../lib/secrets');
+
+    it('masks *_PASSWORD/*_TOKEN/*_SECRET values; leaves the rest readable', async () => {
+      const res = await request(app).get('/api/config').expect(200);
+      assert.strictEqual(res.body.env.ADMIN_PASSWORD, MASK_SENTINEL);
+      assert.strictEqual(res.body.env.JWT_SECRET, MASK_SENTINEL);
+      assert.strictEqual(res.body.env.HOME_ASSISTANT_TOKEN, MASK_SENTINEL);
+      assert.strictEqual(res.body.env.PORT, '3000');
+      // raw secret values never appear anywhere in the response
+      assert.ok(!JSON.stringify(res.body).includes('super-secret'));
+      assert.ok(!JSON.stringify(res.body).includes('jwt-secret-value'));
+    });
+
+    it('does not mask empty secret values (field shows as unset)', async () => {
+      const res = await request(app).get('/api/config').expect(200);
+      assert.strictEqual(res.body.env.EMPTY_TOKEN, '');
+    });
+
+    it('PUT /api/config/env with the mask sentinel leaves the stored secret unchanged', async () => {
+      // UI save flows echo back unmodified (masked) values — must be a no-op
+      await request(app)
+        .put('/api/config/env')
+        .send({ ADMIN_PASSWORD: MASK_SENTINEL, PORT: '4001' })
+        .expect(200);
+      const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
+      assert.ok(content.includes('ADMIN_PASSWORD=super-secret'));
+      assert.ok(content.includes('PORT=4001'));
+    });
+
+    it('PUT /api/config/env with a NEW secret value writes it', async () => {
+      await request(app).put('/api/config/env').send({ ADMIN_PASSWORD: 'rotated' }).expect(200);
+      const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
+      assert.ok(content.includes('ADMIN_PASSWORD=rotated'));
+      assert.ok(!content.includes('super-secret'));
+    });
   });
 });
