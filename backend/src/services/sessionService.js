@@ -541,6 +541,13 @@ class SessionService extends EventEmitter {
         this.currentSession.gameClock = gameClockService.toPersistence();
         break;
       case 'active':
+        // F-BCORE-06: resuming from setup would activate the session without
+        // startGame()'s cascade (game clock, cue engine, overtime threshold,
+        // gameStartTime) yet start accepting transactions. Mirror startGame()'s
+        // state guard: setup → active is ONLY valid via startGame().
+        if (oldStatus === 'setup') {
+          throw new Error('Cannot resume: session is in "setup" state — use session:start to begin the game');
+        }
         this.currentSession.start();
         if (oldStatus === 'paused') {
           gameClockService.resume();

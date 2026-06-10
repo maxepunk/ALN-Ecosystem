@@ -250,6 +250,19 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(sessionService.getCurrentSession().status).toBe('active');
     });
 
+    it('should reject resume-from-setup — startGame is the only setup→active path (F-BCORE-06)', async () => {
+      await sessionService.createSession({
+        name: 'Setup Resume Test',
+        teams: []
+      });
+      expect(sessionService.getCurrentSession().status).toBe('setup');
+
+      // Activating from setup must throw: it would bypass startGame()'s
+      // cascade (game clock, cue engine, overtime threshold, gameStartTime)
+      expect(() => sessionService.updateSessionStatus('active')).toThrow(/setup/);
+      expect(sessionService.getCurrentSession().status).toBe('setup');
+    });
+
     it('should end session and clear currentSession', async () => {
       await sessionService.createSession({
         name: 'End Test',
