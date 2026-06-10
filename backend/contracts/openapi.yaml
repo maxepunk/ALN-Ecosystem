@@ -613,36 +613,6 @@ paths:
                   image: null
                   audio: null
                 videoQueued: true
-        '202':
-          description: Scan queued (offline mode)
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - status
-                  - queued
-                  - offlineMode
-                  - transactionId
-                  - message
-                properties:
-                  status:
-                    type: string
-                    enum: [queued]
-                  queued:
-                    type: boolean
-                    description: Always true for queued scans
-                    example: true
-                  offlineMode:
-                    type: boolean
-                    example: true
-                  transactionId:
-                    type: string
-                    description: Transaction ID assigned to the queued scan
-                    example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
-                  message:
-                    type: string
-                    example: "Scan queued for processing when system comes online"
         '409':
           description: Video already playing (conflict)
           content:
@@ -673,25 +643,21 @@ paths:
         '400':
           $ref: '#/components/responses/ValidationError'
         '503':
-          description: Offline queue full
+          description: Server still initializing (token data not loaded yet)
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - status
+                  - error
                   - message
-                  - offlineMode
                 properties:
-                  status:
+                  error:
                     type: string
-                    enum: [error]
+                    enum: [SERVICE_UNAVAILABLE]
                   message:
                     type: string
-                    example: "Offline queue is full, please try again later"
-                  offlineMode:
-                    type: boolean
-                    example: true
+                    example: "Server is still initializing, please retry"
 
   /api/scan/batch:
     post:

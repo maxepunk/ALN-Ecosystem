@@ -294,29 +294,15 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
   });
 
   // ====================================================================
-  // CRITICAL TEST #4: Offline Queue Replay with Device Types
+  // CRITICAL TEST #4: Offline Queue Replay (GM transactions)
   // ====================================================================
+  // NOTE (D2, 2026-06-09): the backend player-scan offline queue was
+  // deleted — player scanners queue client-side and replay via
+  // POST /api/scan/batch. Only GM transactions are queued backend-side.
 
-  describe('Offline Queue Replay with Mixed Device Types', () => {
-    it('should apply device-type-specific duplicate detection during queue replay', async () => {
+  describe('Offline Queue Replay with GM Transactions', () => {
+    it('should apply GM duplicate detection during queue replay', async () => {
       const TOKEN_ID = 'rat001';
-
-      // Queue offline scans from all 3 device types
-      offlineQueueService.enqueue({
-        tokenId: TOKEN_ID,
-        deviceId: 'PLAYER_OFFLINE_1',
-          deviceType: 'player',
-        teamId: 'Team Alpha',
-        timestamp: new Date().toISOString()
-      });
-
-      offlineQueueService.enqueue({
-        tokenId: TOKEN_ID,  // DUPLICATE for player (should be allowed)
-        deviceId: 'PLAYER_OFFLINE_1',
-          deviceType: 'player',
-        teamId: 'Team Alpha',
-        timestamp: new Date().toISOString()
-      });
 
       offlineQueueService.enqueueGmTransaction({
         tokenId: TOKEN_ID,
@@ -343,27 +329,18 @@ describe('Device-Type Specific Duplicate Detection - Integration', () => {
 
       // Verify results
       const results = queueEvent.data.results;
-      expect(results.length).toBe(4); // 2 player + 2 GM
+      expect(results.length).toBe(2);
 
       // All results should be processed (status: 'processed')
       expect(results.every(r => r.status === 'processed')).toBe(true);
 
-      // Find GM results (they have transactionStatus field)
-      const gmResults = results.filter(r => r.transactionStatus);
-      expect(gmResults.length).toBe(2);
-
       // First GM scan should be accepted
-      expect(gmResults[0].transactionStatus).toBe('accepted');
-      expect(gmResults[0].points).toBeGreaterThan(0);
+      expect(results[0].transactionStatus).toBe('accepted');
+      expect(results[0].points).toBeGreaterThan(0);
 
       // Second GM scan should be duplicate (same token, same device)
-      expect(gmResults[1].transactionStatus).toBe('duplicate');
-      expect(gmResults[1].points).toBe(0);
-
-      // Player scans should all be processed (no transactionStatus field for player scans)
-      const playerResults = results.filter(r => !r.transactionStatus);
-      expect(playerResults.length).toBe(2);
-      expect(playerResults.every(r => r.tokenId === TOKEN_ID)).toBe(true);
+      expect(results[1].transactionStatus).toBe('duplicate');
+      expect(results[1].points).toBe(0);
     });
   });
 

@@ -119,7 +119,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `vlcService` | VLC D-Bus MPRIS control (extends MprisPlayerBase) | `new VlcMprisService()` |
 | `discoveryService` | UDP broadcast (port 8888) | Class export (instantiated by caller) |
 | `tokenService` | Token data loading | Function exports (no class) |
-| `offlineQueueService` | Offline scan management | `new OfflineQueueService()` |
+| `offlineQueueService` | Offline GM-transaction queue ONLY (D2 2026-06-09: backend player-scan offline path deleted; player scanners queue client-side and replay via `POST /api/scan/batch`) | `new OfflineQueueService()` |
 | `persistenceService` | Disk persistence | `new PersistenceService()` |
 | `displayControlService` | HDMI display mode state machine | `new DisplayControlService()` |
 | `audioRoutingService` | PipeWire audio routing (HDMI/Bluetooth) | `new AudioRoutingService()` |

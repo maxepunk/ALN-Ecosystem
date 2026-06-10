@@ -107,7 +107,6 @@ const config = {
 
   // Feature Flags
   features: {
-    offlineMode: process.env.ENABLE_OFFLINE_MODE === 'true',
     videoPlayback: process.env.ENABLE_VIDEO_PLAYBACK !== 'false', // default true
     adminPanel: process.env.ENABLE_ADMIN_PANEL !== 'false', // default true
     debugging: process.env.ENABLE_DEBUGGING === 'true',

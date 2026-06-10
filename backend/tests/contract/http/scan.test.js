@@ -119,6 +119,34 @@ describe('POST /api/scan', () => {
     expect(typeof response.body.message).toBe('string');
   });
 
+  // Decision D2 (2026-06-09, CONFIRMED): the backend offline-acceptance path
+  // (202 "queued for processing") was deleted. No production code ever set
+  // the offline flag, and the drain only logged scans without persisting
+  // them (F-SCAN-04) — a false promise. Scanners own offline queueing
+  // client-side. Even if the legacy flag is somehow set, scans process
+  // normally.
+  it('should process scans normally regardless of the legacy offline flag (D2)', async () => {
+    const offlineQueueService = require('../../../src/services/offlineQueueService');
+    offlineQueueService.isOffline = true;
+
+    try {
+      const response = await request(app.app)
+        .post('/api/scan')
+        .send({
+          tokenId: 'fli001',  // Non-video token from ALN-TokenData
+          deviceId: 'PLAYER_SCANNER_01',
+          deviceType: 'player',
+          timestamp: new Date().toISOString()
+        })
+        .expect(200);
+
+      expect(response.body.status).toBe('accepted');
+      validateHTTPResponse(response, '/api/scan', 'post', 200);
+    } finally {
+      offlineQueueService.isOffline = false;
+    }
+  });
+
   // Phase 3c: canAcceptVideo() gates the scan route. When VLC is down,
   // scanning a video token returns 409 instead of silently queuing.
   it('should return 409 when VLC is down and scanning a video token', async () => {

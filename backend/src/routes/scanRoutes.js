@@ -10,8 +10,6 @@ const { playerScanRequestSchema, validate, ValidationError } = require('../utils
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
-const offlineQueueService = require('../services/offlineQueueService');
-const { isOffline } = require('../middleware/offlineStatus');
 
 /**
  * POST /api/scan
@@ -23,27 +21,9 @@ router.post('/', async (req, res) => {
     // Validate request
     const scanRequest = validate(req.body, playerScanRequestSchema);
 
-    // Check if system is offline
-    if (isOffline()) {
-      // Queue for later processing
-      const queuedItem = offlineQueueService.enqueue(scanRequest);
-      if (queuedItem) {
-        return res.status(202).json({
-          status: 'queued',
-          queued: true,
-          offlineMode: true,
-          transactionId: queuedItem.transactionId,
-          message: 'Scan queued for processing when system comes online',
-        });
-      } else {
-        // Queue is full
-        return res.status(503).json({
-          status: 'error',
-          offlineMode: true,
-          message: 'Offline queue is full, please try again later',
-        });
-      }
-    }
+    // NOTE (D2, 2026-06-09): the backend "offline mode" acceptance path
+    // (202 "queued for processing") was deleted. Scanners own offline
+    // queueing client-side and replay via POST /api/scan/batch.
 
     // Check services are initialized
     if (transactionService.tokens.size === 0) {
