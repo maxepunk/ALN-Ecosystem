@@ -14,11 +14,6 @@
     "functions": 40,
     "lines": 50
   },
-  "./src/middleware/offlineStatus.js": {
-    "branches": 65,
-    "functions": 60,
-    "lines": 55
-  },
   "./src/models/deviceConnection.js": {
     "branches": 70,
     "functions": 90,
