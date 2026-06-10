@@ -9,7 +9,7 @@
     "plugin:jest/recommended"
   ],
   "parserOptions": {
-    "ecmaVersion": 2021,
+    "ecmaVersion": 2022,
     "sourceType": "module"
   },
   "plugins": [
@@ -17,22 +17,128 @@
   ],
   "rules": {
     "no-console": "off",
-    "no-underscore-dangle": ["error", { "allow": ["_id"] }],
-    "import/no-extraneous-dependencies": ["error", {
+    "no-underscore-dangle": "warn",
+    "import/no-extraneous-dependencies": ["warn", {
       "devDependencies": ["**/*.test.js", "**/*.spec.js", "**/tests/**"]
     }],
-    "max-len": ["error", { "code": 120 }],
-    "object-curly-newline": ["error", {
+    "max-len": ["warn", { "code": 120 }],
+    "object-curly-newline": ["warn", {
       "multiline": true,
       "consistent": true
     }],
-    "arrow-parens": ["error", "as-needed"],
-    "comma-dangle": ["error", {
+    "arrow-parens": ["warn", "as-needed"],
+    "comma-dangle": ["warn", {
       "arrays": "always-multiline",
       "objects": "always-multiline",
       "imports": "always-multiline",
       "exports": "always-multiline",
       "functions": "never"
-    }]
-  }
+    }],
+
+    "// BASELINE NOTE": "off",
+    "// Rules below are downgraded to 'warn' (2026-06, Phase 0 guardrails).": "off",
+    "// The suite was never CI-gated; these rules have pre-existing violations.": "off",
+    "// Policy: gate NEW violations of clean rules (still 'error' via airbnb-base),": "off",
+    "// burn down warnings opportunistically. Do NOT add new 'warn' downgrades": "off",
+    "// without review; re-promote rules to 'error' as their counts reach zero.": "off",
+
+    "arrow-body-style": "warn",
+    "block-spacing": "warn",
+    "brace-style": "warn",
+    "camelcase": "warn",
+    "class-methods-use-this": "warn",
+    "consistent-return": "warn",
+    "curly": "warn",
+    "default-case": "warn",
+    "dot-notation": "warn",
+    "eol-last": "warn",
+    "function-call-argument-newline": "warn",
+    "function-paren-newline": "warn",
+    "global-require": "warn",
+    "implicit-arrow-linebreak": "warn",
+    "import/extensions": "warn",
+    "import/newline-after-import": "warn",
+    "import/no-dynamic-require": "warn",
+    "import/no-unresolved": "warn",
+    "import/order": "warn",
+    "indent": ["warn", 2],
+    "keyword-spacing": "warn",
+    "lines-around-directive": "warn",
+    "lines-between-class-members": "warn",
+    "max-classes-per-file": "warn",
+    "newline-per-chained-call": "warn",
+    "no-await-in-loop": "warn",
+    "no-cond-assign": "warn",
+    "no-confusing-arrow": "warn",
+    "no-continue": "warn",
+    "no-control-regex": "warn",
+    "no-dupe-class-members": "warn",
+    "no-else-return": "warn",
+    "no-empty-pattern": "warn",
+    "no-inner-declarations": "warn",
+    "no-lonely-if": "warn",
+    "no-multi-spaces": "warn",
+    "no-multiple-empty-lines": "warn",
+    "no-nested-ternary": "warn",
+    "no-new": "warn",
+    "no-param-reassign": "warn",
+    "no-plusplus": "warn",
+    "no-promise-executor-return": "warn",
+    "no-restricted-globals": "warn",
+    "no-restricted-properties": "warn",
+    "no-restricted-syntax": "warn",
+    "no-return-assign": "warn",
+    "no-return-await": "warn",
+    "no-shadow": "warn",
+    "no-tabs": "warn",
+    "no-trailing-spaces": "warn",
+    "no-unsafe-optional-chaining": "warn",
+    "no-unused-vars": "warn",
+    "no-use-before-define": "warn",
+    "no-useless-constructor": "warn",
+    "no-useless-return": "warn",
+    "nonblock-statement-body-position": "warn",
+    "object-curly-spacing": "warn",
+    "object-property-newline": "warn",
+    "object-shorthand": "warn",
+    "one-var": "warn",
+    "one-var-declaration-per-line": "warn",
+    "operator-linebreak": "warn",
+    "padded-blocks": "warn",
+    "prefer-const": "warn",
+    "prefer-destructuring": "warn",
+    "prefer-exponentiation-operator": "warn",
+    "prefer-template": "warn",
+    "quote-props": "warn",
+    "quotes": "warn",
+    "radix": "warn",
+    "semi": "warn",
+    "space-before-function-paren": "warn",
+    "strict": "warn",
+    "jest/no-conditional-expect": "warn",
+    "jest/no-done-callback": "warn",
+    "jest/no-jasmine-globals": "warn",
+    "jest/no-standalone-expect": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*.js", "test-*.js", "debug_sync.js", "start-session.js"],
+      "env": {
+        "browser": true,
+        "jest": true
+      }
+    },
+    {
+      "files": ["tests/e2e/helpers/page-objects/ScoreboardPage.js"],
+      "globals": {
+        "state": "readonly"
+      }
+    },
+    {
+      "files": ["tests/unit/websocket/socketMiddleware.test.js"],
+      "globals": {
+        "fail": "readonly"
+      }
+    }
+  ]
 }

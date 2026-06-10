@@ -33,6 +33,10 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Lint backend (errors only; warnings are pre-existing baseline)
+        working-directory: backend
+        run: npm run lint
+
       - name: Run unit and contract tests with coverage
         working-directory: backend
         run: npm test -- --coverage --maxWorkers=2
