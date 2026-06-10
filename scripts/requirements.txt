@@ -1,0 +1,12 @@
+# Python dependencies for the Notion sync scripts (scripts/*.py).
+# Install: pip install -r scripts/requirements.txt
+#
+# Derived from actual imports:
+# - requests:       Notion API calls (sync_notion_to_tokens.py, compare_rfid_with_files.py)
+# - Pillow:         NeurAI BMP generation (sync_notion_to_tokens.py, generate_placeholder.py,
+#                   neurai_display_generator.py)
+# - python-dotenv:  optional .env loading (graceful ImportError fallback, but
+#                   required for the documented .env workflow)
+requests>=2.28
+Pillow>=9.0
+python-dotenv>=0.21
