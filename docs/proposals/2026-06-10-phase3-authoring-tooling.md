@@ -146,10 +146,15 @@ Pages, in build order (value ÷ effort):
 1. **Pack editing model** — **DECIDED (owner): draft + publish.** Edits land
    in a draft copy; an explicit Publish step makes them the active pack
    (and is the natural unit for pack versioning + the Apply/staleness flow).
-2. **Auth posture for the Design workspace** (E7 said pre-show-only,
-   localhost-bound): is that acceptable for game *design* sessions too, or
-   should Design be reachable on the LAN (laptop in the venue) with the
-   shared admin password?
-3. **Strings preview fidelity**: are static template previews enough, or do
-   you want a live "preview on the actual scoreboard TV" mode (backend
-   already controls that display)?
+2. **Auth posture** — **DECIDED (owner): LAN + shared admin password +
+   HTTPS**, superseding E7's localhost-bind default (E7's "pre-show only"
+   survives as operational guidance). Rationale: Phase 5 authoring requires
+   LAN access anyway; reuses the backend's existing ADMIN_PASSWORD→JWT
+   pattern (one auth story, not two); enables future role separation.
+   Riders: HTTPS required (reuse backend cert approach); secret masking
+   stays as defense-in-depth.
+3. **Strings preview fidelity** — **DECIDED (owner): build Option B**
+   (preview drafts on the real device) in addition to in-browser replica
+   previews. Scope v1: scoreboard TV only (backend already drives it;
+   draft+publish keeps live games isolated from previews). Scanner-screen
+   device preview deferred unless a need emerges.
