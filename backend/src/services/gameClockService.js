@@ -66,7 +66,13 @@ class GameClockService extends EventEmitter {
 
   stop() {
     this._stopInterval();
+    // Capture elapsed BEFORE flipping status (getElapsed reads pauseStartTime
+    // while paused; after 'stopped' it counts wall-clock again)
+    const elapsed = this.getElapsed();
     this.status = 'stopped';
+    // F-SHOW-13: without an event, no gameclock service:state push happens at
+    // session end and the GM panel keeps showing a running clock
+    this.emit('gameclock:stopped', { elapsed });
     logger.info('[GameClock] Stopped');
   }
 

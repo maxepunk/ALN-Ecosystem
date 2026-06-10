@@ -155,6 +155,19 @@ describe('SessionService restart restore (F-SHOW-01)', () => {
     expect(cueEngineService.active).toBe(false);
   });
 
+  it('suspends the cue engine at session end (F-SHOW-13, decision E4)', async () => {
+    // Event-triggered standing cues must not keep firing during post-game
+    // cleanup (e.g., music:track:changed cues on cleanup music).
+    await sessionService.init();
+    await sessionService.createSession({ name: 'End Test', teams: [] });
+    await sessionService.startGame();
+    expect(cueEngineService.active).toBe(true);
+
+    await sessionService.endSession();
+
+    expect(cueEngineService.active).toBe(false);
+  });
+
   it('persists cue engine runtime state beside gameClock on save', async () => {
     await sessionService.init();
     await sessionService.createSession({ name: 'Persist Test', teams: [] });

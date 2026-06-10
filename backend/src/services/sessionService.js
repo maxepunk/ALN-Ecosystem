@@ -574,6 +574,11 @@ class SessionService extends EventEmitter {
       // Stop the game clock
       gameClockService.stop();
 
+      // Suspend the cue engine (F-SHOW-13, decision E4): event-triggered
+      // standing cues must not keep firing during post-game cleanup. The GM
+      // can re-enable via cue engine controls if needed.
+      require('./cueEngineService').suspend();
+
       // Save final state (both specific ID and 'current' reference)
       const sessionData = session.toJSON();
       await persistenceService.saveSession(sessionData);

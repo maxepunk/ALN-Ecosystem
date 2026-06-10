@@ -559,7 +559,7 @@ function setupBroadcastListeners(io, services) {
 
   // Game Clock → service:state { domain: 'gameclock' }
   if (gameClockService) {
-    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed']) {
+    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed', 'gameclock:stopped']) {
       addTrackedListener(gameClockService, event, () => pushServiceState('gameclock', gameClockService));
     }
   }

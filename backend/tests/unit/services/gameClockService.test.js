@@ -128,6 +128,19 @@ describe('GameClockService', () => {
 
       expect(handler).toHaveBeenCalledTimes(2);
     });
+
+    // F-SHOW-13: stop() emitted no event, so the GM clock panel kept showing
+    // a running clock after session:end until reconnect.
+    it('should emit gameclock:stopped with the final elapsed time', () => {
+      const handler = jest.fn();
+      gameClockService.on('gameclock:stopped', handler);
+      gameClockService.start();
+      jest.advanceTimersByTime(5000);
+
+      gameClockService.stop();
+
+      expect(handler).toHaveBeenCalledWith({ elapsed: 5 });
+    });
   });
 
   describe('getElapsed()', () => {
