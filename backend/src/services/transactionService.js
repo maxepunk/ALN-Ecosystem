@@ -436,13 +436,17 @@ class TransactionService extends EventEmitter {
     const session = sessionService.getCurrentSession();
     if (!session) return false;
 
-    // Get all token IDs this team has successfully scanned (using Set for performance)
+    // Get all token IDs this team has SOLD (blackmarket) — Decision A1:
+    // detective (0-point) transactions never count toward group completion.
+    // This matches the standalone scanner (LocalStorage._checkGroupCompletion)
+    // and this service's own rebuildScoresFromTransactions path (F-SCAN-06).
     const transactions = session.transactions || [];
     const teamScannedTokenIds = new Set(
       transactions
         .filter(tx =>
           tx.teamId === teamId &&
-          tx.status === 'accepted'
+          tx.status === 'accepted' &&
+          tx.mode === 'blackmarket'
         )
         .map(tx => tx.tokenId)
     );

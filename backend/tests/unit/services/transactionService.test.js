@@ -735,6 +735,84 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 
+  describe('Group Completion — blackmarket-only (F-SCAN-06, decision A1)', () => {
+    // Uses the shared 2-token group fixture (MARCUS_SUCKS, x2) so the test
+    // mirrors real token data. E2E flow 07c still self-skips against
+    // production tokens.json (its only group has 1 token) — fixing that
+    // requires an ALN-TokenData change, out of scope here.
+    const fixtures = require('../../fixtures/test-tokens');
+    const Token = require('../../../src/models/token');
+
+    const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+    let groupTokens, groupName, multiplier, expectedBonus;
+
+    beforeEach(async () => {
+      await sessionService.createSession({
+        name: 'Group Parity Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      ({ groupName, multiplier } = fixtures.MARCUS_SUCKS);
+      groupTokens = fixtures.MARCUS_SUCKS.tokens.map(t => new Token(t));
+      groupTokens.forEach(t => transactionService.tokens.set(t.id, t));
+      expectedBonus = (multiplier - 1) * groupTokens.reduce((sum, t) => sum + t.value, 0);
+    });
+
+    const scan = (tokenId, mode) => transactionService.processScan({
+      tokenId,
+      teamId: 'Team Alpha',
+      deviceId: 'GM_GRP',
+      deviceType: 'gm',
+      mode,
+      timestamp: new Date().toISOString()
+    });
+
+    it('does NOT complete a group when a member token was processed as detective', async () => {
+      // Detective first, blackmarket last — the order that (pre-fix) paid
+      // the full bonus on the backend while standalone paid nothing
+      await scan(groupTokens[0].id, 'detective');
+      const result = await scan(groupTokens[1].id, 'blackmarket');
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
+      // Only the sold token's value — no group bonus
+      expect(teamScore.currentScore).toBe(groupTokens[1].value);
+      expect(teamScore.bonusPoints).toBe(0);
+      expect(teamScore.completedGroups).not.toContain(groupName);
+    });
+
+    it('completes the group and pays the bonus when ALL members are blackmarket', async () => {
+      await scan(groupTokens[0].id, 'blackmarket');
+      const result = await scan(groupTokens[1].id, 'blackmarket');
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const baseSum = groupTokens.reduce((sum, t) => sum + t.value, 0);
+      expect(teamScore.completedGroups).toContain(groupName);
+      expect(teamScore.bonusPoints).toBe(expectedBonus);
+      expect(teamScore.currentScore).toBe(baseSum + expectedBonus);
+    });
+
+    it('live path agrees with the rebuild path for detective-member groups', async () => {
+      await scan(groupTokens[0].id, 'detective');
+      await scan(groupTokens[1].id, 'blackmarket');
+      await wait();
+
+      const liveScore = transactionService.teamScores.get('Team Alpha').currentScore;
+
+      // Rebuild from the same history (what transaction:delete does)
+      const session = sessionService.getCurrentSession();
+      transactionService.rebuildScoresFromTransactions(session.transactions);
+      const rebuiltScore = transactionService.teamScores.get('Team Alpha').currentScore;
+
+      expect(rebuiltScore).toBe(liveScore);
+    });
+  });
+
   describe('Recent Transactions', () => {
     it('should track recent transactions', async () => {
       await sessionService.createSession({
