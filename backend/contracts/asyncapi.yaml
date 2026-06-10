@@ -1756,17 +1756,23 @@ components:
       title: Offline Queue Processing Complete
       summary: Notify clients when offline queue processed
       description: |
-        Broadcast when offline queue has been processed (after reconnection).
+        Broadcast when the backend's offline GM-transaction queue has been
+        drained (offline flag cleared via setOfflineStatus).
 
         **Functional Requirement**: Section 1.8 (Offline Queue Management)
         **Decisions Applied**: #2 (wrapped envelope)
 
+        **Scope (D2, 2026-06-09)**: the backend player-scan offline queue was
+        deleted — player scanners queue client-side and replay via HTTP POST
+        /api/scan/batch (which broadcasts per-entry player:scan with
+        replayed:true). This event now only reports queued GM transactions
+        re-processed through transactionService.
+
         **Flow**:
-        1. Player Scanner reconnects after offline period
-        2. Uploads queued scans via HTTP POST /api/scan/batch
-        3. Server processes batch
-        4. Server broadcasts offline:queue:processed
-        5. Server broadcasts sync:full with updated state
+        1. Backend offline flag clears (setOfflineStatus(false))
+        2. Server re-processes queued GM transactions (scoring applies)
+        3. Server broadcasts offline:queue:processed
+        4. Server broadcasts sync:full with updated state
       payload:
         type: object
         required:
@@ -1996,7 +2002,10 @@ components:
         - scanId: UUID of persisted scan record (for correlation)
         - tokenId: Token scanned by player
         - deviceId: Player scanner device ID
-        - videoQueued: True if token has video property (queued for TV playback)
+        - videoQueued: True only if the token's video was ACTUALLY queued for
+          TV playback. False when the token has no video, when the video was
+          rejected (VLC down / video busy), and always for batch-replayed
+          scans (decision A4).
         - memoryType: Token type from token data (Personal, Business, etc.)
         - tokenData: Full token metadata for display
       payload:
@@ -2033,8 +2042,20 @@ components:
                 example: "PLAYER_8a7b9c1d"
               videoQueued:
                 type: boolean
-                description: True if token has video property and was queued for TV playback
+                description: |
+                  True only if the token's video was actually queued for TV
+                  playback. False when the video was rejected (VLC down /
+                  video busy) and always false for batch-replayed scans.
                 example: false
+              replayed:
+                type: boolean
+                description: |
+                  True when this scan was persisted from a batch upload
+                  (POST /api/scan/batch — offline queue drain) rather than a
+                  live scan (decision D1). Absent/false for live scans. The
+                  data.timestamp field carries the ORIGINAL scan time, which
+                  may be hours before the broadcast.
+                example: true
               memoryType:
                 type: string
                 nullable: true

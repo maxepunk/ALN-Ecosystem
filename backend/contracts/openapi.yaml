@@ -613,85 +613,91 @@ paths:
                   image: null
                   audio: null
                 videoQueued: true
-        '202':
-          description: Scan queued (offline mode)
-          content:
-            application/json:
-              schema:
-                type: object
-                required:
-                  - status
-                  - queued
-                  - offlineMode
-                  - transactionId
-                  - message
-                properties:
-                  status:
-                    type: string
-                    enum: [queued]
-                  queued:
-                    type: boolean
-                    description: Always true for queued scans
-                    example: true
-                  offlineMode:
-                    type: boolean
-                    example: true
-                  transactionId:
-                    type: string
-                    description: Transaction ID assigned to the queued scan
-                    example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
-                  message:
-                    type: string
-                    example: "Scan queued for processing when system comes online"
         '409':
-          description: Video already playing (conflict)
+          description: |
+            Conflict — TWO distinct cases (F-SCAN-12). Clients MUST
+            distinguish them; they have opposite persistence semantics:
+
+            1. **No session** (`error: SESSION_NOT_FOUND`): the scan was
+               NOT recorded. Decision A5: 4xx responses are FINAL — do not
+               requeue; rescan once a session exists.
+            2. **Video rejected** (`status: rejected`): the scan WAS
+               persisted to the session; only the video trigger was
+               rejected (VLC down or a video is already playing).
+               `waitTime` is present only for the video-busy case.
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - status
-                  - message
-                  - tokenId
-                  - waitTime
-                properties:
-                  status:
-                    type: string
-                    enum: [rejected]
-                  message:
-                    type: string
-                    example: "Video already playing, please wait"
-                  tokenId:
-                    type: string
-                    example: "534e2b03"
-                  mediaAssets:
+                oneOf:
+                  - title: NoSession
                     type: object
-                  waitTime:
-                    type: integer
-                    description: Estimated wait time in seconds
-                    example: 30
+                    required:
+                      - error
+                      - message
+                    properties:
+                      error:
+                        type: string
+                        enum: [SESSION_NOT_FOUND]
+                      message:
+                        type: string
+                        example: "No active session - admin must create session first"
+                  - title: VideoRejected
+                    type: object
+                    required:
+                      - status
+                      - message
+                      - tokenId
+                      - videoQueued
+                    properties:
+                      status:
+                        type: string
+                        enum: [rejected]
+                      message:
+                        type: string
+                        example: "Video already playing, please wait"
+                      tokenId:
+                        type: string
+                        example: "534e2b03"
+                      mediaAssets:
+                        type: object
+                      videoQueued:
+                        type: boolean
+                        enum: [false]
+                        description: Always false — the video was rejected
+                      waitTime:
+                        type: integer
+                        description: |
+                          Estimated wait time in seconds. Present ONLY when
+                          a video is already playing (video_busy); omitted
+                          when VLC is down (vlc_down).
+                        example: 30
+        '404':
+          description: Token not found in token database (scan not recorded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "TOKEN_NOT_FOUND"
+                message: "Token NO_SUCH_TOKEN not recognized"
         '400':
           $ref: '#/components/responses/ValidationError'
         '503':
-          description: Offline queue full
+          description: Server still initializing (token data not loaded yet)
           content:
             application/json:
               schema:
                 type: object
                 required:
-                  - status
+                  - error
                   - message
-                  - offlineMode
                 properties:
-                  status:
+                  error:
                     type: string
-                    enum: [error]
+                    enum: [SERVICE_UNAVAILABLE]
                   message:
                     type: string
-                    example: "Offline queue is full, please try again later"
-                  offlineMode:
-                    type: boolean
-                    example: true
+                    example: "Server is still initializing, please retry"
 
   /api/scan/batch:
     post:
@@ -711,12 +717,26 @@ paths:
 
         **Usage**:
         When Player Scanner reconnects after offline period, uploads queued scans in batch.
-        Orchestrator processes each scan (logging, video queueing).
+        Orchestrator processes each scan (logging only).
 
         **Game Mechanics**:
         - NO SCORING - This is NOT a game transaction
         - Scans logged for audit trail
-        - Videos queued if tokens have video property
+        - Videos are NEVER queued for batch-replayed scans (decision A4,
+          2026-06-09): batches represent past activity. If video playback was
+          unavailable at scan time the player was alerted then; replay must
+          not start playback at upload time. `videoQueued` is always false
+          in batch results.
+
+        **Per-Item Validation (F-SCAN-14)**:
+        Each entry is validated against the same schema as POST /api/scan
+        (tokenId, deviceId, deviceType required; timestamp ISO8601, normalized
+        to UTC). Invalid entries are returned as `status: failed` results —
+        the rest of the batch still processes — and are NOT persisted to the
+        session. Entries with pre-sync timestamps (before 2020-01-01, e.g.
+        ESP32 scans stamped 1970+uptime before NTP sync) are likewise rejected
+        as failed: epoch-era scan times would corrupt session timelines and
+        post-session analysis.
 
         **Breaking Changes**:
         - Field: scannerId → deviceId (Decision #4)
@@ -826,6 +846,10 @@ paths:
                       properties:
                         tokenId:
                           type: string
+                          nullable: true
+                          description: |
+                            Token ID echoed from the entry (null when the
+                            entry was malformed and had no tokenId).
                           example: "534e2b02"
                         status:
                           type: string
@@ -833,15 +857,20 @@ paths:
                           example: "processed"
                         videoQueued:
                           type: boolean
-                          description: Whether video was queued
+                          description: |
+                            Always false — batch-replayed scans never trigger
+                            video playback (decision A4).
                           example: false
                         message:
                           type: string
-                          description: Optional message (e.g., "Video already playing")
+                          description: Optional informational message
                           example: null
                         error:
                           type: string
-                          description: Error message if status=failed
+                          description: |
+                            Error message if status=failed (unknown token,
+                            per-item schema validation failure, or pre-sync
+                            1970-era timestamp — F-SCAN-14).
                           example: null
               example:
                 batchId: "a3f4b2c1-5678-90ab-cdef-1234567890ab"
@@ -857,9 +886,25 @@ paths:
                     videoQueued: false
                   - tokenId: "534e2b03"
                     status: "processed"
-                    videoQueued: true
+                    videoQueued: false
         '400':
           $ref: '#/components/responses/ValidationError'
+        '503':
+          description: Server still initializing (token data not loaded yet)
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - error
+                  - message
+                properties:
+                  error:
+                    type: string
+                    enum: [SERVICE_UNAVAILABLE]
+                  message:
+                    type: string
+                    example: "Server is still initializing, please retry"
 
   /api/session:
     get:

@@ -171,10 +171,6 @@ async function initializeServices() {
     await sessionService.init();
     await offlineQueueService.init();
 
-    // Initialize offline status middleware with the service instance
-    const offlineStatusMiddleware = require('./middleware/offlineStatus');
-    offlineStatusMiddleware.initializeWithService(offlineQueueService);
-    
     // Initialize environment control services (Phase 0)
     // Non-blocking: each service logs a warning and continues if unavailable
     await bluetoothService.init();        // Check adapter, warn if unavailable

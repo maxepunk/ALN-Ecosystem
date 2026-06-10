@@ -57,10 +57,13 @@ describe('Early Connection Integration (Phase 1.3)', () => {
     // after server startup) receive broadcasts correctly. This proves that broadcast
     // listeners are properly registered before handlers accept connections.
 
-    // Enqueue offline scan
-    offlineQueueService.enqueue({
+    // Enqueue offline GM transaction (the player-scan queue was deleted - D2)
+    offlineQueueService.enqueueGmTransaction({
       tokenId: 'rat001',
-      deviceId: 'PLAYER_OFFLINE',
+      teamId: 'Team Alpha',
+      deviceId: 'GM_OFFLINE',
+      deviceType: 'gm',
+      mode: 'blackmarket',
       timestamp: new Date().toISOString()
     });
 

@@ -10,8 +10,6 @@ const { playerScanRequestSchema, validate, ValidationError } = require('../utils
 const sessionService = require('../services/sessionService');
 const transactionService = require('../services/transactionService');
 const videoQueueService = require('../services/videoQueueService');
-const offlineQueueService = require('../services/offlineQueueService');
-const { isOffline } = require('../middleware/offlineStatus');
 
 /**
  * POST /api/scan
@@ -23,27 +21,9 @@ router.post('/', async (req, res) => {
     // Validate request
     const scanRequest = validate(req.body, playerScanRequestSchema);
 
-    // Check if system is offline
-    if (isOffline()) {
-      // Queue for later processing
-      const queuedItem = offlineQueueService.enqueue(scanRequest);
-      if (queuedItem) {
-        return res.status(202).json({
-          status: 'queued',
-          queued: true,
-          offlineMode: true,
-          transactionId: queuedItem.transactionId,
-          message: 'Scan queued for processing when system comes online',
-        });
-      } else {
-        // Queue is full
-        return res.status(503).json({
-          status: 'error',
-          offlineMode: true,
-          message: 'Offline queue is full, please try again later',
-        });
-      }
-    }
+    // NOTE (D2, 2026-06-09): the backend "offline mode" acceptance path
+    // (202 "queued for processing") was deleted. Scanners own offline
+    // queueing client-side and replay via POST /api/scan/batch.
 
     // Check services are initialized
     if (transactionService.tokens.size === 0) {
@@ -54,7 +34,12 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Check for active session
+    // Check that a session EXISTS — deliberately NOT that it is active.
+    // Decision A6 (2026-06-09): player scans during setup/paused sessions
+    // are INTENTIONAL (GMs flow-test scanners during the setup phase).
+    // Any session status (setup/active/paused) accepts player scans; only
+    // GM transactions are active-only (enforced in transactionService).
+    // Ended sessions reject with 409 because endSession() nulls the session.
     const session = sessionService.getCurrentSession();
     if (!session) {
       logger.warn('Scan rejected: no active session');
@@ -102,6 +87,22 @@ router.post('/', async (req, res) => {
       tokenData
     });
 
+    // Decide video queueing BEFORE broadcasting so videoQueued is truthful
+    // (F-RT-01: the broadcast used to claim videoQueued:true for scans whose
+    // video was actually rejected by the canAcceptVideo() check below).
+    let videoQueued = false;
+    let videoRejection = null;
+    if (token.hasVideo()) {
+      // Check if system can accept a new video (VLC health + queue state)
+      const videoCheck = videoQueueService.canAcceptVideo();
+      if (videoCheck.available) {
+        videoQueueService.addToQueue(token, scanRequest.deviceId);
+        videoQueued = true;
+      } else {
+        videoRejection = videoCheck;
+      }
+    }
+
     // Emit player:scan WebSocket event to gm room (not admin-monitors)
     // GM scanners ARE the admin panels - they need to see player activity
     const io = req.app.locals.io;
@@ -111,7 +112,7 @@ router.post('/', async (req, res) => {
         scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        videoQueued: token.hasVideo(),
+        videoQueued,
         memoryType: token.memoryType,
         timestamp: playerScan.timestamp,
         tokenData
@@ -120,47 +121,32 @@ router.post('/', async (req, res) => {
         scanId: playerScan.id,
         tokenId: scanRequest.tokenId,
         deviceId: scanRequest.deviceId,
-        videoQueued: token.hasVideo()
+        videoQueued
       });
     }
 
-    // Check if token has video
-    if (token.hasVideo()) {
-      // Check if system can accept a new video (VLC health + queue state)
-      const videoCheck = videoQueueService.canAcceptVideo();
-      if (!videoCheck.available) {
-        return res.status(409).json({
-          status: 'rejected',
-          message: videoCheck.reason === 'vlc_down'
-            ? 'Video playback unavailable'
-            : 'Video already playing, please wait',
-          tokenId: scanRequest.tokenId,
-          mediaAssets: token.mediaAssets || {},
-          videoQueued: false,
-          ...(videoCheck.reason === 'video_busy' && { waitTime: videoCheck.waitTime || 30 })
-        });
-      }
-
-      // Add video to queue
-      videoQueueService.addToQueue(token, scanRequest.deviceId);
-
-      return res.status(200).json({
-        status: 'accepted',
-        message: 'Video queued for playback',
+    if (videoRejection) {
+      // Scan was persisted above; only the video trigger is rejected.
+      // Decision A5: the scanner must NOT requeue this scan — rescan to retry.
+      return res.status(409).json({
+        status: 'rejected',
+        message: videoRejection.reason === 'vlc_down'
+          ? 'Video playback unavailable'
+          : 'Video already playing, please wait',
         tokenId: scanRequest.tokenId,
         mediaAssets: token.mediaAssets || {},
-        videoQueued: true
-      });
-    } else {
-      // No video - just acknowledge scan
-      return res.status(200).json({
-        status: 'accepted',
-        message: 'Scan logged',
-        tokenId: scanRequest.tokenId,
-        mediaAssets: token.mediaAssets || {},
-        videoQueued: false
+        videoQueued: false,
+        ...(videoRejection.reason === 'video_busy' && { waitTime: videoRejection.waitTime || 30 })
       });
     }
+
+    return res.status(200).json({
+      status: 'accepted',
+      message: videoQueued ? 'Video queued for playback' : 'Scan logged',
+      tokenId: scanRequest.tokenId,
+      mediaAssets: token.mediaAssets || {},
+      videoQueued
+    });
   } catch (error) {
     if (error instanceof ValidationError) {
       // Include field names in message for better test compatibility
@@ -183,6 +169,10 @@ router.post('/', async (req, res) => {
     }
   }
 });
+
+// F-SCAN-14: timestamps earlier than this are treated as un-synced device
+// clocks (ESP32 pre-NTP scans are stamped 1970 + uptime) and rejected.
+const MIN_VALID_SCAN_TIME_MS = Date.parse('2020-01-01T00:00:00Z');
 
 // PHASE 1.2 (P0.2): Track processed batches for idempotency
 // In-memory cache with automatic cleanup after 1 hour
@@ -244,7 +234,52 @@ router.post('/batch', async (req, res) => {
 
   const results = [];
 
-  for (const scanRequest of transactions) {
+  for (const rawScan of transactions) {
+    // F-SCAN-14: validate each entry against the same schema as POST
+    // /api/scan (playerScanRequestSchema). Invalid entries become failed
+    // results (the rest of the batch still processes) and are NOT
+    // persisted to the session.
+    let scanRequest;
+    try {
+      scanRequest = validate(rawScan, playerScanRequestSchema);
+    } catch (validationError) {
+      const echo = (rawScan && typeof rawScan === 'object') ? rawScan : {};
+      logger.warn('Batch scan: entry failed validation', {
+        tokenId: echo.tokenId,
+        deviceId: echo.deviceId,
+        error: validationError.message
+      });
+      results.push({
+        ...echo,
+        tokenId: echo.tokenId ?? null,
+        status: 'failed',
+        videoQueued: false,
+        error: validationError.message
+      });
+      continue;
+    }
+
+    // F-SCAN-14: ESP32 scans taken before SNTP sync are stamped
+    // 1970-01-01 + uptime (Application.h generateTimestamp pre-sync
+    // branch). Persisting epoch-era times corrupts session timelines,
+    // the EventTimeline validator, and the GenAI pipeline — reject them
+    // as failed results. Floor is generous (2020): anything earlier can
+    // only be an unset device clock, never a real scan.
+    if (scanRequest.timestamp && Date.parse(scanRequest.timestamp) < MIN_VALID_SCAN_TIME_MS) {
+      logger.warn('Batch scan: pre-sync timestamp rejected', {
+        tokenId: scanRequest.tokenId,
+        deviceId: scanRequest.deviceId,
+        timestamp: scanRequest.timestamp
+      });
+      results.push({
+        ...scanRequest,
+        status: 'failed',
+        videoQueued: false,
+        error: 'Pre-sync timestamp (device clock not set at scan time)'
+      });
+      continue;
+    }
+
     try {
       // Log the scan
       logger.info('Batch scan received', {
@@ -255,7 +290,7 @@ router.post('/batch', async (req, res) => {
       });
 
       // Check if token exists
-      const token = scanRequest.tokenId ? transactionService.tokens.get(scanRequest.tokenId) : null;
+      const token = transactionService.tokens.get(scanRequest.tokenId);
 
       if (!token) {
         logger.warn('Batch scan: token not found', { tokenId: scanRequest.tokenId });
@@ -270,8 +305,9 @@ router.post('/batch', async (req, res) => {
 
       // Persist valid entries to session.playerScans so offline-drained
       // scans are visible to post-session analysis (session:validate).
-      // No player:scan WebSocket broadcast — batches represent past
-      // activity, not live events; GMs will see them via next sync:full.
+      // Decision D1 (2026-06-09): each persisted scan is broadcast to the
+      // GM room as player:scan with replayed:true so Game Activity reflects
+      // drained offline queues without waiting for a GM reconnect.
       // If no session is active, log and skip persistence (batch shape
       // is still acknowledged).
       const session = sessionService.getCurrentSession();
@@ -282,13 +318,28 @@ router.post('/batch', async (req, res) => {
           SF_Group: token.metadata.group || null,
           summary: token.metadata.summary || null
         };
-        await sessionService.addPlayerScan({
+        const playerScan = await sessionService.addPlayerScan({
           tokenId: scanRequest.tokenId,
           deviceId: scanRequest.deviceId,
           deviceType: scanRequest.deviceType || 'player',
           timestamp: scanRequest.timestamp || new Date().toISOString(),
           tokenData
         });
+
+        const io = req.app.locals.io;
+        if (io) {
+          const { emitToRoom } = require('../websocket/eventWrapper');
+          emitToRoom(io, 'gm', 'player:scan', {
+            scanId: playerScan.id,
+            tokenId: scanRequest.tokenId,
+            deviceId: scanRequest.deviceId,
+            videoQueued: false,  // A4: replayed scans never trigger video
+            memoryType: token.memoryType,
+            timestamp: playerScan.timestamp,
+            tokenData,
+            replayed: true
+          });
+        }
       } else {
         logger.warn('Batch scan: no active session — entry not persisted', {
           tokenId: scanRequest.tokenId,
@@ -296,33 +347,15 @@ router.post('/batch', async (req, res) => {
         });
       }
 
-      // Process video if applicable
-      if (token.hasVideo()) {
-        const videoCheck = videoQueueService.canAcceptVideo();
-        if (videoCheck.available) {
-          videoQueueService.addToQueue(token, scanRequest.deviceId);
-          results.push({
-            ...scanRequest,
-            status: 'processed',
-            videoQueued: true
-          });
-        } else {
-          results.push({
-            ...scanRequest,
-            status: 'processed',
-            videoQueued: false,
-            message: videoCheck.reason === 'vlc_down'
-              ? 'Video playback unavailable'
-              : 'Video already playing'
-          });
-        }
-      } else {
-        results.push({
-          ...scanRequest,
-          status: 'processed',
-          videoQueued: false
-        });
-      }
+      // Decision A4 (2026-06-09): replayed scans NEVER trigger video playback.
+      // Batches represent past activity — if a video couldn't play at scan
+      // time, the player was alerted then; draining an offline queue must not
+      // start playback at upload time (F-SCAN-05). videoQueued is always false.
+      results.push({
+        ...scanRequest,
+        status: 'processed',
+        videoQueued: false
+      });
     } catch (error) {
       results.push({
         ...scanRequest,
