@@ -2288,15 +2288,28 @@ Sink Input #42
   // ── Health registry reporting ──
 
   describe('health registry reporting', () => {
-    it('should report healthy on init', async () => {
-      mockExecFileSuccess(''); // _killStaleMonitors
+    it('should report healthy on init when PipeWire is reachable', async () => {
+      mockExecFileSuccess(''); // pactl calls succeed (incl. the health probe)
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
 
       await audioRoutingService.init();
 
       expect(registry.isHealthy('audio')).toBe(true);
-      expect(registry.getStatus('audio').message).toBe('Audio routing initialized');
+    });
+
+    // F-SHOW-23: init() reported 'healthy' unconditionally — even with
+    // PipeWire unreachable — opening a window (until the 15s revalidation)
+    // where audio commands passed the SERVICE_DEPENDENCIES gate and failed
+    // downstream. init() must report via a real checkHealth() probe.
+    it('should report down on init when PipeWire is unreachable (F-SHOW-23)', async () => {
+      mockExecFileError('Connection refused'); // every pactl call fails
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      expect(registry.isHealthy('audio')).toBe(false);
     });
 
     it('should report down on reset', async () => {
@@ -2661,6 +2674,7 @@ Sink Input #42
       jest.spyOn(audioRoutingService, '_activateHdmiCards').mockResolvedValue();
       jest.spyOn(audioRoutingService, 'startSinkMonitor').mockImplementation(() => {});
       jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([]);
+      jest.spyOn(audioRoutingService, 'checkHealth').mockResolvedValue(true); // init() reports via probe (F-SHOW-23)
       jest.spyOn(persistenceService, 'load').mockResolvedValue(null);
 
       await audioRoutingService.init();

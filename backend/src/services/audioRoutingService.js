@@ -126,7 +126,10 @@ class AudioRoutingService extends EventEmitter {
       logger.warn('Failed to pre-populate sink cache', { error: err.message });
     });
 
-    registry.report('audio', 'healthy', 'Audio routing initialized');
+    // Report health via a real probe (F-SHOW-23) — an unconditional 'healthy'
+    // here let audio commands pass the SERVICE_DEPENDENCIES gate and fail
+    // downstream for up to 15s (until revalidation) when PipeWire was down.
+    await this.checkHealth();
   }
 
   /**
