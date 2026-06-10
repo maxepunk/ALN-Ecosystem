@@ -94,8 +94,6 @@ class TransactionService extends EventEmitter {
     }
   }
 
-  // ... (skip to adjustTeamScore)
-
   /**
    * Adjust team score by delta (for admin interventions)
    * @param {string} teamId - Team ID to adjust
