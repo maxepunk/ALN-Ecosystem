@@ -198,6 +198,18 @@ describe('performSystemReset', () => {
     expect(mockServices.sessionService.setupGameClockListeners).toHaveBeenCalledTimes(1);
   });
 
+  it('registers cue forwarding BEFORE displayControl init — same hook order as app.js startup (F-SHOW-22)', async () => {
+    // Pre-play hooks run in registration order. At startup (app.js) the cue
+    // engine's video:loading hook registers before displayControl's
+    // VIDEO-mode hook; a reversed order after system:reset made the pre-video
+    // sequence observably different depending on whether a reset happened.
+    await performSystemReset(mockIo, mockServices);
+
+    const cueWiringOrder = cueEngineWiring.setupCueEngineForwarding.mock.invocationCallOrder[0];
+    const displayInitOrder = mockServices.displayControlService.init.mock.invocationCallOrder[0];
+    expect(cueWiringOrder).toBeLessThan(displayInitOrder);
+  });
+
   it('should register cross-service listeners AFTER all services are reset', async () => {
     const callOrder = [];
     mockServices.sessionService.reset = jest.fn(() => {

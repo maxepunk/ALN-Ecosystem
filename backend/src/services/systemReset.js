@@ -146,16 +146,6 @@ async function performSystemReset(io, services) {
   });
   logger.debug('Broadcast listeners re-initialized');
 
-  // Re-initialize display control service (needs to re-attach listeners)
-  // Initializes regardless of VLC status — Scoreboard mode uses Chromium, not VLC
-  if (displayControlService) {
-    await displayControlService.init({
-      vlcService,
-      videoQueueService
-    });
-    logger.debug('Display control service re-initialized');
-  }
-
   // ── Centralized cross-service listener wiring ──
   // ALL cross-service listeners registered here, AFTER all services have been reset.
   // sessionService.reset() is tear-down only — it does NOT register these.
@@ -181,6 +171,20 @@ async function performSystemReset(io, services) {
       soundService,
       musicService
     });
+  }
+
+  // Re-initialize display control service (needs to re-attach listeners).
+  // Initializes regardless of VLC status — Scoreboard mode uses Chromium, not VLC.
+  // MUST run AFTER setupCueEngineForwarding (F-SHOW-22): pre-play hooks run in
+  // registration order, and app.js startup registers the cue engine's
+  // video:loading hook before displayControl's VIDEO-mode hook. Matching that
+  // order keeps the pre-video sequence identical before and after a reset.
+  if (displayControlService) {
+    await displayControlService.init({
+      vlcService,
+      videoQueueService
+    });
+    logger.debug('Display control service re-initialized');
   }
 
   // Re-load ducking rules from routing config (cleared by audioRoutingService.reset())
