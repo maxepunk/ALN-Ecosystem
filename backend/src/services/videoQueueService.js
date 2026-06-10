@@ -377,8 +377,15 @@ class VideoQueueService extends EventEmitter {
           });
         }
 
-        // Check if near end
-        if (status.position >= 0.95) {
+        // Check if near end — time-based margin (F-SHOW-04, decision E2).
+        // The old ratio check (position >= 0.95) truncated the final ~5% of
+        // every video (~9s of a 3-minute video). Complete only within the
+        // last second; the stopped-state grace path above catches natural
+        // ends. Ratio fallback retained for videos with unknown length.
+        const nearEnd = status.length > 0
+          ? status.position * status.length >= status.length - 1
+          : status.position >= 0.95;
+        if (nearEnd) {
           clearInterval(this.progressTimer);
           this.progressTimer = null;
           this.completePlayback(queueItem);

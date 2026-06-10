@@ -161,6 +161,69 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('monitorVlcPlayback completion threshold (F-SHOW-04, decision E2)', () => {
+    const vlcService = require('../../../src/services/vlcMprisService');
+    let queueItem;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      queueItem = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      queueItem.startPlayback();
+      videoQueueService.currentItem = queueItem;
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it('should NOT complete at 96% when more than 1 second remains (long video)', async () => {
+      // 180s video at 96% = 172.8s elapsed, 7.2s remaining — the old
+      // ratio threshold (position >= 0.95) truncated the final ~9 seconds
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.96, length: 180,
+      });
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 180);
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(completed).not.toHaveBeenCalled();
+      expect(videoQueueService.currentItem).toBe(queueItem);
+    });
+
+    it('should complete within the final 1-second margin', async () => {
+      // 180s video at 99.5% = 179.1s elapsed >= 179s (duration - 1)
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.995, length: 180,
+      });
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 180);
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(completed).toHaveBeenCalledTimes(1);
+      expect(videoQueueService.currentItem).toBeNull();
+    });
+
+    it('should still complete via the stopped-state grace path', async () => {
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'stopped', position: 0, length: 180,
+      });
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 180);
+      await jest.advanceTimersByTimeAsync(1000); // grace check 1
+      expect(completed).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1000); // confirmed stopped
+
+      expect(completed).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('clearQueue() video:idle emission', () => {
     it('should NOT emit video:idle when no video was playing and queue was empty', () => {
       const idleSpy = jest.fn();
