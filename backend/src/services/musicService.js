@@ -276,6 +276,19 @@ class MusicService extends EventEmitter {
     return this._send(c => c.sendCommand(`setvol ${Math.round(v)}`));
   }
 
+  /**
+   * Seek within the current track (decision C4, F-GMCMD-21).
+   * MPD's seekcur errors when nothing is playing — that rejection surfaces as
+   * an honest failed ack through commandExecutor.
+   * @param {number} position - Absolute position in seconds
+   */
+  async seek(position) {
+    if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
+      throw new Error(`Invalid seek position: ${position}`);
+    }
+    return this._send(c => c.sendCommand(`seekcur ${Math.round(position)}`));
+  }
+
   async setShuffle(enabled) {
     return this._send(c => c.sendCommand(`random ${enabled ? 1 : 0}`));
   }

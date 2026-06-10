@@ -543,6 +543,28 @@ class VideoQueueService extends EventEmitter {
   }
 
   /**
+   * Seek the current video to an absolute position (decision C4, F-GMCMD-21).
+   * Rebases the wall-clock playbackStart so getState()'s derived position
+   * reflects the seek target.
+   * @param {number} position - Absolute position in seconds
+   * @returns {Promise<boolean>} True if seeked, false if nothing to seek
+   */
+  async seekCurrent(position) {
+    const current = this.currentItem;
+    if (!current || !(current.isPlaying() || current.status === 'paused')) {
+      return false;
+    }
+
+    if (config.features.videoPlayback) {
+      await vlcService.seek(position);
+    }
+
+    // Keep wall-clock-derived position reporting consistent with the seek
+    current.playbackStart = new Date(Date.now() - position * 1000).toISOString();
+    return true;
+  }
+
+  /**
    * Clear only pending videos from queue (keeps completed/failed items)
    * @returns {number} Number of items cleared
    */
@@ -942,15 +964,6 @@ class VideoQueueService extends EventEmitter {
     const elapsed = (Date.now() - new Date(this.currentItem.playbackStart).getTime()) / 1000;
     const duration = this.getVideoDuration(this.currentItem.tokenId);
     return Math.max(0, Math.ceil(duration - elapsed));
-  }
-
-  /**
-   * Update queue from session
-   * @param {Array} videoQueue - Video queue from session
-   */
-  updateFromSession(videoQueue) {
-    this.queue = videoQueue.map(item => VideoQueueItem.fromJSON(item));
-    this.currentItem = this.queue.find(item => item.isPlaying()) || null;
   }
 
   /**

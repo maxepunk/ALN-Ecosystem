@@ -1558,6 +1558,7 @@ components:
                   - video:pause
                   - video:stop
                   - video:skip
+                  - video:seek
                   - video:queue:add
                   - video:queue:reorder
                   - video:queue:clear
@@ -1604,6 +1605,7 @@ components:
                   - music:setShuffle
                   - music:setLoop
                   - music:loadPlaylist
+                  - music:seek
                   - service:check
                 example: "video:skip"
               payload:
@@ -1632,6 +1634,14 @@ components:
               action: video:skip
               payload: {}
             timestamp: "2025-10-15T20:20:00.000Z"
+        - name: Video Seek
+          payload:
+            event: gm:command
+            data:
+              action: video:seek
+              payload:
+                position: 42
+            timestamp: "2025-10-15T20:21:00.000Z"
         - name: Score Adjust
           payload:
             event: gm:command

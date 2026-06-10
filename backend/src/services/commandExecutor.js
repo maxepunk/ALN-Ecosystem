@@ -35,6 +35,7 @@ const SERVICE_DEPENDENCIES = {
   'video:pause': 'vlc',
   'video:stop': 'vlc',
   'video:skip': 'vlc',
+  'video:seek': 'vlc',
   'video:queue:add': 'vlc',
   // video:queue:reorder and video:queue:clear intentionally UNGATED —
   // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
@@ -61,6 +62,7 @@ const SERVICE_DEPENDENCIES = {
   'music:setShuffle': 'music',
   'music:setLoop': 'music',
   'music:loadPlaylist': 'music',
+  'music:seek': 'music',
 };
 
 /**
@@ -204,6 +206,23 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         resultMessage = 'Video skipped successfully';
         logger.info('Video skipped', { source, deviceId });
         break;
+
+      case 'video:seek': {
+        // Decision C4 (contract-first): payload {position} in seconds
+        const { position } = payload;
+        if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
+          throw new Error('position (seconds, >= 0) is required for video:seek');
+        }
+        const seeked = config.features.videoPlayback
+          ? await videoQueueService.seekCurrent(position)
+          : false;
+        if (!seeked) {
+          throw new Error('No video playing');
+        }
+        resultMessage = `Video seeked to ${position}s`;
+        logger.info('Video seeked', { source, deviceId, position });
+        break;
+      }
 
       case 'video:queue:add': {
         // Add video to queue by filename
@@ -655,6 +674,20 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         await musicService.loadPlaylist(playlistId);
         resultMessage = `Music playlist loaded: ${playlistId}`;
         logger.info('Music playlist loaded', { source, deviceId, playlistId });
+        break;
+      }
+
+      case 'music:seek': {
+        // Decision C4 (contract-first): payload {position} in seconds.
+        // MPD's seekcur rejects when nothing is playing — surfaces as an
+        // honest failed ack via the catch below.
+        const { position } = payload;
+        if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
+          throw new Error('position (seconds, >= 0) is required for music:seek');
+        }
+        await musicService.seek(position);
+        resultMessage = `Music seeked to ${position}s`;
+        logger.info('Music seeked', { source, deviceId, position });
         break;
       }
 

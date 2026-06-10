@@ -54,6 +54,7 @@ jest.mock('../../../src/services/videoQueueService', () => ({
   skipCurrent: jest.fn(),
   pauseCurrent: jest.fn(),
   resumeCurrent: jest.fn(),
+  seekCurrent: jest.fn(),
   videoFileExists: jest.fn(),
 }));
 
@@ -176,6 +177,7 @@ describe('commandExecutor', () => {
     videoQueueService.skipCurrent.mockResolvedValue(undefined);
     videoQueueService.pauseCurrent.mockResolvedValue(undefined);
     videoQueueService.resumeCurrent.mockResolvedValue(undefined);
+    videoQueueService.seekCurrent.mockResolvedValue(true);
     videoQueueService.videoFileExists.mockReturnValue(true);
 
     displayControlService.setIdleLoop.mockResolvedValue({ success: true });
@@ -346,6 +348,45 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain('test.mp4');
+    });
+
+    // C4: video:seek added contract-first; payload {position} in seconds
+    describe('video:seek (C4, F-GMCMD-21)', () => {
+      it('routes through videoQueueService.seekCurrent with position', async () => {
+        const result = await executeCommand({
+          action: 'video:seek',
+          payload: { position: 42 },
+          source: 'gm'
+        });
+        expect(videoQueueService.seekCurrent).toHaveBeenCalledWith(42);
+        expect(result.success).toBe(true);
+        expect(result.message).toMatch(/42/);
+      });
+
+      it('fails honestly when nothing is playing', async () => {
+        videoQueueService.seekCurrent.mockResolvedValue(false);
+        const result = await executeCommand({
+          action: 'video:seek',
+          payload: { position: 10 },
+          source: 'gm'
+        });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('rejects a missing or invalid position', async () => {
+        for (const payload of [{}, { position: -5 }, { position: 'abc' }]) {
+          const result = await executeCommand({ action: 'video:seek', payload, source: 'gm' });
+          expect(result.success).toBe(false);
+          expect(result.message).toMatch(/position/i);
+        }
+        expect(videoQueueService.seekCurrent).not.toHaveBeenCalled();
+      });
+
+      it('is gated on VLC health (SERVICE_DEPENDENCIES)', () => {
+        expect(SERVICE_DEPENDENCIES['video:seek']).toBe('vlc');
+        expect(SERVICE_DEPENDENCIES['music:seek']).toBe('music');
+      });
     });
   });
 

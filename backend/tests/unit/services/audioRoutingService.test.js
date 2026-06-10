@@ -1573,38 +1573,6 @@ Sink Input #42
 
   // ── fallback routing ──
 
-  describe('fallback routing', () => {
-    it('should try fallback sink when primary is unavailable', async () => {
-      // Mock findSinkInput to return a sink-input
-      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
-
-      // Mock getAvailableSinks to return only HDMI (no bluetooth)
-      jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
-        {
-          id: '47',
-          name: 'alsa_output.platform-fef00700.hdmi.hdmi-stereo',
-          type: 'hdmi',
-        },
-      ]);
-
-      // Mock moveStreamToSink to succeed
-      const moveStream = jest.spyOn(audioRoutingService, 'moveStreamToSink');
-      moveStream.mockResolvedValue(undefined);
-
-      // Set up route with primary bluetooth (unavailable) and fallback hdmi
-      audioRoutingService._routingData.routes.video = {
-        sink: 'bluez_output.missing',
-        fallback: 'hdmi',
-      };
-
-      await audioRoutingService.applyRoutingWithFallback('video');
-
-      // Should move to fallback HDMI sink since bluetooth is not available
-      expect(moveStream).toHaveBeenCalledWith('42', 'alsa_output.platform-fef00700.hdmi.hdmi-stereo');
-    });
-  });
-
-
   // ── Ducking Engine ──
 
   describe('ducking engine', () => {

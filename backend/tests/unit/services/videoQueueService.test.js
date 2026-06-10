@@ -224,6 +224,46 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('seekCurrent() (C4, F-GMCMD-21)', () => {
+    const vlcService = require('../../../src/services/vlcMprisService');
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('returns false when nothing is playing (honest no-op)', async () => {
+      const seekSpy = jest.spyOn(vlcService, 'seek').mockResolvedValue();
+
+      const result = await videoQueueService.seekCurrent(30);
+
+      expect(result).toBe(false);
+      expect(seekSpy).not.toHaveBeenCalled();
+    });
+
+    it('seeks VLC and rebases the wall-clock position for a playing video', async () => {
+      // Unit env runs with ENABLE_VIDEO_PLAYBACK=false — enable the feature
+      // flag so the VLC seek path is exercised (restored below)
+      const config = require('../../../src/config');
+      const originalFlag = config.features.videoPlayback;
+      config.features.videoPlayback = true;
+
+      const seekSpy = jest.spyOn(vlcService, 'seek').mockResolvedValue();
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      item.duration = 180;
+      videoQueueService.currentItem = item;
+
+      const result = await videoQueueService.seekCurrent(60);
+      config.features.videoPlayback = originalFlag;
+
+      expect(result).toBe(true);
+      expect(seekSpy).toHaveBeenCalledWith(60);
+      // getState() derives position from playbackStart wall clock — it must
+      // reflect the seek target, not the original start time
+      const elapsed = (Date.now() - new Date(item.playbackStart).getTime()) / 1000;
+      expect(elapsed).toBeGreaterThanOrEqual(59);
+      expect(elapsed).toBeLessThan(62);
+    });
+  });
+
   describe('clearQueue() video:idle emission', () => {
     it('should NOT emit video:idle when no video was playing and queue was empty', () => {
       const idleSpy = jest.fn();

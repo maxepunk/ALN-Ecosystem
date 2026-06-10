@@ -38,7 +38,6 @@ function createMockAudioRoutingService(overrides = {}) {
 
   // Stream routing
   mock.applyRouting = jest.fn().mockResolvedValue(undefined);
-  mock.applyRoutingWithFallback = jest.fn().mockResolvedValue(undefined);
   mock.findSinkInput = jest.fn().mockResolvedValue(null);
   mock.moveStreamToSink = jest.fn().mockResolvedValue(undefined);
 

@@ -29,6 +29,7 @@ function createMockVideoQueueService(overrides = {}) {
   // Playback control
   mock.skipCurrent = jest.fn().mockResolvedValue(false);
   mock.pauseCurrent = jest.fn().mockResolvedValue(false);
+  mock.seekCurrent = jest.fn().mockResolvedValue(true);
   mock.resumeCurrent = jest.fn().mockResolvedValue(false);
 
   // State queries
@@ -55,7 +56,6 @@ function createMockVideoQueueService(overrides = {}) {
   mock.registerPrePlayHook = jest.fn();
 
   // Session restore
-  mock.updateFromSession = jest.fn();
 
   // Lifecycle
   mock.reset = jest.fn();

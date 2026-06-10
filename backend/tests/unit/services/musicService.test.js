@@ -301,6 +301,25 @@ describe('MusicService — loadPlaylist', () => {
   });
 });
 
+describe('MusicService — seek (C4)', () => {
+  it('seek() sends seekcur via the _send chokepoint', async () => {
+    const service = new MusicService();
+    await service.init();
+    service._mpd.sendCommand.mockResolvedValue('');
+
+    await service.seek(42);
+
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('seekcur 42');
+  });
+
+  it('seek() rejects invalid positions', async () => {
+    const service = new MusicService();
+    await service.init();
+    await expect(service.seek(-1)).rejects.toThrow(/position/i);
+    await expect(service.seek('x')).rejects.toThrow(/position/i);
+  });
+});
+
 describe('MusicService — game clock', () => {
   let service;
   beforeEach(async () => {
