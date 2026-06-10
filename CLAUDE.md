@@ -447,8 +447,7 @@ set `SYNC_ASSETS=false`, then power-cycle.
 **Purpose:** Sync Notion Elements database to `ALN-TokenData/tokens.json`
 
 **Scripts:**
-- `scripts/sync_notion_to_tokens.py` - Main sync (generates NeurAI BMPs)
-- `scripts/compare_rfid_with_files.py` - Mismatch detection
+- `scripts/sync_notion_to_tokens.py` - Main sync (generates NeurAI BMPs; aborts on incomplete fetch; RFID↔file mismatch detection runs as a pre-write validation phase; orphan prune is report-only unless `--prune`)
 
 **Notion Description/Text Format:**
 ```
