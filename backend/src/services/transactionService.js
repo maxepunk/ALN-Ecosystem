@@ -15,6 +15,7 @@ const videoQueueService = require('./videoQueueService');
 // live there; this service does orchestration, state mutation, and events
 const scoring = require('../gameRules/scoring');
 const duplicatePolicy = require('../gameRules/duplicatePolicy');
+const { buildScanResponse } = require('../websocket/scanResponse');
 
 const listenerRegistry = require('../websocket/listenerRegistry');
 
@@ -397,7 +398,9 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Create scan response
+   * Create scan response — wire-format shaping lives in
+   * websocket/scanResponse.js (Phase 2 extraction); this adapter injects
+   * the live video status.
    * @param {Transaction} transaction - Processed transaction
    * @param {Token} token - Associated token
    * @param {Object} extras - Extra response fields
@@ -405,62 +408,14 @@ class TransactionService extends EventEmitter {
    * @private
    */
   createScanResponse(transaction, token, extras = {}) {
-    const isVideoPlaying = videoQueueService.isPlaying();
-
-    const response = {
-      status: transaction.status,
-      message: this.getResponseMessage(transaction, extras.claimedBy),
-      transactionId: transaction.id,
-      transaction: transaction, // Include the transaction object
-      token: token, // Include the token for reference
-    };
-
-    // Add points if accepted
-    if (transaction.isAccepted()) {
-      response.points = transaction.points;
-    }
-
-    // Add original transaction ID if this is a duplicate
-    if (transaction.isDuplicate()) {
-      response.originalTransactionId = transaction.originalTransactionId;
-      // Include which team claimed the token first
-      if (extras.claimedBy) {
-        response.claimedBy = extras.claimedBy;
-      }
-    }
-
-    // Add video status
-    if (isVideoPlaying) {
-      response.videoPlaying = true;
-      response.waitTime = videoQueueService.getRemainingTime();
-    } else {
-      response.videoPlaying = false;
-    }
-
-    // Add any extras
-    Object.assign(response, extras);
-
-    return response;
-  }
-
-  /**
-   * Get response message for transaction
-   * @param {Transaction} transaction - Transaction
-   * @returns {string} Response message
-   * @private
-   */
-  getResponseMessage(transaction, claimedBy) {
-    if (transaction.isAccepted()) {
-      return `Token scanned successfully. ${transaction.points} points awarded.`;
-    } else if (transaction.isDuplicate()) {
-      if (claimedBy) {
-        return `Token already claimed by ${claimedBy}`;
-      }
-      return 'Token already claimed';
-    } else if (transaction.isRejected()) {
-      return transaction.rejectionReason || 'Scan rejected.';
-    }
-    return 'Scan processed.';
+    const videoPlaying = videoQueueService.isPlaying();
+    return buildScanResponse({
+      transaction,
+      token,
+      videoPlaying,
+      waitTime: videoPlaying ? videoQueueService.getRemainingTime() : undefined,
+      extras,
+    });
   }
 
   /**
