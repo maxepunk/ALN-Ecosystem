@@ -224,6 +224,23 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('getState() queue entries (F-GMCMD-18)', () => {
+    it('includes duration on pending queue entries', () => {
+      // The GM renderer shows item.duration — without it every row reads "0s"
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.duration = 30; // VideoQueueItem.duration exists but was never surfaced
+
+      const state = videoQueueService.getState();
+
+      expect(state.queue).toHaveLength(1);
+      expect(state.queue[0]).toEqual({
+        tokenId: 'test_video_token',
+        filename: 'test_30sec.mp4',
+        duration: 30,
+      });
+    });
+  });
+
   describe('pause/resume lifecycle (F-GMCMD-01 backend, F-SHOW-21)', () => {
     const vlcService = require('../../../src/services/vlcMprisService');
     let item;

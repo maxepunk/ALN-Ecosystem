@@ -664,6 +664,9 @@ class VideoQueueService extends EventEmitter {
       queue: pendingItems.map(item => ({
         tokenId: item.tokenId,
         filename: item.videoPath,
+        // F-GMCMD-18: the GM renderer shows per-entry duration — omitting it
+        // made every queue row read "0s"
+        duration: item.duration || 0,
       })),
       queueLength: pendingItems.length,
       connected: vlcState.connected,

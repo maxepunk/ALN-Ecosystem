@@ -542,6 +542,9 @@ components:
                           type: string
                         filename:
                           type: string
+                        duration:
+                          type: number
+                          description: Video duration in seconds (0 when unknown)
                   queueLength:
                     type: integer
                     description: Number of pending items in queue
