@@ -359,6 +359,31 @@ authorized to start until triage:
 **Exit criteria:** no file > ~1000 lines in critical paths; group/mode logic
 exists in exactly one place per runtime; ratchets all green.
 
+### Phase 2.x — E2E harness as platform infrastructure (≈2 sessions)
+
+**Added 2026-06-11** (owner-committed) after the Phase 2 closeout audit ran
+the E2E suites off-Pi for the first time and assessed the harness design
+(see `docs/reviews/2026-06-platform-review/e2e-harness-assessment.md`).
+Full plan: `docs/plans/2026-06-11-phase2x-e2e-harness.md`.
+
+Not test chores — three of four items rehearse Phase 3/4 product problems:
+1. **Capability manifest + declared per-flow requirements** — co-designed
+   with the venue-profile schema (B7/B8): the same vocabulary drives the
+   harness and Phase 3's venue preflight go/no-go.
+2. **Tier L / Tier H suite split** — Tier L (logic/UI, ~115 tests) becomes
+   the CI floor Phase 3 development runs against on every change; Tier H
+   (hardware) is the Pi pre-show/release gate.
+3. **Content-independent fixture/pack injection** — the first consumer of
+   the "give the system a different pack" seam; Phase 4's acceptance tests
+   (toy second game through full E2E, deployment-topology validation)
+   execute through this machinery.
+4. websocket-core event-cache redesign (the false-quarantine footgun).
+
+**Sequencing:** 2.x precedes the Phase 3 BUILD (3.1.5 onward); Phase 3.0/3.1
+*design docs* proceed in parallel and co-design the capability vocabulary.
+Already landed from the audit: page-object drift gates in the unit suite,
+loud-skip/named-degradation-test pattern across flows.
+
 ### Phase 3 — Engine/game-pack separation (≈5-7 sessions, design doc first)
 
 **Phase 3.0 — Finalize the capability classification matrix.**

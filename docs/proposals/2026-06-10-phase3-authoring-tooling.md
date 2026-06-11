@@ -130,8 +130,14 @@ Pages, in build order (value ÷ effort):
 
 ## 6. Sequencing within Phase 3 (revised)
 
+0. **Phase 2.x E2E harness work precedes the build** (committed 2026-06-11,
+   see docs/plans/2026-06-11-phase2x-e2e-harness.md): the capability
+   vocabulary is co-designed with the venue-profile schema (step 1 below),
+   the fixture/pack-injection seam feeds 3.1.5's loading design, and Tier L
+   gives every step below a fast E2E gate.
 1. 3.0/3.1: capability-matrix finalization → game.json + pack-manifest +
-   venue-profile schemas (design docs, as planned)
+   venue-profile schemas (design docs, as planned; includes the shared
+   capability vocabulary section per 2.x.1)
 2. **3.1.5 (NEW): runtime pack loading + version/staleness plumbing** (§2)
 3. 3.2a strings extraction (now WITH the strings editor + preview, §3.3)
 4. Mechanics editor over game.json as each extraction lands (modes → groups

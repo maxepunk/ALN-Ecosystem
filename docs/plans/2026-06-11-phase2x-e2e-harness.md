@@ -1,0 +1,113 @@
+# Phase 2.x — E2E Harness as Platform Infrastructure
+
+**Date:** 2026-06-11
+**Status:** Committed (owner-directed: "integrate this phase 2.X work into
+our plan in a committed, well thought out manner")
+**Assessment basis:** docs/reviews/2026-06-platform-review/e2e-harness-assessment.md
+**Position in the workflow:** between Phase 2 (structural, COMPLETE) and the
+Phase 3 build. Phase 3 *design* docs (3.0/3.1 schemas) proceed in parallel —
+two of the 2.x items are explicitly co-designed with them.
+
+## Why this is platform work, not test chores
+
+Three of the four items are rehearsals of Phase 3/4 product problems:
+
+1. **Capability manifest ≙ venue preflight.** Phase 3's Venue workspace
+   needs a go/no-go preflight (probe venue hardware, check every pack
+   reference resolves). The harness capability model is the same artifact:
+   enumerate capabilities, declare requirements, degrade loudly. Build them
+   on ONE vocabulary and (where sensible) one probe implementation
+   (`validateCommand` / serviceHealthRegistry are the shared substrate).
+2. **Fixture injection ≙ runtime pack loading's first consumer.** "Run the
+   suite against an injected token set" is primitive "run the system on a
+   different game pack." When game.json lands, the harness runs the WHOLE
+   E2E suite against a synthetic second game — which IS Phase 4 acceptance
+   test 1. It is also the only practical way to test the never-field-tested
+   deployment topologies (Phase 4 acceptance test 2): each topology is just
+   a capability profile.
+3. **Tier L CI floor ≙ Phase 3 development speed.** Phase 3's surface (pack
+   loading, draft/publish, config-tool workspaces, staleness) is almost all
+   logic — Tier L. Without tiering, every Phase 3 change lands against a
+   30-minute Pi-only suite; with it, a fast E2E gate runs everywhere.
+4. The event-cache redesign is plain hardening, but do it BEFORE Phase 3
+   adds event types (pack:updated, publish lifecycle) to the helper's blast
+   radius.
+
+## Work items
+
+### 2.x.1 — Capability manifest + declared requirements
+- One probe at suite start → `{vlc, sound, lighting, bluetooth, audio, ha,
+  music}` manifest (reuse serviceHealthRegistry semantics; the per-flow
+  `setupVLC`/health fetches collapse into it).
+- `requireCapabilities(test, [...])` helper: uniform loud skip. Replace every
+  hand-rolled health check in flows. RULE (established in the 2026-06-11
+  audit, enforce in review): primary paths skip loudly; designed-degradation
+  paths are their own named tests gated the opposite way; NEVER a silent
+  if/else branch on environment.
+- Run report ends with the manifest + per-tier counts ("all green" must
+  never again mean "the show was silently skipped").
+- **Co-design coupling:** the capability vocabulary is drafted together with
+  the venue-profile schema (Phase 3.1, B7/B8) so harness and preflight share
+  terms. Deliverable includes a short vocabulary section in the venue-profile
+  schema doc.
+
+### 2.x.2 — Suite tiering
+- **Tier L (logic/UI):** session lifecycle, scan/score, duplicates,
+  multi-client propagation, scoreboard, player scanner, admin UI, pack
+  loading (when it lands). Must be 100% runnable + green on any machine.
+  Becomes a CI job and the pre-merge E2E floor (~115 tests today).
+- **Tier H (hardware):** video/display, real audio, BT, lighting. Pi-only,
+  tagged (Playwright project or grep tag), run as the pre-show/release gate.
+- Exit: one command per tier; CI runs Tier L on the parent repo.
+
+### 2.x.3 — websocket-core event-cache redesign
+- Replace cache-then-wait with explicit listener-before-action ordering; no
+  cross-action cache. Delete the 31 `clearEventCache` call sites. The false
+  system-reset quarantine was this footgun's work.
+
+### 2.x.4 — Content-independent fixture injection
+- A flow can inject a fixture token set (and later: a full pack) via the
+  existing test-server env injection, defaulting to production data.
+- First users: group-completion flow (production has NO completable group),
+  video flows (media files absent off-Pi).
+- **Forward coupling:** the injection seam is designed as "give the system a
+  pack," so Phase 3's runtime pack loading slots into the same seam and
+  Phase 4's toy-pack suite run is `injectPack(toyPack) + run Tier L+H`.
+
+### Already landed (2026-06-11 audit)
+- Drift gates in the fast unit suite (page-object self-consistency +
+  selector existence vs app sources).
+- Loud-skip + named-degradation-test pattern applied to the cue/display/
+  multi-device flows; held-path behavior E2E-asserted for the first time.
+- No-fixed-sleeps and no-silent-env-branch rules documented (lint rule for
+  `waitForTimeout` in flows belongs to 2.x.2's CI wiring).
+
+## Sequencing
+
+```
+Phase 3.0/3.1 design docs (schemas) ──┬─ co-design capability vocabulary (2.x.1)
+                                      │
+2.x.3 event-cache  ── independent, first (small, de-risks everything after)
+2.x.1 capability manifest ─┐
+2.x.2 tiering + CI floor ──┴─ together (tiering consumes the manifest)
+2.x.4 fixture injection ── after 2.x.1; BEFORE Phase 3.1.5 runtime pack
+                           loading (its design feeds the loading seam)
+```
+
+Phase 3 BUILD (3.1.5 onward) starts after 2.x.1/2.x.2/2.x.4 — the build then
+develops against a fast Tier L gate from day one, and the pack-loading work
+inherits a consumer-tested seam.
+
+## Exit criteria
+- Tier L green in CI on a toolless runner, zero silent environment branches
+  (greps for `serviceHealth` inside flow bodies return only
+  `requireCapabilities` usage).
+- `clearEventCache` no longer exists.
+- Group-completion E2E runs green everywhere via injected fixture.
+- Capability vocabulary section exists in the venue-profile schema doc and
+  matches the harness manifest keys.
+- Run report shows manifest + tier counts.
+
+## Estimate
+≈2 sessions (2.x.3 small; 2.x.1+2.x.2 one focused session; 2.x.4 one) —
+comparable to one Phase 2 batch, with the same gates discipline.
