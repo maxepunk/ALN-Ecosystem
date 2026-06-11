@@ -87,6 +87,45 @@ Consequences:
   a realistic production-tier simulation. Shared vocabulary, distinct
   profiles.
 
+## Audit: does this invalidate already-completed work? (2026-06-11)
+
+**No rework required.** Reviewed Phase 0-2 + the 2.x-landed items against
+the model:
+
+Validated / strengthened:
+- `gameRules/` (scoring, duplicatePolicy, cueVocabulary) IS the tier-zero
+  logic — pure, dependency-free, exactly what the lowest install (scanners
+  + tokens) runs on.
+- The cueEngine split's `disabledCues` mechanism in the standing evaluator
+  is the natural slot for "disable endpoint-less elements at session start
+  from the installation profile" — Phase 3 feature on an existing seam.
+- `validateCommand`'s resource-existence checks (sound files, scenes,
+  sinks) are already endpoint-shaped — the embryo of preflight/planning.
+- `LIGHTING_ENABLED=false` is an existing (crude) dormancy switch the
+  installation profile generalizes.
+
+Evolution points (recorded so they don't surprise later — none block
+current work):
+1. The asyncapi health `status` enum (healthy/degraded/down) gains a
+   dormant/expected dimension with installation profiles — additive,
+   coordinated (backend + GM dashboard), the domain-schema contract test
+   makes it deliberate.
+2. Held-vs-disabled: "hold on any down dependency" is correct for
+   full-kit + faults; spurious for low-tier installs. Resolved when
+   installation profiles land — current semantics are not final.
+3. GM health dashboard needs dormant-awareness (renderer change in the
+   Phase 3 UX pass; the four-domain split keeps it contained).
+4. `SERVICE_DEPENDENCIES` rejections should eventually distinguish
+   "service down" from "not installed tonight" for ad-hoc GM commands.
+5. Harness framing: the 2026-06-11 degraded-path E2E tests are FAULT
+   coverage (valid — services can crash mid-show), not install-tier
+   simulation.
+
+The only work this model would have genuinely broken was UNbuilt: the
+Phase 2.x/3 capability vocabulary and venue-profile schema — corrected in
+docs before any code existed (the elicitation track working at the
+cheapest moment).
+
 ## Feeds
 - Phase 2.x.1 capability manifest (vocabulary now = install-tier model)
 - Phase 3.0/3.1 schemas (pack hardware manifest; installation profile)
