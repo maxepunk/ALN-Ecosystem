@@ -131,4 +131,4 @@ cheapest moment).
 - Phase 3.0/3.1 schemas (pack hardware manifest; installation profile)
 - Phase 3 Venue workspace (planning view + preflight as one mechanism)
 - Phase 4 acceptance (topology validation = tier ladder runs)
-- B4/B10 elicitations still open; B8 flow design now grounded in this model
+- B4/B10 elicited 2026-06-11 → distilled to engine principles in 2026-06-11-engine-design-notes-b4-b10.md (open items O1-O5 resolve in the 3.0/3.1 design docs); B8 flow design grounded in this model
