@@ -177,3 +177,18 @@ content adds one (flagged, content decision).
   Phase 3 program methodology) — no more mega-branches.
 - The bootstrap hook lands on main with the parent PR, activating for all
   future web sessions.
+
+## Branch policy during the review window (recorded on phase3-foundations)
+
+| Branch set | Role | What may land there |
+|---|---|---|
+| `claude/game-system-review-refactor-jbk05w` + the four phase2 submodule branches | FROZEN under PR review | review-requested fixes and the final re-pin commit ONLY |
+| `claude/phase3-foundations` (parent + all four submodules, cut at the frozen tips) | active work | config-tool pre-read, 3.1 schema drafts, all new Phase 3 work |
+
+Fresh-container note: with two branches pointing at each submodule pin, the
+bootstrap hook's branch-attach is deliberately ambiguous — it leaves the
+submodule DETACHED and prints both candidates, so no session silently lands
+work on a PR branch. Check out the branch you mean, explicitly.
+
+After the merge: `claude/phase3-foundations` rebases onto main; subsequent
+Phase 3 slices use fresh slice-sized branches per the program methodology.
