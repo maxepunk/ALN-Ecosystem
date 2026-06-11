@@ -428,11 +428,17 @@ Game clock and sound state delivered via `service:state` domains `gameclock` and
 
 Extends Phase 1 cues with timeline-driven compound cues (multi-step sequences) and music integration.
 
-**Compound Cue Timelines:** Cues with `timeline` arrays containing timed commands. Two drive modes:
-- **Clock-driven:** Advances via `gameclock:tick`. Relative time = `elapsed - startElapsed`.
-- **Video-driven:** Advances via `video:progress`. VLC `position` is 0.0-1.0 ratio, converted via `position * duration` to seconds.
+**Module structure (Phase 2 split):** `cueEngineService.js` is a facade composing `src/services/cue/standingEvaluator.js` (EVENT_NORMALIZERS, condition evaluation, clock triggers, E1 persistence — game-event vocabulary supplied by `src/gameRules/cueVocabulary.js`), `src/services/cue/timelineRuntime.js` (active compound cues, drive modes, cascades), and `src/services/heldItemsStore.js` (unified held-item store, type field `'cue'|'video'`, heldId-keyed auto-discard timers — F-SHOW-16).
 
-**Cue Hold System:** When a cue command requires a service that's down or a video is already playing, the cue is held (not discarded). Emits `cue:held` with reason (`video_busy` or `service_down`). Held cues auto-cancel after 10s or can be released/discarded via `held:release`/`held:discard` commands. `cue:released`/`cue:discarded` events emitted on resolution.
+**Compound Cue Timelines (decision E5 — three-segment model):** A compound cue's timeline is clock-driven EXCEPT between "video actually starts" and "video ends", where it is video-position-driven — with elapsed continuous across all three segments:
+1. Entries before the video entry: clock-relative (`gameclock:tick`)
+2. At the video boundary the timeline PAUSES until playback actually starts (load time never consumes timeline)
+3. During video: entry `at` = video position (`video:progress`; VLC position is a 0.0-1.0 ratio × duration); GM pause pauses pending entries
+4. After video completion (natural OR skip): clock-driven resumes seamlessly from the actual end — post-video entries fire relative to real completion
+
+One video entry per compound cue (v1 constraint). Video events are correlated to the SPECIFIC video the cue started, by captured tokenId (F-SHOW-08) — an unrelated video cannot hijack a cue.
+
+**Cue Hold System:** When a cue command requires a service that's down or a video is already playing, the cue is held (not discarded) in the unified `HeldItemsStore`. Emits `cue:held` with reason (`video_busy` or `service_down`). Held cues auto-cancel after 10s or can be released/discarded via `held:release`/`held:discard` commands (wire IDs are type-prefixed: `held-cue-N`/`held-video-N` — commandExecutor routes by prefix). `held:release-all` is try-all: one failed release no longer aborts the rest. `cue:released`/`cue:discarded` events emitted on resolution. NOTE: videoQueueService still has its own hold implementation — store unification on the video side is backlog.
 
 **Music Service:** Controls MPD via the `mpd2` Node client over a Unix socket at `/tmp/aln-mpd.sock`. Spawns/supervises MPD via `ProcessMonitor` (PID file `/tmp/aln-pm-mpd.pid`). Reactive reconnect on socket errors. Methods: `play()`, `pause()`, `stop()`, `next()`, `previous()`, `setVolume()`, `setShuffle()`, `setLoop()`, `loadPlaylist()`, `checkConnection()`, `getState()`, `reset()`. Position/track/volume updates ride MPD idle events (`system-player`/`system-mixer` via `_handlePlayerEvent`/`_handleMixerEvent`) — there is no position-polling timer. `resumeFromGameClock()` only resumes if `_pausedByGameClock === true`. Playlists loaded from `config/music-playlists.json` with `fs.watch` for hot reload.
 
@@ -479,8 +485,10 @@ All service domain state (cue status, held items, health, music, video) is deliv
 
 **CRITICAL Gotchas:**
 - `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.
-- `cue:started` internal event broadcasts as `cue:status` with `state: 'running'` (not `started`)
+- `cue:started`/`cue:status` are internal-only events — neither broadcasts as a discrete WebSocket event; both only trigger `pushServiceState('cueengine')` in broadcasts.js (D-8)
 - VLC `position` is 0.0-1.0 ratio, NOT seconds
+- Cue progress unit is 0-1 everywhere inside the engine and on the wire (F-SHOW-20)
+- `cue:fired` carries `source: 'gm'` + `trigger: 'manual'` for manual GM fires, `source: 'cue'` for engine dispatches (F-SHOW-15, asyncapi CueFired)
 
 **Key Files:** `src/services/musicService.js`, `src/services/cueEngineWiring.js`, `src/websocket/broadcasts.js`, `src/websocket/syncHelpers.js`
 
@@ -488,9 +496,9 @@ All service domain state (cue status, held items, health, music, video) is deliv
 
 Extends Phase 0 audio routing with event-driven ducking engine and cue-level routing inheritance.
 
-**Ducking Engine:** Automatically reduces music volume when video or sound is playing. Rules loaded from `config/environment/routing.json` (`ducking` array). `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking: when multiple sources duck simultaneously, the lowest volume wins. Restoration only occurs when ALL ducking sources complete. Supports pause/resume (pausing a source restores volume, resuming re-ducks). Emits `ducking:changed` event. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
+**Ducking Engine (Phase 2 split):** `src/services/audio/duckingEngine.js` — a port-injected state machine with zero pactl knowledge; `audioRoutingService` is the composition root wiring it to live volume ops. Pure pactl parsing lives in `src/services/audio/pactlClient.js` (one parser for sink-input identity — F-SHOW-24). Rules loaded from `config/environment/routing.json` (`ducking` array) via `audioRoutingService.loadDuckingRules(rules)` / `handleDuckingEvent(source, lifecycle)`. Multi-source tracking is per-instance refcounted (F-SHOW-07: overlapping sounds don't un-duck early); lowest volume wins; restoration only when ALL sources complete. Restore target = CAPTURED pre-duck volume (decision E3); fallback is the persisted user volume, never hardcoded 100 (F-SHOW-27); a GM volume adjustment mid-duck refreshes the capture. Supports pause/resume. Emits `ducking:changed`. Broadcasts wired in `broadcasts.js` forward video/sound lifecycle events to `handleDuckingEvent()`.
 
-**CRITICAL**: `handleDuckingEvent()` is async (returns a Promise). Callers in `broadcasts.js` use `.catch()`. `_handleDuckingStart` awaits `_capturePreDuckVolume` before applying duck volume to prevent race condition where captured "pre-duck" value is already ducked.
+**CRITICAL**: `handleDuckingEvent()` resolves only AFTER its serialized volume write has landed (per-target op queue, F-SHOW-06) — callers can await it when ordering matters; fire-and-forget callers in `broadcasts.js` use `.catch()`. Pre-duck capture is awaited before the duck write so the captured value is never the already-ducked one. `fadeMs` in routing.json is parsed nowhere — reserved for future use; volume changes are instant (D-9).
 
 **Sink-input tracking**: `audioRoutingService._sinkInputRegistry` (Map) is populated reactively from `pactl subscribe` sink-input events. `findSinkInput()` checks this registry first (fast-path), falls back to `pactl list sink-inputs`. Registry cleared on `reset()`.
 

@@ -529,7 +529,11 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'cue:fire': {
         if (!payload.cueId) throw new Error('cueId required');
         const cueEngineService = getCueEngine();
-        await cueEngineService.fireCue(payload.cueId);
+        // F-SHOW-15 / asyncapi CueFired: manual GM fires carry source 'gm'
+        // and a 'manual' trigger; cue-engine dispatches keep source 'cue'
+        const cueSource = source === 'gm' ? 'gm' : 'cue';
+        const cueTrigger = source === 'gm' ? 'manual' : undefined;
+        await cueEngineService.fireCue(payload.cueId, cueTrigger, undefined, cueSource);
         resultMessage = `Cue fired: ${payload.cueId}`;
         logger.info('Cue fired', { source, deviceId, cueId: payload.cueId });
         break;

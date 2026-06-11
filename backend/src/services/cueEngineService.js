@@ -485,8 +485,10 @@ class CueEngineService extends EventEmitter {
    * @param {string} cueId
    * @param {string} [trigger]
    * @param {Set<string>} [parentChain]
+   * @param {'gm'|'cue'} [source='cue'] - Who fired it (F-SHOW-15: manual GM
+   *   fires carry source 'gm' per the asyncapi CueFired contract)
    */
-  async fireCue(cueId, trigger, parentChain) {
+  async fireCue(cueId, trigger, parentChain, source = 'cue') {
     const cue = this.cues.get(cueId);
     if (!cue) throw new Error(`Cue "${cueId}" not found`);
 
@@ -541,12 +543,12 @@ class CueEngineService extends EventEmitter {
     }
 
     if (cue.timeline) {
-      await this._startCompoundCue(cue, trigger, parentChain);
+      await this._startCompoundCue(cue, trigger, parentChain, source);
       return;
     }
 
     // Simple cue
-    this.emit('cue:fired', { cueId, trigger: trigger || null, source: 'cue' });
+    this.emit('cue:fired', { cueId, trigger: trigger || null, source });
 
     const completedCommands = [];
     const failedCommands = [];
@@ -580,7 +582,7 @@ class CueEngineService extends EventEmitter {
   // Compound cue start
   // ─────────────────────────────────────────────────────────────────────────
 
-  async _startCompoundCue(cue, trigger, parentChain) {
+  async _startCompoundCue(cue, trigger, parentChain, source = 'cue') {
     const { id: cueId, timeline } = cue;
 
     const hasVideo = timeline.some(e =>
@@ -644,7 +646,7 @@ class CueEngineService extends EventEmitter {
       this._timeline.get(spawnedBy).children.add(cueId);
     }
 
-    this.emit('cue:fired', { cueId, trigger: trigger || null, source: 'cue' });
+    this.emit('cue:fired', { cueId, trigger: trigger || null, source });
     this.emit('cue:started', { cueId, hasVideo, duration: activeCue.maxAt });
 
     logger.info(`[CueEngine] Started compound cue: ${cueId} (${timeline.length} entries, duration: ${activeCue.maxAt}s, video: ${hasVideo})`);

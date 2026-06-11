@@ -173,6 +173,19 @@ describe('CueEngineService', () => {
       expect(handler).toHaveBeenCalledWith(expect.objectContaining({ cueId: 'test' }));
     });
 
+    it('manual GM fires carry source gm and trigger manual (F-SHOW-15, asyncapi CueFired)', async () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:fired', handler);
+      cueEngineService.loadCues([{
+        id: 'test', label: 'Test',
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+      }]);
+
+      // As dispatched by commandExecutor for a gm:command cue:fire
+      await cueEngineService.fireCue('test', 'manual', undefined, 'gm');
+      expect(handler).toHaveBeenCalledWith({ cueId: 'test', trigger: 'manual', source: 'gm' });
+    });
+
     it('should throw for unknown cue ID', async () => {
       await expect(cueEngineService.fireCue('nonexistent')).rejects.toThrow(/not found/i);
     });
