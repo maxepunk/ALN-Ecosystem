@@ -2228,8 +2228,11 @@ components:
               state:
                 type: object
                 description: |
-                  Full state snapshot for the domain. Shape varies by domain:
-                  - **music**: `{connected, state, volume, track, playlist, playlists[], pausedByGameClock}`
+                  Full state snapshot for the domain. The authoritative shape
+                  for each domain is the matching components.schemas.DomainState*
+                  schema (enforced by the backend's service-domain-state
+                  contract test). Summary:
+                  - **music**: `{connected, state, volume, track, playlist, pausedByGameClock}` (playlist CATALOG rides sync:full only)
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
                   - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
@@ -2429,3 +2432,107 @@ components:
             description: Event timestamp
             example: "2025-10-15T20:12:00.000Z"
 
+
+  # ============================================================================
+  # SERVICE DOMAIN STATE SCHEMAS (Phase 2: formalized from prose)
+  # ============================================================================
+  # One schema per service:state domain. These are the wire shapes the GM
+  # Scanner's StateStore depends on (StateStore.update is a shallow merge —
+  # removing/renaming a key here is a breaking change requiring coordinated
+  # scanner updates). Enforced by
+  # backend/tests/contract/websocket/service-domain-state.test.js, which
+  # validates each service's REAL getState() output against its schema.
+  # Schemas are additive-tolerant (additionalProperties allowed): new fields
+  # may be added freely; required keys may never silently disappear.
+  schemas:
+    DomainStateMusic:
+      type: object
+      required: [connected, state, volume, track, playlist, pausedByGameClock]
+      properties:
+        connected: { type: boolean }
+        state: { type: string, enum: [playing, paused, stopped] }
+        volume: { type: integer, minimum: 0, maximum: 100 }
+        track: { type: [object, "null"] }
+        playlist: { type: [string, "null"] }
+        pausedByGameClock: { type: boolean }
+      description: >
+        NOTE: the playlist CATALOG (playlists[]) is NOT part of this push —
+        it is delivered via sync:full's music block only.
+    DomainStateVideo:
+      type: object
+      required: [status, currentVideo, queue, queueLength, connected]
+      properties:
+        status: { type: string }
+        currentVideo: { type: [object, "null"] }
+        queue: { type: array }
+        queueLength: { type: integer, minimum: 0 }
+        connected: { type: boolean }
+    DomainStateHealth:
+      type: object
+      description: One entry per registered service (8 services)
+      required: [vlc, music, sound, bluetooth, audio, lighting, gameclock, cueengine]
+      additionalProperties:
+        type: object
+        required: [status, message, lastChecked]
+        properties:
+          status: { type: string, enum: [healthy, degraded, down] }
+          message: { type: [string, "null"] }
+          lastChecked: { type: [string, "null"] }
+    DomainStateBluetooth:
+      type: object
+      required: [available, scanning, pairedDevices, connectedDevices]
+      properties:
+        available: { type: boolean }
+        scanning: { type: boolean }
+        pairedDevices: { type: array }
+        connectedDevices: { type: array }
+    DomainStateAudio:
+      type: object
+      required: [routes, defaultSink, ducking, availableSinks, volumes]
+      properties:
+        routes: { type: object }
+        defaultSink: { type: string }
+        ducking: { type: object }
+        availableSinks: { type: array }
+        volumes: { type: object }
+    DomainStateLighting:
+      type: object
+      required: [connected, activeScene, scenes]
+      properties:
+        connected: { type: boolean }
+        activeScene: { type: [string, "null"] }
+        scenes: { type: array }
+    DomainStateSound:
+      type: object
+      required: [playing]
+      properties:
+        playing: { type: array }
+    DomainStateGameclock:
+      type: object
+      required: [status, elapsed, startTime, totalPausedMs]
+      properties:
+        status: { type: string, enum: [stopped, running, paused] }
+        elapsed: { type: number, minimum: 0 }
+        startTime: { type: [number, string, "null"] }
+        totalPausedMs: { type: number, minimum: 0 }
+    DomainStateCueengine:
+      type: object
+      required: [cues, activeCues, disabledCues]
+      properties:
+        cues: { type: array }
+        activeCues: { type: array }
+        disabledCues: { type: array }
+    DomainStateHeld:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, type, reason, status]
+            properties:
+              id: { type: string, pattern: "^held-(cue|video)-[0-9]+$" }
+              type: { type: string, enum: [cue, video] }
+              reason: { type: string }
+              status: { type: string }

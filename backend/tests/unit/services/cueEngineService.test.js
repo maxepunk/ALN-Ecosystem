@@ -496,7 +496,39 @@ describe('CueEngineService', () => {
   });
 
   describe('re-entrancy guard (D4)', () => {
-    it.todo('should not evaluate standing cues for commands dispatched by cues');
+    it('does not evaluate standing cues while dispatching cue commands', async () => {
+      // D4 property: handleGameEvent is wired ONLY from real service events
+      // (cueEngineWiring); executeCommand dispatch/results must never feed
+      // standing-cue evaluation. Cycle and depth loops via cue:fire chains
+      // are pinned separately (cycle detection + MAX_NESTING_DEPTH tests).
+      const evalSpy = jest.spyOn(cueEngineService, 'handleGameEvent');
+
+      cueEngineService.loadCues([
+        {
+          id: 'dispatcher', label: 'Dispatcher',
+          commands: [
+            { action: 'sound:play', payload: { file: 'a.wav' } },
+            { action: 'lighting:scene:activate', payload: { sceneId: 'x' } },
+          ],
+        },
+        {
+          id: 'standing', label: 'Standing',
+          trigger: { event: 'transaction:accepted' },
+          commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }],
+        },
+      ]);
+      cueEngineService.activate();
+
+      await cueEngineService.fireCue('dispatcher');
+      await flushAsync();
+
+      expect(evalSpy).not.toHaveBeenCalled();
+      // Only the dispatcher's own commands executed — standing cue untouched
+      const actions = executeCommand.mock.calls.map(c => c[0].action);
+      expect(actions).toEqual(['sound:play', 'lighting:scene:activate']);
+
+      evalSpy.mockRestore();
+    });
   });
 
   describe('suspend/reactivate', () => {

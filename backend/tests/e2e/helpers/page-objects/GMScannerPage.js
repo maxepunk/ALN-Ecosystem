@@ -23,7 +23,6 @@ class GMScannerPage {
 
     // Screen locators (within scanner-view, toggled with .active class)
     this.loadingScreen = page.locator('#loadingScreen.active');
-    this.settingsScreen = page.locator('#settingsScreen.active');
     this.gameModeScreen = page.locator('#gameModeScreen.active');
     this.teamEntryScreen = page.locator('#teamEntryScreen.active');
     this.scanScreen = page.locator('#scanScreen.active');
@@ -82,10 +81,8 @@ class GMScannerPage {
     this.tokenDetailCards = page.locator('#teamDetailsContainer .token-card, #teamDetailsContainer .history-entry');
 
     // Settings elements
-    this.settingsButton = page.locator('button[data-action="app.showSettings"]');
     this.deviceIdInput = page.locator('#deviceId');
     this.modeIndicator = page.locator('#modeIndicator');
-    this.saveSettingsBtn = page.locator('button[data-action="app.saveSettings"]');
 
     // Connection wizard and status (networked mode)
     this.connectionModal = page.locator('#connectionModal');
@@ -144,8 +141,6 @@ class GMScannerPage {
     this.deviceItems = page.locator('#device-list .device-item');
 
     // Admin transaction log (different from history screen)
-    this.adminTransactionLog = page.locator('#admin-transaction-log');
-    this.adminTransactionItems = page.locator('#admin-transaction-log .transaction-item');
 
     // Error displays
     this.errorToast = page.locator('.toast.error:visible');
@@ -155,8 +150,6 @@ class GMScannerPage {
     this.nowShowingValue = page.locator('#now-showing-value');
     this.nowShowingIcon = page.locator('#now-showing-icon');
     this.pendingQueueCount = page.locator('#pending-queue-count');
-    this.returnsToContainer = page.locator('#returns-to-container');
-    this.returnsToMode = page.locator('#returns-to-mode');
     this.btnIdleLoop = page.locator('#btn-idle-loop');
     this.btnScoreboard = page.locator('#btn-scoreboard');
     this.btnReturnToVideo = page.locator('#btn-return-to-video');
@@ -174,20 +167,15 @@ class GMScannerPage {
     this.btScanStatus = page.locator('#bt-scan-status');
     this.btDeviceList = page.locator('#bt-device-list');
     this.btDeviceItems = page.locator('#bt-device-list .bt-device-item');
-    this.btUnavailable = page.locator('#bt-unavailable');
 
     this.lightingSection = page.locator('#lighting-section');
     this.lightingScenes = page.locator('#lighting-scenes');
     this.lightingSceneTiles = page.locator('#lighting-scenes .scene-tile');
-    this.lightingNoScenes = page.locator('#lighting-no-scenes');
-    this.lightingNotConnected = page.locator('#lighting-not-connected');
     this.lightingRetryBtn = page.locator('button[data-action="admin.lightingRetry"]');
-    this.haConnectionStatus = page.locator('#ha-connection-status');
 
     // Phase 2: Game Clock, Active Cues, Music (MonitoringDisplay)
     this.gameClockDisplay = page.locator('#game-clock-display');
     this.activeCuesList = page.locator('#active-cues-list');
-    this.nowPlayingSection = page.locator('#now-playing-section');
 
     // Scoreboard Evidence Navigation (PR #10 - Admin panel)
     this.scoreboardEvidenceSection = page.locator('#scoreboard-evidence-section');
@@ -457,14 +445,6 @@ class GMScannerPage {
 
     const text = await this.historyBadge.textContent();
     return parseInt(text, 10);
-  }
-
-  /**
-   * Open settings screen
-   */
-  async openSettings() {
-    await this.settingsButton.click();
-    await this.settingsScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -1476,18 +1456,6 @@ class GMScannerPage {
    */
   async getAdminTransactionCount() {
     return await this.adminTransactionItems.count();
-  }
-
-  /**
-   * Wait for a specific transaction to appear in admin log
-   * @param {string} tokenId - Token ID to wait for
-   * @param {number} timeout - Timeout in ms (default 5000)
-   */
-  async waitForTransactionInAdminLog(tokenId, timeout = 5000) {
-    await this.page.locator(`#admin-transaction-log .transaction-item:has-text("${tokenId}")`).waitFor({
-      state: 'visible',
-      timeout
-    });
   }
 
   // ============================================
