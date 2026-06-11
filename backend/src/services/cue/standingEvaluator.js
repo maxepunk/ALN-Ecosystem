@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Standing Cue Evaluator
  *
@@ -26,29 +24,29 @@ const { GAME_EVENT_NORMALIZERS } = require('../../gameRules/cueVocabulary');
  * @type {Object.<string, function(Object): Object>}
  */
 const ENGINE_EVENT_NORMALIZERS = {
-  'video:loading': (payload) => ({ tokenId: payload.tokenId }),
-  'video:started': (payload) => ({ tokenId: payload.queueItem?.tokenId, duration: payload.duration }),
-  'video:completed': (payload) => ({ tokenId: payload.queueItem?.tokenId }),
-  'video:paused': (payload) => ({ tokenId: payload?.tokenId }),
-  'video:resumed': (payload) => ({ tokenId: payload?.tokenId }),
-  'player:scan': (payload) => ({ tokenId: payload.tokenId, deviceId: payload.deviceId, deviceType: payload.deviceType }),
-  'session:created': (payload) => ({ sessionId: payload.sessionId }),
-  'cue:completed': (payload) => ({ cueId: payload.cueId }),
-  'sound:completed': (payload) => ({ file: payload.file }),
+  'video:loading': payload => ({ tokenId: payload.tokenId }),
+  'video:started': payload => ({ tokenId: payload.queueItem?.tokenId, duration: payload.duration }),
+  'video:completed': payload => ({ tokenId: payload.queueItem?.tokenId }),
+  'video:paused': payload => ({ tokenId: payload?.tokenId }),
+  'video:resumed': payload => ({ tokenId: payload?.tokenId }),
+  'player:scan': payload => ({ tokenId: payload.tokenId, deviceId: payload.deviceId, deviceType: payload.deviceType }),
+  'session:created': payload => ({ sessionId: payload.sessionId }),
+  'cue:completed': payload => ({ cueId: payload.cueId }),
+  'sound:completed': payload => ({ file: payload.file }),
   // Music events — musicService emits these via cueEngineWiring
-  'music:track:changed': (payload) => ({
+  'music:track:changed': payload => ({
     title: payload.track?.title ?? null,
     artist: payload.track?.artist ?? null,
     file: payload.track?.file ?? null,
   }),
-  'music:playback:changed': (payload) => ({ state: payload.state }),
-  'music:playlist:changed': (payload) => ({
+  'music:playback:changed': payload => ({ state: payload.state }),
+  'music:playlist:changed': payload => ({
     playlistId: payload.id,
     playlistName: payload.name,
     shuffle: payload.shuffle,
     loop: payload.loop,
   }),
-  'gameclock:started': (payload) => ({ gameStartTime: payload.gameStartTime }),
+  'gameclock:started': payload => ({ gameStartTime: payload.gameStartTime }),
 };
 
 /**
@@ -64,13 +62,13 @@ const EVENT_NORMALIZERS = { ...ENGINE_EVENT_NORMALIZERS, ...GAME_EVENT_NORMALIZE
  * @type {Object.<string, function(*, *): boolean>}
  */
 const CONDITION_OPS = {
-  eq:  (actual, expected) => actual === expected,
+  eq: (actual, expected) => actual === expected,
   neq: (actual, expected) => actual !== expected,
-  gt:  (actual, expected) => actual > expected,
+  gt: (actual, expected) => actual > expected,
   gte: (actual, expected) => actual >= expected,
-  lt:  (actual, expected) => actual < expected,
+  lt: (actual, expected) => actual < expected,
   lte: (actual, expected) => actual <= expected,
-  in:  (actual, expected) => Array.isArray(expected) && expected.includes(actual),
+  in: (actual, expected) => Array.isArray(expected) && expected.includes(actual),
 };
 
 /**

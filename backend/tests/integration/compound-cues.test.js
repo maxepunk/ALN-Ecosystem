@@ -300,7 +300,9 @@ describe('Compound Cue Integration (Phase 2)', () => {
             await cueEngineService.releaseCue(heldId);
 
             expect(cueEngineService.getHeldCues()).toHaveLength(0);
-            expect(cueEngineService.conflictTimers.has('override-cue')).toBe(false);
+            // F-SHOW-16: auto-discard timers are keyed by heldId in the
+            // unified HeldItemsStore (the old cueId-keyed conflictTimers died)
+            expect(cueEngineService._heldStore._autoDiscardTimers.size).toBe(0);
         });
 
         it('should fire at:0 entries when release starts the cue', async () => {
@@ -384,12 +386,14 @@ describe('Compound Cue Integration (Phase 2)', () => {
             await cueEngineService.fireCue('auto-cancel-cue', 'test');
 
             expect(cueEngineService.getHeldCues()).toHaveLength(1);
-            expect(cueEngineService.conflictTimers.has('auto-cancel-cue')).toBe(true);
+            // F-SHOW-16: timers keyed by heldId in the unified HeldItemsStore
+            const heldId = cueEngineService.getHeldCues()[0].id;
+            expect(cueEngineService._heldStore._autoDiscardTimers.has(heldId)).toBe(true);
 
             jest.advanceTimersByTime(10001);
 
             expect(cueEngineService.getHeldCues()).toHaveLength(0);
-            expect(cueEngineService.conflictTimers.has('auto-cancel-cue')).toBe(false);
+            expect(cueEngineService._heldStore._autoDiscardTimers.has(heldId)).toBe(false);
         });
 
         it('should NOT auto-discard if released before timer expires', async () => {

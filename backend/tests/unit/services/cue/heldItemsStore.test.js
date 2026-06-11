@@ -43,7 +43,7 @@ describe('HeldItemsStore', () => {
         reason: 'service_down',
       });
 
-      expect(held.id).toMatch(/^held-\d+$/);
+      expect(held.id).toMatch(/^held-cue-\d+$/);
       expect(held.type).toBe('cue');
       expect(held.cueId).toBe('test-cue');
       expect(held.reason).toBe('service_down');
@@ -61,7 +61,7 @@ describe('HeldItemsStore', () => {
         reason: 'vlc_down',
       });
 
-      expect(held.id).toMatch(/^held-\d+$/);
+      expect(held.id).toMatch(/^held-video-\d+$/);
       expect(held.type).toBe('video');
       expect(held.tokenId).toBe('my-token');
       expect(held.status).toBe('held');

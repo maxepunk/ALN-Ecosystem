@@ -76,7 +76,11 @@ class HeldItemsStore {
     ...extras
   }) {
     const held = {
-      id: `held-${++_globalHeldIdCounter}`,
+      // Type-prefixed IDs are the WIRE FORMAT (held:release/discard payloads,
+      // service:state held domain, sync:full heldItems) and the routing key
+      // in commandExecutor's prefix dispatch — keep `held-{type}-N` until the
+      // dispatch is lookup-based and the GM scanner is coordinated.
+      id: `held-${type}-${++_globalHeldIdCounter}`,
       type,
       heldAt: new Date().toISOString(),
       reason,

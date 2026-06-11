@@ -59,6 +59,8 @@ class CueEngineService extends EventEmitter {
     this.active = false;
     /** @type {Set<string>} Clock cue IDs that have already fired (prevents re-fire) */
     this.firedClockCues = new Set();
+    /** @type {number|undefined} Elapsed at restore time (E1 re-marking in loadCues) */
+    this._restoredClockElapsed = undefined;
 
     // Clear timeline runtime state
     if (this._timeline) {
@@ -120,6 +122,13 @@ class CueEngineService extends EventEmitter {
     }
 
     this.cues = newCues;
+
+    // Re-apply E1 mark-without-firing if restore() ran before cue
+    // definitions were available (sessionService.init() precedes cue load)
+    if (this._restoredClockElapsed !== undefined) {
+      this._markPastClockCuesFired(this._restoredClockElapsed);
+    }
+
     registry.report('cueengine', 'healthy', `Loaded ${newCues.size} cues`);
     logger.info(`[CueEngine] Loaded ${newCues.size} cues (${this.getStandingCues().length} standing)`);
   }
@@ -500,7 +509,12 @@ class CueEngineService extends EventEmitter {
 
     if (parentChain && parentChain.size >= CueEngineService.MAX_NESTING_DEPTH) {
       logger.warn(`[CueEngine] Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) reached for "${cueId}"`);
-      this.emit('cue:error', { cueId, action: null, position: null, error: `Max depth exceeded` });
+      this.emit('cue:error', {
+        cueId,
+        action: null,
+        position: null,
+        error: `Max nesting depth (${CueEngineService.MAX_NESTING_DEPTH}) exceeded`,
+      });
       return;
     }
 
@@ -691,7 +705,10 @@ class CueEngineService extends EventEmitter {
       }
     }
 
-    this.emit('cue:status', { cueId, state: 'stopped' });
+    // Emit per stopped cue, children first (cascade order from the runtime)
+    for (const stoppedId of result.stoppedIds || [cueId]) {
+      this.emit('cue:status', { cueId: stoppedId, state: 'stopped' });
+    }
   }
 
   async pauseCue(cueId) {
@@ -811,19 +828,49 @@ class CueEngineService extends EventEmitter {
 
   /**
    * Restore standing cue state from persistence (E1).
-   * Mark-without-firing policy: past clock cues are marked fired but not executed.
+   * Mark-without-firing policy: clock cues whose threshold is at-or-below
+   * the restored elapsed time are marked fired WITHOUT firing them — a
+   * restart must neither replay past cues (catch-up storm) nor leave
+   * automation dead. Cue definitions may not be loaded yet
+   * (sessionService.init() runs before app.js loads cues.json), so the
+   * restored elapsed is remembered and the marking is re-applied by
+   * loadCues().
    * @param {Object} snapshot
+   * @param {number} [elapsedSeconds=0] - Restored game clock elapsed time
    */
-  restore(snapshot) {
+  restore(snapshot, elapsedSeconds = 0) {
+    if (!snapshot) return;
     const state = standingFromPersistence(snapshot);
     this.firedClockCues = state.firedClockCues;
     this.disabledCues = state.disabledCues;
     this.active = state.active;
+    this._restoredClockElapsed = elapsedSeconds;
+    this._markPastClockCuesFired(elapsedSeconds);
     logger.info('[CueEngine] Restored from persistence', {
       firedClockCues: this.firedClockCues.size,
       disabledCues: this.disabledCues.size,
       active: this.active,
+      elapsedSeconds,
     });
+  }
+
+  /**
+   * Mark all clock cues whose threshold has already passed as fired (E1).
+   * Does NOT fire them — restore policy is mark-don't-fire.
+   * @param {number} elapsedSeconds - Game clock elapsed time
+   * @private
+   */
+  _markPastClockCuesFired(elapsedSeconds) {
+    for (const cue of this.getStandingCues()) {
+      if (!cue.trigger?.clock) continue;
+      try {
+        if (parseClockTime(cue.trigger.clock) <= elapsedSeconds) {
+          this.firedClockCues.add(cue.id);
+        }
+      } catch (err) {
+        logger.warn(`[CueEngine] Skipping clock cue with invalid time during restore: ${cue.id}`, err.message);
+      }
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────

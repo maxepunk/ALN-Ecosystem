@@ -496,27 +496,31 @@ class TimelineRuntime {
   /**
    * Stop a compound cue (cascade to children).
    * @param {string} cueId
-   * @returns {Promise<{stopped: boolean, wasActive: boolean}>}
+   * @returns {Promise<{stopped: boolean, wasActive: boolean, stoppedIds: string[]}>}
    */
   async stopCue(cueId) {
     const activeCue = this.activeCues.get(cueId);
     if (!activeCue) {
       logger.info(`[TimelineRuntime] stopCue: "${cueId}" not active, ignoring`);
-      return { stopped: false, wasActive: false };
+      return { stopped: false, wasActive: false, stoppedIds: [] };
     }
 
-    // Cascade stop to children first
+    // Cascade stop to children first; collect every stopped cue ID so the
+    // facade can emit a cue:status 'stopped' per cue (children included)
+    const stoppedIds = [];
     for (const childId of activeCue.children) {
-      await this.stopCue(childId);
+      const childResult = await this.stopCue(childId);
+      stoppedIds.push(...childResult.stoppedIds);
     }
 
     const hadVideoStarted = activeCue.hasVideo && activeCue.videoStarted;
 
     activeCue.state = 'stopped';
     this.activeCues.delete(cueId);
+    stoppedIds.push(cueId);
     logger.info(`[TimelineRuntime] Stopped compound cue: ${cueId}`);
 
-    return { stopped: true, wasActive: true, hadVideoStarted };
+    return { stopped: true, wasActive: true, hadVideoStarted, stoppedIds };
   }
 
   /**
