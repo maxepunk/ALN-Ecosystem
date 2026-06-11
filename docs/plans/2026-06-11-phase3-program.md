@@ -64,7 +64,13 @@ The engine/game separation itself. Everything else hangs off this.
 
 ### Track B — Authoring tooling (consumes A, page by page)
 config-tool restructured into **Design** and **Venue** workspaces
-(decided). Build order = value ÷ effort, gated on the matching A3 slice:
+(decided). **B0 first** (per the 2026-06-11 config-tool pre-read,
+docs/reviews/2026-06-11-config-tool-preread.md): pack/profile store with
+draft→publish lifecycle (the tool stops editing live files), app-shell
+shared store + model-module discipline + frontend test harness, auth from
+the O3 design + backend-served trigger/action vocabulary. B0 is the
+tool-side implementation of the A1/C1/O3 design docs (+≈1 session). Pages
+then follow, build order = value ÷ effort, gated on the matching A3 slice:
 pack manager (create/open/validate/diff/export, draft+**publish**,
 "commit & push pack" making submodule state visible) → mechanics editor
 (modes, scoring tables, group rules, duplicate policy, clock/phases;
