@@ -16,17 +16,25 @@ review completes, hold all merges until after the event.
 
 ```
 1. Four submodule PRs — review + merge in any order among themselves:
-     a. ALN-TokenData    claude/phase2-token-schema      → main   (1 commit)
-     b. ALNScanner       claude/phase2-domain-split      → main   (23 commits)
-     c. ALNPlayerScan    claude/phase2-es6-modules       → main   (10 commits)
-     d. arduino-cyd-...  claude/review-fix-batch         → main   (3 commits)
+     a. ALN-TokenData    claude/phase2-token-schema      → main   PR #1
+     b. ALNScanner       claude/phase2-domain-split      → main   PR #10
+     c. ALNPlayerScan    claude/phase2-es6-modules       → main   PR #5
+     d. arduino-cyd-...  claude/review-fix-batch         → main   PR #6
 2. Parent branch: re-pin all four submodule gitlinks to the NEW main merge
    commits; commit "chore: re-pin submodules to merged mains"; push.
-3. Parent PR — final review of the re-pin commit → merge.
+3. Parent PR (ALN-Ecosystem #17, draft) — final review of the re-pin
+   commit → merge.
 4. Post-merge validation on real hardware (owner):
    - Pi: pull main, `npm run test:e2e:tier-h`, then full Tier L if desired
    - ESP32: flash main, boot + scan smoke test
 ```
+
+**Live PRs (created 2026-06-11):**
+- https://github.com/maxepunk/ALN-TokenData/pull/1
+- https://github.com/maxepunk/ALNScanner/pull/10
+- https://github.com/maxepunk/ALNPlayerScan/pull/5
+- https://github.com/maxepunk/arduino-cyd-player-scanner/pull/6
+- https://github.com/maxepunk/ALN-Ecosystem/pull/17 (draft — merges last)
 
 Branch-state facts (verified 2026-06-11): every branch is 0 behind its main
 except ALNScanner (1 behind — the PR #9 merge-commit object only; content
