@@ -1,8 +1,8 @@
 # Phase 2.x — E2E Harness as Platform Infrastructure
 
 **Date:** 2026-06-11
-**Status:** Committed (owner-directed: "integrate this phase 2.X work into
-our plan in a committed, well thought out manner")
+**Status:** ✅ EXECUTED 2026-06-11 (all four items + exit criteria; see
+Completion record at the bottom)
 **Assessment basis:** docs/reviews/2026-06-platform-review/e2e-harness-assessment.md
 **Position in the workflow:** between Phase 2 (structural, COMPLETE) and the
 Phase 3 build. Phase 3 *design* docs (3.0/3.1 schemas) proceed in parallel —
@@ -131,3 +131,28 @@ inherits a consumer-tested seam.
 ## Estimate
 ≈2 sessions (2.x.3 small; 2.x.1+2.x.2 one focused session; 2.x.4 one) —
 comparable to one Phase 2 batch, with the same gates discipline.
+
+## Completion record (2026-06-11)
+
+- **2.x.3** ✅ waitForEvent is pure listener-from-now; clearEventCache and
+  getCachedEvent no longer exist (31 call sites removed); explicit history
+  = socket.initialSync + lastServiceState state-mirror only.
+- **2.x.1** ✅ tests/e2e/helpers/capabilities.js (getCapabilities /
+  requireCapabilities / requireDegraded / waitForCapability / manifest);
+  ~64 hand-rolled health checks across 10 flows migrated; vocabulary draft
+  at docs/proposals/2026-06-11-capability-vocabulary.md (folds into the
+  installation-profile schema doc at Phase 3.1).
+- **2.x.2** ✅ @hardware tags (08/22/25 — 22 tests), test:e2e:tier-l
+  (workers=3) / test:e2e:tier-h scripts, manifest-reporter prints
+  host-tool manifest + tier counts on every run, Tier L CI job added to
+  test.yml (summary-gated), no-fixed-sleeps lint rule (8 time-semantic
+  waits annotated with justifications, 5 racy settles converted to
+  condition polls).
+- **2.x.4** ✅ TOKENS_PATH injection seam (tokenService first-candidate +
+  conditional scanner-relative routes in app.js — zero production change
+  when unset), startOrchestrator({tokensPath}), schema-validated fixture
+  pack; flow 07c opted in: **group-completion parity runs green E2E for
+  the first time** (production data has no completable group).
+- **Gates:** unit+contract 2068, integration 336/336, lint 0, ratchet
+  76/76, Tier L E2E 112 passed / 0 failed at workers=3 (~9-10 min; the
+  pre-tag full-suite parallel proof: 111 passed, 9.7 min vs ~30 serial).

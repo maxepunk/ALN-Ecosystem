@@ -164,7 +164,7 @@ jobs:
   summary:
     name: Test Summary
     runs-on: ubuntu-latest
-    needs: [backend-unit-contract, backend-integration, scanner-tests, esp32-tests, scripts-tests]
+    needs: [backend-unit-contract, backend-integration, backend-e2e-tier-l, scanner-tests, esp32-tests, scripts-tests]
     if: always()
 
     steps:
@@ -176,6 +176,10 @@ jobs:
           fi
           if [ "${{ needs.backend-integration.result }}" != "success" ]; then
             echo "Backend integration tests failed"
+            exit 1
+          fi
+          if [ "${{ needs.backend-e2e-tier-l.result }}" != "success" ]; then
+            echo "Backend E2E Tier L failed"
             exit 1
           fi
           if [ "${{ needs.scanner-tests.result }}" != "success" ]; then
@@ -191,3 +195,54 @@ jobs:
             exit 1
           fi
           echo "All checks passed"
+
+  backend-e2e-tier-l:
+    name: Backend E2E Tier L (logic/UI floor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        working-directory: backend
+        run: npx playwright install chromium --with-deps
+
+      # backend/public/gm-scanner symlinks to ALNScanner/dist — build it so
+      # Tier L exercises the CURRENT scanner, not a stale committed dist
+      - name: Build GM Scanner dist
+        working-directory: ALNScanner
+        run: npm ci && npm run build
+
+      # Tier L = logic/UI flows only (@hardware excluded). Capability gates
+      # make hardware-dependent tests skip LOUDLY on this toolless runner;
+      # the manifest reporter prints what was probed. workers=3 is safe for
+      # Tier L: per-flow orchestrators bind random ports, memory storage,
+      # no UDP discovery in test env, and the system-global resources that
+      # force workers=1 (Chromium kiosk, pkill, real AV PID files) are all
+      # Tier H concerns.
+      - name: Run Tier L E2E
+        working-directory: backend
+        run: npm run test:e2e:tier-l
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tier-l-playwright-report
+          path: backend/playwright-report/
+          retention-days: 7

@@ -68,6 +68,11 @@ const calculateTokenValue = (rating, type) => {
  */
 const _loadTokensFile = () => {
   const paths = [
+    // Injection seam (Phase 2.x.4 → grows into Phase 3 runtime pack
+    // loading): an explicit TOKENS_PATH wins over the submodule defaults.
+    // Used by the E2E harness to run the system on a fixture token set
+    // (and later: a full game pack).
+    ...(process.env.TOKENS_PATH ? [process.env.TOKENS_PATH] : []),
     path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
     path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
   ];

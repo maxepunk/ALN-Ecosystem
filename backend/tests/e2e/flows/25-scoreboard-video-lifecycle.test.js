@@ -26,6 +26,7 @@ const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../se
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
+const { refreshCapabilities, requireCapabilities } = require('../helpers/capabilities');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
@@ -43,29 +44,6 @@ let orchestratorInfo = null;
 let testTokens = null;
 let videoToken = null;
 
-/**
- * Check if VLC is healthy via /api/state.
- * @param {string} orchestratorUrl - Backend URL
- * @returns {Promise<boolean>} true if VLC status is 'healthy'
- */
-async function isVLCHealthy(orchestratorUrl) {
-  const stateResp = await new Promise((resolve, reject) => {
-    const url = new URL('/api/state', orchestratorUrl);
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data));
-        } catch (e) {
-          reject(new Error(`Failed to parse /api/state response: ${e.message}`));
-        }
-      });
-    });
-    req.on('error', reject);
-  });
-  return stateResp.serviceHealth?.vlc?.status === 'healthy';
-}
 
 /**
  * POST /api/scan as a player device.
@@ -109,7 +87,7 @@ async function playerScan(baseUrl, tokenId, deviceId = 'e2e-player-sb-video') {
   });
 }
 
-test.describe('Scoreboard During Video Lifecycle', () => {
+test.describe('Scoreboard During Video Lifecycle @hardware', () => {
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -172,11 +150,7 @@ test.describe('Scoreboard During Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      console.warn('VLC not healthy — skipping kiosk overlay test');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     const sbContext = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
@@ -285,11 +259,7 @@ test.describe('Scoreboard During Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      console.warn('VLC not healthy — skipping data survival test');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     const sbContext = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const gmContext = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });

@@ -21,6 +21,7 @@ const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../se
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
+const { refreshCapabilities, requireCapabilities } = require('../helpers/capabilities');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
@@ -38,16 +39,8 @@ let videoToken = null;
  * @returns {Promise<boolean>} true if VLC status is 'healthy'
  */
 async function isVLCHealthy(orchestratorUrl) {
-  const stateResp = await new Promise((resolve, reject) => {
-    const url = new URL('/api/state', orchestratorUrl);
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-  });
-  return stateResp.serviceHealth?.vlc?.status === 'healthy';
+  // Fresh capability probe (vlc can flap under load — don't trust the cache)
+  return (await refreshCapabilities(orchestratorUrl)).vlc;
 }
 
 /**
@@ -92,7 +85,7 @@ async function playerScan(baseUrl, tokenId, deviceId = 'e2e-player-device') {
   });
 }
 
-test.describe('Player Video Lifecycle', () => {
+test.describe('Player Video Lifecycle @hardware', () => {
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -132,11 +125,7 @@ test.describe('Player Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      test.skip();
-      console.log('VLC not healthy — skipping video playback test');
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     // Create a session first (need active session for scans)
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
@@ -191,11 +180,7 @@ test.describe('Player Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      test.skip();
-      console.log('VLC not healthy — skipping standing cue test');
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     // Fresh orchestrator: previous test's video/session state would interfere
     await stopOrchestrator();
@@ -248,11 +233,7 @@ test.describe('Player Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      test.skip();
-      console.log('VLC not healthy — skipping restore cue test');
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     // Fresh orchestrator: previous test's video/session state would interfere
     await stopOrchestrator();

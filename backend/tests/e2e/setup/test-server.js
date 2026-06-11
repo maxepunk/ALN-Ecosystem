@@ -118,7 +118,12 @@ async function startOrchestrator(options = {}) {
     port: requestedPort = 0,  // Default to dynamic port assignment
     timeout = 30000,
     preserveSession = false,
-    storageType = 'memory'
+    storageType = 'memory',
+    // Injection seam (2.x.4): run the system on a fixture token set instead
+    // of production ALN-TokenData (backend + /api/tokens + the scanners'
+    // relative token paths all see the same injected set). Defaults to
+    // production data. Grows into Phase 3 runtime pack loading.
+    tokensPath = null
   } = options;
 
   // Resolve dynamic port if requested (port=0 or port='auto')
@@ -175,7 +180,8 @@ async function startOrchestrator(options = {}) {
     PORT: String(port),
     ENABLE_HTTPS: String(enableHttps),
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
-    ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD  // Explicitly override to prevent .env contamination
+    ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD,  // Explicitly override to prevent .env contamination
+    ...(tokensPath ? { TOKENS_PATH: tokensPath } : {})
   };
 
   // Path to server entry point

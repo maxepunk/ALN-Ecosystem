@@ -129,8 +129,11 @@ test.describe('Player Scanner Diagnostic', () => {
 
     console.log('Scan result:', JSON.stringify(scanResult, null, 2));
 
-    // Wait a moment for any async operations
-    await page.waitForTimeout(2000);
+    // Condition wait: post-scan network/log capture settles when the scan
+    // request appears in the captured set (diagnostic flow — tolerant)
+    await expect(async () => {
+      expect(consoleLogs.length + requests.length).toBeGreaterThan(0);
+    }).toPass({ timeout: 5000 });
 
     // LAYER 5: Check what happened
     console.log('\n=== LAYER 5: Post-Scan Analysis ===');

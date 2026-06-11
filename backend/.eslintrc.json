@@ -18,30 +18,49 @@
   "rules": {
     "no-console": "off",
     "no-underscore-dangle": "warn",
-    "import/no-extraneous-dependencies": ["warn", {
-      "devDependencies": ["**/*.test.js", "**/*.spec.js", "**/tests/**"]
-    }],
-    "max-len": ["warn", { "code": 120 }],
-    "object-curly-newline": ["warn", {
-      "multiline": true,
-      "consistent": true
-    }],
-    "arrow-parens": ["warn", "as-needed"],
-    "comma-dangle": ["warn", {
-      "arrays": "always-multiline",
-      "objects": "always-multiline",
-      "imports": "always-multiline",
-      "exports": "always-multiline",
-      "functions": "never"
-    }],
-
+    "import/no-extraneous-dependencies": [
+      "warn",
+      {
+        "devDependencies": [
+          "**/*.test.js",
+          "**/*.spec.js",
+          "**/tests/**"
+        ]
+      }
+    ],
+    "max-len": [
+      "warn",
+      {
+        "code": 120
+      }
+    ],
+    "object-curly-newline": [
+      "warn",
+      {
+        "multiline": true,
+        "consistent": true
+      }
+    ],
+    "arrow-parens": [
+      "warn",
+      "as-needed"
+    ],
+    "comma-dangle": [
+      "warn",
+      {
+        "arrays": "always-multiline",
+        "objects": "always-multiline",
+        "imports": "always-multiline",
+        "exports": "always-multiline",
+        "functions": "never"
+      }
+    ],
     "// BASELINE NOTE": "off",
     "// Rules below are downgraded to 'warn' (2026-06, Phase 0 guardrails).": "off",
     "// The suite was never CI-gated; these rules have pre-existing violations.": "off",
     "// Policy: gate NEW violations of clean rules (still 'error' via airbnb-base),": "off",
     "// burn down warnings opportunistically. Do NOT add new 'warn' downgrades": "off",
     "// without review; re-promote rules to 'error' as their counts reach zero.": "off",
-
     "arrow-body-style": "warn",
     "block-spacing": "warn",
     "brace-style": "warn",
@@ -61,7 +80,10 @@
     "import/no-dynamic-require": "warn",
     "import/no-unresolved": "warn",
     "import/order": "warn",
-    "indent": ["warn", 2],
+    "indent": [
+      "warn",
+      2
+    ],
     "keyword-spacing": "warn",
     "lines-around-directive": "warn",
     "lines-between-class-members": "warn",
@@ -122,22 +144,45 @@
   },
   "overrides": [
     {
-      "files": ["tests/**/*.js", "test-*.js", "debug_sync.js", "start-session.js"],
+      "files": [
+        "tests/**/*.js",
+        "test-*.js",
+        "debug_sync.js",
+        "start-session.js"
+      ],
       "env": {
         "browser": true,
         "jest": true
       }
     },
     {
-      "files": ["tests/e2e/helpers/page-objects/ScoreboardPage.js"],
+      "files": [
+        "tests/e2e/helpers/page-objects/ScoreboardPage.js"
+      ],
       "globals": {
         "state": "readonly"
       }
     },
     {
-      "files": ["tests/unit/websocket/socketMiddleware.test.js"],
+      "files": [
+        "tests/unit/websocket/socketMiddleware.test.js"
+      ],
       "globals": {
         "fail": "readonly"
+      }
+    },
+    {
+      "files": [
+        "tests/e2e/flows/**/*.js"
+      ],
+      "rules": {
+        "no-restricted-properties": [
+          "error",
+          {
+            "property": "waitForTimeout",
+            "message": "Fixed sleeps race the environment (2.x.2 rule). Use condition-based waits (wait-conditions.js, waitForEvent, waitForCapability, expect().toPass). Time-SEMANTIC waits (clock/timeline measurements) may disable this line with a justification comment."
+          }
+        ]
       }
     }
   ]

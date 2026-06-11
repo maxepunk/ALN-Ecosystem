@@ -29,26 +29,8 @@ const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpe
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
-let serviceHealth = null;
-
-/**
- * Fetch serviceHealth snapshot from /api/state.
- * @param {string} orchestratorUrl - Backend URL
- * @returns {Promise<Object>} serviceHealth map
- */
-async function fetchServiceHealth(orchestratorUrl) {
-  const https = require('https');
-  const stateResponse = await new Promise((resolve, reject) => {
-    const url = new URL('/api/state', orchestratorUrl);
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-  });
-  return stateResponse.serviceHealth || {};
-}
+const { getCapabilities, refreshCapabilities, requireCapabilities, requireDegraded, formatManifest } = require('../helpers/capabilities');
+let caps = null;
 
 /**
  * Send a GM command via temporary WebSocket connection.
@@ -101,25 +83,26 @@ test.describe('GM Scanner - Show Control', () => {
     });
 
     // Capture initial service health for conditional tests
-    serviceHealth = await fetchServiceHealth(orchestratorInfo.url);
-    console.log('Service health snapshot:', Object.entries(serviceHealth).map(
+    caps = await getCapabilities(orchestratorInfo.url);
+    console.log(`Capability manifest: ${formatManifest(caps)}`);
+    console.log('Service health snapshot:', Object.entries(caps._health).map(
       ([k, v]) => `${k}:${v.status}`
     ).join(', '));
   });
 
   test.afterEach(async () => {
     // Session isolation: close all browser contexts, restart orchestrator,
-    // and refresh serviceHealth. Matches 07d-02-admin-panel-sessions pattern.
+    // and refresh the capability manifest. Matches 07d-02-admin-panel-sessions pattern.
     await closeAllContexts();
     await stopOrchestrator();
     await clearSessionData();
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
 
-    // Refresh serviceHealth after restart (services may change state)
+    // Refresh capabilities after restart (services may change state)
     try {
-      serviceHealth = await fetchServiceHealth(orchestratorInfo.url);
+      caps = await refreshCapabilities(orchestratorInfo.url);
     } catch (e) {
-      console.warn(`afterEach: Could not refresh serviceHealth: ${e.message}`);
+      console.warn(`afterEach: Could not refresh capabilities: ${e.message}`);
     }
   });
 
@@ -197,6 +180,7 @@ test.describe('GM Scanner - Show Control', () => {
       // Wait 2 seconds and verify clock advanced
       const time1 = parseClockDisplay(await clockDisplay.textContent());
       expect(time1).not.toBeNull();
+      // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: measuring 2.5s of real clock advance
       await page.waitForTimeout(2500);
       const time2 = parseClockDisplay(await clockDisplay.textContent());
       expect(time2).not.toBeNull();
@@ -213,8 +197,7 @@ test.describe('GM Scanner - Show Control', () => {
     // mock fallback). When sound is down the cue is HELD by design, which is
     // covered by the explicit held-item tests in this file; skip LOUDLY here
     // so the report always shows whether the primary path ran.
-    test.skip(serviceHealth.sound?.status !== 'healthy',
-      'sound service not healthy — primary cue flow requires real pw-play (held path covered separately)');
+    requireCapabilities(test, caps, ['sound']); // held path covered by the requireDegraded tests below
     // Simple cues (non-compound, no timeline) fire and complete in ~1-2ms.
     // They NEVER enter 'running' state, so .active-cue-item is never created.
     // Verify via WebSocket events instead of DOM assertions.
@@ -274,8 +257,7 @@ test.describe('GM Scanner - Show Control', () => {
     // lighting; with a down dependency the cue is HELD by design (covered
     // by the explicit held tests in this file). Skip loudly so the report
     // always shows whether the primary path ran.
-    test.skip(serviceHealth.sound?.status !== 'healthy' || serviceHealth.lighting?.status !== 'healthy',
-      'sound/lighting not healthy — compound timeline requires real services (held path covered separately)');
+    requireCapabilities(test, caps, ['sound', 'lighting']); // held path covered by the requireDegraded tests below
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
@@ -319,6 +301,7 @@ test.describe('GM Scanner - Show Control', () => {
       await gmScanner.createSessionWithTeams('Pause Test', ['Team Alpha']);
 
       // Let clock run for a bit
+      // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: establishing elapsed-clock baseline before pause
       await page.waitForTimeout(2000);
 
       const clockDisplay = page.locator('#game-clock-display');
@@ -335,6 +318,7 @@ test.describe('GM Scanner - Show Control', () => {
       );
 
       // Now wait 2.5s and verify clock didn't advance
+      // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: negative temporal assertion — clock must NOT advance while paused
       await page.waitForTimeout(2500);
       const timeAfterPause = parseClockDisplay(await clockDisplay.textContent());
 
@@ -360,6 +344,7 @@ test.describe('GM Scanner - Show Control', () => {
       await gmScanner.createSessionWithTeams('Resume Test', ['Team Alpha']);
 
       // Let clock run, then pause
+      // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: establishing elapsed-clock baseline before pause
       await page.waitForTimeout(1000);
       await gmScanner.pauseSession();
 
@@ -377,6 +362,7 @@ test.describe('GM Scanner - Show Control', () => {
       await gmScanner.resumeSession();
 
       // Wait 2.5 seconds — clock should advance
+      // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: measuring ~2s clock advance after resume
       await page.waitForTimeout(2500);
       const resumedTime = parseClockDisplay(await clockDisplay.textContent());
 
@@ -399,9 +385,9 @@ test.describe('GM Scanner - Show Control', () => {
   });
 
   test('Gated execution rejects command when service is down', async () => {
-    // FRESH health check — shared serviceHealth var can be stale because
+    // FRESH probe — the shared manifest can be stale because
     // serviceHealthRegistry probes asynchronously after orchestrator restart
-    const freshHealth = await fetchServiceHealth(orchestratorInfo.url);
+    const freshHealth = (await refreshCapabilities(orchestratorInfo.url))._health;
     console.log('Fresh health snapshot:', Object.entries(freshHealth).map(
       ([k, v]) => `${k}:${v.status}`
     ).join(', '));
@@ -467,16 +453,10 @@ test.describe('GM Scanner - Show Control', () => {
   });
 
   test('Held item appears when cue dependency is down, GM discards it', async () => {
-    // This test only runs if a service needed by a cue is down
-    // attention-before-video needs both sound and lighting
-    const soundDown = serviceHealth.sound?.status !== 'healthy';
-    const lightingDown = serviceHealth.lighting?.status !== 'healthy';
-
-    if (!soundDown && !lightingDown) {
-      test.skip();
-      console.log('Both sound and lighting are healthy — cannot test held items (skip)');
-      return;
-    }
+    // Designed-degradation test: only runs where a cue dependency is down
+    // (attention-before-video needs both sound and lighting)
+    requireDegraded(test, caps, ['sound', 'lighting']);
+    const soundDown = !caps.sound;
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);

@@ -352,6 +352,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const alertStartTime = Date.now();
 
     // Wait before expected dismiss - should still be visible
+    // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: negative temporal assertion — alert must still be visible before its auto-dismiss
     await page.waitForTimeout(VIDEO_ALERT_EARLY_CHECK);
     expect(await scanner.isVideoAlertVisible()).toBe(true);
     console.log(`✓ Video alert still visible after ${VIDEO_ALERT_EARLY_CHECK}ms`);

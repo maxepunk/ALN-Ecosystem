@@ -248,10 +248,11 @@ test.describe('DIAGNOSTIC: History Auto-Update', () => {
       // ========== PHASE 4: Verify Auto-Update ==========
       logger.log('TEST', 'PHASE', 'Verifying Scanner 1 history auto-updated');
 
-      // Give frontend time to process event
-      await page1.waitForTimeout(1000);
-
-      // Check transaction count
+      // Condition wait: history re-renders when the broadcast lands
+      await expect(async () => {
+        expect(await page1.locator('#historyContainer .token-card').count())
+          .toBeGreaterThan(initialCount);
+      }).toPass({ timeout: 5000 });
       const finalCount = await page1.locator('#historyContainer .token-card').count();
       logger.log('TEST', 'RESULT', `Final transaction count: ${finalCount} (expected: ${initialCount + 1})`);
 
