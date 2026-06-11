@@ -490,7 +490,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const queueItem = localStorageQueue[0];
     expect(queueItem).toHaveProperty('tokenId');
     expect(queueItem).toHaveProperty('timestamp');
-    expect(queueItem).toHaveProperty('retryCount');
+    // retryCount removed with the dead retry scaffolding (F-PARITY-16)
 
     console.log('✓ Queue persisted to localStorage:', localStorageQueue);
 

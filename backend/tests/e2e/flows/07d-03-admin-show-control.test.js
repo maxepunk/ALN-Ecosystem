@@ -209,6 +209,12 @@ test.describe('GM Scanner - Show Control', () => {
   });
 
   test('GM fires quick cue — sound plays and completes', async () => {
+    // PRIMARY user flow — requires real sound (suite design: real-first, no
+    // mock fallback). When sound is down the cue is HELD by design, which is
+    // covered by the explicit held-item tests in this file; skip LOUDLY here
+    // so the report always shows whether the primary path ran.
+    test.skip(serviceHealth.sound?.status !== 'healthy',
+      'sound service not healthy — primary cue flow requires real pw-play (held path covered separately)');
     // Simple cues (non-compound, no timeline) fire and complete in ~1-2ms.
     // They NEVER enter 'running' state, so .active-cue-item is never created.
     // Verify via WebSocket events instead of DOM assertions.
@@ -230,37 +236,29 @@ test.describe('GM Scanner - Show Control', () => {
       );
 
       try {
-        // Register BOTH cue:fired and cue:completed listeners BEFORE clicking.
-        // Simple cues fire and complete in ~1-2ms — if cue:completed listener
-        // is registered after cue:fired resolves, the event is already gone.
-        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
+        // Register BOTH listeners BEFORE clicking. Simple cues fire and
+        // complete in ~1-2ms — a listener registered after cue:fired
+        // resolves misses the event. Events arrive in the AsyncAPI
+        // envelope {event, data, timestamp}.
         const cueFiredPromise = waitForEvent(wsSocket, 'cue:fired',
           (data) => data.data?.cueId === 'tension-hit', 10000);
 
-        const soundHealthy = serviceHealth.sound?.status === 'healthy';
-        const cueCompletedPromise = soundHealthy
-          ? waitForEvent(wsSocket, 'cue:completed',
-              (data) => data.data?.cueId === 'tension-hit', 15000)
-          : null;
+        const cueCompletedPromise = waitForEvent(wsSocket, 'cue:completed',
+          (data) => data.data?.cueId === 'tension-hit', 15000);
 
         // Wait for quick fire grid to load and click the cue button
         const fireBtn = page.locator('#quick-fire-grid button[data-cue-id="tension-hit"]');
         await expect(fireBtn).toBeVisible({ timeout: 10000 });
         await fireBtn.click({ force: true });
 
-        // Wait for cue:fired event (confirms cue was executed by the engine)
+        // cue:fired then cue:completed = the full primary lifecycle
         const cueFired = await cueFiredPromise;
         expect(cueFired.data.cueId).toBe('tension-hit');
         console.log('Tension-hit cue fired via WebSocket event');
 
-        // If sound service is healthy, verify cue completed its full lifecycle
-        if (cueCompletedPromise) {
-          const cueCompleted = await cueCompletedPromise;
-          expect(cueCompleted.data.cueId).toBe('tension-hit');
-          console.log('Tension-hit cue completed (sound played and finished)');
-        } else {
-          console.log('Sound service not healthy — cue fired but sound may have failed');
-        }
+        const cueCompleted = await cueCompletedPromise;
+        expect(cueCompleted.data.cueId).toBe('tension-hit');
+        console.log('Tension-hit cue completed (sound played and finished)');
 
       } finally {
         disconnectSocket(wsSocket);
@@ -272,6 +270,12 @@ test.describe('GM Scanner - Show Control', () => {
   });
 
   test('Compound cue timeline runs to completion', async () => {
+    // PRIMARY user flow — the fixture cue's commands depend on sound +
+    // lighting; with a down dependency the cue is HELD by design (covered
+    // by the explicit held tests in this file). Skip loudly so the report
+    // always shows whether the primary path ran.
+    test.skip(serviceHealth.sound?.status !== 'healthy' || serviceHealth.lighting?.status !== 'healthy',
+      'sound/lighting not healthy — compound timeline requires real services (held path covered separately)');
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 

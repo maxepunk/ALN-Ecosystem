@@ -730,7 +730,10 @@
     </div>
 
     <!-- Socket.io Client Library -->
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Served by the orchestrator itself (version-matched to the server).
+         Was a cdn.socket.io URL — a dead scoreboard on any venue without
+         internet, contradicting the system's offline-LAN design. -->
+    <script src="/socket.io/socket.io.js"></script>
 
     <script>
         // ============================================

@@ -130,6 +130,16 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
             const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
 
+            // PRIMARY user flow — the fixture cue depends on sound + lighting;
+            // with a down dependency it is HELD by design. Skip LOUDLY so the
+            // report shows whether the primary path ran; the held cross-client
+            // propagation is its own test below.
+            const stateResp2 = await gm1.getStateFromBackend(orchestratorInfo.url);
+            const cueDepsHealthy = stateResp2?.serviceHealth?.sound?.status === 'healthy'
+                && stateResp2?.serviceHealth?.lighting?.status === 'healthy';
+            test.skip(!cueDepsHealthy,
+                'sound/lighting not healthy — running-cue propagation requires real services (held propagation covered separately)');
+
             await gm1.navigateToAdminPanel();
             await gm2.navigateToAdminPanel();
 
@@ -145,8 +155,6 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             await fireBtn.click({ force: true });
 
             // 3. VERIFY: GM2 UI updates Active Cues list
-            // We expect #active-cues-list to contain an item with data-cue-id="e2e-compound-test"
-            // And state "Running"
             const activeCueItem = page2.locator('.active-cue-item[data-cue-id="e2e-compound-test"]');
 
             // Wait for it to appear (backend roundtrip + render)
@@ -161,6 +169,46 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
 
             // 5. VERIFY: GM2 UI removes the cue
             await expect(activeCueItem).toBeHidden({ timeout: 30000 });
+
+        } finally {
+            await context1.close();
+            await context2.close();
+        }
+    });
+
+    test('Cue State: HELD cue propagates to GM2 held-items panel (degraded services)', async () => {
+        // Cross-client propagation of the HELD path: when a cue dependency
+        // is down, GM1's fire results in a held item that must appear on
+        // GM2's held panel (service:state domain 'held' fan-out). This is
+        // the designed venue-degradation behavior and only testable when a
+        // dependency is actually down — skips loudly on a fully-healthy Pi.
+        const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+        const page1 = await createPage(context1);
+        const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
+        const page2 = await context2.newPage();
+
+        try {
+            const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+            const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+
+            const stateResp = await gm1.getStateFromBackend(orchestratorInfo.url);
+            const cueDepsHealthy = stateResp?.serviceHealth?.sound?.status === 'healthy'
+                && stateResp?.serviceHealth?.lighting?.status === 'healthy';
+            test.skip(cueDepsHealthy,
+                'all cue dependencies healthy — held-path propagation requires a degraded service');
+
+            await gm1.navigateToAdminPanel();
+            await gm2.navigateToAdminPanel();
+
+            const fireBtn = page1.locator('#quick-fire-grid button[data-cue-id="e2e-compound-test"]');
+            await expect(fireBtn).toBeVisible({ timeout: 10000 });
+            await fireBtn.click({ force: true });
+
+            // GM2 (the NON-firing client) must see the held item appear,
+            // with the type-prefixed wire ID the release routing depends on
+            const heldItem2 = page2.locator('.held-item[data-held-id^="held-cue-"]');
+            await expect(heldItem2.first()).toBeVisible({ timeout: 10000 });
+            console.log('GM2 sees HELD cue — cross-client held propagation verified');
 
         } finally {
             await context1.close();

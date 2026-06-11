@@ -163,6 +163,13 @@ class GMScannerPage {
     this.audioRouteSound = page.locator('select[data-stream="sound"]');
     this.btWarning = page.locator('#bt-warning');
     this.btSpeakerCount = page.locator('#bt-speaker-count');
+    // NOTE: the scanner currently has NO unavailable-fallback elements for
+    // bluetooth/lighting — these locators match nothing, so the is*()
+    // methods below always report "available/connected". Kept because flows
+    // branch on them as availability guards; the missing fallback UI itself
+    // is a UX-backlog item (surfaced 2026-06-11 E2E audit).
+    this.btUnavailable = page.locator('#bt-unavailable');
+    this.lightingNotConnected = page.locator('#lighting-not-connected');
     this.btScanBtn = page.locator('#btn-bt-scan');
     this.btScanStatus = page.locator('#bt-scan-status');
     this.btDeviceList = page.locator('#bt-device-list');
@@ -461,14 +468,6 @@ class GMScannerPage {
    */
   async getDeviceId() {
     return await this.deviceIdInput.inputValue();
-  }
-
-  /**
-   * Save settings and return to team entry screen
-   */
-  async saveSettings() {
-    await this.saveSettingsBtn.click();
-    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -861,16 +860,6 @@ class GMScannerPage {
   }
 
   /**
-   * Get "Returns To" mode text (visible during video playback)
-   * @returns {Promise<string|null>} Returns null if container is hidden
-   */
-  async getReturnsToMode() {
-    const isVisible = await this.returnsToContainer.isVisible();
-    if (!isVisible) return null;
-    return await this.returnsToMode.textContent();
-  }
-
-  /**
    * Get pending queue count
    * @returns {Promise<number>}
    */
@@ -898,6 +887,9 @@ class GMScannerPage {
    */
   async getAudioRouteValue(stream = 'video') {
     const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
+    // State getter: report absence instead of hanging — the dropdowns only
+    // render when the audio service has live sinks (real PipeWire)
+    if (await dropdown.count() === 0) return null;
     return await dropdown.inputValue();
   }
 
@@ -1449,14 +1441,6 @@ class GMScannerPage {
   // ============================================
   // Admin Transaction Log Methods
   // ============================================
-
-  /**
-   * Get transaction count from admin transaction log
-   * @returns {Promise<number>}
-   */
-  async getAdminTransactionCount() {
-    return await this.adminTransactionItems.count();
-  }
 
   // ============================================
   // Scoreboard & Team Details Methods

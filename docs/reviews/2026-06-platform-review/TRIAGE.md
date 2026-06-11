@@ -92,6 +92,9 @@ F-PARITY-04 (persist deviceId) · F-PARITY-12 (img onerror) · F-PARITY-16 (dead
 ## Phase 2 structural (post fix-now; aligned to platform seams)
 Dual-ownership collapse → shared rules module (A1/A2/B1-B3 shapes) → transactionService/sessionService splits (per backend-core seams) → audioRouting split (PactlClient/Routing/DuckingEngine — absorbs F-SHOW-05/06/07/24/27) → cueEngine split (evaluator/timeline/HeldItemsStore — absorbs F-SHOW-08/16/20; normalizers-from-rules-module seam) → GM scanner four-domain split (C1; blueprint in gm-scanner-review) → aln-memory-scanner ES6 migration → report schema + contract test (before strings!) → tokens.json JSON Schema + structured group field → response-side + service-domain contract test coverage → doc-drift sweep (~46 items)
 
+## Phase 2.x — E2E harness reliability (assessment: e2e-harness-assessment.md)
+Capability manifest + declared per-flow requirements (loud skips, never silent branches) · suite tiering (Tier L logic/UI = CI floor, Tier H hardware = Pi pre-show gate) · websocket-core event-cache redesign (kills the 31 clearEventCache call sites) · no-fixed-sleeps lint for flows · content-independent fixture injection for group/video flows. Drift gates (page-object consistency + selector existence) ALREADY LANDED in the unit suite (tests/unit/e2e-harness/).
+
 ## Phase 3 platform (design docs first; gated on E9 + B4/B10 elicitations)
 game.json (modes/groups/teams/clock-phases/surfaces per Tier B) · strings/theming (pre-fixes: window-title
 coupling, scoreboard password, F-SHOW-29 third idle-loop literal) · B8 lighting-role mapping surface
