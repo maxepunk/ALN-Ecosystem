@@ -96,6 +96,15 @@ Pages, in build order (value ÷ effort):
 
 ## 4. The Venue workspace
 
+> **Model update (2026-06-11, owner decision — see
+> docs/decisions/2026-06-11-kit-model-install-tiers.md):** games ship as
+> production-owned hardware KITS with per-venue scalable installs (player
+> scanners only → full Pi/lighting/audio/display rig). "Venue profile" is an
+> INSTALLATION profile for this event's kit slice, and this workspace gains a
+> first-class **planning view**: pack + proposed install tier → which
+> mechanics/show elements run, degrade, or are unavailable — the same
+> resolution mechanism as the preflight, usable before packing the van.
+
 1. **Audio** — routing + ducking editors (exist; stay venue per B7).
 2. **Lighting bindings** (B8, owner-directed design): the pack's role list on
    the left; live-fetched HA scenes / WLED presets on the right; bind, with

@@ -47,9 +47,11 @@ Three of the four items are rehearsals of Phase 3/4 product problems:
 - Run report ends with the manifest + per-tier counts ("all green" must
   never again mean "the show was silently skipped").
 - **Co-design coupling:** the capability vocabulary is drafted together with
-  the venue-profile schema (Phase 3.1, B7/B8) so harness and preflight share
-  terms. Deliverable includes a short vocabulary section in the venue-profile
-  schema doc.
+  the installation-profile schema (Phase 3.1, B7/B8 — see the kit-model
+  decision, docs/decisions/2026-06-11-kit-model-install-tiers.md): games ship
+  as scalable hardware KITS, and the same vocabulary drives (1) the planning
+  view "what install tier unlocks what game elements", (2) the venue
+  preflight, and (3) this harness manifest. Test tiers ≙ install tiers.
 
 ### 2.x.2 — Suite tiering
 - **Tier L (logic/UI):** session lifecycle, scan/score, duplicates,
