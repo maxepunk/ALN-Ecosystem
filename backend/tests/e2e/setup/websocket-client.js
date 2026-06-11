@@ -42,8 +42,7 @@ const {
   disconnectSocket: coreDisconnectSocket,
   cleanupAllSockets: coreCleanupAllSockets,
   getAllActiveSockets: coreGetAllActiveSockets,
-  getActiveSocketCount: coreGetActiveSocketCount,
-  clearEventCache
+  getActiveSocketCount: coreGetActiveSocketCount
 } = require('../../helpers/websocket-core');
 
 /**
@@ -270,13 +269,8 @@ function getActiveSocketCount() {
 }
 
 /**
- * Get all active sockets (for cache clearing)
- *
+ * Get all active sockets
  * @returns {Array<Socket>} Array of active sockets
- *
- * @example
- * const sockets = getAllActiveSockets();
- * sockets.forEach(socket => clearEventCache(socket));
  */
 function getAllActiveSockets() {
   // Delegate to shared core implementation
@@ -302,8 +296,5 @@ module.exports = {
   disconnectSocket,
   cleanupAllSockets,
   getAllActiveSockets,
-  getActiveSocketCount,
-
-  // Event cache management
-  clearEventCache
+  getActiveSocketCount
 };

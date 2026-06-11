@@ -6,12 +6,11 @@
 const io = require('socket.io-client');
 const { generateAdminToken } = require('../../src/middleware/auth');
 
-// Import shared WebSocket core for event caching and auth
+// Import shared WebSocket core (auth + pure listener-from-now waits)
 const {
   connectWithAuth: coreConnectWithAuth,
-  setupEventCaching,
-  waitForEvent: coreWaitForEvent,
-  clearEventCache
+  setupStateMirrors,
+  waitForEvent: coreWaitForEvent
 } = require('./websocket-core');
 
 /**
@@ -100,8 +99,8 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
     : socketOrUrl;
 
   try {
-    // Setup event caching using shared core (prevents race conditions)
-    setupEventCaching(socket);
+    // Setup state mirrors (service:state snapshots; occurrence events are wait-only)
+    setupStateMirrors(socket);
 
     // For GM devices, use condition-based waiting for BOTH connect AND sync:full
     // This mirrors the reliable pattern from connectWithAuth() in websocket-core.js
@@ -118,7 +117,10 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
         const checkComplete = () => {
           if (connectReceived && syncData) {
             clearTimeout(timer);
-            socket.lastSyncFull = syncData;
+            // Connect-time handshake snapshot (explicit history — the only
+            // sanctioned way to read 'the sync:full from connection')
+            socket.initialSync = syncData;
+            socket.lastSyncFull = syncData;  // legacy alias
             resolve();
           }
         };

@@ -16,7 +16,6 @@ require('../helpers/browser-mocks');
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
-const { clearEventCache } = require('../helpers/websocket-core');
 const { resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
@@ -59,7 +58,6 @@ describe('Admin Panel Commands (Integration)', () => {
 
   describe('WebSocket-Based Commands', () => {
     it('should send admin commands via WebSocket (not HTTP)', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -74,7 +72,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should receive command acknowledgments', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -91,7 +88,6 @@ describe('Admin Panel Commands (Integration)', () => {
 
   describe('Session Control Commands', () => {
     it('should support session:create command', async () => {
-      clearEventCache(scanner.socket);
 
       // Set up listeners BEFORE emit
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
@@ -119,7 +115,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should support session:pause command', async () => {
-      clearEventCache(scanner.socket);
 
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
       const sessionPromise = waitForEvent(scanner.socket, 'session:update');
@@ -138,7 +133,6 @@ describe('Admin Panel Commands (Integration)', () => {
 
     it('should support session:resume command', async () => {
       // Pause first
-      clearEventCache(scanner.socket);
       const pausePromise = waitForEvent(scanner.socket, 'session:update');
       scanner.socket.emit('gm:command', {
         event: 'gm:command',
@@ -148,7 +142,6 @@ describe('Admin Panel Commands (Integration)', () => {
       await pausePromise;
 
       // Resume
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
       const sessionPromise = waitForEvent(scanner.socket, 'session:update');
 
@@ -165,7 +158,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should support session:end command', async () => {
-      clearEventCache(scanner.socket);
 
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
       const sessionPromise = waitForEvent(scanner.socket, 'session:update');
@@ -185,7 +177,6 @@ describe('Admin Panel Commands (Integration)', () => {
 
   describe('Video Control Commands', () => {
     it('should support video:play command', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -200,7 +191,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should support video:pause command', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -214,7 +204,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should support video:stop command', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -228,7 +217,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should support video:skip command', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {
@@ -244,7 +232,6 @@ describe('Admin Panel Commands (Integration)', () => {
 
   describe('Score Adjustment Commands', () => {
     it('should support score:adjust command with positive delta', async () => {
-      clearEventCache(scanner.socket);
 
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
       const scorePromise = waitForEvent(scanner.socket, 'score:adjusted');
@@ -266,7 +253,6 @@ describe('Admin Panel Commands (Integration)', () => {
     });
 
     it('should support score:adjust command with negative delta (penalties)', async () => {
-      clearEventCache(scanner.socket);
 
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
       const scorePromise = waitForEvent(scanner.socket, 'score:adjusted');
@@ -289,7 +275,6 @@ describe('Admin Panel Commands (Integration)', () => {
 
   describe('System Reset Command', () => {
     it('should support system:reset command', async () => {
-      clearEventCache(scanner.socket);
       const ackPromise = waitForEvent(scanner.socket, 'gm:command:ack');
 
       scanner.socket.emit('gm:command', {

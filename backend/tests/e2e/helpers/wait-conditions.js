@@ -75,13 +75,8 @@ async function waitForConnectionStatus(page, status, timeout = 10000) {
  * @returns {Promise<Object>} Score adjusted data
  */
 async function waitForScoreUpdate(socket, teamId, timeout = 10000) {
-  // Check cache first (event may have already fired)
-  if (socket.lastScoreAdjusted &&
-      socket.lastScoreAdjusted.data?.teamScore?.teamId === teamId) {
-    return socket.lastScoreAdjusted;
-  }
-
-  // If not cached, wait for next event
+  // Listener-from-now (2.x.3): create this promise BEFORE the action that
+  // should produce the event.
   return await waitForEvent(
     socket,
     'score:adjusted',
@@ -159,13 +154,8 @@ async function waitForVideoState(socket, expectedState, timeout = 30000) {
  * @returns {Promise<Object>} Transaction data
  */
 async function waitForTransactionBroadcast(socket, tokenId, timeout = 5000) {
-  // Check cache first
-  if (socket.lastTransactionNew &&
-      socket.lastTransactionNew.transaction?.tokenId === tokenId) {
-    return socket.lastTransactionNew;
-  }
-
-  // If not cached, wait for next event
+  // Listener-from-now (2.x.3): create this promise BEFORE the action that
+  // should produce the event.
   return await waitForEvent(
     socket,
     'transaction:new',
@@ -182,14 +172,8 @@ async function waitForTransactionBroadcast(socket, tokenId, timeout = 5000) {
  * @returns {Promise<Object>} Session data
  */
 async function waitForSessionUpdate(socket, expectedStatus = null, timeout = 5000) {
-  // Check cache first
-  if (socket.lastSessionUpdate) {
-    if (!expectedStatus || socket.lastSessionUpdate.status === expectedStatus) {
-      return socket.lastSessionUpdate;
-    }
-  }
-
-  // If not cached or doesn't match, wait for next event
+  // Listener-from-now (2.x.3): create this promise BEFORE the action that
+  // should produce the event.
   return await waitForEvent(
     socket,
     'session:update',
@@ -249,14 +233,8 @@ async function waitForDeviceDisconnected(socket, deviceId, timeout = 5000) {
  * @returns {Promise<Object>} Group completion data
  */
 async function waitForGroupCompletion(socket, teamId, groupName, timeout = 5000) {
-  // Check cache first
-  if (socket.lastGroupCompletion &&
-      socket.lastGroupCompletion.teamId === teamId &&
-      socket.lastGroupCompletion.group === groupName) {
-    return socket.lastGroupCompletion;
-  }
-
-  // If not cached, wait for next event
+  // Listener-from-now (2.x.3): create this promise BEFORE the action that
+  // should produce the event.
   return await waitForEvent(
     socket,
     'group:completed',

@@ -5,7 +5,6 @@
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { connectAndIdentify, waitForEvent } = require('../helpers/websocket-helpers');
-const { clearEventCache } = require('../helpers/websocket-core');
 const { resetAllServices } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
@@ -78,7 +77,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
 
       // Step 6: Wait for sync:full with restored state
-      const syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
+      const syncEvent = gm1.initialSync; // connect handshake snapshot (2.x.3)
 
       // Step 7: Verify deviceScannedTokens included
       expect(syncEvent.data).toHaveProperty('deviceScannedTokens');
@@ -127,7 +126,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      await waitForEvent(gm1, 'sync:full', 3000);
+      void gm1.initialSync; // connect handshake already awaited by connectAndIdentify
 
       // Step 4: Try to scan same token (should be rejected as duplicate)
       const result2 = await submitTransaction(gm1, {
@@ -168,7 +167,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
       // Consume the initial gmAuth sync:full so waitForEvent below catches only the
       // sync:request-triggered one.
-      await waitForEvent(gm1, 'sync:full', 3000);
+      void gm1.initialSync; // connect handshake already awaited by connectAndIdentify
 
       await submitTransaction(gm1, {
         tokenId: 'jaw001',
@@ -177,10 +176,9 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       });
 
       // Step 3: Emit sync:request and capture the resulting sync:full.
-      // Clear the event cache so waitForEvent does NOT return the stale initial
-      // gmAuth sync:full (which has deviceScannedTokens: [] from before the scan).
-      // Register the listener BEFORE emitting to avoid missing the event.
-      clearEventCache(gm1);
+      // waitForEvent is listener-from-now (2.x.3) — registered BEFORE the
+      // emit, so it can only resolve with THIS request's sync:full (the
+      // connect-time handshake snapshot lives on socket.initialSync).
       const syncPromise = waitForEvent(gm1, 'sync:full', 5000);
       gm1.emit('sync:request');
       const syncEvent = await syncPromise;
@@ -235,7 +233,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      const syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
+      const syncEvent = gm1.initialSync; // connect handshake snapshot (2.x.3)
 
       // Step 5: GM_001 should only see jaw011 (not kaa001)
       expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
@@ -258,7 +256,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       // First connection
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      const firstSync = await waitForEvent(gm1, 'sync:full', 3000);
+      const firstSync = gm1.initialSync; // connect handshake snapshot (2.x.3)
 
       // Reconnection flag should be false or undefined for first connection
       expect(firstSync.data.reconnection === false || firstSync.data.reconnection === undefined).toBe(true);
@@ -268,7 +266,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      const reconnectSync = await waitForEvent(gm1, 'sync:full', 3000);
+      const reconnectSync = gm1.initialSync; // connect handshake snapshot (2.x.3)
 
       // Should include reconnection indicator
       expect(reconnectSync.data).toHaveProperty('reconnection');
@@ -293,7 +291,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      const syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
+      const syncEvent = gm1.initialSync; // connect handshake snapshot (2.x.3)
 
       // Should have empty array
       expect(syncEvent.data.deviceScannedTokens).toEqual([]);
@@ -334,21 +332,21 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       gm1.disconnect();
       await new Promise(resolve => setTimeout(resolve, 500));
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      let syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
+      let syncEvent = gm1.initialSync; // connect handshake snapshot (2.x.3)
       expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
 
       // Second reconnection
       gm1.disconnect();
       await new Promise(resolve => setTimeout(resolve, 500));
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
+      syncEvent = gm1.initialSync; // connect handshake snapshot (2.x.3)
       expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
 
       // Third reconnection
       gm1.disconnect();
       await new Promise(resolve => setTimeout(resolve, 500));
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      syncEvent = await waitForEvent(gm1, 'sync:full', 3000);
+      syncEvent = gm1.initialSync; // connect handshake snapshot (2.x.3)
       expect(syncEvent.data.deviceScannedTokens).toContain('jaw001');
 
       // State should persist

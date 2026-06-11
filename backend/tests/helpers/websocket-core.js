@@ -59,8 +59,8 @@ async function connectWithAuth(baseUrl, password, deviceId, deviceType, options 
   // Track for cleanup
   activeSockets.add(socket);
 
-  // Step 3: Setup event caching (BEFORE connection completes)
-  setupEventCaching(socket);
+  // Step 3: Setup state mirrors (BEFORE connection completes)
+  setupStateMirrors(socket);
 
   // Step 4: Wait for connection
   return new Promise((resolve, reject) => {
@@ -79,7 +79,7 @@ async function connectWithAuth(baseUrl, password, deviceId, deviceType, options 
       if (connectReceived) {
         clearTimeout(timer);
         socket.initialSync = syncData;  // E2E naming
-        socket.lastSyncFull = syncData;  // Integration naming (both for compatibility)
+        socket.lastSyncFull = syncData;  // alias of initialSync (connect-time handshake snapshot; never mutated after)
         resolve(socket);
       }
     });
@@ -108,39 +108,32 @@ async function connectWithAuth(baseUrl, password, deviceId, deviceType, options 
 }
 
 /**
- * Setup event caching for all broadcast events
- * Prevents race conditions by capturing events before tests register listeners
+ * Setup state mirrors (2.x.3 redesign).
+ *
+ * The old event CACHE (last ack, last transaction, ...) made waitForEvent
+ * resolve from STALE occurrences and needed manual clearEventCache calls at
+ * 35 sites — the false system-reset quarantine was its work. Occurrence
+ * events are now wait-only: register BEFORE acting (waitForEvent registers
+ * its listener synchronously, so `const p = waitForEvent(...); act(); await p`
+ * is race-free).
+ *
+ * Exactly ONE mirror survives, because its semantics are genuinely
+ * last-write-wins STATE, not occurrences: service:state carries full
+ * domain snapshots (same contract the GM Scanner's StateStore holds).
+ * The connect-time sync:full handshake result lives on socket.initialSync.
  *
  * @param {Socket} socket - Socket.io client
  */
-function setupEventCaching(socket) {
-  // Initialize cache properties
-  socket.lastScoreAdjusted = null;
-  socket.lastTransactionNew = null;
-  socket.lastGroupCompletion = null;
-  socket.lastSessionUpdate = null;
-  socket.lastScoresReset = null;
-  socket.lastTransactionDeleted = null;
-  socket.lastGmCommandAck = null;
-  socket.lastServiceState = {};  // keyed by domain
-
-  // Persistent listeners
-  socket.on('score:adjusted', (data) => { socket.lastScoreAdjusted = data; });
-  socket.on('transaction:new', (data) => { socket.lastTransactionNew = data; });
-  socket.on('group:completed', (data) => { socket.lastGroupCompletion = data; });
-  socket.on('session:update', (data) => { socket.lastSessionUpdate = data; });
+function setupStateMirrors(socket) {
+  socket.lastServiceState = {};  // domain → latest full snapshot (state, not events)
   socket.on('service:state', (data) => {
     const payload = data.data || data;
     if (payload.domain) socket.lastServiceState[payload.domain] = data;
   });
-  socket.on('scores:reset', (data) => { socket.lastScoresReset = data; });
-  socket.on('transaction:deleted', (data) => { socket.lastTransactionDeleted = data; });
-  socket.on('gm:command:ack', (data) => { socket.lastGmCommandAck = data; });
 }
 
 /**
- * Wait for socket event with timeout
- * Checks cache first (event may have already fired)
+ * Wait for the NEXT matching socket event (listener-from-now), with timeout
  *
  * @param {Socket} socket - Socket.io client
  * @param {string|Array<string>} eventOrEvents - Event name or array of event names
@@ -151,15 +144,10 @@ function setupEventCaching(socket) {
 async function waitForEvent(socket, eventOrEvents, predicate = null, timeout = 5000) {
   const events = Array.isArray(eventOrEvents) ? eventOrEvents : [eventOrEvents];
 
-  // Check cache for already-fired events
-  for (const event of events) {
-    const cached = getCachedEvent(socket, event);
-    if (cached && (!predicate || predicate(cached))) {
-      return cached;
-    }
-  }
-
-  // Not in cache, wait for next event
+  // Pure listener-from-now (2.x.3): NO cache consultation. The listener is
+  // registered synchronously inside the Promise executor, so callers that
+  // need to catch an event caused by their own action MUST create this
+  // promise BEFORE acting:  const p = waitForEvent(...); act(); await p;
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for event: ${events.join(' or ')}`));
@@ -185,42 +173,6 @@ async function waitForEvent(socket, eventOrEvents, predicate = null, timeout = 5
 }
 
 /**
- * Get cached event data by event name
- * @param {Socket} socket - Socket.io client
- * @param {string} eventName - Event name
- * @returns {Object|null} Cached event data or null
- */
-function getCachedEvent(socket, eventName) {
-  const cacheMap = {
-    'sync:full': socket.lastSyncFull,
-    'score:adjusted': socket.lastScoreAdjusted,
-    'transaction:new': socket.lastTransactionNew,
-    'group:completed': socket.lastGroupCompletion,
-    'session:update': socket.lastSessionUpdate,
-    'scores:reset': socket.lastScoresReset,
-    'transaction:deleted': socket.lastTransactionDeleted,
-    'gm:command:ack': socket.lastGmCommandAck
-  };
-  return cacheMap[eventName] || null;
-}
-
-/**
- * Clear all cached events on socket
- * @param {Socket} socket - Socket.io client
- */
-function clearEventCache(socket) {
-  socket.lastSyncFull = null;
-  socket.lastScoreAdjusted = null;
-  socket.lastTransactionNew = null;
-  socket.lastGroupCompletion = null;
-  socket.lastSessionUpdate = null;
-  socket.lastScoresReset = null;
-  socket.lastTransactionDeleted = null;
-  socket.lastGmCommandAck = null;
-  socket.lastServiceState = {};
-}
-
-/**
  * Disconnect socket and remove from tracking
  * @param {Socket} socket - Socket.io client
  */
@@ -232,16 +184,9 @@ function disconnectSocket(socket) {
 
 /**
  * Cleanup all tracked sockets
- *
- * CRITICAL: Clears event cache before disconnecting to prevent test pollution.
- * Event cache IS socket state - cleanup must clean ALL state.
  */
 function cleanupAllSockets() {
   activeSockets.forEach(socket => {
-    // Clear cache first (prevents test pollution)
-    clearEventCache(socket);
-
-    // Then disconnect
     if (socket && socket.connected) socket.disconnect();
   });
   activeSockets.clear();
@@ -265,9 +210,8 @@ function getActiveSocketCount() {
 
 module.exports = {
   connectWithAuth,
-  setupEventCaching,
+  setupStateMirrors,
   waitForEvent,
-  clearEventCache,
   disconnectSocket,
   cleanupAllSockets,
   getAllActiveSockets,
