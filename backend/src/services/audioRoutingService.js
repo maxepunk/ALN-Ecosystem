@@ -9,14 +9,24 @@
  *
  * Uses execFile (not exec) to prevent shell injection.
  * Uses ProcessMonitor for pactl subscribe.
+ *
+ * Composition root: wires DuckingEngine (ducking state machine) and
+ * pactlClient (pure pactl parsers/exec) into the service facade.
+ *
+ * Split-seam refactor per reviewer blueprint:
+ *   - pactlClient.js: pure pactl parsers + exec, no state
+ *   - duckingEngine.js: ducking state machine, port-injected volume ops
+ *   - audioRoutingService.js (this): routing table + persistence + sink cache
+ *     + sink monitor + volume intent; wires DuckingEngine port to itself
  */
 
 const EventEmitter = require('events');
 const logger = require('../utils/logger');
 const persistenceService = require('./persistenceService');
-const { execFileAsync } = require('../utils/execHelper');
 const registry = require('./serviceHealthRegistry');
 const ProcessMonitor = require('../utils/processMonitor');
+const pactlClient = require('./audio/pactlClient');
+const DuckingEngine = require('./audio/duckingEngine');
 
 /** Valid stream names */
 const VALID_STREAMS = ['video', 'music', 'sound'];
@@ -43,9 +53,6 @@ const DEFAULT_ROUTING = {
   volumes: {},
 };
 
-/** Timeout for pactl one-shot commands (ms) */
-const PACTL_TIMEOUT = 5000;
-
 /** Max retry time for findSinkInput (ms) */
 const FIND_SINK_INPUT_MAX_WAIT = 2000;
 
@@ -65,18 +72,28 @@ class AudioRoutingService extends EventEmitter {
     this._sinkCache = null;
     this._sinkCacheTime = 0;
 
-    // Ducking engine state
-    this._duckingRules = [];
-    this._activeDuckingSources = {};  // { targetStream: ['video', 'sound'] }
-    this._preDuckVolumes = {};        // { targetStream: originalVolume }
-    // Per-target promise chains serializing duck/restore pactl writes
-    // (F-SHOW-06: unordered fire-and-forget writes let a fast restore land
-    // before a slow apply, leaving music stuck at duck volume)
-    this._duckingWriteQueues = {};    // { targetStream: Promise }
-
     // Sink-input registry: populated reactively from pactl subscribe events
     // Maps sink-input id (string) → { index, appName }
     this._sinkInputRegistry = new Map();
+
+    // DuckingEngine — wired to this service via port interface.
+    // Port provides the three volume operations the engine needs, keeping
+    // the engine free of pactl/service knowledge.
+    this._duckingEngine = new DuckingEngine({
+      getVolume: stream => this.getStreamVolume(stream),
+      setVolumeLive: (stream, volume) => this._setStreamVolumeLive(stream, volume),
+      getUserVolume: stream => {
+        const vol = this._routingData.volumes[stream];
+        return (typeof vol === 'number') ? vol : null;
+      },
+    });
+
+    // Wire DuckingEngine events back to this EventEmitter so consumers see
+    // the same event shapes they did before the extraction.
+    this._duckingEngine.setCallbacks(
+      event => this.emit('ducking:changed', event),
+      event => this.emit('ducking:failed', event)
+    );
   }
 
   // ── Lifecycle ──
@@ -171,10 +188,7 @@ class AudioRoutingService extends EventEmitter {
     this._sinkCacheTime = 0;
 
     // Reset ducking engine state
-    this._duckingRules = [];
-    this._activeDuckingSources = {};
-    this._preDuckVolumes = {};
-    this._duckingWriteQueues = {};
+    this._duckingEngine.reset();
 
     // Clear sink-input registry
     this._sinkInputRegistry.clear();
@@ -221,7 +235,7 @@ class AudioRoutingService extends EventEmitter {
 
   sinkExists(sinkName) {
     if (!this._sinkCache) return false;
-    return this._sinkCache.some((s) => s.name === sinkName);
+    return this._sinkCache.some(s => s.name === sinkName);
   }
 
   /**
@@ -301,7 +315,7 @@ class AudioRoutingService extends EventEmitter {
     return {
       routes,
       defaultSink: this._routingData.defaultSink,
-      ducking: { ...this._activeDuckingSources },
+      ducking: this._duckingEngine.getActiveState(),
       availableSinks: this._buildAvailableSinksSnapshot(this._sinkCache || []),
       volumes: { ...this._routingData.volumes },
     };
@@ -359,20 +373,25 @@ class AudioRoutingService extends EventEmitter {
     }
 
     if (!targetSink) {
-      logger.error('No available sink for routing', { stream, targetSinkType });
-      throw new Error(`No available sink for stream '${stream}'`);
+      throw new Error(`No available sink for stream '${stream}' (requested: ${targetSinkType})`);
     }
 
-    // Find the sink-input for this stream's application
-    const appName = STREAM_APP_NAMES[stream] || 'VLC';
+    const appName = STREAM_APP_NAMES[stream];
     const sinkInput = await this._findSinkInputWithRetry(appName);
-    if (!sinkInput) {
-      logger.warn(`${appName} sink-input not found, cannot apply routing`, { stream });
+
+    if (!sinkInput || !sinkInput.index) {
+      logger.warn('No active sink-input found', { stream });
       return;
     }
 
-    // Move the stream
     await this.moveStreamToSink(sinkInput.index, targetSink.name);
+
+    this.emit('routing:applied', {
+      stream,
+      sink: targetSink.name,
+      sinkType: targetSink.type,
+      fellBack,
+    });
 
     if (fellBack) {
       this.emit('routing:fallback', {
@@ -381,12 +400,6 @@ class AudioRoutingService extends EventEmitter {
         actualSink: targetSink.name,
       });
     }
-
-    this.emit('routing:applied', {
-      stream,
-      sink: targetSink.name,
-      sinkType: targetSink.type,
-    });
 
     logger.info('Routing applied', {
       stream,
@@ -464,7 +477,7 @@ class AudioRoutingService extends EventEmitter {
   /**
    * Apply a stream volume to the live pactl sink-input WITHOUT persisting.
    * Internal helper shared by setStreamVolume (user intent — also persists) and
-   * _setVolumeForDucking (transient duck/restore — no persistence).
+   * the DuckingEngine port (transient duck/restore — no persistence).
    *
    * Persistence decoupling rationale: _routingData.volumes represents user intent
    * and is re-applied reactively when new sink-inputs spawn (see _identifySinkInput).
@@ -507,6 +520,10 @@ class AudioRoutingService extends EventEmitter {
    * orchestrator re-applies reactively from _identifySinkInput; WirePlumber's
    * restore-stream is bypassed for our streams via a separate config drop-in).
    *
+   * Decision E3: if this target is currently ducked, the new volume becomes the
+   * restore target (refreshPreDuckCapture) so unducking restores to what the user
+   * just set, not the stale pre-duck capture.
+   *
    * For transient volume changes that should NOT be persisted (e.g., ducking),
    * use _setStreamVolumeLive directly.
    *
@@ -528,6 +545,10 @@ class AudioRoutingService extends EventEmitter {
     }
 
     await persistenceService.save(PERSISTENCE_KEY, this._routingData);
+
+    // E3: if this stream is currently ducked, refresh the restore target so
+    // unducking restores to the volume the user just set.
+    this._duckingEngine.refreshPreDuckCapture(stream, clampedVolume);
   }
 
   /**
@@ -614,6 +635,11 @@ class AudioRoutingService extends EventEmitter {
    * Load ducking rules from config. Replaces any existing rules and clears active state.
    * Rules define automatic volume reduction when audio sources (video, sound) are active.
    *
+   * B7 note: clears active duck state. A future venue hot-reload path should drain
+   * (await all pending ops, restore any active ducks) before clearing rules. The
+   * current clear-and-reset is safe for show-start reloads but would leave music
+   * ducked if called mid-show.
+   *
    * @param {Array<{when: string, duck: string, to: number, fadeMs: number}>} rules - Ducking rules
    *   - when: source stream that triggers ducking (e.g., 'video', 'sound')
    *   - duck: target stream to duck (e.g., 'music')
@@ -621,11 +647,7 @@ class AudioRoutingService extends EventEmitter {
    *   - fadeMs: fade duration in milliseconds (reserved for future use)
    */
   loadDuckingRules(rules) {
-    this._duckingRules = [...rules];
-    this._activeDuckingSources = {};
-    this._preDuckVolumes = {};
-    this._duckingWriteQueues = {};
-
+    this._duckingEngine.loadRules(rules);
     logger.info('Ducking rules loaded', { ruleCount: rules.length });
   }
 
@@ -640,283 +662,116 @@ class AudioRoutingService extends EventEmitter {
    * @param {'started'|'completed'|'paused'|'resumed'} lifecycle - Lifecycle event
    * @returns {Promise<void>}
    */
-  async handleDuckingEvent(source, lifecycle) {
-    if (!this._duckingRules || this._duckingRules.length === 0) {
+  handleDuckingEvent(source, lifecycle) {
+    return this._duckingEngine.handleEvent(source, lifecycle);
+  }
+
+  // ── Compatibility shims for tests that read internal ducking state directly ──
+  // The integration and unit tests inspect _activeDuckingSources and _preDuckVolumes
+  // directly. These getters proxy to the DuckingEngine's state to keep tests green
+  // without requiring test rewrites. New tests should use getState().ducking instead.
+
+  get _activeDuckingSources() {
+    return this._duckingEngine.getActiveState();
+  }
+
+  // Setter needed because integration tests inject state directly
+  set _activeDuckingSources(value) {
+    // Map the old format ({ target: [source, ...] }) to the new instance count format
+    this._duckingEngine._instanceCounts = {};
+    for (const [target, sources] of Object.entries(value || {})) {
+      this._duckingEngine._instanceCounts[target] = {};
+      for (const src of sources) {
+        const prev = this._duckingEngine._instanceCounts[target][src] || 0;
+        this._duckingEngine._instanceCounts[target][src] = prev + 1;
+      }
+    }
+  }
+
+  get _preDuckVolumes() {
+    return this._duckingEngine._preDuckVolumes;
+  }
+
+  set _preDuckVolumes(value) {
+    this._duckingEngine._preDuckVolumes = value;
+  }
+
+  get _duckingRules() {
+    return this._duckingEngine._rules;
+  }
+
+  set _duckingRules(value) {
+    this._duckingEngine._rules = value;
+  }
+
+  // ── Routing with Fallback ──
+
+  /**
+   * Apply routing for a stream with fallback support.
+   * Tries primary sink from route config, falls back to fallback sink if specified.
+   * @param {string} stream - Stream name
+   * @returns {Promise<void>}
+   */
+  async applyRoutingWithFallback(stream) {
+    this._validateStream(stream);
+
+    const route = this.getStreamRoute(stream);
+    const appName = STREAM_APP_NAMES[stream];
+
+    // Find the sink-input for this stream
+    const sinkInput = await this.findSinkInput(appName);
+    if (!sinkInput || !sinkInput.index) {
+      logger.warn('No active sink-input found for fallback routing', { stream });
       return;
     }
 
-    // Find rules matching this source
-    const matchingRules = this._duckingRules.filter(r => r.when === source);
-    if (matchingRules.length === 0) {
-      return;
-    }
+    // Get route config (may have fallback field)
+    const routeConfig = this._routingData.routes[stream];
+    const primarySink = routeConfig?.sink || route;
+    const fallbackSink = routeConfig?.fallback;
 
-    switch (lifecycle) {
-      case 'started':
-      case 'resumed':
-        await this._handleDuckingStart(source, matchingRules);
-        break;
-      case 'completed':
-      case 'paused':
-        await this._handleDuckingStop(source, matchingRules);
-        break;
-      default:
-        logger.warn('Unknown ducking lifecycle event', { source, lifecycle });
-    }
-  }
+    // Try primary sink first
+    try {
+      const availableSinks = await this.getAvailableSinks();
+      const targetSink = this._resolveTargetSink(primarySink, availableSinks);
 
-  /**
-   * Handle ducking start (source started or resumed).
-   * Stores pre-duck volume if not already stored, adds source to active list,
-   * and sets target volume to lowest active "to" value.
-   *
-   * Awaits pre-duck volume capture before applying duck to prevent a race
-   * where the volume SET completes before the volume READ, causing the captured
-   * pre-duck volume to be the already-ducked value.
-   *
-   * @param {string} source - Source stream name
-   * @param {Array} matchingRules - Rules matching this source
-   * @private
-   */
-  async _handleDuckingStart(source, matchingRules) {
-    // Group rules by target stream
-    const targetStreams = new Set(matchingRules.map(r => r.duck));
-    const writes = [];
-
-    for (const target of targetStreams) {
-      // Initialize active sources array for this target if needed
-      if (!this._activeDuckingSources[target]) {
-        this._activeDuckingSources[target] = [];
+      if (!targetSink) {
+        throw new Error(`Primary sink '${primarySink}' not available`);
       }
 
-      // Don't double-add the same source
-      if (!this._activeDuckingSources[target].includes(source)) {
-        this._activeDuckingSources[target].push(source);
-      }
-
-      // Capture pre-duck volume BEFORE applying duck (was fire-and-forget — caused race
-      // where volume SET could complete before volume READ, storing ducked value as pre-duck)
-      if (this._preDuckVolumes[target] === undefined) {
-        await this._capturePreDuckVolume(target);
-      }
-
-      // Guard: rules may have been cleared (loadDuckingRules called) while we awaited
-      // volume capture — abort if the active sources array was reset
-      if (!Array.isArray(this._activeDuckingSources[target])) {
-        logger.debug('Ducking start aborted — rules were reset during volume capture', { source, target });
-        continue;
-      }
-
-      // Calculate the lowest "to" value among all active sources for this target
-      const effectiveVolume = this._calculateEffectiveVolume(target);
-
-      // Apply the ducked volume (queued per target — awaited below so callers
-      // observing the returned promise see the write completed)
-      writes.push(this._setVolumeForDucking(target, effectiveVolume, 'apply'));
-
-      // Emit ducking:changed event
-      this.emit('ducking:changed', {
-        stream: target,
-        ducked: true,
-        volume: effectiveVolume,
-        activeSources: [...this._activeDuckingSources[target]],
-        restoredVolume: this._getRestoreVolume(target),
+      await this.moveStreamToSink(sinkInput.index, targetSink.name);
+      logger.info('Applied routing with primary sink', { stream, sink: targetSink.name });
+    } catch (primaryErr) {
+      logger.warn('Primary sink failed, trying fallback', {
+        stream,
+        primarySink,
+        error: primaryErr.message,
       });
 
-      logger.info('Ducking applied', {
-        source, target, volume: effectiveVolume,
-        activeSources: this._activeDuckingSources[target],
+      // Try fallback if specified
+      if (!fallbackSink) {
+        throw new Error(`Primary sink failed and no fallback configured: ${primaryErr.message}`);
+      }
+
+      const availableSinks = await this.getAvailableSinks();
+      const fallbackTarget = this._resolveTargetSink(fallbackSink, availableSinks);
+
+      if (!fallbackTarget) {
+        throw new Error(`Fallback sink '${fallbackSink}' not available`);
+      }
+
+      await this.moveStreamToSink(sinkInput.index, fallbackTarget.name);
+      logger.info('Applied routing with fallback sink', {
+        stream,
+        fallbackSink: fallbackTarget.name,
+      });
+
+      this.emit('routing:fallback', {
+        stream,
+        requestedSink: primarySink,
+        actualSink: fallbackTarget.name,
       });
     }
-
-    // Errors are handled inside _setVolumeForDucking — this never rejects
-    await Promise.all(writes);
-  }
-
-  /**
-   * Handle ducking stop (source completed or paused).
-   * Removes source from active list, re-evaluates volume, and restores if no sources remain.
-   *
-   * @param {string} source - Source stream name
-   * @param {Array} matchingRules - Rules matching this source
-   * @private
-   */
-  _handleDuckingStop(source, matchingRules) {
-    const targetStreams = new Set(matchingRules.map(r => r.duck));
-    const writes = [];
-
-    for (const target of targetStreams) {
-      // Guard BOTH missing and empty-but-truthy arrays (F-SHOW-05): a prior
-      // restore (e.g., pause) leaves [], and a redundant stop (pause→skip,
-      // duplicate completion) must be a no-op — not a forced restore that
-      // clobbers the operator's volume.
-      if (!this._activeDuckingSources[target]
-          || this._activeDuckingSources[target].length === 0) {
-        continue; // No active ducking for this target — check next
-      }
-
-      // Remove this source from active list
-      this._activeDuckingSources[target] = this._activeDuckingSources[target]
-        .filter(s => s !== source);
-
-      if (this._activeDuckingSources[target].length === 0) {
-        // No more active sources — restore to pre-duck volume (decision E3:
-        // captured value first, persisted user volume only as fallback)
-        const restoreVolume = this._getRestoreVolume(target);
-
-        writes.push(this._setVolumeForDucking(target, restoreVolume, 'restore'));
-
-        // Emit ducking:changed — no longer ducked
-        this.emit('ducking:changed', {
-          stream: target,
-          ducked: false,
-          volume: restoreVolume,
-          activeSources: [],
-          restoredVolume: restoreVolume,
-        });
-
-        // Clean up duck state for this target
-        delete this._preDuckVolumes[target];
-        delete this._activeDuckingSources[target];
-
-        logger.info('Ducking restored', { source, target, volume: restoreVolume });
-      } else {
-        // Other sources still active — re-evaluate to new lowest
-        const effectiveVolume = this._calculateEffectiveVolume(target);
-
-        writes.push(this._setVolumeForDucking(target, effectiveVolume, 're-evaluate'));
-
-        // Emit ducking:changed — still ducked but at different level
-        this.emit('ducking:changed', {
-          stream: target,
-          ducked: true,
-          volume: effectiveVolume,
-          activeSources: [...this._activeDuckingSources[target]],
-          restoredVolume: this._getRestoreVolume(target),
-        });
-
-        logger.info('Ducking re-evaluated', {
-          source, target, volume: effectiveVolume,
-          remainingSources: this._activeDuckingSources[target],
-        });
-      }
-    }
-
-    // Errors are handled inside _setVolumeForDucking — this never rejects
-    return Promise.all(writes);
-  }
-
-  /**
-   * Calculate the effective ducked volume for a target stream.
-   * Uses the lowest "to" value among all active ducking sources.
-   *
-   * @param {string} target - Target stream name
-   * @returns {number} Lowest "to" volume among active sources
-   * @private
-   */
-  _calculateEffectiveVolume(target) {
-    const activeSources = this._activeDuckingSources[target] || [];
-
-    let lowestVolume = Infinity;
-    for (const rule of this._duckingRules) {
-      if (rule.duck === target && activeSources.includes(rule.when)) {
-        if (rule.to < lowestVolume) {
-          lowestVolume = rule.to;
-        }
-      }
-    }
-
-    return lowestVolume === Infinity ? 100 : lowestVolume;
-  }
-
-  /**
-   * Set stream volume for ducking with graceful handling for missing sink-inputs.
-   * Shared by ducking start, restore, and re-evaluate paths.
-   *
-   * Uses _setStreamVolumeLive (live-only — no persistence) because ducking values
-   * are transient. Persisting them would overwrite user intent: an orchestrator
-   * restart mid-duck would persist the ducked value, and the next sink-input
-   * would come up at the ducked volume.
-   *
-   * @param {string} target - Target stream name
-   * @param {number} volume - Volume to set
-   * @param {string} context - Context label for logging (e.g., 'apply', 'restore', 're-evaluate')
-   * @private
-   */
-  _setVolumeForDucking(target, volume, context) {
-    // Serialize per target (F-SHOW-06): each duck/restore write waits for the
-    // previous one to finish. A fast restore (registry fast-path) must not
-    // land before a slow apply (pactl list round-trip) — that inversion left
-    // music stuck at duck volume while state said restored.
-    const prev = this._duckingWriteQueues[target] || Promise.resolve();
-    const next = prev.then(() => this._setStreamVolumeLive(target, volume)).catch(err => {
-      if (err.message.includes('No active sink-input')) {
-        logger.warn(`Ducking ${context} skipped: sink-input not available`, { target, volume });
-      } else {
-        logger.error(`Failed to ${context} ducked volume`, { target, volume, error: err.message });
-        this.emit('ducking:failed', { target, volume, context, error: err.message });
-      }
-    });
-    this._duckingWriteQueues[target] = next;
-    return next;
-  }
-
-  /**
-   * Resolve the volume to restore a target stream to when ducking ends.
-   * Decision E3 (owner override): the CAPTURED pre-duck volume is the restore
-   * target (closest to live operator intent); the persisted user volume is the
-   * fallback ONLY when capture is missing. 100 is the last resort when neither
-   * exists — never a substitute for known state.
-   *
-   * @param {string} target - Target stream name
-   * @returns {number} Restore volume (0-100)
-   * @private
-   */
-  _getRestoreVolume(target) {
-    if (this._preDuckVolumes[target] !== undefined) {
-      return this._preDuckVolumes[target];
-    }
-    const userVolume = this._routingData?.volumes?.[target];
-    if (userVolume !== undefined) {
-      return userVolume;
-    }
-    return 100;
-  }
-
-  /**
-   * Capture the pre-duck volume for a target stream asynchronously.
-   * Only stores if not already captured (prevents overwriting during active ducking).
-   *
-   * When the live volume cannot be read (sink-input not up yet, pactl failure),
-   * falls back to the persisted user volume (F-SHOW-27 / decision E3) — never
-   * hardcoded 100. With no persisted volume either, nothing is stored and
-   * _getRestoreVolume resolves the fallback at restore time.
-   *
-   * @param {string} target - Target stream name
-   * @private
-   */
-  _capturePreDuckVolume(target) {
-    return this.getStreamVolume(target)
-      .then(volume => {
-        // Only store if still not set (race condition guard)
-        if (this._preDuckVolumes[target] !== undefined) {
-          return;
-        }
-        if (volume !== null) {
-          this._preDuckVolumes[target] = volume;
-        } else if (this._routingData?.volumes?.[target] !== undefined) {
-          this._preDuckVolumes[target] = this._routingData.volumes[target];
-        }
-      })
-      .catch(err => {
-        if (this._preDuckVolumes[target] === undefined
-            && this._routingData?.volumes?.[target] !== undefined) {
-          this._preDuckVolumes[target] = this._routingData.volumes[target];
-        }
-        logger.warn('Failed to capture pre-duck volume, falling back to persisted user volume', {
-          target, error: err.message
-        });
-      });
   }
 
   // ── Sink Monitor ──
@@ -938,7 +793,7 @@ class AudioRoutingService extends EventEmitter {
       pidFile: '/tmp/aln-pm-pactl-subscribe.pid',
     });
 
-    this._sinkMonitor.on('line', (line) => {
+    this._sinkMonitor.on('line', line => {
       const event = this._parsePactlEvent(line);
       if (!event) return;
 
@@ -1002,6 +857,9 @@ class AudioRoutingService extends EventEmitter {
    * extracts application.name, application.process.binary, or media.name.
    * Called on 'new' sink-input events from pactl subscribe.
    *
+   * F-SHOW-24: uses pactlClient.parseSinkInputById (unified parser) instead of
+   * the inline section-parsing loop that previously duplicated _parseSinkInputs logic.
+   *
    * Reactive volume application: after registration, looks up the persisted
    * volume for the resolved stream (if any) and applies it via pactl. This is
    * how the orchestrator owns per-stream volume across VLC/MPD restarts — the
@@ -1017,31 +875,26 @@ class AudioRoutingService extends EventEmitter {
     let stream = null;
     try {
       const stdout = await this._execFile('pactl', ['list', 'sink-inputs']);
-      const sections = stdout.split(/Sink Input #/);
-      for (const section of sections) {
-        const idMatch = section.match(/^(\d+)/);
-        if (idMatch && idMatch[1] === id) {
-          const nameMatch = section.match(/application\.name\s*=\s*"([^"]+)"/i);
-          const binaryMatch = section.match(/application\.process\.binary\s*=\s*"([^"]+)"/i);
-          const mediaMatch = section.match(/media\.name\s*=\s*"([^"]+)"/i);
+      const parsed = pactlClient.parseSinkInputById(stdout, id);
 
-          // Stream resolution must check ALL three identity sources — MPD sets
-          // application.name = "Music Player Daemon" but our `name "aln-music"`
-          // in MPD config lands in media.name and is the only unique signal.
-          stream = this._streamForAppName(nameMatch && nameMatch[1])
-                || this._streamForAppName(binaryMatch && binaryMatch[1])
-                || this._streamForAppName(mediaMatch && mediaMatch[1]);
+      if (parsed) {
+        const { appName: name, binary, mediaName } = parsed;
 
-          // First identity with content wins for registry storage.
-          const appMatch = nameMatch || binaryMatch || mediaMatch;
-          if (appMatch) {
-            appName = appMatch[1];
-            // Persist resolved stream alongside appName so findSinkInput's fast path
-            // works for MPD (where application.name="Music Player Daemon" doesn't
-            // substring-match 'aln-music').
-            this._sinkInputRegistry.set(id, { index: id, appName, stream });
-          }
-          break;
+        // Stream resolution must check ALL three identity sources — MPD sets
+        // application.name = "Music Player Daemon" but our `name "aln-music"`
+        // in MPD config lands in media.name and is the only unique signal.
+        stream = this._streamForAppName(name)
+              || this._streamForAppName(binary)
+              || this._streamForAppName(mediaName);
+
+        // First identity with content wins for registry storage.
+        const firstIdentity = name || binary || mediaName;
+        if (firstIdentity) {
+          appName = firstIdentity;
+          // Persist resolved stream alongside appName so findSinkInput's fast path
+          // works for MPD (where application.name="Music Player Daemon" doesn't
+          // substring-match 'aln-music').
+          this._sinkInputRegistry.set(id, { index: id, appName, stream });
         }
       }
     } catch { /* non-fatal — registry just won't have this entry */ }
@@ -1120,54 +973,29 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Promise wrapper around child_process.execFile
+   * Delegates to pactlClient so this service doesn't import execHelper directly.
    * @param {string} cmd
    * @param {string[]} args
    * @returns {Promise<string>} stdout
    * @private
    */
   _execFile(cmd, args) {
-    return execFileAsync(cmd, args, PACTL_TIMEOUT);
+    return pactlClient.execFile(cmd, args);
   }
 
   /**
    * Parse `pactl list sinks short` tab-delimited output.
-   * Each line: id\tname\tdriver\tformat\tstate
+   * Delegates to pactlClient.parseSinkList with injected classifier/labeler.
    * @param {string} output - Raw pactl output
    * @returns {Array<{id: string, name: string, driver: string, format: string, state: string, type: string}>}
    * @private
    */
   _parseSinkList(output) {
-    if (!output || !output.trim()) {
-      return [];
-    }
-
-    const sinks = [];
-    const lines = output.trim().split('\n');
-
-    for (const line of lines) {
-      const parts = line.split('\t');
-      if (parts.length < 2) continue;
-
-      const id = parts[0];
-      const name = parts[1];
-      const driver = parts[2] || '';
-      const format = parts[3] || '';
-      const state = parts[4] || '';
-
-      const type = this.classifySink(name);
-
-      sinks.push({
-        id,
-        name,
-        driver,
-        format,
-        state,
-        type,
-        label: this._generateSinkLabel(name, type),
-      });
-    }
-
-    return sinks;
+    return pactlClient.parseSinkList(
+      output,
+      name => this.classifySink(name),
+      (name, type) => this._generateSinkLabel(name, type)
+    );
   }
 
   /**
@@ -1204,63 +1032,25 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Parse a `pactl subscribe` event line.
-   * Format: "Event 'action' on type #id"
+   * Delegates to pactlClient.parsePactlEvent.
    * @param {string} line - Single line from pactl subscribe
    * @returns {{action: string, type: string, id: string}|null}
    * @private
    */
   _parsePactlEvent(line) {
-    const match = line.match(/^Event '(\w+)' on (sink|source|sink-input|source-output|card) #(\d+)$/);
-    if (!match) return null;
-
-    return {
-      action: match[1],
-      type: match[2],
-      id: match[3],
-    };
+    return pactlClient.parsePactlEvent(line);
   }
 
   /**
    * Parse `pactl list sink-inputs` output to find a specific application's sink-input index.
-   * Looks for `application.name = "..."` containing the search term.
+   * Delegates to pactlClient.parseSinkInputsByAppName (F-SHOW-24 unified parser).
    * @param {string} output - Raw pactl output
    * @param {string} appName - Application name substring to search for
    * @returns {string|null} Sink-input index or null
    * @private
    */
   _parseSinkInputs(output, appName) {
-    if (!output || !output.trim()) {
-      return null;
-    }
-
-    const lines = output.split('\n');
-    let currentIdx = null;
-
-    for (const line of lines) {
-      // Match "Sink Input #NNN"
-      const idxMatch = line.match(/^Sink Input #(\d+)/);
-      if (idxMatch) {
-        currentIdx = idxMatch[1];
-      }
-
-      // Match against the three identity keys PipeWire/PulseAudio exposes:
-      //   application.name           - VLC sets this to "VLC media player (...)"
-      //   application.process.binary - process name fallback when application.name is empty
-      //   media.name                 - MPD hardcodes application.name="Music Player Daemon" but
-      //                                our config's `name "aln-music"` lands here uniquely
-      // First field with content wins (`includes(appName)` is a substring test).
-      const nameMatch = line.match(/application\.name\s*=\s*"([^"]+)"/);
-      const binaryMatch = line.match(/application\.process\.binary\s*=\s*"([^"]+)"/);
-      const mediaMatch = line.match(/media\.name\s*=\s*"([^"]+)"/);
-      const match = nameMatch || binaryMatch || mediaMatch;
-      if (match && currentIdx) {
-        if (match[1].includes(appName)) {
-          return currentIdx;
-        }
-      }
-    }
-
-    return null;
+    return pactlClient.parseSinkInputsByAppName(output, appName);
   }
 
   /**
@@ -1343,39 +1133,14 @@ class AudioRoutingService extends EventEmitter {
 
   /**
    * Extract volume percentage for a specific sink-input from pactl output.
+   * Delegates to pactlClient.extractVolumeForSinkInput.
    * @param {string} output - Raw pactl list sink-inputs output
    * @param {string} sinkInputIdx - Sink-input index to find
    * @returns {number|null} Volume percentage or null
    * @private
    */
   _extractVolumeForSinkInput(output, sinkInputIdx) {
-    if (!output || !output.trim()) {
-      return null;
-    }
-
-    const lines = output.split('\n');
-    let currentIdx = null;
-    let inTargetInput = false;
-
-    for (const line of lines) {
-      // Match "Sink Input #NNN"
-      const idxMatch = line.match(/^Sink Input #(\d+)/);
-      if (idxMatch) {
-        currentIdx = idxMatch[1];
-        inTargetInput = currentIdx === sinkInputIdx;
-      }
-
-      // If we're in the target sink-input, look for volume
-      if (inTargetInput) {
-        // Match "Volume: front-left: 65536 / 100% / 0.00 dB,   front-right: 65536 / 100% / 0.00 dB"
-        const volumeMatch = line.match(/Volume:.*?(\d+)%/);
-        if (volumeMatch) {
-          return parseInt(volumeMatch[1], 10);
-        }
-      }
-    }
-
-    return null;
+    return pactlClient.extractVolumeForSinkInput(output, sinkInputIdx);
   }
 
   /**

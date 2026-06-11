@@ -1738,9 +1738,9 @@ Sink Input #42
 
       it('should capture pre-duck volume before applying duck (race fix)', async () => {
         // Simulate the race: getStreamVolume takes time to resolve.
-        // Without the fix, _setVolumeForDucking (sync) runs before the async
+        // Without the fix, setVolumeLive (sync-enqueued) runs before the async
         // getStreamVolume resolves, so the captured value would be the already-ducked one.
-        // With the fix, _handleDuckingStart awaits capture before applying duck.
+        // With the fix, DuckingEngine._handleStart awaits capture before enqueuing duck op.
         let resolveVolume;
         const volumePromise = new Promise(resolve => { resolveVolume = resolve; });
         audioRoutingService.getStreamVolume.mockReturnValue(volumePromise);
@@ -1749,9 +1749,8 @@ Sink Input #42
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        // Start ducking — _handleDuckingStart awaits volume capture before setVolume
-        const duckingPromise = audioRoutingService._handleDuckingStart('video',
-          audioRoutingService._duckingRules);
+        // Start ducking — DuckingEngine awaits volume capture before enqueuing setVolume
+        const duckingPromise = audioRoutingService.handleDuckingEvent('video', 'started');
 
         // Volume read has NOT completed yet — setVolume should NOT have been called
         expect(setVolume).not.toHaveBeenCalled();
@@ -1760,6 +1759,9 @@ Sink Input #42
         // Now resolve the volume read with 75
         resolveVolume(75);
         await duckingPromise;
+        // Drain the op queue so the chained setVolumeLive call executes
+        const q = audioRoutingService._duckingEngine._opQueues.music;
+        if (q) await q;
 
         // Volume captured BEFORE duck applied — pre-duck should be 75 (not 20)
         expect(audioRoutingService._preDuckVolumes.music).toBe(75);
@@ -1936,7 +1938,7 @@ Sink Input #42
         });
       });
 
-      it('should emit ducking:changed when ducking ends', () => {
+      it('should emit ducking:changed when ducking ends', async () => {
         const handler = jest.fn();
         audioRoutingService.on('ducking:changed', handler);
 
@@ -1944,8 +1946,10 @@ Sink Input #42
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'completed');
+        // handleDuckingEvent resolves after its write lands (Batch-1
+        // contract restored) — emission is guaranteed once awaited
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
 
         const lastCall = handler.mock.calls[handler.mock.calls.length - 1][0];
         expect(lastCall).toEqual({
@@ -2100,7 +2104,7 @@ Sink Input #42
 
         // Should still log as error for unexpected failures
         expect(logger.error).toHaveBeenCalledWith(
-          expect.stringContaining('Failed to apply ducked volume'),
+          expect.stringContaining('failed to apply ducked volume'),
           expect.any(Object)
         );
       });

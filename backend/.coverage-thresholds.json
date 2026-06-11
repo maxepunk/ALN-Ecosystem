@@ -9,6 +9,11 @@
     "functions": 100,
     "lines": 80
   },
+  "./src/gameRules/cueVocabulary.js": {
+    "branches": 50,
+    "functions": 100,
+    "lines": 100
+  },
   "./src/gameRules/duplicatePolicy.js": {
     "branches": 85,
     "functions": 100,
@@ -94,10 +99,20 @@
     "functions": 20,
     "lines": 40
   },
-  "./src/services/audioRoutingService.js": {
+  "./src/services/audio/duckingEngine.js": {
     "branches": 85,
-    "functions": 90,
+    "functions": 100,
     "lines": 90
+  },
+  "./src/services/audio/pactlClient.js": {
+    "branches": 90,
+    "functions": 100,
+    "lines": 95
+  },
+  "./src/services/audioRoutingService.js": {
+    "branches": 80,
+    "functions": 90,
+    "lines": 85
   },
   "./src/services/bluetoothService.js": {
     "branches": 75,
@@ -109,8 +124,18 @@
     "functions": 100,
     "lines": 90
   },
-  "./src/services/cueEngineService.js": {
+  "./src/services/cue/standingEvaluator.js": {
     "branches": 70,
+    "functions": 60,
+    "lines": 75
+  },
+  "./src/services/cue/timelineRuntime.js": {
+    "branches": 75,
+    "functions": 75,
+    "lines": 80
+  },
+  "./src/services/cueEngineService.js": {
+    "branches": 75,
     "functions": 75,
     "lines": 80
   },
@@ -137,6 +162,11 @@
   "./src/services/heartbeatMonitorService.js": {
     "branches": 85,
     "functions": 100,
+    "lines": 95
+  },
+  "./src/services/heldItemsStore.js": {
+    "branches": 80,
+    "functions": 95,
     "lines": 95
   },
   "./src/services/lightingService.js": {
