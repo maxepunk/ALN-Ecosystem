@@ -1770,9 +1770,9 @@ Sink Input #42
 
       it('should capture pre-duck volume before applying duck (race fix)', async () => {
         // Simulate the race: getStreamVolume takes time to resolve.
-        // Without the fix, _setVolumeForDucking (sync) runs before the async
+        // Without the fix, setVolumeLive (sync-enqueued) runs before the async
         // getStreamVolume resolves, so the captured value would be the already-ducked one.
-        // With the fix, _handleDuckingStart awaits capture before applying duck.
+        // With the fix, DuckingEngine._handleStart awaits capture before enqueuing duck op.
         let resolveVolume;
         const volumePromise = new Promise(resolve => { resolveVolume = resolve; });
         audioRoutingService.getStreamVolume.mockReturnValue(volumePromise);
@@ -1781,9 +1781,8 @@ Sink Input #42
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        // Start ducking — _handleDuckingStart awaits volume capture before setVolume
-        const duckingPromise = audioRoutingService._handleDuckingStart('video',
-          audioRoutingService._duckingRules);
+        // Start ducking — DuckingEngine awaits volume capture before enqueuing setVolume
+        const duckingPromise = audioRoutingService.handleDuckingEvent('video', 'started');
 
         // Volume read has NOT completed yet — setVolume should NOT have been called
         expect(setVolume).not.toHaveBeenCalled();
@@ -1792,6 +1791,9 @@ Sink Input #42
         // Now resolve the volume read with 75
         resolveVolume(75);
         await duckingPromise;
+        // Drain the op queue so the chained setVolumeLive call executes
+        const q = audioRoutingService._duckingEngine._opQueues.music;
+        if (q) await q;
 
         // Volume captured BEFORE duck applied — pre-duck should be 75 (not 20)
         expect(audioRoutingService._preDuckVolumes.music).toBe(75);
@@ -1801,7 +1803,7 @@ Sink Input #42
     });
 
     describe('handleDuckingEvent() - completed lifecycle', () => {
-      it('should process all target streams even when first has no active ducking', () => {
+      it('should process all target streams even when first has no active ducking', async () => {
         // Rules: video ducks BOTH music AND sound
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
@@ -1814,25 +1816,27 @@ Sink Input #42
         audioRoutingService._preDuckVolumes = { sound: 80 };
 
         // Complete video — should restore 'sound' even though 'music' has no active sources
-        audioRoutingService.handleDuckingEvent('video', 'completed');
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises();
 
         // 'sound' should be restored to pre-duck volume
         expect(setVolume).toHaveBeenCalledWith('sound', 80);
       });
 
-      it('should restore Music when video completes', () => {
+      it('should restore Music when video completes', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'completed');
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises();
 
         // Second call should restore to original volume (100 default)
         expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
-      it('should not restore if another ducking source is still active', () => {
+      it('should not restore if another ducking source is still active', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
@@ -1840,13 +1844,14 @@ Sink Input #42
 
         audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
         audioRoutingService.handleDuckingEvent('sound', 'started'); // Also active
-        audioRoutingService.handleDuckingEvent('sound', 'completed'); // Sound done
+        await audioRoutingService.handleDuckingEvent('sound', 'completed'); // Sound done
+        await flushPromises();
 
         // Should NOT restore — video is still ducking, should be at 20
         expect(setVolume).toHaveBeenLastCalledWith('music', 20);
       });
 
-      it('should restore when last source completes', () => {
+      it('should restore when last source completes', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
@@ -1855,13 +1860,14 @@ Sink Input #42
         audioRoutingService.handleDuckingEvent('video', 'started');
         audioRoutingService.handleDuckingEvent('sound', 'started');
         audioRoutingService.handleDuckingEvent('video', 'completed');
-        audioRoutingService.handleDuckingEvent('sound', 'completed');
+        await audioRoutingService.handleDuckingEvent('sound', 'completed');
+        await flushPromises();
 
         // All sources done, should restore to 100
         expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
-      it('should re-evaluate to higher ducking level when dominant source completes', () => {
+      it('should re-evaluate to higher ducking level when dominant source completes', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
@@ -1869,7 +1875,8 @@ Sink Input #42
 
         audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
         audioRoutingService.handleDuckingEvent('sound', 'started'); // Stays at 20 (lowest)
-        audioRoutingService.handleDuckingEvent('video', 'completed'); // Video done, sound still active
+        await audioRoutingService.handleDuckingEvent('video', 'completed'); // Video done, sound still active
+        await flushPromises();
 
         // Should re-evaluate to sound's level (40), not restore fully
         expect(setVolume).toHaveBeenLastCalledWith('music', 40);
@@ -1898,13 +1905,14 @@ Sink Input #42
     });
 
     describe('handleDuckingEvent() - paused/resumed lifecycle', () => {
-      it('should restore volume when source is paused', () => {
+      it('should restore volume when source is paused', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
         audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'paused');
+        await audioRoutingService.handleDuckingEvent('video', 'paused');
+        await flushPromises();
 
         // Should restore to 100 (like completed, but source is still tracked as paused)
         expect(setVolume).toHaveBeenLastCalledWith('music', 100);
@@ -1924,7 +1932,7 @@ Sink Input #42
         expect(setVolume).toHaveBeenLastCalledWith('music', 20);
       });
 
-      it('should not fully restore on pause if another source is still active', () => {
+      it('should not fully restore on pause if another source is still active', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
@@ -1932,7 +1940,8 @@ Sink Input #42
 
         audioRoutingService.handleDuckingEvent('video', 'started');
         audioRoutingService.handleDuckingEvent('sound', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'paused');
+        await audioRoutingService.handleDuckingEvent('video', 'paused');
+        await flushPromises();
 
         // Sound is still active at 40, should not restore to 100
         expect(setVolume).toHaveBeenLastCalledWith('music', 40);
@@ -2125,7 +2134,7 @@ Sink Input #42
 
         // Should still log as error for unexpected failures
         expect(logger.error).toHaveBeenCalledWith(
-          expect.stringContaining('Failed to apply ducked volume'),
+          expect.stringContaining('failed to apply ducked volume'),
           expect.any(Object)
         );
       });
