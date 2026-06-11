@@ -51,7 +51,12 @@ Three of the four items are rehearsals of Phase 3/4 product problems:
   decision, docs/decisions/2026-06-11-kit-model-install-tiers.md): games ship
   as scalable hardware KITS, and the same vocabulary drives (1) the planning
   view "what install tier unlocks what game elements", (2) the venue
-  preflight, and (3) this harness manifest. Test tiers ≙ install tiers.
+  preflight, and (3) this harness manifest. SCOPE HONESTY (per the
+  stack/endpoints refinement in the kit-model decision): the harness
+  manifest models TEST environments, which can be partial-stack in ways
+  production never is — shared vocabulary with install tiers, distinct
+  profiles; only endpoint absence realistically simulates a production
+  tier.
 
 ### 2.x.2 — Suite tiering
 - **Tier L (logic/UI):** session lifecycle, scan/score, duplicates,
@@ -60,6 +65,14 @@ Three of the four items are rehearsals of Phase 3/4 product problems:
   Becomes a CI job and the pre-merge E2E floor (~115 tests today).
 - **Tier H (hardware):** video/display, real audio, BT, lighting. Pi-only,
   tagged (Playwright project or grep tag), run as the pre-show/release gate.
+- **Tier L parallelization (deliverable):** `workers=1` exists to protect
+  SYSTEM-GLOBAL resources (the Chromium kiosk, pkill loops, fixed ports) —
+  all Tier H concerns. Tier L flows use per-flow orchestrators on random
+  ports and should parallelize; per-flow server boot dominates the current
+  ~30-min wall clock. Target: Tier L CI job ≤ ~15 min.
+- NOTE: current CI (test.yml) runs NO E2E at all — the Tier L job is
+  net-new (runner needs Playwright chromium; the 2026-06-11 toolless-
+  sandbox runs prove viability).
 - Exit: one command per tier; CI runs Tier L on the parent repo.
 
 ### 2.x.3 — websocket-core event-cache redesign
@@ -84,6 +97,11 @@ Three of the four items are rehearsals of Phase 3/4 product problems:
 - No-fixed-sleeps and no-silent-env-branch rules documented (lint rule for
   `waitForTimeout` in flows belongs to 2.x.2's CI wiring).
 
+## Out of scope (decided 2026-06-11)
+- **Tap-to-web / real-domain-cert plumbing** (engine-design-notes P7,
+  spikes S1/S2) is Phase 3 work — product infrastructure, not harness.
+  The harness benefits when it lands but does not wait for it.
+
 ## Sequencing
 
 ```
@@ -106,8 +124,8 @@ inherits a consumer-tested seam.
   `requireCapabilities` usage).
 - `clearEventCache` no longer exists.
 - Group-completion E2E runs green everywhere via injected fixture.
-- Capability vocabulary section exists in the venue-profile schema doc and
-  matches the harness manifest keys.
+- Capability vocabulary section exists in the installation-profile schema
+  doc and matches the harness manifest keys.
 - Run report shows manifest + tier counts.
 
 ## Estimate
