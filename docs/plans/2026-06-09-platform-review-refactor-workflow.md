@@ -384,7 +384,17 @@ Not test chores — three of four items rehearse Phase 3/4 product problems:
 Already landed from the audit: page-object drift gates in the unit suite,
 loud-skip/named-degradation-test pattern across flows.
 
-### Phase 3 — Engine/game-pack separation (≈5-7 sessions, design doc first)
+### Phase 3 — Engine/game-pack separation (program doc supersedes this section)
+
+> **2026-06-11:** Phase 3 is now structured by
+> `docs/plans/2026-06-11-phase3-program.md` (the Phase 3.0 design doc):
+> five tracks (A Pack spine / B Tooling / C Install layer / D GM
+> experience / E Player platform), toy-pack-as-second-consumer
+> methodology, and a recommended Definition of Done (A+B+C gate the
+> phase; D/E are parallel tracks) pending owner ratification. The
+> section below is preserved as original context.
+
+### Phase 3 (original sketch) — Engine/game-pack separation (≈5-7 sessions, design doc first)
 
 **Phase 3.0 — Finalize the capability classification matrix.**
 The matrix is *produced* during Phase 1 discovery (see review units — it had
