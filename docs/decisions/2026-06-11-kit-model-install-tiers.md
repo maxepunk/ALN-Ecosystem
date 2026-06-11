@@ -55,6 +55,38 @@ deployment topologies" question's real meaning.
   player-scanner-only / no-orchestrator) are install tiers, not special
   cases; the orchestrator itself is a capability.
 
+## Refinement (owner, same day): stack vs endpoints
+
+The "external services" (HA, VLC, MPD, PipeWire) are part of the
+ORCHESTRATOR STACK — third-party only to avoid reinventing wheels, but
+co-installed on the Pi and shipped wherever the orchestrator ships. The
+capability model is therefore TWO layers:
+
+1. **Stack (one switch):** orchestrator present or not. If present, the
+   whole service stack is present. A stack service being unreachable is a
+   FAULT (repair), never a tier characteristic.
+2. **Endpoints (the dials):** which physical outputs are installed this
+   event — fixtures, speakers, displays, BT devices. A service with no
+   endpoints is DORMANT BY CONFIGURATION, not down ("a single smart bulb
+   could change that" — no software change involved).
+
+Consequences:
+- **Health semantics must split fault/dormant.** Today `lighting: down`
+  conflates "HA crashed" with "no fixtures installed". The installation
+  profile tells serviceHealthRegistry which services are EXPECTED live;
+  dormant services must not show red on the GM dashboard or block
+  preflight (red that's always red trains GMs to ignore red).
+- **Held vs disabled:** held-items = fault tolerance for services that
+  should work (hold, repair, release). Game elements targeting domains
+  with NO installed endpoints should be DISABLED at session start from
+  the installation profile (the planning view already knows they're not
+  in tonight's show) — never armed-then-held-forever.
+- **Harness scope honesty:** test machines can be partial-stack
+  (sandbox lacks VLC binaries) in ways production never is. The harness
+  capability manifest models TEST environments; only endpoint absence is
+  a realistic production-tier simulation. Shared vocabulary, distinct
+  profiles.
+
 ## Feeds
 - Phase 2.x.1 capability manifest (vocabulary now = install-tier model)
 - Phase 3.0/3.1 schemas (pack hardware manifest; installation profile)
