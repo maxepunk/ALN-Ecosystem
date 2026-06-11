@@ -908,7 +908,8 @@ describe('commandExecutor', () => {
         source: 'gm'
       });
       expect(result.success).toBe(true);
-      expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening');
+      // F-SHOW-15: GM dispatch passes trigger 'manual' + source 'gm'
+      expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening', 'manual', undefined, 'gm');
     });
 
     it('should reject cue:fire without cueId', async () => {
