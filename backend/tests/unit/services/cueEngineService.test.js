@@ -1976,6 +1976,28 @@ describe('CueEngineService', () => {
       expect(cueEngineService.firedClockCues.has('clock-future')).toBe(false);
     });
 
+    it('restore(null) is a no-op (fresh session has no persisted cue state)', () => {
+      cueEngineService.loadCues(CUES);
+      cueEngineService.activate();
+      cueEngineService.restore(null, 3600);
+
+      expect(cueEngineService.active).toBe(true);
+      expect(cueEngineService.firedClockCues.size).toBe(0);
+    });
+
+    it('restore() skips clock cues with invalid time strings (warn, not crash)', () => {
+      cueEngineService.loadCues([
+        ...CUES,
+        { id: 'clock-bad', label: 'Bad', trigger: { clock: 'not-a-time' }, commands: [] },
+      ]);
+      expect(() => {
+        cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+      }).not.toThrow();
+
+      expect(cueEngineService.firedClockCues.has('clock-past')).toBe(true);
+      expect(cueEngineService.firedClockCues.has('clock-bad')).toBe(false);
+    });
+
     it('restore() preserves persisted disabled cues and active flag', () => {
       cueEngineService.loadCues(CUES);
       cueEngineService.restore(

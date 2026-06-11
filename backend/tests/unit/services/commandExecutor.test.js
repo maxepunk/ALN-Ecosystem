@@ -912,6 +912,19 @@ describe('commandExecutor', () => {
       expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening', 'manual', undefined, 'gm');
     });
 
+    it('cue-source cue:fire keeps source cue with no manual trigger (F-SHOW-15)', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      // A cue whose command list contains cue:fire (cue chaining)
+      const result = await executeCommand({
+        action: 'cue:fire',
+        payload: { cueId: 'chained' },
+        source: 'cue'
+      });
+      expect(result.success).toBe(true);
+      expect(cueEngineService.fireCue).toHaveBeenCalledWith('chained', undefined, undefined, 'cue');
+    });
+
     it('should reject cue:fire without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 

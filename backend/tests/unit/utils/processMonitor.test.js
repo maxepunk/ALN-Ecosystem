@@ -82,6 +82,27 @@ describe('ProcessMonitor', () => {
       monitor.start();
       expect(monitor.isRunning()).toBe(true);
     });
+
+    it("handles spawn 'error' (e.g. binary not installed) without throwing — close drives the failure path", () => {
+      const logger = require('../../../src/utils/logger');
+      monitor.start();
+
+      // Node emits 'error' then 'close' (code -2) when spawn fails (ENOENT).
+      // Unhandled, the 'error' event would be an uncaughtException that
+      // kills the whole orchestrator instead of degrading the one service.
+      expect(() => {
+        mockProc.emit('error', new Error('spawn pactl ENOENT'));
+      }).not.toThrow();
+
+      expect(logger.error).toHaveBeenCalledWith(
+        'pactl-subscribe spawn failed',
+        expect.objectContaining({ error: 'spawn pactl ENOENT', command: 'pactl' })
+      );
+
+      // The close handler still runs the normal failure-count/backoff path
+      mockProc.emit('close', -2, null);
+      expect(monitor.isRunning()).toBe(false);
+    });
   });
 
   describe('line-buffered stdout', () => {
