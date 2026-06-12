@@ -145,6 +145,13 @@ test.describe('Player Video Lifecycle @hardware', () => {
       );
 
       try {
+        // Register the listener BEFORE the triggering action (listener-from-now
+        // contract): a fast VLC start could otherwise push the playing state
+        // before the wait was registered.
+        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
+        const videoPlayingPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+
         // Player scan with video token
         console.log(`Player scanning video token: ${videoToken.SF_RFID} (video: ${videoToken.video})`);
         const scanResult = await playerScan(orchestratorInfo.url, videoToken.SF_RFID);
@@ -153,10 +160,7 @@ test.describe('Player Video Lifecycle @hardware', () => {
         expect(scanResult.body.videoQueued).toBe(true);
         console.log('Player scan accepted, video queued');
 
-        // Wait for service:state event with video domain status 'playing'
-        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
-        const videoPlaying = await waitForEvent(wsSocket, 'service:state',
-          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+        const videoPlaying = await videoPlayingPromise;
         expect(videoPlaying.data.state.status).toBe('playing');
         console.log('Video playing confirmed via WebSocket');
 
@@ -261,14 +265,17 @@ test.describe('Player Video Lifecycle @hardware', () => {
         // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
         const restoreCuePromise = waitForEvent(wsSocket, 'cue:fired',
           (data) => data.data?.cueId === 'restore-after-video', 120000); // Videos can be long
+        // Register the playing-state listener BEFORE the scan too — same
+        // listener-from-now contract as above
+        const videoStartedPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
 
         // Trigger video
         console.log(`Player scanning video token: ${videoToken.SF_RFID}`);
         await playerScan(orchestratorInfo.url, videoToken.SF_RFID, `e2e-player-restore-${Date.now()}`);
 
         // Wait for video to start
-        await waitForEvent(wsSocket, 'service:state',
-          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+        await videoStartedPromise;
         console.log('Video started playing');
 
         // Wait for video to complete and restore cue to fire

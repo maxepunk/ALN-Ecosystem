@@ -34,15 +34,22 @@ function hostToolManifest() {
 class ManifestReporter {
   constructor() {
     this.tiers = {
-      'Tier L': { passed: 0, failed: 0, skipped: 0 },
-      'Tier H (@hardware)': { passed: 0, failed: 0, skipped: 0 },
+      'Tier L': { passed: 0, failed: 0, skipped: 0, flaky: 0 },
+      'Tier H (@hardware)': { passed: 0, failed: 0, skipped: 0, flaky: 0 },
     };
+    this.flakyTests = [];
   }
 
   onTestEnd(test, result) {
     const tier = test.titlePath().join(' ').includes('@hardware')
       ? 'Tier H (@hardware)' : 'Tier L';
-    if (result.status === 'passed') this.tiers[tier].passed++;
+    // A pass on retry is a FLAKE, not a pass (merge-readiness review CI nit:
+    // retries:2 silently masked Tier L flakes). Count and NAME them so an
+    // "all green" run discloses what only passed on a second attempt.
+    if (result.status === 'passed' && result.retry > 0) {
+      this.tiers[tier].flaky++;
+      this.flakyTests.push(`${test.titlePath().slice(1).join(' › ')} (passed on retry ${result.retry})`);
+    } else if (result.status === 'passed') this.tiers[tier].passed++;
     else if (result.status === 'skipped') this.tiers[tier].skipped++;
     else if (result.status === 'failed' || result.status === 'timedOut') this.tiers[tier].failed++;
   }
@@ -55,8 +62,12 @@ class ManifestReporter {
       ...Object.entries(tools).map(([k, v]) => `  ${v ? '✓' : '✗'} ${k}`),
       '── Tier counts ─────────────────────────────────────────────',
       ...Object.entries(this.tiers).map(([tier, c]) =>
-        `  ${tier}: ${c.passed} passed, ${c.failed} failed, ${c.skipped} skipped`),
+        `  ${tier}: ${c.passed} passed, ${c.failed} failed, ${c.skipped} skipped, ${c.flaky} flaky`),
       '  (skips are capability-gated and LOUD — see each skip reason)',
+      ...(this.flakyTests.length > 0 ? [
+        '── FLAKY (passed only on retry — investigate, do not ignore) ',
+        ...this.flakyTests.map(t => `  ⚠ ${t}`),
+      ] : []),
       '─────────────────────────────────────────────────────────────',
     ];
     // eslint-disable-next-line no-console

@@ -27,7 +27,9 @@ describe('OfflineQueueService - Event-Driven Pattern', () => {
   describe('processQueue()', () => {
     it('should emit offline:queue:processed event with wrapped envelope', async () => {
       // CRITICAL: Service should emit event, NOT call stateService directly
-      jest.spyOn(sessionService, 'getCurrentSession').mockReturnValue({ id: 'test-session' });
+      jest.spyOn(sessionService, 'getCurrentSession').mockReturnValue({
+        id: 'test-session', status: 'active', isActive: () => true,
+      });
       jest.spyOn(transactionService, 'processScan').mockResolvedValue({
         status: 'accepted',
         transactionId: 'tx-1',
@@ -91,6 +93,25 @@ describe('OfflineQueueService - Event-Driven Pattern', () => {
 
     it('should keep GM transactions queued when no session exists', async () => {
       jest.spyOn(sessionService, 'getCurrentSession').mockReturnValue(null);
+      const processScanSpy = jest.spyOn(transactionService, 'processScan');
+
+      offlineQueueService.gmTransactionQueue = [
+        { tokenId: 'TEST_001', teamId: 'Team Alpha', queueId: 'gm_q1', transactionId: 'tx-1' }
+      ];
+
+      const result = await offlineQueueService.processQueue();
+
+      expect(result).toEqual([]);
+      expect(processScanSpy).not.toHaveBeenCalled();
+      expect(offlineQueueService.gmTransactionQueue).toHaveLength(1);
+    });
+
+    it('should keep GM transactions queued when session is paused/setup (merge-readiness review minor)', async () => {
+      // GM transactions are rejected during non-active sessions — draining
+      // the queue then would consume scans as 'processed' without scoring.
+      jest.spyOn(sessionService, 'getCurrentSession').mockReturnValue({
+        id: 'test-session', status: 'paused', isActive: () => false,
+      });
       const processScanSpy = jest.spyOn(transactionService, 'processScan');
 
       offlineQueueService.gmTransactionQueue = [

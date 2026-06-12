@@ -77,6 +77,13 @@ const _loadTokensFile = () => {
     path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
   ];
 
+  if (process.env.TOKENS_PATH) {
+    // LOUD by design (merge-readiness review minor): a production process
+    // accidentally started with TOKENS_PATH set would silently run the game
+    // on a non-production token set — make the override unmissable in logs.
+    logger.warn(`TOKENS_PATH override ACTIVE — token data injected from: ${process.env.TOKENS_PATH}`);
+  }
+
   const failures = [];
   for (const tokenPath of paths) {
     try {

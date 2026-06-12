@@ -470,7 +470,10 @@ class SessionService extends EventEmitter {
 
       for (const sessionData of sessions) {
         const session = Session.fromJSON(sessionData);
-        if (session.isCompleted() && session.endTime) {
+        // 'ended' status check (merge-readiness review minor: this used to
+        // call session.isCompleted(), which does not exist on the model —
+        // a TypeError waiting for the first caller)
+        if (session.status === 'ended' && session.endTime) {
           const endTime = new Date(session.endTime).getTime();
           if (now - endTime > archiveAfterMs) {
             await persistenceService.archiveSession(session.toJSON());

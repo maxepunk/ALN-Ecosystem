@@ -1076,4 +1076,43 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       });
     });
   });
+
+  describe('archiveOldSessions (merge-readiness review minor)', () => {
+    // This method had ZERO callers and ZERO tests — which is how it shipped
+    // calling session.isCompleted(), a method that does not exist on the
+    // model (TypeError on first invocation). Pin the real predicate.
+    it('archives only ENDED sessions older than the archive threshold', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+      const config = require('../../../src/config');
+      const hoursMs = 60 * 60 * 1000;
+      const base = {
+        name: 'Archive Test', scores: [], transactions: [],
+        startTime: new Date(Date.now() - 200 * hoursMs).toISOString(),
+      };
+      const oldEnded = {
+        ...base, id: uuidv4(), status: 'ended',
+        endTime: new Date(Date.now() - (config.storage.archiveAfter + 1) * hoursMs).toISOString(),
+      };
+      const freshEnded = {
+        ...base, id: uuidv4(), status: 'ended',
+        endTime: new Date().toISOString(),
+      };
+      const stillActive = { ...base, id: uuidv4(), status: 'active', endTime: null };
+
+      const getAll = jest.spyOn(persistenceService, 'getAllSessions')
+        .mockResolvedValue([oldEnded, freshEnded, stillActive]);
+      const archive = jest.spyOn(persistenceService, 'archiveSession')
+        .mockResolvedValue(undefined);
+      try {
+        const archived = await sessionService.archiveOldSessions();
+
+        expect(archived).toBe(1);
+        expect(archive).toHaveBeenCalledTimes(1);
+        expect(archive.mock.calls[0][0].id).toBe(oldEnded.id);
+      } finally {
+        getAll.mockRestore();
+        archive.mockRestore();
+      }
+    });
+  });
 });

@@ -149,23 +149,27 @@ async function waitForEvent(socket, eventOrEvents, predicate = null, timeout = 5
   // need to catch an event caused by their own action MUST create this
   // promise BEFORE acting:  const p = waitForEvent(...); act(); await p;
   return new Promise((resolve, reject) => {
+    const handlers = [];
+    const removeAll = () => handlers.forEach(({ event: e, handler: h }) => socket.off(e, h));
+
     const timer = setTimeout(() => {
+      // Remove listeners on timeout too — otherwise every timed-out wait
+      // leaks its handlers onto the socket for the rest of the test
+      removeAll();
       reject(new Error(`Timeout waiting for event: ${events.join(' or ')}`));
     }, timeout);
-
-    const handlers = [];
 
     events.forEach(event => {
       const handler = (data) => {
         if (predicate && !predicate(data)) return; // Keep listening if predicate fails
 
         clearTimeout(timer);
-        handlers.forEach(({ event: e, handler: h }) => socket.off(e, h));
+        removeAll();
         resolve(data);
       };
       // CRITICAL FIX: Use .on() not .once() when predicate filter exists
       // .once() would consume listener on first event even if predicate fails
-      // Cleanup at line 170 ensures listener removed after match
+      // removeAll() ensures listeners are removed after match OR timeout
       socket.on(event, handler);
       handlers.push({ event, handler });
     });

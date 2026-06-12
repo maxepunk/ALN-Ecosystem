@@ -2,7 +2,9 @@
 # Install: pip install -r scripts/requirements.txt
 #
 # Derived from actual imports:
-# - requests:       Notion API calls (sync_notion_to_tokens.py, compare_rfid_with_files.py)
+# - requests:       Notion API calls (sync_notion_to_tokens.py — the former
+#                   compare_rfid_with_files.py was folded into sync as its
+#                   pre-write validation phase)
 # - Pillow:         NeurAI BMP generation (sync_notion_to_tokens.py, generate_placeholder.py,
 #                   neurai_display_generator.py)
 # - python-dotenv:  optional .env loading (graceful ImportError fallback, but

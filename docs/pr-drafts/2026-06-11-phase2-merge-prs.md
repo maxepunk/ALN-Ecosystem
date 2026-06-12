@@ -200,12 +200,20 @@ Parent pins re-pointed at the fixed PR-branch tips.
   aln-memory-scanner/data to post-merge ALN-TokenData main? (Recommended:
   yes, for consistency; schema is additive so it's safe.)
 
-**Deferred minors (post-merge follow-up batch — all non-blocking, listed in
-the review):** waitForEvent timeout listener cleanup + implementation
-unification + stale cache-era comments; 22-test listener-after-action (×2,
-Tier H); fixture-pack schema validation + TOKENS_PATH WARN banner;
-archiveOldSessions dead isCompleted(); offlineQueue paused/setup drain
-hazard; teamScoreStash leak; contract-test batchId example drift; CI nits
-(npm cache, retries:2, stale requirements.txt ref); group-completion
-cosmetic divergences (bonus base source, x1 completedGroups); player-scanner
-partial-batch failedCount logging; GM duplicate-verdict repaint RFID check.
+**Deferred minors — PULLED FORWARD (owner decision 2026-06-12: enter
+Phase 3 with the cleanest codebase possible). ALL review minors are now
+fixed on the PR branches:** waitForEvent timeout listener cleanup +
+implementation unification (wait-conditions delegates to core) + stale
+cache-era comments; flow-22 listener-after-action races (×2); fixture-pack
+schema validation (contract test) + TOKENS_PATH loud WARN banner;
+archiveOldSessions isCompleted() TypeError fixed + first-ever test;
+offlineQueue ACTIVE-only drain guard; teamScoreStash self-expiry;
+contract-test batchId example matches real firmware format; CI: ALNScanner
+npm cache + manifest reporter now counts and NAMES flaky (passed-on-retry)
+tests; requirements.txt stale ref; group-completion divergences DOCUMENTED
+as accepted in SCORING_LOGIC.md (dissolve in Phase 3); player-scanner
+partial-batch failedCount logging + unreachable-guard removal (which
+surfaced and fixed a non-spec fetch mock in the backend-side suite + an
+unhandled-rejection hazard in onConnectionRestored); GM duplicate-verdict
+repaint RFID guard; ESP32 lazy nonce + reboot-trade comment + unified
+outcome switch. Nothing from the review remains deferred.
