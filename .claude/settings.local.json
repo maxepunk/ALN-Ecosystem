@@ -53,8 +53,7 @@
       "Bash(git -C /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem rev-parse HEAD)",
       "Skill(claude-md-management:revise-claude-md)",
       "mcp__plugin_episodic-memory_episodic-memory__read",
-      "Bash(pactl list:*)",
-      "Bash(cp \"/root/.claude/uploads/021325f4-6cff-51d4-998f-05b74af13c04/63edd206-20260611phase2mergereadinessreview.md\" /home/user/ALN-Ecosystem/docs/reviews/2026-06-11-phase2-merge-readiness-review.md && echo copied)"
+      "Bash(pactl list:*)"
     ],
     "deny": [],
     "ask": []
