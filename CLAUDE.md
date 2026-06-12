@@ -35,7 +35,7 @@ ALN-TokenData/
     "processingImage": "assets/images/{tokenId}.bmp" | null,
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
-    "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party",
+    "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party" | null,
     "SF_Group": "Group Name (xN)" | "",
     "summary": "Optional description text",
     "owner": "Character Name" | null
@@ -45,6 +45,7 @@ ALN-TokenData/
 
 **Field Notes:**
 - `SF_*` fields are synced from Notion (source of truth)
+- `SF_MemoryType: null` is tolerated (scores 0x as UNKNOWN); the sync script warns on it
 - `SF_Group` format: `"Group Name (xN)"` where N is the group size multiplier
 - `video` tokens use `processingImage` as placeholder during playback
 - Asset paths are relative to the consuming application's asset directory

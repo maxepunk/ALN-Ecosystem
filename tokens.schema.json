@@ -25,9 +25,9 @@
       "additionalProperties": false,
       "properties": {
         "image": {
-          "description": "Memory image shown by player scanners, relative to the token-data root",
+          "description": "Memory image shown by player scanners, relative to the token-data root. BMP only — the ESP32 renderer cannot decode other formats",
           "type": ["string", "null"],
-          "pattern": "^assets/images/.+"
+          "pattern": "^assets/images/.+\\.bmp$"
         },
         "audio": {
           "description": "Memory audio played by player scanners, relative to the token-data root",
@@ -40,9 +40,9 @@
           "pattern": "^[^/]+\\.mp4$"
         },
         "processingImage": {
-          "description": "Interstitial image shown while a video token is queued",
+          "description": "Interstitial image shown while a video token is queued. BMP only, as with image",
           "type": ["string", "null"],
-          "pattern": "^assets/images/.+"
+          "pattern": "^assets/images/.+\\.bmp$"
         },
         "SF_RFID": {
           "description": "Token identifier — MUST equal this token's object key",
@@ -63,7 +63,7 @@
         "SF_Group": {
           "description": "Group membership microformat: '' (no group) or 'Group Name (xN)' where N is the completion multiplier. All members of a group must carry the identical string",
           "type": "string",
-          "pattern": "^$|^.+ \\(x[0-9]+\\)$"
+          "pattern": "^$|^.+ \\(x[1-9][0-9]*\\)$"
         },
         "summary": {
           "description": "Public summary shown on the scoreboard when the token is exposed via a Detective transaction",
