@@ -177,3 +177,35 @@ content adds one (flagged, content decision).
   Phase 3 program methodology) — no more mega-branches.
 - The bootstrap hook lands on main with the parent PR, activating for all
   future web sessions.
+
+## Merge-readiness review outcome (2026-06-12)
+
+Independent review (docs/reviews/2026-06-11-phase2-merge-readiness-review.md)
+verdicts: #1 READY · #10/#5/#6 READY-WITH-NOTES · #17 NOT-READY (CI red).
+All merge-gating findings are now FIXED and pushed:
+
+| Finding | Where | Commit |
+|---|---|---|
+| B1 lint errors, B2 coverage gap, P17-M1 write-queue bypass, P17-M2 unscoped credential helper, P17-M3 racy settles + lint gap, ESP-2 record fix | parent | 534cc7c, 0fbb1d6 |
+| PS-1 batch-snapshot loss, PS-2 SW branch shadowing, PS-3 dead coverage threshold | ALNPlayerScan #5 | a6606a1 |
+| Unescaped tokenId (attr context) + 2 text-node escapes + comment drift | ALNScanner #10 | 493160a |
+
+Parent pins re-pointed at the fixed PR-branch tips.
+
+**Open owner decisions (from the review):**
+- ESP-1 (decide at the CYD smoke test): REJECTED_NO_SESSION currently shows
+  SCAN_FAILED without local content — bless explicitly or show content with
+  failure overlay (A5 tension).
+- Nested data-pin question at the re-pin step: bump ALNScanner/data +
+  aln-memory-scanner/data to post-merge ALN-TokenData main? (Recommended:
+  yes, for consistency; schema is additive so it's safe.)
+
+**Deferred minors (post-merge follow-up batch — all non-blocking, listed in
+the review):** waitForEvent timeout listener cleanup + implementation
+unification + stale cache-era comments; 22-test listener-after-action (×2,
+Tier H); fixture-pack schema validation + TOKENS_PATH WARN banner;
+archiveOldSessions dead isCompleted(); offlineQueue paused/setup drain
+hazard; teamScoreStash leak; contract-test batchId example drift; CI nits
+(npm cache, retries:2, stale requirements.txt ref); group-completion
+cosmetic divergences (bonus base source, x1 completedGroups); player-scanner
+partial-batch failedCount logging; GM duplicate-verdict repaint RFID check.
