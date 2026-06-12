@@ -38,23 +38,39 @@ class ManifestReporter {
       'Tier H (@hardware)': { passed: 0, failed: 0, skipped: 0, flaky: 0 },
     };
     this.flakyTests = [];
+    // test.id → { test, lastRetry }. Counts are derived from FINAL outcomes
+    // in onEnd() — onTestEnd fires once per ATTEMPT, so counting there
+    // double-counts a fail-then-pass retry (attempt 1 bumped failed, attempt
+    // 2 bumped flaky → "1 failed" printed against exit 0).
+    this._tests = new Map();
   }
 
   onTestEnd(test, result) {
-    const tier = test.titlePath().join(' ').includes('@hardware')
-      ? 'Tier H (@hardware)' : 'Tier L';
-    // A pass on retry is a FLAKE, not a pass (merge-readiness review CI nit:
-    // retries:2 silently masked Tier L flakes). Count and NAME them so an
-    // "all green" run discloses what only passed on a second attempt.
-    if (result.status === 'passed' && result.retry > 0) {
-      this.tiers[tier].flaky++;
-      this.flakyTests.push(`${test.titlePath().slice(1).join(' › ')} (passed on retry ${result.retry})`);
-    } else if (result.status === 'passed') this.tiers[tier].passed++;
-    else if (result.status === 'skipped') this.tiers[tier].skipped++;
-    else if (result.status === 'failed' || result.status === 'timedOut') this.tiers[tier].failed++;
+    const entry = this._tests.get(test.id) || { test, lastRetry: 0 };
+    entry.lastRetry = Math.max(entry.lastRetry, result.retry);
+    this._tests.set(test.id, entry);
   }
 
   onEnd() {
+    // Final outcomes only: test.outcome() folds all attempts into
+    // 'expected' | 'unexpected' | 'flaky' | 'skipped'. A pass on retry is a
+    // FLAKE, not a pass (merge-readiness review CI nit: retries:2 silently
+    // masked Tier L flakes) — count and NAME them so an "all green" run
+    // discloses what only passed on a second attempt.
+    for (const { test, lastRetry } of this._tests.values()) {
+      const tier = test.titlePath().join(' ').includes('@hardware')
+        ? 'Tier H (@hardware)' : 'Tier L';
+      switch (test.outcome()) {
+        case 'expected': this.tiers[tier].passed++; break;
+        case 'skipped': this.tiers[tier].skipped++; break;
+        case 'flaky':
+          this.tiers[tier].flaky++;
+          this.flakyTests.push(`${test.titlePath().slice(1).join(' › ')} (passed on retry ${lastRetry})`);
+          break;
+        default: this.tiers[tier].failed++; // 'unexpected'
+      }
+    }
+
     const tools = hostToolManifest();
     const lines = [
       '',

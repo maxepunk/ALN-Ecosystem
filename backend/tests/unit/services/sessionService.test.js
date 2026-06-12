@@ -815,6 +815,148 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         saveSessionSpy.mockRestore();
       }
     });
+
+    it('persists the ended status LAST when endSession races an in-flight queued persist (P17-M1)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Interleave Test',
+        teams: []
+      });
+
+      // Record every write IN LANDING ORDER via a mock persistence layer
+      const writes = [];
+      let releaseSlow;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async (data) => {
+          if (firstCall) {
+            firstCall = false;
+            // Artificially slow FIRST write — held open mid-flight
+            await new Promise(resolve => { releaseSlow = resolve; });
+          }
+          writes.push(`saveSession:${data.status}`);
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async (key, data) => {
+          writes.push(`${key}:${data.status}`);
+        });
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession')
+        .mockResolvedValue(undefined);
+
+      try {
+        // Queue a normal persist: its snapshot (status 'setup') is already
+        // captured and its first disk write is now hanging in flight
+        const slowPersist = sessionService.saveCurrentSession();
+        await new Promise(resolve => setImmediate(resolve));
+
+        // endSession() while that write is in flight — its 'ended' snapshot
+        // must land BEHIND the in-flight write, never interleaved before it
+        const endPromise = sessionService.endSession();
+
+        releaseSlow();
+        await Promise.all([slowPersist, endPromise]);
+
+        // Writes landed strictly in enqueue order...
+        expect(writes).toEqual([
+          'saveSession:setup', 'session:current:setup',
+          'saveSession:ended', 'session:current:ended'
+        ]);
+        // ...so the FINAL persisted session:current state is 'ended' (an
+        // older snapshot can never resurrect the session as active/setup)
+        const currentWrites = writes.filter(w => w.startsWith('session:current:'));
+        expect(currentWrites[currentWrites.length - 1]).toBe('session:current:ended');
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+        backupSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('reset() write-queue draining (F-BCORE-07 follow-up, review N1)', () => {
+    const persistenceService = require('../../../src/services/persistenceService');
+
+    it('drains an in-flight queued persist BEFORE deleting persisted session keys', async () => {
+      await sessionService.createSession({
+        name: 'Reset Drain Test',
+        teams: []
+      });
+
+      const events = [];
+      let releaseSlow;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async () => {
+          events.push('saveSession:start');
+          if (firstCall) {
+            firstCall = false;
+            await new Promise(resolve => { releaseSlow = resolve; });
+          }
+          events.push('saveSession:end');
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async () => {
+          events.push('save:current');
+        });
+      const deleteSpy = jest.spyOn(persistenceService, 'delete')
+        .mockImplementation(async (key) => {
+          events.push(`delete:${key}`);
+        });
+
+      try {
+        // A queued write already past the null guard, hanging mid-flight
+        const slowPersist = sessionService.saveCurrentSession();
+        await new Promise(resolve => setImmediate(resolve));
+
+        const resetPromise = sessionService.reset();
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Deletes must NOT have run while the queued write is in flight —
+        // otherwise the stale write lands after them and survives on disk
+        expect(events.filter(e => e.startsWith('delete:'))).toHaveLength(0);
+
+        releaseSlow();
+        await Promise.all([slowPersist, resetPromise]);
+
+        expect(events).toEqual([
+          'saveSession:start', 'saveSession:end', 'save:current',
+          'delete:session:current', 'delete:gameState:current'
+        ]);
+        expect(sessionService.getCurrentSession()).toBeNull();
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+        deleteSpy.mockRestore();
+      }
+    });
+
+    it('still resets (and deletes) when the prior queue chain contains a rejected write', async () => {
+      await sessionService.createSession({
+        name: 'Reset After Failed Write Test',
+        teams: []
+      });
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockRejectedValueOnce(new Error('disk full'));
+      const deleteSpy = jest.spyOn(persistenceService, 'delete')
+        .mockResolvedValue(undefined);
+
+      try {
+        await expect(sessionService.saveCurrentSession()).rejects.toThrow('disk full');
+
+        // The rejected write must not wedge reset (chain is kept alive)
+        await expect(sessionService.reset()).resolves.toBeUndefined();
+        expect(deleteSpy).toHaveBeenCalledWith('session:current');
+        expect(deleteSpy).toHaveBeenCalledWith('gameState:current');
+        expect(sessionService.getCurrentSession()).toBeNull();
+      } finally {
+        saveSessionSpy.mockRestore();
+        deleteSpy.mockRestore();
+      }
+    });
   });
 
   describe('scores:reset listener — full restart semantics (F-BCORE-02 / F-BCORE-04, decision A3)', () => {

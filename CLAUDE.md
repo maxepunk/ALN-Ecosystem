@@ -132,7 +132,7 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
     "processingImage": "assets/images/{tokenId}.bmp" | null,
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
-    "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party",
+    "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party" | null,
     "SF_Group": "Group Name (xN)" | "",
     "summary": "Optional summary text",
     "owner": "CHARACTER_NAME" | null
@@ -142,6 +142,7 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
 
 **Field Notes:**
 - `owner`: Character who owns this memory, resolved from Notion Elements→Characters Owner relation during sync (role prefix stripped)
+- `SF_MemoryType`: `null` occurs in production data (3 tokens currently); scoring treats null/unknown types as UNKNOWN → 0x multiplier (tokens.schema.json allows null)
 
 **Data Flow:**
 ```

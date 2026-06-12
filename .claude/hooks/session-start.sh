@@ -50,6 +50,13 @@ if ! git config --global --get credential.helper >/dev/null 2>&1 \
    && ! git config --global --get credential.https://github.com.helper >/dev/null 2>&1; then
   git config --global credential.https://github.com.helper \
     '!f() { echo "username=x-access-token"; cat /tmp/.ghcred; }; f'
+elif git config --global --get credential.helper >/dev/null 2>&1 \
+     && ! git config --global --get credential.https://github.com.helper >/dev/null 2>&1; then
+  # Skip path taken because of an UNSCOPED helper: such a helper answers for
+  # EVERY host git contacts — not just github.com. Warn loudly; never rewrite
+  # credential config someone else owns from a bootstrap hook.
+  log "WARN: UNSCOPED global credential.helper set (no github.com-scoped helper) — it may expose the PAT to non-GitHub hosts"
+  log "WARN:   scope it to GitHub via the credential.https://github.com.helper key instead"
 fi
 
 # ── 1. Submodules ────────────────────────────────────────────────────────────

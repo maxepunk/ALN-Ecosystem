@@ -476,7 +476,10 @@ class SessionService extends EventEmitter {
         if (session.status === 'ended' && session.endTime) {
           const endTime = new Date(session.endTime).getTime();
           if (now - endTime > archiveAfterMs) {
-            await persistenceService.archiveSession(session.toJSON());
+            // Archive through the write queue: ALL session persistence
+            // flows through _enqueueWrite (F-BCORE-07) for ordering
+            const sessionJSON = session.toJSON();
+            await this._enqueueWrite(() => persistenceService.archiveSession(sessionJSON));
             archived++;
           }
         }
@@ -654,12 +657,22 @@ class SessionService extends EventEmitter {
     // Infrastructure listeners will be re-registered by setupBroadcastListeners()
     this.removeAllListeners();
 
-    // Reinitialize state
-    this.initState();
+    // Clear persistence THROUGH the write queue (F-BCORE-07 follow-up): a
+    // queued write already past _persistCurrentSession's null guard could
+    // otherwise land AFTER direct deletes, leaving a stale session on disk
+    // for the next restart. Enqueuing orders the deletes behind every
+    // in-flight write, and awaiting the task drains the old chain BEFORE
+    // initState() re-arms _writeQueue (abandoning the chain). A previously
+    // rejected write cannot wedge this — _enqueueWrite keeps the chain
+    // alive on failure.
+    await this._enqueueWrite(async () => {
+      await persistenceService.delete('session:current');
+      await persistenceService.delete('gameState:current');
+    });
 
-    // Clear persistence
-    await persistenceService.delete('session:current');
-    await persistenceService.delete('gameState:current');
+    // Reinitialize state (re-arms a FRESH write queue now that the old
+    // chain has fully drained)
+    this.initState();
 
     // Cross-service listeners (setupScoreListeners, setupPersistenceListeners,
     // setupGameClockListeners) are NOT registered here. They are registered
