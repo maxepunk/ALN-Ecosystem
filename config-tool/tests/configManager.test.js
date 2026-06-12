@@ -136,6 +136,41 @@ describe('configManager', () => {
       assert.strictEqual(configManager.listPresets().length, 1);
     });
 
+    it('rolls back all sections when a write fails mid-apply (CT-F2)', () => {
+      configManager.savePreset('Target', '');
+      const presetPath = path.join(tmpDir, 'presets', 'target.json');
+      const preset = JSON.parse(fs.readFileSync(presetPath, 'utf8'));
+      preset.env.PORT = '7777';
+      preset.scoringConfig.baseValues['1'] = 11111;
+      fs.writeFileSync(presetPath, JSON.stringify(preset));
+
+      // I/O-failure seam: the scoring write fails ONCE (env has already been
+      // applied by then); the rollback's writeScoring call reaches the real
+      // writer on the second invocation.
+      const realWriteScoring = configManager.writeScoring.bind(configManager);
+      let calls = 0;
+      configManager.writeScoring = (data) => {
+        calls += 1;
+        if (calls === 1) throw new Error('EACCES: permission denied');
+        return realWriteScoring(data);
+      };
+
+      assert.throws(
+        () => configManager.loadPreset('target.json'),
+        /previous config restored/
+      );
+
+      // env was written with preset values before the failure — rolled back
+      const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
+      assert.ok(content.includes('PORT=3000'));
+      assert.ok(!content.includes('PORT=7777'));
+      // scoring never took the preset value (first write threw; rollback
+      // rewrote the original)
+      const scoring = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
+      assert.strictEqual(scoring.baseValues['1'], 10000);
+      assert.strictEqual(calls, 2);
+    });
+
     it('prevents path traversal in loadPreset', () => {
       assert.throws(() => configManager.loadPreset('../../../etc/passwd'));
     });

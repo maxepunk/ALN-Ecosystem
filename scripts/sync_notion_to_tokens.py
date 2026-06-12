@@ -15,8 +15,10 @@ Failure posture (E8): any non-complete Notion fetch (HTTP error, missing
 write, NO prune, NO manifest. Use --force to override.
 
 Flags:
-  --force    proceed with partial Notion data despite fetch failures (DANGEROUS)
-  --prune    actually delete orphaned asset files (default: report only)
+  --force    proceed with partial Notion data despite fetch failures, and allow
+             --prune past the >50%-shrink guard (DANGEROUS)
+  --prune    actually delete orphaned asset files (default: report only;
+             skipped when token count shrinks >50% unless --force)
   --dry-run  fetch + validate only; write nothing, delete nothing
 """
 
@@ -868,11 +870,14 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Sync Notion Elements database to tokens.json")
     parser.add_argument(
         "--force", action="store_true",
-        help="proceed with partial Notion data despite fetch failures (DANGEROUS: "
-             "may shrink tokens.json; combine with --prune only if you are sure)")
+        help="proceed with partial Notion data despite fetch failures, and allow "
+             "--prune to delete even when the token count shrinks by >50%% "
+             "(DANGEROUS: may shrink tokens.json and bulk-delete assets)")
     parser.add_argument(
         "--prune", action="store_true",
-        help="actually delete orphaned asset files (default: report what would be deleted)")
+        help="actually delete orphaned asset files (default: report what would be "
+             "deleted); skipped with an error if the token count shrinks by >50%% "
+             "unless --force is also given")
     parser.add_argument(
         "--dry-run", action="store_true",
         help="fetch + validate only: no tokens.json write, no BMP generation, no prune, no manifest")
@@ -993,11 +998,17 @@ def main(argv=None):
         print("  ✓ No issues found")
     print()
 
-    # Safety check: warn if token count dropped significantly
+    # Safety check: a >50% token-count drop usually means a Notion data
+    # problem (bulk-archived pages, wrong DB), not a real shrink. Besides the
+    # warning, this gates --prune below: a shrunken token set would otherwise
+    # classify the missing tokens' assets as orphans and bulk-delete them.
+    suspicious_shrink = False
+    existing_count = 0
     if TOKENS_JSON.exists():
         with open(TOKENS_JSON) as f:
             existing_count = len(json.load(f))
         if len(sorted_tokens) < existing_count * 0.5:
+            suspicious_shrink = True
             print(f"⚠️  WARNING: Only {len(sorted_tokens)} tokens found (existing file has {existing_count}). Possible Notion data problem.")
 
     if args.dry_run:
@@ -1021,7 +1032,15 @@ def main(argv=None):
     # reporting (E8) — pass --prune to actually delete. `placeholder.bmp` is
     # preserved via generate_asset_manifest.EXEMPT_STEMS.
     print()
-    if args.prune:
+    if args.prune and suspicious_shrink and not args.force:
+        # Same posture as the fetch abort above: refuse destructive work on
+        # suspicious data, point at --force for the deliberate override.
+        print("✗ PRUNE SKIPPED: token count dropped by more than 50% "
+              f"({existing_count} → {len(sorted_tokens)}).")
+        print("  Deleting 'orphans' now would bulk-remove assets for tokens that are")
+        print("  probably still real (bulk-archived Notion pages, wrong database, ...).")
+        print("  If this shrink is intentional, re-run with --prune --force.")
+    elif args.prune:
         print("Pruning orphaned asset files...")
         removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys())
         if removed:

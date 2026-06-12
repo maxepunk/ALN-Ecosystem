@@ -26,6 +26,11 @@ function parseEnvFile(content) {
         continue;
       }
       const key = trimmed.substring(0, eqIndex).trim();
+      // NOTE: an unquoted inline `#` is NOT treated as a comment — for
+      // `KEY=val # note` the value keeps " # note". This deliberately
+      // diverges from the backend's dotenv parser, which strips unquoted
+      // inline comments. Pinned in tests/envParser.test.js; change only in
+      // lockstep with serializeEnv quoting and the backend's parser.
       let value = trimmed.substring(eqIndex + 1).trim();
 
       // Strip surrounding quotes. Double-quoted values unescape \" → "

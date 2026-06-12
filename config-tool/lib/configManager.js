@@ -204,17 +204,40 @@ class ConfigManager {
     // Auto-backup current config before overwriting. Tolerate a corrupt
     // existing config file (skip-with-warning) — preset load is exactly the
     // recovery path for that scenario, so the backup must not brick it.
+    // The in-memory snapshot doubles as the rollback source below.
+    let backup = null;
     try {
+      backup = this.readAll();
       this.savePreset('_backup_' + Date.now(), 'Auto-backup before loading preset');
     } catch (err) {
+      backup = null;
       console.warn(`[config-tool] Skipping auto-backup (current config unreadable): ${err.message}`);
     }
 
-    // Write all config files from preset
-    this.writeEnvValues(preset.env);
-    this.writeScoring(preset.scoringConfig);
-    this.writeCues(preset.cues);
-    this.writeRouting(preset.routing);
+    // Write all config files from preset. Up-front validation can't catch
+    // I/O failures (EACCES, disk full) mid-sequence — on any write failure,
+    // roll back every section from the backup taken above so the config is
+    // never left half-applied (F-TOOL-11).
+    try {
+      this.writeEnvValues(preset.env);
+      this.writeScoring(preset.scoringConfig);
+      this.writeCues(preset.cues);
+      this.writeRouting(preset.routing);
+    } catch (err) {
+      if (!backup) throw err; // current config was unreadable — nothing to restore
+      try {
+        this.writeEnvValues(backup.env);
+        this.writeScoring(backup.scoring);
+        this.writeCues(backup.cues);
+        this.writeRouting(backup.routing);
+      } catch (restoreErr) {
+        throw new Error(
+          `preset apply failed (${err.message}); rollback ALSO failed (${restoreErr.message}) — ` +
+          'config may be half-applied; restore manually from the auto-backup preset'
+        );
+      }
+      throw new Error(`preset apply failed; previous config restored: ${err.message}`);
+    }
 
     return preset;
   }

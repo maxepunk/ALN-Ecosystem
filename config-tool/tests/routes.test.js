@@ -29,7 +29,7 @@ describe('routes (HTTP layer)', () => {
 
     fs.writeFileSync(
       path.join(tmpDir, '.env'),
-      'PORT=3000\nHOST=0.0.0.0\nADMIN_PASSWORD=super-secret\nJWT_SECRET=jwt-secret-value\nHOME_ASSISTANT_TOKEN=ha-token-value\nEMPTY_TOKEN=\n'
+      'PORT=3000\nHOST=0.0.0.0\nADMIN_PASSWORD=super-secret\nJWT_SECRET=jwt-secret-value\nHOME_ASSISTANT_TOKEN=ha-token-value\nEMPTY_TOKEN=\nNOTION_API_KEY=notion-key-value\nMPD_PASS=mpd-pass-value\nSSL_KEY_PATH=/etc/ssl/server.key\n'
     );
     fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
       version: '1.0',
@@ -311,6 +311,91 @@ describe('routes (HTTP layer)', () => {
       const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
       assert.ok(content.includes('ADMIN_PASSWORD=rotated'));
       assert.ok(!content.includes('super-secret'));
+    });
+
+    it('masks _KEY/_PASS/_APIKEY/API_KEY suffixes; _PATH keys stay readable (CT-F4)', async () => {
+      const { isSecretKey } = require('../lib/secrets');
+      const res = await request(app).get('/api/config').expect(200);
+      assert.strictEqual(res.body.env.NOTION_API_KEY, MASK_SENTINEL);
+      assert.strictEqual(res.body.env.MPD_PASS, MASK_SENTINEL);
+      // Suffix-anchored: SSL_KEY_PATH ends in _PATH, not _KEY — not a secret
+      assert.strictEqual(res.body.env.SSL_KEY_PATH, '/etc/ssl/server.key');
+      assert.ok(!JSON.stringify(res.body).includes('notion-key-value'));
+      assert.ok(!JSON.stringify(res.body).includes('mpd-pass-value'));
+      assert.strictEqual(isSecretKey('X_APIKEY'), true);
+      assert.strictEqual(isSecretKey('API_KEY'), true);
+      assert.strictEqual(isSecretKey('SSL_KEY_PATH'), false);
+    });
+  });
+
+  describe('preset endpoints never serve raw secrets (CT-1)', () => {
+    const { MASK_SENTINEL } = require('../lib/secrets');
+
+    it('GET /api/presets/:filename/export masks env; on-disk preset stays raw', async () => {
+      await request(app).post('/api/presets').send({ name: 'Venue A' }).expect(200);
+
+      // On disk: raw (required so Load can restore real secrets)
+      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'presets', 'venue-a.json'), 'utf8'));
+      assert.strictEqual(onDisk.env.ADMIN_PASSWORD, 'super-secret');
+      assert.strictEqual(onDisk.env.JWT_SECRET, 'jwt-secret-value');
+
+      // Over the wire: masked, non-secrets readable
+      const res = await request(app).get('/api/presets/venue-a.json/export').expect(200);
+      assert.strictEqual(res.body.env.ADMIN_PASSWORD, MASK_SENTINEL);
+      assert.strictEqual(res.body.env.PORT, '3000');
+      assert.ok(!JSON.stringify(res.body).includes('super-secret'));
+      assert.ok(!JSON.stringify(res.body).includes('jwt-secret-value'));
+      assert.ok(!JSON.stringify(res.body).includes('ha-token-value'));
+    });
+
+    it('PUT /api/presets/:filename/load masks env in the response', async () => {
+      await request(app).post('/api/presets').send({ name: 'Venue B' }).expect(200);
+      const res = await request(app).put('/api/presets/venue-b.json/load').expect(200);
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.preset.env.ADMIN_PASSWORD, MASK_SENTINEL);
+      assert.ok(!JSON.stringify(res.body).includes('super-secret'));
+      assert.ok(!JSON.stringify(res.body).includes('jwt-secret-value'));
+    });
+
+    it('GET /api/presets list and POST /api/presets/import responses carry no env contents', async () => {
+      await request(app).post('/api/presets').send({ name: 'Venue C' }).expect(200);
+      const list = await request(app).get('/api/presets').expect(200);
+      assert.ok(!('env' in list.body[0]));
+      assert.ok(!JSON.stringify(list.body).includes('super-secret'));
+
+      const exported = await request(app).get('/api/presets/venue-c.json/export').expect(200);
+      const imp = await request(app)
+        .post('/api/presets/import')
+        .attach('file', Buffer.from(JSON.stringify({ ...exported.body, name: 'Venue C2' })), 'venue-c2.json')
+        .expect(200);
+      assert.deepStrictEqual(imp.body, { success: true, filename: 'venue-c2.json' });
+    });
+
+    it('masked-export → import → load round-trip preserves stored secrets', async () => {
+      // 1. Save current config as a preset; export it (env masked in flight)
+      await request(app).post('/api/presets').send({ name: 'Round Trip' }).expect(200);
+      const exported = await request(app).get('/api/presets/round-trip.json/export').expect(200);
+      assert.strictEqual(exported.body.env.ADMIN_PASSWORD, MASK_SENTINEL);
+
+      // 2. Re-import the masked export (with a non-secret tweak so the load
+      //    visibly applies something)
+      const reimport = { ...exported.body, name: 'Round Trip 2' };
+      reimport.env = { ...reimport.env, PORT: '5555' };
+      await request(app)
+        .post('/api/presets/import')
+        .attach('file', Buffer.from(JSON.stringify(reimport)), 'rt2.json')
+        .expect(200);
+
+      // 3. Load the reimported preset (its env carries mask sentinels)
+      await request(app).put('/api/presets/round-trip-2.json/load').expect(200);
+
+      // 4. Real secrets untouched (sentinel skipped on write); tweak applied;
+      //    no literal bullets ever written to .env
+      const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
+      assert.ok(content.includes('ADMIN_PASSWORD=super-secret'));
+      assert.ok(content.includes('JWT_SECRET=jwt-secret-value'));
+      assert.ok(content.includes('PORT=5555'));
+      assert.ok(!content.includes(MASK_SENTINEL));
     });
   });
 });

@@ -310,6 +310,39 @@ class TestMainPruneGating:
         assert orphan.exists()
         assert json.loads(sandbox["tokens_json"].read_text()) == {"pre001": {"SF_RFID": "pre001"}}
 
+    def test_prune_skipped_on_over_half_shrink(self, sandbox, monkeypatch, capsys):
+        # Existing tokens.json has 3 tokens; Notion now returns 1 (>50% drop —
+        # e.g. a bulk-archived DB). --prune must be refused, not honored.
+        sandbox["tokens_json"].write_text(json.dumps({
+            "pre001": {"SF_RFID": "pre001"},
+            "pre002": {"SF_RFID": "pre002"},
+            "pre003": {"SF_RFID": "pre003"},
+        }))
+        orphan = sandbox["images"] / "orphan99.bmp"
+        orphan.write_bytes(b"x")
+        page = make_page("Token A", "Body\n\nSF_RFID: [tok001]\nSF_ValueRating: [3]\nSF_MemoryType: [Personal]")
+        self._wire(monkeypatch, [page])
+
+        sync.main(["--prune"])
+        out = capsys.readouterr().out
+        assert orphan.exists(), "prune must be skipped on a suspicious shrink"
+        assert "PRUNE SKIPPED" in out
+        assert "--force" in out
+
+    def test_force_overrides_shrink_prune_guard(self, sandbox, monkeypatch):
+        sandbox["tokens_json"].write_text(json.dumps({
+            "pre001": {"SF_RFID": "pre001"},
+            "pre002": {"SF_RFID": "pre002"},
+            "pre003": {"SF_RFID": "pre003"},
+        }))
+        orphan = sandbox["images"] / "orphan99.bmp"
+        orphan.write_bytes(b"x")
+        page = make_page("Token A", "Body\n\nSF_RFID: [tok001]\nSF_ValueRating: [3]\nSF_MemoryType: [Personal]")
+        self._wire(monkeypatch, [page])
+
+        sync.main(["--prune", "--force"])
+        assert not orphan.exists()
+
     def test_duplicate_rfid_warns_with_both_titles(self, sandbox, monkeypatch, capsys):
         desc = "Body\n\nSF_RFID: [tok001]\nSF_ValueRating: [3]\nSF_MemoryType: [Personal]"
         self._wire(monkeypatch, [make_page("First Page", desc), make_page("Second Page", desc)])
