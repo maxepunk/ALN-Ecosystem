@@ -192,6 +192,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
       expect(status).toEqual({
         connected: true,
         queueSize: 2,
+        // Additive field (review PS-N2): snapshot items are unsent work too
+        pendingBatchSize: 0,
         maxQueueSize: 100,
         deviceId: expect.stringMatching(/^PLAYER_\d+$/)
       });

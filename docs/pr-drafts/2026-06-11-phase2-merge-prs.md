@@ -217,3 +217,26 @@ surfaced and fixed a non-spec fetch mock in the backend-side suite + an
 unhandled-rejection hazard in onConnectionRestored); GM duplicate-verdict
 repaint RFID guard; ESP32 lazy nonce + reboot-trade comment + unified
 outcome switch. Nothing from the review remains deferred.
+
+## Round-2 package review outcome (2026-06-12, second independent session)
+
+Full re-review of all five PRs at the round-1-fixed SHAs (six parallel
+deep-review agents; config-tool/scripts got its FIRST dedicated reviewer).
+Every round-1 fix verified genuine — no weakened gates anywhere. The fresh
+pass found 1 MAJOR (config-tool preset endpoints served raw secrets,
+bypassing the new E7 masking) + ~18 LOW/MINOR/INFO findings. Per owner
+decision ("rock solid before merge"), ALL of them are now fixed on the PR
+branches — full record: docs/reviews/2026-06-12-phase2-package-review-round2.md
+
+| Round-2 fixes | Where | Commit |
+|---|---|---|
+| CT-1 preset secret leak (MAJOR) + preset I/O rollback + field-typed cue coercion + mask suffixes + envParser pin + prune shrink guard | parent | 13d9a25 |
+| reset()/archive writes through the F-BCORE-07 queue (+P17-M1 interleaving test); manifest-reporter final-outcome counts; hook unscoped-helper WARN; CLAUDE.md null SF_MemoryType | parent | c0ed08c |
+| Steady-state queue drain after 5xx; snapshot-first persist; poison-batch load filtering; additive pendingBatchSize | ALNPlayerScan #5 | 42df0c5 |
+| Defense-in-depth escapes; regression pins for the round-1 XSS fixes | ALNScanner #10 | 44ee450 |
+| Schema: .bmp-only images, no (x0) multiplier; null SF_MemoryType docs | ALN-TokenData #1 | 88ef4e7 |
+| Lazy-nonce benign-race comment | arduino-cyd #6 | 1d2469d |
+
+Parent pins re-pointed at the round-2 tips. Unchanged owner gates: CYD
+flash smoke test for #6 (decide ESP-1 there); nested data-pin question at
+the re-pin step; post-merge Pi steps (ALNScanner build + Tier H).
