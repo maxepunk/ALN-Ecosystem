@@ -286,6 +286,38 @@ describe('TokenService - Token Loading', () => {
     });
   });
 
+  describe('TOKENS_PATH injection seam (Phase 2.x.4)', () => {
+    afterEach(() => {
+      delete process.env.TOKENS_PATH;
+    });
+
+    it('should try TOKENS_PATH first when set, winning over submodule defaults', () => {
+      process.env.TOKENS_PATH = '/packs/fixture-pack.tokens.json';
+      fs.readFileSync.mockReturnValue(JSON.stringify(mockTokensObject));
+
+      const rawTokens = tokenService.loadRawTokens();
+
+      expect(rawTokens).toEqual(mockTokensObject);
+      expect(fs.readFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/fixture-pack.tokens.json');
+    });
+
+    it('should fall back to submodule paths when the injected path is unreadable', () => {
+      process.env.TOKENS_PATH = '/packs/missing.tokens.json';
+      fs.readFileSync
+        .mockImplementationOnce(() => {
+          throw new Error('ENOENT: no such file or directory');
+        })
+        .mockReturnValueOnce(JSON.stringify(mockTokensObject));
+
+      const rawTokens = tokenService.loadRawTokens();
+
+      expect(rawTokens).toEqual(mockTokensObject);
+      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/missing.tokens.json');
+      expect(fs.readFileSync.mock.calls[1][0]).not.toBe('/packs/missing.tokens.json');
+    });
+  });
+
   describe('loadTokens', () => {
     beforeEach(() => {
       // Mock successful file read for transformation tests
@@ -441,6 +473,26 @@ describe('TokenService - Token Loading', () => {
 
       expect(tokens[0].memoryType).toBe('Party');
       expect(tokens[0].value).toBe(calcExpected(4, 'Party'));
+    });
+
+    it('should truncate summaries over 350 chars and warn (AsyncAPI contract)', () => {
+      const longSummary = 'x'.repeat(400);
+      const tokenWithLongSummary = {
+        'verbose001': {
+          SF_RFID: 'verbose001',
+          SF_ValueRating: 2,
+          SF_MemoryType: 'Personal',
+          SF_Group: '',
+          summary: longSummary
+        }
+      };
+
+      fs.readFileSync.mockReturnValue(JSON.stringify(tokenWithLongSummary));
+      const tokens = tokenService.loadTokens();
+
+      expect(tokens[0].metadata.summary).toHaveLength(350);
+      expect(tokens[0].metadata.summary).toBe(longSummary.substring(0, 350));
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should use Memory {id} as fallback name when no group', () => {

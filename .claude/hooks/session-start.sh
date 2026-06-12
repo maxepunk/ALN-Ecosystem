@@ -43,8 +43,12 @@ if [ ! -s /tmp/.ghcred ]; then
     log "WARN: submodule fetch/push WILL FAIL — add GH_SUBMODULES_TOKEN to the environment"
   fi
 fi
-if ! git config --global --get credential.helper >/dev/null 2>&1; then
-  git config --global credential.helper \
+# Helper is SCOPED to github.com (review finding P17-M2): an unscoped global
+# helper would hand the PAT to ANY host git contacts (e.g., a modified
+# .gitmodules URL). Skip if the harness already provisioned a helper.
+if ! git config --global --get credential.helper >/dev/null 2>&1 \
+   && ! git config --global --get credential.https://github.com.helper >/dev/null 2>&1; then
+  git config --global credential.https://github.com.helper \
     '!f() { echo "username=x-access-token"; cat /tmp/.ghcred; }; f'
 fi
 
@@ -180,8 +184,11 @@ if [ -d "$BROWSERS" ]; then
     ' "$PWD/$bj" 2>/dev/null)
   done
 
-  # Persist for the session — playwright finds the shims without per-command env.
-  if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  # Persist for the session — playwright finds the shims without per-command
+  # env. Guarded: SessionStart re-fires on resume/compact and must not append
+  # a duplicate line each time.
+  if [ -n "${CLAUDE_ENV_FILE:-}" ] \
+     && ! grep -q "^export PLAYWRIGHT_BROWSERS_PATH=" "$CLAUDE_ENV_FILE" 2>/dev/null; then
     echo "export PLAYWRIGHT_BROWSERS_PATH=\"$BROWSERS\"" >> "$CLAUDE_ENV_FILE"
   fi
 else

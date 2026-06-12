@@ -86,7 +86,7 @@ F-GMCMD-02 (BT warning) · F-GMCMD-04 (select click guard) · F-GMCMD-06 (Now Sh
 F-SCAN-07/F-GMS-05 (duplicate → "claimed by Team X", per A7) · standalone min-2 group rule (A1/F-SCAN-09)
 **aln-memory-scanner:** F-SCAN-01 (4xx final, per A5) · F-SCAN-10 (stable batchId per batch) ·
 F-PARITY-04 (persist deviceId) · F-PARITY-12 (img onerror) · F-PARITY-16 (dead retry scaffolding) · sw.js tokens network-first (F-PARITY-07)
-**ESP32:** F-PARITY-02 (batchId persistence) · F-PARITY-03 (409 body-aware handling per A5) · F-PARITY-06 (async send)
+**ESP32:** F-PARITY-02 (batchId persistence) · F-PARITY-03 (409 body-aware handling per A5) · F-PARITY-06 (shipped as the parity-audit's bounded-synchronous variant — single attempt, ~10s worst-case main-loop block — NOT an async send; record corrected per merge-readiness review ESP-2)
 **Parent contract edits supporting these:** F-GMS-12 (deviceScannedTokens into asyncapi) · F-GMCMD-14 (gm:identified) · F-SHOW-15 (cue:fired source/trigger)
 
 ## Phase 2 structural (post fix-now; aligned to platform seams)
