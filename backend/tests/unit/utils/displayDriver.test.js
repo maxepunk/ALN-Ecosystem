@@ -644,3 +644,135 @@ describe('displayDriver — window management', () => {
     });
   });
 });
+
+describe('displayDriver — module-load environment fallbacks', () => {
+  // These branches evaluate at require() time from the host environment
+  // (network interfaces, DISPLAY, PORT). Pin them deterministically so file
+  // coverage does not vary by machine (CI runners have different interface
+  // sets than dev machines — this exact variance turned CI red while local
+  // runs were green).
+  const freshRequire = () => {
+    let mod;
+    jest.isolateModules(() => {
+      mod = require('../../../src/utils/displayDriver');
+    });
+    return mod;
+  };
+
+  afterEach(() => {
+    delete process.env.PORT;
+    delete process.env.DISPLAY;
+    jest.dontMock('os');
+  });
+
+  test('scoreboard URL falls back to localhost when no external IPv4 exists', () => {
+    jest.doMock('os', () => ({
+      ...jest.requireActual('os'),
+      networkInterfaces: () => ({
+        lo: [
+          { internal: true, family: 'IPv4', address: '127.0.0.1' },
+          { internal: false, family: 'IPv6', address: '::1' },
+        ],
+      }),
+    }));
+    delete process.env.PORT;
+
+    const status = freshRequire().getStatus();
+    expect(status.scoreboardUrl).toContain('https://localhost:3000/scoreboard');
+  });
+
+  test('scoreboard URL uses the first external IPv4 and honors PORT', () => {
+    jest.doMock('os', () => ({
+      ...jest.requireActual('os'),
+      networkInterfaces: () => ({
+        lo: [{ internal: true, family: 'IPv4', address: '127.0.0.1' }],
+        eth0: [
+          { internal: false, family: 'IPv6', address: 'fe80::1' },
+          { internal: false, family: 'IPv4', address: '192.0.2.7' },
+        ],
+      }),
+    }));
+    process.env.PORT = '4444';
+
+    const status = freshRequire().getStatus();
+    expect(status.scoreboardUrl).toContain('https://192.0.2.7:4444/scoreboard');
+  });
+
+  test('DISPLAY defaults to :0 when unset and honors the env value when set', () => {
+    delete process.env.DISPLAY;
+    expect(freshRequire().getStatus().display).toBe(':0');
+
+    process.env.DISPLAY = ':5';
+    expect(freshRequire().getStatus().display).toBe(':5');
+  });
+});
+
+describe('displayDriver — deterministic branch coverage (CI-environment parity)', () => {
+  // Cover the else-arms that full-suite runs only hit incidentally on some
+  // hosts — file coverage must not depend on the machine running the tests.
+  test('showScoreboard returns false when xdotool search finds no window', async () => {
+    const { spawn, execFile } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search') cb(null, '', '');
+      else cb(null, '', '');
+    });
+
+    const ok = await displayDriver.showScoreboard();
+    expect(ok).toBe(false);
+  });
+
+  test('showScoreboard returns false when search output is whitespace only', async () => {
+    const { spawn, execFile } = require('child_process');
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search') cb(null, '\n', '');
+      else cb(null, '', '');
+    });
+
+    const ok = await displayDriver.showScoreboard();
+    expect(ok).toBe(false);
+  });
+
+  test('orphan recovery skips a PID whose cmdline is not chromium', async () => {
+    const fs = require('fs');
+    const { spawn, execFile } = require('child_process');
+    fs.readFileSync.mockImplementation((p) => {
+      if (typeof p === 'string' && p.includes('aln-pm-')) return '4242';
+      if (typeof p === 'string' && p.includes('/proc/')) return 'node\0server.js';
+      return jest.requireActual('fs').readFileSync(p);
+    });
+    const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => true);
+    spawn.mockReturnValue({ pid: 1234, on: jest.fn(), killed: false });
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+
+    await displayDriver.showScoreboard();
+    expect(killSpy).not.toHaveBeenCalledWith(4242, 'SIGKILL');
+    killSpy.mockRestore();
+  });
+});
+
+describe('displayDriver — PID-file write guard', () => {
+  test('skips PID-file write when spawn returns a process without a pid', async () => {
+    const fs = require('fs');
+    const { spawn, execFile } = require('child_process');
+    spawn.mockReturnValue({ on: jest.fn(), killed: false }); // no pid
+    execFile.mockImplementation((cmd, args, opts, cb) => {
+      if (typeof opts === 'function') { cb = opts; }
+      if (cmd === 'xdotool' && args[0] === 'search') cb(null, '12345678\n', '');
+      else cb(null, '', '');
+    });
+
+    await displayDriver.showScoreboard();
+    const pidWrites = fs.writeFileSync.mock.calls.filter(
+      (c) => typeof c[0] === 'string' && c[0].includes('aln-pm-')
+    );
+    expect(pidWrites).toHaveLength(0);
+  });
+});
