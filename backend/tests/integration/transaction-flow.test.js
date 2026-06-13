@@ -123,7 +123,7 @@ describe('Transaction Flow Integration', () => {
       expect(newEvent.data.teamScore.lastUpdate).toBeDefined();
 
       // Validate: Service state consistency
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Team Alpha');
       expect(teamScore.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(teamScore.tokensScanned).toBe(1);
     });
@@ -179,7 +179,7 @@ describe('Transaction Flow Integration', () => {
       expect(newEvent.data.teamScore).toBeNull();
 
       // Validate: Team score UNCHANGED (detective mode doesn't score)
-      const teamScore = transactionService.teamScores.get('Detectives');
+      const teamScore = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Detectives');
       expect(teamScore.currentScore).toBe(0);
       expect(teamScore.tokensScanned).toBe(0);  // Detective mode doesn't increment counter
     });
@@ -255,7 +255,7 @@ describe('Transaction Flow Integration', () => {
       expect(result2.data.points).toBe(0);
 
       // Validate: Score unchanged (only 30 from first scan)
-      const teamScore = transactionService.teamScores.get('Team Alpha');
+      const teamScore = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Team Alpha');
       expect(teamScore.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(teamScore.tokensScanned).toBe(1);  // Only 1 token scanned
     });

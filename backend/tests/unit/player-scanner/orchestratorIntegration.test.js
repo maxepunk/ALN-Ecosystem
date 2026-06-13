@@ -148,8 +148,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
       expect(orchestrator.offlineQueue[0]).toMatchObject({
         tokenId: 'test_token',
         teamId: 'Team Alpha',
-        timestamp: expect.any(Number),
-        retryCount: 0
+        timestamp: expect.any(Number)
+        // retryCount removed with the dead retry scaffolding (F-PARITY-16)
       });
     });
 
@@ -192,6 +192,8 @@ describe('OrchestratorIntegration - Unit Tests (Isolated)', () => {
       expect(status).toEqual({
         connected: true,
         queueSize: 2,
+        // Additive field (review PS-N2): snapshot items are unsent work too
+        pendingBatchSize: 0,
         maxQueueSize: 100,
         deviceId: expect.stringMatching(/^PLAYER_\d+$/)
       });

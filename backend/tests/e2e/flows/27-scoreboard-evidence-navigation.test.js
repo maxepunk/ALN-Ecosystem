@@ -404,6 +404,7 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
 
       // Observe for 15s — longer than the 12-18s auto-cycle interval.
       // Page index must NOT change.
+      // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: negative temporal assertion — auto-cycle must stay suspended for >1 interval
       await sbPage.waitForTimeout(15000);
       expect(await scoreboard.getCurrentPageIndex()).toBe(1);
       expect(await scoreboard.isManualPauseActive()).toBe(true);

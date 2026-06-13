@@ -11,6 +11,11 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const sessionService = require('./sessionService');
 const videoQueueService = require('./videoQueueService');
+// Pure game rules (engine/game seam) — all scoring/duplicate COMPUTATIONS
+// live there; this service does orchestration, state mutation, and events
+const scoring = require('../gameRules/scoring');
+const duplicatePolicy = require('../gameRules/duplicatePolicy');
+const { buildScanResponse } = require('../websocket/scanResponse');
 
 const listenerRegistry = require('../websocket/listenerRegistry');
 
@@ -19,7 +24,6 @@ class TransactionService extends EventEmitter {
     super();
     this.recentTransactions = [];
     this.tokens = new Map();  // Expose for testing
-    this.teamScores = new Map();
   }
 
   /**
@@ -34,8 +38,7 @@ class TransactionService extends EventEmitter {
     });
 
     logger.info('Transaction service initialized', {
-      tokenCount: this.tokens.size,
-      teamCount: this.teamScores.size
+      tokenCount: this.tokens.size
     });
 
     // Register session listener (moved from constructor to support reset lifecycle)
@@ -50,30 +53,13 @@ class TransactionService extends EventEmitter {
     // Remove any previously registered listeners to prevent accumulation
     this._removeSessionListeners();
 
-    this._onSessionCreated = (sessionData) => {
-      // CRITICAL: Clear map FIRST to prevent state leakage from previous sessions
-      this.teamScores.clear();
-
-      if (sessionData.teams) {
-        sessionData.teams.forEach(teamId => {
-          this.teamScores.set(teamId, TeamScore.createInitial(teamId));
-        });
-        logger.info('Team scores initialized for new session', {
-          teams: sessionData.teams,
-          count: this.teamScores.size
-        });
-      }
-    };
-
     this._onSessionUpdated = (sessionData) => {
       if (sessionData.status === 'ended') {
-        this.teamScores.clear();
         this.recentTransactions = [];
-        logger.info('Scores cleared due to session end');
+        logger.info('Recent transactions cleared due to session end');
       }
     };
 
-    sessionService.on('session:created', this._onSessionCreated);
     sessionService.on('session:updated', this._onSessionUpdated);
 
     logger.info('Session event listener registered');
@@ -84,17 +70,33 @@ class TransactionService extends EventEmitter {
    * @private
    */
   _removeSessionListeners() {
-    if (this._onSessionCreated) {
-      sessionService.removeListener('session:created', this._onSessionCreated);
-      this._onSessionCreated = null;
-    }
     if (this._onSessionUpdated) {
       sessionService.removeListener('session:updated', this._onSessionUpdated);
       this._onSessionUpdated = null;
     }
   }
 
-  // ... (skip to adjustTeamScore)
+  /**
+   * Get the canonical score store: session.scores (live TeamScore instances).
+   * There is NO second store — all score reads and writes go through here.
+   * @returns {Array<TeamScore>|null} null when no session exists
+   * @private
+   */
+  _getSessionScores() {
+    const session = sessionService.getCurrentSession();
+    return session ? session.scores : null;
+  }
+
+  /**
+   * Find a team's live TeamScore in session.scores
+   * @param {string} teamId - Team ID
+   * @returns {TeamScore|undefined}
+   * @private
+   */
+  _getTeamScore(teamId) {
+    const scores = this._getSessionScores();
+    return scores ? scores.find(s => s.teamId === teamId) : undefined;
+  }
 
   /**
    * Adjust team score by delta (for admin interventions)
@@ -105,7 +107,7 @@ class TransactionService extends EventEmitter {
    * @returns {TeamScore} Updated team score
    */
   adjustTeamScore(teamId, delta, reason = '', gmStation = 'unknown') {
-    const teamScore = this.teamScores.get(teamId);
+    const teamScore = this._getTeamScore(teamId);
     if (!teamScore) {
       throw new Error(`Team ${teamId} not found`);
     }
@@ -175,9 +177,13 @@ class TransactionService extends EventEmitter {
         });
       }
 
-      // Check for duplicates
-      if (this.isDuplicate(transaction, session)) {
-        const original = this.findOriginalTransaction(transaction, session);
+      // Check GM duplicate rules (pure policy — gameRules/duplicatePolicy)
+      const { isDuplicate, original } = duplicatePolicy.checkDuplicate({
+        transaction,
+        transactions: session.transactions || [],
+        scannedTokensByDevice: session.metadata?.scannedTokensByDevice || {},
+      });
+      if (isDuplicate) {
         transaction.markAsDuplicate(original?.id || 'unknown');
         logger.info('Duplicate scan detected', {
           tokenId: transaction.tokenId,
@@ -192,15 +198,18 @@ class TransactionService extends EventEmitter {
 
       // ATOMIC: Claim token immediately (prevents race condition)
       // Add transaction to session BEFORE accepting to ensure duplicate check sees it
-      // NOTE: sessionService persistence listener will also add via addTransaction() (idempotent)
+      // Session.addTransaction also increments session metadata (totalScans /
+      // uniqueTokensScanned) exactly once per transaction (F-BCORE-01) — the
+      // sessionService persistence listener's later addTransaction() call is an
+      // idempotent no-op for this already-claimed transaction.
       if (!session.transactions) {
         session.transactions = [];
       }
-      session.transactions.push(transaction);
+      session.addTransaction(transaction);
 
       // GM scanners don't care about video playback - that's player scanner territory
       // Accept the transaction with appropriate points (detective mode = 0 points)
-      const points = (transaction.mode === 'detective') ? 0 : token.value;
+      const points = scoring.pointsFor(token, transaction.mode);
       transaction.accept(points)
 
       // Update team score and get result (only for blackmarket mode)
@@ -249,100 +258,38 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Check if transaction is a duplicate
+   * Check if transaction is a duplicate (per-device + FCFS, GM only).
+   * Thin adapter over the pure policy in gameRules/duplicatePolicy —
+   * player/ESP32 scans are never duplicates (content re-viewing).
+   * The old non-GM analytics branch (transaction:rescan, never consumed)
+   * was removed with the extraction (F-BCORE-12).
    * @param {Transaction} transaction - Transaction to check
    * @param {Object} session - Current session
    * @returns {boolean}
    * @private
    */
   isDuplicate(transaction, session) {
-    // P0.1 CORRECTION: Device-type-specific duplicate detection
-    // CRITICAL: Only GM scanners reject duplicates
-    // Player and ESP32 scanners MUST be allowed to re-scan tokens (content re-viewing)
-
-    if (transaction.deviceType !== 'gm') {
-      // Players and ESP32 devices: ALWAYS allow duplicates
-
-      // Check if this is a re-scan (for analytics)
-      const isRescan = session.hasDeviceScannedToken(transaction.deviceId, transaction.tokenId);
-
-      if (isRescan) {
-        logger.debug('Player re-scan tracked for analytics', {
-          deviceType: transaction.deviceType,
-          deviceId: transaction.deviceId,
-          tokenId: transaction.tokenId
-        });
-
-        // Emit analytics event for dashboards/reporting
-        this.emit('transaction:rescan', {
-          deviceId: transaction.deviceId,
-          deviceType: transaction.deviceType,
-          tokenId: transaction.tokenId,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        logger.debug('Duplicate check skipped for non-GM device', {
-          deviceType: transaction.deviceType,
-          deviceId: transaction.deviceId,
-          tokenId: transaction.tokenId
-        });
-      }
-
-      return false;  // NOT a duplicate for player/ESP32
-    }
-
-    // GM Scanner duplicate detection below
-
-    // PHASE 1.1 (P0.1): Server-side per-device duplicate detection
-    // Check if THIS GM DEVICE has already scanned this token
-    if (session.hasDeviceScannedToken(transaction.deviceId, transaction.tokenId)) {
-      logger.info('Duplicate scan detected (per-device, GM only)', {
-        tokenId: transaction.tokenId,
-        deviceId: transaction.deviceId,
-        deviceType: transaction.deviceType
-      });
-      return true;
-    }
-
-    // FR-009: Detect and prevent duplicate token scans for the ENTIRE SESSION
-    // FIRST-COME-FIRST-SERVED: Once ANY team claims a token, no other team can claim it
-
-    // Check if this token was already claimed by ANY team (GM scanners only)
-    for (const existing of session.transactions || []) {
-      if (existing.tokenId === transaction.tokenId &&
-        existing.status === 'accepted' &&
-        existing.sessionId === session.id) {
-        // Token already claimed - reject it (first-come-first-served)
-        logger.info('Duplicate scan detected (first-come-first-served)', {
-          tokenId: transaction.tokenId,
-          claimedBy: existing.teamId,
-          attemptedBy: transaction.teamId
-        });
-        return true;
-      }
-    }
-
-    return false; // Token not yet claimed
+    return duplicatePolicy.checkDuplicate({
+      transaction,
+      transactions: session.transactions || [],
+      scannedTokensByDevice: session.metadata?.scannedTokensByDevice || {},
+    }).isDuplicate;
   }
 
   /**
-   * Find original transaction for duplicate
+   * Find original transaction for duplicate (first team's accepted claim).
+   * Thin adapter over gameRules/duplicatePolicy.
    * @param {Transaction} transaction - Duplicate transaction
    * @param {Object} session - Current session
    * @returns {Transaction|null}
    * @private
    */
   findOriginalTransaction(transaction, session) {
-    // First-come-first-served - find which team claimed this token first
-    for (const existing of session.transactions || []) {
-      if (existing.tokenId === transaction.tokenId &&
-        existing.status === 'accepted' &&
-        existing.sessionId === session.id) {
-        return existing; // Return the first team's claim
-      }
-    }
-
-    return null;
+    return duplicatePolicy.findOriginalTransaction({
+      transactions: session.transactions || [],
+      tokenId: transaction.tokenId,
+      sessionId: session.id,
+    });
   }
 
   /**
@@ -353,43 +300,33 @@ class TransactionService extends EventEmitter {
    * @private
    */
   updateTeamScore(teamId, token) {
-    let teamScore = this.teamScores.get(teamId);
+    let teamScore = this._getTeamScore(teamId);
     let groupBonusInfo = null;
 
-    // Team should already exist via sessionService.addTeamToSession() -> syncTeamFromSession()
-    // But handle gracefully if not (backwards compatibility during migration)
+    // Team should already exist via sessionService.addTeamToSession()
+    // But handle gracefully if not (auto-create directly in the canonical store)
     if (!teamScore) {
       teamScore = TeamScore.createInitial(teamId);
-      this.teamScores.set(teamId, teamScore);
+      const scores = this._getSessionScores();
+      if (scores) {
+        scores.push(teamScore);
+      }
       logger.warn('Team auto-created in updateTeamScore (should use addTeamToSession)', { teamId });
     }
 
     teamScore.addPoints(token.value);
     teamScore.incrementTokensScanned();
 
-    // Check for group completion bonus
-    if (token.isGrouped()) {
-      const wasCompleted = teamScore.hasCompletedGroup(token.groupId);
-
-      // CRITICAL: Pass current token ID to isGroupComplete so it includes the transaction
-      // being processed (which hasn't been added to session.transactions yet)
-      if (!wasCompleted && this.isGroupComplete(teamId, token.groupId, token.id)) {
+    // Check for group completion bonus (pure rules — gameRules/scoring)
+    if (token.isGrouped() && !teamScore.hasCompletedGroup(token.groupId)) {
+      // CRITICAL: Pass current token ID so the rule includes the transaction
+      // being processed even if it isn't in session.transactions yet
+      if (this.isGroupComplete(teamId, token.groupId, token.id)) {
         teamScore.completeGroup(token.groupId);
 
-        // Calculate total bonus for the entire group
-        const multiplier = this.calculateGroupBonus(token.groupId);
-        if (multiplier > 1) {
-          // Get all tokens in this group
-          const groupTokens = Array.from(this.tokens.values())
-            .filter(t => t.groupId === token.groupId);
-
-          // Calculate total bonus: (multiplier - 1) × sum of all token values
-          let totalGroupBonus = 0;
-          for (const groupToken of groupTokens) {
-            // Bonus formula: (multiplier - 1) × tokenValue
-            totalGroupBonus += groupToken.value * (multiplier - 1);
-          }
-
+        const multiplier = scoring.groupMultiplier(this.tokens, token.groupId);
+        if (multiplier > 0) {
+          const totalGroupBonus = scoring.groupBonusAmount(this.tokens, token.groupId);
           teamScore.addBonus(totalGroupBonus);
 
           groupBonusInfo = {
@@ -412,7 +349,9 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Check if group is complete for team
+   * Check if group is complete for team — Decision A1: only blackmarket
+   * transactions count. Thin adapter over gameRules/scoring (the pure rule
+   * shared in intent with the standalone scanner — F-SCAN-06 parity).
    * @param {string} teamId - Team ID
    * @param {string} groupId - Group ID
    * @param {string} currentTokenId - Optional token ID being processed (not yet in session)
@@ -420,65 +359,27 @@ class TransactionService extends EventEmitter {
    * @private
    */
   isGroupComplete(teamId, groupId, currentTokenId = null) {
-    if (!groupId) return false;
-
-    // Get all tokens that belong to this group
-    const groupTokens = Array.from(this.tokens.values())
-      .filter(t => t.groupId === groupId);
-
-    // Groups need at least 2 tokens to be completable
-    if (groupTokens.length <= 1) return false;
-
-    // Get current session to check transactions
     const session = sessionService.getCurrentSession();
     if (!session) return false;
 
-    // Get all token IDs this team has successfully scanned (using Set for performance)
-    const transactions = session.transactions || [];
-    const teamScannedTokenIds = new Set(
-      transactions
-        .filter(tx =>
-          tx.teamId === teamId &&
-          tx.status === 'accepted'
-        )
-        .map(tx => tx.tokenId)
-    );
-
-    // CRITICAL: Include current token being processed (not yet in session.transactions)
-    if (currentTokenId) {
-      teamScannedTokenIds.add(currentTokenId);
-    }
-
-    // Check if team has scanned ALL tokens in the group
-    const allScanned = groupTokens.every(token =>
-      teamScannedTokenIds.has(token.id)
-    );
-
-    return allScanned;
+    return scoring.isGroupComplete({
+      tokens: this.tokens,
+      transactions: session.transactions || [],
+      teamId,
+      groupId,
+      currentTokenId,
+    });
   }
 
   /**
-   * Calculate group completion bonus
+   * Group completion multiplier (0 when the group pays no bonus).
+   * Thin adapter over gameRules/scoring.
    * @param {string} groupId - Group ID
    * @returns {number} Group multiplier value
    * @private
    */
   calculateGroupBonus(groupId) {
-    if (!groupId) return 0;
-
-    // Find any token in this group to get the multiplier
-    const groupToken = Array.from(this.tokens.values())
-      .find(t => t.groupId === groupId);
-
-    if (!groupToken) return 0;
-
-    const multiplier = groupToken.getGroupMultiplier();
-
-    // Only groups with multiplier > 1 give bonuses
-    if (multiplier <= 1) return 0;
-
-    // Return the multiplier for use in score calculation
-    return multiplier;
+    return scoring.groupMultiplier(this.tokens, groupId);
   }
 
   /**
@@ -497,7 +398,9 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Create scan response
+   * Create scan response — wire-format shaping lives in
+   * websocket/scanResponse.js (Phase 2 extraction); this adapter injects
+   * the live video status.
    * @param {Transaction} transaction - Processed transaction
    * @param {Token} token - Associated token
    * @param {Object} extras - Extra response fields
@@ -505,62 +408,14 @@ class TransactionService extends EventEmitter {
    * @private
    */
   createScanResponse(transaction, token, extras = {}) {
-    const isVideoPlaying = videoQueueService.isPlaying();
-
-    const response = {
-      status: transaction.status,
-      message: this.getResponseMessage(transaction, extras.claimedBy),
-      transactionId: transaction.id,
-      transaction: transaction, // Include the transaction object
-      token: token, // Include the token for reference
-    };
-
-    // Add points if accepted
-    if (transaction.isAccepted()) {
-      response.points = transaction.points;
-    }
-
-    // Add original transaction ID if this is a duplicate
-    if (transaction.isDuplicate()) {
-      response.originalTransactionId = transaction.originalTransactionId;
-      // Include which team claimed the token first
-      if (extras.claimedBy) {
-        response.claimedBy = extras.claimedBy;
-      }
-    }
-
-    // Add video status
-    if (isVideoPlaying) {
-      response.videoPlaying = true;
-      response.waitTime = videoQueueService.getRemainingTime();
-    } else {
-      response.videoPlaying = false;
-    }
-
-    // Add any extras
-    Object.assign(response, extras);
-
-    return response;
-  }
-
-  /**
-   * Get response message for transaction
-   * @param {Transaction} transaction - Transaction
-   * @returns {string} Response message
-   * @private
-   */
-  getResponseMessage(transaction, claimedBy) {
-    if (transaction.isAccepted()) {
-      return `Token scanned successfully. ${transaction.points} points awarded.`;
-    } else if (transaction.isDuplicate()) {
-      if (claimedBy) {
-        return `Token already claimed by ${claimedBy}`;
-      }
-      return 'Token already claimed';
-    } else if (transaction.isRejected()) {
-      return transaction.rejectionReason || 'Scan rejected.';
-    }
-    return 'Scan processed.';
+    const videoPlaying = videoQueueService.isPlaying();
+    return buildScanResponse({
+      transaction,
+      token,
+      videoPlaying,
+      waitTime: videoPlaying ? videoQueueService.getRemainingTime() : undefined,
+      extras,
+    });
   }
 
   /**
@@ -591,26 +446,32 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Get team scores
-   * @returns {Array} Team scores array
+   * Get team scores (read from session.scores, the canonical store)
+   * @returns {Array} Team scores as JSON, sorted by currentScore descending
    */
   getTeamScores() {
-    return Array.from(this.teamScores.values())
-      .map(score => score.toJSON())
+    const scores = this._getSessionScores() || [];
+    return scores
+      .map(score => (score.toJSON ? score.toJSON() : score))
       .sort((a, b) => b.currentScore - a.currentScore);
   }
 
   /**
    * Reset scores - resets all team scores to zero while preserving team membership
    * Per AsyncAPI contract: teams should still exist after reset with zero scores
+   * Mutates the live TeamScore instances in session.scores in place;
+   * sessionService's scores:reset listener clears transactions and persists.
    */
   resetScores() {
+    const scores = this._getSessionScores() || [];
+
     // Capture team IDs for broadcast
-    const teams = Array.from(this.teamScores.keys());
+    const teams = scores.map(s => s.teamId);
 
     // Reset each team's score to zero using TeamScore.reset() method
-    // This preserves team membership but clears: currentScore, tokensScanned, bonusPoints, completedGroups
-    for (const teamScore of this.teamScores.values()) {
+    // This preserves team membership (and adminAdjustments audit trail) but
+    // clears: currentScore, baseScore, tokensScanned, bonusPoints, completedGroups
+    for (const teamScore of scores) {
       teamScore.reset();
     }
 
@@ -653,63 +514,10 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Sync a team from sessionService to the local teamScores Map
-   * This ensures transactionService.teamScores stays in sync with sessionService.currentSession.scores
-   * Called by sessionService.addTeamToSession() for single source of truth on team creation
-   * @param {Object|TeamScore} teamScoreData - Team score data (JSON or TeamScore instance)
-   */
-  syncTeamFromSession(teamScoreData) {
-    // Handle null/undefined gracefully
-    if (!teamScoreData) {
-      logger.warn('syncTeamFromSession called with null/undefined data');
-      return;
-    }
-
-    // Handle both JSON objects and TeamScore instances
-    const teamId = teamScoreData.teamId;
-    if (!teamId) {
-      logger.warn('syncTeamFromSession called with invalid data (missing teamId)', { teamScoreData });
-      return;
-    }
-
-    // Only add if not already present (idempotent)
-    if (!this.teamScores.has(teamId)) {
-      // Convert to TeamScore if needed
-      const teamScore = teamScoreData instanceof TeamScore
-        ? teamScoreData
-        : TeamScore.fromJSON(teamScoreData);
-      this.teamScores.set(teamId, teamScore);
-      logger.info('Team synced from sessionService', { teamId });
-    }
-  }
-
-  /**
-   * Restore team scores from a session (for session restoration on startup)
-   * @param {Object} session - Session object with scores array
-   */
-  restoreFromSession(session) {
-    if (!session || !session.scores) {
-      return;
-    }
-
-    // Sync all teams from session.scores to teamScores Map
-    for (const scoreData of session.scores) {
-      if (scoreData.teamId && !this.teamScores.has(scoreData.teamId)) {
-        this.teamScores.set(scoreData.teamId, TeamScore.fromJSON(scoreData));
-        logger.debug('Team restored from session', { teamId: scoreData.teamId });
-      }
-    }
-
-    logger.info('Teams restored from session', {
-      teamCount: this.teamScores.size,
-      teams: Array.from(this.teamScores.keys())
-    });
-  }
-
-  /**
    * Reset entire transaction service state
    * Used primarily for testing to ensure clean state between tests
    * NOTE: Contract tests should NOT call reset() - follow auth-events.test.js pattern
+   * NOTE: Scores live in session.scores (sessionService owns their lifecycle)
    */
   reset() {
     // Remove listeners on sessionService to prevent accumulation
@@ -720,9 +528,6 @@ class TransactionService extends EventEmitter {
 
     // Clear all transaction history
     this.recentTransactions = [];
-
-    // Clear team scores completely
-    this.teamScores.clear();
 
     logger.info('Transaction service reset');
   }
@@ -788,19 +593,21 @@ class TransactionService extends EventEmitter {
     // Remove from session
     session.transactions.splice(txIndex, 1);
 
-    // Rebuild scores from remaining transactions
+    // Rebuild scores from remaining transactions (mutates session.scores in place)
     this.rebuildScoresFromTransactions(session.transactions);
 
-    // Get updated team score
-    const updatedScore = this.teamScores.get(affectedTeamId) || TeamScore.createInitial(affectedTeamId);
+    // Get updated team score from the canonical store
+    const updatedScore = this._getTeamScore(affectedTeamId) || TeamScore.createInitial(affectedTeamId);
 
     // Emit transaction deleted event with updated score
     // sessionService listens and persists, broadcasts.js broadcasts to clients
+    // allTeamScores: the rebuild touches EVERY team (snapshot for broadcast)
     this.emit('transaction:deleted', {
       transactionId,
       teamId: affectedTeamId,
       tokenId: deletedTx.tokenId,
-      updatedTeamScore: updatedScore.toJSON()
+      updatedTeamScore: updatedScore.toJSON(),
+      allTeamScores: (this._getSessionScores() || []).map(ts => ts.toJSON())
     });
 
     logger.info('Transaction deleted', {
@@ -870,101 +677,76 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Rebuild team scores from transaction history
-   * CRITICAL: Preserves team membership from sessionService (source of truth)
-   * Uses clear-and-rebuild pattern for simplicity (KISS)
+   * Rebuild team scores from transaction history.
+   * The COMPUTATION is the pure gameRules/scoring.computeTeamScores (same
+   * rules as the live path — A1 blackmarket-only groups, recorded points
+   * authoritative); this method only applies the result onto the live
+   * TeamScore instances in session.scores (the canonical store) and
+   * re-applies admin adjustments on top (F-BCORE-03: the audit trail
+   * survives in place — wiping it silently reverted every score:adjust).
    * @param {Array} transactions - Historical transactions from session
    * @private
    */
   rebuildScoresFromTransactions(transactions) {
-    // Step 1: Get team membership from session (source of truth)
-    const session = sessionService.getCurrentSession();
-    const sessionTeamIds = new Set(
-      (session?.scores || []).map(s => s.teamId)
-    );
-
-    // Step 2: Clear and rebuild fresh (simpler than in-place mutation)
-    this.teamScores.clear();
-
-    // Step 3: Initialize all teams from session with fresh zero-score instances
-    // This preserves teams that have no black market transactions
-    for (const teamId of sessionTeamIds) {
-      this.teamScores.set(teamId, TeamScore.createInitial(teamId));
+    const scores = this._getSessionScores();
+    if (!scores) {
+      logger.warn('rebuildScoresFromTransactions called with no session — nothing to rebuild');
+      return;
     }
 
-    // Step 4: Group accepted transactions by team (skip detective mode for scoring)
-    const teamGroups = {};
-    transactions
-      .filter(tx => tx.status === 'accepted' && tx.mode !== 'detective')
-      .forEach(tx => {
-        if (!teamGroups[tx.teamId]) {
-          teamGroups[tx.teamId] = [];
-        }
-        teamGroups[tx.teamId].push(tx);
-      });
-
-    // Step 5: Rebuild scores for teams that have transactions
-    Object.entries(teamGroups).forEach(([teamId, txs]) => {
-      // Get or create team score (should already exist from session sync above)
-      let teamScore = this.teamScores.get(teamId);
-      if (!teamScore) {
-        teamScore = TeamScore.createInitial(teamId);
-        this.teamScores.set(teamId, teamScore);
-        logger.warn('Team created during rebuild (should exist in session)', { teamId });
-      }
-
-      // Add up all points from transactions
-      txs.forEach(tx => {
-        teamScore.addPoints(tx.points || 0);
-        teamScore.incrementTokensScanned();
-        teamScore.lastTokenTime = tx.timestamp;
-      });
-
-      // Check for completed groups
-      const tokenGroups = {};
-      txs.forEach(tx => {
-        const token = this.tokens.get(tx.tokenId);
-        if (token && token.groupId) {
-          if (!tokenGroups[token.groupId]) {
-            tokenGroups[token.groupId] = new Set();
-          }
-          tokenGroups[token.groupId].add(tx.tokenId);
-        }
-      });
-
-      // Check each group for completion
-      Object.entries(tokenGroups).forEach(([groupId, scannedTokens]) => {
-        const groupTokens = Array.from(this.tokens.values())
-          .filter(t => t.groupId === groupId);
-
-        if (groupTokens.length > 1 &&
-          groupTokens.every(token => scannedTokens.has(token.id))) {
-          teamScore.completedGroups.push(groupId);
-
-          const multiplier = groupTokens[0].getGroupMultiplier();
-          if (multiplier > 1) {
-            let groupBonus = 0;
-            groupTokens.forEach(token => {
-              groupBonus += token.value * (multiplier - 1);
-            });
-            teamScore.addBonus(groupBonus);
-          }
-        }
-      });
-
-      logger.info('Rebuilt team score from history', {
-        teamId,
-        score: teamScore.currentScore,
-        bonus: teamScore.bonusPoints,
-        transactions: txs.length,
-        completedGroups: teamScore.completedGroups
-      });
+    const rows = scoring.computeTeamScores({
+      tokens: this.tokens,
+      transactions: transactions || [],
+      teamIds: scores.map(s => s.teamId),
     });
+    const rowByTeam = new Map(rows.map(r => [r.teamId, r]));
+
+    // Apply rows onto the live instances in place. TeamScore.reset()
+    // preserves teamId and the adminAdjustments audit trail.
+    let teamsWithReplayedAdjustments = 0;
+    const applyRow = (teamScore, row) => {
+      teamScore.reset();
+      teamScore.baseScore = row.baseScore;
+      teamScore.bonusPoints = row.bonusPoints;
+      teamScore.tokensScanned = row.tokensScanned;
+      teamScore.completedGroups = row.completedGroups;
+      teamScore.lastTokenTime = row.lastTokenTime;
+
+      // Re-apply admin adjustment deltas on top of the rebuilt score
+      const adjustments = teamScore.adminAdjustments || [];
+      const totalDelta = adjustments.reduce((sum, adj) => sum + (adj.delta || 0), 0);
+      teamScore.baseScore += totalDelta;
+      teamScore.currentScore = teamScore.baseScore + teamScore.bonusPoints;
+
+      if (adjustments.length > 0) {
+        teamsWithReplayedAdjustments++;
+        logger.info('Replayed admin adjustments after rebuild', {
+          teamId: teamScore.teamId,
+          adjustmentCount: adjustments.length,
+          totalDelta,
+          newScore: teamScore.currentScore
+        });
+      }
+    };
+
+    for (const teamScore of scores) {
+      applyRow(teamScore, rowByTeam.get(teamScore.teamId));
+      rowByTeam.delete(teamScore.teamId);
+    }
+
+    // Defensive: teams found only in transactions (shouldn't happen, but
+    // don't drop their points)
+    for (const row of rowByTeam.values()) {
+      const teamScore = TeamScore.createInitial(row.teamId);
+      applyRow(teamScore, row);
+      scores.push(teamScore);
+      logger.warn('Team created during rebuild (should exist in session)', { teamId: row.teamId });
+    }
 
     logger.info('Score rebuild complete', {
-      teamsInSession: sessionTeamIds.size,
-      teamsWithScores: this.teamScores.size,
-      teamsWithTransactions: Object.keys(teamGroups).length
+      teamsInSession: scores.length,
+      teamsWithTransactions: rows.filter(r => r.tokensScanned > 0).length,
+      teamsWithReplayedAdjustments
     });
   }
 }

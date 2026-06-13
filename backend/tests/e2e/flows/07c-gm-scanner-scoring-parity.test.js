@@ -77,9 +77,15 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await clearSessionData();
 
     vlcInfo = await setupVLC();
+    // Fixture pack injection (2.x.4): production tokens contain NO
+    // completable group (Marcus Mention is x1), so the group-parity test
+    // self-skipped forever. The injected pack adds a 2-member x2 group —
+    // backend, /api/tokens, AND the standalone scanner's relative
+    // tokens.json all serve the same set (TOKENS_PATH seam).
     orchestratorInfo = await startOrchestrator({
       https: true,
-      timeout: 30000
+      timeout: 30000,
+      tokensPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack.tokens.json')
     });
 
     browser = await chromium.launch({
@@ -145,9 +151,12 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     await stopOrchestrator();
     await clearSessionData();
     console.log(`[afterEach] Starting fresh orchestrator...`);
+    // MUST re-inject the fixture pack — testTokens were selected from it in
+    // beforeAll; a restart on production tokens would reject every scan
     orchestratorInfo = await startOrchestrator({
       https: true,
-      timeout: 30000
+      timeout: 30000,
+      tokensPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack.tokens.json')
     });
     console.log(`[afterEach] ✓ Orchestrator restarted for test isolation`);
   });

@@ -18,6 +18,10 @@ const calcExpected = (rating, type) => tokenService.calculateTokenValue(rating, 
 // Mock fs for file loading tests
 jest.mock('fs');
 
+// Mock Winston logger (tokenService must log through it, not console — F-BCORE-22)
+jest.mock('../../../src/utils/logger');
+const logger = require('../../../src/utils/logger');
+
 describe('TokenService - Utility Functions', () => {
   describe('parseGroupMultiplier', () => {
     it('should parse multiplier from group string', () => {
@@ -237,6 +241,81 @@ describe('TokenService - Token Loading', () => {
 
       expect(() => tokenService.loadRawTokens()).toThrow();
     });
+
+    it('should log through Winston, never the console (F-BCORE-22)', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      try {
+        fs.readFileSync.mockReturnValue(JSON.stringify(mockTokensObject));
+
+        tokenService.loadRawTokens();
+        tokenService.loadTokens();
+
+        expect(console.log).not.toHaveBeenCalled();
+        expect(console.error).not.toHaveBeenCalled();
+        expect(console.warn).not.toHaveBeenCalled();
+        expect(logger.info).toHaveBeenCalled();
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it('should not log an ERROR when the first path is missing but the second loads (F-BCORE-22)', () => {
+      // First path absent (normal on deployments without the ALN-TokenData
+      // checkout) — must not produce a scary error on every boot
+      fs.readFileSync
+        .mockImplementationOnce(() => {
+          throw new Error('ENOENT: no such file or directory');
+        })
+        .mockReturnValueOnce(JSON.stringify(mockTokensObject));
+
+      const rawTokens = tokenService.loadRawTokens();
+
+      expect(rawTokens).toEqual(mockTokensObject);
+      expect(console.error).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+    });
+
+    it('should log an error through Winston when ALL paths fail', () => {
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
+
+      expect(() => tokenService.loadRawTokens()).toThrow('CRITICAL');
+      expect(logger.error).toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('TOKENS_PATH injection seam (Phase 2.x.4)', () => {
+    afterEach(() => {
+      delete process.env.TOKENS_PATH;
+    });
+
+    it('should try TOKENS_PATH first when set, winning over submodule defaults', () => {
+      process.env.TOKENS_PATH = '/packs/fixture-pack.tokens.json';
+      fs.readFileSync.mockReturnValue(JSON.stringify(mockTokensObject));
+
+      const rawTokens = tokenService.loadRawTokens();
+
+      expect(rawTokens).toEqual(mockTokensObject);
+      expect(fs.readFileSync).toHaveBeenCalledTimes(1);
+      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/fixture-pack.tokens.json');
+    });
+
+    it('should fall back to submodule paths when the injected path is unreadable', () => {
+      process.env.TOKENS_PATH = '/packs/missing.tokens.json';
+      fs.readFileSync
+        .mockImplementationOnce(() => {
+          throw new Error('ENOENT: no such file or directory');
+        })
+        .mockReturnValueOnce(JSON.stringify(mockTokensObject));
+
+      const rawTokens = tokenService.loadRawTokens();
+
+      expect(rawTokens).toEqual(mockTokensObject);
+      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/missing.tokens.json');
+      expect(fs.readFileSync.mock.calls[1][0]).not.toBe('/packs/missing.tokens.json');
+    });
   });
 
   describe('loadTokens', () => {
@@ -394,6 +473,26 @@ describe('TokenService - Token Loading', () => {
 
       expect(tokens[0].memoryType).toBe('Party');
       expect(tokens[0].value).toBe(calcExpected(4, 'Party'));
+    });
+
+    it('should truncate summaries over 350 chars and warn (AsyncAPI contract)', () => {
+      const longSummary = 'x'.repeat(400);
+      const tokenWithLongSummary = {
+        'verbose001': {
+          SF_RFID: 'verbose001',
+          SF_ValueRating: 2,
+          SF_MemoryType: 'Personal',
+          SF_Group: '',
+          summary: longSummary
+        }
+      };
+
+      fs.readFileSync.mockReturnValue(JSON.stringify(tokenWithLongSummary));
+      const tokens = tokenService.loadTokens();
+
+      expect(tokens[0].metadata.summary).toHaveLength(350);
+      expect(tokens[0].metadata.summary).toBe(longSummary.substring(0, 350));
+      expect(logger.warn).toHaveBeenCalled();
     });
 
     it('should use Memory {id} as fallback name when no group', () => {

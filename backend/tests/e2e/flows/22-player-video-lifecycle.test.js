@@ -21,6 +21,7 @@ const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../se
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
+const { refreshCapabilities, requireCapabilities } = require('../helpers/capabilities');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
@@ -38,16 +39,8 @@ let videoToken = null;
  * @returns {Promise<boolean>} true if VLC status is 'healthy'
  */
 async function isVLCHealthy(orchestratorUrl) {
-  const stateResp = await new Promise((resolve, reject) => {
-    const url = new URL('/api/state', orchestratorUrl);
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-  });
-  return stateResp.serviceHealth?.vlc?.status === 'healthy';
+  // Fresh capability probe (vlc can flap under load — don't trust the cache)
+  return (await refreshCapabilities(orchestratorUrl)).vlc;
 }
 
 /**
@@ -92,7 +85,7 @@ async function playerScan(baseUrl, tokenId, deviceId = 'e2e-player-device') {
   });
 }
 
-test.describe('Player Video Lifecycle', () => {
+test.describe('Player Video Lifecycle @hardware', () => {
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -132,11 +125,7 @@ test.describe('Player Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      test.skip();
-      console.log('VLC not healthy — skipping video playback test');
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     // Create a session first (need active session for scans)
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
@@ -156,6 +145,13 @@ test.describe('Player Video Lifecycle', () => {
       );
 
       try {
+        // Register the listener BEFORE the triggering action (listener-from-now
+        // contract): a fast VLC start could otherwise push the playing state
+        // before the wait was registered.
+        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
+        const videoPlayingPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+
         // Player scan with video token
         console.log(`Player scanning video token: ${videoToken.SF_RFID} (video: ${videoToken.video})`);
         const scanResult = await playerScan(orchestratorInfo.url, videoToken.SF_RFID);
@@ -164,10 +160,7 @@ test.describe('Player Video Lifecycle', () => {
         expect(scanResult.body.videoQueued).toBe(true);
         console.log('Player scan accepted, video queued');
 
-        // Wait for service:state event with video domain status 'playing'
-        // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
-        const videoPlaying = await waitForEvent(wsSocket, 'service:state',
-          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+        const videoPlaying = await videoPlayingPromise;
         expect(videoPlaying.data.state.status).toBe('playing');
         console.log('Video playing confirmed via WebSocket');
 
@@ -191,11 +184,7 @@ test.describe('Player Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      test.skip();
-      console.log('VLC not healthy — skipping standing cue test');
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     // Fresh orchestrator: previous test's video/session state would interfere
     await stopOrchestrator();
@@ -248,11 +237,7 @@ test.describe('Player Video Lifecycle', () => {
       return;
     }
 
-    if (!await isVLCHealthy(orchestratorInfo.url)) {
-      test.skip();
-      console.log('VLC not healthy — skipping restore cue test');
-      return;
-    }
+    requireCapabilities(test, await refreshCapabilities(orchestratorInfo.url), ['vlc']);
 
     // Fresh orchestrator: previous test's video/session state would interfere
     await stopOrchestrator();
@@ -280,14 +265,17 @@ test.describe('Player Video Lifecycle', () => {
         // Events arrive wrapped in AsyncAPI envelope: {event, data, timestamp}
         const restoreCuePromise = waitForEvent(wsSocket, 'cue:fired',
           (data) => data.data?.cueId === 'restore-after-video', 120000); // Videos can be long
+        // Register the playing-state listener BEFORE the scan too — same
+        // listener-from-now contract as above
+        const videoStartedPromise = waitForEvent(wsSocket, 'service:state',
+          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
 
         // Trigger video
         console.log(`Player scanning video token: ${videoToken.SF_RFID}`);
         await playerScan(orchestratorInfo.url, videoToken.SF_RFID, `e2e-player-restore-${Date.now()}`);
 
         // Wait for video to start
-        await waitForEvent(wsSocket, 'service:state',
-          (data) => data.data?.domain === 'video' && data.data?.state?.status === 'playing', 15000);
+        await videoStartedPromise;
         console.log('Video started playing');
 
         // Wait for video to complete and restore cue to fire

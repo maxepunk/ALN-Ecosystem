@@ -159,6 +159,51 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(sessionService.getCurrentSession().id).toBe(session2.id);
     });
 
+    it('should complete and back up a PAUSED previous session when creating a new one (F-BCORE-05)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      const first = await sessionService.createSession({
+        name: 'Paused Orphan',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+      sessionService.updateSessionStatus('paused');
+      expect(first.status).toBe('paused');
+
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession');
+      try {
+        await sessionService.createSession({ name: 'Replacement', teams: [] });
+
+        // Previous session must be properly ended (not silently overwritten)
+        expect(first.status).toBe('ended');
+        expect(first.endTime).toBeTruthy();
+        expect(backupSpy).toHaveBeenCalledWith(expect.objectContaining({ id: first.id }));
+      } finally {
+        backupSpy.mockRestore();
+      }
+    });
+
+    it('should complete and back up a SETUP previous session when creating a new one (F-BCORE-05)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      const first = await sessionService.createSession({
+        name: 'Setup Orphan',
+        teams: []
+      });
+      expect(first.status).toBe('setup');
+
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession');
+      try {
+        await sessionService.createSession({ name: 'Replacement 2', teams: [] });
+
+        expect(first.status).toBe('ended');
+        expect(first.endTime).toBeTruthy();
+        expect(backupSpy).toHaveBeenCalledWith(expect.objectContaining({ id: first.id }));
+      } finally {
+        backupSpy.mockRestore();
+      }
+    });
+
     it('should initialize team scores from teams array', async () => {
       const session = await sessionService.createSession({
         name: 'Score Init Test',
@@ -203,6 +248,19 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       sessionService.updateSessionStatus('active');
       expect(sessionService.getCurrentSession().status).toBe('active');
+    });
+
+    it('should reject resume-from-setup — startGame is the only setup→active path (F-BCORE-06)', async () => {
+      await sessionService.createSession({
+        name: 'Setup Resume Test',
+        teams: []
+      });
+      expect(sessionService.getCurrentSession().status).toBe('setup');
+
+      // Activating from setup must throw: it would bypass startGame()'s
+      // cascade (game clock, cue engine, overtime threshold, gameStartTime)
+      expect(() => sessionService.updateSessionStatus('active')).toThrow(/setup/);
+      expect(sessionService.getCurrentSession().status).toBe('setup');
     });
 
     it('should end session and clear currentSession', async () => {
@@ -378,7 +436,10 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       const scores = sessionService.initializeTeamScores(['Team Alpha', 'Detectives', 'Blue Squad']);
 
       expect(scores.length).toBe(3);
-      expect(scores[0]).toEqual({
+      // Live TeamScore instances — session.scores is the canonical store
+      const TeamScore = require('../../../src/models/teamScore');
+      expect(scores[0]).toBeInstanceOf(TeamScore);
+      expect(scores[0].toJSON()).toEqual({
         teamId: 'Team Alpha',
         adminAdjustments: [],  // Admin score adjustment audit trail
         currentScore: 0,
@@ -499,7 +560,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
 
     describe('transaction:accepted listener (new format)', () => {
-      it('should persist transaction and teamScore when new format payload received', async () => {
+      it('should persist transaction and device tracking when new format payload received', async () => {
         await sessionService.createSession({
           name: 'Persistence Test',
           teams: ['Team Alpha']
@@ -508,9 +569,11 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         const session = sessionService.getCurrentSession();
         const initialTxCount = session.transactions.length;
 
-        // Emit new format transaction:accepted with teamScore
-        const teamScore = TeamScore.createInitial('Team Alpha');
-        teamScore.addPoints(100);
+        // Simulate transactionService's flow: the live TeamScore instance in
+        // session.scores was already mutated BEFORE the event fired (single
+        // canonical store) — the payload teamScore is a broadcast snapshot.
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(100);
         const txId = uuidv4();
 
         transactionService.emit('transaction:accepted', {
@@ -525,7 +588,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
             points: 100,
             timestamp: new Date().toISOString()
           },
-          teamScore: teamScore.toJSON(),
+          teamScore: liveScore.toJSON(),
           deviceTracking: { deviceId: 'GM_001', tokenId: 'test-token' }
         });
 
@@ -537,9 +600,46 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         expect(updatedSession.transactions.length).toBe(initialTxCount + 1);
         expect(updatedSession.transactions[initialTxCount].id).toBe(txId);
 
-        // Verify team score was updated in session.scores
-        const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
-        expect(updatedTeamScore.currentScore).toBe(100);
+        // Verify device tracking was recorded for duplicate detection
+        expect(updatedSession.hasDeviceScannedToken('GM_001', 'test-token')).toBe(true);
+
+        // Canonical store untouched by the listener (same instance, same value)
+        expect(updatedSession.scores.find(s => s.teamId === 'Team Alpha')).toBe(liveScore);
+        expect(liveScore.currentScore).toBe(100);
+      });
+
+      it('should NOT overwrite the canonical store from the payload snapshot', async () => {
+        await sessionService.createSession({
+          name: 'No Clobber Test',
+          teams: ['Team Alpha']
+        });
+
+        const session = sessionService.getCurrentSession();
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(300);
+
+        // Emit with a STALE snapshot (different from the live instance) —
+        // the listener must persist, not sync the snapshot back into
+        // session.scores (that upsert path died with the dual-store collapse)
+        transactionService.emit('transaction:accepted', {
+          transaction: {
+            id: uuidv4(),
+            tokenId: 'tok-stale',
+            teamId: 'Team Alpha',
+            deviceId: 'GM_001',
+            deviceType: 'gm',
+            sessionId: session.id,
+            status: 'accepted',
+            points: 100,
+            timestamp: new Date().toISOString()
+          },
+          teamScore: { ...liveScore.toJSON(), currentScore: 99999 },
+          deviceTracking: { deviceId: 'GM_001', tokenId: 'tok-stale' }
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(300);
       });
 
       it('should not double-persist when old format payload (Transaction object only)', async () => {
@@ -579,16 +679,16 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         });
 
         const session = sessionService.getCurrentSession();
-        const initialScore = session.scores.find(s => s.teamId === 'Team Alpha').currentScore;
 
-        // Create adjusted team score
-        const teamScore = TeamScore.createInitial('Team Alpha');
-        teamScore.addPoints(500);
-        teamScore.adjustScore(100, 'GM_001', 'Manual bonus');
+        // The adjustment mutates the live instance in session.scores BEFORE
+        // the event fires (canonical store); the listener only persists.
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(500);
+        liveScore.adjustScore(100, 'GM_001', 'Manual bonus');
 
-        // Emit score:adjusted
+        // Emit score:adjusted (snapshot payload, as adjustTeamScore does)
         transactionService.emit('score:adjusted', {
-          teamScore: teamScore.toJSON(),
+          teamScore: liveScore.toJSON(),
           reason: 'Manual bonus',
           isAdminAction: true
         });
@@ -596,15 +696,20 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
         // Wait for async handler
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Verify score was updated
-        const updatedSession = sessionService.getCurrentSession();
-        const updatedTeamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
-        expect(updatedTeamScore.currentScore).toBe(teamScore.currentScore);
+        // Verify the adjusted score reached persistence
+        const persistenceService = require('../../../src/services/persistenceService');
+        const persisted = await persistenceService.load('session:current');
+        const persistedScore = persisted.scores.find(s => s.teamId === 'Team Alpha');
+        expect(persistedScore.currentScore).toBe(600);
+        expect(persistedScore.adminAdjustments).toHaveLength(1);
       });
     });
 
     describe('transaction:deleted listener', () => {
-      it('should persist updated team score after deletion', async () => {
+      // NOTE (Phase 2 collapse): upsertTeamScore is gone — the rebuild
+      // mutates session.scores in place before transaction:deleted fires,
+      // so this listener only persists.
+      it('should persist the rebuilt scores after deletion', async () => {
         await sessionService.createSession({
           name: 'Delete Test',
           teams: ['Team Alpha']
@@ -612,80 +717,411 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
         const session = sessionService.getCurrentSession();
 
-        // Add a transaction first
-        session.transactions.push({
-          id: 'tx-to-delete',
-          tokenId: 'test-token',
-          teamId: 'Team Alpha',
-          status: 'accepted',
-          points: 500
-        });
+        // Simulate deleteTransaction's flow: rebuild already zeroed the live
+        // instance in session.scores before the event fires
+        const liveScore = session.scores.find(s => s.teamId === 'Team Alpha');
+        liveScore.addPoints(500);
+        liveScore.reset();
 
-        // Set initial score
-        session.scores[0].currentScore = 500;
-
-        // Create updated score (after deletion, score goes back to 0)
-        const updatedTeamScore = TeamScore.createInitial('Team Alpha');
-        updatedTeamScore.addPoints(0);
-
-        // Emit transaction:deleted with updated score
+        // Emit transaction:deleted (snapshot payload for broadcasts)
         transactionService.emit('transaction:deleted', {
           transactionId: 'tx-to-delete',
           tokenId: 'test-token',
           teamId: 'Team Alpha',
-          updatedTeamScore: updatedTeamScore.toJSON()
+          updatedTeamScore: liveScore.toJSON(),
+          allTeamScores: session.scores.map(s => s.toJSON())
         });
 
         // Wait for async handler
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        // Verify score was updated
-        const updatedSession = sessionService.getCurrentSession();
-        const teamScore = updatedSession.scores.find(s => s.teamId === 'Team Alpha');
-        expect(teamScore.currentScore).toBe(0);
+        // Verify the rebuilt (zeroed) score reached persistence
+        const persistenceService = require('../../../src/services/persistenceService');
+        const persisted = await persistenceService.load('session:current');
+        expect(persisted.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(0);
       });
     });
+  });
 
-    describe('upsertTeamScore', () => {
-      it('should update existing team score', async () => {
-        await sessionService.createSession({
-          name: 'Upsert Test',
-          teams: ['Team Alpha']
-        });
+  describe('saveCurrentSession write serialization (F-BCORE-07)', () => {
+    it('serializes concurrent saves so writes land in call order', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
 
-        const session = sessionService.getCurrentSession();
-        session.scores[0].currentScore = 100;
-
-        // Upsert with higher score
-        sessionService.upsertTeamScore({
-          teamId: 'Team Alpha',
-          currentScore: 500,
-          baseScore: 400,
-          bonusPoints: 100
-        });
-
-        expect(session.scores[0].currentScore).toBe(500);
-        expect(session.scores[0].bonusPoints).toBe(100);
+      await sessionService.createSession({
+        name: 'Write Queue Test',
+        teams: []
       });
 
-      it('should add new team if not exists', async () => {
-        await sessionService.createSession({
-          name: 'Upsert New Test',
-          teams: []
+      const events = [];
+      let releaseFirst;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async () => {
+          events.push('saveSession:start');
+          if (firstCall) {
+            firstCall = false;
+            // Hold the FIRST write open so an unserialized second call would overlap
+            await new Promise(resolve => { releaseFirst = resolve; });
+          }
+          events.push('saveSession:end');
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async () => {
+          events.push('save:current');
         });
 
-        sessionService.upsertTeamScore({
-          teamId: 'New Team',
-          currentScore: 250,
-          baseScore: 250,
-          bonusPoints: 0
-        });
+      try {
+        const p1 = sessionService.saveCurrentSession();
+        const p2 = sessionService.saveCurrentSession();
 
-        const session = sessionService.getCurrentSession();
-        expect(session.scores.length).toBe(1);
-        expect(session.scores[0].teamId).toBe('New Team');
-        expect(session.scores[0].currentScore).toBe(250);
+        // Let microtasks run — the first write is now blocked mid-flight
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Without serialization both saveSession calls have already started
+        expect(events.filter(e => e === 'saveSession:start')).toHaveLength(1);
+
+        releaseFirst();
+        await Promise.all([p1, p2]);
+
+        // Each save must fully complete (saveSession + session:current alias)
+        // before the next one starts
+        expect(events).toEqual([
+          'saveSession:start', 'saveSession:end', 'save:current',
+          'saveSession:start', 'saveSession:end', 'save:current'
+        ]);
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+      }
+    });
+
+    it('keeps accepting writes after a failed save', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Write Queue Failure Test',
+        teams: []
       });
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockRejectedValueOnce(new Error('disk full'));
+
+      try {
+        await expect(sessionService.saveCurrentSession()).rejects.toThrow('disk full');
+        // The queue must not be poisoned by the failure
+        await expect(sessionService.saveCurrentSession()).resolves.toBeUndefined();
+      } finally {
+        saveSessionSpy.mockRestore();
+      }
+    });
+
+    it('persists the ended status LAST when endSession races an in-flight queued persist (P17-M1)', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+
+      await sessionService.createSession({
+        name: 'Interleave Test',
+        teams: []
+      });
+
+      // Record every write IN LANDING ORDER via a mock persistence layer
+      const writes = [];
+      let releaseSlow;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async (data) => {
+          if (firstCall) {
+            firstCall = false;
+            // Artificially slow FIRST write — held open mid-flight
+            await new Promise(resolve => { releaseSlow = resolve; });
+          }
+          writes.push(`saveSession:${data.status}`);
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async (key, data) => {
+          writes.push(`${key}:${data.status}`);
+        });
+      const backupSpy = jest.spyOn(persistenceService, 'backupSession')
+        .mockResolvedValue(undefined);
+
+      try {
+        // Queue a normal persist: its snapshot (status 'setup') is already
+        // captured and its first disk write is now hanging in flight
+        const slowPersist = sessionService.saveCurrentSession();
+        await new Promise(resolve => setImmediate(resolve));
+
+        // endSession() while that write is in flight — its 'ended' snapshot
+        // must land BEHIND the in-flight write, never interleaved before it
+        const endPromise = sessionService.endSession();
+
+        releaseSlow();
+        await Promise.all([slowPersist, endPromise]);
+
+        // Writes landed strictly in enqueue order...
+        expect(writes).toEqual([
+          'saveSession:setup', 'session:current:setup',
+          'saveSession:ended', 'session:current:ended'
+        ]);
+        // ...so the FINAL persisted session:current state is 'ended' (an
+        // older snapshot can never resurrect the session as active/setup)
+        const currentWrites = writes.filter(w => w.startsWith('session:current:'));
+        expect(currentWrites[currentWrites.length - 1]).toBe('session:current:ended');
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+        backupSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('reset() write-queue draining (F-BCORE-07 follow-up, review N1)', () => {
+    const persistenceService = require('../../../src/services/persistenceService');
+
+    it('drains an in-flight queued persist BEFORE deleting persisted session keys', async () => {
+      await sessionService.createSession({
+        name: 'Reset Drain Test',
+        teams: []
+      });
+
+      const events = [];
+      let releaseSlow;
+      let firstCall = true;
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockImplementation(async () => {
+          events.push('saveSession:start');
+          if (firstCall) {
+            firstCall = false;
+            await new Promise(resolve => { releaseSlow = resolve; });
+          }
+          events.push('saveSession:end');
+        });
+      const saveSpy = jest.spyOn(persistenceService, 'save')
+        .mockImplementation(async () => {
+          events.push('save:current');
+        });
+      const deleteSpy = jest.spyOn(persistenceService, 'delete')
+        .mockImplementation(async (key) => {
+          events.push(`delete:${key}`);
+        });
+
+      try {
+        // A queued write already past the null guard, hanging mid-flight
+        const slowPersist = sessionService.saveCurrentSession();
+        await new Promise(resolve => setImmediate(resolve));
+
+        const resetPromise = sessionService.reset();
+        await new Promise(resolve => setImmediate(resolve));
+
+        // Deletes must NOT have run while the queued write is in flight —
+        // otherwise the stale write lands after them and survives on disk
+        expect(events.filter(e => e.startsWith('delete:'))).toHaveLength(0);
+
+        releaseSlow();
+        await Promise.all([slowPersist, resetPromise]);
+
+        expect(events).toEqual([
+          'saveSession:start', 'saveSession:end', 'save:current',
+          'delete:session:current', 'delete:gameState:current'
+        ]);
+        expect(sessionService.getCurrentSession()).toBeNull();
+      } finally {
+        saveSessionSpy.mockRestore();
+        saveSpy.mockRestore();
+        deleteSpy.mockRestore();
+      }
+    });
+
+    it('still resets (and deletes) when the prior queue chain contains a rejected write', async () => {
+      await sessionService.createSession({
+        name: 'Reset After Failed Write Test',
+        teams: []
+      });
+
+      const saveSessionSpy = jest.spyOn(persistenceService, 'saveSession')
+        .mockRejectedValueOnce(new Error('disk full'));
+      const deleteSpy = jest.spyOn(persistenceService, 'delete')
+        .mockResolvedValue(undefined);
+
+      try {
+        await expect(sessionService.saveCurrentSession()).rejects.toThrow('disk full');
+
+        // The rejected write must not wedge reset (chain is kept alive)
+        await expect(sessionService.reset()).resolves.toBeUndefined();
+        expect(deleteSpy).toHaveBeenCalledWith('session:current');
+        expect(deleteSpy).toHaveBeenCalledWith('gameState:current');
+        expect(sessionService.getCurrentSession()).toBeNull();
+      } finally {
+        saveSessionSpy.mockRestore();
+        deleteSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('scores:reset listener — full restart semantics (F-BCORE-02 / F-BCORE-04, decision A3)', () => {
+    const transactionService = require('../../../src/services/transactionService');
+    const persistenceService = require('../../../src/services/persistenceService');
+    const Session = require('../../../src/models/session');
+    const Token = require('../../../src/models/token');
+
+    const makeToken = (id, value) => new Token({
+      id,
+      name: `Token ${id}`,
+      value,
+      memoryType: 'Technical',
+      mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+      metadata: { rating: 3 }
+    });
+
+    const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+    beforeEach(async () => {
+      await resetAllServices();
+      await sessionService.createSession({
+        name: 'Reset Semantics Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+      transactionService.tokens.set('rst001', makeToken('rst001', 450000));
+      transactionService.tokens.set('rst002', makeToken('rst002', 150000));
+    });
+
+    afterEach(async () => {
+      if (sessionService.currentSession) {
+        await sessionService.endSession();
+      }
+      sessionService.removeAllListeners();
+      transactionService.removeAllListeners();
+    });
+
+    it('zeroes real TeamScore fields and clears transactions + dedup state in session', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      const session = sessionService.getCurrentSession();
+      expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(450000);
+
+      transactionService.resetScores();
+      await wait();
+
+      const score = session.scores.find(s => s.teamId === 'Team Alpha');
+      // Real TeamScore fields zeroed (not the nonexistent transactionCount/lastUpdated)
+      expect(score.currentScore).toBe(0);
+      expect(score.baseScore).toBe(0);
+      expect(score.bonusPoints).toBe(0);
+      expect(score.tokensScanned).toBe(0);
+      expect(score.completedGroups).toEqual([]);
+      expect(score.transactionCount).toBeUndefined();
+      expect(score.lastUpdated).toBeUndefined();
+
+      // Decision A3: full restart — history and dedup state cleared
+      expect(session.transactions).toEqual([]);
+      expect(session.metadata.scannedTokensByDevice).toEqual({});
+      expect(session.metadata.totalScans).toBe(0);
+      expect(session.metadata.uniqueTokensScanned).toEqual([]);
+    });
+
+    it('does not resurrect pre-reset scores after an orchestrator restart', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.resetScores();
+      await wait();
+
+      // Simulate restart: hydrating the persisted session IS the restore —
+      // session.scores is the single canonical store (no restoreFromSession)
+      const persisted = await persistenceService.load('session:current');
+      expect(persisted).toBeTruthy();
+      const restored = Session.fromJSON(persisted);
+      sessionService.currentSession = restored;
+
+      // First post-restart scan must NOT include the pre-reset 450000
+      const result = await transactionService.processScan({
+        tokenId: 'rst002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      const teamScore = restored.scores.find(s => s.teamId === 'Team Alpha');
+      expect(teamScore.currentScore).toBe(150000);
+      expect(teamScore.baseScore).toBe(150000);
+    });
+
+    it('makes previously claimed tokens claimable again (full restart)', async () => {
+      const scanRequest = {
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      };
+
+      const first = await transactionService.processScan(scanRequest);
+      expect(first.status).toBe('accepted');
+      await wait();
+
+      const dup = await transactionService.processScan(scanRequest);
+      expect(dup.status).toBe('duplicate');
+
+      transactionService.resetScores();
+      await wait();
+
+      const rescan = await transactionService.processScan(scanRequest);
+      expect(rescan.status).toBe('accepted');
+    });
+
+    it('transaction:delete after reset cannot resurrect pre-reset scores (F-BCORE-04)', async () => {
+      await transactionService.processScan({
+        tokenId: 'rst001',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      transactionService.resetScores();
+      await wait();
+
+      const postReset = await transactionService.processScan({
+        tokenId: 'rst002',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_RST',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+
+      const session = sessionService.getCurrentSession();
+      transactionService.deleteTransaction(postReset.transaction.id, session);
+      await wait();
+
+      // Rebuild must see ONLY post-reset history (now empty) — not the
+      // pre-reset rst001 transaction (ghost scoring)
+      expect(session.scores.find(s => s.teamId === 'Team Alpha').currentScore).toBe(0);
     });
   });
 
@@ -704,24 +1140,25 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       transactionService.removeAllListeners();
     });
 
-    it('should sync new team to transactionService when addTeamToSession called', async () => {
+    it('should make new team visible to transactionService when addTeamToSession called', async () => {
       // Create session with no teams
       await sessionService.createSession({
         name: 'Team Sync Test',
         teams: []
       });
 
-      // Verify transactionService has no teams initially
-      expect(transactionService.teamScores.size).toBe(0);
+      // Verify transactionService sees no teams initially
+      expect(transactionService.getTeamScores()).toHaveLength(0);
 
       // Add team mid-game
-      const newTeamScore = await sessionService.addTeamToSession('New Team');
+      await sessionService.addTeamToSession('New Team');
 
-      // Verify team was synced to transactionService
-      expect(transactionService.teamScores.has('New Team')).toBe(true);
-      const syncedScore = transactionService.teamScores.get('New Team');
-      expect(syncedScore.teamId).toBe('New Team');
-      expect(syncedScore.currentScore).toBe(0);
+      // Visible through transactionService immediately (it reads
+      // session.scores directly — no sync step exists anymore)
+      const scores = transactionService.getTeamScores();
+      expect(scores).toHaveLength(1);
+      expect(scores[0].teamId).toBe('New Team');
+      expect(scores[0].currentScore).toBe(0);
     });
 
     it('should add team to session.scores as source of truth', async () => {
@@ -758,7 +1195,7 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       const session = sessionService.getCurrentSession();
       expect(session.scores[0].teamId).toBe('Spaced Team');
-      expect(transactionService.teamScores.has('Spaced Team')).toBe(true);
+      expect(transactionService.getTeamScores().map(s => s.teamId)).toContain('Spaced Team');
     });
 
     it('should emit session:updated after adding team', (done) => {
@@ -779,6 +1216,45 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
 
         sessionService.addTeamToSession('Broadcasted Team');
       });
+    });
+  });
+
+  describe('archiveOldSessions (merge-readiness review minor)', () => {
+    // This method had ZERO callers and ZERO tests — which is how it shipped
+    // calling session.isCompleted(), a method that does not exist on the
+    // model (TypeError on first invocation). Pin the real predicate.
+    it('archives only ENDED sessions older than the archive threshold', async () => {
+      const persistenceService = require('../../../src/services/persistenceService');
+      const config = require('../../../src/config');
+      const hoursMs = 60 * 60 * 1000;
+      const base = {
+        name: 'Archive Test', scores: [], transactions: [],
+        startTime: new Date(Date.now() - 200 * hoursMs).toISOString(),
+      };
+      const oldEnded = {
+        ...base, id: uuidv4(), status: 'ended',
+        endTime: new Date(Date.now() - (config.storage.archiveAfter + 1) * hoursMs).toISOString(),
+      };
+      const freshEnded = {
+        ...base, id: uuidv4(), status: 'ended',
+        endTime: new Date().toISOString(),
+      };
+      const stillActive = { ...base, id: uuidv4(), status: 'active', endTime: null };
+
+      const getAll = jest.spyOn(persistenceService, 'getAllSessions')
+        .mockResolvedValue([oldEnded, freshEnded, stillActive]);
+      const archive = jest.spyOn(persistenceService, 'archiveSession')
+        .mockResolvedValue(undefined);
+      try {
+        const archived = await sessionService.archiveOldSessions();
+
+        expect(archived).toBe(1);
+        expect(archive).toHaveBeenCalledTimes(1);
+        expect(archive.mock.calls[0][0].id).toBe(oldEnded.id);
+      } finally {
+        getAll.mockRestore();
+        archive.mockRestore();
+      }
     });
   });
 });

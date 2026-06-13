@@ -162,6 +162,99 @@ describe('Player Scan Event - Contract Validation', () => {
       validateWebSocketEvent(event, 'player:scan');
     });
 
+    // F-RT-01: the broadcast used to claim videoQueued:true whenever the token
+    // HAD a video, even when the video was rejected (VLC down / video busy)
+    // and the HTTP response was 409 with videoQueued:false. The broadcast must
+    // report what actually happened.
+    it('should broadcast videoQueued:false when video was rejected (VLC down)', async () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      registry.report('vlc', 'down', 'F-RT-01 test');
+
+      const eventPromise = waitForEvent(gmSocket, 'player:scan');
+
+      const response = await request(testContext.url)
+        .post('/api/scan')
+        .send({
+          tokenId: 'jaw001',  // Video token
+          deviceId: 'PLAYER_rt01',
+          deviceType: 'player',
+          timestamp: new Date().toISOString()
+        })
+        .expect(409);
+
+      // Scan persists despite video rejection; response is honest
+      expect(response.body.videoQueued).toBe(false);
+
+      // Broadcast must be honest too (no phantom "video queued" in Game Activity)
+      const event = await eventPromise;
+      expect(event.data).toHaveProperty('tokenId', 'jaw001');
+      expect(event.data).toHaveProperty('videoQueued', false);
+
+      validateWebSocketEvent(event, 'player:scan');
+    });
+
+    // Decision D1 (2026-06-09): after batch processing persists entries,
+    // each persisted scan is broadcast to the GM room as player:scan with
+    // replayed:true so Game Activity reflects drained offline queues
+    // (previously nothing was pushed — Game Activity stayed stale until a
+    // GM reconnected, F-SCAN-05).
+    it('should broadcast player:scan with replayed:true for batch-persisted scans', async () => {
+      const received = [];
+      gmSocket.on('player:scan', (event) => received.push(event));
+
+      await request(testContext.url)
+        .post('/api/scan/batch')
+        .send({
+          batchId: `batch-d1-${Date.now()}`,
+          transactions: [
+            {
+              tokenId: 'tac001',
+              deviceId: 'PLAYER_batch_1',
+              deviceType: 'player',
+              timestamp: '2026-04-16T23:10:00.000Z'
+            },
+            {
+              tokenId: 'jaw001',  // Video token — replay must NOT queue video (A4)
+              deviceId: 'PLAYER_batch_1',
+              deviceType: 'player',
+              timestamp: '2026-04-16T23:11:00.000Z'
+            }
+          ]
+        })
+        .expect(200);
+
+      // Wait for both broadcasts to arrive
+      await new Promise((resolve, reject) => {
+        const deadline = setTimeout(
+          () => reject(new Error(`Expected 2 player:scan broadcasts, got ${received.length}`)),
+          2000
+        );
+        const check = setInterval(() => {
+          if (received.length >= 2) {
+            clearTimeout(deadline);
+            clearInterval(check);
+            resolve();
+          }
+        }, 25);
+      });
+
+      const tokenIds = received.map(e => e.data.tokenId).sort();
+      expect(tokenIds).toEqual(['jaw001', 'tac001']);
+
+      for (const event of received) {
+        expect(event).toHaveProperty('event', 'player:scan');
+        expect(event.data).toHaveProperty('replayed', true);
+        expect(event.data).toHaveProperty('videoQueued', false);  // A4: never queued on replay
+        expect(event.data).toHaveProperty('scanId');
+        expect(event.data.scanId).toMatch(/^[0-9a-f-]{36}$/);
+        validateWebSocketEvent(event, 'player:scan');
+      }
+
+      // Scans were persisted (broadcast correlates with persisted records)
+      const session = sessionService.getCurrentSession();
+      expect(session.playerScans).toHaveLength(2);
+    });
+
     it('should persist player scan to session', async () => {
       // Setup: Listen for player:scan
       const eventPromise = waitForEvent(gmSocket, 'player:scan');

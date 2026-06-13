@@ -18,7 +18,6 @@ require('../helpers/browser-mocks');
 
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { createAuthenticatedScanner, waitForEvent } = require('../helpers/websocket-helpers');
-const { clearEventCache } = require('../helpers/websocket-core');
 const { resetAllServicesForTesting } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
 const transactionService = require('../../src/services/transactionService');
@@ -78,7 +77,6 @@ describe('Transaction Processing (via App entry point)', () => {
 
   describe('Blackmarket Mode Scoring', () => {
     it('should calculate and assign scores in blackmarket mode', async () => {
-      clearEventCache(scanner.socket);
 
       scanner.App.currentTeamId = 'Team Alpha';
 
@@ -92,7 +90,6 @@ describe('Transaction Processing (via App entry point)', () => {
     });
 
     it('should assign points to correct team', async () => {
-      clearEventCache(scanner.socket);
 
       scanner.App.currentTeamId = 'Detectives';
 
@@ -107,7 +104,6 @@ describe('Transaction Processing (via App entry point)', () => {
 
   describe('Detective Mode Star Ratings', () => {
     it('should assign star ratings but NOT update scores in detective mode', async () => {
-      clearEventCache(scanner.socket);
 
       scanner.Settings.mode = 'detective';
       scanner.App.currentTeamId = 'Team Alpha';
@@ -182,7 +178,6 @@ describe('Transaction Processing (via App entry point)', () => {
 
   describe('Session State Enforcement', () => {
     it('should block transactions when session is paused', async () => {
-      clearEventCache(scanner.socket);
 
       // Set up listener BEFORE emit
       const pausePromise = waitForEvent(scanner.socket, 'session:update');
@@ -203,7 +198,6 @@ describe('Transaction Processing (via App entry point)', () => {
       }
       expect(scanner.App.dataManager.sessionState?.status).toBe('paused');
 
-      clearEventCache(scanner.socket);
 
       // A paused session must not accept transactions; the GM scanner gates the scan
       // at the source (surfaces an error, does not submit/mark/queue it).
@@ -217,7 +211,6 @@ describe('Transaction Processing (via App entry point)', () => {
     });
 
     it('should allow transactions when session is active', async () => {
-      clearEventCache(scanner.socket);
 
       const currentSession = sessionService.getCurrentSession();
       expect(currentSession.status).toBe('active');
@@ -232,7 +225,6 @@ describe('Transaction Processing (via App entry point)', () => {
     });
 
     it('should resume accepting transactions after session is resumed', async () => {
-      clearEventCache(scanner.socket);
 
       // Pause - set up listener BEFORE emit
       const pausePromise = waitForEvent(scanner.socket, 'session:update');
@@ -243,7 +235,6 @@ describe('Transaction Processing (via App entry point)', () => {
       });
       await pausePromise;
 
-      clearEventCache(scanner.socket);
 
       // Resume - set up listener BEFORE emit
       const resumePromise = waitForEvent(scanner.socket, 'session:update');
@@ -254,7 +245,6 @@ describe('Transaction Processing (via App entry point)', () => {
       });
       await resumePromise;
 
-      clearEventCache(scanner.socket);
 
       // Submit transaction
       const resultPromise = waitForEvent(scanner.socket, 'transaction:result');

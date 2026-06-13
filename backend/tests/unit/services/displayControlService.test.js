@@ -570,5 +570,38 @@ describe('DisplayControlService - State Machine', () => {
         expect(firstEndIdx).toBeLessThan(secondStartIdx);
       }
     });
+
+    it('should serialize the pre-play hook behind a locked transition (F-SHOW-09)', async () => {
+      // Race from the review: queue drains → _handleVideoComplete acquires the
+      // lock and starts _doSetIdleLoop (mode already flipped to IDLE_LOOP, VLC
+      // still loading the idle loop). A new scan's pre-play hook arriving in
+      // that window must WAIT for the lock — pre-fix it ran immediately and the
+      // in-flight returnToIdleLoop() then clobbered the just-started video.
+      const order = [];
+      const prePlayHook = mockVideoQueueService.registerPrePlayHook.mock.calls[0][0];
+
+      // Enter VIDEO mode first so _handleVideoComplete proceeds
+      await prePlayHook();
+      expect(displayControlService.getCurrentMode()).toBe('VIDEO');
+
+      mockVlcService.returnToIdleLoop.mockImplementation(async () => {
+        order.push('idleLoop:start');
+        await new Promise(r => setTimeout(r, 30));
+        order.push('idleLoop:end');
+      });
+
+      // Queue drains: locked transition starts (slow VLC idle-loop load)
+      const completePromise = displayControlService._handleVideoComplete();
+      await new Promise(r => setTimeout(r, 5));
+      expect(order).toContain('idleLoop:start');
+
+      // New scan arrives mid-transition — hook must not finish until the lock frees
+      const hookPromise = prePlayHook().then(() => order.push('hook:done'));
+      await Promise.all([completePromise, hookPromise]);
+
+      expect(order.indexOf('hook:done')).toBeGreaterThan(order.indexOf('idleLoop:end'));
+      // And the display ends up in VIDEO mode for the new video
+      expect(displayControlService.getCurrentMode()).toBe('VIDEO');
+    });
   });
 });

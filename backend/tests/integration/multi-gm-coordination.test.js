@@ -103,8 +103,8 @@ describe('Multi-GM Coordination', () => {
       expect(result2.data.teamId).toBe('Detectives');
 
       // Validate: Scores updated independently
-      const team001Score = transactionService.teamScores.get('Team Alpha');
-      const team002Score = transactionService.teamScores.get('Detectives');
+      const team001Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Team Alpha');
+      const team002Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Detectives');
       expect(team001Score.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(team002Score.currentScore).toBe(TestTokens.getExpectedPoints('tac001'));
 
@@ -161,8 +161,8 @@ describe('Multi-GM Coordination', () => {
       expect(result2.data.message).toContain('Team Alpha');  // Claiming team
 
       // Validate: Only first team got points
-      const team001Score = transactionService.teamScores.get('Team Alpha');
-      const team002Score = transactionService.teamScores.get('Detectives');
+      const team001Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Team Alpha');
+      const team002Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Detectives');
       expect(team001Score.currentScore).toBe(TestTokens.getExpectedPoints('534e2b03'));
       expect(team002Score.currentScore).toBe(0);
 

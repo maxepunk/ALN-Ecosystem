@@ -10,6 +10,9 @@ const gameClockService = require('./gameClockService');
 const config = require('../config');
 const logger = require('../utils/logger');
 const listenerRegistry = require('../websocket/listenerRegistry');
+// Phase 2 split: persistence-listener bodies and session-content mutations
+const persistenceListeners = require('./session/persistenceListeners');
+const sessionRegistry = require('./session/sessionRegistry');
 
 class SessionService extends EventEmitter {
   constructor() {
@@ -19,208 +22,29 @@ class SessionService extends EventEmitter {
 
   initState() {
     this.currentSession = null;
+    // F-BCORE-07: promise-chain write queue — session persistence writes
+    // must land in call order (node-persist setItem is not atomic; two
+    // overlapping saves could leave the OLDER snapshot on disk)
+    this._writeQueue = Promise.resolve();
   }
 
   /**
-   * Set up listeners for score events from transactionService
-   * SessionService owns session.scores (source of truth), so it must handle score sync
-   * Uses listenerRegistry for proper test cleanup
+   * Set up listeners for score events from transactionService.
+   * Listener bodies live in session/persistenceListeners.js (Phase 2 split);
+   * this facade method is the re-wiring entry point used by systemReset.js
+   * and service-reset.js.
    */
   setupScoreListeners() {
-    // Lazy import to avoid circular dependency at module load time
-    const transactionService = require('./transactionService');
-
-    // NOTE (Slice 6): score:updated listener removed - no longer emitted by transactionService
-    // Score syncing now handled by setupPersistenceListeners() via transaction:accepted and score:adjusted
-
-    // Listen for scores:reset to reset session.scores to zero
-    // Per AsyncAPI contract: teams should still exist after reset with zero scores
-    listenerRegistry.addTrackedListener(transactionService, 'scores:reset', async () => {
-      if (!this.currentSession) {
-        logger.warn('No session during scores:reset');
-        return;
-      }
-
-      try {
-        // Reset each team's score to zero (preserve team membership)
-        this.currentSession.scores.forEach(score => {
-          score.currentScore = 0;
-          score.transactionCount = 0;
-          score.lastUpdated = new Date().toISOString();
-        });
-
-        await this.saveCurrentSession();
-        this.emit('session:updated', this.currentSession);
-
-        logger.info('Session scores reset to zero', {
-          sessionId: this.currentSession.id,
-          teamsReset: this.currentSession.scores.map(s => s.teamId)
-        });
-      } catch (error) {
-        logger.error('Failed to reset session scores', { error: error.message });
-      }
-    }, 'sessionService->transactionService:scores:reset');
-
-    logger.debug('SessionService: score listeners bound to transactionService');
+    persistenceListeners.setupScoreListeners(this);
   }
 
   /**
-   * Set up persistence listeners for the new event architecture
-   * These listeners handle persistence for transaction:accepted, score:adjusted, and transaction:deleted
-   * This is the SINGLE RESPONSIBILITY owner for session persistence
-   * Uses listenerRegistry for proper test cleanup
+   * Set up persistence listeners (transaction:accepted, score:adjusted,
+   * transaction:deleted) — the SINGLE RESPONSIBILITY owner for session
+   * persistence. Bodies live in session/persistenceListeners.js.
    */
   setupPersistenceListeners() {
-    // Lazy import to avoid circular dependency at module load time
-    const transactionService = require('./transactionService');
-
-    // Listen for transaction:accepted (single event per transaction, includes teamScore)
-    // This replaces the old flow where processScan + caller both modified session
-    listenerRegistry.addTrackedListener(transactionService, 'transaction:accepted',
-      async (payload) => {
-        // Handle both old format (Transaction object) and new format (payload with teamScore)
-        // OLD: transaction object directly
-        // NEW: { transaction, teamScore, deviceTracking, groupBonus }
-        const transaction = payload.transaction || payload;
-        const teamScore = payload.teamScore;
-        const deviceTracking = payload.deviceTracking;
-
-        if (!this.currentSession) {
-          logger.warn('No session during transaction:accepted - cannot persist', {
-            transactionId: transaction.id
-          });
-          return;
-        }
-
-        try {
-          // Only add transaction if this is new format (callers no longer add directly)
-          // The new format includes teamScore, old format doesn't
-          if (payload.teamScore !== undefined) {
-            // NEW FORMAT: Full event-driven persistence
-            // Add transaction to session (idempotent - Session.addTransaction checks for duplicates)
-            const txData = transaction.toJSON ? transaction.toJSON() : transaction;
-            this.currentSession.addTransaction(txData);
-
-            // Update device tracking for duplicate detection
-            if (deviceTracking) {
-              this.currentSession.addDeviceScannedToken(deviceTracking.deviceId, deviceTracking.tokenId);
-            }
-
-            // Update team score in session.scores (source of truth)
-            if (teamScore) {
-              this.upsertTeamScore(teamScore);
-            }
-
-            await this.saveCurrentSession();
-
-            // Emit transaction:added for broadcasts.js to broadcast transaction:new
-            this.emit('transaction:added', txData);
-            this.emit('session:updated', this.currentSession);
-
-            logger.debug('Persisted transaction via new event flow', {
-              transactionId: transaction.id,
-              teamId: transaction.teamId,
-              hasTeamScore: !!teamScore
-            });
-          }
-          // OLD FORMAT: transaction object only - callers still handle persistence
-          // Don't duplicate the save, just log for debugging
-        } catch (error) {
-          logger.error('Failed to persist transaction', {
-            error: error.message,
-            transactionId: transaction.id
-          });
-        }
-      }, 'sessionService->transactionService:transaction:accepted');
-
-    // Listen for score:adjusted (admin-only score changes)
-    // This handles adjustTeamScore() and other admin interventions
-    listenerRegistry.addTrackedListener(transactionService, 'score:adjusted',
-      async (payload) => {
-        if (!this.currentSession) {
-          logger.warn('No session during score:adjusted');
-          return;
-        }
-
-        const { teamScore, reason, isAdminAction } = payload;
-        if (!teamScore) {
-          logger.warn('score:adjusted received without teamScore');
-          return;
-        }
-
-        try {
-          this.upsertTeamScore(teamScore);
-          await this.saveCurrentSession();
-          this.emit('session:updated', this.currentSession);
-
-          logger.info('Persisted admin score adjustment', {
-            teamId: teamScore.teamId,
-            reason,
-            isAdminAction
-          });
-        } catch (error) {
-          logger.error('Failed to persist score adjustment', {
-            error: error.message,
-            teamId: teamScore?.teamId
-          });
-        }
-      }, 'sessionService->transactionService:score:adjusted');
-
-    // Listen for transaction:deleted (includes updatedTeamScore)
-    // This is moved from stateService to sessionService (single responsibility for persistence)
-    listenerRegistry.addTrackedListener(transactionService, 'transaction:deleted',
-      async (payload) => {
-        if (!this.currentSession) {
-          logger.warn('No session during transaction:deleted');
-          return;
-        }
-
-        const { transactionId, tokenId, teamId, updatedTeamScore } = payload;
-
-        try {
-          // Transaction already removed from session by deleteTransaction()
-          // Update team score if provided
-          if (updatedTeamScore) {
-            this.upsertTeamScore(updatedTeamScore);
-          }
-
-          await this.saveCurrentSession();
-          this.emit('session:updated', this.currentSession);
-
-          logger.info('Persisted transaction deletion', {
-            transactionId,
-            tokenId,
-            teamId,
-            hasUpdatedScore: !!updatedTeamScore
-          });
-        } catch (error) {
-          logger.error('Failed to persist transaction deletion', {
-            error: error.message,
-            transactionId
-          });
-        }
-      }, 'sessionService->transactionService:transaction:deleted');
-
-    logger.debug('SessionService: persistence listeners bound to transactionService');
-  }
-
-  /**
-   * Upsert a team score in session.scores
-   * Updates existing team or adds new team
-   * @param {Object} teamScore - TeamScore data (JSON or TeamScore instance)
-   * @private
-   */
-  upsertTeamScore(teamScore) {
-    if (!this.currentSession) return;
-
-    const scoreData = teamScore.toJSON ? teamScore.toJSON() : teamScore;
-    const idx = this.currentSession.scores.findIndex(s => s.teamId === scoreData.teamId);
-
-    if (idx >= 0) {
-      this.currentSession.scores[idx] = scoreData;
-    } else {
-      this.currentSession.scores.push(scoreData);
-    }
+    persistenceListeners.setupPersistenceListeners(this);
   }
 
   /**
@@ -280,10 +104,9 @@ class SessionService extends EventEmitter {
           }
         }
 
-        // CRITICAL: Sync teams to transactionService on session restoration
-        // This ensures transactionService.teamScores Map matches session.scores after restart
-        const transactionService = require('./transactionService');
-        transactionService.restoreFromSession(this.currentSession);
+        // Scores need no restore step: Session.fromJSON hydrated session.scores
+        // into live TeamScore instances — the single canonical store that
+        // transactionService reads and mutates directly.
 
         // Restore game clock from session data (if session was active/paused)
         if (this.currentSession.gameClock && this.currentSession.status !== 'ended') {
@@ -293,9 +116,24 @@ class SessionService extends EventEmitter {
             clockStatus: gameClockService.status
           });
         }
+
+        // Restore cue engine runtime state (F-SHOW-01/03, decision E1).
+        // restore() marks past clock cues as fired WITHOUT firing them;
+        // an active session re-activates standing cue evaluation.
+        if (this.currentSession.cueEngine && this.currentSession.status !== 'ended') {
+          const cueEngineService = require('./cueEngineService');
+          cueEngineService.restore(this.currentSession.cueEngine, gameClockService.getElapsed());
+          if (this.currentSession.status === 'active') {
+            cueEngineService.activate();
+          }
+          logger.info('Cue engine restored from session', {
+            sessionId: this.currentSession.id,
+            cueEngineActive: cueEngineService.active
+          });
+        }
       }
 
-      // Set up cross-service event listeners for score sync (legacy - will be removed in Slice 6)
+      // Set up the scores:reset listener (full-restart semantics, decision A3)
       this.setupScoreListeners();
 
       // Set up new persistence listeners (Slice 2 - single responsibility for persistence)
@@ -315,8 +153,11 @@ class SessionService extends EventEmitter {
    */
   async createSession(sessionData) {
     try {
-      // End current session if exists
-      if (this.currentSession && this.currentSession.isActive()) {
+      // End current session if exists — regardless of status (F-BCORE-05:
+      // the old isActive() guard silently orphaned paused/setup sessions:
+      // never complete()d, never backed up, persisted forever as
+      // paused/setup). endSession() handles setup/active/paused itself.
+      if (this.currentSession) {
         await this.endSession();
       }
 
@@ -327,10 +168,14 @@ class SessionService extends EventEmitter {
         scores: this.initializeTeamScores(sessionData.teams),
       });
 
-      // Save to persistence (both specific ID and 'current' reference)
+      // Save to persistence (both specific ID and 'current' reference),
+      // serialized through the write queue (F-BCORE-07) behind any pending
+      // writes from the just-ended previous session
       const sessionJSON = this.currentSession.toJSON();
-      await persistenceService.saveSession(sessionJSON);
-      await persistenceService.save('session:current', sessionJSON);
+      await this._enqueueWrite(async () => {
+        await persistenceService.saveSession(sessionJSON);
+        await persistenceService.save('session:current', sessionJSON);
+      });
 
       // NOTE: Session timeout and game clock are NOT started until startGame()
 
@@ -463,17 +308,21 @@ class SessionService extends EventEmitter {
       }
 
       if (updates.scores !== undefined) {
-        this.currentSession.scores = updates.scores;
+        // Hydrate into live TeamScore instances (session.scores is the
+        // canonical store and must hold instances, not plain JSON)
+        const TeamScore = require('../models/teamScore');
+        this.currentSession.scores = updates.scores.map(s =>
+          s instanceof TeamScore ? s : TeamScore.fromJSON(s)
+        );
       }
 
       if (updates.transactions !== undefined) {
         this.currentSession.transactions = updates.transactions;
       }
 
-      // Save to persistence (both specific ID and 'current' reference)
-      const sessionData = this.currentSession.toJSON();
-      await persistenceService.saveSession(sessionData);
-      await persistenceService.save('session:current', sessionData);
+      // Save to persistence via the write queue (F-BCORE-07) — snapshots the
+      // live session at write time like every other queued save
+      await this.saveCurrentSession();
 
       // Emit event
       this.emit('session:updated', this.currentSession);
@@ -518,6 +367,13 @@ class SessionService extends EventEmitter {
         this.currentSession.gameClock = gameClockService.toPersistence();
         break;
       case 'active':
+        // F-BCORE-06: resuming from setup would activate the session without
+        // startGame()'s cascade (game clock, cue engine, overtime threshold,
+        // gameStartTime) yet start accepting transactions. Mirror startGame()'s
+        // state guard: setup → active is ONLY valid via startGame().
+        if (oldStatus === 'setup') {
+          throw new Error('Cannot resume: session is in "setup" state — use session:start to begin the game');
+        }
         this.currentSession.start();
         if (oldStatus === 'paused') {
           gameClockService.resume();
@@ -559,13 +415,23 @@ class SessionService extends EventEmitter {
       // Stop the game clock
       gameClockService.stop();
 
-      // Save final state (both specific ID and 'current' reference)
-      const sessionData = session.toJSON();
-      await persistenceService.saveSession(sessionData);
-      await persistenceService.save('session:current', sessionData);
+      // Suspend the cue engine (F-SHOW-13, decision E4): event-triggered
+      // standing cues must not keep firing during post-game cleanup. The GM
+      // can re-enable via cue engine controls if needed.
+      require('./cueEngineService').suspend();
 
-      // Create backup
-      await persistenceService.backupSession(session.toJSON());
+      // Save final state (both specific ID and 'current' reference) through
+      // the write queue (F-BCORE-07): the snapshot is captured NOW — before
+      // currentSession is nulled below — and lands AFTER any in-flight queued
+      // writes, so an older snapshot can never overwrite the ended status
+      // (which would resurrect the session as active on restart). The backup
+      // rides the same queued task so it is ordered after the final write.
+      const sessionData = session.toJSON();
+      await this._enqueueWrite(async () => {
+        await persistenceService.saveSession(sessionData);
+        await persistenceService.save('session:current', sessionData);
+        await persistenceService.backupSession(sessionData);
+      });
 
       // Emit domain event for internal coordination
       // broadcasts.js will wrap this for WebSocket broadcast
@@ -604,10 +470,16 @@ class SessionService extends EventEmitter {
 
       for (const sessionData of sessions) {
         const session = Session.fromJSON(sessionData);
-        if (session.isCompleted() && session.endTime) {
+        // 'ended' status check (merge-readiness review minor: this used to
+        // call session.isCompleted(), which does not exist on the model —
+        // a TypeError waiting for the first caller)
+        if (session.status === 'ended' && session.endTime) {
           const endTime = new Date(session.endTime).getTime();
           if (now - endTime > archiveAfterMs) {
-            await persistenceService.archiveSession(session.toJSON());
+            // Archive through the write queue: ALL session persistence
+            // flows through _enqueueWrite (F-BCORE-07) for ordering
+            const sessionJSON = session.toJSON();
+            await this._enqueueWrite(() => persistenceService.archiveSession(sessionJSON));
             archived++;
           }
         }
@@ -653,97 +525,40 @@ class SessionService extends EventEmitter {
       return []; // Return empty array if no teams provided
     }
     const TeamScore = require('../models/teamScore');
-    return teams.map(teamId => TeamScore.createInitial(teamId).toJSON());
+    // Live instances — session.scores is the canonical store
+    return teams.map(teamId => TeamScore.createInitial(teamId));
   }
+
+  // ── Session content registry ─────────────────────────────────────────
+  // Team / device / scan mutations live in session/sessionRegistry.js
+  // (Phase 2 split) — these facade methods delegate.
 
   /**
-   * Add a new team to the current session mid-game
-   * Single source of truth for team creation - all teams MUST be created through this method
-   * @param {string} teamId - The team identifier (alphanumeric, 1-30 chars)
-   * @returns {Promise<Object>} The created TeamScore object
+   * Add a new team to the current session mid-game (single source of truth
+   * for team creation — any non-empty string is a valid team name).
+   * @param {string} teamId - The team identifier
+   * @returns {Promise<Object>} The created TeamScore instance
    */
-  async addTeamToSession(teamId) {
-    if (!this.currentSession) {
-      throw new Error('No active session');
-    }
-
-    // Trim and normalize team ID
-    const normalizedTeamId = teamId.trim();
-
-    // Check for duplicate team
-    const existingTeam = this.currentSession.scores.find(s => s.teamId === normalizedTeamId);
-    if (existingTeam) {
-      throw new Error(`Team "${teamId}" already exists in session`);
-    }
-
-    // Create new team score using the TeamScore model
-    const TeamScore = require('../models/teamScore');
-    const newTeamScore = TeamScore.createInitial(normalizedTeamId);
-
-    // Add to session (source of truth)
-    this.currentSession.scores.push(newTeamScore.toJSON());
-
-    // CRITICAL: Sync to transactionService immediately
-    // This ensures transactionService.teamScores Map stays in sync with session.scores
-    // Single path for team creation - sessionService owns it, transactionService syncs from it
-    const transactionService = require('./transactionService');
-    transactionService.syncTeamFromSession(newTeamScore);
-
-    // Persist and broadcast
-    await this.saveCurrentSession();
-    this.emit('session:updated', this.getCurrentSession());
-
-    logger.info('Team added to session', {
-      teamId: normalizedTeamId,
-      sessionId: this.currentSession.id
-    });
-
-    return newTeamScore;
+  addTeamToSession(teamId) {
+    return sessionRegistry.addTeamToSession(this, teamId);
   }
-
 
   /**
    * Add transaction to current session
    * @param {Object} transaction - Transaction to add
    * @returns {Promise<Object>} The added transaction
    */
-  async addTransaction(transaction) {
-    if (!this.currentSession) {
-      throw new Error('No active session');
-    }
-
-    this.currentSession.addTransaction(transaction);
-    await this.saveCurrentSession();
-    this.emit('transaction:added', transaction);
-    return transaction;
+  addTransaction(transaction) {
+    return sessionRegistry.addTransaction(this, transaction);
   }
 
   /**
-   * Add a player scan to current session
-   * Player scans track token discoveries (no scoring)
+   * Add a player scan to current session (token discoveries, no scoring)
    * @param {Object} scanData - Player scan data
    * @returns {Promise<Object>} The created player scan record
    */
-  async addPlayerScan(scanData) {
-    if (!this.currentSession) {
-      throw new Error('No active session');
-    }
-
-    const playerScan = this.currentSession.addPlayerScan(scanData);
-    await this.saveCurrentSession();
-
-    logger.info('Player scan recorded', {
-      sessionId: this.currentSession.id,
-      scanId: playerScan.id,
-      tokenId: scanData.tokenId,
-      deviceId: scanData.deviceId,
-      playerScanCount: this.currentSession.playerScans.length
-    });
-
-    // Emit event for broadcasts.js to handle WebSocket notification
-    this.emit('player-scan:added', playerScan);
-
-    return playerScan;
+  addPlayerScan(scanData) {
+    return sessionRegistry.addPlayerScan(this, scanData);
   }
 
   /**
@@ -751,14 +566,8 @@ class SessionService extends EventEmitter {
    * @param {Object} device - Device to update
    * @returns {Promise<void>}
    */
-  async updateDevice(device) {
-    if (!this.currentSession) {
-      throw new Error('No active session');
-    }
-
-    const { isNew, isReconnection } = this.currentSession.updateDevice(device);
-    await this.saveCurrentSession();
-    this.emit('device:updated', { device, isNew, isReconnection });
+  updateDevice(device) {
+    return sessionRegistry.updateDevice(this, device);
   }
 
   /**
@@ -766,27 +575,54 @@ class SessionService extends EventEmitter {
    * @param {string} deviceId - Device ID to remove
    * @returns {Promise<void>}
    */
-  async removeDevice(deviceId) {
-    if (!this.currentSession) {
-      return;
-    }
-
-    this.currentSession.removeDevice(deviceId);
-    await this.saveCurrentSession();
-    this.emit('device:removed', deviceId);
+  removeDevice(deviceId) {
+    return sessionRegistry.removeDevice(this, deviceId);
   }
 
   /**
    * Save current session to persistence
+   * Serialized through a promise-chain write queue (F-BCORE-07): concurrent
+   * callers' writes land in call order, and each write snapshots the LIVE
+   * session at write time (latest state wins, never an older snapshot).
    * @returns {Promise<void>}
    * @private
    */
-  async saveCurrentSession() {
+  saveCurrentSession() {
+    return this._enqueueWrite(() => this._persistCurrentSession());
+  }
+
+  /**
+   * Serialize a persistence write through the queue (F-BCORE-07). ALL
+   * session persistence must flow through here — a direct write racing a
+   * queued one can land an older snapshot last (e.g., an in-flight
+   * transaction persist overwriting an ended-status write, resurrecting an
+   * ended session on restart).
+   * @param {Function} writeFn async function performing the write
+   * @returns {Promise<void>}
+   * @private
+   */
+  _enqueueWrite(writeFn) {
+    const task = this._writeQueue.then(writeFn);
+    // Keep the chain alive even if a write fails (the caller still sees the
+    // rejection via the returned task)
+    this._writeQueue = task.then(() => undefined, () => undefined);
+    return task;
+  }
+
+  /**
+   * Perform the actual persistence write (only ever invoked via the queue)
+   * @returns {Promise<void>}
+   * @private
+   */
+  async _persistCurrentSession() {
     if (this.currentSession) {
       // Persist game clock state on session
       if (gameClockService.status !== 'stopped') {
         this.currentSession.gameClock = gameClockService.toPersistence();
       }
+      // Persist cue engine runtime state beside gameClock (F-SHOW-01/03)
+      // Lazy require: circular dependency (cueEngineService → commandExecutor → sessionService)
+      this.currentSession.cueEngine = require('./cueEngineService').toPersistence();
       const sessionData = this.currentSession.toJSON();
       await persistenceService.saveSession(sessionData);
       await persistenceService.save('session:current', sessionData);
@@ -821,12 +657,22 @@ class SessionService extends EventEmitter {
     // Infrastructure listeners will be re-registered by setupBroadcastListeners()
     this.removeAllListeners();
 
-    // Reinitialize state
-    this.initState();
+    // Clear persistence THROUGH the write queue (F-BCORE-07 follow-up): a
+    // queued write already past _persistCurrentSession's null guard could
+    // otherwise land AFTER direct deletes, leaving a stale session on disk
+    // for the next restart. Enqueuing orders the deletes behind every
+    // in-flight write, and awaiting the task drains the old chain BEFORE
+    // initState() re-arms _writeQueue (abandoning the chain). A previously
+    // rejected write cannot wedge this — _enqueueWrite keeps the chain
+    // alive on failure.
+    await this._enqueueWrite(async () => {
+      await persistenceService.delete('session:current');
+      await persistenceService.delete('gameState:current');
+    });
 
-    // Clear persistence
-    await persistenceService.delete('session:current');
-    await persistenceService.delete('gameState:current');
+    // Reinitialize state (re-arms a FRESH write queue now that the old
+    // chain has fully drained)
+    this.initState();
 
     // Cross-service listeners (setupScoreListeners, setupPersistenceListeners,
     // setupGameClockListeners) are NOT registered here. They are registered

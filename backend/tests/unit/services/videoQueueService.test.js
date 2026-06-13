@@ -161,6 +161,231 @@ describe('VideoQueueService - Queue Management', () => {
     });
   });
 
+  describe('monitorVlcPlayback completion threshold (F-SHOW-04, decision E2)', () => {
+    const vlcService = require('../../../src/services/vlcMprisService');
+    let queueItem;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      queueItem = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      queueItem.startPlayback();
+      videoQueueService.currentItem = queueItem;
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it('should NOT complete at 96% when more than 1 second remains (long video)', async () => {
+      // 180s video at 96% = 172.8s elapsed, 7.2s remaining — the old
+      // ratio threshold (position >= 0.95) truncated the final ~9 seconds
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.96, length: 180,
+      });
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 180);
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(completed).not.toHaveBeenCalled();
+      expect(videoQueueService.currentItem).toBe(queueItem);
+    });
+
+    it('should complete within the final 1-second margin', async () => {
+      // 180s video at 99.5% = 179.1s elapsed >= 179s (duration - 1)
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.995, length: 180,
+      });
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 180);
+      await jest.advanceTimersByTimeAsync(1000);
+
+      expect(completed).toHaveBeenCalledTimes(1);
+      expect(videoQueueService.currentItem).toBeNull();
+    });
+
+    it('should still complete via the stopped-state grace path', async () => {
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'stopped', position: 0, length: 180,
+      });
+      const completed = jest.fn();
+      videoQueueService.on('video:completed', completed);
+
+      await videoQueueService.monitorVlcPlayback(queueItem, 180);
+      await jest.advanceTimersByTimeAsync(1000); // grace check 1
+      expect(completed).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1000); // confirmed stopped
+
+      expect(completed).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('getState() queue entries (F-GMCMD-18)', () => {
+    it('includes duration on pending queue entries', () => {
+      // The GM renderer shows item.duration — without it every row reads "0s"
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.duration = 30; // VideoQueueItem.duration exists but was never surfaced
+
+      const state = videoQueueService.getState();
+
+      expect(state.queue).toHaveLength(1);
+      expect(state.queue[0]).toEqual({
+        tokenId: 'test_video_token',
+        filename: 'test_30sec.mp4',
+        duration: 30,
+      });
+    });
+  });
+
+  describe('pause/resume lifecycle (F-GMCMD-01 backend, F-SHOW-21)', () => {
+    const vlcService = require('../../../src/services/vlcMprisService');
+    let item;
+
+    beforeEach(() => {
+      item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      item.duration = 180;
+      videoQueueService.currentItem = item;
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+      jest.useRealTimers();
+    });
+
+    it('pauseCurrent sets the item to paused and getState reports it', async () => {
+      const paused = await videoQueueService.pauseCurrent();
+
+      expect(paused).toBe(true);
+      expect(item.isPaused()).toBe(true);
+      expect(videoQueueService.getState().status).toBe('paused');
+    });
+
+    it('getState reports a FROZEN position while paused (no wall-clock drift)', async () => {
+      jest.useFakeTimers();
+      // 60s into a 180s video
+      item.playbackStart = new Date(Date.now() - 60000).toISOString();
+
+      await videoQueueService.pauseCurrent();
+      const positionAtPause = videoQueueService.getState().currentVideo.position;
+      expect(positionAtPause).toBeCloseTo(60 / 180, 2);
+
+      jest.advanceTimersByTime(30000); // 30s pass while paused
+
+      const positionLater = videoQueueService.getState().currentVideo.position;
+      expect(positionLater).toBe(positionAtPause); // frozen, not drifting
+    });
+
+    it('resumeCurrent requires a paused video — no-op resume must not re-fire video:resumed', async () => {
+      // item is PLAYING (not paused)
+      const resumedHandler = jest.fn();
+      videoQueueService.on('video:resumed', resumedHandler);
+
+      const result = await videoQueueService.resumeCurrent();
+
+      expect(result).toBe(false);
+      expect(resumedHandler).not.toHaveBeenCalled(); // would re-fire ducking 'started'
+    });
+
+    it('resume after pause continues from the frozen position', async () => {
+      jest.useFakeTimers();
+      item.playbackStart = new Date(Date.now() - 60000).toISOString();
+
+      await videoQueueService.pauseCurrent();
+      jest.advanceTimersByTime(30000); // paused for 30s
+      await videoQueueService.resumeCurrent();
+
+      expect(item.isPlaying()).toBe(true);
+      // Position resumes from 60s, not 90s
+      const { position } = videoQueueService.getState().currentVideo;
+      expect(position).toBeCloseTo(60 / 180, 2);
+    });
+
+    it('monitor emits no video:progress while VLC is paused (F-SHOW-21)', async () => {
+      jest.useFakeTimers();
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'paused', position: 0.33, length: 180,
+      });
+      const progressHandler = jest.fn();
+      videoQueueService.on('video:progress', progressHandler);
+
+      await videoQueueService.monitorVlcPlayback(item, 180);
+      await jest.advanceTimersByTimeAsync(3000); // 3 monitor ticks
+
+      expect(progressHandler).not.toHaveBeenCalled();
+    });
+
+    it('monitorVlcPlayback clears a prior playbackTimer before setting a new one (F-SHOW-21)', async () => {
+      jest.useFakeTimers();
+      jest.spyOn(vlcService, 'getStatus').mockResolvedValue({
+        state: 'playing', position: 0.1, length: 180,
+      });
+      const stale = setTimeout(() => {}, 999999);
+      videoQueueService.playbackTimer = stale;
+
+      await videoQueueService.monitorVlcPlayback(item, 180);
+
+      // Exactly 2 timers must remain: progress interval + new fallback.
+      // A leaked stale timer (resumeCurrent → monitorVlcPlayback without
+      // clearing) would make this 3.
+      expect(jest.getTimerCount()).toBe(2);
+      expect(videoQueueService.playbackTimer).not.toBe(stale);
+    });
+
+    it('skipCurrent works on a paused video', async () => {
+      await videoQueueService.pauseCurrent();
+
+      const skipped = await videoQueueService.skipCurrent();
+
+      expect(skipped).toBe(true);
+      expect(item.isCompleted()).toBe(true);
+    });
+  });
+
+  describe('seekCurrent() (C4, F-GMCMD-21)', () => {
+    const vlcService = require('../../../src/services/vlcMprisService');
+
+    afterEach(() => jest.restoreAllMocks());
+
+    it('returns false when nothing is playing (honest no-op)', async () => {
+      const seekSpy = jest.spyOn(vlcService, 'seek').mockResolvedValue();
+
+      const result = await videoQueueService.seekCurrent(30);
+
+      expect(result).toBe(false);
+      expect(seekSpy).not.toHaveBeenCalled();
+    });
+
+    it('seeks VLC and rebases the wall-clock position for a playing video', async () => {
+      // Unit env runs with ENABLE_VIDEO_PLAYBACK=false — enable the feature
+      // flag so the VLC seek path is exercised (restored below)
+      const config = require('../../../src/config');
+      const originalFlag = config.features.videoPlayback;
+      config.features.videoPlayback = true;
+
+      const seekSpy = jest.spyOn(vlcService, 'seek').mockResolvedValue();
+      const item = videoQueueService.addToQueue(testToken, 'DEVICE_1');
+      item.startPlayback();
+      item.duration = 180;
+      videoQueueService.currentItem = item;
+
+      const result = await videoQueueService.seekCurrent(60);
+      config.features.videoPlayback = originalFlag;
+
+      expect(result).toBe(true);
+      expect(seekSpy).toHaveBeenCalledWith(60);
+      // getState() derives position from playbackStart wall clock — it must
+      // reflect the seek target, not the original start time
+      const elapsed = (Date.now() - new Date(item.playbackStart).getTime()) / 1000;
+      expect(elapsed).toBeGreaterThanOrEqual(59);
+      expect(elapsed).toBeLessThan(62);
+    });
+  });
+
   describe('clearQueue() video:idle emission', () => {
     it('should NOT emit video:idle when no video was playing and queue was empty', () => {
       const idleSpy = jest.fn();

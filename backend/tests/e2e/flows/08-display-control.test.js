@@ -23,6 +23,7 @@ const {
 
 const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
+const { getCapabilities, requireCapabilities } = require('../helpers/capabilities');
 
 const {
   createBrowserContext,
@@ -43,7 +44,7 @@ let vlcInfo = null;
 // Run once in chromium project (desktop viewport matches createBrowserContext 'desktop').
 test.skip(({ isMobile }) => isMobile, 'Display control tests only run on chromium project');
 
-test.describe('Display Control - Admin Panel', () => {
+test.describe('Display Control - Admin Panel @hardware', () => {
 
   test.beforeAll(async () => {
     await clearSessionData();
@@ -109,6 +110,10 @@ test.describe('Display Control - Admin Panel', () => {
   });
 
   test('should toggle display mode from Idle Loop to Scoreboard', async () => {
+    // Toggling BACK to idle loop plays idle-loop.mp4 through VLC —
+    // commandExecutor's SERVICE_DEPENDENCIES gating rejects it when VLC
+    // is down, by design. Requires real VLC.
+    requireCapabilities(test, await getCapabilities(orchestratorInfo.url), ['vlc']);
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
     page.on('console', msg => console.log(`BROWSER: ${msg.text()}`));
@@ -197,7 +202,7 @@ test.describe('Display Control - Admin Panel', () => {
     }
   });
 
-  test('should show "Returns To" indicator during video playback', async () => {
+  test('scoreboard display mode reflects in Now Showing', async () => {
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 
@@ -215,15 +220,13 @@ test.describe('Display Control - Admin Panel', () => {
       // Verify mode changed
       await expect(gmScanner.nowShowingValue).toHaveText('Scoreboard');
 
-      // Returns To should be hidden when no video is playing
-      await expect(gmScanner.returnsToContainer).toBeHidden();
+      console.log('✓ Now Showing reflects Scoreboard mode');
 
-      console.log('✓ Returns To indicator is hidden when no video playing');
-
-      // Note: Testing actual video playback requires queueing a video via scan,
-      // which would require a full session + scan flow. This is covered in
-      // integration tests with VLC. Here we just verify the UI element exists
-      // and is properly hidden when no video is playing.
+      // NOTE: this test previously asserted a "Returns To" indicator
+      // (#returns-to-container) was hidden — that element exists nowhere in
+      // the scanner (never built), so the assertion was vacuous and was
+      // removed with the dead page-object members. Video-behind-scoreboard
+      // return behavior is covered by the VLC-gated test below.
 
     } finally {
       await page.close();
@@ -232,6 +235,8 @@ test.describe('Display Control - Admin Panel', () => {
   });
 
   test('should show Return to Video button only when video playing behind scoreboard', async () => {
+    // Inherently needs a playing video (real VLC)
+    requireCapabilities(test, await getCapabilities(orchestratorInfo.url), ['vlc']);
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
 

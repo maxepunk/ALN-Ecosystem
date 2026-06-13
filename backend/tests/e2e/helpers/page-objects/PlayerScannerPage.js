@@ -49,7 +49,6 @@ class PlayerScannerPage {
       memoryStatus: '#memoryStatus',
       memoryImage: '#memoryImage',
       audioPlaceholder: '#audioPlaceholder',
-      audioControls: '#audioControls',
       memoryAudio: '#memoryAudio',
 
       // Manual Entry Modal
@@ -385,11 +384,17 @@ class PlayerScannerPage {
   }
 
   /**
-   * Check if audio controls are visible
+   * Check if the current memory has audio loaded.
+   * The PWA has no visible audio-controls element — audio rides the hidden
+   * #memoryAudio element (src set by tokenDisplay.setupAudioWithAutoplay),
+   * with #audioIndicator shown while playing.
    * @returns {Promise<boolean>}
    */
   async hasAudioControls() {
-    return await this.page.isVisible(`${this.selectors.audioControls}.active`);
+    return await this.page.evaluate((selector) => {
+      const audio = document.querySelector(selector);
+      return !!(audio && audio.src);
+    }, this.selectors.memoryAudio);
   }
 
   /**

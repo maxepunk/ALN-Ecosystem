@@ -39,6 +39,20 @@ if (asyncapi.components && asyncapi.components.schemas) {
 }
 
 /**
+ * Resolve a response-level $ref (e.g. '#/components/responses/ValidationError')
+ */
+function resolveResponseRef(responseSpec) {
+  if (responseSpec && responseSpec.$ref) {
+    const match = responseSpec.$ref.match(/^#\/components\/responses\/(.+)$/);
+    if (!match || !openapi.components?.responses?.[match[1]]) {
+      throw new Error(`Cannot resolve response $ref: ${responseSpec.$ref}`);
+    }
+    return openapi.components.responses[match[1]];
+  }
+  return responseSpec;
+}
+
+/**
  * Extract schema from OpenAPI spec
  */
 function getHTTPSchema(path, method, status = '200') {
@@ -48,7 +62,7 @@ function getHTTPSchema(path, method, status = '200') {
   const methodSpec = pathSpec[method.toLowerCase()];
   if (!methodSpec) throw new Error(`Method ${method} not found for ${path}`);
 
-  const responseSpec = methodSpec.responses[status];
+  const responseSpec = resolveResponseRef(methodSpec.responses[status]);
   if (!responseSpec) throw new Error(`Response ${status} not found for ${method} ${path}`);
 
   return responseSpec.content['application/json'].schema;

@@ -75,6 +75,31 @@ describe('SoundService', () => {
       );
     });
 
+    // F-SHOW-18: play() lacked the containment guard fileExists() has —
+    // a traversal path escaped public/audio (fs.existsSync mocked true here,
+    // so only the guard can stop the spawn).
+    it('should refuse paths that escape the audio directory (F-SHOW-18)', () => {
+      const errorHandler = jest.fn();
+      soundService.on('sound:error', errorHandler);
+
+      const result = soundService.play({ file: '../../../../etc/passwd' });
+
+      expect(result).toBeNull();
+      expect(spawn).not.toHaveBeenCalled();
+      expect(errorHandler).toHaveBeenCalledWith(
+        expect.objectContaining({ file: '../../../../etc/passwd' })
+      );
+    });
+
+    it('should still allow files in subdirectories of the audio dir', () => {
+      soundService.play({ file: 'cues/intro.wav' });
+      expect(spawn).toHaveBeenCalledWith(
+        'pw-play',
+        expect.arrayContaining([expect.stringContaining('cues/intro.wav')]),
+        expect.any(Object)
+      );
+    });
+
     it('should track running process', () => {
       soundService.play({ file: 'fanfare.wav' });
       expect(soundService.getPlaying()).toHaveLength(1);

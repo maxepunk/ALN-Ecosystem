@@ -310,14 +310,31 @@ describe('LightingService', () => {
       ]);
     });
 
-    it('should return fallback scenes when HA unreachable', async () => {
+    it('should fail empty when HA is unreachable — no fixture fallback (F-SHOW-10)', async () => {
+      // Production must NOT fall back to tests/fixtures/scenes.json: phantom
+      // scenes mask HA outages and let pre-show verification pass against
+      // scenes HA does not have.
       axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
 
       const scenes = await lightingService.getScenes();
-      // Falls back to fixtures/scenes.json
-      expect(scenes.length).toBeGreaterThan(0);
-      expect(scenes[0]).toHaveProperty('id');
-      expect(scenes[0]).toHaveProperty('name');
+
+      expect(scenes).toEqual([]);
+    });
+
+    it('should preserve the last known scene cache on a transient HA failure', async () => {
+      axios.get.mockResolvedValue({
+        status: 200,
+        data: [{ entity_id: 'scene.known', attributes: { friendly_name: 'Known' } }],
+      });
+      await lightingService.getScenes();
+
+      axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
+      await lightingService.getScenes();
+
+      // Last-known-good cache survives (still HA-sourced, never fixture data)
+      expect(lightingService.getCachedScenes()).toEqual([
+        { id: 'scene.known', name: 'Known' },
+      ]);
     });
 
     it('should update the scene cache', async () => {

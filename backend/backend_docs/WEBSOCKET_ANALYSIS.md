@@ -1,5 +1,11 @@
 # WebSocket Event Flows and State Synchronization - Deep Analysis
 
+> **Verification note (2026-06-11):** spot-fixed for the Phase 2 refactor
+> (stateService and the transactionService.teamScores Map no longer exist;
+> session.scores is canonical). For authoritative event shapes use
+> `contracts/asyncapi.yaml` (incl. the DomainState* schemas) and
+> WEBSOCKET_QUICK_REFERENCE.md — this deep-dive narrative may lag.
+
 ## Executive Summary
 
 This document provides a comprehensive analysis of the ALN Orchestrator's WebSocket communication patterns for end-to-end testing. The system uses a **contract-first architecture with wrapped event envelopes**, **event-driven service coordination**, and **session-based state synchronization**. All WebSocket interactions follow the AsyncAPI contract defined in `backend/contracts/asyncapi.yaml`.
@@ -417,9 +423,7 @@ TIME: T+12ms
 BROADCAST FLOW:
   Domain Event (service)
   ↓
-  stateService listener
-  ↓
-  broadcasts.js wraps event
+  broadcasts.js listener wraps event
   ↓
   io.emit() or io.to(room).emit()
   ↓
@@ -905,7 +909,6 @@ DOMAIN LAYER (Services emit unwrapped events)
 sessionService.emit('session:created', sessionData)
 transactionService.emit('transaction:added', transactionData)
 videoQueueService.emit('video:started', videoData)
-stateService.emit('state:updated', gamestateData)
 ↓
 BROADCAST LAYER (broadcasts.js listens and wraps)
 ↓
@@ -953,7 +956,6 @@ await videoQueueService.init();
 function setupServiceListeners(ioInstance) {
   setupBroadcastListeners(ioInstance, {
     sessionService,
-    stateService,
     videoQueueService,
     offlineQueueService,
     transactionService,
@@ -1355,21 +1357,23 @@ function validateWebSocketEvent(event, expectedEventName) {
 ### 9.3 State Consistency Check
 
 ```javascript
+// (Updated 2026-06: stateService and the transactionService.teamScores Map
+// no longer exist — session.scores is the single canonical score store.)
 async function verifyGameStateConsistency() {
   const session = sessionService.getCurrentSession();
-  const state = stateService.getCurrentState();
 
   // 1. Session exists
   expect(session).toBeDefined();
 
-  // 2. State derives from session
-  expect(state.sessionId).toBe(session.id);
-  expect(state.teams).toEqual(session.teams);
+  // 2. getTeamScores() reads straight from the canonical store
+  const scores = transactionService.getTeamScores();
+  expect(scores.map(s => s.teamId).sort())
+    .toEqual(session.scores.map(s => s.teamId).sort());
 
-  // 3. Scores match transactions
-  for (const [teamId, teamScore] of transactionService.teamScores) {
-    const stateScore = state.scores.find(s => s.teamId === teamId);
-    expect(stateScore.currentScore).toBe(teamScore.currentScore);
+  // 3. Scores are internally consistent
+  for (const teamScore of session.scores) {
+    expect(teamScore.currentScore)
+      .toBe(teamScore.baseScore + teamScore.bonusPoints);
   }
 
   // 4. Recent transactions are subset of session transactions

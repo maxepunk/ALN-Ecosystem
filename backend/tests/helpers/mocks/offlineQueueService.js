@@ -14,7 +14,7 @@ function createMockOfflineQueueService(overrides = {}) {
   const mock = new EventEmitter();
 
   // Exposed state
-  mock.playerScanQueue = [];
+  // NOTE (D2, 2026-06-09): player-scan queue deleted — GM transactions only.
   mock.gmTransactionQueue = [];
   mock.isOffline = false;
   mock.processingQueue = false;
@@ -23,15 +23,13 @@ function createMockOfflineQueueService(overrides = {}) {
   mock.init = jest.fn().mockResolvedValue(undefined);
 
   // Queue operations
-  mock.enqueue = jest.fn().mockReturnValue({ queueId: 'scan_mock', transactionId: 'tx-mock' });
   mock.enqueueGmTransaction = jest.fn().mockReturnValue({ queueId: 'gm_mock', transactionId: 'tx-gm-mock' });
   mock.processQueue = jest.fn().mockResolvedValue([]);
   mock.clearQueue = jest.fn().mockResolvedValue(undefined);
 
   // Status
-  mock.getQueueSize = jest.fn().mockReturnValue(0);
   mock.getStatus = jest.fn().mockReturnValue({
-    isOffline: false, playerQueueSize: 0, gmQueueSize: 0,
+    isOffline: false, gmQueueSize: 0,
     maxQueueSize: 100, processingQueue: false, instanceId: 1,
   });
   mock.setOfflineStatus = jest.fn();

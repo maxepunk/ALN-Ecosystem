@@ -240,6 +240,30 @@ describe('adminEvents.js', () => {
       }));
     });
 
+    test('paused transaction:result (transactionId: null) validates against the AsyncAPI contract (F-BCORE-08)', async () => {
+      const { validateWebSocketEvent } = require('../../helpers/contract-validator');
+
+      sessionService.getCurrentSession.mockReturnValue({ id: 's1', status: 'paused' });
+
+      await handleTransactionSubmit(mockSocket, {
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket', clientTxId: 'ctx-contract' }
+      }, mockIo);
+
+      const call = emitWrapped.mock.calls.find(c => c[1] === 'transaction:result');
+      expect(call).toBeDefined();
+
+      // Transient rejections (paused/setup) never created a transaction, so
+      // transactionId is null — the contract must permit that
+      expect(call[2].transactionId).toBeNull();
+
+      const envelope = {
+        event: 'transaction:result',
+        data: call[2],
+        timestamp: new Date().toISOString()
+      };
+      expect(() => validateWebSocketEvent(envelope, 'transaction:result')).not.toThrow();
+    });
+
     test('echoes clientTxId on AUTH_REQUIRED when socket is unidentified', async () => {
       mockSocket.deviceId = null;
 

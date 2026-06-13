@@ -177,9 +177,12 @@ describe('Player Scanner - Networked Mode (With Orchestrator)', () => {
 
       const result = await orchestrator.scanToken('video_token', 'Team Alpha');
 
-      // Fire-and-forget: should queue offline instead of showing specific error
-      expect(result.status).toBe('error');
-      expect(result.queued).toBe(true);
+      // Decision A5 (2026-06-09): 4xx responses are FINAL — never queued.
+      // Video-rejected 409 means the scan WAS recorded server-side; the
+      // player is told to rescan later if they want the video.
+      expect(result.status).toBe('rejected');
+      expect(result.queued).toBeFalsy();
+      expect(orchestrator.offlineQueue.length).toBe(0);
     });
   });
 

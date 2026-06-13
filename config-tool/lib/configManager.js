@@ -3,6 +3,15 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const { readEnv, writeEnv } = require('./envParser');
+const {
+  validateScoring,
+  validateCues,
+  validateRouting,
+  validateEnvUpdates,
+  validatePresetSections,
+  assertValid,
+} = require('./validators');
+const { MASK_SENTINEL } = require('./secrets');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
@@ -49,8 +58,12 @@ class ConfigManager {
   // -- Writers --
 
   writeEnvValues(updates) {
+    assertValid(validateEnvUpdates(updates), 'env updates');
     const parsed = readEnv(this.paths.envPath);
     for (const [key, value] of Object.entries(updates)) {
+      // Masked secrets round-trip from GET /config as the sentinel; that
+      // means "unchanged" — never overwrite the real value with bullets.
+      if (value === MASK_SENTINEL) continue;
       parsed.values[key] = String(value);
       // If key doesn't exist in lines, append it
       if (!parsed.lines.some(l => l.type === 'keyvalue' && l.key === key)) {
@@ -61,19 +74,32 @@ class ConfigManager {
   }
 
   writeScoring(data) {
+    assertValid(validateScoring(data), 'scoring config');
     this._writeJson(this.paths.scoringPath, data);
   }
 
   writeCues(data) {
+    assertValid(validateCues(data), 'cues config');
     this._writeJson(this.paths.cuesPath, data);
   }
 
   writeRouting(data) {
+    assertValid(validateRouting(data), 'routing config');
     this._writeJson(this.paths.routingPath, data);
   }
 
+  // Atomic write: tmp + rename so a crash mid-write can never leave a
+  // truncated JSON file for the backend to silently replace with defaults
+  // at next boot (F-TOOL-10).
   _writeJson(filePath, data) {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2) + '\n', 'utf8');
+    const tmp = `${filePath}.tmp`;
+    try {
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
+      fs.renameSync(tmp, filePath);
+    } catch (err) {
+      try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ }
+      throw err;
+    }
   }
 
   // -- Assets --
@@ -171,14 +197,47 @@ class ConfigManager {
   loadPreset(filename) {
     const preset = JSON.parse(fs.readFileSync(path.join(this.paths.presetsDir, path.basename(filename)), 'utf8'));
 
-    // Auto-backup current config before overwriting
-    this.savePreset('_backup_' + Date.now(), 'Auto-backup before loading preset');
+    // Validate ALL four sections BEFORE writing any — a preset must apply
+    // fully or not at all (F-TOOL-11: no half-applied presets).
+    assertValid(validatePresetSections(preset), `preset "${filename}"`);
 
-    // Write all config files from preset
-    this.writeEnvValues(preset.env);
-    this.writeScoring(preset.scoringConfig);
-    this.writeCues(preset.cues);
-    this.writeRouting(preset.routing);
+    // Auto-backup current config before overwriting. Tolerate a corrupt
+    // existing config file (skip-with-warning) — preset load is exactly the
+    // recovery path for that scenario, so the backup must not brick it.
+    // The in-memory snapshot doubles as the rollback source below.
+    let backup = null;
+    try {
+      backup = this.readAll();
+      this.savePreset('_backup_' + Date.now(), 'Auto-backup before loading preset');
+    } catch (err) {
+      backup = null;
+      console.warn(`[config-tool] Skipping auto-backup (current config unreadable): ${err.message}`);
+    }
+
+    // Write all config files from preset. Up-front validation can't catch
+    // I/O failures (EACCES, disk full) mid-sequence — on any write failure,
+    // roll back every section from the backup taken above so the config is
+    // never left half-applied (F-TOOL-11).
+    try {
+      this.writeEnvValues(preset.env);
+      this.writeScoring(preset.scoringConfig);
+      this.writeCues(preset.cues);
+      this.writeRouting(preset.routing);
+    } catch (err) {
+      if (!backup) throw err; // current config was unreadable — nothing to restore
+      try {
+        this.writeEnvValues(backup.env);
+        this.writeScoring(backup.scoring);
+        this.writeCues(backup.cues);
+        this.writeRouting(backup.routing);
+      } catch (restoreErr) {
+        throw new Error(
+          `preset apply failed (${err.message}); rollback ALSO failed (${restoreErr.message}) — ` +
+          'config may be half-applied; restore manually from the auto-backup preset'
+        );
+      }
+      throw new Error(`preset apply failed; previous config restored: ${err.message}`);
+    }
 
     return preset;
   }
@@ -194,6 +253,10 @@ class ConfigManager {
   }
 
   importPreset(presetData) {
+    // Imported presets go through the SAME validators as direct writes —
+    // a preset with `cues: "hello"` must not import-fine and corrupt on load.
+    assertValid(validatePresetSections(presetData), 'imported preset');
+    if (!fs.existsSync(this.paths.presetsDir)) fs.mkdirSync(this.paths.presetsDir, { recursive: true });
     const filename = presetData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
     this._writeJson(path.join(this.paths.presetsDir, filename), presetData);
     return filename;

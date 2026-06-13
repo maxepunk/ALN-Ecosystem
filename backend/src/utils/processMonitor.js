@@ -69,6 +69,17 @@ class ProcessMonitor extends EventEmitter {
       stdio: this._stdio || ['ignore', 'pipe', 'pipe'],
       ...(this._env && { env: this._env }),
     });
+
+    // Spawn failures (ENOENT: binary not installed, EACCES, ...) arrive as
+    // an async 'error' event — unhandled, they crash the whole orchestrator
+    // as an uncaughtException. Node emits 'close' (code -2) right after, so
+    // logging here is enough: the close handler below drives the normal
+    // failure-count → backoff → gave-up degradation, and the service's
+    // health registry entry goes down instead of the process.
+    this._proc.on('error', (err) => {
+      logger.error(`${this._label} spawn failed`, { error: err.message, command: this._command });
+    });
+
     logger.info(`${this._label} monitor started`, { pid: this._proc.pid });
 
     // Write PID file for orphan recovery on next boot

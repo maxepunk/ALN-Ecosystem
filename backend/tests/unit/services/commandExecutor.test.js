@@ -54,6 +54,7 @@ jest.mock('../../../src/services/videoQueueService', () => ({
   skipCurrent: jest.fn(),
   pauseCurrent: jest.fn(),
   resumeCurrent: jest.fn(),
+  seekCurrent: jest.fn(),
   videoFileExists: jest.fn(),
 }));
 
@@ -116,6 +117,7 @@ jest.mock('../../../src/services/musicService', () => ({
   setShuffle: jest.fn(),
   setLoop: jest.fn(),
   loadPlaylist: jest.fn(),
+  getPlaylist: jest.fn(),
   checkConnection: jest.fn(),
 }));
 
@@ -143,6 +145,7 @@ describe('commandExecutor', () => {
   const audioRoutingService = require('../../../src/services/audioRoutingService');
   const lightingService = require('../../../src/services/lightingService');
   const soundService = require('../../../src/services/soundService');
+  const musicService = require('../../../src/services/musicService');
   const registry = require('../../../src/services/serviceHealthRegistry');
 
   beforeEach(() => {
@@ -173,9 +176,11 @@ describe('commandExecutor', () => {
     videoQueueService.addVideoByFilename.mockReturnValue(undefined);
     videoQueueService.reorderQueue.mockReturnValue(undefined);
     videoQueueService.clearQueue.mockReturnValue(undefined);
-    videoQueueService.skipCurrent.mockResolvedValue(undefined);
-    videoQueueService.pauseCurrent.mockResolvedValue(undefined);
-    videoQueueService.resumeCurrent.mockResolvedValue(undefined);
+    videoQueueService.skipCurrent.mockResolvedValue(true);
+    videoQueueService.pauseCurrent.mockResolvedValue(true);
+    videoQueueService.resumeCurrent.mockResolvedValue(true);
+    videoQueueService.clearQueue.mockReturnValue(false);
+    videoQueueService.seekCurrent.mockResolvedValue(true);
     videoQueueService.videoFileExists.mockReturnValue(true);
 
     displayControlService.setIdleLoop.mockResolvedValue({ success: true });
@@ -312,8 +317,8 @@ describe('commandExecutor', () => {
 
     it('should route video:stop through videoQueueService (skip then clear)', async () => {
       const callOrder = [];
-      videoQueueService.skipCurrent.mockImplementation(() => { callOrder.push('skip'); return Promise.resolve(); });
-      videoQueueService.clearQueue.mockImplementation(() => { callOrder.push('clear'); });
+      videoQueueService.skipCurrent.mockImplementation(() => { callOrder.push('skip'); return Promise.resolve(true); });
+      videoQueueService.clearQueue.mockImplementation(() => { callOrder.push('clear'); return false; });
 
       const result = await executeCommand({
         action: 'video:stop',
@@ -346,6 +351,85 @@ describe('commandExecutor', () => {
       });
       expect(result.success).toBe(true);
       expect(result.message).toContain('test.mp4');
+    });
+
+    // F-GMCMD-08: transports returned 'success' for no-ops — the GM saw
+    // nothing happen after an apparently accepted command
+    describe('honest no-op acks (F-GMCMD-08)', () => {
+      it('video:play fails when nothing is paused/playing', async () => {
+        videoQueueService.resumeCurrent.mockResolvedValue(false);
+        const result = await executeCommand({ action: 'video:play', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:pause fails when nothing is playing', async () => {
+        videoQueueService.pauseCurrent.mockResolvedValue(false);
+        const result = await executeCommand({ action: 'video:pause', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:skip fails when nothing is playing', async () => {
+        videoQueueService.skipCurrent.mockResolvedValue(false);
+        const result = await executeCommand({ action: 'video:skip', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:stop fails when nothing was playing AND the queue was empty', async () => {
+        videoQueueService.skipCurrent.mockResolvedValue(false);
+        videoQueueService.clearQueue.mockReturnValue(false);
+        const result = await executeCommand({ action: 'video:stop', payload: {}, source: 'gm' });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('video:stop succeeds when only pending items were cleared', async () => {
+        videoQueueService.skipCurrent.mockResolvedValue(false);
+        videoQueueService.clearQueue.mockReturnValue(true);
+        const result = await executeCommand({ action: 'video:stop', payload: {}, source: 'gm' });
+        expect(result.success).toBe(true);
+      });
+    });
+
+    // C4: video:seek added contract-first; payload {position} in seconds
+    describe('video:seek (C4, F-GMCMD-21)', () => {
+      it('routes through videoQueueService.seekCurrent with position', async () => {
+        const result = await executeCommand({
+          action: 'video:seek',
+          payload: { position: 42 },
+          source: 'gm'
+        });
+        expect(videoQueueService.seekCurrent).toHaveBeenCalledWith(42);
+        expect(result.success).toBe(true);
+        expect(result.message).toMatch(/42/);
+      });
+
+      it('fails honestly when nothing is playing', async () => {
+        videoQueueService.seekCurrent.mockResolvedValue(false);
+        const result = await executeCommand({
+          action: 'video:seek',
+          payload: { position: 10 },
+          source: 'gm'
+        });
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/no video playing/i);
+      });
+
+      it('rejects a missing or invalid position', async () => {
+        for (const payload of [{}, { position: -5 }, { position: 'abc' }]) {
+          const result = await executeCommand({ action: 'video:seek', payload, source: 'gm' });
+          expect(result.success).toBe(false);
+          expect(result.message).toMatch(/position/i);
+        }
+        expect(videoQueueService.seekCurrent).not.toHaveBeenCalled();
+      });
+
+      it('is gated on VLC health (SERVICE_DEPENDENCIES)', () => {
+        expect(SERVICE_DEPENDENCIES['video:seek']).toBe('vlc');
+        expect(SERVICE_DEPENDENCIES['music:seek']).toBe('music');
+      });
     });
   });
 
@@ -826,7 +910,21 @@ describe('commandExecutor', () => {
         source: 'gm'
       });
       expect(result.success).toBe(true);
-      expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening');
+      // F-SHOW-15: GM dispatch passes trigger 'manual' + source 'gm'
+      expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening', 'manual', undefined, 'gm');
+    });
+
+    it('cue-source cue:fire keeps source cue with no manual trigger (F-SHOW-15)', async () => {
+      const { executeCommand } = require('../../../src/services/commandExecutor');
+
+      // A cue whose command list contains cue:fire (cue chaining)
+      const result = await executeCommand({
+        action: 'cue:fire',
+        payload: { cueId: 'chained' },
+        source: 'cue'
+      });
+      expect(result.success).toBe(true);
+      expect(cueEngineService.fireCue).toHaveBeenCalledWith('chained', undefined, undefined, 'cue');
     });
 
     it('should reject cue:fire without cueId', async () => {
@@ -1096,6 +1194,47 @@ describe('commandExecutor', () => {
       registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
     });
 
+    it('session:create defaults name/teams on empty payload; source defaults to gm', async () => {
+      const result = await executeCommand({ action: 'session:create', payload: {} });
+      expect(result.success).toBe(true);
+      expect(sessionService.createSession).toHaveBeenCalledWith({ name: 'New Session', teams: [] });
+      expect(result.source).toBe('gm');
+    });
+
+    it.each([
+      ['session:addTeam', 'teamId'],
+      ['bluetooth:pair', 'address'],
+      ['bluetooth:unpair', 'address'],
+      ['bluetooth:connect', 'address'],
+      ['bluetooth:disconnect', 'address'],
+      ['audio:route:set', 'sink'],
+      ['lighting:scene:activate', 'sceneId'],
+    ])('%s rejects with "%s is required" when the field is missing', async (action, field) => {
+      const emptyPayload = await executeCommand({ action, payload: {}, source: 'gm' });
+      expect(emptyPayload.success).toBe(false);
+      expect(emptyPayload.message).toBe(`${field} is required`);
+
+      // No payload at all takes the optional-chaining arm
+      const noPayload = await executeCommand({ action, payload: undefined, source: 'gm' });
+      expect(noPayload.success).toBe(false);
+      expect(noPayload.message).toBe(`${field} is required`);
+    });
+
+    it('required-field validation takes precedence over the health gate', async () => {
+      // A malformed command can never succeed, so the operator must get the
+      // validation error even when the service is ALSO down — "lighting is
+      // down" would wrongly suggest the command will work once the service
+      // returns (and made the integration assertion environment-dependent).
+      registry.isHealthy.mockImplementation((id) => id !== 'lighting');
+      registry.getStatus.mockReturnValue({ status: 'down', message: 'WebSocket disconnected' });
+
+      const result = await executeCommand({ action: 'lighting:scene:activate', payload: {}, source: 'gm' });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('sceneId is required');
+      expect(result.message).not.toContain('down');
+    });
+
     it('should reject video:play when VLC is down', async () => {
       registry.isHealthy.mockImplementation((id) => id !== 'vlc');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'Connection lost' });
@@ -1288,6 +1427,31 @@ describe('commandExecutor', () => {
         service: 'vlc',
         status: expect.objectContaining({ status: 'down' })
       });
+    });
+
+    it('returns valid when referenced resources exist (found arms)', async () => {
+      soundService.fileExists.mockReturnValue(true);
+      videoQueueService.videoFileExists.mockReturnValue(true);
+      lightingService.sceneExists.mockReturnValue(true);
+
+      expect((await validateCommand('sound:play', { file: 'a.wav' })).valid).toBe(true);
+      expect((await validateCommand('video:queue:add', { videoFile: 'a.mp4' })).valid).toBe(true);
+      expect((await validateCommand('lighting:scene:activate', { sceneId: 'scene.x' })).valid).toBe(true);
+    });
+
+    it('validates music:loadPlaylist playlist existence both ways', async () => {
+      // NOTE: uses the describe-scoped musicService reference — earlier
+      // describes call jest.resetModules(), so an in-test require would
+      // return a FRESH mock instance, not the one validateCommand closed over
+      musicService.getPlaylist.mockReturnValue({ id: 'p1' });
+      const found = await validateCommand('music:loadPlaylist', { playlistId: 'p1' });
+      expect(found.errors).toEqual([]);
+      expect(found.valid).toBe(true);
+
+      musicService.getPlaylist.mockReturnValue(undefined);
+      const res = await validateCommand('music:loadPlaylist', { playlistId: 'nope' });
+      expect(res.valid).toBe(false);
+      expect(res.errors[0].message).toContain('nope');
     });
 
     it('should return resource error when sound file not found', async () => {

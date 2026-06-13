@@ -23,7 +23,6 @@ class GMScannerPage {
 
     // Screen locators (within scanner-view, toggled with .active class)
     this.loadingScreen = page.locator('#loadingScreen.active');
-    this.settingsScreen = page.locator('#settingsScreen.active');
     this.gameModeScreen = page.locator('#gameModeScreen.active');
     this.teamEntryScreen = page.locator('#teamEntryScreen.active');
     this.scanScreen = page.locator('#scanScreen.active');
@@ -82,10 +81,8 @@ class GMScannerPage {
     this.tokenDetailCards = page.locator('#teamDetailsContainer .token-card, #teamDetailsContainer .history-entry');
 
     // Settings elements
-    this.settingsButton = page.locator('button[data-action="app.showSettings"]');
     this.deviceIdInput = page.locator('#deviceId');
     this.modeIndicator = page.locator('#modeIndicator');
-    this.saveSettingsBtn = page.locator('button[data-action="app.saveSettings"]');
 
     // Connection wizard and status (networked mode)
     this.connectionModal = page.locator('#connectionModal');
@@ -144,8 +141,6 @@ class GMScannerPage {
     this.deviceItems = page.locator('#device-list .device-item');
 
     // Admin transaction log (different from history screen)
-    this.adminTransactionLog = page.locator('#admin-transaction-log');
-    this.adminTransactionItems = page.locator('#admin-transaction-log .transaction-item');
 
     // Error displays
     this.errorToast = page.locator('.toast.error:visible');
@@ -155,8 +150,6 @@ class GMScannerPage {
     this.nowShowingValue = page.locator('#now-showing-value');
     this.nowShowingIcon = page.locator('#now-showing-icon');
     this.pendingQueueCount = page.locator('#pending-queue-count');
-    this.returnsToContainer = page.locator('#returns-to-container');
-    this.returnsToMode = page.locator('#returns-to-mode');
     this.btnIdleLoop = page.locator('#btn-idle-loop');
     this.btnScoreboard = page.locator('#btn-scoreboard');
     this.btnReturnToVideo = page.locator('#btn-return-to-video');
@@ -170,24 +163,26 @@ class GMScannerPage {
     this.audioRouteSound = page.locator('select[data-stream="sound"]');
     this.btWarning = page.locator('#bt-warning');
     this.btSpeakerCount = page.locator('#bt-speaker-count');
+    // NOTE: the scanner currently has NO unavailable-fallback elements for
+    // bluetooth/lighting — these locators match nothing, so the is*()
+    // methods below always report "available/connected". Kept because flows
+    // branch on them as availability guards; the missing fallback UI itself
+    // is a UX-backlog item (surfaced 2026-06-11 E2E audit).
+    this.btUnavailable = page.locator('#bt-unavailable');
+    this.lightingNotConnected = page.locator('#lighting-not-connected');
     this.btScanBtn = page.locator('#btn-bt-scan');
     this.btScanStatus = page.locator('#bt-scan-status');
     this.btDeviceList = page.locator('#bt-device-list');
     this.btDeviceItems = page.locator('#bt-device-list .bt-device-item');
-    this.btUnavailable = page.locator('#bt-unavailable');
 
     this.lightingSection = page.locator('#lighting-section');
     this.lightingScenes = page.locator('#lighting-scenes');
     this.lightingSceneTiles = page.locator('#lighting-scenes .scene-tile');
-    this.lightingNoScenes = page.locator('#lighting-no-scenes');
-    this.lightingNotConnected = page.locator('#lighting-not-connected');
     this.lightingRetryBtn = page.locator('button[data-action="admin.lightingRetry"]');
-    this.haConnectionStatus = page.locator('#ha-connection-status');
 
     // Phase 2: Game Clock, Active Cues, Music (MonitoringDisplay)
     this.gameClockDisplay = page.locator('#game-clock-display');
     this.activeCuesList = page.locator('#active-cues-list');
-    this.nowPlayingSection = page.locator('#now-playing-section');
 
     // Scoreboard Evidence Navigation (PR #10 - Admin panel)
     this.scoreboardEvidenceSection = page.locator('#scoreboard-evidence-section');
@@ -460,14 +455,6 @@ class GMScannerPage {
   }
 
   /**
-   * Open settings screen
-   */
-  async openSettings() {
-    await this.settingsButton.click();
-    await this.settingsScreen.waitFor({ state: 'visible', timeout: 5000 });
-  }
-
-  /**
    * Set device ID in settings
    * @param {string} deviceId
    */
@@ -481,14 +468,6 @@ class GMScannerPage {
    */
   async getDeviceId() {
     return await this.deviceIdInput.inputValue();
-  }
-
-  /**
-   * Save settings and return to team entry screen
-   */
-  async saveSettings() {
-    await this.saveSettingsBtn.click();
-    await this.teamEntryScreen.waitFor({ state: 'visible', timeout: 5000 });
   }
 
   /**
@@ -881,16 +860,6 @@ class GMScannerPage {
   }
 
   /**
-   * Get "Returns To" mode text (visible during video playback)
-   * @returns {Promise<string|null>} Returns null if container is hidden
-   */
-  async getReturnsToMode() {
-    const isVisible = await this.returnsToContainer.isVisible();
-    if (!isVisible) return null;
-    return await this.returnsToMode.textContent();
-  }
-
-  /**
    * Get pending queue count
    * @returns {Promise<number>}
    */
@@ -918,6 +887,9 @@ class GMScannerPage {
    */
   async getAudioRouteValue(stream = 'video') {
     const dropdown = this.page.locator(`select[data-stream="${stream}"]`);
+    // State getter: report absence instead of hanging — the dropdowns only
+    // render when the audio service has live sinks (real PipeWire)
+    if (await dropdown.count() === 0) return null;
     return await dropdown.inputValue();
   }
 
@@ -1469,26 +1441,6 @@ class GMScannerPage {
   // ============================================
   // Admin Transaction Log Methods
   // ============================================
-
-  /**
-   * Get transaction count from admin transaction log
-   * @returns {Promise<number>}
-   */
-  async getAdminTransactionCount() {
-    return await this.adminTransactionItems.count();
-  }
-
-  /**
-   * Wait for a specific transaction to appear in admin log
-   * @param {string} tokenId - Token ID to wait for
-   * @param {number} timeout - Timeout in ms (default 5000)
-   */
-  async waitForTransactionInAdminLog(tokenId, timeout = 5000) {
-    await this.page.locator(`#admin-transaction-log .transaction-item:has-text("${tokenId}")`).waitFor({
-      state: 'visible',
-      timeout
-    });
-  }
 
   // ============================================
   // Scoreboard & Team Details Methods

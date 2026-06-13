@@ -70,6 +70,16 @@ async function startVLCIfNeeded() {
       stdio: 'ignore',
       env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' }
     });
+    // spawn() ENOENT (cvlc not installed) arrives ASYNCHRONOUSLY via the
+    // 'error' event — without a handler it becomes an uncaughtException
+    // that kills the Playwright worker before any test runs, defeating
+    // this module's own graceful-degradation design ("require real VLC
+    // or skip video tests"). Swallow it here; waitForVLCReady times out
+    // and setupVLC reports 'unavailable'.
+    vlcProcess.on('error', (err) => {
+      logger.warn('VLC spawn failed (binary not available?)', { error: err.message });
+      vlcProcess = null;
+    });
     vlcProcess.unref();
 
     logger.debug('VLC process spawned', { pid: vlcProcess.pid });
@@ -127,6 +137,13 @@ async function waitForVLCReady(timeoutMs = VLC_MAX_WAIT_MS) {
 
   while (Date.now() - startTime < timeoutMs) {
     attempts++;
+
+    // Fast-fail: spawn 'error' handler nulls vlcProcess when the binary
+    // is missing — no point polling D-Bus for the full timeout per flow
+    if (vlcProcess === null) {
+      logger.warn('VLC process gone (spawn failed) — aborting readiness wait', { attempts });
+      return false;
+    }
 
     if (await isVLCAvailable()) {
       logger.debug('VLC ready', { attempts, elapsedMs: Date.now() - startTime });

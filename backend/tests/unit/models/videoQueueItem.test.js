@@ -61,6 +61,47 @@ describe('VideoQueueItem', () => {
       item.failPlayback('File not found');
       expect(item.hasFailed()).toBe(true);
     });
+
+    // F-GMCMD-01/F-SHOW-21: the state machine had no paused state at all —
+    // pause was unrepresentable end-to-end.
+    describe('paused state (F-GMCMD-01)', () => {
+      test('pausePlayback transitions playing → paused', () => {
+        item.startPlayback();
+        item.pausePlayback();
+        expect(item.isPaused()).toBe(true);
+        expect(item.isPlaying()).toBe(false);
+      });
+
+      test('pausePlayback throws if not playing', () => {
+        expect(() => item.pausePlayback()).toThrow();
+      });
+
+      test('resumePlayback transitions paused → playing', () => {
+        item.startPlayback();
+        item.pausePlayback();
+        item.resumePlayback();
+        expect(item.isPlaying()).toBe(true);
+      });
+
+      test('resumePlayback throws if not paused', () => {
+        item.startPlayback();
+        expect(() => item.resumePlayback()).toThrow();
+      });
+
+      test('completePlayback is allowed from paused (skip while paused)', () => {
+        item.startPlayback();
+        item.pausePlayback();
+        item.completePlayback();
+        expect(item.isCompleted()).toBe(true);
+      });
+
+      test('paused survives serialization round-trip', () => {
+        item.startPlayback();
+        item.pausePlayback();
+        const restored = require('../../../src/models/videoQueueItem').fromJSON(item.toJSON());
+        expect(restored.isPaused()).toBe(true);
+      });
+    });
   });
 
   describe('timing calculations', () => {
