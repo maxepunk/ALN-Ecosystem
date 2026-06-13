@@ -126,7 +126,7 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      void gm1.initialSync; // connect handshake already awaited by connectAndIdentify
+      // connect handshake (incl. initial sync:full) already awaited by connectAndIdentify
 
       // Step 4: Try to scan same token (should be rejected as duplicate)
       const result2 = await submitTransaction(gm1, {
@@ -165,9 +165,9 @@ describe('Reconnection State Restoration (Phase 2.1 P1.1)', () => {
 
       // Step 2: Connect GM and scan a token
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_001');
-      // Consume the initial gmAuth sync:full so waitForEvent below catches only the
+      // Initial gmAuth sync:full is consumed by the connect handshake inside
+      // connectAndIdentify, so waitForEvent below catches only the
       // sync:request-triggered one.
-      void gm1.initialSync; // connect handshake already awaited by connectAndIdentify
 
       await submitTransaction(gm1, {
         tokenId: 'jaw001',

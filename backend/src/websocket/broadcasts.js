@@ -231,7 +231,14 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
       // Stash teamScore for enriching the upcoming transaction:new broadcast
       if (payload.transaction?.id && payload.teamScore) {
-        teamScoreStash.set(payload.transaction.id, payload.teamScore);
+        const txId = payload.transaction.id;
+        teamScoreStash.set(txId, payload.teamScore);
+        // Self-expire (merge-readiness review minor): when the persistence
+        // listener early-returns, transaction:added never consumes this
+        // entry — sweep after 10s so unconsumed stashes can't accumulate
+        // over a long session. transaction:added normally consumes within ms.
+        const sweep = setTimeout(() => teamScoreStash.delete(txId), 10000);
+        if (sweep.unref) sweep.unref();
       }
     });
 

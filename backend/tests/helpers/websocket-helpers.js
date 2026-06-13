@@ -49,7 +49,7 @@ function createTrackedSocket(url, options = {}) {
  * await waitForEvent(socket, 'transaction:new');
  * await waitForEvent(socket, 'transaction:new', 3000);
  *
- * // Condition-based wait (avoids cache returning stale data)
+ * // Condition-based wait (filters to the specific occurrence you need)
  * const isTeam002 = (data) => data?.data?.transaction?.teamId === 'Detectives';
  * await waitForEvent(socket, 'transaction:new', isTeam002);
  * await waitForEvent(socket, 'transaction:new', isTeam002, 5000);
@@ -68,7 +68,8 @@ function waitForEvent(socket, eventOrEvents, predicateOrTimeout, timeout = 5000)
   }
   // else: predicateOrTimeout is undefined, use defaults
 
-  // Delegate to shared core implementation (checks cache first, respects predicate)
+  // Delegate to the shared core implementation (pure listener-from-now,
+  // 2.x.3 — no cache; register the promise BEFORE the triggering action)
   return coreWaitForEvent(socket, eventOrEvents, predicate, actualTimeout);
 }
 

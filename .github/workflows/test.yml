@@ -212,7 +212,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          # ALNScanner's npm ci rides the same cache (review CI nit)
+          cache-dependency-path: |
+            backend/package-lock.json
+            ALNScanner/package-lock.json
 
       - name: Install backend dependencies
         working-directory: backend

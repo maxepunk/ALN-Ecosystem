@@ -38,6 +38,15 @@ describe('envParser', () => {
       const result = parseEnvFile('TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc=');
       assert.strictEqual(result.values.TOKEN, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc=');
     });
+
+    it('keeps unquoted inline # as part of the value (pin: diverges from backend dotenv)', () => {
+      // The backend's dotenv strips unquoted inline comments
+      // (`KEY=val # note` → "val"); this parser deliberately keeps them
+      // (round-trip fidelity). Pinned so any change is made on purpose, in
+      // lockstep with the backend's parser. See lib/envParser.js NOTE.
+      const result = parseEnvFile('VLC_HOST=localhost # local only');
+      assert.strictEqual(result.values.VLC_HOST, 'localhost # local only');
+    });
   });
 
   describe('serializeEnv', () => {

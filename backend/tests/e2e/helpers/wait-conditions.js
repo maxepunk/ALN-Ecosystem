@@ -7,33 +7,19 @@
 
 /**
  * Wait for WebSocket event
+ *
+ * Delegates to the SHARED listener-from-now implementation in
+ * tests/helpers/websocket-core.js — one waitForEvent semantics everywhere
+ * (merge-readiness review: two diverging implementations had coexisted).
+ * Register the promise BEFORE the triggering action.
+ *
  * @param {Socket} socket - Socket.io client
  * @param {string} eventName - Event to wait for
  * @param {Function} [predicate] - Optional filter function (data) => boolean
  * @param {number} [timeout=5000] - Timeout in ms
  * @returns {Promise<Object>} Event data
  */
-async function waitForEvent(socket, eventName, predicate = null, timeout = 5000) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      socket.off(eventName, handler);
-      reject(new Error(`Timeout waiting for event: ${eventName}`));
-    }, timeout);
-
-    const handler = (data) => {
-      // If predicate provided, check if it matches
-      if (predicate && !predicate(data)) {
-        return; // Keep waiting
-      }
-
-      clearTimeout(timer);
-      socket.off(eventName, handler);
-      resolve(data);
-    };
-
-    socket.on(eventName, handler);
-  });
-}
+const { waitForEvent } = require('../../helpers/websocket-core');
 
 /**
  * Wait for element to appear

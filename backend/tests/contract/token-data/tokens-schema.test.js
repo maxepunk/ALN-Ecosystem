@@ -76,4 +76,25 @@ describe('ALN-TokenData/tokens.json schema contract', () => {
       .map(([key, t]) => `${key}: '${t.SF_MemoryType}'`);
     expect(unscoreable).toEqual([]);
   });
+
+  it('E2E fixture packs validate against the same schema (merge-readiness review minor)', () => {
+    // The TOKENS_PATH injection seam runs the whole system on fixture packs —
+    // a drifted fixture would make E2E exercise token shapes production can
+    // never produce. Every pack under tests/e2e/fixtures/packs/ must satisfy
+    // the same contract as production tokens.json.
+    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
+    const packs = fs.readdirSync(packsDir).filter(f => f.endsWith('.tokens.json'));
+    expect(packs.length).toBeGreaterThan(0); // the seam has at least one consumer
+
+    for (const pack of packs) {
+      const packTokens = JSON.parse(fs.readFileSync(path.join(packsDir, pack), 'utf8'));
+      const valid = validate(packTokens);
+      if (!valid) {
+        const details = validate.errors
+          .map(e => `${e.instancePath || '(root)'}: ${e.message}`)
+          .join('\n  ');
+        throw new Error(`${pack} schema violations:\n  ${details}`);
+      }
+    }
+  });
 });

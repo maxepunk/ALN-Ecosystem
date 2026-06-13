@@ -192,3 +192,72 @@ work on a PR branch. Check out the branch you mean, explicitly.
 
 After the merge: `claude/phase3-foundations` rebases onto main; subsequent
 Phase 3 slices use fresh slice-sized branches per the program methodology.
+
+**Update 2026-06-13 (owner decision):** Phase 3 starts BEFORE the main
+merge (merge waits for tonight's ALN game + the CYD smoke test). The
+review-fixed PR-branch contents were merged INTO phase3-foundations
+(submodules fast-forwarded to the round-2 tips), so Phase 3 builds on the
+fully-reviewed tree. Main merge proceeds per protocol after the game.
+
+## Merge-readiness review outcome (2026-06-12)
+
+Independent review (docs/reviews/2026-06-11-phase2-merge-readiness-review.md)
+verdicts: #1 READY · #10/#5/#6 READY-WITH-NOTES · #17 NOT-READY (CI red).
+All merge-gating findings are now FIXED and pushed:
+
+| Finding | Where | Commit |
+|---|---|---|
+| B1 lint errors, B2 coverage gap, P17-M1 write-queue bypass, P17-M2 unscoped credential helper, P17-M3 racy settles + lint gap, ESP-2 record fix | parent | 534cc7c, 0fbb1d6 |
+| PS-1 batch-snapshot loss, PS-2 SW branch shadowing, PS-3 dead coverage threshold | ALNPlayerScan #5 | a6606a1 |
+| Unescaped tokenId (attr context) + 2 text-node escapes + comment drift | ALNScanner #10 | 493160a |
+
+Parent pins re-pointed at the fixed PR-branch tips.
+
+**Open owner decisions (from the review):**
+- ESP-1 (decide at the CYD smoke test): REJECTED_NO_SESSION currently shows
+  SCAN_FAILED without local content — bless explicitly or show content with
+  failure overlay (A5 tension).
+- Nested data-pin question at the re-pin step: bump ALNScanner/data +
+  aln-memory-scanner/data to post-merge ALN-TokenData main? (Recommended:
+  yes, for consistency; schema is additive so it's safe.)
+
+**Deferred minors — PULLED FORWARD (owner decision 2026-06-12: enter
+Phase 3 with the cleanest codebase possible). ALL review minors are now
+fixed on the PR branches:** waitForEvent timeout listener cleanup +
+implementation unification (wait-conditions delegates to core) + stale
+cache-era comments; flow-22 listener-after-action races (×2); fixture-pack
+schema validation (contract test) + TOKENS_PATH loud WARN banner;
+archiveOldSessions isCompleted() TypeError fixed + first-ever test;
+offlineQueue ACTIVE-only drain guard; teamScoreStash self-expiry;
+contract-test batchId example matches real firmware format; CI: ALNScanner
+npm cache + manifest reporter now counts and NAMES flaky (passed-on-retry)
+tests; requirements.txt stale ref; group-completion divergences DOCUMENTED
+as accepted in SCORING_LOGIC.md (dissolve in Phase 3); player-scanner
+partial-batch failedCount logging + unreachable-guard removal (which
+surfaced and fixed a non-spec fetch mock in the backend-side suite + an
+unhandled-rejection hazard in onConnectionRestored); GM duplicate-verdict
+repaint RFID guard; ESP32 lazy nonce + reboot-trade comment + unified
+outcome switch. Nothing from the review remains deferred.
+
+## Round-2 package review outcome (2026-06-12, second independent session)
+
+Full re-review of all five PRs at the round-1-fixed SHAs (six parallel
+deep-review agents; config-tool/scripts got its FIRST dedicated reviewer).
+Every round-1 fix verified genuine — no weakened gates anywhere. The fresh
+pass found 1 MAJOR (config-tool preset endpoints served raw secrets,
+bypassing the new E7 masking) + ~18 LOW/MINOR/INFO findings. Per owner
+decision ("rock solid before merge"), ALL of them are now fixed on the PR
+branches — full record: docs/reviews/2026-06-12-phase2-package-review-round2.md
+
+| Round-2 fixes | Where | Commit |
+|---|---|---|
+| CT-1 preset secret leak (MAJOR) + preset I/O rollback + field-typed cue coercion + mask suffixes + envParser pin + prune shrink guard | parent | 13d9a25 |
+| reset()/archive writes through the F-BCORE-07 queue (+P17-M1 interleaving test); manifest-reporter final-outcome counts; hook unscoped-helper WARN; CLAUDE.md null SF_MemoryType | parent | c0ed08c |
+| Steady-state queue drain after 5xx; snapshot-first persist; poison-batch load filtering; additive pendingBatchSize | ALNPlayerScan #5 | 42df0c5 |
+| Defense-in-depth escapes; regression pins for the round-1 XSS fixes | ALNScanner #10 | 44ee450 |
+| Schema: .bmp-only images, no (x0) multiplier; null SF_MemoryType docs | ALN-TokenData #1 | 88ef4e7 |
+| Lazy-nonce benign-race comment | arduino-cyd #6 | 1d2469d |
+
+Parent pins re-pointed at the round-2 tips. Unchanged owner gates: CYD
+flash smoke test for #6 (decide ESP-1 there); nested data-pin question at
+the re-pin step; post-merge Pi steps (ALNScanner build + Tier H).

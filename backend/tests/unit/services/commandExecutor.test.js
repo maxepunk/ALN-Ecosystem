@@ -117,6 +117,7 @@ jest.mock('../../../src/services/musicService', () => ({
   setShuffle: jest.fn(),
   setLoop: jest.fn(),
   loadPlaylist: jest.fn(),
+  getPlaylist: jest.fn(),
   checkConnection: jest.fn(),
 }));
 
@@ -144,6 +145,7 @@ describe('commandExecutor', () => {
   const audioRoutingService = require('../../../src/services/audioRoutingService');
   const lightingService = require('../../../src/services/lightingService');
   const soundService = require('../../../src/services/soundService');
+  const musicService = require('../../../src/services/musicService');
   const registry = require('../../../src/services/serviceHealthRegistry');
 
   beforeEach(() => {
@@ -1192,6 +1194,47 @@ describe('commandExecutor', () => {
       registry.getStatus.mockReturnValue({ status: 'healthy', message: 'Connected', lastChecked: new Date() });
     });
 
+    it('session:create defaults name/teams on empty payload; source defaults to gm', async () => {
+      const result = await executeCommand({ action: 'session:create', payload: {} });
+      expect(result.success).toBe(true);
+      expect(sessionService.createSession).toHaveBeenCalledWith({ name: 'New Session', teams: [] });
+      expect(result.source).toBe('gm');
+    });
+
+    it.each([
+      ['session:addTeam', 'teamId'],
+      ['bluetooth:pair', 'address'],
+      ['bluetooth:unpair', 'address'],
+      ['bluetooth:connect', 'address'],
+      ['bluetooth:disconnect', 'address'],
+      ['audio:route:set', 'sink'],
+      ['lighting:scene:activate', 'sceneId'],
+    ])('%s rejects with "%s is required" when the field is missing', async (action, field) => {
+      const emptyPayload = await executeCommand({ action, payload: {}, source: 'gm' });
+      expect(emptyPayload.success).toBe(false);
+      expect(emptyPayload.message).toBe(`${field} is required`);
+
+      // No payload at all takes the optional-chaining arm
+      const noPayload = await executeCommand({ action, payload: undefined, source: 'gm' });
+      expect(noPayload.success).toBe(false);
+      expect(noPayload.message).toBe(`${field} is required`);
+    });
+
+    it('required-field validation takes precedence over the health gate', async () => {
+      // A malformed command can never succeed, so the operator must get the
+      // validation error even when the service is ALSO down — "lighting is
+      // down" would wrongly suggest the command will work once the service
+      // returns (and made the integration assertion environment-dependent).
+      registry.isHealthy.mockImplementation((id) => id !== 'lighting');
+      registry.getStatus.mockReturnValue({ status: 'down', message: 'WebSocket disconnected' });
+
+      const result = await executeCommand({ action: 'lighting:scene:activate', payload: {}, source: 'gm' });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain('sceneId is required');
+      expect(result.message).not.toContain('down');
+    });
+
     it('should reject video:play when VLC is down', async () => {
       registry.isHealthy.mockImplementation((id) => id !== 'vlc');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'Connection lost' });
@@ -1384,6 +1427,31 @@ describe('commandExecutor', () => {
         service: 'vlc',
         status: expect.objectContaining({ status: 'down' })
       });
+    });
+
+    it('returns valid when referenced resources exist (found arms)', async () => {
+      soundService.fileExists.mockReturnValue(true);
+      videoQueueService.videoFileExists.mockReturnValue(true);
+      lightingService.sceneExists.mockReturnValue(true);
+
+      expect((await validateCommand('sound:play', { file: 'a.wav' })).valid).toBe(true);
+      expect((await validateCommand('video:queue:add', { videoFile: 'a.mp4' })).valid).toBe(true);
+      expect((await validateCommand('lighting:scene:activate', { sceneId: 'scene.x' })).valid).toBe(true);
+    });
+
+    it('validates music:loadPlaylist playlist existence both ways', async () => {
+      // NOTE: uses the describe-scoped musicService reference — earlier
+      // describes call jest.resetModules(), so an in-test require would
+      // return a FRESH mock instance, not the one validateCommand closed over
+      musicService.getPlaylist.mockReturnValue({ id: 'p1' });
+      const found = await validateCommand('music:loadPlaylist', { playlistId: 'p1' });
+      expect(found.errors).toEqual([]);
+      expect(found.valid).toBe(true);
+
+      musicService.getPlaylist.mockReturnValue(undefined);
+      const res = await validateCommand('music:loadPlaylist', { playlistId: 'nope' });
+      expect(res.valid).toBe(false);
+      expect(res.errors[0].message).toContain('nope');
     });
 
     it('should return resource error when sound file not found', async () => {

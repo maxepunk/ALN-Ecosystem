@@ -62,7 +62,7 @@ describe('E2E page-object drift gates', () => {
     it('every this.* member referenced is defined (no dangling members)', () => {
       const defined = new Set([...src.matchAll(/this\.(\w+)\s*=/g)].map(m => m[1]));
       const used = new Set([...src.matchAll(/this\.(\w+)[.([]/g)].map(m => m[1]));
-      const methods = new Set([...src.matchAll(/^  (?:async )?(\w+)\(/gm)].map(m => m[1]));
+      const methods = new Set([...src.matchAll(/^ {2}(?:async )?(\w+)\(/gm)].map(m => m[1]));
 
       const dangling = [...used].filter(u =>
         !defined.has(u) && !methods.has(u) && u !== 'page'

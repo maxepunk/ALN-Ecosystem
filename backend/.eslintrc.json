@@ -182,6 +182,13 @@
             "property": "waitForTimeout",
             "message": "Fixed sleeps race the environment (2.x.2 rule). Use condition-based waits (wait-conditions.js, waitForEvent, waitForCapability, expect().toPass). Time-SEMANTIC waits (clock/timeline measurements) may disable this line with a justification comment."
           }
+        ],
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "NewExpression[callee.name='Promise'] CallExpression[callee.name='setTimeout']",
+            "message": "Bare setTimeout settle \u2014 same fixed-sleep race the waitForTimeout rule bans (P17-M3). Use condition-based waits (wait-conditions.js, waitForEvent, expect().toPass). Time-SEMANTIC waits may disable this line with a justification comment."
+          }
         ]
       }
     }

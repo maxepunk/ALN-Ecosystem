@@ -66,6 +66,23 @@ const SERVICE_DEPENDENCIES = {
 };
 
 /**
+ * Required-field presence is validated BEFORE the service-health gate: a
+ * command missing a required field can never succeed, so "<service> is down"
+ * would be the wrong — and environment-dependent — answer for it (the
+ * operator/author needs to fix the command, not wait for the service).
+ * The inline per-case checks remain as defense-in-depth.
+ */
+const REQUIRED_PAYLOAD_FIELDS = {
+  'session:addTeam': ['teamId'],
+  'bluetooth:pair': ['address'],
+  'bluetooth:unpair': ['address'],
+  'bluetooth:connect': ['address'],
+  'bluetooth:disconnect': ['address'],
+  'audio:route:set': ['sink'],
+  'lighting:scene:activate': ['sceneId'],
+};
+
+/**
  * Execute a gm:command action.
  * Called by WebSocket handler (source: 'gm') and cue engine (source: 'cue').
  *
@@ -82,6 +99,13 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
 
   try {
+    // Required-field validation FIRST (see REQUIRED_PAYLOAD_FIELDS rationale)
+    for (const field of REQUIRED_PAYLOAD_FIELDS[action] || []) {
+      if (!payload?.[field]) {
+        return { success: false, message: `${field} is required`, source };
+      }
+    }
+
     // Pre-dispatch health check: reject commands when required service is down
     const requiredService = SERVICE_DEPENDENCIES[action];
     if (requiredService && !registry.isHealthy(requiredService)) {

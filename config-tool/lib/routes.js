@@ -189,7 +189,9 @@ function createRouter(configManager) {
   router.put('/presets/:filename/load', (req, res) => {
     try {
       const preset = configManager.loadPreset(req.params.filename);
-      res.json({ success: true, preset });
+      // The SPA ignores this body and re-fetches GET /api/config (masked);
+      // mask here too so the load path can't hand out raw secrets (E7).
+      res.json({ success: true, preset: { ...preset, env: maskSecrets(preset.env || {}) } });
     } catch (err) {
       sendError(res, err);
     }
@@ -208,7 +210,12 @@ function createRouter(configManager) {
     try {
       const data = configManager.exportPreset(req.params.filename);
       res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);
-      res.json(data);
+      // Exported files leave the server — mask secrets exactly like
+      // GET /api/config (E7). On-disk presets stay raw (needed for restore).
+      // Re-importing a masked export is safe: writeEnvValues skips
+      // MASK_SENTINEL values on load, so stored secrets survive the
+      // masked-export → import → load round-trip unchanged.
+      res.json({ ...data, env: maskSecrets(data.env || {}) });
     } catch (err) {
       res.status(404).json({ error: err.message });
     }

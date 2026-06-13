@@ -168,10 +168,14 @@ class SessionService extends EventEmitter {
         scores: this.initializeTeamScores(sessionData.teams),
       });
 
-      // Save to persistence (both specific ID and 'current' reference)
+      // Save to persistence (both specific ID and 'current' reference),
+      // serialized through the write queue (F-BCORE-07) behind any pending
+      // writes from the just-ended previous session
       const sessionJSON = this.currentSession.toJSON();
-      await persistenceService.saveSession(sessionJSON);
-      await persistenceService.save('session:current', sessionJSON);
+      await this._enqueueWrite(async () => {
+        await persistenceService.saveSession(sessionJSON);
+        await persistenceService.save('session:current', sessionJSON);
+      });
 
       // NOTE: Session timeout and game clock are NOT started until startGame()
 
@@ -316,10 +320,9 @@ class SessionService extends EventEmitter {
         this.currentSession.transactions = updates.transactions;
       }
 
-      // Save to persistence (both specific ID and 'current' reference)
-      const sessionData = this.currentSession.toJSON();
-      await persistenceService.saveSession(sessionData);
-      await persistenceService.save('session:current', sessionData);
+      // Save to persistence via the write queue (F-BCORE-07) — snapshots the
+      // live session at write time like every other queued save
+      await this.saveCurrentSession();
 
       // Emit event
       this.emit('session:updated', this.currentSession);
@@ -417,13 +420,18 @@ class SessionService extends EventEmitter {
       // can re-enable via cue engine controls if needed.
       require('./cueEngineService').suspend();
 
-      // Save final state (both specific ID and 'current' reference)
+      // Save final state (both specific ID and 'current' reference) through
+      // the write queue (F-BCORE-07): the snapshot is captured NOW — before
+      // currentSession is nulled below — and lands AFTER any in-flight queued
+      // writes, so an older snapshot can never overwrite the ended status
+      // (which would resurrect the session as active on restart). The backup
+      // rides the same queued task so it is ordered after the final write.
       const sessionData = session.toJSON();
-      await persistenceService.saveSession(sessionData);
-      await persistenceService.save('session:current', sessionData);
-
-      // Create backup
-      await persistenceService.backupSession(session.toJSON());
+      await this._enqueueWrite(async () => {
+        await persistenceService.saveSession(sessionData);
+        await persistenceService.save('session:current', sessionData);
+        await persistenceService.backupSession(sessionData);
+      });
 
       // Emit domain event for internal coordination
       // broadcasts.js will wrap this for WebSocket broadcast
@@ -462,10 +470,16 @@ class SessionService extends EventEmitter {
 
       for (const sessionData of sessions) {
         const session = Session.fromJSON(sessionData);
-        if (session.isCompleted() && session.endTime) {
+        // 'ended' status check (merge-readiness review minor: this used to
+        // call session.isCompleted(), which does not exist on the model —
+        // a TypeError waiting for the first caller)
+        if (session.status === 'ended' && session.endTime) {
           const endTime = new Date(session.endTime).getTime();
           if (now - endTime > archiveAfterMs) {
-            await persistenceService.archiveSession(session.toJSON());
+            // Archive through the write queue: ALL session persistence
+            // flows through _enqueueWrite (F-BCORE-07) for ordering
+            const sessionJSON = session.toJSON();
+            await this._enqueueWrite(() => persistenceService.archiveSession(sessionJSON));
             archived++;
           }
         }
@@ -574,7 +588,21 @@ class SessionService extends EventEmitter {
    * @private
    */
   saveCurrentSession() {
-    const task = this._writeQueue.then(() => this._persistCurrentSession());
+    return this._enqueueWrite(() => this._persistCurrentSession());
+  }
+
+  /**
+   * Serialize a persistence write through the queue (F-BCORE-07). ALL
+   * session persistence must flow through here — a direct write racing a
+   * queued one can land an older snapshot last (e.g., an in-flight
+   * transaction persist overwriting an ended-status write, resurrecting an
+   * ended session on restart).
+   * @param {Function} writeFn async function performing the write
+   * @returns {Promise<void>}
+   * @private
+   */
+  _enqueueWrite(writeFn) {
+    const task = this._writeQueue.then(writeFn);
     // Keep the chain alive even if a write fails (the caller still sees the
     // rejection via the returned task)
     this._writeQueue = task.then(() => undefined, () => undefined);
@@ -629,12 +657,22 @@ class SessionService extends EventEmitter {
     // Infrastructure listeners will be re-registered by setupBroadcastListeners()
     this.removeAllListeners();
 
-    // Reinitialize state
-    this.initState();
+    // Clear persistence THROUGH the write queue (F-BCORE-07 follow-up): a
+    // queued write already past _persistCurrentSession's null guard could
+    // otherwise land AFTER direct deletes, leaving a stale session on disk
+    // for the next restart. Enqueuing orders the deletes behind every
+    // in-flight write, and awaiting the task drains the old chain BEFORE
+    // initState() re-arms _writeQueue (abandoning the chain). A previously
+    // rejected write cannot wedge this — _enqueueWrite keeps the chain
+    // alive on failure.
+    await this._enqueueWrite(async () => {
+      await persistenceService.delete('session:current');
+      await persistenceService.delete('gameState:current');
+    });
 
-    // Clear persistence
-    await persistenceService.delete('session:current');
-    await persistenceService.delete('gameState:current');
+    // Reinitialize state (re-arms a FRESH write queue now that the old
+    // chain has fully drained)
+    this.initState();
 
     // Cross-service listeners (setupScoreListeners, setupPersistenceListeners,
     // setupGameClockListeners) are NOT registered here. They are registered

@@ -366,13 +366,27 @@ describe('Environment Control Integration', () => {
     });
 
     it('should return error ack when scene activation fails (HA unreachable)', async () => {
-      // Don't mock activateScene — let it try the real axios call which will fail
-      // (no HA server running in test environment)
+      // Mock activateScene to reject with the connection error a real axios
+      // call to a dead HA would produce. This test asserts the SERVICE-level
+      // failure path (error propagation through commandExecutor to the ack),
+      // NOT the health gate — the gate's rejection is its own behavior.
       jest.spyOn(lightingService, 'activateScene').mockRejectedValue(
         new Error('connect ECONNREFUSED 127.0.0.1:8123')
       );
 
       mockBluetoothUnavailable();
+
+      // CI-revealed race (run 27449655998): beforeEach's reset starts an async
+      // WS connection to HA; with no HA listening, its close handler reports
+      // 'lighting down: WebSocket disconnected' at some later moment. If that
+      // lands before the command below, the commandExecutor health gate
+      // rejects pre-dispatch and activateScene is never reached. Defuse the
+      // doomed socket and pin the gate open — the mirror of how the sibling
+      // test above pins it closed.
+      lightingService._closeWebSocket();
+      lightingService._wsStopped = true;
+      require('../../src/services/serviceHealthRegistry')
+        .report('lighting', 'healthy', 'pin gate open: testing service-level failure');
 
       gm1 = await connectAndIdentify(testContext.socketUrl, 'gm', 'GM_ENV_051');
 

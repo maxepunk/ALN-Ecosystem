@@ -40,6 +40,32 @@ function musicLibraryPopulated() {
   }
 }
 
+/**
+ * Poll GET /api/state until the music domain reports `playing` (P17-M3:
+ * replaces fixed 1500ms settles after music:loadPlaylist — MPD actually
+ * reporting `playing` is the observable condition both downstream
+ * assertions depend on).
+ */
+async function waitForMusicPlaying(orchestratorUrl, timeoutMs = 15000) {
+  await expect(async () => {
+    const music = await new Promise((resolve, reject) => {
+      const req = https.get(`${orchestratorUrl}/api/state`, {
+        rejectUnauthorized: false,
+        timeout: 5000,
+      }, (res) => {
+        let body = '';
+        res.on('data', (c) => { body += c; });
+        res.on('end', () => {
+          try { resolve(JSON.parse(body).music || {}); } catch (e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('state probe timeout')); });
+    });
+    expect(music.state).toBe('playing');
+  }).toPass({ timeout: timeoutMs });
+}
+
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
@@ -347,9 +373,10 @@ test.describe('GM Scanner - Environment Control', () => {
       // (Ducking only fires against streams with a live PipeWire sink-input.)
       await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist',
         { playlistId: 'all-tracks' });
-      // Brief settle so the PipeWire sink-input for aln-music exists before
-      // the video duck-event fires.
-      await new Promise(r => setTimeout(r, 1500));
+      // Wait until MPD actually reports `playing` — the PipeWire sink-input
+      // for aln-music exists once playback is live, which is what the video
+      // duck-event needs as a target (was a fixed 1500ms settle, P17-M3).
+      await waitForMusicPlaying(orchestratorInfo.url);
 
       // Connect WebSocket listener for service:state (audio domain) events
       // service:state for audio is NOT cached — listener must be registered before trigger
@@ -434,8 +461,10 @@ test.describe('GM Scanner - Environment Control', () => {
       // (per musicService.pauseForGameClock).
       await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist',
         { playlistId: 'all-tracks' });
-      // Brief settle so MPD actually reports `state: playing` to the service.
-      await new Promise(r => setTimeout(r, 1500));
+      // Wait until MPD actually reports `playing` — pauseForGameClock only
+      // sets `pausedByGameClock` when music was playing (was a fixed 1500ms
+      // settle, P17-M3).
+      await waitForMusicPlaying(orchestratorInfo.url);
 
       // Connect WebSocket listener for service:state (music domain) events
       // service:state is NOT cached — listener must be registered before trigger

@@ -105,9 +105,14 @@ class OfflineQueueService extends EventEmitter {
     try {
       // Process GM transactions (actual scoring)
       const session = sessionService.getCurrentSession();
-      if (!session) {
-        logger.warn('Cannot process GM transactions: no active session');
-        // Keep GM transactions in queue for later
+      if (!session || !session.isActive()) {
+        // ACTIVE-only (merge-readiness review minor): GM transactions are
+        // rejected during paused/setup sessions, so draining the queue then
+        // would consume scans and report them 'processed' while the game
+        // never scored them. Keep them queued until the session is active.
+        logger.warn('Cannot process GM transactions: session not active', {
+          sessionStatus: session ? session.status : 'none',
+        });
       } else {
         while (this.gmTransactionQueue.length > 0) {
           const gmTransaction = this.gmTransactionQueue.shift();
