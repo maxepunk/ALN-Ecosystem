@@ -246,8 +246,17 @@ class TimelineRuntime {
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
-        if (result?.data?.completion) await result.data.completion;
-        activeCue.completedCommands.push({ action: entry.action, position: entry.at });
+        // Track completion WITHOUT blocking: a cue should ack "started", not wait
+        // for a multi-second sound/video to finish playing. Blocking here delayed
+        // the gm:command:ack for the whole at:0 sound duration and stalled any
+        // sibling at:0 entries behind it.
+        if (result?.data?.completion) {
+          result.data.completion
+            .then(() => activeCue.completedCommands.push({ action: entry.action, position: entry.at }))
+            .catch(() => {});
+        } else {
+          activeCue.completedCommands.push({ action: entry.action, position: entry.at });
+        }
       } catch (err) {
         logger.error(`[TimelineRuntime] Command failed in "${cueId}" at ${entry.at}s: ${entry.action}`, err.message);
         activeCue.failedCommands.push({ action: entry.action, position: entry.at, error: err.message });
@@ -330,7 +339,12 @@ class TimelineRuntime {
    * @param {function(string, Object): void} onError
    */
   handleVideoProgress(data, onStatus, getCueDef, onError) {
-    const { position, duration, tokenId: eventTokenId } = data;
+    const { position, duration } = data;
+    // F-SHOW-08: videoQueueService emits video:progress as { queueItem, ... } with
+    // the id at queueItem.tokenId (NOT top-level). Fall back to it so the
+    // correlation guard below actually fires — otherwise eventTokenId is always
+    // undefined and an unrelated video's progress can hijack a boundary cue.
+    const eventTokenId = data.tokenId ?? data.queueItem?.tokenId;
     if (position === undefined) return;
 
     const positionSeconds = (duration && duration > 0) ? position * duration : position;

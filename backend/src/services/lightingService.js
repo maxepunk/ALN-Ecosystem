@@ -355,8 +355,11 @@ class LightingService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async refreshScenes() {
-    const scenes = await this.getScenes();
-    this.emit('scenes:refreshed', { scenes });
+    await this.getScenes();
+    // Broadcast the cache, not getScenes()'s return value: on a transient HA
+    // failure getScenes() returns [] but preserves this._scenes, so emitting the
+    // raw return would wipe the GM's scene grid even though the cache survives.
+    this.emit('scenes:refreshed', { scenes: this._scenes });
   }
 
   /**

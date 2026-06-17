@@ -419,14 +419,19 @@ test.describe('GM Scanner - Environment Control', () => {
         // have fired before video started. There's a theoretical microtask gap
         // here that could miss the duck-end event, but production video tokens
         // are seconds-to-minutes long — ample time to register the listener.
+        // When ducking FULLY clears, audioRoutingService.getState().ducking is a
+        // sparse map that omits the 'music' key — so ducking.music is `undefined`,
+        // not `[]` (contract-compliant; the GM scanner reads it via `?.`). Tolerate
+        // that: "video no longer ducks music" means music is absent OR an array
+        // without 'video'. (Requiring Array.isArray here missed the full-restore
+        // case and hung for 120s.)
         const duckingByVideoEndedPromise = waitForEvent(wsSocket, 'service:state',
           (data) => data.data?.domain === 'audio' &&
-            Array.isArray(data.data?.state?.ducking?.music) &&
-            !data.data.state.ducking.music.includes('video'), 120000); // Videos can be long
+            !((data.data?.state?.ducking?.music) || []).includes('video'), 120000); // Videos can be long
 
         // Wait for ducking by video to deactivate when video completes
         const duckingOff = await duckingByVideoEndedPromise;
-        expect(duckingOff.data.state.ducking.music).not.toContain('video');
+        expect(duckingOff.data.state.ducking.music || []).not.toContain('video');
         console.log('Video-driven ducking ended after video completion');
 
       } finally {

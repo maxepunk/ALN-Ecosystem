@@ -66,6 +66,12 @@ const logger = winston.createLogger({
   level: config.logging.level,
   format: logFormat,
   defaultMeta: { service: 'aln-orchestrator' },
+  // Never let Winston exit the process. With exceptionHandlers/rejectionHandlers
+  // configured, the default (exitOnError: true) makes Winston call process.exit(1)
+  // after handling an uncaught exception or unhandled rejection — which would kill
+  // the orchestrator mid-game (and Playwright E2E workers) on any stray rejection.
+  // We log it and keep running; our own process.on handlers decide on shutdown.
+  exitOnError: false,
   transports: [
     // Console transport
     new winston.transports.Console({

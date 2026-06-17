@@ -633,6 +633,12 @@ test.describe('Player Scanner Networked Scanning', () => {
       request => request.url().includes('/api/scan/batch') && request.method() === 'POST',
       { timeout: 10000 }
     );
+    // Mark the promise handled immediately: the 10s timeout can fire during the
+    // reconnect awaits below (before the await at the try-block). An unhandled
+    // rejection here is escalated by Winston's rejectionHandlers to process.exit,
+    // which kills the whole Playwright worker (and any co-scheduled test). The
+    // try/catch around the real await still catches the timeout for control flow.
+    batchRequestPromise.catch(() => {});
 
     // Restore connection
     await context.setOffline(false);

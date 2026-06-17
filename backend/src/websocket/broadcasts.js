@@ -421,20 +421,21 @@ function setupBroadcastListeners(io, services) {
         logger.warn('Ducking stop failed on sound:completed', { error: err.message });
       });
     });
-    // F-SHOW-02: sounds ending via sound:stop (kill → exit code null) or a
-    // pw-play failure emit sound:stopped / sound:error, NOT sound:completed.
-    // Both must map to the 'completed' ducking lifecycle or music stays ducked
-    // forever after a stopped/failed sound.
+    // F-SHOW-02: a sound that started and is killed/fails exits via close →
+    // sound:stopped (exit code null=killed / non-zero=error), which must map to
+    // the 'completed' ducking lifecycle or music stays ducked forever.
     addTrackedListener(soundService, 'sound:stopped', () => {
       audioRoutingService.handleDuckingEvent('sound', 'completed').catch(err => {
         logger.warn('Ducking stop failed on sound:stopped', { error: err.message });
       });
     });
-    addTrackedListener(soundService, 'sound:error', () => {
-      audioRoutingService.handleDuckingEvent('sound', 'completed').catch(err => {
-        logger.warn('Ducking stop failed on sound:error', { error: err.message });
-      });
-    });
+    // NOTE: sound:error is intentionally NOT wired to a duck-stop. soundService
+    // only emits sound:started once a process has a pid, so every sound:error
+    // (path-escape, file-not-found, spawn-ENOENT) is a NEVER-STARTED sound that
+    // never ducked music. Forwarding it as ('sound','completed') would decrement
+    // the shared 'sound' duck count and restore music mid-playback of a
+    // concurrent live sound (refcount underflow). Post-start failures un-duck via
+    // sound:stopped above, not sound:error.
   }
 
   // ============================================================

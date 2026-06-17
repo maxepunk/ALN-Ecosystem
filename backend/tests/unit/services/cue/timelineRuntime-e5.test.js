@@ -222,6 +222,35 @@ describe('E5 — Three-segment compound-cue timeline', () => {
       expect(execCmd).toHaveBeenCalledWith(expect.objectContaining({ action: 'lighting:scene:activate' }));
     });
 
+    it('F-SHOW-08: ignores progress from an UNRELATED video (real {queueItem} event shape)', async () => {
+      const execCmd = require('../../../../src/services/commandExecutor').executeCommand;
+      gameClockService.getElapsed.mockReturnValue(0);
+
+      cueEngineService.loadCues([{
+        id: 'fshow08', label: 'F-SHOW-08',
+        timeline: [
+          { at: 0, action: 'video:queue:add', payload: { tokenId: 'tok1' } },
+          { at: 30, action: 'lighting:scene:activate', payload: { sceneId: 'mid' } },
+        ],
+      }]);
+
+      await cueEngineService.fireCue('fshow08');
+      execCmd.mockClear();
+
+      // A DIFFERENT video is playing. videoQueueService emits video:progress as
+      // { queueItem, progress, position, duration } — the tokenId lives in
+      // queueItem.tokenId, NOT at the top level. position 0.5 * 120 = 60s would
+      // fire the at:30 entry IF the cue wrongly latched onto this unrelated video.
+      cueEngineService.handleVideoProgressEvent({
+        queueItem: { tokenId: 'UNRELATED' }, progress: 50, position: 0.5, duration: 120,
+      });
+      await flushAsync();
+
+      // The cue must stay in its boundary pause waiting for tok1; the unrelated
+      // video's position must NOT advance it, so the at:30 entry never fires.
+      expect(execCmd).not.toHaveBeenCalled();
+    });
+
     it('GM pause pauses pending entries during video', async () => {
       const execCmd = require('../../../../src/services/commandExecutor').executeCommand;
       gameClockService.getElapsed.mockReturnValue(0);
@@ -486,6 +515,53 @@ describe('E5 — Three-segment compound-cue timeline', () => {
         expect.stringContaining('multi-video'),
         expect.anything()
       );
+    });
+  });
+
+  describe('cue:fire ack timing — do not block the ack on at:0 completion', () => {
+    it('resolves a compound cue:fire promptly even while the at:0 command completion is pending', async () => {
+      const execCmd = require('../../../../src/services/commandExecutor').executeCommand;
+      // The at:0 command (e.g. a multi-second sound) returns a completion promise
+      // that stays pending. Firing the cue must NOT block on it — the GM's
+      // gm:command:ack must return once the cue has STARTED, not when the first
+      // sound/video finishes playing.
+      let resolveCompletion;
+      const pending = new Promise(r => { resolveCompletion = r; });
+      execCmd.mockImplementation(async () => ({ success: true, message: 'ok', data: { completion: pending } }));
+
+      cueEngineService.loadCues([{
+        id: 'long-at0', label: 'Long At0',
+        timeline: [{ at: 0, action: 'sound:play', payload: { file: 'attention.wav' } }],
+      }]);
+
+      const fired = cueEngineService.fireCue('long-at0');
+      const winner = await Promise.race([
+        fired.then(() => 'acked'),
+        new Promise(r => setTimeout(() => r('blocked-on-completion'), 250)),
+      ]);
+      expect(winner).toBe('acked');
+
+      resolveCompletion();
+      await flushAsync();
+    });
+
+    it('does not crash the cue when an at:0 command completion rejects', async () => {
+      const execCmd = require('../../../../src/services/commandExecutor').executeCommand;
+      // A sound/video that fails mid-playback rejects its completion promise. Since
+      // completion is now tracked off the ack path, the rejection must be swallowed
+      // (not surface as an unhandled rejection or throw out of fireCue).
+      execCmd.mockImplementation(async () => ({
+        success: true, message: 'ok',
+        data: { completion: Promise.reject(new Error('playback died')) },
+      }));
+
+      cueEngineService.loadCues([{
+        id: 'reject-at0', label: 'Reject At0',
+        timeline: [{ at: 0, action: 'sound:play', payload: { file: 'x.wav' } }],
+      }]);
+
+      await expect(cueEngineService.fireCue('reject-at0')).resolves.toBeUndefined();
+      await flushAsync();
     });
   });
 });
