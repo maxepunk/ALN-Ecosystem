@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Last verified: 2026-02-06
+Last verified: 2026-06-18
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -19,6 +19,7 @@ ALN-TokenData/
     aln-tools.js       # Shared utilities (config, NFC, token loading)
   tokens.json          # Token definitions (synced from Notion)
   tokens.json.backup   # Manual backup
+  tokens.schema.json   # JSON Schema for tokens.json (enforced by backend contract test)
   scoring-config.json  # Shared scoring values (loaded by backend + GM Scanner)
   tag-writer.html      # NFC tag programming tool
   token-checkin.html   # Token inventory check-in tool
