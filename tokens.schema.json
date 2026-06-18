@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aln.tokens/tokens.schema.json",
+  "title": "ALN Token Database (tokens.json) — v1",
+  "description": "Schema for the shared token definitions produced by scripts/sync_notion_to_tokens.py and consumed by the backend orchestrator, GM scanner, web player scanner, and ESP32 scanner. v1 documents the CURRENT format, including the 'Name (xN)' SF_Group microformat — a structured group field is planned (Phase 2 backlog) and will be v2. Invariant not expressible here: each token's SF_RFID must equal its object key (enforced by the backend contract test and the sync script's alignment check).",
+  "type": "object",
+  "minProperties": 1,
+  "patternProperties": {
+    "^[A-Za-z0-9_-]+$": { "$ref": "#/$defs/token" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "token": {
+      "type": "object",
+      "required": [
+        "image",
+        "audio",
+        "video",
+        "processingImage",
+        "SF_RFID",
+        "SF_ValueRating",
+        "SF_MemoryType",
+        "SF_Group"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "description": "Memory image shown by player scanners, relative to the token-data root. BMP only — the ESP32 renderer cannot decode other formats",
+          "type": ["string", "null"],
+          "pattern": "^assets/images/.+\\.bmp$"
+        },
+        "audio": {
+          "description": "Memory audio played by player scanners, relative to the token-data root",
+          "type": ["string", "null"],
+          "pattern": "^assets/audio/.+\\.(wav|mp3)$"
+        },
+        "video": {
+          "description": "Video filename (no path) played by the orchestrator on TV when a player scans this token",
+          "type": ["string", "null"],
+          "pattern": "^[^/]+\\.mp4$"
+        },
+        "processingImage": {
+          "description": "Interstitial image shown while a video token is queued. BMP only, as with image",
+          "type": ["string", "null"],
+          "pattern": "^assets/images/.+\\.bmp$"
+        },
+        "SF_RFID": {
+          "description": "Token identifier — MUST equal this token's object key",
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        },
+        "SF_ValueRating": {
+          "description": "1-5 star rating; multiplied with the SF_MemoryType multiplier per ALN-TokenData/scoring-config.json",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        },
+        "SF_MemoryType": {
+          "description": "Memory type driving the scoring multiplier. null is tolerated but scores 0x (UNKNOWN) — the sync script warns",
+          "enum": ["Personal", "Business", "Technical", "Mention", "Party", null]
+        },
+        "SF_Group": {
+          "description": "Group membership microformat: '' (no group) or 'Group Name (xN)' where N is the completion multiplier. All members of a group must carry the identical string",
+          "type": "string",
+          "pattern": "^$|^.+ \\(x[1-9][0-9]*\\)$"
+        },
+        "summary": {
+          "description": "Public summary shown on the scoreboard when the token is exposed via a Detective transaction",
+          "type": "string"
+        },
+        "owner": {
+          "description": "Character who owns this memory (resolved from Notion's Elements→Characters relation, role prefix stripped)",
+          "type": ["string", "null"]
+        }
+      }
+    }
+  }
+}
