@@ -77,8 +77,12 @@ global.navigator = {
   userAgent: 'Mozilla/5.0 (Test)'
 };
 
-// Mock fetch (for HTTP requests to orchestrator)
-global.fetch = jest.fn();
+// Mock fetch (for HTTP requests to orchestrator).
+// Spec-accurate default: real fetch NEVER resolves undefined — it resolves a
+// Response or rejects. A bare jest.fn() resolving undefined made the scanner
+// crash on `response.ok` in monitor-triggered queue processing (killing the
+// jest worker). Tests override per-call via mockFetchResponse/NetworkError.
+global.fetch = jest.fn(() => Promise.resolve(createMockResponse(200, {})));
 
 // Helper to create mock fetch responses
 const createMockResponse = (status, body, ok = true) => ({
@@ -143,6 +147,9 @@ global.clearTimeout = jest.fn((id) => {
 const resetMocks = () => {
   localStorageMock.clear();
   global.fetch.mockReset();
+  // mockReset strips the spec-accurate default implementation — re-prime it
+  // (see the global.fetch definition above for why undefined is never valid)
+  global.fetch.mockImplementation(() => Promise.resolve(createMockResponse(200, {})));
   global.console.log.mockReset();
   global.console.error.mockReset();
   global.window.dispatchEvent.mockReset();

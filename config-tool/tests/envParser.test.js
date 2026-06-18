@@ -38,6 +38,15 @@ describe('envParser', () => {
       const result = parseEnvFile('TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc=');
       assert.strictEqual(result.values.TOKEN, 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.abc=');
     });
+
+    it('keeps unquoted inline # as part of the value (pin: diverges from backend dotenv)', () => {
+      // The backend's dotenv strips unquoted inline comments
+      // (`KEY=val # note` → "val"); this parser deliberately keeps them
+      // (round-trip fidelity). Pinned so any change is made on purpose, in
+      // lockstep with the backend's parser. See lib/envParser.js NOTE.
+      const result = parseEnvFile('VLC_HOST=localhost # local only');
+      assert.strictEqual(result.values.VLC_HOST, 'localhost # local only');
+    });
   });
 
   describe('serializeEnv', () => {
@@ -72,6 +81,45 @@ describe('envParser', () => {
       parsed.values.SECRET = 'has spaces here';
       const output = serializeEnv(parsed);
       assert.ok(output.includes('SECRET="has spaces here"'));
+    });
+  });
+
+  describe('injection hardening (F-TOOL-03)', () => {
+    it('rejects values containing newlines (env line injection)', () => {
+      const parsed = parseEnvFile('HOST=localhost');
+      parsed.values.HOST = '0.0.0.0\nADMIN_PASSWORD=hacked';
+      assert.throws(() => serializeEnv(parsed), /newline/i);
+    });
+
+    it('rejects values containing carriage returns', () => {
+      const parsed = parseEnvFile('HOST=localhost');
+      parsed.values.HOST = '0.0.0.0\rADMIN_PASSWORD=hacked';
+      assert.throws(() => serializeEnv(parsed), /newline/i);
+    });
+
+    it('escapes embedded double quotes and round-trips them', () => {
+      const parsed = parseEnvFile('MSG=plain');
+      parsed.values.MSG = 'he said "do it" loudly';
+      const output = serializeEnv(parsed);
+      assert.ok(output.includes('MSG="he said \\"do it\\" loudly"'));
+      const reparsed = parseEnvFile(output);
+      assert.strictEqual(reparsed.values.MSG, 'he said "do it" loudly');
+    });
+
+    it('round-trips a value that is only a quote character', () => {
+      const parsed = parseEnvFile('Q=x');
+      parsed.values.Q = '"';
+      const reparsed = parseEnvFile(serializeEnv(parsed));
+      assert.strictEqual(reparsed.values.Q, '"');
+    });
+
+    it('round-trips values with spaces and hashes unchanged', () => {
+      const parsed = parseEnvFile('A=x\nB=y');
+      parsed.values.A = 'value with # hash';
+      parsed.values.B = 'spaced value';
+      const reparsed = parseEnvFile(serializeEnv(parsed));
+      assert.strictEqual(reparsed.values.A, 'value with # hash');
+      assert.strictEqual(reparsed.values.B, 'spaced value');
     });
   });
 });

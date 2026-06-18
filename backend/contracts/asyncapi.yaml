@@ -542,6 +542,9 @@ components:
                           type: string
                         filename:
                           type: string
+                        duration:
+                          type: number
+                          description: Video duration in seconds (0 when unknown)
                   queueLength:
                     type: integer
                     description: Number of pending items in queue
@@ -704,6 +707,24 @@ components:
                   currentMode: { type: string }
                   previousMode: { type: string }
                   pendingVideo: { type: [string, 'null'] }
+              deviceScannedTokens:
+                type: array
+                items:
+                  type: string
+                description: |
+                  Token IDs already scanned by THIS device in the current session
+                  (per-device view from session.getDeviceScannedTokens). Sent only
+                  on the GM connect/reconnect path (gmAuth.js) — NOT included in
+                  broadcast sync:full re-emissions, hence optional. Load-bearing
+                  for the GM Scanner's duplicate-detection restore (TQ-7) and
+                  offline-queue reconciliation (TQ-6). (F-GMS-12)
+                example: ["kaa001", "kaa002"]
+              reconnection:
+                type: boolean
+                description: |
+                  True when this sync:full follows a Socket.io connection recovery
+                  (socket.recovered). GM connect path only — optional elsewhere.
+                example: false
           timestamp:
             type: string
             format: date-time
@@ -821,9 +842,9 @@ components:
                 description: Transaction status (accepted/duplicate/error per Decision #10; queued = offline-buffered; rejected = permanent rejection, e.g. invalid token — distinct from transient 'error' such as paused/not-active)
                 example: "accepted"
               transactionId:
-                type: string
+                type: [string, "null"]
                 format: uuid
-                description: Generated transaction ID
+                description: Generated transaction ID. Null for transient rejections (status=error on paused/setup sessions) where no transaction was created — the scanner correlates the result via clientTxId and retries on resume.
                 example: "7b8b1d85-b234-4be9-bde5-4c8522a1f15e"
               tokenId:
                 type: string
@@ -1558,6 +1579,7 @@ components:
                   - video:pause
                   - video:stop
                   - video:skip
+                  - video:seek
                   - video:queue:add
                   - video:queue:reorder
                   - video:queue:clear
@@ -1604,6 +1626,7 @@ components:
                   - music:setShuffle
                   - music:setLoop
                   - music:loadPlaylist
+                  - music:seek
                   - service:check
                 example: "video:skip"
               payload:
@@ -1632,6 +1655,14 @@ components:
               action: video:skip
               payload: {}
             timestamp: "2025-10-15T20:20:00.000Z"
+        - name: Video Seek
+          payload:
+            event: gm:command
+            data:
+              action: video:seek
+              payload:
+                position: 42
+            timestamp: "2025-10-15T20:21:00.000Z"
         - name: Score Adjust
           payload:
             event: gm:command
@@ -1743,17 +1774,23 @@ components:
       title: Offline Queue Processing Complete
       summary: Notify clients when offline queue processed
       description: |
-        Broadcast when offline queue has been processed (after reconnection).
+        Broadcast when the backend's offline GM-transaction queue has been
+        drained (offline flag cleared via setOfflineStatus).
 
         **Functional Requirement**: Section 1.8 (Offline Queue Management)
         **Decisions Applied**: #2 (wrapped envelope)
 
+        **Scope (D2, 2026-06-09)**: the backend player-scan offline queue was
+        deleted — player scanners queue client-side and replay via HTTP POST
+        /api/scan/batch (which broadcasts per-entry player:scan with
+        replayed:true). This event now only reports queued GM transactions
+        re-processed through transactionService.
+
         **Flow**:
-        1. Player Scanner reconnects after offline period
-        2. Uploads queued scans via HTTP POST /api/scan/batch
-        3. Server processes batch
-        4. Server broadcasts offline:queue:processed
-        5. Server broadcasts sync:full with updated state
+        1. Backend offline flag clears (setOfflineStatus(false))
+        2. Server re-processes queued GM transactions (scoring applies)
+        3. Server broadcasts offline:queue:processed
+        4. Server broadcasts sync:full with updated state
       payload:
         type: object
         required:
@@ -1983,7 +2020,10 @@ components:
         - scanId: UUID of persisted scan record (for correlation)
         - tokenId: Token scanned by player
         - deviceId: Player scanner device ID
-        - videoQueued: True if token has video property (queued for TV playback)
+        - videoQueued: True only if the token's video was ACTUALLY queued for
+          TV playback. False when the token has no video, when the video was
+          rejected (VLC down / video busy), and always for batch-replayed
+          scans (decision A4).
         - memoryType: Token type from token data (Personal, Business, etc.)
         - tokenData: Full token metadata for display
       payload:
@@ -2020,8 +2060,20 @@ components:
                 example: "PLAYER_8a7b9c1d"
               videoQueued:
                 type: boolean
-                description: True if token has video property and was queued for TV playback
+                description: |
+                  True only if the token's video was actually queued for TV
+                  playback. False when the video was rejected (VLC down /
+                  video busy) and always false for batch-replayed scans.
                 example: false
+              replayed:
+                type: boolean
+                description: |
+                  True when this scan was persisted from a batch upload
+                  (POST /api/scan/batch — offline queue drain) rather than a
+                  live scan (decision D1). Absent/false for live scans. The
+                  data.timestamp field carries the ORIGINAL scan time, which
+                  may be hours before the broadcast.
+                example: true
               memoryType:
                 type: string
                 nullable: true
@@ -2176,8 +2228,11 @@ components:
               state:
                 type: object
                 description: |
-                  Full state snapshot for the domain. Shape varies by domain:
-                  - **music**: `{connected, state, volume, track, playlist, playlists[], pausedByGameClock}`
+                  Full state snapshot for the domain. The authoritative shape
+                  for each domain is the matching components.schemas.DomainState*
+                  schema (enforced by the backend's service-domain-state
+                  contract test). Summary:
+                  - **music**: `{connected, state, volume, track, playlist, pausedByGameClock}` (playlist CATALOG rides sync:full only)
                   - **video**: `{status, currentVideo, queue[], queueLength, connected}`
                   - **health**: `{vlc: {status, message, lastChecked}, music: {...}, ...}` (all 8 services)
                   - **bluetooth**: `{scanning, pairedDevices[], connectedDevices[]}`
@@ -2377,3 +2432,107 @@ components:
             description: Event timestamp
             example: "2025-10-15T20:12:00.000Z"
 
+
+  # ============================================================================
+  # SERVICE DOMAIN STATE SCHEMAS (Phase 2: formalized from prose)
+  # ============================================================================
+  # One schema per service:state domain. These are the wire shapes the GM
+  # Scanner's StateStore depends on (StateStore.update is a shallow merge —
+  # removing/renaming a key here is a breaking change requiring coordinated
+  # scanner updates). Enforced by
+  # backend/tests/contract/websocket/service-domain-state.test.js, which
+  # validates each service's REAL getState() output against its schema.
+  # Schemas are additive-tolerant (additionalProperties allowed): new fields
+  # may be added freely; required keys may never silently disappear.
+  schemas:
+    DomainStateMusic:
+      type: object
+      required: [connected, state, volume, track, playlist, pausedByGameClock]
+      properties:
+        connected: { type: boolean }
+        state: { type: string, enum: [playing, paused, stopped] }
+        volume: { type: integer, minimum: 0, maximum: 100 }
+        track: { type: [object, "null"] }
+        playlist: { type: [string, "null"] }
+        pausedByGameClock: { type: boolean }
+      description: >
+        NOTE: the playlist CATALOG (playlists[]) is NOT part of this push —
+        it is delivered via sync:full's music block only.
+    DomainStateVideo:
+      type: object
+      required: [status, currentVideo, queue, queueLength, connected]
+      properties:
+        status: { type: string }
+        currentVideo: { type: [object, "null"] }
+        queue: { type: array }
+        queueLength: { type: integer, minimum: 0 }
+        connected: { type: boolean }
+    DomainStateHealth:
+      type: object
+      description: One entry per registered service (8 services)
+      required: [vlc, music, sound, bluetooth, audio, lighting, gameclock, cueengine]
+      additionalProperties:
+        type: object
+        required: [status, message, lastChecked]
+        properties:
+          status: { type: string, enum: [healthy, degraded, down] }
+          message: { type: [string, "null"] }
+          lastChecked: { type: [string, "null"] }
+    DomainStateBluetooth:
+      type: object
+      required: [available, scanning, pairedDevices, connectedDevices]
+      properties:
+        available: { type: boolean }
+        scanning: { type: boolean }
+        pairedDevices: { type: array }
+        connectedDevices: { type: array }
+    DomainStateAudio:
+      type: object
+      required: [routes, defaultSink, ducking, availableSinks, volumes]
+      properties:
+        routes: { type: object }
+        defaultSink: { type: string }
+        ducking: { type: object }
+        availableSinks: { type: array }
+        volumes: { type: object }
+    DomainStateLighting:
+      type: object
+      required: [connected, activeScene, scenes]
+      properties:
+        connected: { type: boolean }
+        activeScene: { type: [string, "null"] }
+        scenes: { type: array }
+    DomainStateSound:
+      type: object
+      required: [playing]
+      properties:
+        playing: { type: array }
+    DomainStateGameclock:
+      type: object
+      required: [status, elapsed, startTime, totalPausedMs]
+      properties:
+        status: { type: string, enum: [stopped, running, paused] }
+        elapsed: { type: number, minimum: 0 }
+        startTime: { type: [number, string, "null"] }
+        totalPausedMs: { type: number, minimum: 0 }
+    DomainStateCueengine:
+      type: object
+      required: [cues, activeCues, disabledCues]
+      properties:
+        cues: { type: array }
+        activeCues: { type: array }
+        disabledCues: { type: array }
+    DomainStateHeld:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            required: [id, type, reason, status]
+            properties:
+              id: { type: string, pattern: "^held-(cue|video)-[0-9]+$" }
+              type: { type: string, enum: [cue, video] }
+              reason: { type: string }
+              status: { type: string }

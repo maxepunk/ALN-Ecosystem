@@ -9,67 +9,92 @@ This directory contains scripts for syncing the Notion Elements database with th
 **Purpose:** Syncs Notion Elements database to `tokens.json`
 
 **What it does:**
-- Queries Notion for all Memory Token elements (Image, Audio, Video, Audio+Image types)
+- Queries Notion for all Memory Token elements (`Memory Token`, `Memory Token Audio`, `Memory Token Video`, `Memory Token Audio + Image` Basic Types)
 - Parses SF_ fields from the Description/Text field in Notion
 - Checks filesystem for corresponding image/audio/video assets
+- Generates NeurAI display BMPs for tokens with display text
 - Uses `placeholder.bmp` for tokens without specific image assets
-- Generates `ALN-TokenData/tokens.json` with proper structure
+- Runs a **validation pass** before writing (see Validation below) and prints a summary
+- Writes `ALN-TokenData/tokens.json` **atomically** (tmp + fsync + rename)
+- Reports (or, with `--prune`, deletes) orphaned asset files
+- Regenerates the ESP32 asset manifest (`aln-memory-scanner/assets/manifest.json`)
+
+**Failure posture (IMPORTANT):**
+
+Any incomplete Notion fetch — HTTP error, auth failure, rate limit that
+survives retries, missing `results`, broken pagination — **aborts with exit
+code 1**. Nothing is written and nothing is deleted. This protects against
+the failure mode where a partial fetch silently shrinks tokens.json and
+deletes asset files for the "missing" tokens.
+
+Requests use a 30s timeout and retry with backoff on 429/5xx (honoring
+`Retry-After`).
+
+**Flags:**
+
+| Flag | Effect |
+|------|--------|
+| *(none)* | Full sync; orphaned assets are **reported only**, never deleted |
+| `--prune` | Actually delete orphaned asset files (only ever runs after a verifiably complete fetch) |
+| `--dry-run` | Fetch + validate only: no tokens.json write, no BMP generation, no prune, no manifest |
+| `--force` | Proceed with partial Notion data despite fetch failures (**DANGEROUS** — can shrink tokens.json) |
+
+**Asset pruning:** every sync run computes the set of image/audio files whose
+tokenId is no longer in Notion. By default these are only *listed* ("would
+remove ..."). Pass `--prune` to delete them. `placeholder.bmp` is explicitly
+exempt from both pruning and the ESP32 manifest (see
+`generate_asset_manifest.EXEMPT_STEMS`).
+
+**Validation pass (pre-write):**
+- `SF_MemoryType` checked against `ALN-TokenData/scoring-config.json` `typeMultipliers` keys — a misspelled or wrong-case type scores 0x in-game, so it's flagged loudly
+- `SF_ValueRating` checked for the 1-5 range (and missing/non-numeric values)
+- Duplicate `SF_RFID` across two Notion pages is reported with both page titles (last processed wins)
+- RFID↔file alignment: asset files whose stem matches no token SF_RFID are reported (likely filename/RFID mismatches), as are tokens with no assets at all
+
+All validation findings are **warnings** — they're printed in a summary block
+before the write but do not block the sync.
 
 **Requirements:**
 - Python 3
-- `requests` library: `pip install requests --break-system-packages`
+- `pip install -r scripts/requirements.txt` (requests, Pillow, python-dotenv)
 - Notion API token (see Setup below)
 
 **Setup:**
 
-Set your Notion integration token as an environment variable:
+Set your Notion integration token via the project `.env` file (project root)
+or an environment variable:
 ```bash
 export NOTION_TOKEN="your_notion_token_here"
 ```
 
-To make it permanent, add to your shell profile (~/.bashrc or ~/.zshrc):
-```bash
-echo 'export NOTION_TOKEN="your_notion_token_here"' >> ~/.bashrc
-source ~/.bashrc
-```
-
 **Usage:**
 ```bash
-cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem
-python3 scripts/sync_notion_to_tokens.py
+cd ALN-Ecosystem
+python3 scripts/sync_notion_to_tokens.py             # sync, report orphans
+python3 scripts/sync_notion_to_tokens.py --dry-run   # preview only
+python3 scripts/sync_notion_to_tokens.py --prune     # sync + delete orphans
 ```
 
 **Output:**
-- Updates `ALN-TokenData/tokens.json`
-- Shows progress and statistics during sync
+- Updates `ALN-TokenData/tokens.json` (atomic write)
+- Regenerates `aln-memory-scanner/assets/manifest.json`
+- Shows progress, a validation summary, and orphan report during sync
 
-### 2. `compare_rfid_with_files.py`
+### 2. `generate_asset_manifest.py`
 
-**Purpose:** Identifies mismatches between Notion SF_RFID values and actual filenames
+**Purpose:** Regenerate the ESP32 asset manifest from whatever is already on
+disk (no Notion access). Useful for bootstrapping when the sync hasn't run
+recently. Also used as a library by the sync script (`build_manifest`,
+`write_manifest`, `prune_orphans`).
 
-**What it does:**
-- Compares SF_RFID values in Notion descriptions with actual file prefixes
-- Identifies tokens where the RFID doesn't match the filename
-- Generates a detailed mismatch report
-
-**Usage:**
 ```bash
-cd /home/maxepunk/projects/AboutLastNight/ALN-Ecosystem
-python3 scripts/compare_rfid_with_files.py
+python3 scripts/generate_asset_manifest.py
 ```
 
-**Output Example:**
-```
-✓ MATCHED (15 tokens)
-tac001: TAC001 - Taylor's Drunk Confession Recording
-  Files: tac001.bmp (image), tac001.wav (audio)
-
-⚠️  MISMATCHES (5 tokens)
-jaw011: JAW011 - James' Memory - Marcus entering 2nd room
-  Notion SF_RFID: jaw011
-  Notion Files: jaw001.bmp
-  File Prefixes: jaw001
-```
+> The former `compare_rfid_with_files.py` QA tool has been removed — its
+> RFID↔file mismatch check now runs inside `sync_notion_to_tokens.py` as
+> part of the pre-write validation summary (and `--dry-run` gives you the
+> report without touching anything).
 
 ## Data Flow
 
@@ -113,8 +138,8 @@ The sync script checks for assets in the following locations:
 - **Videos:** `backend/public/videos/{RFID}.mp4`
 
 **Placeholder image:**
-- If no specific image file is found for a token, the script uses `assets/images/placeholder.bmp`
-- This ensures all tokens have at least a placeholder image for the scanner UI
+- If no specific image file is found for a token (and no NeurAI BMP was generated), the script uses `assets/images/placeholder.bmp`
+- `placeholder.bmp` itself is exempt from pruning and from the ESP32 manifest via an explicit exempt list (`generate_asset_manifest.EXEMPT_STEMS`)
 - Placeholder is only applied to the `image` field, not to `processingImage`
 
 **Special handling for video tokens:**
@@ -123,21 +148,9 @@ The sync script checks for assets in the following locations:
   - `processingImage`: Set to image path (shown while video loads)
   - `image`: Set to `null` (video tokens don't use the image field)
 
-## Current Status
+## Fixing RFID/Filename Mismatches
 
-### All Tokens Synced ✅
-
-As of the last sync, all 21 memory tokens are successfully synced:
-- All RFID mismatches have been resolved (files renamed to match Notion SF_RFID values)
-- All tokens have images (either specific assets or placeholder.bmp)
-- The MAB001 token now has SF_RFID populated in Notion
-
-**Tokens using placeholder.bmp:**
-- Tokens without specific image assets automatically use `assets/images/placeholder.bmp`
-- This provides a consistent scanner UI experience for all tokens
-
-## Fixing Mismatches
-
+The validation summary flags asset files whose name matches no token SF_RFID.
 You have two options:
 
 ### Option 1: Update Notion (Recommended)
@@ -159,44 +172,35 @@ mv aln-memory-scanner/assets/images/jaw001.bmp aln-memory-scanner/assets/images/
 mv backend/public/videos/jaw001.mp4 backend/public/videos/jaw011.mp4
 ```
 
-**Note:** If you rename files, you'll also need to update references in the backend and scanners.
-
 ## Workflow
 
 ### Regular Sync
 
 1. Update token data in Notion Elements database
-2. Run sync script: `python3 scripts/sync_notion_to_tokens.py`
-3. Commit changes to git:
+2. Preview: `python3 scripts/sync_notion_to_tokens.py --dry-run` — review the validation summary, fix any warnings in Notion
+3. Run sync: `python3 scripts/sync_notion_to_tokens.py` (add `--prune` once you've reviewed the orphan report)
+4. Commit changes to git:
    ```bash
    cd ALN-TokenData
    git add tokens.json
    git commit -m "sync: update tokens from Notion"
    git push
    ```
-4. Update submodules in parent repos:
+5. Update submodules in parent repos:
    ```bash
    cd .. # Back to ALN-Ecosystem
    git submodule update --remote --merge ALN-TokenData
    ```
 
-### Checking for Issues
-
-Before syncing, run the comparison script to check for mismatches:
-
-```bash
-python3 scripts/compare_rfid_with_files.py
-```
-
-Fix any mismatches in Notion before running the sync.
-
 ## Technical Details
 
 ### Notion API
 
-- Uses Notion Integration Token (hardcoded in scripts)
+- Uses a Notion Integration Token from `NOTION_TOKEN` (env var or project `.env`)
 - API Version: `2022-06-28` (for properties compatibility)
 - Elements Database ID: `18c2f33d-583f-8020-91bc-d84c7dd94306`
+- 30s request timeout; retry with backoff on 429/5xx (honors Retry-After)
+- Non-text rich_text blocks (@mentions, equations) are skipped with a warning naming the page
 
 ### File Matching
 
@@ -208,40 +212,51 @@ Fix any mismatches in Notion before running the sync.
 ### Filtering
 
 Only processes Elements with these Basic Types:
-- Memory Token Image
+- Memory Token
 - Memory Token Audio
 - Memory Token Video
 - Memory Token Audio + Image
 
 Other element types (Props, Set Dressing, Documents, etc.) are ignored.
 
+## Tests
+
+```bash
+cd scripts
+pip install -r requirements.txt pytest
+python3 -m pytest tests/
+```
+
+Covers the pure parsing functions, the abort-on-incomplete-fetch posture,
+prune gating, validation warnings, placeholder exemption, and atomic writes.
+
 ## Future Improvements
 
 1. **Two-way sync:** Update Notion when files are added/removed
 2. **Automatic RFID detection:** Extract RFID from Notion file attachments
-3. **Validation:** Warn about tokens with ValueRating outside 1-5 range
-4. **Backup:** Create backup of tokens.json before overwriting
-5. **Dry run mode:** Preview changes before applying
+3. **Backup:** Create backup of tokens.json before overwriting
 
 ## Troubleshooting
 
 ### "ModuleNotFoundError: No module named 'requests'"
 
-Install required packages:
 ```bash
-pip install requests notion-client --break-system-packages
+pip install -r scripts/requirements.txt
 ```
 
-### "KeyError: 'properties'" or API errors
+### "ABORTING: Notion fetch incomplete"
 
-The Notion API version may have changed. Check the API version in the script and update if needed.
+The sync refused to write because it couldn't verify it received the complete
+token set. Check network connectivity, the integration token's access to the
+Elements and Characters databases, and the database IDs. `--force` overrides
+(dangerous — see Flags above).
 
 ### Files not detected
 
 1. Check file naming matches SF_RFID exactly (case-insensitive)
 2. Verify file extensions are supported (.bmp, .jpg, .png for images)
 3. Check file permissions
-4. Run `compare_rfid_with_files.py` to identify mismatches
+4. Run with `--dry-run` and review the validation summary for mismatches
 
 ### Empty tokens.json
 

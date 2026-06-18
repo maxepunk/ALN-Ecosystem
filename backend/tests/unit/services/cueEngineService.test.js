@@ -173,6 +173,19 @@ describe('CueEngineService', () => {
       expect(handler).toHaveBeenCalledWith(expect.objectContaining({ cueId: 'test' }));
     });
 
+    it('manual GM fires carry source gm and trigger manual (F-SHOW-15, asyncapi CueFired)', async () => {
+      const handler = jest.fn();
+      cueEngineService.on('cue:fired', handler);
+      cueEngineService.loadCues([{
+        id: 'test', label: 'Test',
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }]
+      }]);
+
+      // As dispatched by commandExecutor for a gm:command cue:fire
+      await cueEngineService.fireCue('test', 'manual', undefined, 'gm');
+      expect(handler).toHaveBeenCalledWith({ cueId: 'test', trigger: 'manual', source: 'gm' });
+    });
+
     it('should throw for unknown cue ID', async () => {
       await expect(cueEngineService.fireCue('nonexistent')).rejects.toThrow(/not found/i);
     });
@@ -341,6 +354,46 @@ describe('CueEngineService', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
       expect(executeCommand).toHaveBeenCalled();
     });
+
+    // F-TOOL-09/E6: video:paused and video:resumed must drive standing-cue
+    // evaluation (in addition to compound-cue lifecycle control)
+    it('should fire a standing cue triggered by video:paused', async () => {
+      cueEngineService.loadCues([{
+        id: 'on-video-pause',
+        label: 'Lights Up On Pause',
+        trigger: { event: 'video:paused' },
+        commands: [{ action: 'sound:play', payload: { file: 'pause.wav' } }]
+      }]);
+
+      cueEngineService.activate();
+
+      cueEngineService.handleGameEvent('video:paused', { tokenId: 'T1' });
+
+      await flushAsync();
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'sound:play',
+        payload: { file: 'pause.wav' }
+      }));
+    });
+
+    it('should fire a standing cue triggered by video:resumed', async () => {
+      cueEngineService.loadCues([{
+        id: 'on-video-resume',
+        label: 'Lights Down On Resume',
+        trigger: { event: 'video:resumed' },
+        commands: [{ action: 'sound:play', payload: { file: 'resume.wav' } }]
+      }]);
+
+      cueEngineService.activate();
+
+      cueEngineService.handleGameEvent('video:resumed', { tokenId: 'T1' });
+
+      await flushAsync();
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'sound:play',
+        payload: { file: 'resume.wav' }
+      }));
+    });
   });
 
   describe('condition operators', () => {
@@ -443,7 +496,39 @@ describe('CueEngineService', () => {
   });
 
   describe('re-entrancy guard (D4)', () => {
-    it.todo('should not evaluate standing cues for commands dispatched by cues');
+    it('does not evaluate standing cues while dispatching cue commands', async () => {
+      // D4 property: handleGameEvent is wired ONLY from real service events
+      // (cueEngineWiring); executeCommand dispatch/results must never feed
+      // standing-cue evaluation. Cycle and depth loops via cue:fire chains
+      // are pinned separately (cycle detection + MAX_NESTING_DEPTH tests).
+      const evalSpy = jest.spyOn(cueEngineService, 'handleGameEvent');
+
+      cueEngineService.loadCues([
+        {
+          id: 'dispatcher', label: 'Dispatcher',
+          commands: [
+            { action: 'sound:play', payload: { file: 'a.wav' } },
+            { action: 'lighting:scene:activate', payload: { sceneId: 'x' } },
+          ],
+        },
+        {
+          id: 'standing', label: 'Standing',
+          trigger: { event: 'transaction:accepted' },
+          commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }],
+        },
+      ]);
+      cueEngineService.activate();
+
+      await cueEngineService.fireCue('dispatcher');
+      await flushAsync();
+
+      expect(evalSpy).not.toHaveBeenCalled();
+      // Only the dispatcher's own commands executed — standing cue untouched
+      const actions = executeCommand.mock.calls.map(c => c[0].action);
+      expect(actions).toEqual(['sound:play', 'lighting:scene:activate']);
+
+      evalSpy.mockRestore();
+    });
   });
 
   describe('suspend/reactivate', () => {
@@ -801,10 +886,11 @@ describe('CueEngineService', () => {
       // Call handleVideoProgress directly with 330 seconds
       cueEngineService.handleVideoProgress('vd-progress', 330);
 
+      // F-SHOW-20 (decision 2026-06-10): progress is 0-1, not 0-100
       expect(statusHandler).toHaveBeenCalledWith(expect.objectContaining({
         cueId: 'vd-progress',
         state: 'running',
-        progress: 50,  // 330/660 * 100 = 50
+        progress: 0.5,  // 330/660 = 0.5
         duration: 660,
       }));
     });
@@ -827,9 +913,10 @@ describe('CueEngineService', () => {
       // videoDuration is 0 (no progress event yet), maxAt is 100
       cueEngineService.handleVideoProgress('vd-maxat', 50);
 
+      // F-SHOW-20 (decision 2026-06-10): progress is 0-1, not 0-100
       expect(statusHandler).toHaveBeenCalledWith(expect.objectContaining({
         cueId: 'vd-maxat',
-        progress: 50,  // 50/100 * 100 = 50
+        progress: 0.5,  // 50/100 = 0.5
         duration: 100,  // Falls back to maxAt
       }));
     });
@@ -889,14 +976,17 @@ describe('CueEngineService', () => {
       await cueEngineService.fireCue('vd-no-elapsed-complete');
       completedHandler.mockClear();
 
-      // Set videoStarted and advance past maxAt
+      // E5: Set videoStarted + driveMode='video' and advance past maxAt
+      // checkCompletion skips video-driven cues (they complete via handleVideoLifecycle)
       const activeCue = cueEngineService.activeCues.get('vd-no-elapsed-complete');
       activeCue.videoStarted = true;
+      activeCue.driveMode = 'video';  // E5: explicitly in video drive mode
       activeCue.elapsed = 600;  // past maxAt of 541
       activeCue.firedEntries = new Set([0, 1]);
 
       // This should NOT complete the cue (video hasn't completed yet)
-      cueEngineService._checkCompoundCueCompletion('vd-no-elapsed-complete');
+      // _checkCompoundCueCompletion moved to _timeline.checkCompletion() post-refactor
+      cueEngineService._timeline.checkCompletion('vd-no-elapsed-complete');
 
       expect(completedHandler).not.toHaveBeenCalled();
       expect(cueEngineService.activeCues.has('vd-no-elapsed-complete')).toBe(true);
@@ -917,10 +1007,14 @@ describe('CueEngineService', () => {
       await cueEngineService.fireCue('vd-video-complete');
       completedHandler.mockClear();
 
-      // Simulate video started
+      // E5: set driveMode='video' + videoStarted to put cue in video-driven state.
+      // Also mark both entries as fired (completedCommands represents the same state)
+      // so no post-video entries remain and the cue completes on video:completed.
       const activeCue = cueEngineService.activeCues.get('vd-video-complete');
       activeCue.videoStarted = true;
+      activeCue.driveMode = 'video';  // E5: required — lifecycle handler skips non-video-mode cues
       activeCue.completedCommands = [{ action: 'video:queue:add' }, { action: 'sound:play' }];
+      activeCue.firedEntries = new Set([0, 1]); // both entries already fired during video
 
       // Simulate video:completed lifecycle event
       cueEngineService.handleVideoLifecycleEvent('completed', {});
@@ -1330,23 +1424,31 @@ describe('CueEngineService', () => {
       expect(cueEngineService.activeCues.size).toBe(0);
     });
 
-    it('should clear conflictTimers and cancel timeouts on reset', () => {
+    it('should clear auto-discard timers on reset (F-SHOW-16)', () => {
+      // F-SHOW-16: conflictTimers replaced by _heldStore._autoDiscardTimers keyed by heldId.
+      // Test via behavior: a held cue's auto-discard timer must not fire after reset.
       jest.useFakeTimers();
 
-      // Manually add a conflict timer
-      const callback = jest.fn();
-      const timer = setTimeout(callback, 10000);
-      cueEngineService.conflictTimers.set('conflict-cue', timer);
+      const discardHandler = jest.fn();
+      cueEngineService.on('cue:discarded', discardHandler);
 
-      expect(cueEngineService.conflictTimers.size).toBe(1);
+      // Manually register a timer on the held store (simulates video_busy hold)
+      const fakeHeldId = 'held-99999';
+      cueEngineService._heldStore._autoDiscardTimers.set(
+        fakeHeldId,
+        setTimeout(() => discardHandler({ heldId: fakeHeldId }), 10000)
+      );
+
+      expect(cueEngineService._heldStore._autoDiscardTimers.size).toBe(1);
 
       cueEngineService.reset();
 
-      expect(cueEngineService.conflictTimers.size).toBe(0);
+      // After reset the timer map must be empty
+      expect(cueEngineService._heldStore._autoDiscardTimers.size).toBe(0);
 
-      // Advance time past the timer — callback should NOT fire (was cleared)
+      // Advance time — callback must NOT have fired
       jest.advanceTimersByTime(15000);
-      expect(callback).not.toHaveBeenCalled();
+      expect(discardHandler).not.toHaveBeenCalled();
 
       jest.useRealTimers();
     });
@@ -1678,8 +1780,9 @@ describe('CueEngineService', () => {
 
         const held = cueEngineService.getHeldCues();
         expect(held).toHaveLength(1);
+        // F-SHOW-16: unified HeldItemsStore — IDs are held-N (not held-cue-N)
         expect(held[0]).toEqual(expect.objectContaining({
-          id: expect.stringMatching(/^held-cue-/),
+          id: expect.stringMatching(/^held-/),
           type: 'cue',
           heldAt: expect.any(String),
           blockedBy: ['sound'],
@@ -1803,6 +1906,124 @@ describe('CueEngineService', () => {
         cueEngineService.reset();
         expect(cueEngineService.getHeldCues()).toHaveLength(0);
       });
+    });
+  });
+
+  // ── Runtime persistence (F-SHOW-01/03, decision E1) ──
+
+  describe('runtime persistence (toPersistence/restore)', () => {
+    const CUES = [
+      {
+        id: 'clock-past', label: 'Past Clock Cue',
+        trigger: { clock: '00:30:00' }, // 1800s
+        commands: [{ action: 'sound:play', payload: { file: 'past.wav' } }],
+      },
+      {
+        id: 'clock-future', label: 'Future Clock Cue',
+        trigger: { clock: '01:30:00' }, // 5400s
+        commands: [{ action: 'sound:play', payload: { file: 'future.wav' } }],
+      },
+      {
+        id: 'standing-event', label: 'Event Cue',
+        trigger: { event: 'group:completed' },
+        commands: [{ action: 'sound:play', payload: { file: 'group.wav' } }],
+      },
+    ];
+
+    it('toPersistence() returns active flag, fired clock cues, and disabled cues', () => {
+      cueEngineService.loadCues(CUES);
+      cueEngineService.activate();
+      cueEngineService.firedClockCues.add('clock-past');
+      cueEngineService.disableCue('standing-event');
+
+      expect(cueEngineService.toPersistence()).toEqual({
+        active: true,
+        firedClockCues: ['clock-past'],
+        disabledCues: ['standing-event'],
+      });
+    });
+
+    it('restore() marks past clock cues as fired WITHOUT firing them (E1)', async () => {
+      cueEngineService.loadCues(CUES);
+      const firedEvents = [];
+      cueEngineService.on('cue:fired', (d) => firedEvents.push(d.cueId));
+
+      // Restore mid-game at elapsed=3600s (past clock-past's 1800s threshold)
+      cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+
+      expect(cueEngineService.active).toBe(true);
+      expect(cueEngineService.firedClockCues.has('clock-past')).toBe(true);
+      expect(firedEvents).toHaveLength(0);
+      expect(executeCommand).not.toHaveBeenCalled();
+
+      // Past clock cue must NOT fire on the next tick
+      cueEngineService.handleClockTick(3601);
+      await flushAsync();
+      expect(firedEvents).not.toContain('clock-past');
+
+      // Future clock cue still fires at its threshold
+      cueEngineService.handleClockTick(5400);
+      await flushAsync();
+      expect(firedEvents).toContain('clock-future');
+    });
+
+    it('restore() before loadCues() still marks past clock cues (app init order)', () => {
+      // sessionService.init() runs BEFORE app.js loads cues.json
+      cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+      cueEngineService.loadCues(CUES);
+
+      expect(cueEngineService.firedClockCues.has('clock-past')).toBe(true);
+      expect(cueEngineService.firedClockCues.has('clock-future')).toBe(false);
+    });
+
+    it('restore(null) is a no-op (fresh session has no persisted cue state)', () => {
+      cueEngineService.loadCues(CUES);
+      cueEngineService.activate();
+      cueEngineService.restore(null, 3600);
+
+      expect(cueEngineService.active).toBe(true);
+      expect(cueEngineService.firedClockCues.size).toBe(0);
+    });
+
+    it('restore() skips clock cues with invalid time strings (warn, not crash)', () => {
+      cueEngineService.loadCues([
+        ...CUES,
+        { id: 'clock-bad', label: 'Bad', trigger: { clock: 'not-a-time' }, commands: [] },
+      ]);
+      expect(() => {
+        cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+      }).not.toThrow();
+
+      expect(cueEngineService.firedClockCues.has('clock-past')).toBe(true);
+      expect(cueEngineService.firedClockCues.has('clock-bad')).toBe(false);
+    });
+
+    it('restore() preserves persisted disabled cues and active flag', () => {
+      cueEngineService.loadCues(CUES);
+      cueEngineService.restore(
+        { active: false, firedClockCues: ['clock-future'], disabledCues: ['standing-event'] },
+        100
+      );
+
+      expect(cueEngineService.active).toBe(false);
+      expect(cueEngineService.firedClockCues.has('clock-future')).toBe(true);
+      expect(cueEngineService.disabledCues.has('standing-event')).toBe(true);
+    });
+
+    it('standing event cue fires on next event after restore+activate', async () => {
+      cueEngineService.loadCues(CUES);
+      const firedEvents = [];
+      cueEngineService.on('cue:fired', (d) => firedEvents.push(d.cueId));
+
+      cueEngineService.restore({ active: true, firedClockCues: [], disabledCues: [] }, 3600);
+      cueEngineService.activate();
+
+      cueEngineService.handleGameEvent('group:completed', {
+        teamId: 't1', groupId: 'g1', multiplier: 2, bonus: 100,
+      });
+      await flushAsync();
+
+      expect(firedEvents).toContain('standing-event');
     });
   });
 });

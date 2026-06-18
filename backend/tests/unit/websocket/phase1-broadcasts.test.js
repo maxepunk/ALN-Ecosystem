@@ -322,6 +322,17 @@ describe('Phase 1 Broadcasts', () => {
       }));
     });
 
+    it('should emit service:state with domain gameclock on gameclock:stopped (F-SHOW-13)', () => {
+      setupBroadcasts();
+      mockGameClockService.emit('gameclock:stopped', { elapsed: 7200 });
+      jest.advanceTimersByTime(51); // advance past 50ms debounce
+
+      expect(mockIo.emit).toHaveBeenCalledWith('service:state', expect.objectContaining({
+        event: 'service:state',
+        data: { domain: 'gameclock', state: mockGameClockService.getState() },
+      }));
+    });
+
     it('should emit service:state with domain sound on sound:started', () => {
       setupBroadcasts();
       mockSoundService.emit('sound:started', { file: 'test.wav' });

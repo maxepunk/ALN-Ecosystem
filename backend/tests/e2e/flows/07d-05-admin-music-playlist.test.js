@@ -48,25 +48,8 @@ function musicLibraryPopulated() {
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
-let serviceHealth = null;
-
-/**
- * Fetch serviceHealth snapshot from /api/state.
- * Same helper as 07d-03 / 07d-04.
- */
-async function fetchServiceHealth(orchestratorUrl) {
-  const https = require('https');
-  const stateResponse = await new Promise((resolve, reject) => {
-    const url = new URL('/api/state', orchestratorUrl);
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-  });
-  return stateResponse.serviceHealth || {};
-}
+const { getCapabilities, refreshCapabilities, requireCapabilities, formatManifest } = require('../helpers/capabilities');
+let caps = null;
 
 test.describe('GM Scanner — Music Playlist Control', () => {
 
@@ -80,8 +63,9 @@ test.describe('GM Scanner — Music Playlist Control', () => {
       args: ['--disable-dev-shm-usage', '--no-sandbox', '--disable-setuid-sandbox', '--ignore-certificate-errors']
     });
 
-    serviceHealth = await fetchServiceHealth(orchestratorInfo.url);
-    console.log('Service health snapshot:', Object.entries(serviceHealth).map(
+    caps = await getCapabilities(orchestratorInfo.url);
+    console.log(`Capability manifest: ${formatManifest(caps)}`);
+    console.log('Service health snapshot:', Object.entries(caps._health).map(
       ([k, v]) => `${k}:${v.status}`
     ).join(', '));
   });
@@ -94,11 +78,7 @@ test.describe('GM Scanner — Music Playlist Control', () => {
   });
 
   test('select All Tracks playlist → playback starts and track title updates', async () => {
-    if (serviceHealth.music?.status !== 'healthy') {
-      console.log(`Music not healthy (${serviceHealth.music?.status || 'unknown'}) — skipping`);
-      test.skip(true, 'Music service not healthy');
-      return;
-    }
+    requireCapabilities(test, caps, ['music']);
     if (!musicLibraryPopulated()) {
       console.log('backend/public/music/ is empty — skipping (Pi-only test, requires real MP3s)');
       test.skip(true, 'Music library not populated');

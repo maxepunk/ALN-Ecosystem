@@ -40,29 +40,38 @@ function musicLibraryPopulated() {
   }
 }
 
+/**
+ * Poll GET /api/state until the music domain reports `playing` (P17-M3:
+ * replaces fixed 1500ms settles after music:loadPlaylist — MPD actually
+ * reporting `playing` is the observable condition both downstream
+ * assertions depend on).
+ */
+async function waitForMusicPlaying(orchestratorUrl, timeoutMs = 15000) {
+  await expect(async () => {
+    const music = await new Promise((resolve, reject) => {
+      const req = https.get(`${orchestratorUrl}/api/state`, {
+        rejectUnauthorized: false,
+        timeout: 5000,
+      }, (res) => {
+        let body = '';
+        res.on('data', (c) => { body += c; });
+        res.on('end', () => {
+          try { resolve(JSON.parse(body).music || {}); } catch (e) { reject(e); }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('state probe timeout')); });
+    });
+    expect(music.state).toBe('playing');
+  }).toPass({ timeout: timeoutMs });
+}
+
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
-let serviceHealth = null;
+const { getCapabilities, refreshCapabilities, requireCapabilities, formatManifest, waitForCapability } = require('../helpers/capabilities');
+let caps = null;
 let testTokens = null;
-
-/**
- * Fetch serviceHealth snapshot from /api/state.
- * @param {string} orchestratorUrl - Backend URL
- * @returns {Promise<Object>} serviceHealth map
- */
-async function fetchServiceHealth(orchestratorUrl) {
-  const stateResponse = await new Promise((resolve, reject) => {
-    const url = new URL('/api/state', orchestratorUrl);
-    const req = https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
-    });
-    req.on('error', reject);
-  });
-  return stateResponse.serviceHealth || {};
-}
 
 /**
  * Send a GM command via temporary WebSocket connection.
@@ -103,8 +112,9 @@ test.describe('GM Scanner - Environment Control', () => {
     });
 
     // Capture initial service health for conditional tests
-    serviceHealth = await fetchServiceHealth(orchestratorInfo.url);
-    console.log('Service health snapshot:', Object.entries(serviceHealth).map(
+    caps = await getCapabilities(orchestratorInfo.url);
+    console.log(`Capability manifest: ${formatManifest(caps)}`);
+    console.log('Service health snapshot:', Object.entries(caps._health).map(
       ([k, v]) => `${k}:${v.status}`
     ).join(', '));
 
@@ -114,16 +124,16 @@ test.describe('GM Scanner - Environment Control', () => {
 
   test.afterEach(async () => {
     // Session isolation: close all browser contexts, restart orchestrator,
-    // and refresh serviceHealth. Matches 07d-02/07d-03 pattern.
+    // and refresh the capability manifest. Matches 07d-02/07d-03 pattern.
     await closeAllContexts();
     await stopOrchestrator();
     await clearSessionData();
     orchestratorInfo = await startOrchestrator({ https: true, timeout: 60000 });
 
     try {
-      serviceHealth = await fetchServiceHealth(orchestratorInfo.url);
+      caps = await refreshCapabilities(orchestratorInfo.url);
     } catch (e) {
-      console.warn(`afterEach: Could not refresh serviceHealth: ${e.message}`);
+      console.warn(`afterEach: Could not refresh capabilities: ${e.message}`);
     }
   });
 
@@ -135,11 +145,7 @@ test.describe('GM Scanner - Environment Control', () => {
   });
 
   test('GM controls music playback', async () => {
-    if (serviceHealth.music?.status !== 'healthy') {
-      console.log('Music not healthy — skipping');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, caps, ['music']);
     if (!musicLibraryPopulated()) {
       console.log('backend/public/music/ empty — skipping (Pi-only test)');
       test.skip();
@@ -214,11 +220,7 @@ test.describe('GM Scanner - Environment Control', () => {
   });
 
   test('GM initiates Bluetooth scan', async () => {
-    if (serviceHealth.bluetooth?.status !== 'healthy') {
-      console.log('Bluetooth not healthy — skipping');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, caps, ['bluetooth']);
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -253,11 +255,7 @@ test.describe('GM Scanner - Environment Control', () => {
   });
 
   test('GM activates lighting scene', async () => {
-    if (serviceHealth.lighting?.status !== 'healthy') {
-      console.log('Lighting not healthy — skipping');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, caps, ['lighting']);
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -285,8 +283,10 @@ test.describe('GM Scanner - Environment Control', () => {
         console.log(`Activating lighting scene: ${sceneId}`);
         await firstScene.click();
 
-        // Allow time for scene activation round-trip (HA API call)
-        await page.waitForTimeout(2000);
+        // Condition wait: tile reflects activation when the HA round-trip
+        // completes (service:state lighting push re-renders the tile)
+        await expect(page.locator(`.scene-tile[data-scene-id="${sceneId}"].scene-tile--active`))
+          .toBeVisible({ timeout: 10000 });
         console.log(`Lighting scene ${sceneId} activated via UI`);
       } else {
         // No scenes available — HA connected but no scenes configured
@@ -299,11 +299,7 @@ test.describe('GM Scanner - Environment Control', () => {
   });
 
   test('GM changes audio routing', async () => {
-    if (serviceHealth.audio?.status !== 'healthy') {
-      console.log('Audio not healthy — skipping');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, caps, ['audio']);
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -349,15 +345,8 @@ test.describe('GM Scanner - Environment Control', () => {
     // exceeds the global 60s budget. Also give slow VLC start + duck-on headroom under
     // full-suite CPU load (this test runs the real video→ducking wire end-to-end).
     test.setTimeout(150000);
-    const musicHealthy = serviceHealth.music?.status === 'healthy';
-    const vlcHealthy = serviceHealth.vlc?.status === 'healthy';
+    requireCapabilities(test, caps, ['music', 'vlc']);
     const videoToken = testTokens?.videoToken;
-
-    if (!musicHealthy || !vlcHealthy) {
-      console.log(`Music=${musicHealthy}, VLC=${vlcHealthy} — both needed for ducking test`);
-      test.skip();
-      return;
-    }
     if (!musicLibraryPopulated()) {
       console.log('backend/public/music/ empty — skipping (Pi-only test)');
       test.skip();
@@ -384,9 +373,10 @@ test.describe('GM Scanner - Environment Control', () => {
       // (Ducking only fires against streams with a live PipeWire sink-input.)
       await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist',
         { playlistId: 'all-tracks' });
-      // Brief settle so the PipeWire sink-input for aln-music exists before
-      // the video duck-event fires.
-      await new Promise(r => setTimeout(r, 1500));
+      // Wait until MPD actually reports `playing` — the PipeWire sink-input
+      // for aln-music exists once playback is live, which is what the video
+      // duck-event needs as a target (was a fixed 1500ms settle, P17-M3).
+      await waitForMusicPlaying(orchestratorInfo.url);
 
       // Connect WebSocket listener for service:state (audio domain) events
       // service:state for audio is NOT cached — listener must be registered before trigger
@@ -411,11 +401,7 @@ test.describe('GM Scanner - Environment Control', () => {
         // but under full-suite load it can momentarily flap 'down', and video:queue:add is
         // REJECTED (not queued) when its vlc dependency is down → no video:started → no
         // ducking → the duck-on wait times out. (Duck-on bumped to 60s for slow VLC start.)
-        await gmScanner.waitForBackendState(
-          orchestratorInfo.url,
-          (s) => s.serviceHealth?.vlc?.status === 'healthy',
-          10000
-        );
+        await waitForCapability(orchestratorInfo.url, 'vlc', 10000);
 
         // Queue video via admin command (triggers VLC playback + ducking)
         await sendGMCommand(orchestratorInfo.url, 'video:queue:add', {
@@ -433,14 +419,19 @@ test.describe('GM Scanner - Environment Control', () => {
         // have fired before video started. There's a theoretical microtask gap
         // here that could miss the duck-end event, but production video tokens
         // are seconds-to-minutes long — ample time to register the listener.
+        // When ducking FULLY clears, audioRoutingService.getState().ducking is a
+        // sparse map that omits the 'music' key — so ducking.music is `undefined`,
+        // not `[]` (contract-compliant; the GM scanner reads it via `?.`). Tolerate
+        // that: "video no longer ducks music" means music is absent OR an array
+        // without 'video'. (Requiring Array.isArray here missed the full-restore
+        // case and hung for 120s.)
         const duckingByVideoEndedPromise = waitForEvent(wsSocket, 'service:state',
           (data) => data.data?.domain === 'audio' &&
-            Array.isArray(data.data?.state?.ducking?.music) &&
-            !data.data.state.ducking.music.includes('video'), 120000); // Videos can be long
+            !((data.data?.state?.ducking?.music) || []).includes('video'), 120000); // Videos can be long
 
         // Wait for ducking by video to deactivate when video completes
         const duckingOff = await duckingByVideoEndedPromise;
-        expect(duckingOff.data.state.ducking.music).not.toContain('video');
+        expect(duckingOff.data.state.ducking.music || []).not.toContain('video');
         console.log('Video-driven ducking ended after video completion');
 
       } finally {
@@ -453,11 +444,7 @@ test.describe('GM Scanner - Environment Control', () => {
   });
 
   test('Cascading pause suspends music', async () => {
-    if (serviceHealth.music?.status !== 'healthy') {
-      console.log('Music not healthy — skipping cascading pause test');
-      test.skip();
-      return;
-    }
+    requireCapabilities(test, caps, ['music']);
     if (!musicLibraryPopulated()) {
       console.log('backend/public/music/ empty — skipping (Pi-only test)');
       test.skip();
@@ -479,8 +466,10 @@ test.describe('GM Scanner - Environment Control', () => {
       // (per musicService.pauseForGameClock).
       await sendGMCommand(orchestratorInfo.url, 'music:loadPlaylist',
         { playlistId: 'all-tracks' });
-      // Brief settle so MPD actually reports `state: playing` to the service.
-      await new Promise(r => setTimeout(r, 1500));
+      // Wait until MPD actually reports `playing` — pauseForGameClock only
+      // sets `pausedByGameClock` when music was playing (was a fixed 1500ms
+      // settle, P17-M3).
+      await waitForMusicPlaying(orchestratorInfo.url);
 
       // Connect WebSocket listener for service:state (music domain) events
       // service:state is NOT cached — listener must be registered before trigger

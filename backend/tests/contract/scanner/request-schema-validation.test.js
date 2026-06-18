@@ -133,7 +133,9 @@ describe('Scanner Request Schema Validation', () => {
 
     test('ESP32 batch payload passes schema validation', () => {
       const payload = {
-        batchId: 'SCANNER_001_0',
+        // Real firmware format: deviceId + '_' + 8-hex boot nonce + '_' + counter
+        // (services/BatchId.h makeBatchId — example matches actual output)
+        batchId: 'SCANNER_001_a1b2c3d4_0',
         transactions: [
           {
             tokenId: 'kaa001',

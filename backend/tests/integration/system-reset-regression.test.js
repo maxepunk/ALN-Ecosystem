@@ -18,7 +18,6 @@
  */
 
 const { connectAndIdentify, waitForEvent, disconnectAndWait } = require('../helpers/websocket-helpers');
-const { clearEventCache } = require('../helpers/websocket-core');
 const { setupIntegrationTestServer, cleanupIntegrationTestServer } = require('../helpers/integration-test-server');
 const { logTestFileEntry, logTestFileExit, getServiceListenerCounts } = require('../helpers/service-reset');
 const sessionService = require('../../src/services/sessionService');
@@ -71,14 +70,8 @@ describe('System Reset Regression Tests', () => {
           transaction: transactionService.listenerCount('transaction:accepted')
         };
 
-        // Clear cached ack from previous iteration so waitForEvent waits for
-        // the REAL ack from THIS reset. Without this, the cached ack resolves
-        // immediately, gm:command fires but the test proceeds before
-        // performSystemReset() completes — leaving async resets in flight
-        // that race with subsequent iterations and contaminate later tests.
-        clearEventCache(gmSocket);
-
-        // Send system:reset command
+        // Send system:reset command (waitForEvent is listener-from-now —
+        // registered BEFORE the emit, so it catches the REAL ack of THIS reset)
         const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
         gmSocket.emit('gm:command', {
           event: 'gm:command',
@@ -127,11 +120,6 @@ describe('System Reset Regression Tests', () => {
     it('should not cause duplicate broadcasts after multiple resets', async () => {
       // Perform 2 system resets
       for (let i = 0; i < 2; i++) {
-        // waitForEvent resolves from cache if lastGmCommandAck is set from a
-        // previous iteration. Clear it so we wait for the REAL ack from THIS
-        // reset — otherwise the command is emitted but the test proceeds before
-        // performSystemReset() completes, leaving stale session state.
-        clearEventCache(gmSocket);
         const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
         gmSocket.emit('gm:command', {
           event: 'gm:command',
@@ -171,9 +159,19 @@ describe('System Reset Regression Tests', () => {
       // Fire 5 system:reset commands rapidly (no waiting)
       // Due to mutex protection in adminEvents.js, only the first should succeed
       // while others get "System reset already in progress" rejection
-      //
-      // NOTE: We can't reliably capture 5 independent acks due to event caching
-      // in websocket-core.js. The test focuses on what matters: system stability.
+      // Wait for the SUCCESS ack — the one from the reset that actually ran.
+      // The 4 mutex-rejected commands ack {success: false} almost immediately;
+      // the predicate keeps listening past those. This replaces the old fixed
+      // 500ms sleep, which was shorter than a real reset on toolless
+      // environments (~1.2s: Chromium respawn timeout) and left the reset
+      // IN FLIGHT past the end of this test — the mutex then rejected the
+      // NEXT test's reset, which is what the quarantined failure really was.
+      const successAckPromise = waitForEvent(
+        gmSocket,
+        'gm:command:ack',
+        (ack) => ack.data?.action === 'system:reset' && ack.data?.success === true,
+        15000
+      );
       for (let i = 0; i < 5; i++) {
         gmSocket.emit('gm:command', {
           event: 'gm:command',
@@ -182,9 +180,9 @@ describe('System Reset Regression Tests', () => {
         });
       }
 
-      // Wait for any pending reset operations to complete
-      // The mutex ensures only one runs at a time
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // The ack is sent only after performSystemReset() resolves — when this
+      // returns, no reset is in flight and the mutex is released
+      await successAckPromise;
 
       // The real test: System should still be functional after rapid resets
       // If the system crashed or is in a bad state, this will fail
@@ -201,17 +199,16 @@ describe('System Reset Regression Tests', () => {
   });
 
   describe('Reset State Verification', () => {
-    // QUARANTINED on CI (ubuntu) only — passes locally (Pi) and in isolation.
-    // On the ubuntu CI runner this intermittently fails with
-    // `transactionService.on is not a function` during the post-reset re-wiring.
-    // Root cause is a PRE-EXISTING cross-suite test-isolation bug: under the
-    // toolless ubuntu environment (no bluetoothctl/dbus/pactl) some earlier suite
-    // takes a different teardown path and corrupts the shared transactionService
-    // singleton. The reset logic itself is sound (this is a harness-isolation issue,
-    // not a system:reset bug) and it cannot be reproduced on the Pi (which has the
-    // tools). Tracked in docs/plans/2026-06-04-system-reset-ci-isolation.md.
-    const itLocalOnly = process.env.CI ? it.skip : it;
-    itLocalOnly('should fully reset all service state', async () => {
+    // UN-QUARANTINED (2026-06-11). Root cause found and fixed: the 'rapid
+    // consecutive resets' test above used a fixed 500ms sleep, shorter than
+    // a real reset on toolless environments (~1.2s — Chromium respawn
+    // timeout), so its reset was still IN FLIGHT when this test fired its
+    // own — which the adminEvents mutex rejected with {success: false}.
+    // This test never checked the ack, so the failure surfaced downstream
+    // as 'session not cleared'. The sibling now waits for the actual
+    // success ack and this test asserts its own. The reset logic itself
+    // was always sound (the test passes in isolation on every platform).
+    it('should fully reset all service state', async () => {
       // Add some transactions
       const TestTokens = require('../fixtures/test-tokens');
       await transactionService.init(TestTokens.getAllAsArray());
@@ -229,7 +226,7 @@ describe('System Reset Regression Tests', () => {
 
       // Verify transaction exists
       expect(session.transactions.length).toBe(1);
-      expect(transactionService.teamScores.size).toBe(1);
+      expect(transactionService.getTeamScores()).toHaveLength(1);
 
       // Perform system reset
       const ackPromise = waitForEvent(gmSocket, 'gm:command:ack');
@@ -238,12 +235,16 @@ describe('System Reset Regression Tests', () => {
         data: { action: 'system:reset', payload: {} },
         timestamp: new Date().toISOString()
       });
-      await ackPromise;
+      const resetAck = await ackPromise;
+      // The ack is emitted only after performSystemReset() resolves; a
+      // success:false ack means the mutex rejected us (another reset in
+      // flight) and every assertion below would fail confusingly
+      expect(resetAck.data.success).toBe(true);
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Verify all state cleared
       expect(sessionService.getCurrentSession()).toBeNull();
-      expect(transactionService.teamScores.size).toBe(0);
+      expect(transactionService.getTeamScores()).toHaveLength(0);
 
       // Create new session - should start fresh
       await sessionService.createSession({

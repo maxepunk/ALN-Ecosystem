@@ -352,6 +352,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const alertStartTime = Date.now();
 
     // Wait before expected dismiss - should still be visible
+    // eslint-disable-next-line no-restricted-properties -- time-SEMANTIC wait: negative temporal assertion — alert must still be visible before its auto-dismiss
     await page.waitForTimeout(VIDEO_ALERT_EARLY_CHECK);
     expect(await scanner.isVideoAlertVisible()).toBe(true);
     console.log(`✓ Video alert still visible after ${VIDEO_ALERT_EARLY_CHECK}ms`);
@@ -490,7 +491,7 @@ test.describe('Player Scanner Networked Scanning', () => {
     const queueItem = localStorageQueue[0];
     expect(queueItem).toHaveProperty('tokenId');
     expect(queueItem).toHaveProperty('timestamp');
-    expect(queueItem).toHaveProperty('retryCount');
+    // retryCount removed with the dead retry scaffolding (F-PARITY-16)
 
     console.log('✓ Queue persisted to localStorage:', localStorageQueue);
 
@@ -632,6 +633,12 @@ test.describe('Player Scanner Networked Scanning', () => {
       request => request.url().includes('/api/scan/batch') && request.method() === 'POST',
       { timeout: 10000 }
     );
+    // Mark the promise handled immediately: the 10s timeout can fire during the
+    // reconnect awaits below (before the await at the try-block). An unhandled
+    // rejection here is escalated by Winston's rejectionHandlers to process.exit,
+    // which kills the whole Playwright worker (and any co-scheduled test). The
+    // try/catch around the real await still catches the timeout for control flow.
+    batchRequestPromise.catch(() => {});
 
     // Restore connection
     await context.setOffline(false);
@@ -764,17 +771,25 @@ test.describe('Player Scanner Networked Scanning', () => {
     // Wait for the actual failed batch request (not a magic timeout)
     await batchFailedPromise;
 
-    // Now wait for re-queue to complete — nearly instant after the request fails
+    // PS-1 snapshot model: a failed batch is RETAINED AS THE PENDING BATCH
+    // (id + exact contents, persisted) and resent verbatim on the next
+    // attempt — it is NOT re-queued into offlineQueue (rebuilding the batch
+    // from the queue on retry is what allowed silent scan loss under the
+    // backend's batchId-keyed idempotency cache).
     await page.waitForFunction(
-      () => window.orchestrator && window.orchestrator.offlineQueue.length === 1,
+      () => window.orchestrator
+        && window.orchestrator.offlineQueue.length === 0
+        && window.orchestrator.pendingBatch
+        && window.orchestrator.pendingBatch.items.length === 1,
       { timeout: 2000, polling: 50 }
     );
 
-    // Queue should still have items (re-queued after failure)
-    queueSize = await scanner.getOfflineQueueSize();
-    expect(queueSize).toBe(1);
+    // The scan survives — as the pending snapshot, not as queue contents
+    const pending = await page.evaluate(() => window.orchestrator.pendingBatch);
+    expect(pending.items).toHaveLength(1);
+    expect(pending.items[0].tokenId).toBe(tokenId);
 
-    console.log('✓ Failed batch re-queued for retry');
+    console.log('✓ Failed batch retained as pending snapshot for retry');
 
     // Clean up: remove route interception
     await page.unroute('**/api/scan/batch');

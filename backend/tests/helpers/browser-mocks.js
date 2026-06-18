@@ -478,6 +478,13 @@ class MockDataManager extends EventTarget {
     }
   }
 
+  // Called by networkedSession on transaction:deleted broadcast (F-GMS-03:
+  // cache-only prune — must NOT re-issue the delete command). Mirrors
+  // ALNScanner/src/core/unifiedDataManager.js removeTransactionFromBroadcast.
+  removeTransactionFromBroadcast(transactionId) {
+    this.removeTransaction(transactionId);
+  }
+
   // Called by OrchestratorClient when new session detected (sync:full or session:update events)
   resetForNewSession(sessionId = null) {
     this.scannedTokens.clear();

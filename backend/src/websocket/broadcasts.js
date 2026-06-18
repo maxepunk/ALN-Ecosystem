@@ -231,7 +231,14 @@ function setupBroadcastListeners(io, services) {
     addTrackedListener(transactionService, 'transaction:accepted', (payload) => {
       // Stash teamScore for enriching the upcoming transaction:new broadcast
       if (payload.transaction?.id && payload.teamScore) {
-        teamScoreStash.set(payload.transaction.id, payload.teamScore);
+        const txId = payload.transaction.id;
+        teamScoreStash.set(txId, payload.teamScore);
+        // Self-expire (merge-readiness review minor): when the persistence
+        // listener early-returns, transaction:added never consumes this
+        // entry — sweep after 10s so unconsumed stashes can't accumulate
+        // over a long session. transaction:added normally consumes within ms.
+        const sweep = setTimeout(() => teamScoreStash.delete(txId), 10000);
+        if (sweep.unref) sweep.unref();
       }
     });
 
@@ -414,6 +421,21 @@ function setupBroadcastListeners(io, services) {
         logger.warn('Ducking stop failed on sound:completed', { error: err.message });
       });
     });
+    // F-SHOW-02: a sound that started and is killed/fails exits via close →
+    // sound:stopped (exit code null=killed / non-zero=error), which must map to
+    // the 'completed' ducking lifecycle or music stays ducked forever.
+    addTrackedListener(soundService, 'sound:stopped', () => {
+      audioRoutingService.handleDuckingEvent('sound', 'completed').catch(err => {
+        logger.warn('Ducking stop failed on sound:stopped', { error: err.message });
+      });
+    });
+    // NOTE: sound:error is intentionally NOT wired to a duck-stop. soundService
+    // only emits sound:started once a process has a pid, so every sound:error
+    // (path-escape, file-not-found, spawn-ENOENT) is a NEVER-STARTED sound that
+    // never ducked music. Forwarding it as ('sound','completed') would decrement
+    // the shared 'sound' duck count and restore music mid-playback of a
+    // concurrent live sound (refcount underflow). Post-start failures un-duck via
+    // sound:stopped above, not sound:error.
   }
 
   // ============================================================
@@ -545,7 +567,7 @@ function setupBroadcastListeners(io, services) {
 
   // Game Clock → service:state { domain: 'gameclock' }
   if (gameClockService) {
-    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed']) {
+    for (const event of ['gameclock:started', 'gameclock:paused', 'gameclock:resumed', 'gameclock:stopped']) {
       addTrackedListener(gameClockService, event, () => pushServiceState('gameclock', gameClockService));
     }
   }

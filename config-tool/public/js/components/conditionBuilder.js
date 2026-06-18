@@ -14,6 +14,23 @@ const OPERATORS = [
   { value: 'in', label: 'is one of' },
 ];
 
+// Number-typed trigger fields, per the backend's event normalizers
+// (backend/src/gameRules/cueVocabulary.js + services/cue/standingEvaluator.js
+// ENGINE_EVENT_NORMALIZERS). Values are coerced to numbers ONLY for these
+// fields: backend condition ops compare strictly, so points "75000" must
+// become 75000 — but a team literally named "42" must stay the string "42".
+const NUMERIC_FIELDS = new Set(['points', 'valueRating', 'teamScore', 'multiplier', 'bonus', 'duration']);
+
+/** Coerce a raw input string by FIELD TYPE (not by value appearance). */
+export function coerceConditionValue(field, raw, op) {
+  const numeric = NUMERIC_FIELDS.has(field);
+  if (op === 'in') {
+    return raw.split(',').map(v => v.trim()).filter(Boolean)
+      .map(v => (numeric && v !== '' && !isNaN(Number(v)) ? Number(v) : v));
+  }
+  return numeric && raw !== '' && !isNaN(Number(raw)) ? Number(raw) : raw;
+}
+
 export function renderConditionBuilder(container, conditions, availableFields, editorCtx) {
   container.textContent = '';
 
@@ -48,7 +65,12 @@ function buildConditionRow(index, conditions, availableFields, editorCtx, parent
 
   const fieldSelect = el('select', {
     style: { width: '120px' },
-    onChange: () => { cond.field = fieldSelect.value; editorCtx.markDirty(); },
+    onChange: () => {
+      cond.field = fieldSelect.value;
+      // Re-coerce: the same text means a different type under the new field
+      cond.value = coerceConditionValue(cond.field, valueInput.value, cond.op);
+      editorCtx.markDirty();
+    },
   },
     ...availableFields.map(f =>
       el('option', { value: f, ...(f === cond.field ? { selected: true } : {}) }, f)
@@ -59,6 +81,7 @@ function buildConditionRow(index, conditions, availableFields, editorCtx, parent
     style: { width: '120px' },
     onChange: () => {
       cond.op = opSelect.value;
+      cond.value = coerceConditionValue(cond.field, valueInput.value, cond.op);
       editorCtx.markDirty();
       // Update placeholder hint
       valueInput.placeholder = cond.op === 'in' ? 'comma-separated values' : 'value';
@@ -75,14 +98,10 @@ function buildConditionRow(index, conditions, availableFields, editorCtx, parent
     style: { width: '160px' },
     placeholder: cond.op === 'in' ? 'comma-separated values' : 'value',
     onInput: () => {
-      if (cond.op === 'in') {
-        cond.value = valueInput.value.split(',').map(v => v.trim()).filter(Boolean);
-      } else {
-        const raw = valueInput.value;
-        const num = Number(raw);
-        // Auto-coerce to number for numeric comparisons
-        cond.value = raw !== '' && !isNaN(num) ? num : raw;
-      }
+      // Type-aware coercion: numbers only for numeric fields (the backend's
+      // ops — including `in` — compare strictly, so "4" !== 4 on points, and
+      // a STRING field like teamId must keep "42" as a string).
+      cond.value = coerceConditionValue(cond.field, valueInput.value, cond.op);
       editorCtx.markDirty();
     },
   });

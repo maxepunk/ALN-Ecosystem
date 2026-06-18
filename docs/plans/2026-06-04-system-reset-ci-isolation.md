@@ -69,3 +69,21 @@ comment block on the test.
 - `tests/helpers/service-reset.js` (`resetAllServicesForTesting`, `stopRevalidation`)
 - `src/services/systemReset.js`, `src/services/sessionService.js` (`setupScoreListeners`)
 - `src/services/serviceHealthRegistry.js` (`startRevalidation`/`stopRevalidation`)
+
+## RESOLVED (2026-06-11)
+
+Root cause found — it was NOT cross-suite singleton corruption. Within
+system-reset-regression.test.js itself, the "rapid consecutive resets"
+test used a fixed 500ms sleep that is shorter than a real reset on
+toolless environments (~1.2s, dominated by the displayDriver Chromium
+respawn timeout). Its reset was still IN FLIGHT when the next test
+("should fully reset all service state") fired its own reset — which the
+adminEvents mutex correctly rejected with `{success: false}`. That test
+never asserted its ack, so the failure surfaced downstream as "session
+not cleared". On the Pi, resets complete inside 500ms, hence
+"passes locally". The reset logic itself was always sound.
+
+Fix: the rapid test now waits for the actual success ack (predicate on
+`gm:command:ack`), and the state-verification test asserts its ack
+succeeded. Quarantine removed; the file passes deterministically in
+toolless environments at original timings.

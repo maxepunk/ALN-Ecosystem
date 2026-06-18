@@ -58,9 +58,13 @@ class DisplayControlService extends EventEmitter {
       this.videoQueueService.on('video:idle', this._boundVideoIdleHandler);
     }
 
-    // Enter VIDEO mode for ALL video triggers (player scan, compound cue, manual)
+    // Enter VIDEO mode for ALL video triggers (player scan, compound cue, manual).
+    // The hook body runs under _withLock (F-SHOW-09): every other transition is
+    // serialized through the lock, and an unlocked hook racing a locked
+    // _doSetIdleLoop (queue drained moments before a new scan) let the
+    // in-flight returnToIdleLoop() clobber the just-started video.
     if (this.videoQueueService) {
-      this.videoQueueService.registerPrePlayHook(async () => {
+      this.videoQueueService.registerPrePlayHook(() => this._withLock(async () => {
         if (this.currentMode !== DisplayMode.VIDEO) {
           this.previousMode = this.currentMode;
           if (this.currentMode === DisplayMode.SCOREBOARD) {
@@ -75,7 +79,7 @@ class DisplayControlService extends EventEmitter {
             previousMode: this.previousMode
           });
         }
-      });
+      }));
     }
 
     // Pre-launch scoreboard Chromium so showScoreboard() is instant.

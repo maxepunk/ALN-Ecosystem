@@ -259,13 +259,17 @@ describe('Player Scanner - Standalone Mode (No Orchestrator)', () => {
   describe('PWA Features (Offline Support)', () => {
 
     it('should have service worker registration code', () => {
-      // Verify index.html contains service worker registration (line 847-850)
+      // SW registration lives in js/app.js since the Phase 2 module
+      // extraction (index.html is markup + script tags only); index.html
+      // must load app.js for registration to run
+      const appPath = path.join(__dirname, '../../../../aln-memory-scanner/js/app.js');
+      const appJs = fs.readFileSync(appPath, 'utf-8');
+      expect(appJs).toContain('serviceWorker');
+      expect(appJs).toContain("register('sw.js')");
+
       const indexPath = path.join(__dirname, '../../../../aln-memory-scanner/index.html');
       const indexHtml = fs.readFileSync(indexPath, 'utf-8');
-
-      // Check for service worker registration
-      expect(indexHtml).toContain('serviceWorker');
-      expect(indexHtml).toContain("register('sw.js')");
+      expect(indexHtml).toContain('js/app.js');
     });
 
     it('should use localStorage for scanned tokens persistence', () => {

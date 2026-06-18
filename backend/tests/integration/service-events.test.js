@@ -37,14 +37,11 @@ describe('Service Event Communication', () => {
       });
     await sessionService.startGame();
 
-      // Manually create some team scores
-      const TeamScore = require('../../src/models/teamScore');
-      transactionService.teamScores.set('Team Alpha', TeamScore.createInitial('Team Alpha'));
-      transactionService.teamScores.set('Detectives', TeamScore.createInitial('Detectives'));
-
-      // Add points
-      transactionService.teamScores.get('Team Alpha').currentScore = 100;
-      transactionService.teamScores.get('Detectives').currentScore = 50;
+      // Add points to the live TeamScore instances in session.scores
+      // (the single canonical store)
+      const session = sessionService.getCurrentSession();
+      session.scores.find(s => s.teamId === 'Team Alpha').addPoints(100);
+      session.scores.find(s => s.teamId === 'Detectives').addPoints(50);
 
       // Verify scores exist
       const scoresBefore = transactionService.getTeamScores();

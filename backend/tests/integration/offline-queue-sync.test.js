@@ -32,7 +32,6 @@ describe('Offline Queue Synchronization Integration', () => {
     });
 
     // Clear offline queue state without removing listeners
-    offlineQueueService.playerScanQueue = [];
     offlineQueueService.gmTransactionQueue = [];
     offlineQueueService.isOffline = false;
     offlineQueueService.processingQueue = false;
@@ -52,46 +51,9 @@ describe('Offline Queue Synchronization Integration', () => {
     if (gmSocket?.connected) gmSocket.disconnect();
   });
 
-  it('should process player scan queue (logging only, no scoring)', async () => {
-    // Setup: Enqueue player scans (NO teamId, NO mode - just logs)
-    offlineQueueService.enqueue({
-      tokenId: '534e2b03',
-      deviceId: 'PLAYER_OFFLINE_1',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-      timestamp: new Date().toISOString()
-    });
-
-    offlineQueueService.enqueue({
-      tokenId: 'jaw001',
-      deviceId: 'PLAYER_OFFLINE_2',
-          deviceType: 'gm',  // Required by Phase 3 P0.1
-      timestamp: new Date().toISOString()
-    });
-
-    // Listen for offline:queue:processed broadcast
-    const queueProcessedPromise = waitForEvent(gmSocket, 'offline:queue:processed');
-
-    // Trigger: Process queue
-    await offlineQueueService.processQueue();
-
-    // Wait for broadcast
-    const queueEvent = await queueProcessedPromise;
-
-    // Validate: offline:queue:processed event
-    expect(queueEvent.event).toBe('offline:queue:processed');
-    expect(queueEvent.data.queueSize).toBe(2);
-    expect(queueEvent.data.results).toBeDefined();
-    expect(queueEvent.data.results.length).toBe(2);
-
-    // Validate: Player scans are processed (per AsyncAPI contract)
-    const result1 = queueEvent.data.results[0];
-    expect(result1.status).toBe('processed'); // AsyncAPI contract: 'processed' | 'failed'
-    expect(result1.tokenId).toBe('534e2b03');
-
-    // Validate: Team scores NOT affected (player scans don't score)
-    const team001Score = transactionService.teamScores.get('Team Alpha');
-    expect(team001Score.currentScore).toBe(0); // Player scans don't add points
-  });
+  // NOTE (D2, 2026-06-09): the player-scan offline queue was deleted — its
+  // drain never persisted scans to the session (F-SCAN-04). Player scanners
+  // queue client-side and replay via POST /api/scan/batch.
 
   it('should process GM transaction queue (full scoring)', async () => {
     // Setup: Enqueue GM transactions (WITH teamId and mode)
@@ -135,8 +97,8 @@ describe('Offline Queue Synchronization Integration', () => {
     expect(result1.points).toBeGreaterThan(0);
 
     // Validate: Team scores updated
-    const team001Score = transactionService.teamScores.get('Team Alpha');
-    const team002Score = transactionService.teamScores.get('Detectives');
+    const team001Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Team Alpha');
+    const team002Score = sessionService.getCurrentSession().scores.find(s => s.teamId === 'Detectives');
     expect(team001Score.currentScore).toBeGreaterThan(0); // GM transaction scored
     expect(team002Score.currentScore).toBeGreaterThan(0);
   });
@@ -179,8 +141,7 @@ describe('Offline Queue Synchronization Integration', () => {
     // Process empty queue should not crash
     await offlineQueueService.processQueue();
 
-    // Verify: Queue remains empty (check internal arrays)
-    expect(offlineQueueService.playerScanQueue.length).toBe(0);
+    // Verify: Queue remains empty (check internal array)
     expect(offlineQueueService.gmTransactionQueue.length).toBe(0);
   });
 });

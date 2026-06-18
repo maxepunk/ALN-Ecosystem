@@ -13,7 +13,7 @@ describe('configManager', () => {
     fs.writeFileSync(path.join(tmpDir, '.env'), 'PORT=3000\nHOST=0.0.0.0\n');
     fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
       version: '1.0',
-      baseValues: { '1': 10000, '2': 25000 },
+      baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
       typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
@@ -55,9 +55,15 @@ describe('configManager', () => {
   });
 
   it('writes scoring config', () => {
-    configManager.writeScoring({ version: '1.0', baseValues: { '1': 99999 }, typeMultipliers: {} });
+    configManager.writeScoring({
+      version: '1.0',
+      baseValues: { '1': 99999, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+      typeMultipliers: { Personal: 1, UNKNOWN: 0 },
+    });
     const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
     assert.strictEqual(reread.baseValues['1'], 99999);
+    // atomic write leaves no tmp file behind (F-TOOL-10)
+    assert.ok(!fs.existsSync(path.join(tmpDir, 'scoring-config.json.tmp')));
   });
 
   it('writes env values preserving structure', () => {
@@ -80,7 +86,7 @@ describe('configManager', () => {
   });
 
   it('writes cues config', () => {
-    const cues = { cues: [{ id: 'test', label: 'Test', commands: [] }] };
+    const cues = { cues: [{ id: 'test', label: 'Test', quickFire: true, commands: [] }] };
     configManager.writeCues(cues);
     const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
     assert.strictEqual(reread.cues[0].id, 'test');
@@ -128,6 +134,41 @@ describe('configManager', () => {
       const imported = configManager.importPreset(data);
       assert.strictEqual(imported, 'exportable.json');
       assert.strictEqual(configManager.listPresets().length, 1);
+    });
+
+    it('rolls back all sections when a write fails mid-apply (CT-F2)', () => {
+      configManager.savePreset('Target', '');
+      const presetPath = path.join(tmpDir, 'presets', 'target.json');
+      const preset = JSON.parse(fs.readFileSync(presetPath, 'utf8'));
+      preset.env.PORT = '7777';
+      preset.scoringConfig.baseValues['1'] = 11111;
+      fs.writeFileSync(presetPath, JSON.stringify(preset));
+
+      // I/O-failure seam: the scoring write fails ONCE (env has already been
+      // applied by then); the rollback's writeScoring call reaches the real
+      // writer on the second invocation.
+      const realWriteScoring = configManager.writeScoring.bind(configManager);
+      let calls = 0;
+      configManager.writeScoring = (data) => {
+        calls += 1;
+        if (calls === 1) throw new Error('EACCES: permission denied');
+        return realWriteScoring(data);
+      };
+
+      assert.throws(
+        () => configManager.loadPreset('target.json'),
+        /previous config restored/
+      );
+
+      // env was written with preset values before the failure — rolled back
+      const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
+      assert.ok(content.includes('PORT=3000'));
+      assert.ok(!content.includes('PORT=7777'));
+      // scoring never took the preset value (first write threw; rollback
+      // rewrote the original)
+      const scoring = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
+      assert.strictEqual(scoring.baseValues['1'], 10000);
+      assert.strictEqual(calls, 2);
     });
 
     it('prevents path traversal in loadPreset', () => {

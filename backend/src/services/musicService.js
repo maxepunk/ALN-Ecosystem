@@ -276,6 +276,19 @@ class MusicService extends EventEmitter {
     return this._send(c => c.sendCommand(`setvol ${Math.round(v)}`));
   }
 
+  /**
+   * Seek within the current track (decision C4, F-GMCMD-21).
+   * MPD's seekcur errors when nothing is playing — that rejection surfaces as
+   * an honest failed ack through commandExecutor.
+   * @param {number} position - Absolute position in seconds
+   */
+  async seek(position) {
+    if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
+      throw new Error(`Invalid seek position: ${position}`);
+    }
+    return this._send(c => c.sendCommand(`seekcur ${Math.round(position)}`));
+  }
+
   async setShuffle(enabled) {
     return this._send(c => c.sendCommand(`random ${enabled ? 1 : 0}`));
   }
@@ -424,9 +437,14 @@ class MusicService extends EventEmitter {
     // slices characters instead of responses, silently breaking idle handling.
     // mpd2 serializes commands via its internal _promiseQueue, so Promise.all
     // is two sequential round-trips on the wire — accurate and reliable.
+    //
+    // Routed through _send (F-SHOW-11): these are the highest-frequency mpd2
+    // round-trips in the system — a desynced client hangs raw sendCommand
+    // forever and would silently freeze track/state updates while _send-based
+    // commands kept working. The timeout teardown is the only recovery signal.
     const [statusRaw, songRaw] = await Promise.all([
-      this._mpd.sendCommand('status'),
-      this._mpd.sendCommand('currentsong'),
+      this._send(c => c.sendCommand('status')),
+      this._send(c => c.sendCommand('currentsong')),
     ]);
     // Re-check after await — cleanup() may have run during the I/O window
     if (this._stopped || !this._mpd) return;
@@ -472,7 +490,8 @@ class MusicService extends EventEmitter {
 
   async _handleMixerEvent() {
     if (!this._mpd || this._stopped) return;
-    const raw = await this._mpd.sendCommand('status');
+    // Routed through _send (F-SHOW-11) — see _handlePlayerEvent.
+    const raw = await this._send(c => c.sendCommand('status'));
     if (this._stopped) return;
     const status = this._parseKV(raw);
     const v = parseInt(status.volume, 10);

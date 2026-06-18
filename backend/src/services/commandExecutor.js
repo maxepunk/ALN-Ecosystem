@@ -35,6 +35,7 @@ const SERVICE_DEPENDENCIES = {
   'video:pause': 'vlc',
   'video:stop': 'vlc',
   'video:skip': 'vlc',
+  'video:seek': 'vlc',
   'video:queue:add': 'vlc',
   // video:queue:reorder and video:queue:clear intentionally UNGATED —
   // pure queue operations (no VLC calls). GM must manage queue during VLC outage.
@@ -61,6 +62,24 @@ const SERVICE_DEPENDENCIES = {
   'music:setShuffle': 'music',
   'music:setLoop': 'music',
   'music:loadPlaylist': 'music',
+  'music:seek': 'music',
+};
+
+/**
+ * Required-field presence is validated BEFORE the service-health gate: a
+ * command missing a required field can never succeed, so "<service> is down"
+ * would be the wrong — and environment-dependent — answer for it (the
+ * operator/author needs to fix the command, not wait for the service).
+ * The inline per-case checks remain as defense-in-depth.
+ */
+const REQUIRED_PAYLOAD_FIELDS = {
+  'session:addTeam': ['teamId'],
+  'bluetooth:pair': ['address'],
+  'bluetooth:unpair': ['address'],
+  'bluetooth:connect': ['address'],
+  'bluetooth:disconnect': ['address'],
+  'audio:route:set': ['sink'],
+  'lighting:scene:activate': ['sceneId'],
 };
 
 /**
@@ -80,6 +99,13 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
 
   try {
+    // Required-field validation FIRST (see REQUIRED_PAYLOAD_FIELDS rationale)
+    for (const field of REQUIRED_PAYLOAD_FIELDS[action] || []) {
+      if (!payload?.[field]) {
+        return { success: false, message: `${field} is required`, source };
+      }
+    }
+
     // Pre-dispatch health check: reject commands when required service is down
     const requiredService = SERVICE_DEPENDENCIES[action];
     if (requiredService && !registry.isHealthy(requiredService)) {
@@ -172,38 +198,67 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 
       // --- Video commands ---
 
-      case 'video:play':
-        if (config.features.videoPlayback) {
-          await videoQueueService.resumeCurrent();
+      // Video transports use the service booleans for honest acks
+      // (F-GMCMD-08): a no-op must produce a failed ack, not phantom
+      // success. The services handle the videoPlayback feature flag
+      // internally (logical pause/skip works in test mode), so the old
+      // executor-level feature gate — which skipped the call but still
+      // claimed success — is gone.
+      case 'video:play': {
+        const resumed = await videoQueueService.resumeCurrent();
+        if (!resumed) {
+          throw new Error('No video playing');
         }
         resultMessage = 'Video playback resumed';
         logger.info('Video playback resumed', { source, deviceId });
         break;
+      }
 
-      case 'video:pause':
-        if (config.features.videoPlayback) {
-          await videoQueueService.pauseCurrent();
+      case 'video:pause': {
+        const paused = await videoQueueService.pauseCurrent();
+        if (!paused) {
+          throw new Error('No video playing');
         }
         resultMessage = 'Video playback paused';
         logger.info('Video playback paused', { source, deviceId });
         break;
+      }
 
-      case 'video:stop':
-        if (config.features.videoPlayback) {
-          await videoQueueService.skipCurrent();
-          videoQueueService.clearQueue();
+      case 'video:stop': {
+        const skipped = await videoQueueService.skipCurrent();
+        const cleared = videoQueueService.clearQueue();
+        if (!skipped && !cleared) {
+          throw new Error('No video playing and queue is empty');
         }
         resultMessage = 'Video playback stopped';
         logger.info('Video playback stopped', { source, deviceId });
         break;
+      }
 
-      case 'video:skip':
-        if (config.features.videoPlayback) {
-          await videoQueueService.skipCurrent();
+      case 'video:skip': {
+        const skipped = await videoQueueService.skipCurrent();
+        if (!skipped) {
+          throw new Error('No video playing');
         }
         resultMessage = 'Video skipped successfully';
         logger.info('Video skipped', { source, deviceId });
         break;
+      }
+
+      case 'video:seek': {
+        // Decision C4 (contract-first): payload {position} in seconds
+        const { position } = payload;
+        if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
+          throw new Error('position (seconds, >= 0) is required for video:seek');
+        }
+        const seeked = await videoQueueService.seekCurrent(position);
+        if (!seeked) {
+          throw new Error('No video playing');
+        }
+        resultMessage = `Video seeked to ${position}s`;
+        logger.info('Video seeked', { source, deviceId, position });
+        break;
+      }
 
       case 'video:queue:add': {
         // Add video to queue by filename
@@ -498,7 +553,11 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
       case 'cue:fire': {
         if (!payload.cueId) throw new Error('cueId required');
         const cueEngineService = getCueEngine();
-        await cueEngineService.fireCue(payload.cueId);
+        // F-SHOW-15 / asyncapi CueFired: manual GM fires carry source 'gm'
+        // and a 'manual' trigger; cue-engine dispatches keep source 'cue'
+        const cueSource = source === 'gm' ? 'gm' : 'cue';
+        const cueTrigger = source === 'gm' ? 'manual' : undefined;
+        await cueEngineService.fireCue(payload.cueId, cueTrigger, undefined, cueSource);
         resultMessage = `Cue fired: ${payload.cueId}`;
         logger.info('Cue fired', { source, deviceId, cueId: payload.cueId });
         break;
@@ -655,6 +714,20 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
         await musicService.loadPlaylist(playlistId);
         resultMessage = `Music playlist loaded: ${playlistId}`;
         logger.info('Music playlist loaded', { source, deviceId, playlistId });
+        break;
+      }
+
+      case 'music:seek': {
+        // Decision C4 (contract-first): payload {position} in seconds.
+        // MPD's seekcur rejects when nothing is playing — surfaces as an
+        // honest failed ack via the catch below.
+        const { position } = payload;
+        if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
+          throw new Error('position (seconds, >= 0) is required for music:seek');
+        }
+        await musicService.seek(position);
+        resultMessage = `Music seeked to ${position}s`;
+        logger.info('Music seeked', { source, deviceId, position });
         break;
       }
 

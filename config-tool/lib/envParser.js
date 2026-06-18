@@ -26,11 +26,18 @@ function parseEnvFile(content) {
         continue;
       }
       const key = trimmed.substring(0, eqIndex).trim();
+      // NOTE: an unquoted inline `#` is NOT treated as a comment — for
+      // `KEY=val # note` the value keeps " # note". This deliberately
+      // diverges from the backend's dotenv parser, which strips unquoted
+      // inline comments. Pinned in tests/envParser.test.js; change only in
+      // lockstep with serializeEnv quoting and the backend's parser.
       let value = trimmed.substring(eqIndex + 1).trim();
 
-      // Strip surrounding quotes
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
+      // Strip surrounding quotes. Double-quoted values unescape \" → "
+      // (mirror of serializeEnv's escaping — F-TOOL-03 round-trip).
+      if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+        value = value.slice(1, -1).replace(/\\"/g, '"');
+      } else if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
         value = value.slice(1, -1);
       }
 
@@ -59,10 +66,16 @@ function serializeEnv(parsed) {
     } else if (line.type === 'comment') {
       outputLines.push(line.raw);
     } else if (line.type === 'keyvalue') {
-      const val = values[line.key] ?? '';
-      // Quote values containing spaces, #, or special chars
-      const needsQuotes = val.includes(' ') || val.includes('#') || val.includes('"');
-      const formatted = needsQuotes ? `"${val}"` : val;
+      const val = String(values[line.key] ?? '');
+      // Reject newlines outright — a value containing \n or \r would inject
+      // arbitrary additional env lines into backend/.env (F-TOOL-03).
+      if (/[\n\r]/.test(val)) {
+        throw new Error(`env value for ${line.key} must not contain newlines`);
+      }
+      // Quote values containing spaces, #, or quotes; escape embedded
+      // double quotes so they survive the round-trip.
+      const needsQuotes = val.includes(' ') || val.includes('#') || val.includes('"') || val.includes("'");
+      const formatted = needsQuotes ? `"${val.replace(/"/g, '\\"')}"` : val;
       outputLines.push(`${line.key}=${formatted}`);
     }
   }
@@ -88,7 +101,16 @@ function readEnv(filePath) {
  * @param {{ values: Object, lines: Array }} parsed - Parsed env to write
  */
 function writeEnv(filePath, parsed) {
-  fs.writeFileSync(filePath, serializeEnv(parsed), 'utf8');
+  // Atomic write (tmp + rename) — a crash mid-write must not truncate
+  // backend/.env (F-TOOL-10).
+  const tmp = `${filePath}.tmp`;
+  try {
+    fs.writeFileSync(tmp, serializeEnv(parsed), 'utf8');
+    fs.renameSync(tmp, filePath);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ }
+    throw err;
+  }
 }
 
 module.exports = { parseEnvFile, serializeEnv, readEnv, writeEnv };

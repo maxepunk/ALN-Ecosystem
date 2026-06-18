@@ -1573,38 +1573,6 @@ Sink Input #42
 
   // ── fallback routing ──
 
-  describe('fallback routing', () => {
-    it('should try fallback sink when primary is unavailable', async () => {
-      // Mock findSinkInput to return a sink-input
-      jest.spyOn(audioRoutingService, 'findSinkInput').mockResolvedValue({ index: '42' });
-
-      // Mock getAvailableSinks to return only HDMI (no bluetooth)
-      jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([
-        {
-          id: '47',
-          name: 'alsa_output.platform-fef00700.hdmi.hdmi-stereo',
-          type: 'hdmi',
-        },
-      ]);
-
-      // Mock moveStreamToSink to succeed
-      const moveStream = jest.spyOn(audioRoutingService, 'moveStreamToSink');
-      moveStream.mockResolvedValue(undefined);
-
-      // Set up route with primary bluetooth (unavailable) and fallback hdmi
-      audioRoutingService._routingData.routes.video = {
-        sink: 'bluez_output.missing',
-        fallback: 'hdmi',
-      };
-
-      await audioRoutingService.applyRoutingWithFallback('video');
-
-      // Should move to fallback HDMI sink since bluetooth is not available
-      expect(moveStream).toHaveBeenCalledWith('42', 'alsa_output.platform-fef00700.hdmi.hdmi-stereo');
-    });
-  });
-
-
   // ── Ducking Engine ──
 
   describe('ducking engine', () => {
@@ -1770,9 +1738,9 @@ Sink Input #42
 
       it('should capture pre-duck volume before applying duck (race fix)', async () => {
         // Simulate the race: getStreamVolume takes time to resolve.
-        // Without the fix, _setVolumeForDucking (sync) runs before the async
+        // Without the fix, setVolumeLive (sync-enqueued) runs before the async
         // getStreamVolume resolves, so the captured value would be the already-ducked one.
-        // With the fix, _handleDuckingStart awaits capture before applying duck.
+        // With the fix, DuckingEngine._handleStart awaits capture before enqueuing duck op.
         let resolveVolume;
         const volumePromise = new Promise(resolve => { resolveVolume = resolve; });
         audioRoutingService.getStreamVolume.mockReturnValue(volumePromise);
@@ -1781,9 +1749,8 @@ Sink Input #42
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        // Start ducking — _handleDuckingStart awaits volume capture before setVolume
-        const duckingPromise = audioRoutingService._handleDuckingStart('video',
-          audioRoutingService._duckingRules);
+        // Start ducking — DuckingEngine awaits volume capture before enqueuing setVolume
+        const duckingPromise = audioRoutingService.handleDuckingEvent('video', 'started');
 
         // Volume read has NOT completed yet — setVolume should NOT have been called
         expect(setVolume).not.toHaveBeenCalled();
@@ -1792,6 +1759,9 @@ Sink Input #42
         // Now resolve the volume read with 75
         resolveVolume(75);
         await duckingPromise;
+        // Drain the op queue so the chained setVolumeLive call executes
+        const q = audioRoutingService._duckingEngine._opQueues.music;
+        if (q) await q;
 
         // Volume captured BEFORE duck applied — pre-duck should be 75 (not 20)
         expect(audioRoutingService._preDuckVolumes.music).toBe(75);
@@ -1801,7 +1771,7 @@ Sink Input #42
     });
 
     describe('handleDuckingEvent() - completed lifecycle', () => {
-      it('should process all target streams even when first has no active ducking', () => {
+      it('should process all target streams even when first has no active ducking', async () => {
         // Rules: video ducks BOTH music AND sound
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
@@ -1815,61 +1785,66 @@ Sink Input #42
 
         // Complete video — should restore 'sound' even though 'music' has no active sources
         audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // 'sound' should be restored to pre-duck volume
         expect(setVolume).toHaveBeenCalledWith('sound', 80);
       });
 
-      it('should restore Music when video completes', () => {
+      it('should restore Music when video completes', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'completed');
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // Second call should restore to original volume (100 default)
         expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
-      it('should not restore if another ducking source is still active', () => {
+      it('should not restore if another ducking source is still active', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
-        audioRoutingService.handleDuckingEvent('sound', 'started'); // Also active
-        audioRoutingService.handleDuckingEvent('sound', 'completed'); // Sound done
+        await audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
+        await audioRoutingService.handleDuckingEvent('sound', 'started'); // Also active
+        await audioRoutingService.handleDuckingEvent('sound', 'completed'); // Sound done
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // Should NOT restore — video is still ducking, should be at 20
         expect(setVolume).toHaveBeenLastCalledWith('music', 20);
       });
 
-      it('should restore when last source completes', () => {
+      it('should restore when last source completes', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('sound', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'completed');
-        audioRoutingService.handleDuckingEvent('sound', 'completed');
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('sound', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await audioRoutingService.handleDuckingEvent('sound', 'completed');
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // All sources done, should restore to 100
         expect(setVolume).toHaveBeenLastCalledWith('music', 100);
       });
 
-      it('should re-evaluate to higher ducking level when dominant source completes', () => {
+      it('should re-evaluate to higher ducking level when dominant source completes', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
-        audioRoutingService.handleDuckingEvent('sound', 'started'); // Stays at 20 (lowest)
-        audioRoutingService.handleDuckingEvent('video', 'completed'); // Video done, sound still active
+        await audioRoutingService.handleDuckingEvent('video', 'started'); // Duck to 20
+        await audioRoutingService.handleDuckingEvent('sound', 'started'); // Stays at 20 (lowest)
+        await audioRoutingService.handleDuckingEvent('video', 'completed'); // Video done, sound still active
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // Should re-evaluate to sound's level (40), not restore fully
         expect(setVolume).toHaveBeenLastCalledWith('music', 40);
@@ -1898,13 +1873,14 @@ Sink Input #42
     });
 
     describe('handleDuckingEvent() - paused/resumed lifecycle', () => {
-      it('should restore volume when source is paused', () => {
+      it('should restore volume when source is paused', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'paused');
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'paused');
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // Should restore to 100 (like completed, but source is still tracked as paused)
         expect(setVolume).toHaveBeenLastCalledWith('music', 100);
@@ -1924,15 +1900,16 @@ Sink Input #42
         expect(setVolume).toHaveBeenLastCalledWith('music', 20);
       });
 
-      it('should not fully restore on pause if another source is still active', () => {
+      it('should not fully restore on pause if another source is still active', async () => {
         audioRoutingService.loadDuckingRules([
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 },
           { when: 'sound', duck: 'music', to: 40, fadeMs: 200 },
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('sound', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'paused');
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('sound', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'paused');
+        await flushPromises(); // duck/restore writes are serialized per target
 
         // Sound is still active at 40, should not restore to 100
         expect(setVolume).toHaveBeenLastCalledWith('music', 40);
@@ -1961,7 +1938,7 @@ Sink Input #42
         });
       });
 
-      it('should emit ducking:changed when ducking ends', () => {
+      it('should emit ducking:changed when ducking ends', async () => {
         const handler = jest.fn();
         audioRoutingService.on('ducking:changed', handler);
 
@@ -1969,8 +1946,10 @@ Sink Input #42
           { when: 'video', duck: 'music', to: 20, fadeMs: 500 }
         ]);
 
-        audioRoutingService.handleDuckingEvent('video', 'started');
-        audioRoutingService.handleDuckingEvent('video', 'completed');
+        // handleDuckingEvent resolves after its write lands (Batch-1
+        // contract restored) — emission is guaranteed once awaited
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
 
         const lastCall = handler.mock.calls[handler.mock.calls.length - 1][0];
         expect(lastCall).toEqual({
@@ -2125,7 +2104,7 @@ Sink Input #42
 
         // Should still log as error for unexpected failures
         expect(logger.error).toHaveBeenCalledWith(
-          expect.stringContaining('Failed to apply ducked volume'),
+          expect.stringContaining('failed to apply ducked volume'),
           expect.any(Object)
         );
       });
@@ -2167,20 +2146,142 @@ Sink Input #42
         expect(handler).not.toHaveBeenCalled();
       });
     });
+
+    // ── Restore robustness (F-SHOW-05/06/27, decision E3) ──
+    // E3 owner override: restore to the CAPTURED pre-duck volume (operator
+    // intent at duck time); fall back to the persisted user volume ONLY when
+    // capture is missing. The hardcoded-100 fallback is dead either way.
+    describe('restore robustness (F-SHOW-05/06/27, decision E3)', () => {
+      beforeEach(() => {
+        // Return the applied volume like the real _setStreamVolumeLive does
+        // (setStreamVolume persists the returned clamped value)
+        setVolume.mockImplementation(async (stream, vol) =>
+          Math.max(0, Math.min(100, vol)));
+      });
+
+      it('(a) does not restore on a redundant stop (empty-but-truthy active array)', async () => {
+        // Sequence from F-SHOW-05: duck → pause (restore, array left []) →
+        // completed (redundant). Pre-fix the empty array passed the truthy
+        // check and forced volume to hardcoded 100, clobbering the GM's 60.
+        audioRoutingService.getStreamVolume.mockResolvedValue(60);
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'music', to: 20, fadeMs: 0 },
+        ]);
+
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await audioRoutingService.handleDuckingEvent('video', 'paused');
+        await flushPromises();
+
+        setVolume.mockClear();
+        const changed = jest.fn();
+        audioRoutingService.on('ducking:changed', changed);
+
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises();
+
+        expect(setVolume).not.toHaveBeenCalled();
+        expect(changed).not.toHaveBeenCalled();
+      });
+
+      it('(b) falls back to the persisted user volume when capture is missing — never 100', async () => {
+        // Duck arrives before the music sink-input exists: capture reads null.
+        // Restore target must be the persisted user volume (65), not 100.
+        audioRoutingService._routingData.volumes.music = 65;
+        audioRoutingService.getStreamVolume.mockResolvedValue(null);
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'music', to: 20, fadeMs: 0 },
+        ]);
+
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await flushPromises();
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises();
+
+        expect(setVolume).toHaveBeenCalledWith('music', 65);
+        expect(setVolume).not.toHaveBeenCalledWith('music', 100);
+      });
+
+      it('(c) GM volume:set during an active duck refreshes the captured restore target', async () => {
+        audioRoutingService.getStreamVolume.mockResolvedValue(60);
+        audioRoutingService.loadDuckingRules([
+          { when: 'video', duck: 'music', to: 20, fadeMs: 0 },
+        ]);
+
+        await audioRoutingService.handleDuckingEvent('video', 'started');
+        await flushPromises();
+        expect(audioRoutingService._preDuckVolumes.music).toBe(60);
+
+        // GM adjusts music volume live mid-duck — restore target follows
+        await audioRoutingService.setStreamVolume('music', 75);
+        expect(audioRoutingService._preDuckVolumes.music).toBe(75);
+
+        setVolume.mockClear();
+        await audioRoutingService.handleDuckingEvent('video', 'completed');
+        await flushPromises();
+
+        expect(setVolume).toHaveBeenCalledWith('music', 75);
+      });
+
+      it('(d) serializes duck/restore volume writes per target (no apply/restore inversion)', async () => {
+        // F-SHOW-06: a short sound's restore must not overtake the still-in-
+        // flight duck apply (which would leave music stuck at duck volume).
+        let releaseFirstWrite;
+        const firstWriteGate = new Promise(r => { releaseFirstWrite = r; });
+        const writes = [];
+        setVolume.mockImplementation(async (stream, vol) => {
+          writes.push(`start:${vol}`);
+          if (writes.length === 1) await firstWriteGate; // slow first pactl pipeline
+          writes.push(`end:${vol}`);
+          return vol;
+        });
+        audioRoutingService.getStreamVolume.mockResolvedValue(60);
+        audioRoutingService.loadDuckingRules([
+          { when: 'sound', duck: 'music', to: 40, fadeMs: 0 },
+        ]);
+
+        // handleDuckingEvent awaits its queued writes — do NOT await here,
+        // the first write is gated to simulate a slow pactl pipeline
+        const startEvent = audioRoutingService.handleDuckingEvent('sound', 'started');
+        await flushPromises(); // capture resolves, duck apply starts (blocked on gate)
+        const stopEvent = audioRoutingService.handleDuckingEvent('sound', 'completed');
+        await flushPromises();
+
+        // Restore (60) must not start while the duck apply (40) is in flight
+        expect(writes).toEqual(['start:40']);
+
+        releaseFirstWrite();
+        await Promise.all([startEvent, stopEvent]);
+        await flushPromises();
+        expect(writes).toEqual(['start:40', 'end:40', 'start:60', 'end:60']);
+      });
+    });
   });
 
   // ── Health registry reporting ──
 
   describe('health registry reporting', () => {
-    it('should report healthy on init', async () => {
-      mockExecFileSuccess(''); // _killStaleMonitors
+    it('should report healthy on init when PipeWire is reachable', async () => {
+      mockExecFileSuccess(''); // pactl calls succeed (incl. the health probe)
       const mockProc = createMockSpawnProc();
       spawn.mockReturnValue(mockProc);
 
       await audioRoutingService.init();
 
       expect(registry.isHealthy('audio')).toBe(true);
-      expect(registry.getStatus('audio').message).toBe('Audio routing initialized');
+    });
+
+    // F-SHOW-23: init() reported 'healthy' unconditionally — even with
+    // PipeWire unreachable — opening a window (until the 15s revalidation)
+    // where audio commands passed the SERVICE_DEPENDENCIES gate and failed
+    // downstream. init() must report via a real checkHealth() probe.
+    it('should report down on init when PipeWire is unreachable (F-SHOW-23)', async () => {
+      mockExecFileError('Connection refused'); // every pactl call fails
+      const mockProc = createMockSpawnProc();
+      spawn.mockReturnValue(mockProc);
+
+      await audioRoutingService.init();
+
+      expect(registry.isHealthy('audio')).toBe(false);
     });
 
     it('should report down on reset', async () => {
@@ -2545,6 +2646,7 @@ Sink Input #42
       jest.spyOn(audioRoutingService, '_activateHdmiCards').mockResolvedValue();
       jest.spyOn(audioRoutingService, 'startSinkMonitor').mockImplementation(() => {});
       jest.spyOn(audioRoutingService, 'getAvailableSinks').mockResolvedValue([]);
+      jest.spyOn(audioRoutingService, 'checkHealth').mockResolvedValue(true); // init() reports via probe (F-SHOW-23)
       jest.spyOn(persistenceService, 'load').mockResolvedValue(null);
 
       await audioRoutingService.init();

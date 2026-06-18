@@ -19,6 +19,7 @@ const { setupVLC, cleanup: cleanupVLC } = require('../setup/vlc-service');
 const { createBrowserContext, createPage, closeAllContexts } = require('../setup/browser-contexts');
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
+const { getCapabilities, requireCapabilities, requireDegraded } = require('../helpers/capabilities');
 const { selectTestTokens } = require('../helpers/token-selection');
 
 let browser = null;
@@ -78,11 +79,8 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             // (gm1.getStateFromBackend) rather than an in-page evaluate(fetch): the in-page
             // fetch runs through the page's service worker / JS context and was hanging here
             // with no timeout. page.request bypasses the SW and is the established pattern.
-            const stateResp = await gm1.getStateFromBackend(orchestratorInfo.url);
-            if (stateResp?.serviceHealth?.vlc?.status !== 'healthy') {
-                test.skip('VLC not connected to orchestrator - skipping video reactivity test');
-                return;
-            }
+            const caps = await getCapabilities(orchestratorInfo.url);
+            requireCapabilities(test, caps, ['vlc']);
 
             // GM1: Create session, then navigate to Admin Panel
             await gm1.createSessionWithTeams('Reactivity Test', ['Team Reactivity']);
@@ -130,6 +128,13 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
             const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
 
+            // PRIMARY user flow — the fixture cue depends on sound + lighting;
+            // with a down dependency it is HELD by design. Skip LOUDLY so the
+            // report shows whether the primary path ran; the held cross-client
+            // propagation is its own test below.
+            const caps = await getCapabilities(orchestratorInfo.url);
+            requireCapabilities(test, caps, ['sound', 'lighting']); // held propagation covered separately
+
             await gm1.navigateToAdminPanel();
             await gm2.navigateToAdminPanel();
 
@@ -145,8 +150,6 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
             await fireBtn.click({ force: true });
 
             // 3. VERIFY: GM2 UI updates Active Cues list
-            // We expect #active-cues-list to contain an item with data-cue-id="e2e-compound-test"
-            // And state "Running"
             const activeCueItem = page2.locator('.active-cue-item[data-cue-id="e2e-compound-test"]');
 
             // Wait for it to appear (backend roundtrip + render)
@@ -161,6 +164,43 @@ test.describe('GM Scanner - Multi-Client Reactivity', () => {
 
             // 5. VERIFY: GM2 UI removes the cue
             await expect(activeCueItem).toBeHidden({ timeout: 30000 });
+
+        } finally {
+            await context1.close();
+            await context2.close();
+        }
+    });
+
+    test('Cue State: HELD cue propagates to GM2 held-items panel (degraded services)', async () => {
+        // Cross-client propagation of the HELD path: when a cue dependency
+        // is down, GM1's fire results in a held item that must appear on
+        // GM2's held panel (service:state domain 'held' fan-out). This is
+        // the designed venue-degradation behavior and only testable when a
+        // dependency is actually down — skips loudly on a fully-healthy Pi.
+        const context1 = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+        const page1 = await createPage(context1);
+        const context2 = await browser.newContext({ baseURL: orchestratorInfo.url });
+        const page2 = await context2.newPage();
+
+        try {
+            const gm1 = await initializeGMScannerWithMode(page1, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+            const gm2 = await initializeGMScannerWithMode(page2, 'networked', 'blackmarket', { orchestratorUrl: orchestratorInfo.url, password: ADMIN_PASSWORD });
+
+            const caps = await getCapabilities(orchestratorInfo.url);
+            requireDegraded(test, caps, ['sound', 'lighting']);
+
+            await gm1.navigateToAdminPanel();
+            await gm2.navigateToAdminPanel();
+
+            const fireBtn = page1.locator('#quick-fire-grid button[data-cue-id="e2e-compound-test"]');
+            await expect(fireBtn).toBeVisible({ timeout: 10000 });
+            await fireBtn.click({ force: true });
+
+            // GM2 (the NON-firing client) must see the held item appear,
+            // with the type-prefixed wire ID the release routing depends on
+            const heldItem2 = page2.locator('.held-item[data-held-id^="held-cue-"]');
+            await expect(heldItem2.first()).toBeVisible({ timeout: 10000 });
+            console.log('GM2 sees HELD cue — cross-client held propagation verified');
 
         } finally {
             await context1.close();

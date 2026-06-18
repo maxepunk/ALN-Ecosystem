@@ -6,14 +6,29 @@ This script:
 1. Queries Notion for Memory Token elements (Image, Audio, Video, Audio+Image types)
 2. Parses SF_ fields from Description/Text field
 3. Checks filesystem for image/audio/video assets
-4. Generates tokens.json with proper structure
+4. Runs a semantic validation pass (memory types, ratings, duplicates,
+   RFID<->file alignment) and prints a summary
+5. Generates tokens.json with proper structure (atomic write)
+
+Failure posture (E8): any non-complete Notion fetch (HTTP error, missing
+`results`, broken pagination) aborts with exit code 1 — NO tokens.json
+write, NO prune, NO manifest. Use --force to override.
+
+Flags:
+  --force    proceed with partial Notion data despite fetch failures, and allow
+             --prune past the >50%-shrink guard (DANGEROUS)
+  --prune    actually delete orphaned asset files (default: report only;
+             skipped when token count shrinks >50% unless --force)
+  --dry-run  fetch + validate only; write nothing, delete nothing
 """
 
+import argparse
 import requests
 import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
@@ -62,6 +77,104 @@ headers = {
     "Notion-Version": "2022-06-28",
     "Content-Type": "application/json"
 }
+
+# Shared scoring config — source of truth for valid SF_MemoryType values.
+SCORING_CONFIG_PATH = ECOSYSTEM_ROOT / "ALN-TokenData/scoring-config.json"
+# Fallback when scoring-config.json is unavailable (matches docs/SCORING_LOGIC.md).
+DEFAULT_VALID_MEMORY_TYPES = frozenset({"Personal", "Business", "Technical", "Mention", "Party"})
+
+# Notion request hardening (F-TOOL-20)
+REQUEST_TIMEOUT = 30  # seconds per request
+MAX_RETRIES = 3       # retries on 429/5xx/network errors (4 attempts total)
+
+
+class NotionFetchError(Exception):
+    """Raised when a Notion fetch cannot be verified complete (F-TOOL-01)."""
+
+
+def _notion_post(url, json_data):
+    """POST to the Notion API with timeout, and retry w/ backoff on 429/5xx.
+
+    Honors Retry-After when present. Raises NotionFetchError on persistent
+    failure or any non-retryable non-200 status (auth error, bad DB id, ...).
+    """
+    last_err = None
+    for attempt in range(MAX_RETRIES + 1):
+        retry_after = None
+        try:
+            resp = requests.post(url, headers=headers, json=json_data, timeout=REQUEST_TIMEOUT)
+        except requests.RequestException as e:
+            last_err = f"network error: {e}"
+        else:
+            if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                last_err = f"HTTP {resp.status_code}"
+                retry_after = resp.headers.get("Retry-After")
+            elif resp.status_code != 200:
+                raise NotionFetchError(f"HTTP {resp.status_code}: {resp.text[:300]}")
+            else:
+                try:
+                    return resp.json()
+                except ValueError as e:
+                    raise NotionFetchError(f"invalid JSON response: {e}")
+        if attempt < MAX_RETRIES:
+            try:
+                delay = float(retry_after) if retry_after else 2 ** attempt
+            except ValueError:
+                delay = 2 ** attempt
+            print(f"  ... retrying after {last_err} (attempt {attempt + 2}/{MAX_RETRIES + 1}, waiting {delay:.0f}s)")
+            time.sleep(delay)
+    raise NotionFetchError(f"giving up after {MAX_RETRIES + 1} attempts: {last_err}")
+
+
+def _query_database_all(database_id, base_query=None, post=None, force=False):
+    """Paginate a Notion database query to VERIFIED completion.
+
+    Raises NotionFetchError if any page fails, lacks `results`, or pagination
+    cannot complete (has_more without next_cursor). With force=True, prints a
+    loud warning and returns whatever partial results were accumulated.
+    """
+    post = post or _notion_post
+    query_data = dict(base_query or {})
+    all_results = []
+    has_more = True
+    start_cursor = None
+
+    while has_more:
+        if start_cursor:
+            query_data["start_cursor"] = start_cursor
+        try:
+            data = post(f"https://api.notion.com/v1/databases/{database_id}/query", query_data)
+            if "results" not in data:
+                raise NotionFetchError(f"response missing 'results': {str(data)[:300]}")
+            all_results.extend(data["results"])
+            has_more = data.get("has_more", False)
+            start_cursor = data.get("next_cursor")
+            if has_more and not start_cursor:
+                raise NotionFetchError("has_more=true but no next_cursor — pagination cannot complete")
+        except NotionFetchError as e:
+            if force:
+                print(f"⚠️  --force: continuing with {len(all_results)} partial result(s) despite fetch failure: {e}")
+                return all_results
+            raise
+    return all_results
+
+
+def join_rich_text(blocks, page_name="<unknown>"):
+    """Concatenate Notion rich_text blocks, tolerating non-text blocks.
+
+    Mention/equation blocks have no `text` key (F-TOOL-18) — they are skipped
+    with a warning naming the page instead of crashing with a KeyError.
+    """
+    parts = []
+    for block in blocks:
+        text = block.get("text")
+        if not isinstance(text, dict) or "content" not in text:
+            btype = block.get("type", "unknown")
+            print(f"⚠️  Skipping non-text rich_text block (type={btype}) on page '{page_name}'")
+            continue
+        parts.append(text["content"])
+    return "".join(parts)
+
 
 # Display dimensions
 WIDTH = 240
@@ -486,38 +599,20 @@ def find_video_file(rfid):
 
     return None
 
-def fetch_all_characters():
-    """Fetch all characters from Notion and build {page_id: name} map."""
-    all_results = []
-    has_more = True
-    start_cursor = None
+def fetch_all_characters(force=False, post=None):
+    """Fetch all characters from Notion and build {page_id: name} map.
 
-    while has_more:
-        query_data = {}
-        if start_cursor:
-            query_data["start_cursor"] = start_cursor
-
-        resp = requests.post(
-            f"https://api.notion.com/v1/databases/{CHARACTERS_DATABASE_ID}/query",
-            headers=headers,
-            json=query_data
-        )
-        data = resp.json()
-
-        if "results" not in data:
-            print(f"Error fetching characters: {data}")
-            break
-
-        all_results.extend(data["results"])
-        has_more = data.get("has_more", False)
-        start_cursor = data.get("next_cursor")
+    Raises NotionFetchError on any incomplete fetch (F-TOOL-07) — a partial
+    character map would silently null every token owner.
+    """
+    all_results = _query_database_all(CHARACTERS_DATABASE_ID, post=post, force=force)
 
     # Build page_id -> name map
     character_map = {}
     for page in all_results:
         page_id = page["id"]
         name_data = page["properties"].get("Name", {}).get("title", [])
-        name = name_data[0]["text"]["content"].strip() if name_data else None
+        name = join_rich_text(name_data, "Characters DB entry").strip() or None
         if name:
             # Strip role prefix if present (e.g., "E - Ashe Motoko" → "Ashe Motoko")
             if len(name) > 4 and name[1:4] == ' - ':
@@ -527,8 +622,11 @@ def fetch_all_characters():
     print(f"Loaded {len(character_map)} characters from Notion")
     return character_map
 
-def fetch_all_memory_tokens():
-    """Fetch all memory token elements from Notion."""
+def fetch_all_memory_tokens(force=False, post=None):
+    """Fetch all memory token elements from Notion.
+
+    Raises NotionFetchError on any incomplete fetch (F-TOOL-01).
+    """
     query_data = {
         "filter": {
             "or": [
@@ -539,50 +637,27 @@ def fetch_all_memory_tokens():
             ]
         }
     }
+    return _query_database_all(ELEMENTS_DATABASE_ID, base_query=query_data, post=post, force=force)
 
-    # Fetch all pages with pagination
-    all_results = []
-    has_more = True
-    start_cursor = None
+def page_title(page):
+    """Best-effort page title (tolerates non-text title blocks)."""
+    name_data = page.get("properties", {}).get("Name", {}).get("title", [])
+    return join_rich_text(name_data, "<title>") or "Untitled"
 
-    while has_more:
-        if start_cursor:
-            query_data["start_cursor"] = start_cursor
-
-        resp = requests.post(
-            f"https://api.notion.com/v1/databases/{ELEMENTS_DATABASE_ID}/query",
-            headers=headers,
-            json=query_data
-        )
-        data = resp.json()
-
-        if "results" not in data:
-            print(f"Error fetching from Notion: {data}")
-            break
-
-        all_results.extend(data["results"])
-        has_more = data.get("has_more", False)
-        start_cursor = data.get("next_cursor")
-
-    return all_results
-
-def process_token(page, character_map):
+def process_token(page, character_map, dry_run=False):
     """Process a single Notion page into a token entry."""
     props = page["properties"]
 
     # Get Name
-    name_data = props.get("Name", {}).get("title", [])
-    name = name_data[0]["text"]["content"] if name_data else "Untitled"
+    name = page_title(page)
 
     # Get Basic Type
     basic_type_data = props.get("Basic Type", {}).get("select")
     basic_type = basic_type_data["name"] if basic_type_data else None
 
-    # Get Description/Text
+    # Get Description/Text (tolerates mention/equation blocks — F-TOOL-18)
     desc_data = props.get("Description/Text", {}).get("rich_text", [])
-    description = ""
-    if desc_data:
-        description = "".join([block["text"]["content"] for block in desc_data])
+    description = join_rich_text(desc_data, name) if desc_data else ""
 
     # Parse SF_ fields
     sf_data = parse_sf_fields(description)
@@ -605,12 +680,15 @@ def process_token(page, character_map):
     # Generate NeurAI display BMP if display text exists
     generated_bmp = False
     if display_text and display_text.strip():
-        try:
-            pwa_path = generate_neurai_display(rfid, display_text)
-            print(f"   Generated NeurAI display for {rfid}")
-            generated_bmp = True
-        except Exception as e:
-            print(f"⚠️  Failed to generate NeurAI display for {rfid}: {e}")
+        if dry_run:
+            print(f"   [dry-run] would generate NeurAI display for {rfid}")
+        else:
+            try:
+                generate_neurai_display(rfid, display_text)
+                print(f"   Generated NeurAI display for {rfid}")
+                generated_bmp = True
+            except Exception as e:
+                print(f"⚠️  Failed to generate NeurAI display for {rfid}: {e}")
 
     # Find assets
     image_file = find_asset_file(rfid, ASSETS_IMAGES, ['.bmp', '.jpg', '.png', '.jpeg'])
@@ -654,9 +732,165 @@ def process_token(page, character_map):
 
     return rfid, token_entry
 
-def main():
+def load_valid_memory_types(path=None):
+    """Load valid SF_MemoryType values from scoring-config.json typeMultipliers.
+
+    UNKNOWN is excluded — it's the backend's bucket for invalid types, never
+    a legitimate authored value. Falls back to the documented defaults when
+    the config is missing/unreadable.
+    """
+    path = path or SCORING_CONFIG_PATH
+    try:
+        with open(path) as f:
+            cfg = json.load(f)
+        types = set(cfg.get("typeMultipliers", {}).keys()) - {"UNKNOWN"}
+        if types:
+            return types
+        print(f"⚠️  {path} has no typeMultipliers — falling back to defaults")
+    except (OSError, ValueError) as e:
+        print(f"⚠️  Could not load scoring config ({e}) — falling back to default memory types")
+    return set(DEFAULT_VALID_MEMORY_TYPES)
+
+
+def validate_tokens(tokens, valid_memory_types):
+    """Semantic validation pass (F-TOOL-08). Returns a list of warning strings.
+
+    Warnings only — authoring problems should be loud but must not block a
+    sync (the backend tolerates them; it just scores UNKNOWN types at 0x).
+    """
+    warnings = []
+    for rfid, token in sorted(tokens.items()):
+        mem_type = token.get("SF_MemoryType")
+        if mem_type is None:
+            warnings.append(f"{rfid}: SF_MemoryType missing — token will score 0x (UNKNOWN)")
+        elif mem_type not in valid_memory_types:
+            warnings.append(
+                f"{rfid}: SF_MemoryType '{mem_type}' not in scoring-config typeMultipliers "
+                f"({', '.join(sorted(valid_memory_types))}) — token will score 0x"
+            )
+        rating = token.get("SF_ValueRating")
+        if rating is None:
+            warnings.append(f"{rfid}: SF_ValueRating missing or non-numeric")
+        elif not 1 <= rating <= 5:
+            warnings.append(f"{rfid}: SF_ValueRating {rating} outside valid range 1-5")
+    return warnings
+
+
+def validate_against_schema(tokens, schema_path=None):
+    """JSON Schema validation against ALN-TokenData/tokens.schema.json.
+
+    Soft dependency: validates when the 'jsonschema' package is installed,
+    otherwise returns a single note — the backend contract test
+    (backend/tests/contract/token-data/tokens-schema.test.js) is the
+    always-on enforcement gate for the same schema.
+    """
+    schema_path = schema_path if schema_path is not None else (
+        ECOSYSTEM_ROOT / "ALN-TokenData/tokens.schema.json"
+    )
+    try:
+        import jsonschema
+    except ImportError:
+        return [
+            "jsonschema not installed — schema validation skipped here "
+            "(backend contract test still enforces tokens.schema.json)"
+        ]
+    if not Path(schema_path).exists():
+        return [f"schema file missing: {schema_path}"]
+    schema = json.loads(Path(schema_path).read_text())
+    validator = jsonschema.Draft202012Validator(schema)
+    return [
+        "schema: "
+        + ("/".join(str(p) for p in error.absolute_path) or "(root)")
+        + f": {error.message}"
+        for error in validator.iter_errors(tokens)
+    ]
+
+
+# Asset files that are never tokens (kept out of alignment warnings).
+ALIGNMENT_EXEMPT_STEMS = frozenset({"placeholder", "idle-loop"})
+
+
+def check_asset_alignment(tokens, images_dir=None, audio_dir=None, videos_dir=None):
+    """RFID<->file alignment check folded in from compare_rfid_with_files (E11).
+
+    Reports: (a) asset files whose stem matches no token SF_RFID (likely an
+    RFID/filename mismatch; images/audio would also be prune candidates), and
+    (b) tokens with no assets at all.
+    """
+    images_dir = images_dir if images_dir is not None else ASSETS_IMAGES
+    audio_dir = audio_dir if audio_dir is not None else ASSETS_AUDIO
+    videos_dir = videos_dir if videos_dir is not None else VIDEOS_DIR
+
+    warnings = []
+    token_ids = {t.lower() for t in tokens}
+    for dirpath, label in ((images_dir, "image"), (audio_dir, "audio"), (videos_dir, "video")):
+        if not dirpath.exists():
+            continue
+        for f in sorted(dirpath.iterdir()):
+            if not f.is_file():
+                continue
+            stem = f.stem.lower()
+            if stem in ALIGNMENT_EXEMPT_STEMS or stem == "manifest":
+                continue
+            if stem not in token_ids:
+                warnings.append(
+                    f"{label} file '{f.name}' matches no token SF_RFID "
+                    f"(possible RFID/filename mismatch)"
+                )
+    for rfid, token in sorted(tokens.items()):
+        has_asset = any(token.get(k) for k in ("image", "audio", "video", "processingImage"))
+        if not has_asset:
+            warnings.append(f"{rfid}: no assets found on disk (image/audio/video all missing)")
+    return warnings
+
+
+def write_tokens_json(path, tokens):
+    """Atomically write tokens.json (tmp + fsync + replace — F-TOOL-10).
+
+    A crash mid-write can never leave a truncated tokens.json for the
+    backend and three scanners to choke on.
+    """
+    path = Path(path)
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        with tmp.open("w") as f:
+            json.dump(tokens, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        tmp.replace(path)
+    except Exception:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Sync Notion Elements database to tokens.json")
+    parser.add_argument(
+        "--force", action="store_true",
+        help="proceed with partial Notion data despite fetch failures, and allow "
+             "--prune to delete even when the token count shrinks by >50%% "
+             "(DANGEROUS: may shrink tokens.json and bulk-delete assets)")
+    parser.add_argument(
+        "--prune", action="store_true",
+        help="actually delete orphaned asset files (default: report what would be "
+             "deleted); skipped with an error if the token count shrinks by >50%% "
+             "unless --force is also given")
+    parser.add_argument(
+        "--dry-run", action="store_true",
+        help="fetch + validate only: no tokens.json write, no BMP generation, no prune, no manifest")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+
     print("=" * 60)
     print("Syncing Notion Elements to tokens.json")
+    if args.dry_run:
+        print("(DRY RUN — nothing will be written or deleted)")
     print("=" * 60)
     print()
 
@@ -675,31 +909,49 @@ def main():
             print(f"✗ {name} (NOT FOUND)")
     print()
 
-    # Fetch tokens from Notion
-    print("Fetching memory tokens from Notion...")
-    pages = fetch_all_memory_tokens()
-    print(f"Found {len(pages)} memory token elements in Notion")
-    print()
+    # Fetch from Notion. ANY incomplete fetch aborts before a single byte is
+    # written or deleted (E8 failure posture). --force overrides.
+    try:
+        print("Fetching memory tokens from Notion...")
+        pages = fetch_all_memory_tokens(force=args.force)
+        print(f"Found {len(pages)} memory token elements in Notion")
+        print()
 
-    # Fetch character name map for Owner relation lookups
-    print("Fetching characters from Notion...")
-    character_map = fetch_all_characters()
-    print()
+        print("Fetching characters from Notion...")
+        character_map = fetch_all_characters(force=args.force)
+        print()
+    except NotionFetchError as e:
+        print()
+        print(f"✗ ABORTING: Notion fetch incomplete: {e}")
+        print("  Nothing was written or deleted (no tokens.json write, no prune, no manifest).")
+        print("  Re-run when Notion is reachable, or use --force to sync partial data (DANGEROUS).")
+        sys.exit(1)
+
+    if not character_map:
+        print("⚠️  WARNING: characters fetch returned EMPTY — every token owner will be null!")
+        print("   Check the Characters database ID and integration permissions.")
+        print()
 
     # Process tokens
     tokens = {}
     skipped = []
+    rfid_sources = {}        # rfid -> first page title (duplicate detection, F-TOOL-21)
+    duplicate_warnings = []
 
     print("Processing tokens...")
     for page in pages:
-        result = process_token(page, character_map)
+        result = process_token(page, character_map, dry_run=args.dry_run)
+        name = page_title(page)
         if result:
             rfid, token_entry = result
+            if rfid in rfid_sources:
+                duplicate_warnings.append(
+                    f"duplicate SF_RFID '{rfid}' on pages '{rfid_sources[rfid]}' and '{name}' "
+                    f"— last processed wins, the other page's data is DISCARDED"
+                )
+            else:
+                rfid_sources[rfid] = name
             tokens[rfid] = token_entry
-
-            # Get name for logging
-            name_data = page["properties"].get("Name", {}).get("title", [])
-            name = name_data[0]["text"]["content"] if name_data else "Untitled"
 
             # Log what was found (show actual filenames)
             assets = []
@@ -715,8 +967,6 @@ def main():
             assets_str = ", ".join(assets) if assets else "no assets"
             print(f"✓ {rfid}: {name} ({assets_str})")
         else:
-            name_data = page["properties"].get("Name", {}).get("title", [])
-            name = name_data[0]["text"]["content"] if name_data else "Untitled"
             skipped.append(name)
 
     print()
@@ -730,30 +980,84 @@ def main():
     # Sort tokens by RFID for cleaner output
     sorted_tokens = dict(sorted(tokens.items()))
 
-    # Safety check: warn if token count dropped significantly
-    if TOKENS_JSON.exists():
-        existing = json.load(open(TOKENS_JSON))
-        existing_count = len(existing)
-        if len(sorted_tokens) < existing_count * 0.5:
-            print(f"⚠️  WARNING: Only {len(sorted_tokens)} tokens found (existing file has {existing_count}). Possible Notion API error.")
+    # ── Validation summary (pre-write): semantic checks + RFID<->file alignment ──
+    validation_warnings = []
+    validation_warnings.extend(duplicate_warnings)
+    validation_warnings.extend(validate_tokens(sorted_tokens, load_valid_memory_types()))
+    validation_warnings.extend(validate_against_schema(sorted_tokens))
+    validation_warnings.extend(check_asset_alignment(sorted_tokens))
 
-    # Write to tokens.json
-    print(f"Writing to {TOKENS_JSON}...")
-    with open(TOKENS_JSON, 'w') as f:
-        json.dump(sorted_tokens, f, indent=2)
-
-    # Prune orphan BMPs/audio for tokens no longer in Notion so the canonical
-    # asset set stays aligned with tokens.json. Non-token files such as
-    # `placeholder.bmp` are preserved by the generator's filename filter.
-    print()
-    print("Pruning orphaned asset files...")
-    removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys())
-    if removed:
-        for p in removed:
-            print(f"  - removed orphan {p.relative_to(ECOSYSTEM_ROOT)}")
-        print(f"Removed {len(removed)} orphan asset file(s).")
+    print("-" * 60)
+    print("Validation summary")
+    print("-" * 60)
+    if validation_warnings:
+        for w in validation_warnings:
+            print(f"  ⚠️  {w}")
+        print(f"  {len(validation_warnings)} warning(s) — review before the next game session.")
     else:
-        print("No orphans found.")
+        print("  ✓ No issues found")
+    print()
+
+    # Safety check: a >50% token-count drop usually means a Notion data
+    # problem (bulk-archived pages, wrong DB), not a real shrink. Besides the
+    # warning, this gates --prune below: a shrunken token set would otherwise
+    # classify the missing tokens' assets as orphans and bulk-delete them.
+    suspicious_shrink = False
+    existing_count = 0
+    if TOKENS_JSON.exists():
+        with open(TOKENS_JSON) as f:
+            existing_count = len(json.load(f))
+        if len(sorted_tokens) < existing_count * 0.5:
+            suspicious_shrink = True
+            print(f"⚠️  WARNING: Only {len(sorted_tokens)} tokens found (existing file has {existing_count}). Possible Notion data problem.")
+
+    if args.dry_run:
+        print(f"[dry-run] Would write {len(sorted_tokens)} tokens to {TOKENS_JSON}")
+        removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys(), dry_run=True)
+        for p in removed:
+            print(f"[dry-run] Would remove orphan {p.relative_to(ECOSYSTEM_ROOT)}")
+        print("[dry-run] Would regenerate asset manifest")
+        print()
+        print("=" * 60)
+        print(f"✓ Dry run complete ({len(sorted_tokens)} tokens, nothing written)")
+        print("=" * 60)
+        return
+
+    # Write to tokens.json (atomic: tmp + fsync + replace)
+    print(f"Writing to {TOKENS_JSON}...")
+    write_tokens_json(TOKENS_JSON, sorted_tokens)
+
+    # Prune orphan BMPs/audio for tokens no longer in Notion. Runs ONLY after
+    # a verifiably complete fetch reached this point. DEFAULT is dry-run
+    # reporting (E8) — pass --prune to actually delete. `placeholder.bmp` is
+    # preserved via generate_asset_manifest.EXEMPT_STEMS.
+    print()
+    if args.prune and suspicious_shrink and not args.force:
+        # Same posture as the fetch abort above: refuse destructive work on
+        # suspicious data, point at --force for the deliberate override.
+        print("✗ PRUNE SKIPPED: token count dropped by more than 50% "
+              f"({existing_count} → {len(sorted_tokens)}).")
+        print("  Deleting 'orphans' now would bulk-remove assets for tokens that are")
+        print("  probably still real (bulk-archived Notion pages, wrong database, ...).")
+        print("  If this shrink is intentional, re-run with --prune --force.")
+    elif args.prune:
+        print("Pruning orphaned asset files...")
+        removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys())
+        if removed:
+            for p in removed:
+                print(f"  - removed orphan {p.relative_to(ECOSYSTEM_ROOT)}")
+            print(f"Removed {len(removed)} orphan asset file(s).")
+        else:
+            print("No orphans found.")
+    else:
+        print("Checking for orphaned asset files (report only — pass --prune to delete)...")
+        removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys(), dry_run=True)
+        if removed:
+            for p in removed:
+                print(f"  - would remove orphan {p.relative_to(ECOSYSTEM_ROOT)}")
+            print(f"{len(removed)} orphan(s) found. Re-run with --prune to delete them.")
+        else:
+            print("No orphans found.")
 
     # Emit the asset manifest consumed by the ESP32 CYD scanner at boot.
     print()

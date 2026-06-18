@@ -42,8 +42,7 @@ const {
   disconnectSocket: coreDisconnectSocket,
   cleanupAllSockets: coreCleanupAllSockets,
   getAllActiveSockets: coreGetAllActiveSockets,
-  getActiveSocketCount: coreGetActiveSocketCount,
-  clearEventCache
+  getActiveSocketCount: coreGetActiveSocketCount
 } = require('../../helpers/websocket-core');
 
 /**
@@ -163,7 +162,8 @@ function setupEventListener(socket, eventName, handler) {
  * );
  */
 async function waitForEvent(socket, eventName, predicate = null, timeout = 5000) {
-  // Delegate to shared core implementation (which checks cache first)
+  // Delegate to the shared core implementation (pure listener-from-now,
+  // 2.x.3 — no cache; register the promise BEFORE the triggering action)
   return await coreWaitForEvent(socket, eventName, predicate, timeout);
 }
 
@@ -270,13 +270,8 @@ function getActiveSocketCount() {
 }
 
 /**
- * Get all active sockets (for cache clearing)
- *
+ * Get all active sockets
  * @returns {Array<Socket>} Array of active sockets
- *
- * @example
- * const sockets = getAllActiveSockets();
- * sockets.forEach(socket => clearEventCache(socket));
  */
 function getAllActiveSockets() {
   // Delegate to shared core implementation
@@ -302,8 +297,5 @@ module.exports = {
   disconnectSocket,
   cleanupAllSockets,
   getAllActiveSockets,
-  getActiveSocketCount,
-
-  // Event cache management
-  clearEventCache
+  getActiveSocketCount
 };

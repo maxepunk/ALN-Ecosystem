@@ -6,12 +6,11 @@
 const io = require('socket.io-client');
 const { generateAdminToken } = require('../../src/middleware/auth');
 
-// Import shared WebSocket core for event caching and auth
+// Import shared WebSocket core (auth + pure listener-from-now waits)
 const {
   connectWithAuth: coreConnectWithAuth,
-  setupEventCaching,
-  waitForEvent: coreWaitForEvent,
-  clearEventCache
+  setupStateMirrors,
+  waitForEvent: coreWaitForEvent
 } = require('./websocket-core');
 
 /**
@@ -50,7 +49,7 @@ function createTrackedSocket(url, options = {}) {
  * await waitForEvent(socket, 'transaction:new');
  * await waitForEvent(socket, 'transaction:new', 3000);
  *
- * // Condition-based wait (avoids cache returning stale data)
+ * // Condition-based wait (filters to the specific occurrence you need)
  * const isTeam002 = (data) => data?.data?.transaction?.teamId === 'Detectives';
  * await waitForEvent(socket, 'transaction:new', isTeam002);
  * await waitForEvent(socket, 'transaction:new', isTeam002, 5000);
@@ -69,7 +68,8 @@ function waitForEvent(socket, eventOrEvents, predicateOrTimeout, timeout = 5000)
   }
   // else: predicateOrTimeout is undefined, use defaults
 
-  // Delegate to shared core implementation (checks cache first, respects predicate)
+  // Delegate to the shared core implementation (pure listener-from-now,
+  // 2.x.3 — no cache; register the promise BEFORE the triggering action)
   return coreWaitForEvent(socket, eventOrEvents, predicate, actualTimeout);
 }
 
@@ -100,8 +100,8 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
     : socketOrUrl;
 
   try {
-    // Setup event caching using shared core (prevents race conditions)
-    setupEventCaching(socket);
+    // Setup state mirrors (service:state snapshots; occurrence events are wait-only)
+    setupStateMirrors(socket);
 
     // For GM devices, use condition-based waiting for BOTH connect AND sync:full
     // This mirrors the reliable pattern from connectWithAuth() in websocket-core.js
@@ -118,7 +118,10 @@ async function connectAndIdentify(socketOrUrl, deviceType, deviceId, timeout = 5
         const checkComplete = () => {
           if (connectReceived && syncData) {
             clearTimeout(timer);
-            socket.lastSyncFull = syncData;
+            // Connect-time handshake snapshot (explicit history — the only
+            // sanctioned way to read 'the sync:full from connection')
+            socket.initialSync = syncData;
+            socket.lastSyncFull = syncData;  // legacy alias
             resolve();
           }
         };

@@ -92,6 +92,23 @@ When updating scoring logic, you MUST:
 3. Test group completion behavior in both modes
 4. Document any intentional differences
 
+**Known, ACCEPTED divergences (verified by the 2026-06-11 merge-readiness
+review — core rules agree: blackmarket-only, min-2-token groups):**
+
+1. **Group-bonus base source.** Backend computes the bonus from CATALOG
+   values at completion time (`gameRules/scoring.js`); the GM Scanner's
+   standalone path sums the RECORDED transaction points
+   (`LocalStorage._checkGroupCompletion`). These differ only if a token's
+   catalog value changes mid-session — impossible in standalone (scoring
+   config bakes in at build time) and not a supported operation in
+   networked play. Accepted; do not "fix" one side without the other.
+2. **x1 groups in completedGroups.** Backend records completion for
+   multiplier-1 groups (bonus = 0); the scanner does not track them. No
+   scoring impact — display/bookkeeping difference only. Accepted.
+
+Both divergences dissolve in Phase 3 when group rules move into the game
+pack and one rules implementation serves both modes.
+
 ## tokens.json SF_Group Format
 
 Groups are specified in `tokens.json` with the format:

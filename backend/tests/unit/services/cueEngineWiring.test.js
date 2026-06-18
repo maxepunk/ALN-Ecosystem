@@ -141,13 +141,17 @@ describe('cueEngineWiring', () => {
     });
 
     it('forwards video lifecycle paused/resumed/completed', () => {
+      // paused/resumed/completed are wired to BOTH the game-event handler
+      // (standing-cue evaluation, F-TOOL-09/E6) and the lifecycle handler
+      // (compound-cue timeline control)
       services.videoQueueService.emit('video:paused', { a: 1 });
       expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('paused', { a: 1 });
+      expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('video:paused', { a: 1 });
 
       services.videoQueueService.emit('video:resumed', { a: 2 });
       expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('resumed', { a: 2 });
+      expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('video:resumed', { a: 2 });
 
-      // video:completed is wired to BOTH the game-event and lifecycle handlers
       services.videoQueueService.emit('video:completed', { a: 3 });
       expect(cueEngineService.handleVideoLifecycleEvent).toHaveBeenCalledWith('completed', { a: 3 });
       expect(cueEngineService.handleGameEvent).toHaveBeenCalledWith('video:completed', { a: 3 });

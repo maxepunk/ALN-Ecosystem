@@ -602,6 +602,24 @@ describe('broadcasts.js - Event Wrapper Integration', () => {
 
       expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
     });
+
+    // F-SHOW-02: a started sound that is killed/fails exits via close →
+    // sound:stopped, which must un-duck or music stays ducked forever.
+    it('should invoke handleDuckingEvent(completed) on sound:stopped', () => {
+      mockSoundService.emit('sound:stopped', { file: 'test.wav', reason: 'killed' });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
+    });
+
+    // sound:error is a NEVER-STARTED signal (soundService only emits sound:started
+    // once a process has a pid). It never ducked, so forwarding it as a duck-stop
+    // would underflow the shared 'sound' count and restore music mid-playback of a
+    // concurrent live sound. It must NOT trigger a duck-stop.
+    it('should NOT invoke handleDuckingEvent on sound:error (never-started sound)', () => {
+      mockSoundService.emit('sound:error', { file: 'test.wav', error: 'spawn failed' });
+
+      expect(mockAudioRoutingService.handleDuckingEvent).not.toHaveBeenCalledWith('sound', 'completed');
+    });
   });
 
   describe('Display mode:changed listener', () => {

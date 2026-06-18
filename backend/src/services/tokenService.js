@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const config = require('../config');
+const logger = require('../utils/logger');
 
 /**
  * Parse group bonus multiplier from group field
@@ -35,7 +36,7 @@ const validateSummary = (summary, tokenId) => {
   const MAX_LENGTH = 350;  // Per AsyncAPI contract
 
   if (summary.length > MAX_LENGTH) {
-    console.warn(`⚠️  Token ${tokenId}: summary exceeds ${MAX_LENGTH} chars (${summary.length}), truncating`);
+    logger.warn(`Token ${tokenId}: summary exceeds ${MAX_LENGTH} chars (${summary.length}), truncating`);
     return summary.substring(0, MAX_LENGTH);
   }
 
@@ -67,21 +68,37 @@ const calculateTokenValue = (rating, type) => {
  */
 const _loadTokensFile = () => {
   const paths = [
+    // Injection seam (Phase 2.x.4 → grows into Phase 3 runtime pack
+    // loading): an explicit TOKENS_PATH wins over the submodule defaults.
+    // Used by the E2E harness to run the system on a fixture token set
+    // (and later: a full game pack).
+    ...(process.env.TOKENS_PATH ? [process.env.TOKENS_PATH] : []),
     path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
     path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
   ];
 
+  if (process.env.TOKENS_PATH) {
+    // LOUD by design (merge-readiness review minor): a production process
+    // accidentally started with TOKENS_PATH set would silently run the game
+    // on a non-production token set — make the override unmissable in logs.
+    logger.warn(`TOKENS_PATH override ACTIVE — token data injected from: ${process.env.TOKENS_PATH}`);
+  }
+
+  const failures = [];
   for (const tokenPath of paths) {
     try {
       const data = fs.readFileSync(tokenPath, 'utf8');
-      console.log(`Loaded tokens from: ${tokenPath}`);
+      logger.info(`Loaded tokens from: ${tokenPath}`);
       return JSON.parse(data);
     } catch (e) {
-      console.error(`Failed to load from ${tokenPath}:`, e.message);
-      // Continue to next path
+      // Missing fallback paths are normal on most deployments — record and
+      // continue; only escalate to an error if every path fails
+      failures.push(`${tokenPath}: ${e.message}`);
+      logger.debug(`Token path unavailable: ${tokenPath} (${e.message})`);
     }
   }
 
+  logger.error('Failed to load tokens from any configured path', { failures });
   throw new Error('CRITICAL: Failed to load tokens from any configured path. Check submodule configuration.');
 };
 
@@ -135,7 +152,7 @@ const loadTokens = () => {
     };
   });
 
-  console.log(`Transformed ${tokensArray.length} tokens from submodule`);
+  logger.info(`Transformed ${tokensArray.length} tokens from submodule`);
   return tokensArray;
 };
 

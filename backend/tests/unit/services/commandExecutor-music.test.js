@@ -10,6 +10,7 @@ jest.mock('../../../src/services/musicService', () => ({
   setShuffle: jest.fn().mockResolvedValue(undefined),
   setLoop: jest.fn().mockResolvedValue(undefined),
   loadPlaylist: jest.fn().mockResolvedValue(undefined),
+  seek: jest.fn().mockResolvedValue(undefined),
   checkConnection: jest.fn().mockResolvedValue(true),
 }));
 
@@ -29,6 +30,7 @@ beforeEach(() => {
   musicService.setShuffle.mockResolvedValue(undefined);
   musicService.setLoop.mockResolvedValue(undefined);
   musicService.loadPlaylist.mockResolvedValue(undefined);
+  musicService.seek.mockResolvedValue(undefined);
 });
 
 describe('commandExecutor — music:*', () => {
@@ -77,6 +79,29 @@ describe('commandExecutor — music:*', () => {
     const res = await executeCommand({ action: 'music:loadPlaylist', payload: {}, source: 'gm' });
     expect(res.success).toBe(false);
     expect(res.message).toMatch(/playlistId required/i);
+  });
+
+  // C4: music:seek added contract-first; payload {position} in seconds
+  it('music:seek passes position to musicService.seek', async () => {
+    const res = await executeCommand({ action: 'music:seek', payload: { position: 30 }, source: 'gm' });
+    expect(musicService.seek).toHaveBeenCalledWith(30);
+    expect(res.success).toBe(true);
+  });
+
+  it('music:seek rejects a missing or invalid position', async () => {
+    for (const payload of [{}, { position: -1 }, { position: 'x' }]) {
+      const res = await executeCommand({ action: 'music:seek', payload, source: 'gm' });
+      expect(res.success).toBe(false);
+      expect(res.message).toMatch(/position/i);
+    }
+    expect(musicService.seek).not.toHaveBeenCalled();
+  });
+
+  it('music:seek reports an honest failure when MPD rejects (no track playing)', async () => {
+    musicService.seek.mockRejectedValue(new Error('No track playing'));
+    const res = await executeCommand({ action: 'music:seek', payload: { position: 10 }, source: 'gm' });
+    expect(res.success).toBe(false);
+    expect(res.message).toMatch(/no track playing/i);
   });
 
   it('pre-dispatch rejects when music service is down', async () => {

@@ -46,6 +46,7 @@ module.exports = defineConfig({
     ['list'], // Console output during test run
     ['html', { outputFolder: 'playwright-report', open: 'never' }], // HTML report
     ['json', { outputFile: 'playwright-report/results.json' }], // JSON for CI parsing
+    ['./tests/e2e/setup/manifest-reporter.js'], // capability manifest + tier counts (2.x.2)
   ],
 
   // Shared settings for all projects

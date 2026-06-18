@@ -287,21 +287,26 @@ class LightingService extends EventEmitter {
 
   /**
    * Fetch scenes from Home Assistant.
-   * If HA is unreachable, falls back to local fixtures for testing/dev.
    * GET /api/states, filter scene.* entities.
+   *
+   * Fails EMPTY when HA is unreachable (F-SHOW-10) — never falls back to
+   * fixture data: phantom scenes mask HA outages and poison pre-show
+   * verification (sceneExists would pass for scenes HA doesn't have).
+   * The last successfully fetched cache (_scenes) is preserved on failure.
+   *
    * @returns {Promise<Array<{id: string, name: string}>>}
    */
   async getScenes() {
     try {
-      // Short-circuit to fallback only when BOTH conditions are true (no token AND unhealthy).
-      // When only one is true, the axios call below will fail and the catch block handles fallback.
+      // Short-circuit when there's no way the call can succeed (no token AND
+      // unhealthy) — avoids a pointless 5s timeout round-trip.
       if (!registry.isHealthy('lighting') && !config.lighting.homeAssistantToken) {
-        return this._loadFallbackScenes();
+        return [];
       }
 
       const response = await axios.get(`${config.lighting.homeAssistantUrl}/api/states`, {
         headers: this._getHeaders(),
-        timeout: 5000, // Reduced timeout for faster fallback
+        timeout: 5000,
       });
 
       const scenes = response.data
@@ -314,33 +319,9 @@ class LightingService extends EventEmitter {
       this._scenes = scenes;
       return scenes;
     } catch (err) {
-      logger.warn('Failed to fetch scenes from Home Assistant — using fallback fixtures', {
+      logger.warn('Failed to fetch scenes from Home Assistant — failing empty (cache preserved)', {
         error: err.message
       });
-      return this._loadFallbackScenes();
-    }
-  }
-
-  /**
-   * Load scenes from local fixture file.
-   * @returns {Promise<Array<{id: string, name: string}>>}
-   * @private
-   */
-  async _loadFallbackScenes() {
-    try {
-      const fs = require('fs').promises;
-      const path = require('path');
-      // Resolve path relative to this file: ../../tests/fixtures/scenes.json
-      const fixturePath = path.join(__dirname, '../../tests/fixtures/scenes.json');
-
-      const data = await fs.readFile(fixturePath, 'utf8');
-      const scenes = JSON.parse(data);
-
-      this._scenes = scenes;
-      logger.info('Loaded fallback lighting scenes', { count: scenes.length });
-      return scenes;
-    } catch (err) {
-      logger.error('Failed to load fallback scenes', { error: err.message });
       return [];
     }
   }
@@ -374,8 +355,11 @@ class LightingService extends EventEmitter {
    * @returns {Promise<void>}
    */
   async refreshScenes() {
-    const scenes = await this.getScenes();
-    this.emit('scenes:refreshed', { scenes });
+    await this.getScenes();
+    // Broadcast the cache, not getScenes()'s return value: on a transient HA
+    // failure getScenes() returns [] but preserves this._scenes, so emitting the
+    // raw return would wipe the GM's scene grid even though the cache survives.
+    this.emit('scenes:refreshed', { scenes: this._scenes });
   }
 
   /**
