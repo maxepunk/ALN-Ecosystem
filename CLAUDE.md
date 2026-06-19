@@ -172,6 +172,8 @@ All scan requests MUST include `deviceType` field:
 
 **CRITICAL**: Only GM scanners enforce duplicate rejection. Player scanners are for intel gathering - players SHOULD be able to re-scan tokens to review content. GM duplicate rules (per-device + first-come-first-served) live in `backend/src/gameRules/duplicatePolicy.js`; player/ESP32 scans go through `scanRoutes.js`, which performs no duplicate checks by design.
 
+**Note on `admin`:** GM-side WebSocket connections may identify as `admin` in the handshake (contracts document `deviceType: "gm" | "admin"`), but `gmAuth.js` always records GM stations as `gm`, and admin-created manual transactions also use `deviceType: 'gm'` (`transactionService.js`). The HTTP scan endpoints accept only `player`/`esp32` (OpenAPI request enum) — `gm`/`admin` never reach that path.
+
 **Scan Request Format:**
 ```javascript
 {
@@ -257,13 +259,13 @@ Breaking changes require coordinated updates across backend + all 3 scanner subm
 - Discrete game events (still active): `cue:fired`, `cue:completed`, `cue:error`, `display:mode`
 - `service:state` is the SOLE mechanism for all service domain state delivery (`{domain, state}` envelope, 10 domains: `music`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`, `held`). Old per-service discrete events (`gameclock:status`, `sound:status`, `video:status`, `bluetooth:device`, `bluetooth:scan`, `audio:routing`, `lighting:scene`, `service:health`, `held:added/released/discarded/recoverable`, `cue:status`, `audio:ducking:status`) have been removed
 - `gm:command:ack` payload simplified to `{action, success, message}` — no `result.data` forwarding; state comes via `service:state`
-- Phase 3 features: ducking engine (auto-duck music for video/sound), routing inheritance (command > cue > global target resolution)
+- Audio features: ducking engine (auto-duck music for video/sound), routing inheritance (command > cue > global target resolution)
 - Session lifecycle: `setup` → `active` → `paused` ↔ `active` → `ended` (sessions created in setup, `session:start` transitions to active)
 - `serviceHealthRegistry.js` is a centralized singleton tracking health of 8 services (`vlc`, `music`, `sound`, `bluetooth`, `audio`, `lighting`, `gameclock`, `cueengine`). Services push state via `report()`, consumers read via `isHealthy()`/`getSnapshot()`. Individual service connection events (`vlcService: connected/disconnected`, `lightingService: connection:changed`) are consolidated into the registry — no service maintains its own `this.connected` boolean.
 - `serviceHealthRegistry.startRevalidation(services, 15000)` proactively calls each service's health check every 15s (catches stale pipewire-pulse, dead MPD). Started in `app.js initializeServices()`, stopped on shutdown, restarted after system reset. `reset()` calls `stopRevalidation()`.
 - `display:mode:changed` is emitted from BOTH the pre-play hook (queue-based: player scan, cue, video:queue:add) AND `_doPlayVideo()` (admin direct play). These paths are mutually exclusive — no double-emit.
 - `commandExecutor.js` extracts shared gm:command dispatch logic from `adminEvents.js` (used by both WebSocket handler and cue engine). Has `SERVICE_DEPENDENCIES` map for gated execution — commands are rejected with clean error messages before touching the service if its dependency is down. `validateCommand()` checks service health AND resource existence (sound files, video files, lighting scenes, audio sinks) for pre-show verification.
-- `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`). Phase 2 adds video progress/lifecycle forwarding and musicService forwarding (`track:changed`, `playback:changed`, `playlist:changed`).
+- `cueEngineWiring.js` registers event forwarding from game services to cue engine (shared by `app.js` and `systemReset.js`). Also forwards video progress/lifecycle events and musicService events (`track:changed`, `playback:changed`, `playlist:changed`) to the cue engine.
 - **CRITICAL**: `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video (requires token with video field). Do not confuse these.
 - **CRITICAL**: GM scanner token scans do NOT trigger video playback (`transactionService.js` explicitly skips video for GM). Video playback is triggered by: (1) player scanner scanning a video token, or (2) admin panel queue controls (`video:queue:add`).
 
@@ -390,7 +392,7 @@ npm run test:e2e                          # Playwright E2E (~2-3 min)
 
 ```bash
 cd backend
-npm run session:validate latest           # 15 holistic validators
+npm run session:validate latest           # 9 holistic validators
 npm run session:validate latest > report.md  # Save report
 ```
 
