@@ -133,14 +133,8 @@ NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
 
-# VLC Configuration
-VLC_HOST=localhost
-VLC_PORT=8080
-VLC_PASSWORD=vlc
-
 # Feature Flags
 ENABLE_VIDEO_PLAYBACK=true
-ENABLE_OFFLINE_MODE=true
 
 # CORS Origins (optional)
 CORS_ORIGINS=http://localhost:3000,http://192.168.1.100:3000
@@ -176,24 +170,14 @@ VIDEO_TRANSITION_DELAY=1000
 
 ##### VLC Configuration
 
-- **VLC_HOST** (hostname/IP)
-  - Where VLC HTTP interface is running
-  - `localhost` or `127.0.0.1`: VLC on same machine (typical)
-  - Remote IP: VLC on different machine (advanced setup)
-  - Default: `localhost`
+VLC is controlled via **D-Bus MPRIS** (`org.mpris.MediaPlayer2.vlc`) — there is **no HTTP interface, password, or port**. VLC is auto-spawned and supervised by the orchestrator (`vlcMprisService.init()` via `ProcessMonitor`); you do not start or configure it separately.
 
-- **VLC_PORT** (number)
-  - Port for VLC HTTP interface
-  - Must match VLC's `--http-port` setting
-  - Standard: `8080` (avoid conflict with other web services)
-  - Default: `8080`
-
-- **VLC_PASSWORD** (string)
-  - Authentication for VLC HTTP interface
-  - **CRITICAL**: Must exactly match VLC's `--http-password` parameter
-  - Common issue: Using `vlc-password` instead of `vlc`
-  - For security: Change from default in production
-  - Default: `vlc`
+- **VLC_HW_ACCEL** (string, optional)
+  - The only VLC-related environment variable.
+  - Overrides the auto-detected hardware-acceleration / video-output args passed to VLC.
+  - On a Raspberry Pi 5 the auto-detected value is `--vout=gles2`.
+  - Set to an empty string to pass no extra args, or a space-separated arg list to override.
+  - Default: auto-detected per platform (`vlcMprisService._getHwAccelArgs()`)
 
 ##### Feature Flags
 
@@ -203,11 +187,7 @@ VIDEO_TRANSITION_DELAY=1000
   - Use `false` if VLC not available or for testing without video
   - Default: `true`
 
-- **ENABLE_OFFLINE_MODE** (`true` | `false`)
-  - `true`: Enable offline queue and session persistence
-  - `false`: Require constant connection (not recommended)
-  - Allows scanners to queue scans when disconnected
-  - Default: `false` (must explicitly enable)
+(The offline GM-transaction queue is always active — there is no `ENABLE_OFFLINE_MODE` flag.)
 
 ##### Network Configuration
 
@@ -295,7 +275,6 @@ NODE_ENV=development
 PORT=3000
 HOST=0.0.0.0
 LOG_LEVEL=debug
-VLC_PASSWORD=vlc
 ENABLE_VIDEO_PLAYBACK=true
 ENABLE_HTTPS=true
 ```
@@ -306,7 +285,6 @@ NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
 LOG_LEVEL=info
-VLC_PASSWORD=MySecurePassword123!
 ENABLE_VIDEO_PLAYBACK=true
 ENABLE_HTTPS=true
 SESSION_TIMEOUT=120
@@ -321,7 +299,6 @@ NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
 ENABLE_VIDEO_PLAYBACK=false
-ENABLE_OFFLINE_MODE=true
 ENABLE_HTTPS=true
 ```
 
@@ -330,7 +307,6 @@ ENABLE_HTTPS=true
 NODE_ENV=production
 PORT=3000
 HOST=127.0.0.1
-VLC_PASSWORD=ComplexPassword!@#$
 CORS_ORIGINS=https://trusted-domain.com
 RATE_LIMIT_MAX=50
 ADMIN_PASSWORD=VerySecureAdminPass123!
@@ -388,7 +364,7 @@ HTTP_REDIRECT_PORT=8000
 
 **GM Scanner:**
 - Defaults to `https://` protocol (required for Web NFC)
-- Configured in `ALNScanner/src/network/connectionManager.js:47`
+- Configured in `ALNScanner/src/network/connectionManager.js` (constructor default `url: config.url || 'https://localhost:3000'`)
 
 **Player Scanner (Web):**
 - Uses `window.location.origin` or `https://localhost:3000`
@@ -464,7 +440,8 @@ Error: listen EADDRINUSE: address already in use :::3000
 - **GM Scanner**: `https://[IP]:3000/gm-scanner/` (HTTPS required for NFC)
 - **Player Scanner**: `https://[IP]:3000/player-scanner/`
 - **Scoreboard**: `https://[IP]:3000/scoreboard`
-- **VLC Control**: `http://[IP]:8080` (internal only, no HTTPS needed)
+
+(VLC has no network control endpoint — it is controlled locally via D-Bus MPRIS.)
 
 ### Verification
 
@@ -570,9 +547,11 @@ npm start           # Builds GM Scanner + starts full system with PM2
 ```
 
 **What happens when you run `npm start`:**
-1. **Automatic GM Scanner Build** - Builds ALNScanner/dist/ via prestart hook
-2. **Orchestrator Launch** - Starts orchestrator with PM2
-3. **VLC Launch** - Starts VLC with video output via PM2
+1. **Prestart hook** - Runs `scripts/desktop-control.sh stop` (frees the display for the orchestrator-owned Chromium/VLC) then `scripts/build-scanner.sh` to build `ALNScanner/dist/`
+2. **Orchestrator Launch** - Starts orchestrator with PM2 (the only PM2 app — see `ecosystem.config.js`)
+3. **VLC Launch** - VLC is auto-spawned and supervised by the orchestrator (`vlcMprisService.init()` via `ProcessMonitor`), **not** by PM2, and is controlled via D-Bus MPRIS
+
+`npm run stop` (and `npm run prod:stop`) restore the desktop afterward via `scripts/desktop-control.sh start`.
 
 The GM Scanner is automatically served at `https://localhost:3000/gm-scanner/` via symlink.
 
@@ -584,26 +563,23 @@ npm run dev         # Opens interactive menu
 ```
 
 Choose from:
-1. **Full System** - VLC with video + Orchestrator with hot reload
-2. **Orchestrator Only** - No video (for API development)
+1. **Full System** - Orchestrator with hot reload + video (VLC auto-spawned by the orchestrator)
+2. **Orchestrator Only** - No video playback (for API development)
 3. **PM2 Managed** - Like production but for development
-4. **Headless Mode** - For CI/testing without GUI
 
 #### Direct Commands
 ```bash
-# Full system with hot reload
+# Full system with hot reload (VLC auto-spawned by the orchestrator)
 npm run dev:full
 
-# Just the orchestrator (no video)
+# Just the orchestrator, no video (ENABLE_VIDEO_PLAYBACK=false)
 npm run dev:no-video
 
-# Headless mode (no GUI)
-npm run dev:headless
-
-# Individual components
-npm run orchestrator:dev    # Just orchestrator with nodemon
-npm run vlc:gui             # Just VLC with video output
+# Just orchestrator with nodemon
+npm run orchestrator:dev
 ```
+
+VLC has no separate start/stop script — its lifecycle is tied to the orchestrator (spawned in `vlcMprisService.init()`).
 
 ### Production Deployment
 
@@ -643,9 +619,8 @@ npm run prod:startup
 npm run health
 
 # Quick checks
-npm run health:api          # Check orchestrator
-npm run health:vlc          # Check VLC
-npm run health:quick        # Basic connectivity
+npm run health:api          # Check orchestrator (curl /health | jq)
+npm run health:quick        # Basic connectivity (HTTP status code only)
 ```
 
 Expected healthy output:
@@ -668,7 +643,8 @@ The ALN system has TWO components that must run together:
 
 2. **VLC Media Player**
    - Displays videos on screen/HDMI
-   - Controlled via HTTP interface
+   - Controlled via D-Bus MPRIS (`org.mpris.MediaPlayer2.vlc`)
+   - Auto-spawned and supervised by the orchestrator (`vlcMprisService.init()` via `ProcessMonitor`) — a child of the orchestrator, **not** a separate PM2 app
    - Must have GUI for video output
 
 ### Common Workflows
@@ -707,10 +683,7 @@ npm run prod:status
 # View logs
 npm run prod:logs
 
-# Stop VLC if stuck
-npm run vlc:stop
-
-# Clean restart
+# Clean restart (VLC restarts with the orchestrator)
 npm run stop && npm run clean:all && npm start
 ```
 
@@ -722,7 +695,8 @@ Once running (any method):
 - **Player Scanner**: `https://localhost:3000/player-scanner/`
 - **GM Scanner**: `https://localhost:3000/gm-scanner/` (HTTPS required for NFC)
 - **Scoreboard Display**: `https://localhost:3000/scoreboard`
-- **VLC Control**: `http://localhost:8080` (password: vlc, internal only)
+
+(VLC has no network control endpoint — it is controlled locally via D-Bus MPRIS.)
 
 ## Raspberry Pi Deployment
 
@@ -748,7 +722,7 @@ npm install
 
 ### 2. Configure for HDMI Output
 
-Edit `/boot/config.txt`:
+Edit `/boot/firmware/config.txt` (Raspberry Pi OS Bookworm; older releases used `/boot/config.txt`):
 ```ini
 # Force HDMI output
 hdmi_force_hotplug=1
@@ -759,13 +733,24 @@ hdmi_mode=82  # 1080p 60Hz
 
 ### 3. Set Static IP (Optional)
 
-Edit `/etc/dhcpcd.conf`:
+Raspberry Pi OS Bookworm uses **NetworkManager** (`nmcli` / `nmtui`), not `dhcpcd`. Configure a static IP on the active connection:
+
 ```bash
-interface wlan0
-static ip_address=192.168.1.100/24
-static routers=192.168.1.1
-static domain_name_servers=8.8.8.8 8.8.4.4
+# List connections to find the name (e.g. "preconfigured" or "Wired connection 1")
+nmcli con show
+
+# Apply a static IPv4 config
+sudo nmcli con mod "<connection-name>" \
+  ipv4.addresses 192.168.1.100/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "8.8.8.8 8.8.4.4" \
+  ipv4.method manual
+
+# Re-activate the connection to apply
+sudo nmcli con up "<connection-name>"
 ```
+
+Or use the interactive TUI: `sudo nmtui`. (On pre-Bookworm releases, edit `/etc/dhcpcd.conf` instead.)
 
 ### 4. Enable Auto-start
 
@@ -823,13 +808,13 @@ ifconfig | grep "inet " | grep -v 127.0.0.1
 
 ```bash
 # Ubuntu/Debian
-sudo ufw allow 3000/tcp  # HTTP/WebSocket
-sudo ufw allow 8080/tcp  # VLC HTTP interface
+sudo ufw allow 3000/tcp  # HTTPS + WebSocket (primary)
+sudo ufw allow 8000/tcp  # HTTP → HTTPS redirect
 sudo ufw allow 8888/udp  # Discovery broadcast
 
 # CentOS/RHEL
 sudo firewall-cmd --permanent --add-port=3000/tcp
-sudo firewall-cmd --permanent --add-port=8080/tcp
+sudo firewall-cmd --permanent --add-port=8000/tcp
 sudo firewall-cmd --permanent --add-port=8888/udp
 sudo firewall-cmd --reload
 ```
@@ -937,7 +922,7 @@ firefox --kiosk https://[ORCHESTRATOR-IP]:3000/scoreboard
 - **Configuration**: Update the `adminPassword` in `/backend/public/scoreboard.html` to match your `ADMIN_PASSWORD` in `.env`
 
 ```javascript
-// In scoreboard.html (line ~440)
+// In scoreboard.html (search for `const CONFIG` — in the CONFIG block, ~line 770)
 const CONFIG = {
     adminPassword: '@LN-c0nn3ct',  // CHANGE THIS to match your .env ADMIN_PASSWORD
     // ...
@@ -1002,15 +987,23 @@ curl -k https://localhost:3000/health
 
 ## Testing
 
-### 1. Test VLC Video Output
+### 1. Test VLC Integration (D-Bus MPRIS)
+
+The orchestrator controls VLC via D-Bus MPRIS — it spawns VLC itself, so you do
+not launch VLC manually. With the orchestrator running, confirm VLC is up and
+reachable on D-Bus:
 
 ```bash
-# Manual VLC test
-vlc --intf qt --extraintf http --http-password vlc \
-    --http-host 0.0.0.0 --http-port 8080 \
-    --fullscreen --video-on-top \
-    /path/to/test/video.mp4
+# VLC process is alive (orchestrator spawns `cvlc`)
+pgrep -x cvlc
+
+# D-Bus MPRIS responds (same probe check-health.sh uses)
+dbus-send --session --dest=org.mpris.MediaPlayer2.vlc --print-reply \
+  /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping
 ```
+
+On a Raspberry Pi 5 the orchestrator launches VLC with `--vout=gles2`
+(`vlcMprisService._getHwAccelArgs()`).
 
 ### 2. Test API Endpoints
 
@@ -1051,28 +1044,31 @@ node src/server.js
 
 #### VLC not showing video
 ```bash
-# Check PM2 VLC configuration
-grep "args:" ecosystem.config.js
-# Must include: --intf qt --extraintf http
+# VLC launch args live in src/services/vlcMprisService.js (_getHwAccelArgs);
+# on Pi 5 the video output is --vout=gles2. Confirm VLC is running:
+pgrep -x cvlc
 
 # Check DISPLAY variable (Linux)
 echo $DISPLAY  # Should be :0 or similar
 
-# Restart PM2 processes
-pm2 restart all
+# Review VLC / ProcessMonitor lines in the orchestrator log
+grep -i vlc backend/logs/combined.log | tail -50
+
+# Restart the orchestrator (this also restarts VLC)
+pm2 restart aln-orchestrator
 ```
 
 #### "VLC not connected" error
 ```bash
-# Check VLC password in .env
-grep VLC_PASSWORD .env
-# Must be: VLC_PASSWORD=vlc (not vlc-password)
+# Verify VLC is running (orchestrator spawns `cvlc`)
+pgrep -x cvlc
 
-# Verify VLC is running
-ps aux | grep vlc
+# Confirm D-Bus MPRIS responds (there is no HTTP interface)
+dbus-send --session --dest=org.mpris.MediaPlayer2.vlc --print-reply \
+  /org/mpris/MediaPlayer2 org.freedesktop.DBus.Peer.Ping
 
-# Check VLC HTTP interface
-curl -u :vlc http://localhost:8080/requests/status.json
+# Review VLC / ProcessMonitor lines in the orchestrator log
+grep -i vlc backend/logs/combined.log | tail -50
 ```
 
 #### Token scan plays wrong/no video
@@ -1097,11 +1093,41 @@ pm2 logs aln-orchestrator --lines 50
 ```bash
 # Find process using port
 sudo lsof -i :3000
-sudo lsof -i :8080
+sudo lsof -i :8000
 
 # Kill if needed (use PID from above)
 kill -9 [PID]
 ```
+
+#### Music (MPD) not playing / no audio
+
+The orchestrator spawns and supervises its own MPD instance via `ProcessMonitor`
+and controls it over the Unix socket `/tmp/aln-mpd.sock` using the `mpd2` Node
+client (see the install step above, and `backend/CLAUDE.md` → "Music Service").
+
+```bash
+# Confirm the system MPD is disabled (the orchestrator owns its own instance)
+systemctl status mpd
+
+# The orchestrator-managed MPD process is tracked via this PID file
+cat /tmp/aln-pm-mpd.pid
+
+# Verify MPD's PipeWire sink is present (audioRoutingService matches on aln-music)
+pactl list sink-inputs | grep -i aln-music
+
+# Review MPD / ProcessMonitor lines in the orchestrator log
+grep -i "mpd\|music" backend/logs/combined.log | tail -50
+```
+
+Operational notes:
+- **Playlists** are loaded from `backend/config/music-playlists.json` and
+  hot-reloaded (`fs.watch`) — edit that file and the change is picked up without
+  a restart. After adding/removing MP3s under `backend/public/music/`, run
+  `cd backend && npm run music:seed` to regenerate the All Tracks bootstrap
+  playlist.
+- The MPD database (`aln-mpd.db`) is wiped on reboot — MPD rebuilds it on the
+  next clean boot, so a brief "music unavailable" window right after boot is
+  expected while the rebuild completes.
 
 ## Performance Optimization
 
@@ -1125,7 +1151,7 @@ sudo systemctl disable avahi-daemon
 ## Security Considerations
 
 ### Production Deployment
-1. Change default VLC password
+1. Change the default `ADMIN_PASSWORD` and `JWT_SECRET` in `.env` (and update `scoreboard.html` to match)
 2. Use firewall to restrict access
 3. Enable HTTPS with reverse proxy (nginx/caddy)
 4. Limit CORS origins in .env
@@ -1161,12 +1187,15 @@ pm2 web  # Opens web dashboard on port 9615
 ### Log Locations
 ```
 backend/logs/
-├── combined.log   # All logs
+├── combined.log   # All logs (includes VLC output via the orchestrator's ProcessMonitor)
 ├── error.log      # Errors only
-├── out.log        # PM2 stdout
-├── vlc-error.log  # VLC errors
-└── vlc-out.log    # VLC output
+└── out.log        # PM2 stdout
 ```
+
+> Note: `vlc-error.log` / `vlc-out.log` may still exist in `backend/logs/` as
+> 0-byte legacy files from the removed `vlc-http` PM2 app. They are no longer
+> written — VLC is now a child of the orchestrator, and its stdout/stderr flow
+> through `ProcessMonitor` into `combined.log`.
 
 ## Quick Reference
 
@@ -1185,7 +1214,6 @@ backend/logs/
 | https://[ip]:3000/player-scanner/ | Player scanner | Networked |
 | https://[ip]:3000/gm-scanner/ | GM scanner (NFC requires HTTPS) | Networked |
 | https://[ip]:3000/scoreboard | Scoreboard display | Networked |
-| http://[ip]:8080 | VLC HTTP interface (internal) | Networked |
 | https://[user].github.io/ALNPlayerScan/ | Player scanner | Standalone |
 | https://[user].github.io/ALNScanner/ | GM scanner | Standalone |
 
