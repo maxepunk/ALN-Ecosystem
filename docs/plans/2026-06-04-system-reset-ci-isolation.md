@@ -1,6 +1,6 @@
 # Follow-up: system-reset-regression CI-only test-isolation bug
 
-**Status:** Open (test quarantined on CI 2026-06-04)
+**Status:** Resolved (root-caused + un-quarantined 2026-06-04, commit `1cd13f95`; tests now run live in `system-reset-regression.test.js`)
 **Owner:** unassigned
 **Severity:** Low (test-harness only — NOT a production / system:reset bug)
 
