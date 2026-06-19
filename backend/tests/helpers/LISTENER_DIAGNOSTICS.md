@@ -269,6 +269,5 @@ With hybrid fix in place:
 ## Related Documentation
 
 - `backend/tests/FLAKY_TEST_ANALYSIS.md` - Timing anti-patterns analysis
-- `backend/tests/ISOLATION_ISSUES.md` - Test isolation hypothesis
 - `backend/tests/LISTENER_LEAK_FINDINGS.md` - Listener leak investigation results
 - Testing Anti-Patterns Skill: `/home/maxepunk/.claude/plugins/cache/superpowers/skills/testing-anti-patterns/SKILL.md`
