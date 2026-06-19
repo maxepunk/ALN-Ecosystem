@@ -94,6 +94,22 @@ Use **+ New** to create a cue, **Dup** to duplicate the selected cue, and **Del*
 
 **Asset Manager (bottom of left panel)** — Browse, upload, preview, and delete sound and video files. Shows which cues use each file. Sound files can be previewed with the play button.
 
+### Music & Playlists
+
+Author MPD playlists for the show. This section is a proxy onto the orchestrator — playlists and the available track database are fetched from (and saved back to) the backend's music service, not the local config files.
+
+**Playlist List (left pane)** — All playlists; click one to edit it. Use **+ New playlist** to create one (prompts for a name).
+
+**Playlist Editor (right pane)** — For the selected playlist:
+
+- **Shuffle / Loop** — Per-playlist toggles
+- **Crossfade** — Slider (0–5000 ms)
+- **Available Tracks** — The MPD track database (title — artist, falling back to filename). Click **+** to add a track to the playlist. (Empty if no MP3s are seeded into `backend/public/music/`.)
+- **Playlist Tracks (in order)** — The current track order. Reorder with ↑ / ↓ and remove with ✕.
+- **Delete playlist** — Removes the playlist (not persisted until you click Save).
+
+Changes are held in memory and written back to the orchestrator via `PUT /api/music/playlists` when you click **Save**. If the initial fetch from the orchestrator fails, the section shows an error and Save is blocked to avoid clobbering on-disk playlists with empty data.
+
 ### Audio & Environment
 
 Configure audio routing, ducking, Bluetooth, and lighting.
@@ -181,6 +197,8 @@ config-tool/
 │       ├── sections/      # One module per sidebar section
 │       │   ├── economy.js
 │       │   ├── showcontrol.js
+│       │   ├── music.js        # Music & Playlists UI (orchestrator proxy)
+│       │   ├── musicModel.js   # Pure CRUD model for playlist editing
 │       │   ├── audio.js
 │       │   ├── infra.js
 │       │   └── presets.js
@@ -194,7 +212,10 @@ config-tool/
 ├── presets/               # Saved preset files (gitignored)
 └── tests/
     ├── envParser.test.js
-    └── configManager.test.js
+    ├── configManager.test.js
+    ├── routes.test.js
+    ├── conditionBuilder.test.js
+    └── musicModel.test.js
 ```
 
 No build step required — vanilla JS served directly via ES modules (`<script type="module">`).
@@ -211,6 +232,9 @@ All endpoints are under `/api/`.
 | PUT | `/api/config/cues` | Write cues.json |
 | PUT | `/api/config/routing` | Write routing.json |
 | GET | `/api/tokens` | Read token database (read-only) |
+| GET | `/api/music/tracks` | List MPD track database (proxied to orchestrator) |
+| GET | `/api/music/playlists` | Read playlists (proxied to orchestrator) |
+| PUT | `/api/music/playlists` | Write playlists (proxied to orchestrator) |
 | GET | `/api/assets/sounds` | List sound files with cue usage |
 | GET | `/api/assets/videos` | List video files with cue usage |
 | POST | `/api/assets/sounds` | Upload sound file (multipart) |
@@ -230,7 +254,7 @@ cd config-tool
 npm test
 ```
 
-Uses Node.js built-in test runner (27 tests covering env parsing, config management, presets, and asset operations).
+Uses Node.js built-in test runner (`node --test tests/*.test.js`), with ~96 tests across env parsing, config management, API routes, condition building, the music model, presets, and asset operations (run `npm test` for the live count).
 
 ## Security Notes
 
