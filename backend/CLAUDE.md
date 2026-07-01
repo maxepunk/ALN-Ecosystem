@@ -1,6 +1,6 @@
 # CLAUDE.md - Backend Orchestrator
 
-Last verified: 2026-03-01
+Last verified: 2026-06-18
 
 This file provides guidance for working with the ALN Backend Orchestrator - a Node.js server managing sessions, scoring, video playback, and WebSocket/HTTP APIs.
 
@@ -12,7 +12,6 @@ For cross-cutting concerns (scoring logic, operation modes, game modes, token sc
 |----------|----------|
 | API Contract (HTTP) | 'contracts/README.md', 'contracts/openapi.yaml' |
 | WebSocket Events | 'backend_docs/WEBSOCKET_QUICK_REFERENCE.md' |
-| WebSocket Deep Dive | 'backend_docs/WEBSOCKET_ANALYSIS.md' |
 | E2E Testing | 'backend_docs/E2E_TEST_HELPERS.md' |
 | Deployment Guide | '../DEPLOYMENT_GUIDE.md' |
 | Scoring Logic | '../docs/SCORING_LOGIC.md' |
@@ -83,7 +82,7 @@ npm run health:api        # Check orchestrator only
 
 **Shared Mock Factories:**
 
-Shared mock factories in `tests/helpers/mocks/` provide canonical mock shapes for each service. Use `createMockSessionService()`, `createMockTransactionService()`, etc. for new tests. Each factory extends EventEmitter and stubs all public methods with `jest.fn()`. Accepts an `overrides` parameter for test-specific customization. Available factories: sessionService, transactionService, videoQueueService, bluetoothService, audioRoutingService, lightingService, offlineQueueService.
+Shared mock factories in `tests/helpers/mocks/` provide canonical mock shapes for each service. Use `createMockSessionService()`, `createMockTransactionService()`, etc. for new tests. Each factory extends EventEmitter and stubs all public methods with `jest.fn()`. Accepts an `overrides` parameter for test-specific customization. Available factories: sessionService, transactionService, videoQueueService, bluetoothService, audioRoutingService, lightingService, offlineQueueService, musicService.
 
 **Coverage Ratchet:**
 
@@ -131,6 +130,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `soundService` | pw-play wrapper for audio playback | `new SoundService()` |
 | `musicService` | MPD control over Unix socket (mpd2 client); spawns/supervises MPD via ProcessMonitor | `new MusicService()` |
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
+| `scoreboardControlService` | Passthrough for GM scoreboard page-navigation commands (no server-side page state; emits `scoreboard:page:requested` → broadcast as `scoreboard:page`) | `new ScoreboardControlService()` |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
 **System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services (tear-down only), then re-initializes infrastructure via centralized post-reset wiring: broadcast listeners, then `transactionService.registerSessionListener()`, `sessionService.setupScoreListeners()`, `sessionService.setupPersistenceListeners()`, `sessionService.setupGameClockListeners()`, then `cueEngineWiring.setupCueEngineForwarding()`.
@@ -159,14 +159,14 @@ Domain Event (Service) → Listener (broadcasts.js) → WebSocket Broadcast
 ```
 
 **Key Services & Events:**
-- `sessionService`: `session:created`, `session:updated`, `transaction:added`, `player-scan:added`, `device:updated/removed`
-- `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`
+- `sessionService`: `session:created`, `session:updated`, `session:started`, `session:overtime`, `transaction:added`, `player-scan:added`, `device:updated/removed`
+- `transactionService`: `transaction:accepted`, `group:completed`, `score:adjusted`, `scores:reset`, `transaction:deleted`
 - `videoQueueService`: `video:*`, `queue:*`
 - `serviceHealthRegistry`: `health:changed` (all service health consolidated here — no per-service connection events)
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
-- `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`, `sink:added`, `sink:removed`
+- `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`, `routing:error`, `sink:added`, `sink:removed`, `ducking:changed`, `ducking:failed`
 - `lightingService`: `scene:activated`, `scenes:refreshed`
-- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:tick`, `gameclock:overtime`
+- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
 - `musicService`: `playback:changed`, `volume:changed`, `track:changed`, `playlist:changed`, `playlists:reloaded`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
@@ -304,12 +304,47 @@ WebSocket command interface for session management:
 | `music:setShuffle` | `{enabled}` | Toggle shuffle |
 | `music:setLoop` | `{enabled}` | Toggle loop |
 | `music:loadPlaylist` | `{playlistId}` | Load and play a named playlist |
+| `music:seek` | `{position}` | Seek current track (`position` in seconds) |
 | `audio:volume:set` | `{stream, volume}` | Set per-stream volume (0-100). Streams: `video`, `music`, `sound` |
 | `service:check` | `{serviceId}` or `{}` | On-demand health probe (single or all services) |
 | `held:release` | `{heldId}` | Release held cue/video (routes by ID prefix) |
 | `held:discard` | `{heldId}` | Discard held cue/video |
 | `held:release-all` | `{}` | Release all held items |
 | `held:discard-all` | `{}` | Discard all held items |
+| `cue:pause` | `{cueId}` | Pause a running compound cue |
+| `cue:resume` | `{cueId}` | Resume a paused compound cue |
+| `cue:stop` | `{cueId}` | Stop a running compound cue |
+| `video:queue:add` | `{videoFile}` | **Start a new video** (enqueue by filename) |
+| `video:play` | `{}` | **Resume** the current paused VLC playback (no file) |
+| `video:pause` | `{}` | Pause current video |
+| `video:stop` | `{}` | Stop current video and clear queue |
+| `video:skip` | `{}` | Skip current video |
+| `video:seek` | `{position}` | Seek current video (`position` in seconds) |
+| `video:queue:reorder` | `{fromIndex, toIndex}` | Reorder queued videos |
+| `video:queue:clear` | `{}` | Clear the entire queue |
+| `display:scoreboard` | `{}` | Switch HDMI display to scoreboard |
+| `display:idle-loop` | `{}` | Switch HDMI display to idle-loop video |
+| `display:return-to-video` | `{}` | Return HDMI display to video/idle-loop |
+| `display:status` | `{}` | Query current display mode |
+| `audio:route:set` | `{stream?, sink}` | Route a stream to a PipeWire sink (default stream `video`) |
+| `bluetooth:scan:start` | `{timeout?}` | Start BT device discovery |
+| `bluetooth:scan:stop` | `{}` | Stop BT device discovery |
+| `bluetooth:pair` | `{address}` | Pair a BT device |
+| `bluetooth:unpair` | `{address}` | Unpair a BT device |
+| `bluetooth:connect` | `{address}` | Connect a paired BT device |
+| `bluetooth:disconnect` | `{address}` | Disconnect a BT device |
+| `lighting:scene:activate` | `{sceneId}` | Activate a Home Assistant lighting scene |
+| `lighting:scenes:refresh` | `{}` | Reload the lighting scene list from HA |
+| `score:adjust` | `{teamId, delta, reason?}` | Manually adjust a team score by `delta` |
+| `score:reset` | `{}` | Reset all team scores |
+| `transaction:create` | `{tokenId, teamId, mode, ...}` | Create a manual transaction (deviceType defaults to `gm`) |
+| `transaction:delete` | `{transactionId}` | Delete a transaction and recalculate scores |
+| `scoreboard:page:next` | `{}` | Advance scoreboard evidence page (per client) |
+| `scoreboard:page:prev` | `{}` | Previous scoreboard evidence page (per client) |
+| `scoreboard:page:owner` | `{owner}` | Jump scoreboard to a character's evidence page |
+| `system:reset` | `{}` | Full coordinated system reset (mutex-guarded) |
+
+This table covers all `gm:command` actions handled by `commandExecutor.js`. Full ground truth: `grep "case '" src/services/commandExecutor.js`.
 
 **Session Lifecycle:** `setup` → `active` → `paused` ↔ `active` → `ended`
 
@@ -481,7 +516,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 - `gm:command:ack` payload simplified to `{action, success, message}` — no more `result.data` forwarding. State comes via `service:state` events
 - No post-command state push: state pushes triggered ONLY by service events (D-Bus monitors, service lifecycle)
 - **service:state debounce**: `pushServiceState` in `broadcasts.js` debounces per domain (50ms). `video:failed` bypasses the debounce for immediate error state capture. Tests must use `jest.useFakeTimers()` + `jest.advanceTimersByTime(51)` for service:state assertions.
-- Tests: `tests/unit/services/getState.test.js` (19 tests), `tests/integration/service-state-push.test.js` (13 tests), broadcast unit tests
+- Tests: `tests/unit/services/getState.test.js` (~18 tests), `tests/integration/service-state-push.test.js` (~11 tests), broadcast unit tests (counts approximate — run the suite for live totals)
 
 **CRITICAL Gotchas:**
 - `video:play` in commandExecutor = resume VLC (no file). `video:queue:add` = start new video.
@@ -612,7 +647,12 @@ The canonical version of this config file lives at
 
 For full deployment procedures, see '../DEPLOYMENT_GUIDE.md'.
 
-### Raspberry Pi 4 8GB Specifics
+### Legacy Pi 4 8GB Specifics (NOT the current deployment)
+
+> The active deployment is **Raspberry Pi 5 (HEVC-only)** — see the next section.
+> The Pi 4 H.264 recipe below is retained for historical reference ONLY. Do NOT
+> re-encode game videos to H.264 for the Pi 5: the Pi 5 has no H.264 hardware
+> decoder and will software-decode at ~47% CPU with artifacts.
 
 **Hardware Requirements:**
 - RAM: 8GB (Node.js uses 2GB max via `--max-old-space-size=2048`)
@@ -620,7 +660,7 @@ For full deployment procedures, see '../DEPLOYMENT_GUIDE.md'.
   - Check: `vcgencmd get_mem gpu`
   - Configure: `/boot/firmware/config.txt` with `gpu_mem=256` (requires reboot)
 
-**Video Optimization:**
+**Video Optimization (Pi 4 only):**
 Pi 4 hardware decoder requires H.264 videos <5Mbps bitrate. Re-encode if needed:
 ```bash
 ffmpeg -i INPUT.mp4 \

@@ -212,4 +212,36 @@ describe('Phase 2 Broadcasts', () => {
       expect(payload.cueEngine.loaded).toBe(false);
     });
   });
+
+  describe('Sound → ducking wiring (underflow guard)', () => {
+    let prevAudioWires;
+    beforeEach(() => {
+      prevAudioWires = process.env.ENABLE_AUDIO_WIRES;
+      process.env.ENABLE_AUDIO_WIRES = 'true'; // the sound→ducking wires are env-gated
+      // The wiring does handleDuckingEvent(...).catch(...) — it must return a promise.
+      mockAudioRoutingService.handleDuckingEvent = jest.fn().mockResolvedValue();
+    });
+    afterEach(() => {
+      if (prevAudioWires === undefined) delete process.env.ENABLE_AUDIO_WIRES;
+      else process.env.ENABLE_AUDIO_WIRES = prevAudioWires;
+    });
+
+    it('does NOT forward sound:error to a duck-stop (a never-started sound never ducked)', () => {
+      setupBroadcasts();
+      // A bad-file / path-escape / spawn-ENOENT sound emits sound:error WITHOUT ever
+      // emitting sound:started (which is pid-gated), so it never ducked music.
+      // Forwarding it as ('sound','completed') would decrement the shared 'sound'
+      // duck count and restore music mid-playback of a concurrent LIVE sound.
+      mockSoundService.emit('sound:error', { file: 'missing.wav', error: 'File not found' });
+      expect(mockAudioRoutingService.handleDuckingEvent).not.toHaveBeenCalledWith('sound', 'completed');
+    });
+
+    it('still forwards sound:stopped as a duck-stop (post-start failures DO un-duck)', () => {
+      setupBroadcasts();
+      // A sound that started and was killed/failed exits via close → sound:stopped;
+      // this MUST still release the duck so music does not stay ducked forever.
+      mockSoundService.emit('sound:stopped', { file: 'a.wav', pid: 123, reason: 'killed' });
+      expect(mockAudioRoutingService.handleDuckingEvent).toHaveBeenCalledWith('sound', 'completed');
+    });
+  });
 });

@@ -9,8 +9,8 @@ This directory contains the formal API contracts for the ALN (About Last Night) 
 - [Overview](#overview)
 - [Contract Files](#contract-files)
 - [Quick Start](#quick-start)
-- [HTTP Endpoints (8)](#http-endpoints-8)
-- [WebSocket Events (16)](#websocket-events-16)
+- [HTTP Endpoints (13)](#http-endpoints-13)
+- [WebSocket Events (25)](#websocket-events-25)
 - [Key Design Decisions](#key-design-decisions)
 - [Validation](#validation)
 - [Breaking Changes](#breaking-changes)
@@ -20,7 +20,7 @@ This directory contains the formal API contracts for the ALN (About Last Night) 
 
 ## Overview
 
-These contracts define the **target architecture** for the ALN system - what the APIs **should be**, not necessarily what they currently are. They represent the minimal essential surface (24 APIs total, 59% reduction from current 59 APIs).
+These contracts define the **live, implemented** ALN Orchestrator API, kept in sync with the backend HTTP routes and the `gm:command` executor via contract tests. They are the source of truth for the request/response shapes the backend actually serves.
 
 ### Architecture Principles
 
@@ -44,11 +44,10 @@ These contracts define the **target architecture** for the ALN system - what the
 backend/contracts/
 ├── README.md           # This file
 ├── openapi.yaml        # HTTP API contract (OpenAPI 3.1.0)
-├── asyncapi.yaml       # WebSocket contract (AsyncAPI 2.6.0)
-└── MIGRATION-GUIDE.md  # Breaking changes migration guide
+└── asyncapi.yaml       # WebSocket contract (AsyncAPI 2.6.0)
 ```
 
-### openapi.yaml - HTTP API (8 endpoints)
+### openapi.yaml - HTTP API (13 endpoints)
 
 - **POST /api/admin/auth** - Admin authentication (JWT tokens)
 - **POST /api/scan** - Player Scanner token scan (persisted to session.playerScans)
@@ -57,20 +56,27 @@ backend/contracts/
 - **GET /api/tokens** - Token database (tokens.json)
 - **GET /api/state** - Complete game state (debug/recovery)
 - **GET /api/admin/logs** - System logs (troubleshooting)
+- **GET /api/assets/manifest** - Asset sync manifest (ESP32 CYD scanner)
+- **GET /api/assets/images/{tokenId}.bmp** - Per-token BMP image (ESP32 asset sync)
+- **GET /api/assets/audio/{tokenId}.{ext}** - Per-token audio file (ESP32 asset sync)
+- **GET /api/music/tracks** - Music track catalog (MPD)
+- **GET /api/music/playlists** - Music playlists (music-playlists.json)
 - **GET /health** - Health check
 
-### asyncapi.yaml - WebSocket API (20 events)
+### asyncapi.yaml - WebSocket API (25 messages)
 
+**Sync (2)**: sync:request, sync:full
 **Device Tracking (2)**: device:connected, device:disconnected
-**State Sync (1)**: sync:full
 **Transactions (4)**: transaction:submit, transaction:result, transaction:new, transaction:deleted
-**Scores (1)**: scores:reset
-**Video (1)**: video:status
-**Display (2)**: display:mode, display:status
+**Scores (2)**: score:adjusted, scores:reset
+**Display (1)**: display:mode
+**Scoreboard (1)**: scoreboard:page
 **Session (2)**: session:update, session:overtime
 **Admin (2)**: gm:command, gm:command:ack
+**Service State (1)**: service:state (10 domains — the sole push mechanism for service domain state; documented in [Key Events](#key-events) below)
 **Offline Queue (2)**: offline:queue:processed, batch:ack
 **Game Activity (2)**: group:completed, player:scan
+**Cues (3)**: cue:fired, cue:completed, cue:error
 **Error (1)**: error
 
 ---
@@ -111,7 +117,7 @@ npx @asyncapi/cli validate contracts/asyncapi.yaml
 
 ---
 
-## HTTP Endpoints (8)
+## HTTP Endpoints (13)
 
 ### Authentication
 
@@ -168,6 +174,8 @@ Single token scan. Persisted to `session.playerScans[]` and broadcast via `playe
 ```
 
 **CRITICAL**: Player Scanner **IGNORES response body** by design (ESP32 compatibility). Response provided for debugging/future clients.
+
+**Other responses**: The 200 body also models a **rejected** case (`status: rejected`, `videoQueued: false`, optional `waitTime` when a video is already playing or VLC is down), plus error responses `SESSION_NOT_FOUND` (no active session) and `SERVICE_UNAVAILABLE` (token data not loaded yet). See `openapi.yaml` for the full schemas.
 
 #### POST /api/scan/batch
 Offline queue batch upload.
@@ -268,6 +276,15 @@ Get token database (tokens.json).
 }
 ```
 
+#### GET /api/assets/manifest
+Asset sync manifest describing every image and audio file shipped with the token database. Used by the ESP32 CYD scanner at boot to decide which files to download. See `openapi.yaml` for the manifest schema.
+
+#### GET /api/assets/images/{tokenId}.bmp
+Serve an individual BMP for the given `tokenId` (from `aln-memory-scanner/assets/images/`). Used by the ESP32 CYD scanner during asset sync.
+
+#### GET /api/assets/audio/{tokenId}.{ext}
+Serve an individual audio file for the given `tokenId` (from `aln-memory-scanner/assets/audio/`). Same validation and caching as the image endpoint.
+
 #### GET /health
 Health check.
 
@@ -308,7 +325,17 @@ Get system logs (requires JWT auth).
 
 ---
 
-## WebSocket Events (16)
+### Music
+
+#### GET /api/music/tracks
+List all music tracks known to MPD's database (derived from `backend/public/music/` at MPD startup). See `openapi.yaml` for the response schema.
+
+#### GET /api/music/playlists
+Return the contents of `backend/config/music-playlists.json` verbatim. Consumed by the GM Scanner (via `sync:full`) and the Config Tool editor.
+
+---
+
+## WebSocket Events (25)
 
 ### Connection Pattern
 
@@ -389,31 +416,32 @@ GM Scanner submits token scan for scoring.
 **Flow**:
 1. Client sends transaction:submit
 2. Server sends transaction:result to submitter
-3. Server broadcasts transaction:new to all GMs
-4. Server broadcasts transaction:new (with teamScore) to all GMs
+3. Server broadcasts a single transaction:new (enriched with teamScore) to all GMs in the session room
 
-#### video:status (Server → Clients)
-Video playback status updates.
+#### service:state (Server → Clients)
+
+**The SOLE push mechanism for all service domain state.** A `service:state` event carries a full state snapshot (not a delta) for one domain, wrapped in a `{domain, state}` envelope. It replaced every per-service discrete event (`video:status`, `gameclock:status`, `bluetooth:device`, `lighting:scene`, `audio:routing`, `held:*`, `cue:status`, `audio:ducking:status`, etc.).
+
+**10 domains**: `music`, `video`, `health`, `bluetooth`, `audio`, `lighting`, `sound`, `gameclock`, `cueengine`, `held`.
 
 ```json
 {
-  "event": "video:status",
+  "event": "service:state",
   "data": {
-    "status": "playing",
-    "queueLength": 2,
-    "tokenId": "534e2b03",
-    "duration": 30,
-    "progress": 45,
-    "expectedEndTime": "2025-10-15T20:16:00.000Z",
-    "error": null
+    "domain": "video",
+    "state": {
+      "status": "playing",
+      "currentVideo": { "tokenId": "534e2b03" },
+      "queue": [],
+      "queueLength": 2,
+      "connected": true
+    }
   },
   "timestamp": "2025-10-15T20:15:45.000Z"
 }
 ```
 
-**Breaking Changes**:
-- Field rename: `current` → `status`
-- Added field: `queueLength` (REQUIRED)
+The authoritative shape for each domain's `state` object is the matching `components.schemas.DomainState*` schema in `asyncapi.yaml` (e.g., `DomainStateVideo`, `DomainStateHealth`), enforced by the backend's service-domain-state contract test. Video playback state rides this event under domain `video` — there is no separate `video:status` event.
 
 #### gm:command (Client → Server)
 Unified admin command interface (replaces 11 HTTP admin endpoints).
@@ -429,14 +457,39 @@ Unified admin command interface (replaces 11 HTTP admin endpoints).
 }
 ```
 
-**Available Actions**:
-- Session: `session:create`, `session:pause`, `session:resume`, `session:end`
-- Video: `video:play`, `video:pause`, `video:stop`, `video:skip`, `video:queue:add`, `video:queue:reorder`, `video:queue:clear`
+**Available Actions** (59 total — the `GmCommand` `action` enum in `asyncapi.yaml` is the source of truth):
+- Session: `session:create`, `session:addTeam`, `session:start`, `session:pause`, `session:resume`, `session:end`
+- Video: `video:play`, `video:pause`, `video:stop`, `video:skip`, `video:seek`, `video:queue:add`, `video:queue:reorder`, `video:queue:clear`
+- Display: `display:idle-loop`, `display:scoreboard`, `display:return-to-video`, `display:status`
+- Scoreboard: `scoreboard:page:next`, `scoreboard:page:prev`, `scoreboard:page:owner`
 - Score: `score:adjust`, `score:reset`
 - Transaction: `transaction:delete`, `transaction:create`
 - System: `system:reset`
+- Bluetooth: `bluetooth:scan:start`, `bluetooth:scan:stop`, `bluetooth:pair`, `bluetooth:unpair`, `bluetooth:connect`, `bluetooth:disconnect`
+- Audio: `audio:route:set`, `audio:volume:set`
+- Lighting: `lighting:scene:activate`, `lighting:scenes:refresh`
+- Cue: `cue:fire`, `cue:stop`, `cue:pause`, `cue:resume`, `cue:enable`, `cue:disable`
+- Held: `held:release`, `held:discard`, `held:release-all`, `held:discard-all`
+- Sound: `sound:play`, `sound:stop`
+- Music: `music:play`, `music:pause`, `music:stop`, `music:next`, `music:previous`, `music:setVolume`, `music:setShuffle`, `music:setLoop`, `music:loadPlaylist`, `music:seek`
+- Service: `service:check`
 
-**Response**: Server sends `gm:command:ack` with success/failure, then broadcasts side effects (e.g., service:state, score:adjusted).
+**Response**: Server sends `gm:command:ack`, then any resulting state changes arrive separately via `service:state` (and `score:adjusted` for score adjustments).
+
+#### gm:command:ack (Server → Client)
+Acknowledges a `gm:command`. Payload is exactly `{action, success, message}` — there is **no** `result`/`data` field. State changes caused by the command are delivered separately via `service:state`.
+
+```json
+{
+  "event": "gm:command:ack",
+  "data": {
+    "action": "video:skip",
+    "success": true,
+    "message": "Video skipped"
+  },
+  "timestamp": "2025-10-15T20:20:00.500Z"
+}
+```
 
 #### scores:reset (Server → Clients)
 Broadcast when all team scores are reset to zero (triggered by `score:reset` command).
@@ -470,10 +523,6 @@ Direct resources/results, HTTP status codes communicate status (no wrapper envel
 - `tokenId` (not rfid/videoId)
 - `id` within resources (not sessionId)
 
-### Decision #5: video:status Fixed Structure
-- Renamed: `current` → `status`
-- Added: `queueLength` field (REQUIRED)
-
 ### Decision #7: session:update Full Resource
 Send complete session object (not minimal delta).
 
@@ -489,63 +538,42 @@ User-facing errors via `error` event (no more console-only errors).
 
 ### Schema Validation (ajv)
 
-Per Test Architecture (Decision 1 from 06-test-architecture.md), all contracts validated with ajv.
+Contract validation against these specs is **implemented** in `backend/tests/helpers/contract-validator.js`, which compiles the OpenAPI/AsyncAPI schemas with ajv (+ `ajv-formats`) and exposes:
 
-**Setup** (coming in Phase 6):
-```javascript
-const Ajv = require('ajv');
-const addFormats = require('ajv-formats');
-const openapi = require('./openapi.yaml');
-const asyncapi = require('./asyncapi.yaml');
-
-const ajv = new Ajv({ strict: true, allErrors: true });
-addFormats(ajv);
-
-// Compile schemas
-const validateSession = ajv.compile(openapi.components.schemas.Session);
-const validateSyncFull = ajv.compile(asyncapi.components.messages.SyncFull.payload);
-
-// Validate responses
-const isValid = validateSession(response);
-if (!isValid) console.error(validateSession.errors);
-```
+- `validateHTTPRequest(body, path, method)` — validate a request body against the OpenAPI `requestBody` schema
+- `validateHTTPResponse(response, path, method, status)` — validate a response against the OpenAPI response schema
+- `validateWebSocketEvent(eventData, eventName)` — validate a WebSocket payload against its AsyncAPI message
+- `getHTTPRequestSchema` / `getHTTPSchema` / `getWebSocketSchema` — extract the raw JSON Schema
 
 ### Contract Tests
 
-Per Test Architecture, proper test pyramid:
-- **100+ unit tests**: Business logic
-- **30-40 contract tests**: API compliance (ajv validation)
-- **5-10 integration tests**: End-to-end flows
+Contract tests under `backend/tests/contract/` use the validator above to assert backend payloads match these specs. Scanner payload formats (ESP32 + PWA) are validated against the OpenAPI request schemas in `tests/contract/scanner/request-schema-validation.test.js`. Run with `npm run test:contract` (or `npm test` for unit + contract).
 
 ---
 
 ## Breaking Changes
-
-See `MIGRATION-GUIDE.md` for comprehensive migration documentation.
 
 ### Critical Breaking Changes
 
 1. **Field Renames**:
    - `scannerId` → `deviceId` (everywhere)
    - `sessionId` → `id` (within session resource)
-   - `video:status.current` → `video:status.status`
 
 2. **Added Required Fields**:
-   - `video:status.queueLength` (REQUIRED)
-   - `session.teams` array (target state)
+   - `session.teams` array
 
 3. **Wrapped Envelopes**:
    - `gm:identified` now wrapped
-   - `video:status` now wrapped
 
 4. **Transport Changes**:
    - Admin commands moved from HTTP POST to WebSocket `gm:command`
 
-5. **Eliminated Events**:
+5. **Eliminated Events** (all replaced by `sync:full` and the unified `service:state` event):
    - `state:sync` (use `sync:full`)
-   - `state:update` (use domain events)
+   - `state:update` (use `service:state` domain events)
    - `score:updated` (use `transaction:new.teamScore`, `score:adjusted`, `transaction:deleted.updatedTeamScore`)
    - `session:new/paused/resumed/ended` (use `session:update` with status)
+   - `video:status` and all per-service discrete state events (`gameclock:status`, `bluetooth:device`, `lighting:scene`, `audio:routing`, `held:*`, `cue:status`, `audio:ducking:status`) — replaced by the unified `service:state` event. Video state now rides `service:state` domain `video` (the old `current` → `status` rename and `queueLength` addition were superseded by the domain schema).
 
 ---
 
@@ -570,7 +598,7 @@ See `MIGRATION-GUIDE.md` for comprehensive migration documentation.
 ### Modifying Existing Endpoint
 
 1. Update contract specification
-2. Document breaking changes in MIGRATION-GUIDE.md
+2. Document breaking changes inline (and in the Breaking Changes section above)
 3. Update affected contract tests
 4. Coordinate backend + scanner changes
 5. Update examples in README
@@ -600,18 +628,17 @@ See `MIGRATION-GUIDE.md` for comprehensive migration documentation.
 
 ## Support
 
-**Questions?** See documentation:
-- Alignment Decisions: `docs/api-alignment/04-alignment-decisions.md`
-- Functional Requirements: `docs/api-alignment/08-functional-requirements.md`
-- Essential API List: `docs/api-alignment/09-essential-api-list.md`
+**Questions?** See the archived historical planning docs:
+- Alignment Decisions: `docs/ARCHIVE/api-alignment/04-alignment-decisions.md`
+- Functional Requirements: `docs/ARCHIVE/api-alignment/08-functional-requirements.md`
+- Essential API List: `docs/ARCHIVE/api-alignment/09-essential-api-list.md`
 
 **Validation Issues?** Check:
-- Test Architecture: `docs/api-alignment/06-test-architecture.md`
-- Test Analysis: `docs/api-alignment/05-test-analysis.md`
+- Test Architecture: `docs/ARCHIVE/api-alignment/06-test-architecture.md`
+- Test Analysis: `docs/ARCHIVE/api-alignment/05-test-analysis.md`
 
 ---
 
 **Contract Version**: 1.0.0
-**Last Updated**: 2025-09-30
-**Phase**: 5 - Contract Formalization Complete
-**Next Phase**: 6 - Create Refactor Plan
+**Last Updated**: 2026-06-18
+These contracts reflect the live, implemented API (HTTP + WebSocket), kept in sync with the backend via contract tests.

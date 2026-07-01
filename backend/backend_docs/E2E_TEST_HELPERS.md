@@ -220,14 +220,14 @@ socket.on('session:update', (eventData) => {
   console.log('Teams:', eventData.data.teams);
 });
 
-// Video status
-socket.on('video:status', (eventData) => {
-  console.log('Video:', eventData.data.status, 'Queue length:', eventData.data.queueLength);
-});
-
-// Queue updates
-socket.on('video:queue:update', (eventData) => {
-  console.log('Queue items:', eventData.data.items);
+// Video status + queue (delivered via unified service:state, domain 'video')
+// video:status and video:queue:update discrete events were removed — all
+// service domain state now arrives on service:state as {domain, state}.
+socket.on('service:state', (eventData) => {
+  if (eventData.data.domain !== 'video') return;
+  const state = eventData.data.state; // videoQueueService.getState()
+  console.log('Video:', state.status, 'Queue length:', state.queueLength);
+  console.log('Queue items:', state.queue);
 });
 
 // Group completion

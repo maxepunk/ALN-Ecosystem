@@ -29,3 +29,15 @@ describe('Logger Error Serialization', () => {
     });
   });
 });
+
+describe('Logger process-safety', () => {
+  test('does not exit the process on a logged exception/rejection (exitOnError is false)', () => {
+    const logger = require('../../../src/utils/logger');
+    // Winston exits the process after its exceptionHandlers/rejectionHandlers run
+    // when exitOnError is true (the default). Because this logger configures those
+    // handlers, a default exitOnError would process.exit(1) the orchestrator on ANY
+    // unhandled rejection (and kill Playwright workers in E2E). The orchestrator
+    // must survive a stray rejection, so exitOnError MUST be false.
+    expect(logger.exitOnError).toBe(false);
+  });
+});

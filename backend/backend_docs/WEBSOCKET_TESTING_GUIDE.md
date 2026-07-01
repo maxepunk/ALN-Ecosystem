@@ -6,23 +6,22 @@ This folder contains comprehensive WebSocket analysis and testing guides for the
 
 ### Core Documents
 
-1. **WEBSOCKET_ANALYSIS.md** (1493 lines)
-   - Complete deep dive into WebSocket architecture
-   - Event flow patterns with timing diagrams
-   - Service coordination and state synchronization
-   - Detailed race condition analysis
-   - Full E2E test examples
-
-2. **WEBSOCKET_QUICK_REFERENCE.md** (this file)
+1. **WEBSOCKET_TESTING_GUIDE.md** (this file)
    - Quick lookup tables
    - Common commands and payloads
    - Debugging checklist
    - Template test structures
 
+2. **WEBSOCKET_QUICK_REFERENCE.md**
+   - Event reference and AsyncAPI mapping (incl. the unified `service:state` model)
+   - Common commands and payloads
+
 3. **CLAUDE.md** (project instructions)
    - Overall system architecture
    - Contract-first development approach
    - Key service patterns
+
+_(The former WEBSOCKET_ANALYSIS.md deep-dive was removed 2026-06-18 as superseded by the above + `contracts/asyncapi.yaml`; recover from git history if ever needed.)_
 
 ### Contract Documents
 
@@ -145,16 +144,17 @@ npm test -- my-websocket-feature.test.js
 
 ### Event Categories
 
-**Initiated by Client:**
+**Initiated by Client (the only inbound WebSocket events — see `src/server.js`):**
 - `transaction:submit` - GM submits token scan
-- `gm:command` - Admin control commands (11 types)
+- `gm:command` - Admin control commands (59 actions; see `case` list in `src/services/commandExecutor.js`)
 - `sync:request` - Request full state sync
-- `heartbeat` - Keep-alive signal
+
+> There is no `heartbeat` WebSocket event. HTTP-only devices (player scanner, ESP32) heartbeat by polling `GET /health?deviceId=X&type=player` — handled by `heartbeatMonitorService`, not WebSocket.
 
 **Broadcast by Server:**
 - `transaction:new` - New transaction in session (carries teamScore)
 - `score:adjusted` - Admin score adjustment
-- `video:status` - Video playback state
+- `service:state` - Unified service domain state (`{domain, state}`); domain `video` carries video playback state. Sole push mechanism for 10 domains
 - `sync:full` - Complete state snapshot
 - `device:connected`/`device:disconnected` - Device tracking
 - `session:update` - Session state change
@@ -171,20 +171,26 @@ npm test -- my-websocket-feature.test.js
 
 ## Common Test Patterns
 
-### Pattern 1: Simple Event-Response
+### Pattern 1: Simple Command-Ack Round-Trip
+
+Every `gm:command` is acknowledged with a `gm:command:ack` envelope whose
+`data` is `{action, success, message}` (see `adminEvents.js handleGmCommand`).
+This is the canonical client round-trip for tests:
 
 ```javascript
-it('should respond to heartbeat', async () => {
-  const ackListener = waitForEvent(socket, 'heartbeat:ack');
-  
-  socket.emit('heartbeat', {
-    event: 'heartbeat',
-    data: { stationId: 'TEST_GM_1' },
+it('should ack a gm:command', async () => {
+  const ackListener = waitForEvent(socket, 'gm:command:ack');
+
+  socket.emit('gm:command', {
+    event: 'gm:command',
+    data: { action: 'session:start', payload: {} },
     timestamp: new Date().toISOString()
   });
 
   const ackEvent = await ackListener;
-  expect(ackEvent.event).toBe('heartbeat:ack');
+  expect(ackEvent.event).toBe('gm:command:ack');
+  expect(ackEvent.data.action).toBe('session:start');
+  expect(ackEvent.data.success).toBe(true);
 });
 ```
 
@@ -386,7 +392,7 @@ it('should match AsyncAPI contract', async () => {
 | transaction:result | 10ms | Direct response |
 | transaction:new | 15ms | After result sent (carries teamScore) |
 | sync:full | 100ms | Complete state rebuild |
-| video:status | 25ms | If token has video |
+| service:state (domain video) | 25ms | Video state push (debounced 50ms per domain; `video:failed` bypasses debounce) |
 
 ### Test Timeout Recommendations
 
@@ -412,7 +418,7 @@ const syncListener = waitForEvent(socket, 'event:name', 5000);  // 5 seconds
 
 ## References
 
-- **Full Analysis**: See WEBSOCKET_ANALYSIS.md (1493 lines)
+- **Event Reference**: See `WEBSOCKET_QUICK_REFERENCE.md` and `backend/contracts/asyncapi.yaml` (the former WEBSOCKET_ANALYSIS.md deep-dive was removed 2026-06-18; in git history if needed)
 - **Contract**: See backend/contracts/asyncapi.yaml
 - **Test Helpers**: See backend/tests/helpers/websocket-helpers.js
 - **Contract Validator**: See backend/tests/helpers/contract-validator.js

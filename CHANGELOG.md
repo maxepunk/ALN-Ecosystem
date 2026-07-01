@@ -3,6 +3,33 @@
 Notable changes are recorded here. Format roughly follows
 [Keep a Changelog](https://keepachangelog.com/). Dates are ISO-8601.
 
+## [2026-06-18] Phase 2 platform refactor merged to main
+
+**Summary:** The long-running `claude/game-system-review-refactor` branch
+(environment control, service-health architecture, unified `service:state`,
+MPD music cutover, show-control engine, scoreboard enhancements) merged to
+`main` as a coordinated 5-repo set: parent PR #17 plus submodule PRs
+ALNScanner #10, ALNPlayerScan #5, arduino-cyd #6, ALN-TokenData #1. Parent
+gitlinks were re-pinned to the merged submodule `main` tips before merge
+(`d2b923dc`); merge commit `9a683d9c`.
+
+### Fixed
+- **5 show-control bugs** found during local Pi 5 end-to-end validation plus
+  a scoped code review (commit `d37a19b3`):
+  - Winston logger `exitOnError: false` — an unhandled rejection no longer
+    `process.exit()`s the orchestrator (had been crashing the server and E2E
+    workers).
+  - Cue-engine video-progress correlation (F-SHOW-08): `timelineRuntime`
+    now reads the token id from `data.tokenId ?? data.queueItem?.tokenId`,
+    so progress events match the correct compound cue.
+  - Compound-cue `at:0` ack: `fireEntries` no longer blocks the `cue:fire`
+    acknowledgement on an `at:0` sound's completion (completion is tracked
+    non-blocking).
+  - `sound:error` no longer causes a duck under-flow — un-ducking happens on
+    `sound:stopped`, not on a sound that never started.
+  - `lightingService.refreshScenes()` emits the preserved scene cache rather
+    than an empty failure result when a refresh fails.
+
 ## [2026-05-21]
 
 ### Fixed

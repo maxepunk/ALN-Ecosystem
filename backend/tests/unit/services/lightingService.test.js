@@ -423,6 +423,28 @@ describe('LightingService', () => {
         scenes: [{ id: 'scene.test', name: 'Test' }],
       });
     });
+
+    it('emits the preserved cache (not an empty array) when the HA re-fetch fails', async () => {
+      // Seed the cache via a successful fetch.
+      axios.get.mockResolvedValueOnce({
+        status: 200,
+        data: [{ entity_id: 'scene.game', attributes: { friendly_name: 'Game' } }],
+      });
+      await lightingService.getScenes();
+
+      const handler = jest.fn();
+      lightingService.on('scenes:refreshed', handler);
+
+      // A transient HA failure must NOT wipe the GM's scene grid: getScenes()
+      // returns [] but deliberately preserves this._scenes, so refreshScenes must
+      // broadcast the preserved cache, not the empty failure result.
+      axios.get.mockRejectedValue(new Error('ECONNREFUSED'));
+      await lightingService.refreshScenes();
+
+      expect(handler).toHaveBeenCalledWith({
+        scenes: [{ id: 'scene.game', name: 'Game' }],
+      });
+    });
   });
 
   // ── activateScene() ──

@@ -64,12 +64,12 @@ bonus = (groupMultiplier - 1) × totalGroupBaseScore
 
 ## Implementation Locations
 
-| Component | File | Lines | Notes |
-|-----------|------|-------|-------|
-| Backend Config | `backend/src/config/index.js` | 69-83 | Base values and type multipliers |
-| Backend Group Logic | `backend/src/services/transactionService.js` | 330-387 | Group completion and bonus calculation |
-| GM Scanner Config | `ALNScanner/src/core/scoring.js` | 15-29 | SCORING_CONFIG constant |
-| GM Scanner Group Logic | `ALNScanner/src/core/dataManager.js` | 418-471 | calculateTeamScoreWithBonuses() |
+| Component | File | Symbol | Notes |
+|-----------|------|--------|-------|
+| Backend Config | `backend/src/config/index.js` | `game.valueRatingMap` / `game.typeMultipliers` | Base values and type multipliers (loaded from `ALN-TokenData/scoring-config.json`; hardcoded fallback only if the shared file is missing) |
+| Backend Group Logic | `backend/src/gameRules/scoring.js` | `isGroupComplete` / `groupBonusAmount` | Pure functions, adapted by `transactionService.js` `processScan` (live scan path) and the post-deletion rebuild |
+| GM Scanner Config | `ALNScanner/src/core/scoring.js` | `SCORING_CONFIG` | Scoring config exported (loaded via Vite import of the shared config) |
+| GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` | `_checkGroupCompletion` | Client-side group completion and bonus calculation (standalone mode) |
 
 ## CRITICAL: Parity Warning
 

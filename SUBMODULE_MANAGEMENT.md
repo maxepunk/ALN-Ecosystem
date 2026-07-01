@@ -11,8 +11,9 @@ ALN-Ecosystem/                      # Parent repository
 ├── ALN-TokenData/                 # Direct submodule (token definitions)
 ├── ALNScanner/                    # Scanner submodule
 │   └── data/ → ALN-TokenData      # Nested submodule
-└── aln-memory-scanner/            # Scanner submodule
-    └── data/ → ALN-TokenData      # Nested submodule
+├── aln-memory-scanner/            # Scanner submodule
+│   └── data/ → ALN-TokenData      # Nested submodule
+└── arduino-cyd-player-scanner/    # ESP32 scanner submodule
 ```
 
 ## The Problem We Solved
@@ -47,9 +48,12 @@ This configuration is set for:
 - `ALN-TokenData` (direct reference)
 - `ALNScanner` (scanner repository)
 - `aln-memory-scanner` (scanner repository)
+- `arduino-cyd-player-scanner` (ESP32 scanner repository)
 - Nested `data` submodules within each scanner
 
 ## Quick Commands
+
+> **Note:** The `npm run sync*` scripts live in `backend/package.json` — there is **no** root `package.json`. Run them from `backend/`, e.g. `cd backend && npm run sync`. The command examples below assume you are in the `backend/` directory.
 
 ### Daily Workflow
 
