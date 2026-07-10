@@ -34,6 +34,7 @@ const stateRoutes = require('./routes/stateRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+const packRoutes = require('./routes/packRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const createMusicRouter = require('./routes/musicRoutes');
 
@@ -116,6 +117,7 @@ app.use('/api/state', stateRoutes);         // GET /api/state
 app.use('/api/admin', adminRoutes);         // POST /api/admin/auth, GET /api/admin/logs
 app.use('/api/music', createMusicRouter({ musicService })); // GET /api/music/{tracks,playlists}, PUT /api/music/playlists
 app.use('/api', resourceRoutes);            // GET /api/tokens
+app.use('/api', packRoutes);                // GET /api/pack/manifest, /api/pack/files/<path> (A2)
 app.use('/', healthRoutes);                 // GET /health (with optional device tracking)
 app.use('/', resourceRoutes);               // GET /scoreboard
 

@@ -312,7 +312,32 @@ components:
               - music
               - sound
               - displayStatus
+              - pack
             properties:
+              pack:
+                description: |
+                  The server's ACTIVE game pack identity (Phase 3 A2
+                  staleness visibility — the F-TOOL-05 killer). Clients
+                  compare their loaded pack contentHash against this; C1
+                  preflight fails on mismatch. `null` when the active pack
+                  directory has no pack-manifest.json (pre-pack checkout).
+                  Delivered ONLY here and in GET /health — pack identity
+                  changes at app start / new-session boundaries, never
+                  mid-session, so no push event exists for it.
+                oneOf:
+                  - type: "null"
+                  - type: object
+                    required: [packId, version, contentHash]
+                    properties:
+                      packId:
+                        type: string
+                        example: "about-last-night"
+                      version:
+                        type: string
+                        example: "1.0.0"
+                      contentHash:
+                        type: string
+                        pattern: '^sha256:[0-9a-f]{64}$'
               session:
                 description: Current session (matches Session schema from OpenAPI)
                 oneOf:
