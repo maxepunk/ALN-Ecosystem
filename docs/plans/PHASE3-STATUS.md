@@ -18,6 +18,7 @@ rebases onto main after the next parent→main merge).
 | Phase 2 (+2.x, + two review rounds, + field fixes) | ✅ merged to all mains, production-validated |
 | Phase 3.0 program + all 3.1 design docs | ✅ complete, ratified 2026-07-09 (incl. the ATTRIBUTION CORRECTION — see below) |
 | **A1 slice 1** — schemas as files, ALN as a pack, toy pack, manifest generator, 24-test contract suite | ✅ FULLY landed 2026-07-10: TokenData `0b5cd93` pushed to its origin `claude/phase3-foundations`, parent pin bumped, loud-skip guard deleted, staging dir + ref removed. Pack contract suite runs 24/24 in every checkout. |
+| **Live-state parity cluster** (field-reported stale-UI bugs) | ✅ landed 2026-07-10 on `claude/live-state-parity` (cut from main, merged into foundations): GM mode pill synced at boot (ALNScanner PR #11), musicService authoritative emits + command→push seam tests (parent PR #18), lighting health-gate CI flake root-caused (committed `.env` HA token → phantom HA WebSocket whose async down-reports race the test helper's healthy override) and neutralized in jest.config.base.js. PRs to main await owner review — **merge #18 before/with #11**. |
 | A2 runtime pack loading | ⬅ **NEXT** (backend `GET /api/pack/*`, TOKENS_PATH→PACK_PATH, staleness in sync:full//health; design: standalone-loading doc) |
 | A3 extraction slices → B0/B pages → C2/C3 | queued per program §3/§4 |
 
@@ -87,3 +88,8 @@ from the GitHub UI or any local clone
   `data/` pins past the schema commit; delete the obsolete
   `staging/tokendata-phase3-a1` ref on ALN-Ecosystem (transplant landed
   2026-07-10; sessions get 403 on branch deletion, needs owner).
+- `backend/.env` is COMMITTED with a live HA long-lived token — it made CI
+  jest runs dial a phantom Home Assistant (the lighting flake source,
+  neutralized in jest.config.base.js 2026-07-10) and is a mild
+  secret-hygiene smell. Decide someday: untrack it (deploy keeps a local
+  copy) or keep as-is.
