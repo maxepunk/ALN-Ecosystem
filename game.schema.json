@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aln.tokens/game.schema.json",
+  "title": "Game Pack Rules (game.json) — v1",
+  "description": "The rules of a game, expressed as data (Phase 3 A1; design: docs/plans/2026-06-13-phase3-1-pack-schemas.md in ALN-Ecosystem). game.json answers 'how does this game score and flow'; the pack-manifest answers 'what is in this pack'. v1 constrains to the engine-implemented subset; enum values marked HEADROOM in the design doc are included only where the engine can validate-and-reject them cleanly at load time. The AUTH FLOOR (owner decision 2026-07-09) is encoded structurally: session-lifecycle, show-control, and score-intervention accept only [\"staffed\"]. Invariants not expressible here (enforced by the contract test): mode ids unique; defaultEntity only meaningful on attribution-role modes; typeMultipliers keys must cover the token database's SF_MemoryType values.",
+  "type": "object",
+  "required": ["kind", "schemaVersion", "id", "title", "modes", "scoring", "groupRules", "duplicatePolicy", "entities", "functions", "gameClock"],
+  "additionalProperties": false,
+  "properties": {
+    "kind": { "const": "game" },
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "title": { "type": "string", "minLength": 1 },
+
+    "modes": {
+      "description": "B1: a game defines its own transaction modes (1..n). Wire 'mode' values are validated against this list at runtime.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "scoringPolicy", "entityRole", "countsTowardGroups"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "label": { "type": "string", "minLength": 1 },
+          "verb": { "type": "string" },
+          "scoringPolicy": { "enum": ["standard", "none"] },
+          "entityRole": {
+            "description": "O1/P2 (corrected 2026-07-09): what the entity field MEANS in this mode — 'ledger' = wallet/account that accumulates value; 'attribution' = byline identity receiving narrative credit (feeds the report, never score math)",
+            "enum": ["ledger", "attribution"]
+          },
+          "defaultEntity": {
+            "description": "Optional picker prefill for this mode (e.g. the anonymous NPC identity in an attribution-role mode)",
+            "type": "string",
+            "minLength": 1
+          },
+          "countsTowardGroups": { "type": "boolean" },
+          "displayBehavior": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "surface": { "enum": ["scoreboard-rankings", "scoreboard-evidence", "none"] },
+              "fields": { "type": "array", "items": { "type": "string" } },
+              "when": { "enum": ["immediate"] }
+            }
+          }
+        }
+      }
+    },
+
+    "scoring": {
+      "description": "B2/B6: pack-supplied tables over the engine's fixed formula base[rating] × mult[type]. Absorbs scoring-config.json (legacy file read as fallback during migration only).",
+      "type": "object",
+      "required": ["baseValues", "typeMultipliers"],
+      "additionalProperties": false,
+      "properties": {
+        "baseValues": {
+          "type": "object",
+          "required": ["1", "2", "3", "4", "5"],
+          "additionalProperties": false,
+          "properties": {
+            "1": { "type": "number", "minimum": 0 },
+            "2": { "type": "number", "minimum": 0 },
+            "3": { "type": "number", "minimum": 0 },
+            "4": { "type": "number", "minimum": 0 },
+            "5": { "type": "number", "minimum": 0 }
+          }
+        },
+        "typeMultipliers": {
+          "description": "Keys are the token database's SF_MemoryType values; UNKNOWN is the required fallback for null/unrecognized types",
+          "type": "object",
+          "required": ["UNKNOWN"],
+          "minProperties": 2,
+          "properties": {
+            "UNKNOWN": { "type": "number", "minimum": 0 }
+          },
+          "additionalProperties": { "type": "number", "minimum": 0 }
+        },
+        "display": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "unit": { "type": "string" },
+            "format": { "type": "string" }
+          }
+        },
+        "semantics": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "allowNegative": { "type": "boolean" } }
+        }
+      }
+    },
+
+    "groupRules": {
+      "description": "B3/A1. v1 engine implements type 'all'; 'threshold' and 'ordered' are schema headroom — a pack declaring them is REJECTED at load until the engine grows the variant.",
+      "type": "object",
+      "required": ["type", "minSize"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["all", "threshold", "ordered"] },
+        "minSize": { "type": "integer", "minimum": 2 },
+        "completion": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "bonusFormula": { "enum": ["multiplier-minus-one-times-base"] }
+          }
+        }
+      }
+    },
+
+    "duplicatePolicy": {
+      "description": "A2: token claim consumption. v1 engine implements claim 'once' (FCFS, session-scoped, all transacting modes).",
+      "type": "object",
+      "required": ["claim"],
+      "additionalProperties": false,
+      "properties": {
+        "claim": { "enum": ["once", "per-entity", "unlimited"] },
+        "view": { "enum": ["unlimited"] }
+      }
+    },
+
+    "entities": {
+      "description": "O1/P1: the score-holder is an abstract ledger; the pack names it and sets creation policy. Wire field remains teamId (alias) through Phase 3.",
+      "type": "object",
+      "required": ["label", "creation", "membership"],
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "object",
+          "required": ["singular", "plural"],
+          "additionalProperties": false,
+          "properties": {
+            "singular": { "type": "string", "minLength": 1 },
+            "plural": { "type": "string", "minLength": 1 }
+          }
+        },
+        "creation": { "enum": ["freeform-at-action", "pre-registered", "both"] },
+        "membership": { "enum": ["untracked", "roster"] }
+      }
+    },
+
+    "functions": {
+      "description": "O2/P4: pack assigns engine functions to device classes, validated against class affordances (P5) at design time. AUTH FLOOR (owner 2026-07-09): the three floor functions are structurally locked to [\"staffed\"] — a pack cannot assign them lower, by schema.",
+      "type": "object",
+      "required": ["view-content", "transact", "entity-binding", "session-lifecycle", "show-control", "score-intervention", "report-intake"],
+      "additionalProperties": false,
+      "properties": {
+        "view-content": { "$ref": "#/$defs/assignableFunction" },
+        "transact": {
+          "type": "object",
+          "required": ["classes"],
+          "additionalProperties": false,
+          "properties": {
+            "classes": { "$ref": "#/$defs/classList" },
+            "modes": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          }
+        },
+        "entity-binding": { "$ref": "#/$defs/assignableFunction" },
+        "session-lifecycle": { "$ref": "#/$defs/floorFunction" },
+        "show-control": { "$ref": "#/$defs/floorFunction" },
+        "score-intervention": { "$ref": "#/$defs/floorFunction" },
+        "report-intake": { "$ref": "#/$defs/assignableFunction" }
+      }
+    },
+
+    "gameClock": {
+      "description": "B11. ALN is the degenerate case: one phase + overtime threshold. Durations in SECONDS.",
+      "type": "object",
+      "required": ["duration", "phases"],
+      "additionalProperties": false,
+      "properties": {
+        "duration": { "type": "integer", "minimum": 1 },
+        "overtimeAt": { "type": "integer", "minimum": 1 },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "start"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+              "label": { "type": "string", "minLength": 1 },
+              "start": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["at"],
+                    "additionalProperties": false,
+                    "properties": { "at": { "type": "integer", "minimum": 0 } }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["trigger"],
+                    "additionalProperties": false,
+                    "properties": { "trigger": { "type": "string", "minLength": 1 } }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "lightingRoles": {
+      "description": "B8: the pack's lighting vocabulary; cues reference these names, the installation profile binds them to instruments. Optional until the role-extraction slice.",
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+      "uniqueItems": true
+    },
+
+    "strings": { "type": "string", "pattern": "\\.json$" },
+    "theme": { "type": "string", "pattern": "\\.json$" },
+    "cues": { "type": "string", "pattern": "\\.json$" },
+
+    "surfaces": {
+      "description": "B12 headroom: engine built-in surfaces, themable per pack. Optional until the surfaces slice.",
+      "type": "object"
+    },
+
+    "report": {
+      "description": "B9: the bundle schema is engine-versioned; the pack supplies the themed rendering.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "template": { "type": "string", "minLength": 1 } }
+    }
+  },
+
+  "$defs": {
+    "classList": {
+      "type": "array",
+      "items": { "enum": ["personal", "station", "staffed"] },
+      "uniqueItems": true
+    },
+    "assignableFunction": {
+      "type": "object",
+      "required": ["classes"],
+      "additionalProperties": false,
+      "properties": { "classes": { "$ref": "#/$defs/classList" } }
+    },
+    "floorFunction": {
+      "description": "AUTH FLOOR: exactly [\"staffed\"], non-negotiable by packs",
+      "type": "object",
+      "required": ["classes"],
+      "additionalProperties": false,
+      "properties": { "classes": { "const": ["staffed"] } }
+    }
+  }
+}
