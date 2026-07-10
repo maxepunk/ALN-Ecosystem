@@ -39,3 +39,27 @@ rebind protection may drop public names resolving to RFC1918 addresses.
 - Spike S2 is unchanged (run at home; proves cert mechanics). Optional
   five-minute extension: phone joins kit WiFi → name resolves via local
   DNS → no cert warning.
+
+## Router hardware (owner, 2026-07-09)
+
+Owner owns a **TP-Link Archer** and will dedicate it to the kit, with the
+requirement that guidance be **router-agnostic** (hardware must be
+replaceable).
+
+**Architecture consequence — DNS lives on the Pi, not the router.** Stock
+consumer firmware (TP-Link included) often cannot serve custom local DNS
+records, and router-resident config dies with the hardware. Instead:
+
+- The **Pi runs dnsmasq** as the LAN's DNS server (answering
+  `play.aboutlastnightgame.com` → its own reserved IP, forwarding
+  everything else upstream when internet exists).
+- The router's ONLY required capabilities — supported by virtually every
+  consumer router including stock Archers — are: (1) WPA2 AP with a fixed
+  SSID, (2) a DHCP reservation for the Pi, (3) a DHCP option handing out
+  the Pi's IP as the network's DNS server.
+- E2 guidance is therefore written as a 3-requirement checklist (any
+  router) + a model-specific appendix (the owned Archer's menus). Swapping
+  hardware = re-doing three settings; all logic stays in the kit's
+  versioned Pi config.
+- Failure note: if the Pi is down, LAN DNS is down — acceptable, since
+  nothing the name points to works without the Pi anyway.

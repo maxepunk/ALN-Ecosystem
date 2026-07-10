@@ -48,6 +48,7 @@ from this draft after review).
       "label": "Black Market",
       "verb": "Sell",                       // strings used by scanners/report
       "scoringPolicy": "standard",          // v1 enum: standard | none (B2)
+      "entityRole": "ledger",               // O1/P2: entity field = wallet/shell account here
       "countsTowardGroups": true,           // A1: only these modes complete groups
       "displayBehavior": {                  // B5: what an accepted tx shows where
         "surface": "scoreboard-rankings",
@@ -59,6 +60,12 @@ from this draft after review).
       "label": "Detective",
       "verb": "Expose",
       "scoringPolicy": "none",
+      "entityRole": "attribution",          // O1/P2: entity field = BYLINE here — who
+                                            // gets narrative credit for the exposure
+      "defaultEntity": "Nova",              // picker default: the anonymous NPC identity;
+                                            // players opt into credit by selecting/typing
+                                            // their character instead (current ALN practice,
+                                            // now declared as pack data)
       "countsTowardGroups": false,
       "displayBehavior": {
         "surface": "scoreboard-evidence",
@@ -108,34 +115,37 @@ from this draft after review).
                                             // headroom: roster (B4 follow-up elicitation)
   },
 
-  // ── O1 PROPOSAL (P2): attribution — separate axis from the ledger ──
-  // Who gets NARRATIVE credit, distinct from which ledger scores. Feeds
-  // the B9 report bundle, never the score math.
-  "attribution": {
-    "default": { "id": "nova", "label": "Nova", "kind": "npc" },  // anonymous-by-default via NPC
-    "optIn": {
-      "enabled": true,
-      "kind": "character"                   // credit claimable by character identity
-    }
-    // v1 implementable subset: the DEFAULT is engine-applied to every
-    // transaction's attribution field; opt-in credit is captured via the
-    // Track D report intake (no in-flow UI yet). The schema is the
-    // contract; the capture surface grows in Phase 4 (Track E).
-  },
+  // ── O1 (P2), CORRECTED 2026-07-09: attribution rides the entity slot ──
+  // Owner correction: attribution is NOT a separate capture mechanism to
+  // build — ALN already captures it in-system, at transaction time,
+  // through the entity field's MODE-DEPENDENT semantics:
+  //   • blackmarket: entity = LEDGER (wallet / shell account, accumulates value)
+  //   • detective:   entity = ATTRIBUTION (byline — 'Nova' NPC by default,
+  //     a character's name when a player claims credit); flows to the
+  //     report's Detective Evidence Log "Exposed By" column, which the
+  //     GenAI pipeline consumes.
+  // The schema therefore declares the ROLE of the entity field per mode
+  // (see modes[].entityRole / modes[].defaultEntity below) instead of a
+  // separate attribution block. HEADROOM (not built): a future game whose
+  // single transaction must BOTH score a ledger AND credit an identity
+  // would add a second per-transaction field — noted here so the seam is
+  // named, implemented only when a game needs it.
 
-  // ── O2 PROPOSAL (P4): function assignment table ────────────────────
+  // ── O2 (P4): function assignment table ─────────────────────────────
   // Functions are the engine's fixed vocabulary; packs assign them to
   // device classes (registry in §3). Assignments are validated against
   // class AFFORDANCES (P5) at design time, and against the AUTH FLOOR
-  // (O3, design pending — floor candidates marked).
+  // (O3, DECIDED 2026-07-09: three-function floor — session-lifecycle,
+  // show-control, and score-intervention are permanently staffed-only;
+  // the tooling REJECTS packs that assign them lower).
   "functions": {
     "view-content":       { "classes": ["personal", "station", "staffed"] },
     "transact":           { "classes": ["staffed"], "modes": ["blackmarket", "detective"] },
     "entity-binding":     { "classes": [] },          // ALN: stations unbound
-    "session-lifecycle":  { "classes": ["staffed"] }, // O3 floor candidate
-    "show-control":       { "classes": ["staffed"] }, // O3 floor candidate
-    "score-intervention": { "classes": ["staffed"] }, // O3 floor candidate
-    "report-intake":      { "classes": ["staffed"] }
+    "session-lifecycle":  { "classes": ["staffed"] }, // AUTH FLOOR (fixed)
+    "show-control":       { "classes": ["staffed"] }, // AUTH FLOOR (fixed)
+    "score-intervention": { "classes": ["staffed"] }, // AUTH FLOOR (fixed)
+    "report-intake":      { "classes": ["staffed"] }  // assignable (not floor)
   },
 
   // ── B11: game clock + phases ───────────────────────────────────────
@@ -186,7 +196,7 @@ from this draft after review).
 | groupRules | `all` + minSize 2 | `threshold`, `ordered` (+ `group:completed` progress field, B3 contract review) |
 | duplicatePolicy | `claim: once` | per-entity, unlimited |
 | entities | freeform-at-action, untracked | pre-registered, roster (B4 elicitation pending) |
-| attribution | engine-applied default; intake via Track D | in-flow opt-in UI (Phase 4 / Track E) |
+| attribution | per-mode entityRole (ledger/attribution) + defaultEntity picker prefill — the CURRENT ALN mechanism, now pack data | dual-axis transactions (ledger + credit on one tx) for a game that needs both |
 | functions | ALN assignment enforced server-side (= today's behavior, now data) | non-ALN assignments (toy pack exercises ONE: e.g. station view+transact bound) |
 | gameClock | duration + overtimeAt + single phase | multi-phase, trigger-driven starts |
 | surfaces | built-in three, themable | pack-defined surfaces |
@@ -335,20 +345,26 @@ Kills the `"(xN)"` microformat. v2 token (changes only):
 - Loader accepts both during migration (v2 first, v1 fallback with the
   parse shim that exists today).
 
-## 5. Open points for owner review (the only decisions in this doc)
+## 5. Review points — RESOLVED (owner, 2026-07-09)
 
-1. **O1 naming:** "entity" as the engine term with pack-supplied labels
-   ("Account" for ALN) — and `teamId` kept as the wire alias through
-   Phase 3. OK?
-2. **O1 attribution v1 scope:** engine applies the pack default to every
-   transaction; opt-in credit captured via report intake (Track D), with
-   in-flow capture deferred to Phase 4. OK?
-3. **O2 affordance floor for stations** as written (coarse-tap, no text
-   entry) — matches the CYD hardware audit. OK?
-4. **O3 floor candidates** marked in `functions` (session-lifecycle,
-   show-control, score-intervention staffed-only regardless of pack):
-   this is my recommendation going INTO the O3 design section, not a
-   decision here.
-5. **scoring-config.json absorption** into game.json (with fallback shim
-   during migration) — retires one shared file and the F-TOOL-05 class
-   with it once A2 runtime loading lands. OK?
+1. **O1 naming: APPROVED as proposed** — engine term "entity", pack
+   labels, `teamId` stays the wire alias through Phase 3; wire rename is
+   its own later slice.
+2. **O1 attribution: CORRECTED, then resolved.** The original draft
+   invented a separate attribution field + report-time capture. Owner
+   correction: attribution ALREADY happens in-system via the entity
+   field's detective-mode semantics (Nova default / character credit →
+   report "Exposed By"). Schema now expresses this as per-mode
+   `entityRole` + `defaultEntity` (see §1). No new capture machinery in
+   Phase 3; report intake (Track D) and player-platform claim flows
+   (Phase 4) ENRICH this mechanism rather than replace it.
+3. **O2 station affordance floor:** proceeding as written (coarse-tap
+   only) — no objection raised; matches the CYD hardware audit.
+4. **O3 auth floor: DECIDED — three-function floor.** session-lifecycle,
+   show-control, and score-intervention are permanently
+   operator-credentialed regardless of pack assignment; everything else
+   (view-content, transact, entity-binding, report-intake) is freely
+   assignable. This is now an INPUT to the O3 one-auth design doc, not a
+   candidate.
+5. **scoring-config.json absorption:** proceeding (no objection) — moves
+   into game.json with a fallback shim during migration.
