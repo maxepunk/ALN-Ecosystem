@@ -260,11 +260,33 @@ class MusicService extends EventEmitter {
     }
   }
 
-  async play()     { return this._send(c => c.sendCommand('play')); }
-  async pause()    { return this._send(c => c.sendCommand('pause 1')); }
-  async stop()     { return this._send(c => c.sendCommand('stop')); }
-  async next()     { return this._send(c => c.sendCommand('next')); }
-  async previous() { return this._send(c => c.sendCommand('previous')); }
+  /**
+   * Post-command state refresh. Mutating commands must not depend on MPD's
+   * idle notification for their own effect to become visible: the mpd2 idle
+   * FIFO can desync silently — commands keep succeeding while notifications
+   * never arrive, so every GM panel freezes until a manual sync:full. After a
+   * successful command we re-read status through the same diff-and-emit path
+   * the idle handlers use, so the service events (and the service:state push
+   * wired to them) fire even when idle is dead. A refresh failure never fails
+   * the command that already succeeded; a refresh TIMEOUT still trips _send's
+   * client teardown, so a wedged client is detected at the next command
+   * instead of never.
+   * @param {'player'|'mixer'} kind - which idle handler's read to reuse
+   */
+  async _refreshAfterCommand(kind = 'player') {
+    try {
+      if (kind === 'mixer') await this._handleMixerEvent();
+      else await this._handlePlayerEvent();
+    } catch (err) {
+      this._logErr(err);
+    }
+  }
+
+  async play()     { await this._send(c => c.sendCommand('play'));     await this._refreshAfterCommand(); }
+  async pause()    { await this._send(c => c.sendCommand('pause 1'));  await this._refreshAfterCommand(); }
+  async stop()     { await this._send(c => c.sendCommand('stop'));     await this._refreshAfterCommand(); }
+  async next()     { await this._send(c => c.sendCommand('next'));     await this._refreshAfterCommand(); }
+  async previous() { await this._send(c => c.sendCommand('previous')); await this._refreshAfterCommand(); }
 
   async setVolume(v) {
     if (typeof v !== 'number' || !Number.isFinite(v)) {
@@ -273,7 +295,8 @@ class MusicService extends EventEmitter {
     if (v < 0 || v > 100) {
       throw new Error(`Volume out of range: ${v}`);
     }
-    return this._send(c => c.sendCommand(`setvol ${Math.round(v)}`));
+    await this._send(c => c.sendCommand(`setvol ${Math.round(v)}`));
+    await this._refreshAfterCommand('mixer');
   }
 
   /**
@@ -286,15 +309,33 @@ class MusicService extends EventEmitter {
     if (typeof position !== 'number' || !Number.isFinite(position) || position < 0) {
       throw new Error(`Invalid seek position: ${position}`);
     }
-    return this._send(c => c.sendCommand(`seekcur ${Math.round(position)}`));
+    await this._send(c => c.sendCommand(`seekcur ${Math.round(position)}`));
+    await this._refreshAfterCommand();
   }
 
+  /**
+   * Shuffle/loop mutate MPD's `options` idle subsystem, which we deliberately
+   * do not subscribe to — so the service's own fields are the source of truth
+   * for these two flags and must be updated here, or getState() (and every
+   * sync:full) keeps returning the load-time values forever. No playlist
+   * loaded = nothing to reflect the flag in (the GM UI only offers these
+   * toggles with a playlist loaded); MPD still accepted the command and the
+   * next loadPlaylist() re-asserts both flags from playlist config.
+   */
   async setShuffle(enabled) {
-    return this._send(c => c.sendCommand(`random ${enabled ? 1 : 0}`));
+    await this._send(c => c.sendCommand(`random ${enabled ? 1 : 0}`));
+    if (this.playlist) {
+      this.playlist.shuffle = !!enabled;
+      this.emit('playlist:changed', { ...this.playlist });
+    }
   }
 
   async setLoop(enabled) {
-    return this._send(c => c.sendCommand(`repeat ${enabled ? 1 : 0}`));
+    await this._send(c => c.sendCommand(`repeat ${enabled ? 1 : 0}`));
+    if (this.playlist) {
+      this.playlist.loop = !!enabled;
+      this.emit('playlist:changed', { ...this.playlist });
+    }
   }
 
   _quoteMpdArg(s) {
@@ -473,8 +514,14 @@ class MusicService extends EventEmitter {
       };
       const changed = !this.track || this.track.file !== newTrack.file
         || this.track.title !== newTrack.title;
+      const positionMoved = !changed && this.track.position !== newTrack.position;
       this.track = newTrack;
       if (changed) this.emit('track:changed', { track: { ...newTrack } });
+      // Same track, new position (seek, or elapsed time on a post-command
+      // refresh): track:changed deliberately ignores position, so without
+      // this the GM progress bar keeps extrapolating from the stale value.
+      // Internal event only — the wire delivery is still service:state.
+      else if (positionMoved) this.emit('position:changed', { position: newTrack.position });
     } else if (this.track) {
       this.track = null;
       this.emit('track:changed', { track: null });
