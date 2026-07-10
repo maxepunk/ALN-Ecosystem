@@ -1,9 +1,11 @@
 # Phase 3 Program — Engine/Game-Pack Separation & Platform Build
 
 **Date:** 2026-06-11 (this is the Phase 3.0 design doc)
-**Status:** Draft for owner review. One decision requires ratification
-(§7 Definition of Done); everything else synthesizes already-made
-decisions into an executable structure.
+**Status:** ACTIVE — DoD RATIFIED by owner (2026-06-12): Phase 3 = A+B+C
+gated by the toy-pack proof; Tracks D and E moved OUT to **Phase 4** (not
+parallel tracks) with E1 spikes + E2 cert/domain + O3 auth DESIGN retained
+inside Phase 3 (E2 reclassified as Track C infrastructure). Live execution
+state: docs/plans/PHASE3-STATUS.md.
 **Companion deliverable:** the 3.1 schema drafts (game.json,
 pack-manifest, installation-profile) follow this doc.
 
@@ -181,17 +183,17 @@ how-to-make-a-game-by-example.
    firmware-shipped and tiny (P6, affordance-constrained). Decide the v1
    primitive list with E5, not before the spikes.
 
-## 7. Definition of Done — REQUIRES OWNER RATIFICATION
+## 7. Definition of Done — RATIFIED (owner, 2026-06-12)
 
-**Recommendation:** Phase 3 completes when **A + B + C** are done and
-the Phase 4 gate passes (toy pack + tier ladder). **D and E are named
-parallel tracks with their own gates**, started during Phase 3 but not
-holding the phase boundary; they improve a game that already runs,
-while A is what everything compounds on.
-
-The alternative — all five tracks gate the boundary — roughly doubles
-the phase and delays the falsifiable proof behind UX/platform work that
-doesn't affect it.
+Phase 3 completes when **A + B + C** are done and the toy-pack gate
+passes (second game, zero engine changes, tier ladder via capability
+profiles). **D and E are Phase 4** — a clean phase of their own after the
+foundation, NOT parallel tracks (owner: cleaner boundary, the falsifiable
+proof isn't delayed behind UX/platform work). Carve-ins that stay in
+Phase 3: E1 spikes (owner-run, information only), E2 real domain+cert
+(reclassified as Track C infrastructure — benefits Phase 3's own
+deliverables), and the O3 one-auth DESIGN (paper only; player-facing
+implementation is Phase 4).
 
 Sub-gates either way:
 - D gate: four-domain UX shipped + report intake writing B9 bundles.

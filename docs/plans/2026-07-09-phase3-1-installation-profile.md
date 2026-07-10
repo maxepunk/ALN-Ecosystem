@@ -151,7 +151,17 @@ field.
 - Legacy presets: importable one-time as `legacy-snapshot` (owner decision
   pending from the pre-read, §8.2 there); no new presets after cutover.
 
-## 6. Open points for owner review
+## 6. Review points — resolved (2026-07-09)
+
+1. **Kit router: ANSWERED** — owner's TP-Link Archer, with router-AGNOSTIC
+   guidance required; DNS logic lives on the Pi (see the kit-network
+   decision doc's Router hardware section).
+2. **stations.count as a plain dial:** proceeding (no objection).
+3. **Env-key classification:** proceeding with the infra.js-derived
+   allowlist; SESSION_TIMEOUT migrates to game.json gameClock.duration
+   (no objection).
+
+Original questions (for the record):
 
 1. Kit router: is a specific travel router model already owned/chosen, or
    should the E2 work include selecting one? (Affects whether `kitNetwork`
