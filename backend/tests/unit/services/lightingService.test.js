@@ -956,6 +956,188 @@ describe('LightingService', () => {
     });
   });
 
+  describe('WebSocket monitor — lifecycle guards', () => {
+    // These branches were previously "covered" only by contract tests
+    // accidentally dialing a phantom HA via the committed backend/.env token
+    // (removed in jest.config.base.js). The ws lifecycle is the async
+    // reporter that caused the lighting health-gate CI flake — cover it
+    // deliberately.
+    const haApiMock = (url) => {
+      if (url === 'http://localhost:8123/api/') {
+        return Promise.resolve({ status: 200 });
+      }
+      if (url === 'http://localhost:8123/api/states') {
+        return Promise.resolve({ status: 200, data: [] });
+      }
+      return Promise.reject(new Error('Unexpected URL'));
+    };
+
+    it('does not open a WebSocket when no token is configured', () => {
+      config.lighting.homeAssistantToken = '';
+
+      lightingService._connectWebSocket();
+
+      expect(mockWsInstances.length).toBe(0);
+    });
+
+    it('closes the existing WebSocket when reconnecting over a live one', async () => {
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+      const firstWs = mockWsInstances[0];
+
+      lightingService._connectWebSocket();
+
+      expect(firstWs.close).toHaveBeenCalled();
+      expect(mockWsInstances.length).toBe(2);
+    });
+
+    it('cancels a pending reconnect timer when connecting directly', async () => {
+      jest.useFakeTimers();
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+
+      mockWsInstances[0].emit('close'); // schedules a 5s reconnect
+      lightingService._connectWebSocket(); // must cancel it (2nd instance)
+
+      await jest.advanceTimersByTimeAsync(30000);
+      // No third instance from the stale timer
+      expect(mockWsInstances.length).toBe(2);
+
+      lightingService.reset();
+      jest.useRealTimers();
+    });
+
+    it('stops permanently on auth_invalid (no reconnect with a bad token)', async () => {
+      jest.useFakeTimers();
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+      const ws = mockWsInstances[0];
+
+      ws.emit('message', JSON.stringify({ type: 'auth_invalid' }));
+
+      expect(ws.close).toHaveBeenCalled();
+      ws.emit('close');
+      await jest.advanceTimersByTimeAsync(30000);
+      expect(mockWsInstances.length).toBe(1);
+
+      lightingService.reset();
+      jest.useRealTimers();
+    });
+
+    it('ignores subscription result messages and events without data', async () => {
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+      const ws = mockWsInstances[0];
+      const handler = jest.fn();
+      lightingService.on('scene:activated', handler);
+
+      expect(() => {
+        ws.emit('message', JSON.stringify({ type: 'result', success: true }));
+        ws.emit('message', JSON.stringify({ type: 'event' }));
+      }).not.toThrow();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('ignores state changes for non-scene entities', async () => {
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+      const handler = jest.fn();
+      lightingService.on('scene:activated', handler);
+
+      mockWsInstances[0].emit('message', JSON.stringify({
+        type: 'event',
+        event: { data: { entity_id: 'light.kitchen', new_state: { state: 'on' } } },
+      }));
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('falls back to the entity_id when a scene has no friendly_name', async () => {
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+      const handler = jest.fn();
+      lightingService.on('scene:activated', handler);
+
+      mockWsInstances[0].emit('message', JSON.stringify({
+        type: 'event',
+        event: { data: { entity_id: 'scene.finale', new_state: { state: 'scening', attributes: {} } } },
+      }));
+
+      expect(handler).toHaveBeenCalledWith({ sceneId: 'scene.finale', sceneName: 'scene.finale' });
+    });
+
+    it('a late close event after cleanup() must NOT report lighting down', async () => {
+      // The flake class: async down-reports landing after teardown clobber
+      // externally-asserted health state. After cleanup, the close handler
+      // must be inert.
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+      const ws = mockWsInstances[0];
+
+      await lightingService.cleanup();
+      const reportSpy = jest.spyOn(registry, 'report');
+      reportSpy.mockClear();
+
+      ws.emit('close');
+
+      expect(reportSpy).not.toHaveBeenCalledWith('lighting', 'down', expect.anything());
+    });
+
+    it('a scheduled reconnect that fires after cleanup() does not reconnect', async () => {
+      jest.useFakeTimers();
+      axios.get.mockImplementation(haApiMock);
+      await lightingService.init();
+
+      mockWsInstances[0].emit('close'); // schedules 5s reconnect
+      await lightingService.cleanup();  // sets _wsStopped
+
+      await jest.advanceTimersByTimeAsync(30000);
+      expect(mockWsInstances.length).toBe(1);
+
+      jest.useRealTimers();
+    });
+  });
+
+  describe('getScenes() — degraded short-circuits', () => {
+    it('returns [] without a round-trip when unhealthy AND no token', async () => {
+      registry.report('lighting', 'down', 'test');
+      config.lighting.homeAssistantToken = '';
+
+      const scenes = await lightingService.getScenes();
+
+      expect(scenes).toEqual([]);
+      expect(axios.get).not.toHaveBeenCalled();
+    });
+
+    it('falls back to entity_id for scenes without friendly_name', async () => {
+      registry.report('lighting', 'healthy', 'test');
+      axios.get.mockResolvedValue({
+        status: 200,
+        data: [{ entity_id: 'scene.bare', attributes: {} }],
+      });
+
+      const scenes = await lightingService.getScenes();
+
+      expect(scenes).toEqual([{ id: 'scene.bare', name: 'scene.bare' }]);
+    });
+  });
+
+  describe('_startReconnect() idempotence', () => {
+    it('does not stack a second interval when already running', async () => {
+      jest.useFakeTimers();
+      const checkSpy = jest.spyOn(lightingService, 'checkConnection').mockResolvedValue();
+
+      lightingService._startReconnect();
+      lightingService._startReconnect();
+
+      await jest.advanceTimersByTimeAsync(30000);
+      expect(checkSpy).toHaveBeenCalledTimes(1);
+
+      lightingService.reset();
+      jest.useRealTimers();
+    });
+  });
+
   describe('sceneExists()', () => {
     it('should return true when sceneId is in cached scenes', () => {
       // Populate cache directly
