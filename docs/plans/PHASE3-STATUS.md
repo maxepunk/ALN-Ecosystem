@@ -7,7 +7,7 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-07-09 · **Working branch:** `claude/phase3-foundations`
+**Last updated:** 2026-07-10 · **Working branch:** `claude/phase3-foundations`
 (parent + all four submodules; slice-sized branches begin when foundations
 rebases onto main after the next parent→main merge).
 
@@ -17,7 +17,7 @@ rebases onto main after the next parent→main merge).
 |---|---|
 | Phase 2 (+2.x, + two review rounds, + field fixes) | ✅ merged to all mains, production-validated |
 | Phase 3.0 program + all 3.1 design docs | ✅ complete, ratified 2026-07-09 (incl. the ATTRIBUTION CORRECTION — see below) |
-| **A1 slice 1** — schemas as files, ALN as a pack, toy pack, manifest generator, 24-test contract suite | ✅ landed (parent `30c70c3`..`509213f`) — with ONE pending transplant (blocker below) |
+| **A1 slice 1** — schemas as files, ALN as a pack, toy pack, manifest generator, 24-test contract suite | ✅ FULLY landed 2026-07-10: TokenData `0b5cd93` pushed to its origin `claude/phase3-foundations`, parent pin bumped, loud-skip guard deleted, staging dir + ref removed. Pack contract suite runs 24/24 in every checkout. |
 | A2 runtime pack loading | ⬅ **NEXT** (backend `GET /api/pack/*`, TOKENS_PATH→PACK_PATH, staleness in sync:full//health; design: standalone-loading doc) |
 | A3 extraction slices → B0/B pages → C2/C3 | queued per program §3/§4 |
 
@@ -31,23 +31,20 @@ column. Encoded in game.schema.json (`modes[].entityRole` /
 `defaultEntity`). Do not reintroduce a separate attribution field; the
 schema doc §5.2 records the correction.
 
-## 🔴 Active blocker: submodule WRITE access
+## ✅ Blocker RESOLVED (2026-07-10): submodule WRITE access
 
-Sessions can READ all repos but can only PUSH to maxepunk/ALN-Ecosystem —
-the git proxy scopes writes to the session's SOURCES, and add_repo tooling
-is not exposed. **Fix: owner creates sessions with the four submodule repos
-added as sources** (ALN-TokenData, ALNScanner, ALNPlayerScan,
-arduino-cyd-player-scanner).
+The fix worked: sessions created with the four submodule repos added as
+sources (ALN-TokenData, ALNScanner, ALNPlayerScan,
+arduino-cyd-player-scanner) can push to all of them — verified by dry-run
+AND by the real A1 transplant push. **Keep creating sessions this way**;
+a session without the submodule sources is still parent-push-only.
 
-**Pending transplant when write access exists** (full instructions:
-`docs/staging/tokendata-a1/README.md`): the A1 pack artifacts' real home is
-ALN-TokenData commit `0b5cd93` — preserved on GitHub as parent ref
-`staging/tokendata-phase3-a1` AND as plain files in that staging dir. Steps:
-push it to ALN-TokenData `claude/phase3-foundations` → bump the parent
-submodule pin → DELETE the transient loud-skip guard in
-`backend/tests/contract/pack/pack-schemas.test.js` → delete the staging dir
-+ ref. Until then the pack contract suite loud-skips in CI (24/24 green
-locally when the submodule worktree has the artifacts).
+The pending transplant is DONE: TokenData `0b5cd93` is on its origin
+`claude/phase3-foundations`, the parent pin is bumped, the loud-skip guard
+in `backend/tests/contract/pack/pack-schemas.test.js` is deleted, and
+`docs/staging/tokendata-a1/` + the `staging/tokendata-phase3-a1` ref are
+removed. From here on, a skipped pack contract suite means something is
+genuinely wrong (stale pin), not the known A1 gap.
 
 ## Session mechanics (recurring gotchas)
 

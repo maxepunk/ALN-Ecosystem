@@ -28,21 +28,7 @@ const PACKS = [
 
 const readJson = (...p) => JSON.parse(fs.readFileSync(path.join(...p), 'utf8'));
 
-// TRANSIENT pin-lag guard: the A1 pack artifacts live in the ALN-TokenData
-// submodule (commit 0b5cd93, preserved as parent ref
-// staging/tokendata-phase3-a1). Until this session-access issue is resolved
-// and the parent pin is bumped past A1, a checkout at the OLD pin lacks
-// game.schema.json — skip LOUDLY rather than fail on a known-stale pin.
-// DELETE this guard when the pin bump lands (it must never hide real drift).
-const packArtifactsPresent = fs.existsSync(path.join(TOKEN_DATA_DIR, 'game.schema.json'));
-const describePack = packArtifactsPresent ? describe : describe.skip;
-if (!packArtifactsPresent) {
-  // eslint-disable-next-line no-console
-  console.warn('SKIPPING pack schema contract: ALN-TokenData pin predates A1 '
-    + '(game.schema.json absent). Bump the submodule pin to restore coverage.');
-}
-
-describePack('game pack schema contract (A1)', () => {
+describe('game pack schema contract (A1)', () => {
   let ajv;
   let validateGame;
   let validateManifest;
