@@ -42,9 +42,15 @@ a session without the submodule sources is still parent-push-only.
 The pending transplant is DONE: TokenData `0b5cd93` is on its origin
 `claude/phase3-foundations`, the parent pin is bumped, the loud-skip guard
 in `backend/tests/contract/pack/pack-schemas.test.js` is deleted, and
-`docs/staging/tokendata-a1/` + the `staging/tokendata-phase3-a1` ref are
-removed. From here on, a skipped pack contract suite means something is
-genuinely wrong (stale pin), not the known A1 gap.
+`docs/staging/tokendata-a1/` is removed. From here on, a skipped pack
+contract suite means something is genuinely wrong (stale pin), not the
+known A1 gap.
+
+One leftover the proxy won't allow from a session (branch DELETION 403s
+even where commit pushes succeed): the obsolete parent-repo ref
+`staging/tokendata-phase3-a1` still exists on origin. Owner: delete it
+from the GitHub UI or any local clone
+(`git push origin :staging/tokendata-phase3-a1`) — see owner task list.
 
 ## Session mechanics (recurring gotchas)
 
@@ -78,4 +84,6 @@ genuinely wrong (stale pin), not the known A1 gap.
   `Application.h` decision point) and whether Tier H ran on the Pi
   post-merge.
 - Housekeeping someday: delete merged phase2 PR branches; bump nested
-  `data/` pins past the schema commit.
+  `data/` pins past the schema commit; delete the obsolete
+  `staging/tokendata-phase3-a1` ref on ALN-Ecosystem (transplant landed
+  2026-07-10; sessions get 403 on branch deletion, needs owner).
