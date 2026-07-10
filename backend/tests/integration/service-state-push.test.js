@@ -24,6 +24,7 @@ const vlcService = require('../../src/services/vlcMprisService');
 const soundService = require('../../src/services/soundService');
 const gameClockService = require('../../src/services/gameClockService');
 const cueEngineService = require('../../src/services/cueEngineService');
+const musicService = require('../../src/services/musicService');
 const serviceHealthRegistry = require('../../src/services/serviceHealthRegistry');
 
 describe('service:state Push Integration', () => {
@@ -51,6 +52,10 @@ describe('service:state Push Integration', () => {
       gameClockService,
       soundService,
       cueEngineService,
+      // performSystemReset re-registers broadcast listeners from THIS list —
+      // omitting a service silently unwires its service:state push for every
+      // test after the first reset (exactly the stale-panel class this suite pins).
+      musicService,
     });
 
     // Mock BT to avoid shelling out
@@ -79,6 +84,32 @@ describe('service:state Push Integration', () => {
       expect(payload.domain).toBe('health');
       expect(payload.state).toHaveProperty('vlc');
       expect(payload.state.vlc.status).toBe('down');
+    });
+  });
+
+  describe('Music domain', () => {
+    // service:state is the GM panel's SOLE live-update channel for music — a
+    // musicService state event that fails to push means a frozen panel until
+    // sync:full (the live-state parity bug class). Pin EVERY wired event.
+    it.each([
+      'playback:changed',
+      'volume:changed',
+      'track:changed',
+      'position:changed',
+      'playlist:changed',
+      'playlists:reloaded',
+    ])('should emit service:state with domain music on %s', async (eventName) => {
+      const statePromise = waitForEvent(gm1, 'service:state',
+        (data) => (data.data || data).domain === 'music');
+
+      musicService.emit(eventName, {});
+
+      const event = await statePromise;
+      const payload = event.data || event;
+      expect(payload.domain).toBe('music');
+      expect(payload.state).toHaveProperty('connected');
+      expect(payload.state).toHaveProperty('state');
+      expect(payload.state).toHaveProperty('playlists');
     });
   });
 

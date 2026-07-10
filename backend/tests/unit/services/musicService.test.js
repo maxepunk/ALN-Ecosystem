@@ -232,6 +232,145 @@ describe('MusicService — settings', () => {
   });
 });
 
+// Configure the mock client to answer status/currentsong like a live MPD, so
+// the post-command refresh path has real protocol strings to diff against.
+function mockMpdResponses(client, {
+  state = 'play', elapsed = '10.000', duration = '100.000',
+  file = 'a.mp3', title = 'Track A', volume = '70', song = '0',
+} = {}) {
+  client.sendCommand = jest.fn().mockImplementation(async (cmd) => {
+    if (cmd === 'status') {
+      return `volume: ${volume}\nstate: ${state}\nelapsed: ${elapsed}\nduration: ${duration}\nsong: ${song}`;
+    }
+    if (cmd === 'currentsong') {
+      return `file: ${file}\nTitle: ${title}`;
+    }
+    return '';
+  });
+}
+
+describe('MusicService — post-command state refresh (live-state parity)', () => {
+  // Mutating commands must emit their own state events instead of depending
+  // on MPD's idle notification: a desynced mpd2 idle FIFO keeps commands
+  // working while notifications never arrive, freezing the GM panel until a
+  // manual sync:full. Every test here runs WITHOUT any idle event firing.
+  let service;
+  beforeEach(async () => {
+    service = new MusicService();
+    await service.init();
+  });
+
+  it('play() re-reads status and emits playback:changed without an idle event', async () => {
+    mockMpdResponses(service._mpd, { state: 'play' });
+    const events = [];
+    service.on('playback:changed', (d) => events.push(d));
+    await service.play();
+    expect(events).toEqual([{ state: 'playing' }]);
+    expect(service.getState().state).toBe('playing');
+  });
+
+  it('pause() emits playback:changed from its own refresh', async () => {
+    mockMpdResponses(service._mpd, { state: 'play' });
+    await service.play();
+    mockMpdResponses(service._mpd, { state: 'pause' });
+    const events = [];
+    service.on('playback:changed', (d) => events.push(d));
+    await service.pause();
+    expect(events).toEqual([{ state: 'paused' }]);
+  });
+
+  it('seek() emits position:changed when only the position moved', async () => {
+    mockMpdResponses(service._mpd, { state: 'play', elapsed: '10.000' });
+    await service.play();
+    mockMpdResponses(service._mpd, { state: 'play', elapsed: '42.000' });
+    const positions = [];
+    const trackEvents = [];
+    service.on('position:changed', (d) => positions.push(d));
+    service.on('track:changed', (d) => trackEvents.push(d));
+    await service.seek(42);
+    expect(positions).toEqual([{ position: 42 }]);
+    expect(trackEvents).toEqual([]); // same file/title — position alone never claims track:changed
+    expect(service.getState().track.position).toBe(42);
+  });
+
+  it('setVolume() emits volume:changed from its own mixer refresh', async () => {
+    mockMpdResponses(service._mpd, { volume: '35' });
+    const events = [];
+    service.on('volume:changed', (d) => events.push(d));
+    await service.setVolume(35);
+    expect(events).toEqual([{ volume: 35 }]);
+    expect(service.getState().volume).toBe(35);
+  });
+
+  it('a failed refresh never fails the command that succeeded', async () => {
+    service._mpd.sendCommand = jest.fn().mockImplementation(async (cmd) => {
+      if (cmd === 'play') return '';
+      throw new Error('status read failed');
+    });
+    await expect(service.play()).resolves.toBeUndefined();
+  });
+
+  it('a refresh with unchanged state emits nothing', async () => {
+    mockMpdResponses(service._mpd, { state: 'play' });
+    await service.play();
+    const events = [];
+    for (const e of ['playback:changed', 'track:changed', 'position:changed', 'volume:changed']) {
+      service.on(e, (d) => events.push([e, d]));
+    }
+    await service.play(); // identical state/track/position — must stay silent
+    expect(events).toEqual([]);
+  });
+});
+
+describe('MusicService — setShuffle/setLoop state authority', () => {
+  // random/repeat fire MPD's `options` idle subsystem, which we do not
+  // subscribe to — the service's own fields are the source of truth for these
+  // flags. Without updating them here, getState() (and every sync:full) keeps
+  // returning the load-time values forever: even a page refresh shows the
+  // stale checkbox.
+  let service;
+  const playlistFixture = () => ({
+    id: 'p1', name: 'Test One', position: 0, total: 3,
+    shuffle: false, loop: true, crossfadeMs: 0,
+  });
+
+  beforeEach(async () => {
+    service = new MusicService();
+    await service.init();
+    service._mpd.sendCommand = jest.fn().mockResolvedValue('');
+  });
+
+  it('setShuffle(true) updates playlist.shuffle and emits playlist:changed', async () => {
+    service.playlist = playlistFixture();
+    const events = [];
+    service.on('playlist:changed', (d) => events.push(d));
+    await service.setShuffle(true);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('random 1');
+    expect(service.getState().playlist.shuffle).toBe(true);
+    expect(events).toHaveLength(1);
+    expect(events[0].shuffle).toBe(true);
+  });
+
+  it('setLoop(false) updates playlist.loop and emits playlist:changed', async () => {
+    service.playlist = playlistFixture();
+    const events = [];
+    service.on('playlist:changed', (d) => events.push(d));
+    await service.setLoop(false);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('repeat 0');
+    expect(service.getState().playlist.loop).toBe(false);
+    expect(events).toHaveLength(1);
+    expect(events[0].loop).toBe(false);
+  });
+
+  it('setShuffle with no playlist loaded sends the command and emits nothing', async () => {
+    const events = [];
+    service.on('playlist:changed', (d) => events.push(d));
+    await service.setShuffle(true);
+    expect(service._mpd.sendCommand).toHaveBeenCalledWith('random 1');
+    expect(events).toEqual([]);
+  });
+});
+
 const FIXTURE_PLAYLISTS = [
   { id: 'p1', name: 'Test One', shuffle: false, loop: true, crossfadeMs: 2000, tracks: ['a.mp3', 'b.mp3', 'c.mp3'] },
   { id: 'p2', name: 'Test Two', shuffle: true, loop: false, crossfadeMs: 0, tracks: ['x.mp3'] },
@@ -754,7 +893,9 @@ describe('MusicService — bounded I/O (_send)', () => {
     const service = new MusicService({ opTimeoutMs: 50 });
     await service.init();
     service._mpd.sendCommand.mockResolvedValue('OK');
-    await expect(service.play()).resolves.toBeDefined();
+    // Transports resolve without a value — MPD's raw response was never part
+    // of the consumed contract (commandExecutor builds its own message).
+    await expect(service.play()).resolves.toBeUndefined();
     expect(service._mpd.sendCommand).toHaveBeenCalledWith('play');
   });
 
