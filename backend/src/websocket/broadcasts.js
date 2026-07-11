@@ -502,7 +502,7 @@ function setupBroadcastListeners(io, services) {
         emitToRoom(io, 'gm', 'service:state', { domain: 'music', state: buildMusicState(musicService) });
       }, 50);
     };
-    for (const event of ['playback:changed', 'volume:changed', 'track:changed', 'playlist:changed', 'playlists:reloaded']) {
+    for (const event of ['playback:changed', 'volume:changed', 'track:changed', 'position:changed', 'playlist:changed', 'playlists:reloaded']) {
       addTrackedListener(musicService, event, pushMusicState);
     }
   }

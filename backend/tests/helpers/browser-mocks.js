@@ -208,6 +208,12 @@ global.InitializationSteps = {
     }
     return false;
   },
+  // Phase 1B follow-up: repaint mode display from effective settings
+  // (mirrors ALNScanner initializationSteps.syncModeDisplay; guarded so the
+  // harness works whether or not the mock UIManager implements the repaint)
+  syncModeDisplay: (settings, uiManager) => {
+    uiManager?.updateModeDisplay?.(settings.mode);
+  },
   // Phase 1C: Connection restoration decision logic (legacy - non-validating)
   determineInitialScreen: (sessionModeManager) => {
     const savedMode = sessionModeManager.restoreMode();
