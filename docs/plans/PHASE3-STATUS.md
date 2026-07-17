@@ -45,14 +45,19 @@ slice-sized branches begin there.
   restore loud-warns on any mismatch — including unknown-provenance
   legacy sessions). **The backend half of A2 is DONE** — remaining A2
   work is client-side (GM scanner packLoader) + ride-alongs.
-- **GM scanner:** packLoader (network→cache→bundled, staged atomic refresh
-  per design §2–§3); **pack-URL rule = serving origin, not user mode**
-  (review A6: pack loads at boot, before mode selection — orchestrator-served
-  → `/api/pack/*`, else the standalone origin); runtime scoring from pack
-  `game.json` with the baked legacy fallback (ledger L2); settings/about
-  shows `pack <version> (<hash-prefix>) · <source>` + bundled warning badge;
-  **client packHash reported in the WS handshake** (contract-first, review
-  A5 — the half C1 preflight consumes).
+- ~~**GM scanner:**~~ ✅ (landed 2026-07-17, ALNScanner `df7cfed`):
+  packLoader (network→cache→bundled, staged atomic refresh, serving-origin
+  channel rule); runtime scoring from pack game.json with the loud baked
+  shim (ledger L2 tripwire live); settings pack line + bundled badge;
+  client packHash in the WS handshake (server-side capture + mismatch
+  warn landed `23e4610`). ALSO: sw.js cache GC now EXEMPTS `aln-pack-*`
+  caches — the SW's activate handler would have wiped the activated pack
+  on every SW update (found in review during implementation). Verified:
+  1389 unit tests + coverage ratchet + build-artifact suite + full-stack
+  07b/07c E2E against the rebuilt dist. NOTE: a live end-to-end
+  mismatch-warn E2E assertion (client bundled hash vs a different server
+  pack) rides the C1 preflight slice, where mismatch becomes enforcement —
+  both ends are unit-pinned today.
 - ~~**Pipeline (load-bearing):**~~ ✅ (landed 2026-07-17):
   `sync_notion_to_tokens.py` now regenerates `pack-manifest.json` after
   writing tokens.json via `scripts/build_pack_manifest.py` — a Python
