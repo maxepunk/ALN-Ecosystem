@@ -406,6 +406,23 @@ components:
                             example:
                               GM_STATION_1: ["kaa001", "kaa002"]
                               PLAYER_001: ["kaa003", "kaa004"]
+                          pack:
+                            description: |
+                              The pack this session was created under (A2 —
+                              rules frozen at start). Null for legacy
+                              sessions and pre-pack checkouts.
+                            oneOf:
+                              - type: "null"
+                              - type: object
+                                required: [packId, version, contentHash]
+                                properties:
+                                  packId:
+                                    type: string
+                                  version:
+                                    type: string
+                                  contentHash:
+                                    type: string
+                                    pattern: '^sha256:[0-9a-f]{64}$'
                   - type: "null"
               scores:
                 type: array

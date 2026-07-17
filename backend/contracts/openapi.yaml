@@ -1699,6 +1699,29 @@ components:
                 type: string
               description: List of unique token IDs scanned
               example: ["534e2b02", "534e2b03", "tac001", "fli001", "hos001"]
+            pack:
+              description: |
+                The pack this session was created under (A2 — a session's
+                rules are frozen at start; the stamp is the mechanism).
+                Null for legacy sessions and pre-pack checkouts. On restore,
+                the backend loud-warns when this differs from the active
+                pack's contentHash.
+              nullable: true
+              type: object
+              required:
+                - packId
+                - version
+                - contentHash
+              properties:
+                packId:
+                  type: string
+                  example: "about-last-night"
+                version:
+                  type: string
+                  example: "1.0.0"
+                contentHash:
+                  type: string
+                  pattern: '^sha256:[0-9a-f]{64}$'
 
     GameState:
       type: object

@@ -38,11 +38,13 @@ slice-sized branches begin there.
   across all 6 consumers; injection is now a pack DIRECTORY with NO
   silent fallback — a pack missing tokens.json refuses to boot; parity
   fixture became `packs/parity-pack/`; verified by live boot on toy-heist
-  + the full 07c E2E flow with the migrated harness). Still open:
-  **session pack stamping** — `session.metadata.pack` at creation + loud
-  warn on restore mismatch (the "rules frozen at start" invariant finally
-  gets a mechanism, review A3; contract-first: optional `pack` on the
-  Session schema).
+  + the full 07c E2E flow with the migrated harness). ~~Session pack
+  stamping~~ ✅ (landed 2026-07-17: `session.metadata.pack` stamped at
+  creation from the ACTIVE pack, nullable `pack` on the Session metadata
+  schema in BOTH contracts, legacy sessions migrate to explicit null, and
+  restore loud-warns on any mismatch — including unknown-provenance
+  legacy sessions). **The backend half of A2 is DONE** — remaining A2
+  work is client-side (GM scanner packLoader) + ride-alongs.
 - **GM scanner:** packLoader (network→cache→bundled, staged atomic refresh
   per design §2–§3); **pack-URL rule = serving origin, not user mode**
   (review A6: pack loads at boot, before mode selection — orchestrator-served
