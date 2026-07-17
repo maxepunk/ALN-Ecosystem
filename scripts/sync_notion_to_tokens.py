@@ -35,6 +35,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # Local helper used to emit the ESP32-consumable asset manifest.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_asset_manifest  # noqa: E402
+import build_pack_manifest  # noqa: E402
 
 # Load environment variables from .env file if present
 try:
@@ -1067,6 +1068,19 @@ def main(argv=None):
     print(
         f"Wrote {manifest_path.relative_to(ECOSYSTEM_ROOT)} "
         f"(images={len(manifest['images'])}, audio={len(manifest['audio'])})"
+    )
+
+    # Phase 3 A2: regenerate the PACK manifest. tokens.json just changed, so
+    # its sha1 in the pack inventory is stale — and standalone clients verify
+    # every staged download against the manifest, correctly REJECTING a
+    # mismatched update. Skipping this step silently stops the standalone
+    # pack update channel (2026-07-17 plan review, finding A2).
+    print()
+    print("Rebuilding pack manifest...")
+    pack_manifest, pack_manifest_path = build_pack_manifest.write_manifest(TOKENS_JSON.parent)
+    print(
+        f"Wrote {pack_manifest_path.relative_to(ECOSYSTEM_ROOT)} "
+        f"({len(pack_manifest['files'])} files, {pack_manifest['contentHash'][:23]}…)"
     )
 
     print()

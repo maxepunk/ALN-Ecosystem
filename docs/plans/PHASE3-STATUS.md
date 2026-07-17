@@ -34,12 +34,15 @@ slice-sized branches begin there.
   whitelist at boot with a loud drift warn; `/api/pack/*` contract-tested
   against BOTH packs incl. whitelist/traversal 404s; the shared OpenAPI
   `Error` enum gained `NOT_FOUND` — long-standing wire reality first pinned
-  by these 404 tests). Still open: TOKENS_PATH→PACK_PATH across the 6
-  consumers (tokenService, app.js injection seam, e2e test-server, 3 test
-  files); **session pack stamping** — `session.metadata.pack` at creation +
-  loud warn on restore mismatch (the "rules frozen at start" invariant
-  finally gets a mechanism, review A3; contract-first: optional `pack` on
-  the Session schema).
+  by these 404 tests). ~~TOKENS_PATH→PACK_PATH~~ ✅ (landed 2026-07-17
+  across all 6 consumers; injection is now a pack DIRECTORY with NO
+  silent fallback — a pack missing tokens.json refuses to boot; parity
+  fixture became `packs/parity-pack/`; verified by live boot on toy-heist
+  + the full 07c E2E flow with the migrated harness). Still open:
+  **session pack stamping** — `session.metadata.pack` at creation + loud
+  warn on restore mismatch (the "rules frozen at start" invariant finally
+  gets a mechanism, review A3; contract-first: optional `pack` on the
+  Session schema).
 - **GM scanner:** packLoader (network→cache→bundled, staged atomic refresh
   per design §2–§3); **pack-URL rule = serving origin, not user mode**
   (review A6: pack loads at boot, before mode selection — orchestrator-served
@@ -48,13 +51,13 @@ slice-sized branches begin there.
   shows `pack <version> (<hash-prefix>) · <source>` + bundled warning badge;
   **client packHash reported in the WS handshake** (contract-first, review
   A5 — the half C1 preflight consumes).
-- **Pipeline (new, load-bearing):** `sync_notion_to_tokens.py` must
-  REGENERATE `pack-manifest.json` after writing tokens.json (review A2:
-  today NOTHING in the sync/publish flow rebuilds the manifest, so any
-  token edit desyncs it and every standalone client's staged refresh
-  correctly rejects the update forever — the update channel silently
-  stops). Implementation: Python port of the `build-pack-manifest.js`
-  algorithm + a byte-parity test against the Node generator.
+- ~~**Pipeline (load-bearing):**~~ ✅ (landed 2026-07-17):
+  `sync_notion_to_tokens.py` now regenerates `pack-manifest.json` after
+  writing tokens.json via `scripts/build_pack_manifest.py` — a Python
+  port of the Node builder, proven byte-identical TRANSITIVELY: pytest
+  asserts it reproduces the committed manifests, which the backend
+  contract suite pins to the Node builder (no Node needed in the Python
+  test env).
 - **Ride-alongs (scoped by review):** PWA = manifest fetch + hash/source
   display only, full staged refresh deferred (ledger L3 — its blast radius
   for mixed versions is display-only). ESP32 = pack files fold into the
