@@ -153,7 +153,109 @@ BILL already justifies: grow it to ≥10 distinct-owner tokens (also fixes
 the flow-27 audit casualty) and keep its 2-phase clock as the first thing
 the slice-5 gate makes real.
 
-## 7. Open questions back to the design
+## 7. INTEGRATION INTO THE MULTI-PHASE PLAN (added same day — the "where
+does each piece actually land" section; proposed for owner ratification)
+
+### 7.1 A framing distinction the program needs: PLATFORM phases vs GAME projects
+
+Phases 3–5 build the PLATFORM (pack spine → experience → content
+tooling). BILL is not a phase — it is the first **game project** that
+CONSUMES the platform: pack authoring + a small set of new engine modules
++ its own toy pack + playtests. This distinction keeps Phase 3/4 scopes
+stable (no BILL-shaped bloat) while giving BILL a real home and the
+program its intended endgame shape: platform phases end; game projects
+recur. ALN operations is the zeroth game project; BILL is the first with
+new-module needs.
+
+### 7.2 What BILL changes about PHASE 3 (small, absorbed into A3/B)
+
+- **A3 slice 1 (modes):** semantics-flag vocabulary designed OPEN
+  (proto-verbs). No scope growth — a design constraint on work already
+  planned.
+- **Capability gate (audit F2) + `requires` declaration block in
+  game.schema.json:** already adopted into A3 slice 0/1 by the forward
+  audit; BILL is the proof it must exist.
+- **A3 slice 4 RESCOPE (the one real Phase 3 scope change):** from
+  "cue/lighting ROLE references (B8)" to **"show-control content into the
+  pack"** — cues.json becomes pack content (role-referenced, not concrete
+  HA ids / filenames) and music/playlist REFERENCES join it. This settles
+  audit gaps F7 (cues) and the reference half of F6 (music) inside Phase
+  3, because both ALN and BILL need them and the B tools must author
+  them. Audio/music FILES stay venue/asset-channel delivered.
+- **F5 (videos-in-pack): explicitly DEFERRED** — decision parked to the
+  B pages (pack manager needs a media story anyway); BILL's public screen
+  is live-rendered so it exerts no pressure.
+- **Phase 3 DoD: UNCHANGED.** The gate stays "midnight-heist passes Tier
+  L with zero engine changes." BILL adds no Phase 3 exit criteria.
+
+### 7.3 What BILL changes about PHASE 4 (sharpens, does not grow)
+
+Phase 4's E-track was deliberately under-specified pending the spikes.
+BILL supplies the missing specificity — same scope, real requirements:
+
+- **E5 interaction primitives v1 = the compound-scan engine**, specified
+  by BILL's tap grammar (multi-object sessions, role gating, legality
+  tables, refusal-with-reason). E5 stops being a placeholder.
+- **E4 one-auth implementation** absorbs two amendments: actor-centric
+  function resolution (band identifies the actor; device is transport)
+  and **server-side per-surface projection** (mandatory for
+  hidden-information games; good hygiene for ALN's scoreboard today).
+- **D-track B9 bundle schema** reserves per-game state namespaces.
+- **P6 CYD firmware primitives + F8 (ESP32 rebrand)** become conditional
+  Phase 4 items, triggered IF the design confirms CYDs as BILL's
+  scanners (open register).
+- **Phase 4 gates: UNCHANGED** in form; E-gate's "primitives v1 scoped"
+  criterion is now concretely satisfiable.
+
+### 7.4 The BILL game project (new top-level item, NOT a platform phase)
+
+Runs in two decoupled tracks:
+
+**Track BILL-D (design/tuning — can start NOW, zero engine dependency):**
+paper/actor prototypes of the loop; a contagion-math simulation (a plain
+script sweeping the 🎚 registers — seed count, ramp curves, heal economy,
+expected hollow fraction at hour's end) so the epidemic is tuned before
+any engine work; category-grammar decision (the domino — it blocks token
+fabrication, and it is pure design). These mirror the E1-spike pattern:
+cheap, information-only, owner-paced.
+
+**Track BILL-E (engineering — gated on platform prerequisites):**
+1. Contagion module (needs: capability gate, compound-scan engine)
+2. Graph state + graph scoring model (needs: gate, slice-2 rules
+   migration so scoring models are pack-selected)
+3. Constellation renderer (needs: B12 surface selection, E4 projection)
+4. toy-constellation pack (the per-module gate, same methodology)
+5. BILL pack authoring (consumes B tools; content corpus can be
+   hand-authored ALN-style if Phase 5 tooling isn't ready — Phase 5 is a
+   convenience for BILL, never a dependency)
+
+**Entry criteria for BILL-E:** Phase 3 DoD + Phase 4's E4/E5. **Phase 4's
+D-track (GM UX) is NOT a BILL dependency** — if BILL pressure grows, E
+can be sequenced before D within Phase 4 without violating any gate.
+
+### 7.5 Honest timeline arithmetic (program §9 units: working sessions)
+
+Remaining Phase 3: A3 ≈2–3 + B ≈2–3 + C2–C4 ≈1.5 → **≈5.5–7.5**.
+Phase 4: D ≈2–3 + E ≈2.5 → **≈4.5–5.5** (E-first ordering puts E4/E5
+≈2.5 sessions in). BILL-E modules: **≈3–5** + content (owner-paced).
+Strictly sequential, BILL-on-engine is ≈10–13 sessions out; with E-first
+Phase 4 ordering, ≈8–11. BILL-D needs none of it and can begin today.
+
+**The one deliberate shortcut available (owner call, priced honestly):**
+a throwaway digital prototype of BILL's loop OUTSIDE the engine (a
+single-page app + a script; no pack, no contracts) could exist in ~1–2
+sessions for playtest feel — at the cost of being 100% disposable and
+teaching us nothing structural about the engine. The platform path is
+slower but every session of it is permanent. Recommended default: BILL-D
+spikes now, no throwaway app unless a playtest date forces it.
+
+### 7.6 Phase 5 relationship
+
+Unchanged as the content-creation layer. BILL's lore corpus is exactly
+the workload Phase 5 tools serve — BILL informs Phase 5's requirements
+(voice/snippet authoring at corpus scale) but must not wait for it.
+
+## 8. Open questions back to the design
 
 Engine realities that may usefully feed the design's ⬚ registers:
 - **Scanner hardware:** CYDs as the identical scanners? Their affordances

@@ -158,6 +158,26 @@ prevents it); packLoader should be core-extracted or thinned for the E3
 tap-to-web client; verify the /api rate-limiter's per-IP keying vs NAT
 before Phase 4 load.
 
+## BILL game project (2026-07-17 — capability scoping + plan integration)
+
+Owner's BILL constellation-game design (v0.1) scoped against the engine:
+`docs/plans/2026-07-17-bill-capability-scoping.md`. Plan-integration
+proposals AWAITING OWNER RATIFICATION (doc §7):
+- Framing: platform PHASES (3–5) vs recurring GAME PROJECTS; BILL = the
+  first game project with new-module needs. No new platform phase.
+- Phase 3 absorbs ONE scope change: A3 slice 4 rescoped from "cue role
+  refs (B8)" to "show-control content into the pack" (cues + music REFS
+  — settles audit F7 + half of F6). F5 videos deferred to B pages.
+  Phase 3 DoD unchanged.
+- Phase 4 sharpened, not grown: E5 = compound-scan engine per BILL's tap
+  grammar; E4 += actor-centric grants + server-side per-surface
+  projection; B9 += per-game state namespaces; P6/F8 conditional on
+  CYDs-as-BILL-scanners. Gates unchanged; E-before-D ordering available
+  if BILL pressure grows.
+- BILL-E entry criteria: Phase 3 DoD + E4/E5. BILL-D (design spikes:
+  contagion-math simulation, category grammar, paper prototypes) can
+  start NOW, zero engine dependency — owner-paced.
+
 ## Transitional-debt ledger
 
 Doctrine: every deliberately-transitional construct gets a row here with a
