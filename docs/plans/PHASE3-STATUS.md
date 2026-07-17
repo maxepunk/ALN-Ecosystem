@@ -79,12 +79,17 @@ slice-sized branches begin there.
   serial CONFIG (120/120 native; scripts 66/66).
 
 **Decisions taken on review defaults (owner may veto):**
-- GM-scanner standalone pack origin = **canonical cross-origin pack URL**
-  (the published TokenData content; GitHub serves
-  `Access-Control-Allow-Origin: *`). Reason: the ALNScanner Pages workflow
-  publishes ONLY `./dist` from the pinned submodule, so a same-origin
-  `./data/` network tier doesn't exist there — bundled-only would rebuild
-  the F-TOOL-05 coupling A2 exists to remove.
+- GM-scanner standalone pack origin — **AS BUILT: same-origin static**
+  (CORRECTED 2026-07-17, surfaced by PR #12 review round 4): the earlier
+  "canonical cross-origin pack URL" text was based on a wrong premise —
+  Vite `publicDir` IS the TokenData submodule, so every Pages deploy
+  publishes the pinned pack files at the deploy root and a same-origin
+  network tier DOES exist there. Staleness property, stated honestly:
+  orchestrator-served scanners refresh from the pack channel on every
+  load; Pages-standalone scanners refresh when a Pages deploy carries a
+  new nested pin (no app-shell rebuild needed, but not
+  publish-independent). Cross-origin canonical remains a clean later
+  upgrade if Pages-standalone staleness ever matters — owner may direct.
 - Refresh attempts at app start + new-session creation only; no mid-session
   periodic retries (consistent with session-frozen rules).
 - Standalone-loading §7 defaults confirmed in effect: bundled warning badge
