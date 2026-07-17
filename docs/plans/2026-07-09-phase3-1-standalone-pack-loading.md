@@ -1,8 +1,9 @@
 # Phase 3.1 — Standalone Pack Loading Design (A2's hard half)
 
 **Date:** 2026-07-09
-**Status:** DRAFT for owner review (deliverable 3 of the program §10;
-resolves program §6.1).
+**Status:** EXECUTED — A2 landed 2026-07-17 (see PHASE3-STATUS "A2
+execution record"); §7 defaults adopted (bundled badge shown; no
+mid-session swaps). Retained as the design rationale of record.
 **Problem:** networked clients fetch the active pack from the orchestrator
 (`GET /api/pack/*`). A STANDALONE GM scanner has no orchestrator — today it
 bakes scoring config and tokens in at Vite build time, which is the

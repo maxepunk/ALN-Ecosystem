@@ -368,3 +368,24 @@ Kills the `"(xN)"` microformat. v2 token (changes only):
    candidate.
 5. **scoring-config.json absorption:** proceeding (no objection) — moves
    into game.json with a fallback shim during migration.
+
+---
+
+## Addendum — 2026-07-17 amendments (forward audit + BILL scoping)
+
+1. **`requires` capability-declaration block joins game.schema.json**
+   (lands with A3 slice 0/1): a pack declares the engine capabilities it
+   needs (e.g. scoring model, rule variants, interaction primitives);
+   the engine's capability gate (packService.activatePack + the scanner
+   packLoader) refuses LOUDLY what it cannot run. This makes the
+   schema's headroom principle ("schemas reject headroom the engine
+   can't run") real — the 2026-07-17 audit found it currently enforced
+   by NOTHING (headroom shapes silently absorbed).
+2. **Correction to §2 (modes):** the claim that wire `mode` values are
+   "validated against this list at runtime" is FALSE as of this writing —
+   validation is a hardcoded Joi enum ('detective'|'blackmarket').
+   Becomes true in A3 slice 1 (pack-derived validation).
+3. **Design constraint for slice 1:** the per-mode semantics flags
+   (`scoringPolicy`, `entityRole`, `countsTowardGroups`,
+   `displayBehavior`) are an OPEN vocabulary — modes are proto-verbs
+   (BILL's eight-verb tap grammar is the same concept at larger size).

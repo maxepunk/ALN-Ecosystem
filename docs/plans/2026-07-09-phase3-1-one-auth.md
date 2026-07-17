@@ -118,3 +118,25 @@ from day one so nothing is re-plumbed.
 2. **Scoreboard as `display` class** with a read-only `observe` function —
    any objection to the scoreboard needing a (silently auto-minted) token
    where today it connects openly?
+
+---
+
+## Addendum — 2026-07-17 amendments (BILL capability scoping)
+
+Two requirements join the v1 design (source:
+`2026-07-17-bill-capability-scoping.md` §2.4/§2.6; program §11):
+
+1. **Actor-centric function resolution.** Grants must be resolvable for
+   an ACTOR identity presented IN the interaction (e.g. a scanned
+   player band opening a compound-scan sequence), with the device as
+   transport. The claims shape {tier, class, deviceId, functions} stays;
+   resolution gains an actor parameter — a station's device grant is the
+   ceiling, the presented actor's role selects within it. (BILL: identical
+   stations; WHO may weave is decided by the band, not the device.)
+2. **Server-side per-surface projection.** A surface receives ONLY the
+   data its granted functions permit — projected on the SERVER, never
+   filtered client-side. (Today ALN's scoreboard receives full
+   transactions and filters in the browser; fatal for any
+   hidden-information game, and worth tightening for ALN regardless.)
+   The `observe` function becomes parameterized by a projection, not a
+   firehose.

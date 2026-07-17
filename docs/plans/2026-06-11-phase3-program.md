@@ -6,6 +6,10 @@ gated by the toy-pack proof; Tracks D and E moved OUT to **Phase 4** (not
 parallel tracks) with E1 spikes + E2 cert/domain + O3 auth DESIGN retained
 inside Phase 3 (E2 reclassified as Track C infrastructure). Live execution
 state: docs/plans/PHASE3-STATUS.md.
+**AMENDED 2026-07-17** (owner-directed, post-A2 forward audit + BILL
+scoping — see §11): A3 slice list revised in place (§3); E4/E5 sharpened
+in place (Track E); platform-phases vs game-projects framing adopted.
+DoD and phase gates UNCHANGED.
 **Companion deliverable:** the 3.1 schema drafts (game.json,
 pack-manifest, installation-profile) follow this doc.
 
@@ -54,15 +58,45 @@ The engine/game separation itself. Everything else hangs off this.
    silent-stale-scoring class. Grows directly from the 2.x.4 TOKENS_PATH
    seam (its first consumer and its test harness).
 3. **A3. The extraction grind** (slice by slice, each slice = extract →
-   toy pack exercises it → editor page consumes it):
-   modes & mode names → scoring/group/duplicate policy (gameRules/
-   already pure; this moves their CONFIG into the pack) → strings &
-   theming (window titles, mode labels, transaction verbs, currency/
-   locale, emoji vocabulary, scoreboard branding, CSS taxonomy classes;
-   pre-fixes: scoreboard password, F-SHOW-29 third idle-loop literal) →
-   cue/lighting ROLE references (B8: cues name roles, never HA entity
-   ids) → clock/phase params (B11; overtime threshold out of env config)
-   → display surfaces (B12) → report template refs (B9).
+   toy pack exercises it → editor page consumes it). *Slice list REVISED
+   2026-07-17 by the forward audit + BILL scoping (§11 amendments):*
+   - **Slice 0 — gate infrastructure (FIRST, small):** dual-pack Tier L
+     plumbing (E2E_PACK_PATH across the harness + npm script + CI matrix
+     over {production, toy-heist}); grow toy pack to ≥10 distinct-owner
+     tokens; `packService.getGameConfig()` (activation-snapshot
+     semantics); capability-gate skeleton + `requires` declaration block
+     in game.schema.json.
+   - **Slice 1 — modes:** migrate BEHAVIOR to the pack's per-mode
+     semantics flags (`scoringPolicy`/`entityRole`/`countsTowardGroups`/
+     `displayBehavior`) — the mode ids are load-bearing string constants
+     in ~40 branch points today; flag vocabulary designed OPEN
+     (modes are proto-verbs — BILL scoping §2.1); wire-mode validation
+     becomes pack-derived; gate rejects undrivable modes.
+   - **Slice 2 — scoring/group/duplicate/clock rules migration:** backend
+     reads game.json via getGameConfig(); scoring-config.json retires;
+     gameClock.duration/overtimeAt consumed (delete the masking pin);
+     gate extended — headroom shapes (threshold/ordered, per-entity/
+     unlimited) flip from silently-ignored to LOUDLY-REJECTED.
+   - **Slices 3a/3b/3c — strings & theming, SPLIT (audit F9):**
+     3a pure text/branding (pre-fixes: scoreboard password, F-SHOW-29
+     idle-loop literal; the "Case File" title is a FUNCTIONAL xdotool
+     selector — extract as shared config, displayDriver + scoreboard);
+     3b formatting LOGIC (currency ×5 implementations, star rendering ×4
+     with hardcoded 5-scale → one pluggable formatter each);
+     3c CSS/mode/memory-type taxonomy (vocabulary lives in both code and
+     stylesheets).
+   - **Slice 4 — show-control content into the pack (RESCOPED):** cues
+     become pack content referencing ROLES (lighting roles per B8, sound/
+     video by pack-relative reference, never HA entity ids or concrete
+     venue filenames); music/playlist REFERENCES join them (files stay on
+     the venue/asset channel). Settles audit F7 + the reference half of
+     F6. Videos-in-pack (F5) deferred to the B pages' media story.
+   - **Slice 5 — clock/phase params (B11)** (duration/overtime landed in
+     slice 2; phases + trigger-starts here) → **Slice 6 — display
+     surfaces (B12** — renderer selection; the surface mechanism BILL's
+     constellation renderer later plugs into**)** → **Slice 7 — report
+     template refs (B9** — bundle schema reserves per-game state
+     namespaces**)**.
 
 ### Track B — Authoring tooling (consumes A, page by page)
 config-tool restructured into **Design** and **Venue** workspaces
@@ -127,10 +161,19 @@ golden-master test protects the GenAI pipeline until its migration).
 4. **E4. Function-gated transaction API (O3):** device identity +
    pack-assigned permissions replace the GM-JWT-or-anonymous split; the
    SAME auth model serves bound stations, no-GM tiers, and the config
-   tool (one identity story — see §6.2).
+   tool (one identity story — see §6.2). *Amended 2026-07-17 (§11):
+   function resolution must accept ACTOR identity presented in the
+   interaction (e.g. a scanned band) with the device as transport; and
+   surfaces receive SERVER-SIDE projections scoped to their granted
+   functions — mandatory for hidden-information games, good hygiene for
+   ALN's scoreboard today.*
 5. **E5. Interaction primitives v1 (O4):** scoped AFTER the spikes;
    engine ships few generic primitives, packs compose (P6); station
    primitives constrained by declared affordances (coarse-tap only).
+   *Amended 2026-07-17 (§11): the v1 requirements now EXIST — BILL's tap
+   grammar (compound-scan sessions: accumulate 1–3 identified objects →
+   pack-declared legality → atomic commit → refusal-with-reason; actor-
+   role gating). ALN is the degenerate single-object case.*
 
 ## 4. Dependency spine & sequencing
 
@@ -227,3 +270,34 @@ C2-C4 ≈1.5 · D ≈2-3 (after wireframes) · E2 ≈0.5 · E3-E5 ≈2 (post-spi
 3. Standalone-pack-loading design section (§6.1)
 4. One-auth-story design section (§6.2 / O3)
 5. Owner: ratify §7 DoD; run E1 spikes when convenient
+
+## 11. Amendments — 2026-07-17 (post-A2 forward audit + BILL scoping)
+
+Sources: the five-dimension forward audit (PHASE3-STATUS "2026-07-17
+FORWARD audit") and `2026-07-17-bill-capability-scoping.md` (esp. §7,
+the plan integration). Owner-directed integration; DoD (§7) and the
+Phase 4 sub-gates are UNCHANGED by every item below.
+
+1. **A3 slice list revised in place (§3):** new slice 0 (dual-pack gate
+   infrastructure + capability-gate skeleton + getGameConfig — the
+   program's per-slice toy-pack rule previously had NO executable gate);
+   slice 1 migrates mode BEHAVIOR to open-vocabulary semantics flags;
+   slice 2 extends the capability gate (headroom → loudly-rejected);
+   slice 3 split into 3a/3b/3c (text vs formatting logic vs CSS
+   taxonomy); slice 4 rescoped to "show-control content into the pack"
+   (settles audit F7 + music refs of F6; F5 videos deferred to B).
+2. **Track E sharpened in place:** E5's primitive requirements now exist
+   (BILL tap grammar); E4 gains actor-centric function resolution +
+   server-side per-surface projection.
+3. **Framing adopted: platform PHASES (3–5) vs recurring GAME PROJECTS.**
+   BILL is the first game project with new-module needs (compound-scan
+   engine lands in E5; contagion module, graph scoring model, and
+   constellation renderer belong to the BILL project, entry-gated on
+   Phase 3 DoD + E4/E5). Within Phase 4, E-before-D ordering is
+   AVAILABLE if BILL pressure grows — an option, not a decision.
+4. **D-track note:** the B9 session-bundle schema reserves per-game
+   state namespaces.
+5. **Known plan-level gaps intentionally left open:** F8 ESP32 rebrand
+   posture (conditional on CYDs-as-BILL-scanners); F5 videos-in-pack
+   (B pages' media story); draft-pack real-device preview mechanism
+   (B0 design, options recorded in the audit).

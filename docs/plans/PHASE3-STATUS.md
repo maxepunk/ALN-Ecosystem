@@ -24,7 +24,7 @@ slice-sized branches begin there.
 | **Live-state parity cluster** (field-reported stale-UI bugs) | ✅ **MERGED TO MAIN 2026-07-11 by owner** — parent PR #18 then ALNScanner PR #11, in the documented order. Owner follow-ups on the PR branch (`6d03cb7` music gameclock pause/resume also refresh state — closes the last idle-FIFO dependency; `77f905f` docker-lifecycle repaired under the blanked HA token) were absorbed into foundations 2026-07-17 via merge of `origin/main`. Zero open PRs in either repo. |
 | **A2 runtime pack loading** | ✅ **COMPLETE 2026-07-17** (parent `e73a020`→`3267b30`+, ALNScanner `df7cfed`/`707368d`, PWA `73ac71c`, ESP32 `92d763d`). Pack channel contracted + served (whitelist-only, frozen at boot); staleness identity reported by EVERY consumer (backend /health + sync:full + session stamp; GM UI + WS handshake; PWA config page; ESP32 boot log + CONFIG); PACK_PATH harness seam; GM packLoader with staged atomic refresh + runtime scoring (F-TOOL-05 dead); sync pipeline regenerates the pack manifest (Python builder, byte-parity-pinned); sync:full completeness structural test. Verified: backend 2187 unit/contract + 342 integration + coverage ratchet; scanner 1389 + ratchet + build artifacts + 07b/07c full-stack E2E; PWA 161; ESP32 native 120; scripts 66. Execution detail: "A2 execution record" below. |
 | 2026-07-17 plan review (blind-spot audit) | ✅ six real gaps + five ambiguities found and resolved; all folded into A2 and landed |
-| **A2 boundary work** | ⬅ **NEXT**: rebase foundations onto main (per the branch decision above — foundations currently carries main merged-in, so this is the clean cutover point); slice-sized branches begin. Then **A3 slice 1** (modes & mode names extraction; toy pack as second consumer; Tier L against BOTH packs via the now-landed PACK_PATH seam). |
+| **A2 boundary work** | ⬅ **NEXT**: rebase foundations onto main (per the branch decision above); slice-sized branches begin. Then **A3 per the REVISED slice list (program §3 + §11)**: slice 0 (dual-pack gate infra + capability-gate skeleton + getGameConfig + toy-pack growth) → slice 1 (mode BEHAVIOR to open semantics flags) → slice 2 (rules migration + gate extension) → 3a/3b/3c → rescoped slice 4 → 5/6/7. |
 | A3 extraction slices → B0/B pages → C2/C3 | queued per program §3/§4 |
 
 ## A2 execution record (COMPLETE — scope as set by the 2026-07-17 plan review)
@@ -161,8 +161,15 @@ before Phase 4 load.
 ## BILL game project (2026-07-17 — capability scoping + plan integration)
 
 Owner's BILL constellation-game design (v0.1) scoped against the engine:
-`docs/plans/2026-07-17-bill-capability-scoping.md`. Plan-integration
-proposals AWAITING OWNER RATIFICATION (doc §7):
+`docs/plans/2026-07-17-bill-capability-scoping.md`. Plan integration
+ADOPTED 2026-07-17 (owner-directed) and written into the AUTHORITATIVE
+planning docs — program §11 amendments (A3 slice list revised IN PLACE:
+slice 0 gate infra, open-vocabulary slice 1, slice 3 split 3a/3b/3c,
+slice 4 rescoped to show-control-content-into-pack), one-auth addendum
+(actor-centric grants + server-side projection), pack-schemas addendum
+(`requires` block + runtime-validation correction + open flag
+vocabulary), standalone-loading doc stamped EXECUTED. Summary of what
+was adopted:
 - Framing: platform PHASES (3–5) vs recurring GAME PROJECTS; BILL = the
   first game project with new-module needs. No new platform phase.
 - Phase 3 absorbs ONE scope change: A3 slice 4 rescoped from "cue role
