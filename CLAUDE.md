@@ -103,20 +103,21 @@ BASE_VALUES: {1: $10000, 2: $25000, 3: $50000, 4: $75000, 5: $150000}
 TYPE_MULTIPLIERS: {Personal: 1x, Mention: 3x, Business: 3x, Party: 5x, Technical: 5x, UNKNOWN: 0x}
 ```
 
-**Shared Scoring Config:**
+**Shared Scoring Config (Phase 3 A2 — runtime pack loading):**
 
-Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loaded by both backend and GM Scanner at runtime. No manual sync needed for base values.
-
-**CRITICAL**: The GM Scanner bakes scoring-config.json in at Vite BUILD time (`scoring.js` static import) — after editing scoring values, the backend picks them up on restart, but the GM Scanner requires an ALNScanner rebuild (`npm run build`) or standalone-mode scoring will use stale values (F-TOOL-05).
+Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block). The GM Scanner loads them at RUNTIME via its packLoader (`src/core/packLoader.js`, network → SW-cache → bundled) — a pack publish changes standalone scoring values with NO rebuild (the old F-TOOL-05 build-time bake is dead). Transitional window (debt ledger L1/L2 in `docs/plans/PHASE3-STATUS.md`): the backend still reads the legacy `scoring-config.json`, and the GM Scanner keeps a baked copy of it as a loud-warning last-resort shim; a contract test pins game.json scoring == scoring-config.json until the backend migrates in A3 slice 2.
 
 | Component | File | Notes |
 |-----------|------|-------|
-| Shared Config | `ALN-TokenData/scoring-config.json` | Single source of truth for values |
+| Pack Rules (authoritative) | `ALN-TokenData/game.json` (`scoring` block) | Runtime-loaded by the GM Scanner packLoader |
+| Legacy Shared Config | `ALN-TokenData/scoring-config.json` | Backend still reads this; pinned equal to game.json by contract test; retires in A3 slice 2 |
 | Token Schema | `ALN-TokenData/tokens.schema.json` | tokens.json format (enforced by backend contract test) |
-| Backend Config | `backend/src/config/index.js` (valueRating map) | Loads shared config (no env override; hardcoded fallback only if the file is missing) |
+| Backend Config | `backend/src/config/index.js` (valueRating map) | Loads the legacy shared config (no env override; hardcoded fallback only if the file is missing) |
 | Backend Rules | `backend/src/gameRules/scoring.js` (pure functions) | Server-side scoring + group completion (transactionService adapts); GM duplicate rules in `gameRules/duplicatePolicy.js` |
-| GM Scanner Config | `ALNScanner/src/core/scoring.js` (SCORING_CONFIG export) | Loads shared config via Vite import |
+| GM Scanner Loader | `ALNScanner/src/core/packLoader.js` + `scoring.js` (`applyPackScoring`) | Runtime pack scoring; baked shim warns LOUDLY when active |
 | GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` (`_checkGroupCompletion`) | Client-side group completion |
+
+**Pack channel & staleness (A2):** backend serves the ACTIVE pack via `GET /api/pack/manifest` + `GET /api/pack/files/*` (whitelist-only, frozen at boot via `packService.activatePack()`; `PACK_PATH` env injects an alternate pack directory for the harness). Every consumer reports its loaded pack identity: backend in `/health` + `sync:full` + the session's creation stamp; GM Scanner in the settings pack line and the WS handshake `packHash`; PWA on its config page; ESP32 in the boot log + serial `CONFIG` (identity rides the asset manifest). After editing any pack file, run `node backend/scripts/build-pack-manifest.js <packDir>` (the Notion sync pipeline does this automatically).
 
 **CRITICAL**: Values are shared, but group completion detection logic is independently implemented between backend (`gameRules/scoring.js`, used by BOTH the live scan path and the post-deletion rebuild) and GM Scanner standalone mode. When updating group logic, verify both — the backend's `gameRules/` modules are the parity surface the scanner implementation must match (decision A1: blackmarket-only).
 
