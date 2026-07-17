@@ -89,6 +89,75 @@ slice-sized branches begin there.
 - Standalone-loading §7 defaults confirmed in effect: bundled warning badge
   shown; no mid-session pack swaps.
 
+## 2026-07-17 FORWARD audit (pre-cutover; five dimensions, owner-requested)
+
+Ran after A2 completion, before the branch cutover. Verdict: **A2's as-built
+shape is sound — nothing needs to change now** — but the audit found four
+findings that reshape A3, and four content-type gaps NO slice covers.
+
+**Findings that reshape A3 (proposed plan changes, owner to ratify):**
+- **F1 — Mode names are load-bearing constants.** ~40 branch points key off
+  the literal strings 'detective'/'blackmarket' (backend gameRules +
+  scanner); the pack's per-mode semantics flags (`scoringPolicy`,
+  `entityRole`, `countsTowardGroups`, `displayBehavior`) are read by
+  NOTHING. A3 slice 1 must migrate BEHAVIOR to the flags, not just rename
+  ids. The backend Joi mode enum is hardcoded (game.schema.json's
+  "validated at runtime" claim is currently false).
+- **F2 — No engine capability gate; headroom is silently absorbed.** A pack
+  declaring `threshold` groups or `per-entity` claims passes the ENTIRE
+  test suite green and silently runs as `all`/`once`. `gameClock.duration`/
+  `overtimeAt` are never read (the toy pack already diverges silently), and
+  the duration contract pin MASKS the gap. Gate home: `activatePack()` +
+  scanner packLoader, reading a capability descriptor co-located with
+  `gameRules/`; skeleton lands with slice 1, extended in slice 2 (flipping
+  headroom from silently-ignored to loudly-rejected — the stated principle).
+- **F3 — The dual-pack Tier L gate has NO mechanism.** Zero tests load
+  toy-heist today; the per-slice program rule has no executable gate. Build
+  (small): `E2E_PACK_PATH` env honored by every flow's startOrchestrator
+  (~20 call sites), an npm script, a CI matrix over {production, toy-heist}.
+  Known casualties mapped: flow 27 hard-fails (toy pack needs ≥10
+  distinct-owner tokens — grow the toy pack), 07c FAILS against toy-heist
+  until slice 2 (correct — it IS the ledger-L1 tripwire), video flows
+  self-skip (structural — see F5). Must land FIRST in A3 ("slice 0").
+- **F4 — Backend has no game.json reader.** `getGameConfig()` accessor with
+  the same activation-snapshot semantics as `getManifest()` — needed by the
+  F2 gate (slice 1), the slice-2 scoring/rules migration, AND Phase-4
+  one-auth grant computation. One accessor serves all three.
+- **F9 — "Strings & theming" is THREE slices, not one:** A3a pure
+  text/branding; A3b formatting LOGIC (currency forked across 5
+  implementations, star rendering 4 ways with a hardcoded 5-star scale);
+  A3c CSS/mode taxonomy (mode + memory-type vocabularies live in both code
+  and stylesheets). BOOBY TRAP: the scoreboard's "Case File" title is a
+  FUNCTIONAL selector (`displayDriver.js` xdotool window search) —
+  rebranding it silently breaks HDMI control; extract as shared config
+  consumed by both sides.
+
+**Content-type gaps NO slice covers (owner decisions needed — feeds the
+toy-game capability scoping):**
+- **F5 — Videos are not pack content.** Playback resolves from
+  `backend/public/videos` (+ hardcoded idle-loop.mp4); the manifest's
+  `asset-video` role is decorative. A pack cannot carry its videos.
+- **F6 — Music/playlists are backend-local** (`config/music-playlists.json`
+  + `public/music/`), inexpressible via the pack.
+- **F7 — Cues are backend-local AND reference concrete assets**
+  (sound/video filenames, tokenIds, HA scene ids). Planned B8 covers ONLY
+  the lighting-role indirection — nothing moves cues.json into the pack.
+- **F8 — ESP32 branding is compiled into flash** ("NeurAI Memory Scanner"
+  etc.); no plan lets a pack rebrand the CYD (program §6.4 concedes this —
+  confirm the posture: reflash-per-game is acceptable?).
+
+**Confirmed sound / cleanly deferred:** draft-pack real-device preview is a
+genuine unresolved gap but correctly parked in B0 with clean options — the
+strongest reuses the PACK_PATH seam (second orchestrator on the draft dir);
+B0 must also record a preview EXEMPTION for the handshake mismatch warn /
+future preflight. Phone-scale pack serving is fine as-built (Express default
+ETag/304; ~2.9MB one-time for 80 phones); web-FORMAT media for phones is a
+Phase-4 E3 decision; hot-apply (E10) is cleanly additive (re-activation
+entry point + broadcast + session-boundary client re-fetch — nothing
+prevents it); packLoader should be core-extracted or thinned for the E3
+tap-to-web client; verify the /api rate-limiter's per-IP keying vs NAT
+before Phase 4 load.
+
 ## Transitional-debt ledger
 
 Doctrine: every deliberately-transitional construct gets a row here with a
