@@ -187,6 +187,11 @@ async function initializeServices() {
     await persistenceService.saveTokens(tokens);
     await transactionService.init(tokens);
 
+    // A2: freeze the pack identity + serving whitelist at the same moment
+    // the engine loads its token data — pack edits on disk after this
+    // point are neither advertised nor served until restart.
+    require('./services/packService').activatePack();
+
     // Initialize other services
     await sessionService.init();
     await offlineQueueService.init();

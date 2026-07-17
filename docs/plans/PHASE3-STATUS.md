@@ -28,17 +28,18 @@ slice-sized branches begin there.
 
 ## A2 remainder (scope after the 2026-07-17 plan review)
 
-- **Backend:** pack endpoint contract tests + packService unit tests;
-  TOKENS_PATH→PACK_PATH across the 6 consumers (tokenService, app.js
-  injection seam, e2e test-server, 3 test files); **load-time pack identity
-  capture** — report the pack the engine LOADED at init, not disk-now
-  (review A1: live manifest reads could advertise a hash the running engine
-  isn't using — the F-TOOL-05 class inverted); **session pack stamping** —
-  `session.metadata.pack` at creation + loud warn on restore mismatch (the
-  "rules frozen at start" invariant finally gets a mechanism, review A3;
-  contract-first: optional `pack` on the Session schema); exit test: backend
-  boots with `PACK_PATH=<toy-heist fixture>` and serves it (pre-positions
-  the A3 dual-pack gate).
+- **Backend:** ~~pack endpoint contract tests + packService unit tests~~ ✅
+  + ~~load-time pack identity capture~~ ✅ + ~~toy-pack exit test~~ ✅
+  (landed 2026-07-17: `activatePack()` freezes identity AND the serving
+  whitelist at boot with a loud drift warn; `/api/pack/*` contract-tested
+  against BOTH packs incl. whitelist/traversal 404s; the shared OpenAPI
+  `Error` enum gained `NOT_FOUND` — long-standing wire reality first pinned
+  by these 404 tests). Still open: TOKENS_PATH→PACK_PATH across the 6
+  consumers (tokenService, app.js injection seam, e2e test-server, 3 test
+  files); **session pack stamping** — `session.metadata.pack` at creation +
+  loud warn on restore mismatch (the "rules frozen at start" invariant
+  finally gets a mechanism, review A3; contract-first: optional `pack` on
+  the Session schema).
 - **GM scanner:** packLoader (network→cache→bundled, staged atomic refresh
   per design §2–§3); **pack-URL rule = serving origin, not user mode**
   (review A6: pack loads at boot, before mode selection — orchestrator-served

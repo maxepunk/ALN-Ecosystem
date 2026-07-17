@@ -1571,6 +1571,10 @@ components:
             - TOKEN_NOT_FOUND
             - DUPLICATE_TRANSACTION
             - INVALID_REQUEST
+            # Generic resource 404 (responseBuilder.notFound + the app-level
+            # 404 handler) — long-standing wire reality, first pinned by the
+            # pack-channel 404 contract tests (A2).
+            - NOT_FOUND
         message:
           type: string
           description: User-friendly error message
