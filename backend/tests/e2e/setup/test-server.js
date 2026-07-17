@@ -119,11 +119,11 @@ async function startOrchestrator(options = {}) {
     timeout = 30000,
     preserveSession = false,
     storageType = 'memory',
-    // Injection seam (2.x.4): run the system on a fixture token set instead
-    // of production ALN-TokenData (backend + /api/tokens + the scanners'
-    // relative token paths all see the same injected set). Defaults to
-    // production data. Grows into Phase 3 runtime pack loading.
-    tokensPath = null
+    // Injection seam (2.x.4, generalized in Phase 3 A2): run the system on
+    // a fixture PACK DIRECTORY instead of production ALN-TokenData (backend
+    // + /api/tokens + /api/pack/* + the scanners' relative token paths all
+    // see the same injected pack). Defaults to production data.
+    packPath = null
   } = options;
 
   // Resolve dynamic port if requested (port=0 or port='auto')
@@ -181,7 +181,7 @@ async function startOrchestrator(options = {}) {
     ENABLE_HTTPS: String(enableHttps),
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
     ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD,  // Explicitly override to prevent .env contamination
-    ...(tokensPath ? { TOKENS_PATH: tokensPath } : {})
+    ...(packPath ? { PACK_PATH: packPath } : {})
   };
 
   // Path to server entry point

@@ -122,12 +122,13 @@ app.use('/', healthRoutes);                 // GET /health (with optional device
 app.use('/', resourceRoutes);               // GET /scoreboard
 
 // Static files (if needed)
-// Injection seam (2.x.4): when TOKENS_PATH is set, the scanners' relative
-// token fetches (gm-scanner standalone: 'data/tokens.json'; player-scanner)
-// must resolve to the SAME injected set the backend loaded — otherwise the
-// system would run split-brained on two packs. Registered before static so
-// it shadows the bundled dist copies. Not registered at all in production.
-if (process.env.TOKENS_PATH) {
+// Injection seam (2.x.4, generalized to a pack DIRECTORY in Phase 3 A2):
+// when PACK_PATH is set, the scanners' relative token fetches (gm-scanner
+// standalone: 'data/tokens.json'; player-scanner) must resolve to the SAME
+// injected pack the backend loaded — otherwise the system would run
+// split-brained on two packs. Registered before static so it shadows the
+// bundled dist copies. Not registered at all in production.
+if (process.env.PACK_PATH) {
   const injectedTokenPaths = [
     '/gm-scanner/tokens.json',
     '/gm-scanner/data/tokens.json',
@@ -135,7 +136,7 @@ if (process.env.TOKENS_PATH) {
     '/player-scanner/data/tokens.json',
   ];
   app.get(injectedTokenPaths, (req, res) => {
-    res.sendFile(path.resolve(process.env.TOKENS_PATH));
+    res.sendFile(path.join(path.resolve(process.env.PACK_PATH), 'tokens.json'));
   });
 }
 
