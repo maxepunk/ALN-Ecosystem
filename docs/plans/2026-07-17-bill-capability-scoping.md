@@ -225,9 +225,14 @@ cheap, information-only, owner-paced.
    migration so scoring models are pack-selected)
 3. Constellation renderer (needs: B12 surface selection, E4 projection)
 4. toy-constellation pack (the per-module gate, same methodology)
-5. BILL pack authoring (consumes B tools; content corpus can be
-   hand-authored ALN-style if Phase 5 tooling isn't ready — Phase 5 is a
-   convenience for BILL, never a dependency)
+5. BILL pack authoring (consumes B tools). Content fallback if Phase 5
+   tooling isn't ready (R17 correction — "ALN-style" was misleading:
+   ALN's style IS the Notion pipeline, which is ALN-specific): hand-edit
+   tokens.json + the game.json category block directly, BYO assets (the
+   NeurAI BMP generator is ALN-only). NOTE: the SF_* token field
+   vocabulary remains ALN-flavored until the R11 genericization —
+   cross-game authoring is semantic overload until then. Phase 5 remains
+   a convenience, never a dependency
 
 **Entry criteria for BILL-E:** Phase 3 DoD + Phase 4's E4/E5. **Phase 4's
 D-track (GM UX) is NOT a BILL dependency** — if BILL pressure grows, E
@@ -235,11 +240,13 @@ can be sequenced before D within Phase 4 without violating any gate.
 
 ### 7.5 Honest timeline arithmetic (program §9 units: working sessions)
 
-Remaining Phase 3: A3 ≈2–3 + B ≈2–3 + C2–C4 ≈1.5 → **≈5.5–7.5**.
-Phase 4: D ≈2–3 + E ≈2.5 → **≈4.5–5.5** (E-first ordering puts E4/E5
-≈2.5 sessions in). BILL-E modules: **≈3–5** + content (owner-paced).
-Strictly sequential, BILL-on-engine is ≈10–13 sessions out; with E-first
-Phase 4 ordering, ≈8–11. BILL-D needs none of it and can begin today.
+*Corrected 2026-07-17 (adversarial review R7 — the original figures
+here understated ~2× and dropped B0):* Remaining Phase 3 ≈ **12–18**
+honest (or ≈8–11 with the cut set; see program §9). Phase 4 inherits the
+same ~2× until re-priced: treat D+E as ≈8–11. BILL-E modules ≈3–5 + 
+content (owner-paced). Strictly sequential, BILL-on-engine is realistically
+**≈25–35 sessions** out (cut-set + E-first: ≈20–27). BILL-D needs none
+of it and can begin today — which is precisely why it should.
 
 **The one deliberate shortcut available (owner call, priced honestly):**
 a throwaway digital prototype of BILL's loop OUTSIDE the engine (a
@@ -262,6 +269,12 @@ Engine realities that may usefully feed the design's ⬚ registers:
   (RFID + small screen + touch, no keyboard) fit the tap grammar; the
   "private-ish screen" is naturally theirs. If instead phones-as-scanners
   (Phase 4 tap-to-web), privacy of feedback changes character.
+  **Hardware wrinkle (adversarial R16):** compound-scan accumulation
+  wants the RF field LIVE between taps — exactly when the GPIO-27
+  speaker-coupling mitigation says to kill it (continuous beeping), so
+  the grammar needs touch-to-arm-next-tap UX or accepts the beep; and
+  the compound-scan logic is NEW firmware behind a USB reflash (no_ota),
+  never pack content. Price this into the CYD-vs-phones decision.
 - **Simultaneous scans (parked edge case):** the compound-scan session
   makes multi-tap sequences per-station serialized; cross-station races
   reduce to ordinary transaction ordering the backend already handles.

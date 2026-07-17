@@ -24,6 +24,7 @@ slice-sized branches begin there.
 | **Live-state parity cluster** (field-reported stale-UI bugs) | ✅ **MERGED TO MAIN 2026-07-11 by owner** — parent PR #18 then ALNScanner PR #11, in the documented order. Owner follow-ups on the PR branch (`6d03cb7` music gameclock pause/resume also refresh state — closes the last idle-FIFO dependency; `77f905f` docker-lifecycle repaired under the blanked HA token) were absorbed into foundations 2026-07-17 via merge of `origin/main`. Zero open PRs in either repo. |
 | **A2 runtime pack loading** | ✅ **COMPLETE 2026-07-17** (parent `e73a020`→`3267b30`+, ALNScanner `df7cfed`/`707368d`, PWA `73ac71c`, ESP32 `92d763d`). Pack channel contracted + served (whitelist-only, frozen at boot); staleness identity reported by EVERY consumer (backend /health + sync:full + session stamp; GM UI + WS handshake; PWA config page; ESP32 boot log + CONFIG); PACK_PATH harness seam; GM packLoader with staged atomic refresh + runtime scoring (F-TOOL-05 dead); sync pipeline regenerates the pack manifest (Python builder, byte-parity-pinned); sync:full completeness structural test. Verified: backend 2187 unit/contract + 342 integration + coverage ratchet; scanner 1389 + ratchet + build artifacts + 07b/07c full-stack E2E; PWA 161; ESP32 native 120; scripts 66. Execution detail: "A2 execution record" below. |
 | 2026-07-17 plan review (blind-spot audit) | ✅ six real gaps + five ambiguities found and resolved; all folded into A2 and landed |
+| **2026-07-17 ADVERSARIAL five-phase review** | ✅ six lenses, findings R1-R24 in `2026-07-17-adversarial-plan-review.md`; all doc corrections APPLIED same day (program §1/§3/§7/§9/§11, pack-schemas, one-auth, BILL scoping, this file). Three OWNER decisions open — see owner list: timeline posture (honest ≈12-18 vs cut-set ≈8-11), E2/S2 DoD posture (warn-only default adopted), tokens-v2 + schema genericization (park recommended). |
 | **A2 boundary work** | ⬅ **NEXT**: rebase foundations onto main (per the branch decision above); slice-sized branches begin. Then **A3 per the REVISED slice list (program §3 + §11)**: slice 0 (dual-pack gate infra + capability-gate skeleton + getGameConfig + toy-pack growth) → slice 1 (mode BEHAVIOR to open semantics flags) → slice 2 (rules migration + gate extension) → 3a/3b/3c → rescoped slice 4 → 5/6/7. |
 | A3 extraction slices → B0/B pages → C2/C3 | queued per program §3/§4 |
 
@@ -109,7 +110,7 @@ findings that reshape A3, and four content-type gaps NO slice covers.
   `overtimeAt` are never read (the toy pack already diverges silently), and
   the duration contract pin MASKS the gap. Gate home: `activatePack()` +
   scanner packLoader, reading a capability descriptor co-located with
-  `gameRules/`; skeleton lands with slice 1, extended in slice 2 (flipping
+  `gameRules/`; skeleton lands with slice 0 (per the ratified §11 amendment), extended in slice 2 (flipping
   headroom from silently-ignored to loudly-rejected — the stated principle).
 - **F3 — The dual-pack Tier L gate has NO mechanism.** Zero tests load
   toy-heist today; the per-slice program rule has no executable gate. Build
@@ -121,8 +122,10 @@ findings that reshape A3, and four content-type gaps NO slice covers.
   self-skip (structural — see F5). Must land FIRST in A3 ("slice 0").
 - **F4 — Backend has no game.json reader.** `getGameConfig()` accessor with
   the same activation-snapshot semantics as `getManifest()` — needed by the
-  F2 gate (slice 1), the slice-2 scoring/rules migration, AND Phase-4
-  one-auth grant computation. One accessor serves all three.
+  F2 gate (slice 0), the slice-2 scoring/rules migration, AND the
+  one-auth grant substrate (the Phase-3 OPERATOR subset per the corrected
+  program §7 — adversarial R1; extended for player tiers in Phase 4). One
+  accessor serves all three.
 - **F9 — "Strings & theming" is THREE slices, not one:** A3a pure
   text/branding; A3b formatting LOGIC (currency forked across 5
   implementations, star rendering 4 ways with a hardcoded 5-star scale);
@@ -195,7 +198,7 @@ retires the debt.
 |---|---|---|---|
 | L1 | Scoring dual-source window: GM scanner reads pack `game.json` scoring (A2) while backend still reads `scoring-config.json` | A3 slice 2 — backend reads game.json, `scoring-config.json` deleted from TokenData | Migration-parity contract test in `pack-schemas.test.js` pins game.json scoring == scoring-config.json (its comment already says delete when the legacy file retires) |
 | L2 | GM scanner legacy scoring shim: baked build-time values as last-resort fallback. NOTE: scoring-config.json is deliberately NOT pack inventory — the shim falls back to BAKED values, never a fetched file | One release cycle after A2 ships everywhere | Shim logs a loud warn when used (added with the packLoader work); `grep scoring-config ALNScanner/src` |
-| L3 | PWA pack loading scoped to visibility only (manifest fetch + hash display; no staged atomic refresh) | PWA becomes rules-bearing (scoring/strings), or a field staleness incident | This row + the ride-along commit message |
+| L3 | PWA pack loading scoped to visibility only (manifest fetch + hash display; no staged atomic refresh) | PWA becomes rules-bearing (scoring, or pack-driven display strings — note the A3 3a/3b/3c slices do NOT touch the PWA; a slice that does trips this row) | This row + the ride-along commit message |
 | L4 | `teamId` stays on the wire as the entity-field alias (semantics are mode-dependent per the attribution model) | Phase 4 wire migration (pack-schemas doc §2 entities) | Contracts document the alias at every `teamId` site |
 
 ## Spike results / field validation (2026-07-17, owner-reported)
@@ -257,6 +260,25 @@ from the GitHub UI or any local clone
 
 ## Owner task list (can trickle in)
 
+- **DECIDE (adversarial R7): timeline posture** — accept honest remaining
+  Phase 3 ≈12-18 sessions, or adopt the cut set (defer slices 4/6/7 +
+  3c-tail, B to 3 pages) → ≈8-11 with the DoD intact. Note: R4 made
+  slice 4 MORE expensive (resolver + bound profile), strengthening the
+  defer case unless a near-term event needs pack-authored cues.
+- **DECIDE (adversarial R5+R11): tokens.schema v2 + genericization** —
+  park as named backlog (recommended; ALN + toy run fine on v1) or add
+  as an A3 slice. The closed SF_MemoryType enum blocks any THIRD game's
+  tokens until this lands.
+- **RUN S2 NEXT (adversarial R8)** — the DNS-01 cert spike gates E2;
+  the warn-only-cert preflight default is adopted; veto if E2 should
+  hard-gate the DoD.
+- **D-track prerequisite (adversarial R19):** four-domain wireframes +
+  owner walkthrough — schedulable NOW, zero engine dependency; moot if
+  Phase 4 runs E-first.
+- **Kit capacity (adversarial R18):** before Phase-4 phone load, size
+  the Archer for expected client counts (DHCP pool, AP ceiling) + add a
+  preflight client-count check; verify /api rate-limiter per-IP keying
+  vs NAT.
 - ~~S1 iPhone-taps-token~~ ✅ PASS 2026-07-17. Remaining spike: S2
   Cloudflare DNS-01 cert on the Pi (run at home; kit-network posture
   decided — `docs/decisions/2026-07-09-kit-network-posture.md`; router =

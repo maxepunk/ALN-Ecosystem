@@ -140,3 +140,14 @@ Two requirements join the v1 design (source:
    hidden-information game, and worth tightening for ALN regardless.)
    The `observe` function becomes parameterized by a projection, not a
    firehose.
+
+### 2026-07-17 adversarial review note (R24)
+
+A physical band is a GAME-LAYER actor selector, not an auth credential:
+the enrolled station is the auth boundary, so a swapped band acts-as
+another player WITHIN the station's grant ceiling — a game-mechanic/
+social risk, never privilege escalation; physical band theft is outside
+the §4 browser-adversary threat model by design. Addendum item 1
+(actor-centric resolution) and §2's session-tier "claim credit without
+upgrading tier" are two faces of the same principle — identification is
+game policy, never an auth requirement — not competing mechanisms.

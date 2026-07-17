@@ -1233,3 +1233,13 @@ This deployment provides:
 - **Simplicity**: Single `pm2 start` command for production
 - **Flexibility**: Works on any local network without router config
 - **Scalability**: From Raspberry Pi to cloud deployment
+## Backups & pack rollback (2026-07-17, adversarial review R2/R20)
+
+- **Off-device data backup:** after every event, copy the orchestrator's
+  persisted state off the Pi's SD card (it holds sessions, backups, AND
+  archives on the same disk): `rsync -a backend/data/ <other-medium>/aln-data-$(date +%F)/`
+- **Pack rollback (until the full runbook lands with A3 slice 2):** a
+  session's rules freeze at orchestrator boot, so reverting a bad pack is
+  always safe via restart — `git -C ALN-TokenData checkout <last-good-sha>
+  && npm run prod:restart`, or start with `PACK_PATH=<known-good-dir>`.
+  Verify with `/health` (`pack.contentHash`) before doors.

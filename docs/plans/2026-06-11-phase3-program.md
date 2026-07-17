@@ -15,8 +15,15 @@ pack-manifest, installation-profile) follow this doc.
 
 ## 1. Purpose
 
-**Make games data, not code.** Designing a new game = authoring a pack;
-the engine never changes. The falsifiable test (Phase 4 gate): a toy
+**Make ALN-class games data, not code.** For games that fit the
+engine's implemented model (transaction-at-station scoring, tabular
+values, all-of-group completion), designing a new game = authoring a
+pack with ZERO engine changes — that is the falsifiable Phase-3 gate.
+Games in a NEW mechanical class ship a small set of generic,
+pack-parameterized engine modules (see §11.3 platform-vs-game-projects;
+the BILL scoping is the worked example): per-game code TRENDS toward
+zero as the module library grows, but is not zero for the first game of
+a new class. The falsifiable test (Phase 4 gate): a toy
 second game — different title, strings, modes, scoring, group rules, a
 handful of tokens — passes the full E2E suite with **zero engine-code
 changes**, and each claimed install tier runs via scripted capability
@@ -57,26 +64,51 @@ The engine/game separation itself. Everything else hangs off this.
    loaded pack version/hash (sync:full, /health) — kills F-TOOL-05's
    silent-stale-scoring class. Grows directly from the 2.x.4 TOKENS_PATH
    seam (its first consumer and its test harness).
-3. **A3. The extraction grind** (slice by slice, each slice = extract →
-   toy pack exercises it → editor page consumes it). *Slice list REVISED
-   2026-07-17 by the forward audit + BILL scoping (§11 amendments):*
+3. **A3. The extraction grind** (slice by slice; the per-slice GATE =
+   toy pack exercises it + dual-pack Tier L green. The consuming B page
+   follows in Track B after B0 — the editor is NOT part of the slice
+   gate; adversarial review R10 resolved the earlier contradictory
+   wording). *Slice list REVISED 2026-07-17 (§11 amendments):*
    - **Slice 0 — gate infrastructure (FIRST, small):** dual-pack Tier L
      plumbing (E2E_PACK_PATH across the harness + npm script + CI matrix
      over {production, toy-heist}); grow toy pack to ≥10 distinct-owner
      tokens; `packService.getGameConfig()` (activation-snapshot
      semantics); capability-gate skeleton + `requires` declaration block
-     in game.schema.json.
+     in game.schema.json — the gate ALSO enforces `engine.minVersion` +
+     `schemaVersion` (semver compare, loud refusal; adversarial R6).
+     Adopted skew policy (R12): the ALN pack keeps mode ids
+     {blackmarket, detective} through Phase 3; scoring-config.json
+     deletion ships in the SAME TokenData pin bump as the slice-2
+     backend deploy; assume SW-cached GM scanners lag the backend by up
+     to one event.
    - **Slice 1 — modes:** migrate BEHAVIOR to the pack's per-mode
      semantics flags (`scoringPolicy`/`entityRole`/`countsTowardGroups`/
      `displayBehavior`) — the mode ids are load-bearing string constants
      in ~40 branch points today; flag vocabulary designed OPEN
      (modes are proto-verbs — BILL scoping §2.1); wire-mode validation
-     becomes pack-derived; gate rejects undrivable modes.
+     becomes pack-derived; gate rejects undrivable modes. **UI boundary
+     (R3, gate-blocking without it):** the binary mode checkbox becomes a
+     data-driven segmented selector rendered from `gameConfig.modes`
+     (labels from mode.label; scoreboard/evidence surfaces driven by
+     `displayBehavior.surface`, not the 'blackmarket' literal). Scope
+     ENDS there — mode-count ergonomics beyond ~3, per-mode theming, and
+     the four-domain redesign stay Track D; the toy pack stays within
+     what the segmented selector renders for all of Phase 3. **Coherence
+     validator (R9):** cross-field rule table (dependentSchemas where
+     expressible + contract-suite rules — e.g. scoringPolicy:none ⇒
+     countsTowardGroups:false) — the capability gate catches UNSUPPORTED
+     shapes, this catches CONTRADICTORY ones; resolve the toy pack's
+     ambiguous `appraise` mode here.
    - **Slice 2 — scoring/group/duplicate/clock rules migration:** backend
      reads game.json via getGameConfig(); scoring-config.json retires;
      gameClock.duration/overtimeAt consumed (delete the masking pin);
      gate extended — headroom shapes (threshold/ordered, per-entity/
-     unlimited) flip from silently-ignored to LOUDLY-REJECTED.
+     unlimited) flip from silently-ignored to LOUDLY-REJECTED. **Same
+     commit (R2):** pack-rollback runbook lands in DEPLOYMENT_GUIDE
+     (TokenData checkout last-good + restart, or PACK_PATH pin — legal
+     because rules freeze at boot) AND preflight §4.4 is rewritten to
+     validate pack-manifest.json + game.json scoring instead of the
+     retired scoring-config.json.
    - **Slices 3a/3b/3c — strings & theming, SPLIT (audit F9):**
      3a pure text/branding (pre-fixes: scoreboard password, F-SHOW-29
      idle-loop literal; the "Case File" title is a FUNCTIONAL xdotool
@@ -91,12 +123,24 @@ The engine/game separation itself. Everything else hangs off this.
      venue filenames); music/playlist REFERENCES join them (files stay on
      the venue/asset channel). Settles audit F7 + the reference half of
      F6. Videos-in-pack (F5) deferred to the B pages' media story.
+     **Ordering guard (R4 — without it, live lighting goes dark):** this
+     slice ships (a) a backend role→scene resolver reading the active
+     installation profile, (b) an in-repo ALN profile whose lighting
+     bindings cover every migrated role, and (c) a concrete-id fallback
+     on cues (ledger row; retires when C4's binding page ships). C4 then
+     only makes already-working bindings editable.
    - **Slice 5 — clock/phase params (B11)** (duration/overtime landed in
      slice 2; phases + trigger-starts here) → **Slice 6 — display
      surfaces (B12** — renderer selection; the surface mechanism BILL's
      constellation renderer later plugs into**)** → **Slice 7 — report
      template refs (B9** — bundle schema reserves per-game state
      namespaces**)**.
+
+   **Extraction brake (R13, standing rule):** no new A3 slice opens
+   without citing the capability-matrix row(s) it moves and confirming
+   they are not `engine-fixed`/`venue-config`; reclassifying a row is an
+   explicit, logged decision. (First row to re-litigate: 1.23, the SF_*
+   token schema — see adversarial review R11.)
 
 ### Track B — Authoring tooling (consumes A, page by page)
 config-tool restructured into **Design** and **Venue** workspaces
@@ -182,7 +226,8 @@ A1 schemas ←co-design→ C1 installation-profile (+ capability vocabulary, dra
    │
 A2 runtime pack loading  (consumes the 2.x.4 seam; §6.1 standalone design)
    │
-A3 extraction slices ──→ B pages (each slice lands WITH its editor)
+A3 extraction slices ──→ B pages (follow after B0; the slice gate is
+                         the toy pack + dual-pack Tier L, NOT the editor — R10)
    │        │
    │        └─ toy pack grows as second consumer of EVERY slice (§5)
    │
@@ -215,7 +260,7 @@ how-to-make-a-game-by-example.
    LAN auth (decided: shared password + JWT), bound-station device
    identity, and pseudonymous player sessions must be ONE
    identity/permission model with different credential strengths — not
-   three ad-hoc systems. O3 resolves here.
+   four ad-hoc systems (five once bound stations arrive). O3 resolves here.
 3. **Report contract evolution (Q11/B9).** Bundle schema is engine-fixed
    data; presentation is pack-variable; ALN's markdown stays
    byte-compatible (golden master) until the GenAI pipeline consumes the
@@ -235,8 +280,17 @@ foundation, NOT parallel tracks (owner: cleaner boundary, the falsifiable
 proof isn't delayed behind UX/platform work). Carve-ins that stay in
 Phase 3: E1 spikes (owner-run, information only), E2 real domain+cert
 (reclassified as Track C infrastructure — benefits Phase 3's own
-deliverables), and the O3 one-auth DESIGN (paper only; player-facing
-implementation is Phase 4).
+deliverables; **2026-07-17 adversarial review R8:** E2 does NOT gate the
+toy-pack DoD — C2's preflight cert line runs WARN-ONLY until E2 lands;
+spike S2 is the E2 prerequisite and sits atop the owner list), and the
+O3 one-auth story — **Phase 3 implements the OPERATOR-TIER v1 subset**
+(config-tool auth B0.3 including its BACKEND substrate: token claims,
+issuance-time grant computation, the function check in
+commandExecutor/routes; plus the scoreboard token with a PLAIN read
+scope) while the player-facing tiers, enrollment, actor-centric
+resolution, and server-side projection are Phase 4 (adversarial review
+R1 — this replaces the earlier 'paper only' wording, which contradicted
+Track B's stated dependencies).
 
 Sub-gates either way:
 - D gate: four-domain UX shipped + report intake writing B9 bundles.
@@ -257,9 +311,19 @@ Sub-gates either way:
 
 ## 9. Estimates (sessions, same gates discipline as Phase 2)
 
-A1+C1 schemas ≈1.5 · A2 ≈1.5 · A3 ≈2-3 (sliced) · B ≈2-3 (paged) ·
-C2-C4 ≈1.5 · D ≈2-3 (after wireframes) · E2 ≈0.5 · E3-E5 ≈2 (post-spike)
-→ core gate (A+B+C+Phase 4) ≈ 8-10; D+E tracks ≈ 4-6 alongside.
+*Original (2026-06-11):* A1+C1 ≈1.5 · A2 ≈1.5 · A3 ≈2-3 · B ≈2-3 ·
+C2-C4 ≈1.5 · D ≈2-3 · E2 ≈0.5 · E3-E5 ≈2 → core gate ≈ 8-10.
+
+**RE-PRICED 2026-07-17 (adversarial review R7)** — calibrated against
+A2's ACTUAL cost (~2.3-2.7× its estimate; the only track with an
+execution record) AND bottom-up costing of the ten-slice A3; two methods
+converge: **A3 ≈6-10 · B0 ≈1.5-2.5 · B pages ≈3-5 · C2-C4 ≈1.5-3 →
+remaining Phase 3 ≈ 12-18 sessions** (plus ~15-25% review/deploy/doc
+overhead the original numbers never counted). A disciplined CUT SET
+(defer slices 4, 6, 7 + the 3c tail; trim B to the three gate-required
+pages) recovers ≈5-7 sessions → **≈8-11 "gate-first"** with the DoD
+intact — owner decision recorded in STATUS. Phase-4 figures inherit the
+same ~2× understatement until re-priced at Phase-4 entry.
 
 ## 10. Immediate next deliverables
 
@@ -297,7 +361,16 @@ Phase 4 sub-gates are UNCHANGED by every item below.
    AVAILABLE if BILL pressure grows — an option, not a decision.
 4. **D-track note:** the B9 session-bundle schema reserves per-game
    state namespaces.
-5. **Known plan-level gaps intentionally left open:** F8 ESP32 rebrand
+5. **A2→main landing order (R14):** submodule PRs first (TokenData →
+   ALNScanner → PWA → ESP32), each reviewed and merged; THEN the parent
+   PR bumping all four pins to the merged SHAs; only then are slice
+   branches cut from main. ("Rebase foundations onto main" describes
+   starting slices, not landing A2 — the landing is this PR train.)
+6. **2026-07-17 adversarial review applied:** findings R1-R24 and their
+   resolutions live in `2026-07-17-adversarial-plan-review.md`; the
+   R-numbers cited inline above trace to it. §1, §7, §9 and the slice
+   list were corrected in place the same day.
+7. **Known plan-level gaps intentionally left open:** F8 ESP32 rebrand
    posture (conditional on CYDs-as-BILL-scanners); F5 videos-in-pack
    (B pages' media story); draft-pack real-device preview mechanism
    (B0 design, options recorded in the audit).
