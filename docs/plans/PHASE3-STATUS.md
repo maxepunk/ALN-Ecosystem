@@ -65,11 +65,16 @@ slice-sized branches begin there.
   asserts it reproduces the committed manifests, which the backend
   contract suite pins to the Node builder (no Node needed in the Python
   test env).
-- **Ride-alongs (scoped by review):** PWA = manifest fetch + hash/source
-  display only, full staged refresh deferred (ledger L3 — its blast radius
-  for mixed versions is display-only). ESP32 = pack files fold into the
-  EXISTING asset manifest sync (no second sync loop on-device); device
-  reports pack version from a manifest field in boot log + serial CONFIG.
+- ~~**Ride-alongs (scoped by review):**~~ ✅ (landed 2026-07-17):
+  PWA `73ac71c` — `loadPackInfo()` network-first identity fetch per
+  serving origin + Game Pack line in config.html (identity only, staged
+  refresh deferred per ledger L3; 161 tests green). ESP32 `92d763d` —
+  pack identity EMBEDDED in the asset manifest by the sync pipeline
+  (`generate_asset_manifest.build_manifest(pack_dir=…)`, reading the
+  TOP-LEVEL TokenData, never the lag-prone nested pin; pack-manifest
+  rebuild reordered BEFORE the asset manifest so the embedded identity is
+  fresh), captured by AssetService during sync, surfaced in boot log +
+  serial CONFIG (120/120 native; scripts 66/66).
 
 **Decisions taken on review defaults (owner may veto):**
 - GM-scanner standalone pack origin = **canonical cross-origin pack URL**

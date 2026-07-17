@@ -1060,27 +1060,30 @@ def main(argv=None):
         else:
             print("No orphans found.")
 
-    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot.
-    print()
-    print("Writing asset manifest...")
-    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT)
-    manifest_path = generate_asset_manifest.write_manifest(ASSETS_ROOT, manifest)
-    print(
-        f"Wrote {manifest_path.relative_to(ECOSYSTEM_ROOT)} "
-        f"(images={len(manifest['images'])}, audio={len(manifest['audio'])})"
-    )
-
-    # Phase 3 A2: regenerate the PACK manifest. tokens.json just changed, so
-    # its sha1 in the pack inventory is stale — and standalone clients verify
-    # every staged download against the manifest, correctly REJECTING a
-    # mismatched update. Skipping this step silently stops the standalone
-    # pack update channel (2026-07-17 plan review, finding A2).
+    # Phase 3 A2: regenerate the PACK manifest FIRST. tokens.json just
+    # changed, so its sha1 in the pack inventory is stale — and standalone
+    # clients verify every staged download against the manifest, correctly
+    # REJECTING a mismatched update. Skipping this step silently stops the
+    # standalone pack update channel (2026-07-17 plan review, finding A2).
+    # Ordering: before the asset manifest, which EMBEDS this pack identity
+    # for the ESP32 boot log.
     print()
     print("Rebuilding pack manifest...")
     pack_manifest, pack_manifest_path = build_pack_manifest.write_manifest(TOKENS_JSON.parent)
     print(
         f"Wrote {pack_manifest_path.relative_to(ECOSYSTEM_ROOT)} "
         f"({len(pack_manifest['files'])} files, {pack_manifest['contentHash'][:23]}…)"
+    )
+
+    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot
+    # (carries the pack identity from the freshly-rebuilt pack manifest).
+    print()
+    print("Writing asset manifest...")
+    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT, pack_dir=TOKENS_JSON.parent)
+    manifest_path = generate_asset_manifest.write_manifest(ASSETS_ROOT, manifest)
+    print(
+        f"Wrote {manifest_path.relative_to(ECOSYSTEM_ROOT)} "
+        f"(images={len(manifest['images'])}, audio={len(manifest['audio'])})"
     )
 
     print()
