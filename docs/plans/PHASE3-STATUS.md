@@ -24,8 +24,8 @@ slice-sized branches begin there.
 | **Live-state parity cluster** (field-reported stale-UI bugs) | ✅ **MERGED TO MAIN 2026-07-11 by owner** — parent PR #18 then ALNScanner PR #11, in the documented order. Owner follow-ups on the PR branch (`6d03cb7` music gameclock pause/resume also refresh state — closes the last idle-FIFO dependency; `77f905f` docker-lifecycle repaired under the blanked HA token) were absorbed into foundations 2026-07-17 via merge of `origin/main`. Zero open PRs in either repo. |
 | **A2 runtime pack loading** | ✅ **COMPLETE 2026-07-17** (parent `e73a020`→`3267b30`+, ALNScanner `df7cfed`/`707368d`, PWA `73ac71c`, ESP32 `92d763d`). Pack channel contracted + served (whitelist-only, frozen at boot); staleness identity reported by EVERY consumer (backend /health + sync:full + session stamp; GM UI + WS handshake; PWA config page; ESP32 boot log + CONFIG); PACK_PATH harness seam; GM packLoader with staged atomic refresh + runtime scoring (F-TOOL-05 dead); sync pipeline regenerates the pack manifest (Python builder, byte-parity-pinned); sync:full completeness structural test. Verified: backend 2187 unit/contract + 342 integration + coverage ratchet; scanner 1389 + ratchet + build artifacts + 07b/07c full-stack E2E; PWA 161; ESP32 native 120; scripts 66. Execution detail: "A2 execution record" below. |
 | 2026-07-17 plan review (blind-spot audit) | ✅ six real gaps + five ambiguities found and resolved; all folded into A2 and landed |
-| **2026-07-17 ADVERSARIAL five-phase review** | ✅ six lenses, findings R1-R24 in `2026-07-17-adversarial-plan-review.md`; all doc corrections APPLIED same day (program §1/§3/§7/§9/§11, pack-schemas, one-auth, BILL scoping, this file). Three OWNER decisions open — see owner list: timeline posture (honest ≈12-18 vs cut-set ≈8-11), E2/S2 DoD posture (warn-only default adopted), tokens-v2 + schema genericization (park recommended). |
-| **A2 boundary work** | ⬅ **NEXT**: rebase foundations onto main (per the branch decision above); slice-sized branches begin. Then **A3 per the REVISED slice list (program §3 + §11)**: slice 0 (dual-pack gate infra + capability-gate skeleton + getGameConfig + toy-pack growth) → slice 1 (mode BEHAVIOR to open semantics flags) → slice 2 (rules migration + gate extension) → 3a/3b/3c → rescoped slice 4 → 5/6/7. |
+| **2026-07-17 ADVERSARIAL five-phase review** | ✅ six lenses, findings R1-R24 in `2026-07-17-adversarial-plan-review.md`; all doc corrections APPLIED same day (program §1/§3/§7/§9/§11, pack-schemas, one-auth, BILL scoping, this file). OWNER decisions: timeline = HONEST accepted (≈13-20, cut set declined); tokens-v2+genericization = ADDED as slice 2b; E2/S2 = warn-only default adopted, S2 run pending. |
+| **A2 boundary work** | ⬅ **NEXT**: rebase foundations onto main (per the branch decision above); slice-sized branches begin. Then **A3 per the REVISED slice list (program §3 + §11)**: slice 0 (dual-pack gate infra + capability-gate skeleton + getGameConfig + toy-pack growth) → slice 1 (mode BEHAVIOR to open semantics flags) → slice 2 (rules migration + gate extension) → **slice 2b (tokens v2 + pack-declared category vocabulary — added by owner decision)** → 3a/3b/3c → slice 4 (with the R4 resolver/fallback guard) → 5/6/7. |
 | A3 extraction slices → B0/B pages → C2/C3 | queued per program §3/§4 |
 
 ## A2 execution record (COMPLETE — scope as set by the 2026-07-17 plan review)
@@ -260,15 +260,14 @@ from the GitHub UI or any local clone
 
 ## Owner task list (can trickle in)
 
-- **DECIDE (adversarial R7): timeline posture** — accept honest remaining
-  Phase 3 ≈12-18 sessions, or adopt the cut set (defer slices 4/6/7 +
-  3c-tail, B to 3 pages) → ≈8-11 with the DoD intact. Note: R4 made
-  slice 4 MORE expensive (resolver + bound profile), strengthening the
-  defer case unless a near-term event needs pack-authored cues.
-- **DECIDE (adversarial R5+R11): tokens.schema v2 + genericization** —
-  park as named backlog (recommended; ALN + toy run fine on v1) or add
-  as an A3 slice. The closed SF_MemoryType enum blocks any THIRD game's
-  tokens until this lands.
+- ~~DECIDE (R7): timeline posture~~ ✅ **RESOLVED 2026-07-17: HONEST
+  figures ACCEPTED, cut set DECLINED** ("we need to be thorough") —
+  remaining Phase 3 ≈13-20 sessions (incl. new slice 2b); slices 4/6/7
+  + full B page set stay in scope.
+- ~~DECIDE (R5+R11): tokens v2 + genericization~~ ✅ **RESOLVED
+  2026-07-17: ADDED as A3 slice 2b** (structured group field + the
+  pack-declared category vocabulary; design basis = pack-schemas §4;
+  sequenced after slice 2 so 3c builds on the final vocabulary).
 - **RUN S2 NEXT (adversarial R8)** — the DNS-01 cert spike gates E2;
   the warn-only-cert preflight default is adopted; veto if E2 should
   hard-gate the DoD.

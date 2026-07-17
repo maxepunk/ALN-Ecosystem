@@ -109,6 +109,25 @@ The engine/game separation itself. Everything else hangs off this.
      because rules freeze at boot) AND preflight §4.4 is rewritten to
      validate pack-manifest.json + game.json scoring instead of the
      retired scoring-config.json.
+   - **Slice 2b — tokens v2 + schema genericization (ADDED 2026-07-17,
+     owner decision on adversarial R5+R11 — "we need to be thorough"):**
+     tokens.schema.json v2 structured group field (kills the "(xN)"
+     microformat — coordinated parser change: backend tokenService,
+     GM-scanner group parsing, sync script, the pack contract suite's
+     methodology guard) PLUS the R11 genericization: the category
+     vocabulary becomes PACK-DECLARED (game.json declares the category
+     set; tokens validate against it — replacing the closed
+     SF_MemoryType enum that would reject any third game's tokens),
+     value-rating scale pack-declared, the Notion SF_ prefix retired
+     from the universal schema (the sync script keeps emitting ALN's
+     fields as an ALN adapter). Both packs' tokens.json migrate
+     mechanically; a dual-accept window gets a debt-ledger row +
+     tripwire; capability-matrix row 1.23 is formally reclassified (the
+     R13 brake's first logged exercise). SEQUENCED HERE deliberately:
+     after slice 2 the scoring/group machinery is already pack-driven,
+     so the vocabulary lands next to its consumers; and slice 3c's
+     CSS type-taxonomy work then builds on the FINAL vocabulary instead
+     of the ALN enum. ≈1-1.5 sessions.
    - **Slices 3a/3b/3c — strings & theming, SPLIT (audit F9):**
      3a pure text/branding (pre-fixes: scoreboard password, F-SHOW-29
      idle-loop literal; the "Case File" title is a FUNCTIONAL xdotool
@@ -316,14 +335,15 @@ C2-C4 ≈1.5 · D ≈2-3 · E2 ≈0.5 · E3-E5 ≈2 → core gate ≈ 8-10.
 
 **RE-PRICED 2026-07-17 (adversarial review R7)** — calibrated against
 A2's ACTUAL cost (~2.3-2.7× its estimate; the only track with an
-execution record) AND bottom-up costing of the ten-slice A3; two methods
-converge: **A3 ≈6-10 · B0 ≈1.5-2.5 · B pages ≈3-5 · C2-C4 ≈1.5-3 →
-remaining Phase 3 ≈ 12-18 sessions** (plus ~15-25% review/deploy/doc
-overhead the original numbers never counted). A disciplined CUT SET
-(defer slices 4, 6, 7 + the 3c tail; trim B to the three gate-required
-pages) recovers ≈5-7 sessions → **≈8-11 "gate-first"** with the DoD
-intact — owner decision recorded in STATUS. Phase-4 figures inherit the
-same ~2× understatement until re-priced at Phase-4 entry.
+execution record) AND bottom-up costing of the sliced A3; two methods
+converge: **A3 ≈7-11.5 (incl. the added slice 2b) · B0 ≈1.5-2.5 ·
+B pages ≈3-5 · C2-C4 ≈1.5-3 → remaining Phase 3 ≈ 13-20 sessions**
+(plus ~15-25% review/deploy/doc overhead the original numbers never
+counted). **OWNER DECISION (2026-07-17): the HONEST figures are
+ACCEPTED — the cut set is DECLINED ("we need to be thorough"); slices
+4, 6, 7 and the full B page set stay in Phase 3 scope, and slice 2b
+was ADDED.** Phase-4 figures inherit the same ~2× understatement until
+re-priced at Phase-4 entry.
 
 ## 10. Immediate next deliverables
 

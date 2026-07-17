@@ -341,7 +341,7 @@ Kills the `"(xN)"` microformat. v2 token (changes only):
 - Coordinated change: backend `tokenService` parser, GM scanner
   (`tokenManager` + `LocalStorage`), Notion sync writer (ALN-specific
   producer), schema, and a migration script (v1→v2 mechanical rewrite).
-  ~~Lands as ONE A1 slice with the toy pack authored natively in v2~~ **CORRECTION (2026-07-17 adversarial review R5): this never landed — the repo is v1 everywhere (the "(xN)" microformat is enforced and the toy pack is authored in v1). v2 is PARKED as a named backlog item, bundled with the token-schema genericization (R11: the closed SF_MemoryType enum blocks any third game's tokens) — owner decision recorded in PHASE3-STATUS. Do not treat v2 as shipped.**.
+  ~~Lands as ONE A1 slice with the toy pack authored natively in v2~~ **CORRECTION (2026-07-17 adversarial review R5): this never landed — the repo is v1 everywhere (the "(xN)" microformat is enforced and the toy pack is authored in v1). v2 is now **A3 slice 2b** (owner decision 2026-07-17), bundled with the R11 genericization (pack-declared category vocabulary replacing the closed SF_MemoryType enum that blocks any third game's tokens). §4 below is the design basis for that slice. Do not treat v2 as shipped until slice 2b lands.**.
 - Loader accepts both during migration (v2 first, v1 fallback with the
   parse shim that exists today).
 

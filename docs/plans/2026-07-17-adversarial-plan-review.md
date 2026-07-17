@@ -172,15 +172,16 @@ projects framing; the PACK_PATH seam (now load-bearing for testing,
 preview, AND rollback); the capability-gate concept (it needed R6/R9
 widening, not replacement).
 
-## Owner decisions (recorded in STATUS)
+## Owner decisions
 
-1. **Timeline posture (R7):** accept honest 12–18 remaining, or adopt the
-   cut set (defer slices 4/6/7 + 3c-tail, B to 3 pages) → ≈8–11.
-   Note: the cut set defers slice 4, which R4 just made MORE expensive —
-   deferral is now the cheaper AND safer option unless pack-authored
-   cues are needed for a near-term event.
-2. **E2/S2 (R8):** run S2 next (cheap, owner-run, twice-flagged "do
-   early"); veto the warn-only-cert default if E2 should hard-gate DoD.
-3. **tokens.schema v2 + genericization (R5+R11):** park as a named
-   backlog item (recommended — keeps Phase 3 lean; ALN + toy run fine on
-   v1) or add as an A3 slice now.
+1. **Timeline posture (R7): ✅ RESOLVED 2026-07-17 — HONEST figures
+   ACCEPTED, cut set DECLINED** ("we need to be thorough"). Remaining
+   Phase 3 ≈13–20 sessions including the added slice 2b; slices 4/6/7
+   and the full B page set stay in Phase 3.
+2. **E2/S2 (R8): default adopted** (cert preflight warn-only until E2;
+   E2 does not gate the DoD) — S2 run still pending, top of owner list;
+   veto window open.
+3. **tokens.schema v2 + genericization (R5+R11): ✅ RESOLVED
+   2026-07-17 — ADDED as A3 slice 2b** (program §3), sequenced after
+   slice 2 so the vocabulary lands next to its pack-driven consumers and
+   3c builds on the final vocabulary.
