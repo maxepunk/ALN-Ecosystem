@@ -78,6 +78,19 @@ slice-sized branches begin there.
   fresh), captured by AssetService during sync, surfaced in boot log +
   serial CONFIG (120/120 native; scripts 66/66).
 
+**PR-review residue (non-blocking, recorded so it isn't lost — PR #12
+rounds 5-7 converged to traced approvals):** (a) packLoader timeout
+coverage pins the SIGNAL WIRING, not a live hang→abort→fallthrough — a
+behavioral timeout test joins the slice-0/C1 test-hardening bucket
+alongside the live mismatch-warn E2E; (b) the accepted staging-cache
+race (parallel-fetch failure path) is comment-documented but has no
+forced-interleaving regression test; (c) `aln-pack-*` caches have no
+orphan sweep independent of a successful refresh (sw.js GC exempts them
+by design) — revisit only if long-lived devices accumulate strays;
+(d) pack JSON reaches computed-key object writes (benign today — packs
+are fully trusted content; re-examine when the one-auth/E4 era touches
+pack provenance).
+
 **Decisions taken on review defaults (owner may veto):**
 - GM-scanner standalone pack origin — **AS BUILT: same-origin static**
   (CORRECTED 2026-07-17, surfaced by PR #12 review round 4): the earlier
