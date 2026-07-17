@@ -17,7 +17,7 @@
  */
 
 // DO NOT mock child_process — we want real Docker commands
-// DO mock axios — prevent real HA API calls during lightingService.init()
+// DO mock axios + ws — prevent real HA API/WebSocket calls during lightingService.init()
 jest.mock('axios');
 const axios = require('axios');
 
@@ -178,12 +178,22 @@ describe('dockerHelper (real Docker)', () => {
 describe('lightingService Docker lifecycle (real Docker)', () => {
   let lightingService;
   let savedNodeEnv;
+  let savedHaToken;
 
   beforeEach(() => {
     if (!dockerAvailable || !containerPresent) return;
 
     // Clear module cache to get a fresh lightingService singleton
     jest.resetModules();
+
+    // jest.config.base.js blanks HOME_ASSISTANT_TOKEN for every jest layer
+    // (kills phantom HA dialing), but init()'s token guard sits AHEAD of
+    // _ensureContainerRunning() — the code under test here. This suite is the
+    // one deliberate exception: a dummy token (set BEFORE the fresh require,
+    // so the fresh config picks it up) lets init() reach the Docker lifecycle
+    // path; axios + ws stay mocked so no real HA call ever happens.
+    savedHaToken = process.env.HOME_ASSISTANT_TOKEN;
+    process.env.HOME_ASSISTANT_TOKEN = 'docker-lifecycle-dummy-token';
 
     // Re-require with fresh module state
     // (config and dockerHelper are NOT mocked — they use real Docker)
@@ -194,6 +204,20 @@ describe('lightingService Docker lifecycle (real Docker)', () => {
       error: jest.fn(),
       debug: jest.fn(),
     }));
+    // Inert WebSocket — with a token present, init() also opens the HA event
+    // monitor WS; a real one would dial localhost:8123 and schedule reconnect
+    // timers against a booting container.
+    jest.mock('ws', () => {
+      const { EventEmitter } = require('events');
+      return class MockWS extends EventEmitter {
+        constructor() {
+          super();
+          this.send = jest.fn();
+          this.close = jest.fn();
+          this.readyState = 1;
+        }
+      };
+    });
 
     lightingService = require('../../src/services/lightingService');
     const freshAxios = require('axios');
@@ -217,8 +241,11 @@ describe('lightingService Docker lifecycle (real Docker)', () => {
   afterEach(async () => {
     if (!dockerAvailable || !containerPresent) return;
 
-    // Restore NODE_ENV
+    // Restore NODE_ENV and the blanked HA token (integration runs --runInBand:
+    // one process for all suites — an env leak here re-arms phantom HA dialing
+    // in every suite after this one)
     process.env.NODE_ENV = savedNodeEnv;
+    process.env.HOME_ASSISTANT_TOKEN = savedHaToken;
 
     // Reset lightingService state
     if (lightingService) {

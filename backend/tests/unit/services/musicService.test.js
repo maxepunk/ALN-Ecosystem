@@ -320,6 +320,33 @@ describe('MusicService — post-command state refresh (live-state parity)', () =
     await service.play(); // identical state/track/position — must stay silent
     expect(events).toEqual([]);
   });
+
+  it('pauseForGameClock() emits playback:changed from its own refresh (no idle event)', async () => {
+    // Session pause routes music through pauseForGameClock, not pause() —
+    // without its own refresh the panel keeps showing "playing" whenever the
+    // idle FIFO is desynced (the exact class the command-path fix addresses).
+    mockMpdResponses(service._mpd, { state: 'play' });
+    await service.play();
+    mockMpdResponses(service._mpd, { state: 'pause' });
+    const events = [];
+    service.on('playback:changed', (d) => events.push(d));
+    await service.pauseForGameClock();
+    expect(events).toEqual([{ state: 'paused' }]);
+    expect(service.getState().state).toBe('paused');
+  });
+
+  it('resumeFromGameClock() emits playback:changed from its own refresh (no idle event)', async () => {
+    mockMpdResponses(service._mpd, { state: 'play' });
+    await service.play();
+    mockMpdResponses(service._mpd, { state: 'pause' });
+    await service.pauseForGameClock();
+    mockMpdResponses(service._mpd, { state: 'play' });
+    const events = [];
+    service.on('playback:changed', (d) => events.push(d));
+    await service.resumeFromGameClock();
+    expect(events).toEqual([{ state: 'playing' }]);
+    expect(service.getState().state).toBe('playing');
+  });
 });
 
 describe('MusicService — setShuffle/setLoop state authority', () => {
