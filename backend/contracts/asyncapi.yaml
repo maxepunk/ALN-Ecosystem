@@ -28,7 +28,12 @@ info:
          token: "JWT_TOKEN",           // Required: JWT from POST /api/admin/auth
          deviceId: "DEVICE_ID",        // Required: Unique device identifier
          deviceType: "gm" | "admin",   // Required: Device type for permissions
-         version: "1.0.0"              // Optional: Client version string
+         version: "1.0.0",             // Optional: Client version string
+         packHash: "sha256:..."        // Optional (A2 staleness): contentHash of the
+                                       // pack the CLIENT has loaded. The server
+                                       // records it on the device connection and
+                                       // loud-warns on mismatch with its active
+                                       // pack; C1 preflight fails on mismatch.
        }
        ```
     3. Server validates JWT in Socket.io middleware during connection handshake
