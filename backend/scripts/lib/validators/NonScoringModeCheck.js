@@ -11,6 +11,8 @@
  *   SHOULD carry a summary field (that is what the surface displays)
  */
 
+const { resolveMode } = require('../../../src/gameRules/modeSemantics');
+
 class NonScoringModeCheck {
   /**
    * @param {Map} tokensMap
@@ -26,7 +28,6 @@ class NonScoringModeCheck {
   _surfacesEvidence(modeId) {
     // Evidence-surfaced modes are the ones whose transactions the
     // scoreboard renders from summary text (ALN: detective).
-    const { resolveMode } = require('../../../src/gameRules/modeSemantics');
     return resolveMode(this.calculator.gameConfig, modeId)?.displayBehavior.surface === 'scoreboard-evidence';
   }
 

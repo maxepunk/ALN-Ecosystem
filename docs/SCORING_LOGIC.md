@@ -170,3 +170,41 @@ Modes are pack-declared (slice 1, `game.json` `modes[]`). A mode with
 `scoringPolicy: 'none'` (ALN's `detective`) records transactions but
 scores nothing — ALN detective display uses star ratings for PRESENTATION
 only. Mode semantics live in `modeSemantics.js` (both sides), not here.
+
+## Score Floor (`scoring.semantics.allowNegative` — slice 2 closer D2s2)
+
+Team scores are SIGNED. The pack declares whether they may go negative
+(`scoring.semantics.allowNegative`; ALN `true`, toy-heist `false`;
+absent semantics on a declared scoring block = conservative floor):
+
+- **allowNegative true**: admin adjustments may take a team below zero;
+  the negative persists, restores, and broadcasts (the wire contracts
+  never had a minimum).
+- **allowNegative false**: an adjustment that would cross zero is
+  REJECTED before it records (never silently clamped — the adjustment
+  ledger stays additive for the post-session validators). The one
+  reachable negative is a deletion-rebuild whose base an accepted
+  adjustment leaned on: the rebuild FLOORS at 0 with a loud warn, and
+  the session validator models the same floor.
+
+Enforcement: backend `transactionService.adjustTeamScore` +
+`rebuildScoresFromTransactions`; scanner `LocalStorage.adjustTeamScore`
++ `_recalculateTeamScores` (parity-pinned).
+
+## Claims and Scoring (per-mode `claims` flag — slice 2 closer D3s2)
+
+A mode's `claims` flag ('consuming' default | 'non-consuming') is a
+DUPLICATE-RULES concern, but it touches scoring truth in one place: a
+non-consuming mode may not declare `countsTowardGroups` (refused at
+activation — non-consumed group presence has no contribution semantics
+yet), so non-consuming claims are invisible to BOTH group currencies
+(completion and bonus base) by construction. The scanner defends in
+depth by driving the combination with `countsTowardGroups: false` when a
+never-gated bundled pack ships it.
+
+## Phases (gate only — slice 2 closer D1s2)
+
+`gameClock.phases` beyond the degenerate single-phase-at-0 refuses at
+activation ("not driveable by this engine yet (see slice 5)"). Phases do
+not touch scoring today; recorded here because the same activation gate
+family protects the scoring blocks above.

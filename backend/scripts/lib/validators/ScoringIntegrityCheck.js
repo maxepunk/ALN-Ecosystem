@@ -93,7 +93,14 @@ class ScoringIntegrityCheck {
       const storedScore = sessionScoreMap.get(teamId);
       const adjustment = adjustmentsByTeam.get(teamId);
       const adjustmentTotal = adjustment?.total || 0;
-      const adjustedCalculated = calculated.totalScore + adjustmentTotal;
+      let adjustedCalculated = calculated.totalScore + adjustmentTotal;
+      // Model the engine's pack-conditional floor (D2s2): under a
+      // no-negatives pack, a deletion-rebuild floors the persisted score
+      // at 0 — recomputing WITHOUT the floor false-FAILed every floored
+      // session (review finding). allowNegative packs keep the negative.
+      if (adjustedCalculated < 0 && !this.calculator.allowNegative) {
+        adjustedCalculated = 0;
+      }
 
       const row = {
         teamId,

@@ -195,6 +195,112 @@ describe('post-session validators — pack-aware (D4s2)', () => {
     });
   });
 
+  describe('loader hard edges (review pins)', () => {
+    it('TokenLoader with an EXPLICIT packDir throws on missing tokens.json — never a silent fallback', () => {
+      const TokenLoader = require('../../../scripts/lib/TokenLoader');
+      const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-empty-'));
+      try {
+        expect(() => new TokenLoader(emptyDir).loadRawTokens())
+          .toThrow(/Resolved pack has no readable tokens\.json/);
+      } finally {
+        fs.rmSync(emptyDir, { recursive: true, force: true });
+      }
+    });
+
+    it('scoringConfigLoader throws LOUDLY on an unusable scoring block and caches PER DIRECTORY', () => {
+      const { loadScoringConstants } = require('../../../scripts/lib/scoringConfigLoader');
+      const badDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-bad-'));
+      try {
+        fs.writeFileSync(path.join(badDir, 'game.json'), JSON.stringify({
+          scoring: { baseValues: {}, typeMultipliers: { A: 1 } },
+        }));
+        expect(() => loadScoringConstants(badDir)).toThrow(/no usable scoring block/);
+
+        // Per-dir cache: this tmp pack must not be served the memo of
+        // another dir (the old single-slot memo would have)
+        const a = loadScoringConstants(tmpDir);
+        expect(a.BASE_VALUES[1]).toBe(100);
+        const secondDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-second-'));
+        try {
+          fs.writeFileSync(path.join(secondDir, 'game.json'), JSON.stringify({
+            scoring: { baseValues: { 1: 777 }, typeMultipliers: { Personal: 1 } },
+          }));
+          expect(loadScoringConstants(secondDir).BASE_VALUES[1]).toBe(777);
+          expect(loadScoringConstants(tmpDir).BASE_VALUES[1]).toBe(100);
+        } finally {
+          fs.rmSync(secondDir, { recursive: true, force: true });
+        }
+      } finally {
+        fs.rmSync(badDir, { recursive: true, force: true });
+      }
+    });
+
+    it("packResolver never reports 'match' on a hash-less stamp (undefined === undefined guard)", () => {
+      const session = { metadata: { pack: { packId: 'validator-pack', version: '0.0.1' } } };
+      const res = resolveSessionPack(session, { packDir: tmpDir });
+      expect(res.verdict).toBe('unstamped');
+      expect(res.notes.some(n => n.includes('NO contentHash'))).toBe(true);
+    });
+  });
+
+  describe('ReportGenerator — Pack Resolution section (review pin)', () => {
+    it('renders the stamp, resolved dir, verdict, and resolver notes', () => {
+      const ReportGenerator = require('../../../scripts/lib/ReportGenerator');
+      const pack = resolveSessionPack(
+        { metadata: { pack: { packId: 'other', version: '9.9.9', contentHash: HASH_B } } },
+        { packDir: tmpDir }
+      );
+      const report = ReportGenerator.generate(
+        { id: 's1', name: 'pin', transactions: [] }, [], pack
+      );
+      expect(report).toContain('## Pack Resolution');
+      expect(report).toContain('| Verdict | mismatch |');
+      expect(report).toContain('PACK MISMATCH');
+    });
+  });
+
+  describe('ScoringIntegrityCheck — models the D2s2 rebuild floor (review fix pin)', () => {
+    function stubLogParser({ finalScores, adjustments }) {
+      return {
+        getFinalScores: async () => finalScores,
+        findScoreAdjustments: async () => adjustments,
+      };
+    }
+
+    it('a floored session (stored 0, recompute negative) PASSES under a no-negatives pack', async () => {
+      const ScoringIntegrityCheck = require('../../../scripts/lib/validators/ScoringIntegrityCheck');
+      const calc = loadCalculator(); // GAME_CONFIG declares no semantics → floor applies
+      const check = new ScoringIntegrityCheck(calc, stubLogParser({
+        finalScores: [{ teamId: 'Team Alpha', score: 0, bonus: 0 }],
+        // Accepted while the base supported it; the base was then deleted
+        adjustments: [{ teamId: 'Team Alpha', delta: -800, reason: 'penalty', gmStation: 'gm-1', timestamp: '2026-07-18T11:00:00Z' }],
+      }));
+
+      const result = await check.run({
+        startTime: '2026-07-18T10:00:00Z', endTime: '2026-07-18T12:00:00Z',
+        // One surviving scored tx (base 100); the -800 adjustment leaned
+        // on a deleted base → engine rebuild floored the stored score to
+        // 0. Recompute WITHOUT the floor would be -700 → false FAIL.
+        transactions: [tx('g1', 'fence', 100)],
+        scores: [],
+      });
+
+      const mismatch = result.findings.find(f => f.message.includes('Score mismatch'));
+      expect(mismatch).toBeUndefined();
+      expect(result.status).not.toBe('FAIL');
+      expect(result.findings.some(f => f.message.includes('Score verified'))).toBe(true);
+    });
+
+    it('calculator.allowNegative: declared-true pack true; declared-scoring-no-semantics false; packless true', () => {
+      const TokenLoader = require('../../../scripts/lib/TokenLoader');
+      const tokens = new TokenLoader(tmpDir).loadTokens();
+      expect(new ScoringCalculator(tokens, { gameConfig: GAME_CONFIG, packDir: tmpDir }).allowNegative).toBe(false);
+      const withSem = { ...GAME_CONFIG, scoring: { ...GAME_CONFIG.scoring, semantics: { allowNegative: true } } };
+      expect(new ScoringCalculator(tokens, { gameConfig: withSem, packDir: tmpDir }).allowNegative).toBe(true);
+      expect(new ScoringCalculator(tokens, { gameConfig: null, packDir: tmpDir }).allowNegative).toBe(true);
+    });
+  });
+
   describe('TransactionFlowCheck — pack-declared mode vocabulary', () => {
     it("accepts the pack's own mode ids and warns only on undeclared ones", async () => {
       const check = new TransactionFlowCheck(new Map([['solo', {}]]), { gameConfig: GAME_CONFIG });

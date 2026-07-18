@@ -67,14 +67,10 @@ class GroupBonusCheck {
     const findings = [];
     let status = 'PASS';
 
-    // The team's COUNTING claims (countsTowardGroups via the seam —
-    // the old mode-blind set included non-counting claims in completion,
-    // a live bug caught by the D4s2 census)
-    const teamTxs = transactions.filter(tx =>
-      tx.teamId === teamId && tx.status === 'accepted' &&
-      this.calculator.countsTowardGroups(tx.mode)
-    );
-    const scannedTokenIds = new Set(teamTxs.map(tx => tx.tokenId));
+    // The team's COUNTING claims — the engine seam's single banked
+    // predicate (the old mode-blind set included non-counting claims in
+    // completion, a live bug caught by the D4s2 census)
+    const scannedTokenIds = this.calculator.teamBankedTokenIds(transactions, teamId);
 
     // Find which groups should be completed (§2f bonus context)
     const expectedGroups = this.calculator.findCompletedGroups(scannedTokenIds, { transactions, teamId });
@@ -221,11 +217,7 @@ class GroupBonusCheck {
     );
 
     for (const teamId of teams) {
-      const teamTxs = transactions.filter(tx =>
-        tx.teamId === teamId && tx.status === 'accepted' &&
-        this.calculator.countsTowardGroups(tx.mode)
-      );
-      const scannedTokenIds = new Set(teamTxs.map(tx => tx.tokenId));
+      const scannedTokenIds = this.calculator.teamBankedTokenIds(transactions, teamId);
       const completed = this.calculator.findCompletedGroups(scannedTokenIds, { transactions, teamId });
 
       for (const group of completed) {

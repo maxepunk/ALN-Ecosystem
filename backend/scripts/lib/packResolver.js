@@ -26,8 +26,7 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
+const { DEFAULT_PACK_DIR } = require('./scoringConfigLoader');
 
 function _readJson(filePath) {
   try {
@@ -80,6 +79,14 @@ function resolveSessionPack(session, opts = {}) {
       'session carries NO pack stamp (pre-A2 session or packless boot) — ' +
       `validating against ${manifest.packId} v${manifest.version} on disk; ` +
       'results are only as good as that guess'
+    );
+  } else if (!stamp.contentHash) {
+    // A stamp without a hash cannot be verified — never report 'match'
+    // on undefined === undefined (review finding). Treat like unstamped.
+    verdict = 'unstamped';
+    notes.push(
+      'session pack stamp carries NO contentHash (malformed stamp) — identity cannot be ' +
+      `verified; validating against ${manifest.packId} v${manifest.version} on disk`
     );
   } else if (stamp.contentHash === manifest.contentHash) {
     verdict = 'match';

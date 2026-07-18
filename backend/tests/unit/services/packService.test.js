@@ -508,6 +508,17 @@ describe('packService', () => {
       expect(message).not.toMatch(/self-contradictory/i);
     });
 
+    it('a NULL/malformed phase entry refuses with the NAMED message, never a raw TypeError (review pin)', () => {
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [null] } });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [{ id: 'x', start: null }] } });
+      expect(() => packService.activatePack())
+        .toThrow(/not driveable by this engine yet \(see slice 5\)/);
+    });
+
     it('accepts the degenerate single-phase-at-0 (the ALN shape)', () => {
       writeGame(tmpDir, {
         ...base(),

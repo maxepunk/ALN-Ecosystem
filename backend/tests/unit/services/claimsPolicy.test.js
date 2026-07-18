@@ -141,6 +141,29 @@ describe('claims flag through processScan (D3s2)', () => {
     expect(payloads).toHaveLength(0);
   });
 
+  it('deleting a NON-CONSUMING transaction leaves the device registry untouched (review fix: remove path mirrors the gated add)', async () => {
+    // Consuming claim registers…
+    const claim = await scan('sell');
+    expect(claim.status).toBe('accepted');
+    const session = sessionService.getCurrentSession();
+    expect(session.getDeviceScannedTokensArray('GM_A')).toEqual(['tok1']);
+
+    // …then a non-consuming scan of the SAME token on the SAME device
+    // (allowed by design, registers nothing)…
+    const inspect = await scan('inspect');
+    expect(inspect.status).toBe('accepted');
+    const inspectTx = session.transactions.find(t => t.mode === 'inspect');
+
+    // …and deleting it must NOT strip the consuming claim's entry
+    await transactionService.deleteTransaction(inspectTx.id, session);
+    expect(session.getDeviceScannedTokensArray('GM_A')).toEqual(['tok1']);
+
+    // Deleting the CONSUMING claim still unregisters (unchanged behavior)
+    const sellTx = session.transactions.find(t => t.mode === 'sell');
+    await transactionService.deleteTransaction(sellTx.id, session);
+    expect(session.getDeviceScannedTokensArray('GM_A')).toEqual([]);
+  });
+
   it('a consuming scan still registers deviceTracking (the gated emission gates only non-consuming)', async () => {
     const payloads = [];
     transactionService.on('transaction:accepted', (p) => payloads.push(p));

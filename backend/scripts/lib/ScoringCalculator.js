@@ -73,9 +73,36 @@ class ScoringCalculator {
     return resolveMode(this.gameConfig, modeId)?.scoringPolicy === 'standard';
   }
 
+  /**
+   * Does the resolved pack allow negative team scores? (D2s2 —
+   * scoring.semantics.allowNegative, strict === true like the engine's
+   * _normalizeScoring; the legacy/packless reading mirrors ALN: true,
+   * because the baked shim declares it)
+   */
+  get allowNegative() {
+    const semantics = this.gameConfig && this.gameConfig.scoring && this.gameConfig.scoring.semantics;
+    if (this.gameConfig && this.gameConfig.scoring) {
+      return !!(semantics && semantics.allowNegative === true);
+    }
+    return true; // packless → baked ALN shim → allowNegative true
+  }
+
   /** Does this mode's claim build group progress? (seam sugar) */
   countsTowardGroups(modeId) {
     return resolveMode(this.gameConfig, modeId)?.countsTowardGroups === true;
+  }
+
+  /**
+   * A team's banked (counting-claim) token ids — the COMPLETION currency,
+   * straight from the engine seam. The single predicate both group
+   * validators consume (re-implementing it inline is how the old
+   * `!== 'detective'` filters drifted).
+   * @param {Array} transactions
+   * @param {string} teamId
+   * @returns {Set<string>}
+   */
+  teamBankedTokenIds(transactions, teamId) {
+    return gameRules.teamBankedTokenIds(transactions, teamId, this.gameConfig);
   }
 
   /**

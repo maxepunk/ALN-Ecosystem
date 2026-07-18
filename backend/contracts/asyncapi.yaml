@@ -1052,6 +1052,9 @@ components:
                     type: string
                   currentScore:
                     type: integer
+                    description: >-
+                      Signed. May be negative when the active pack declares
+                      scoring.semantics.allowNegative (A3 slice 2, D2s2).
                   baseScore:
                     type: integer
                   bonusPoints:
@@ -1126,6 +1129,10 @@ components:
                     type: string
                   currentScore:
                     type: integer
+                    description: >-
+                      Signed. May be negative when the active pack declares
+                      scoring.semantics.allowNegative (A3 slice 2, D2s2) —
+                      a deletion-rebuild keeps negatives under such packs.
                   baseScore:
                     type: integer
                   bonusPoints:

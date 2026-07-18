@@ -5,8 +5,8 @@
  * - Groups must have 2+ tokens to be completable
  * - Multiplier must be > 1x for bonus points
  * - Team must scan ALL tokens in group
- * - Only BLACKMARKET mode transactions count toward groups
- * - Bonus formula: (multiplier - 1) × totalGroupBaseScore
+ * - Only COUNTING-mode claims (countsTowardGroups via the seam) build groups
+ * - Bonus formula: (multiplier - 1) × Σ scored-claim values (§2f)
  */
 
 class GroupCompletionCheck {
@@ -92,13 +92,9 @@ class GroupCompletionCheck {
     const findings = [];
     let status = 'PASS';
 
-    // The team's COUNTING claims (countsTowardGroups via the seam, D4s2)
-    const teamTxs = transactions.filter(tx =>
-      tx.teamId === teamId &&
-      tx.status === 'accepted' &&
-      this.calculator.countsTowardGroups(tx.mode)
-    );
-    const scannedTokenIds = new Set(teamTxs.map(tx => tx.tokenId));
+    // The team's COUNTING claims — the engine seam's single banked
+    // predicate (review finding: inline re-implementations drift)
+    const scannedTokenIds = this.calculator.teamBankedTokenIds(transactions, teamId);
 
     // Find which groups should be completed (bonus math rides §2f:
     // scored-claims-only base via the transactions context)

@@ -3,6 +3,8 @@
  * Checks: required fields, valid status, timestamps, token existence
  */
 
+const { wireModeIds } = require('../../../src/gameRules/modeSemantics');
+
 class TransactionFlowCheck {
   /**
    * @param {Map} tokensMap
@@ -18,7 +20,6 @@ class TransactionFlowCheck {
     // Required fields for a valid transaction
     this.requiredFields = ['tokenId', 'teamId', 'status', 'timestamp'];
     this.validStatuses = ['accepted', 'duplicate', 'rejected'];
-    const { wireModeIds } = require('../../../src/gameRules/modeSemantics');
     this.validModes = wireModeIds(opts.gameConfig || null);
   }
 

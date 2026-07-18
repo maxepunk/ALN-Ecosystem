@@ -662,17 +662,31 @@ class TransactionService extends EventEmitter {
     const deviceId = deletedTx.deviceId;
     const tokenId = deletedTx.tokenId;
 
+    // Claims-aware unregistration (review finding, D3s2 symmetry): a
+    // NON-CONSUMING transaction never registered, so deleting it must not
+    // strip the entry a prior CONSUMING claim placed for the same
+    // device+token (the add path gates the deviceTracking emission; the
+    // remove path must mirror it or a delete corrupts the registry).
+    const deletedWasConsuming = duplicatePolicy.isConsumingClaim(
+      packService.getGameConfig(), deletedTx.mode
+    );
+
     // DEBUG: Log state BEFORE removal
     const deviceTokensBefore = session.metadata.scannedTokensByDevice?.[deviceId] || [];
     logger.info('🔍 BEFORE removing from duplicate detection', {
       deviceId,
       tokenId,
       tokensForDevice: deviceTokensBefore.length,
-      tokenExists: deviceTokensBefore.includes(tokenId)
+      tokenExists: deviceTokensBefore.includes(tokenId),
+      deletedWasConsuming
     });
 
     // Remove from device-specific tracking (source of truth for duplicate detection)
-    if (session.metadata.scannedTokensByDevice && session.metadata.scannedTokensByDevice[deviceId]) {
+    if (!deletedWasConsuming) {
+      logger.info('Non-consuming transaction deleted — device registry untouched (it never registered)', {
+        deviceId, tokenId, mode: deletedTx.mode
+      });
+    } else if (session.metadata.scannedTokensByDevice && session.metadata.scannedTokensByDevice[deviceId]) {
       const index = session.metadata.scannedTokensByDevice[deviceId].indexOf(tokenId);
       if (index > -1) {
         session.metadata.scannedTokensByDevice[deviceId].splice(index, 1);

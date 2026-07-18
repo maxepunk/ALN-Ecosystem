@@ -83,7 +83,7 @@ class ReportGenerator {
       lines.push('');
       lines.push('> Compares independently calculated scores (from transactions + scoring config) against session.scores (final persisted state).');
       lines.push('');
-      lines.push('| Team | Calculated | Adj | Total | Session | Base | Bonus | BM | Det | Status |');
+      lines.push('| Team | Calculated | Adj | Total | Session | Base | Bonus | Scored | Unscored | Status |');
       lines.push('|------|------------|-----|-------|---------|------|-------|----|----|--------|');
 
       for (const row of scoreCheck.summary) {

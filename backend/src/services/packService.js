@@ -267,10 +267,13 @@ function _gateCheck(manifest, gameConfig) {
     // never "incoherent". Absent/empty phases declare nothing and pass.
     const phases = gameConfig.gameClock && gameConfig.gameClock.phases;
     if (Array.isArray(phases) && phases.length > 0) {
+      // Null/malformed entries are NOT degenerate (they refuse with the
+      // named message below, never a raw TypeError — review finding)
+      const p = phases[0];
       const degenerate =
         phases.length === 1 &&
-        phases[0].start && phases[0].start.at === 0 &&
-        phases[0].start.trigger === undefined;
+        !!p && !!p.start && p.start.at === 0 &&
+        p.start.trigger === undefined;
       if (!degenerate) {
         problems.push(
           `gameClock.phases (${phases.length} phase${phases.length === 1 ? '' : 's'}) — ` +

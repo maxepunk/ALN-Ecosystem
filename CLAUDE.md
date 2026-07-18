@@ -166,7 +166,7 @@ All scan requests MUST include `deviceType` field:
 
 | Scanner | deviceType | Duplicate Logic |
 |---------|------------|-----------------|
-| GM Scanner | `gm` | **Rejected globally** (each token processed once per session) |
+| GM Scanner | `gm` | **Rejected globally** for CONSUMING modes (each token claimed once per session; a mode declaring `claims: 'non-consuming'` — A3 slice 2 D3s2 — is repeatable and never blocks/registers) |
 | Player Scanner (Web) | `player` | **Allowed** (players can re-view same memory) |
 | ESP32 Scanner | `esp32` | **Allowed** (players can re-view same memory) |
 
