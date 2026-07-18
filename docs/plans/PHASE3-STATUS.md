@@ -7,8 +7,8 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-07-18 · **Working branch:** `claude/phase3-a3-slice1`
-(parent; chained from the verified slice-0 tip `8a944b4`, draft PR #20).
+**Last updated:** 2026-07-18 · **Working branch:** `claude/phase3-a3-slice2`
+(parent; chained from the verified slice-1 tip `187c7a6`, draft PR #21).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
 keeps a draft PR to main for CI, and the stacked PRs land in R14 order
