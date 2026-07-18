@@ -136,10 +136,20 @@ const loadRawTokens = () => _loadTokensFile();
 const loadTokens = () => {
   const tokensObject = _loadTokensFile();
 
+  // D1b (A3 slice 2b): group multipliers are pack RULES. When the active
+  // pack declares a `groups` block, it is AUTHORITATIVE — the "(xN)"
+  // suffix parse below survives only for packs published before the
+  // block existed, and deletes entirely at the tokens-v2 cutover (D3b:
+  // the Notion sync becomes the sole microformat parser).
+  // eslint-disable-next-line global-require
+  const packGroups = require('./packService').getGameConfig()?.groups || null;
+
   // Transform object format to array format expected by backend
   const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
     const groupName = extractGroupName(token.SF_Group);
-    const groupMultiplier = parseGroupMultiplier(token.SF_Group);
+    const groupMultiplier = (packGroups && groupName && packGroups[groupName])
+      ? packGroups[groupName].multiplier
+      : parseGroupMultiplier(token.SF_Group);
     const calculatedValue = calculateTokenValue(
       token.SF_ValueRating,
       token.SF_MemoryType

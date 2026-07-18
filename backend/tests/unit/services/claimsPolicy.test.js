@@ -177,3 +177,38 @@ describe('claims flag through processScan (D3s2)', () => {
     expect(session.getDeviceScannedTokensArray('GM_A')).toEqual(['tok1']);
   });
 });
+
+describe('D1b — pack groups block is authoritative over the "(xN)" suffix', () => {
+  const fs2 = require('fs');
+  const os2 = require('os');
+  const path2 = require('path');
+  const packSvc = require('../../../src/services/packService');
+
+  it('loadTokens derives groupMultiplier from the pack, not the suffix, when the block declares the group', () => {
+    const dir = fs2.mkdtempSync(path2.join(os2.tmpdir(), 'aln-groups-'));
+    const orig = process.env.PACK_PATH;
+    try {
+      fs2.writeFileSync(path2.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 1, id: 'g',
+        groups: { 'Server Logs': { multiplier: 7 } },
+      }));
+      fs2.writeFileSync(path2.join(dir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Server Logs (x2)' },
+        t2: { SF_RFID: 't2', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Undeclared (x4)' },
+      }));
+      process.env.PACK_PATH = dir;
+      packSvc._resetForTesting();
+      const tokenSvc = require('../../../src/services/tokenService');
+      const tokens = tokenSvc.loadTokens();
+      // Declared group: PACK multiplier (7) beats the suffix (2)
+      expect(tokens.find(t => t.id === 't1').groupMultiplier).toBe(7);
+      // Undeclared group under a declaring pack: suffix fallback survives
+      // until the v2 cutover (then the gate refuses undeclared names)
+      expect(tokens.find(t => t.id === 't2').groupMultiplier).toBe(4);
+    } finally {
+      fs2.rmSync(dir, { recursive: true, force: true });
+      if (orig === undefined) delete process.env.PACK_PATH; else process.env.PACK_PATH = orig;
+      packSvc._resetForTesting();
+    }
+  });
+});
