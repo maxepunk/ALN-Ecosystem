@@ -286,35 +286,33 @@ describe('TokenService - Token Loading', () => {
     });
   });
 
-  describe('TOKENS_PATH injection seam (Phase 2.x.4)', () => {
+  describe('PACK_PATH injection seam (Phase 2.x.4, generalized in 3 A2)', () => {
     afterEach(() => {
-      delete process.env.TOKENS_PATH;
+      delete process.env.PACK_PATH;
     });
 
-    it('should try TOKENS_PATH first when set, winning over submodule defaults', () => {
-      process.env.TOKENS_PATH = '/packs/fixture-pack.tokens.json';
+    it('loads <PACK_PATH>/tokens.json first when set, winning over submodule defaults', () => {
+      process.env.PACK_PATH = '/packs/fixture-pack';
       fs.readFileSync.mockReturnValue(JSON.stringify(mockTokensObject));
 
       const rawTokens = tokenService.loadRawTokens();
 
       expect(rawTokens).toEqual(mockTokensObject);
       expect(fs.readFileSync).toHaveBeenCalledTimes(1);
-      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/fixture-pack.tokens.json');
+      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/fixture-pack/tokens.json');
     });
 
-    it('should fall back to submodule paths when the injected path is unreadable', () => {
-      process.env.TOKENS_PATH = '/packs/missing.tokens.json';
-      fs.readFileSync
-        .mockImplementationOnce(() => {
-          throw new Error('ENOENT: no such file or directory');
-        })
-        .mockReturnValueOnce(JSON.stringify(mockTokensObject));
+    it('fails LOUD with no fallback when the injected pack has no readable tokens.json', () => {
+      // An override that silently fell back would run the system
+      // split-brained: the harness thinks it injected a pack the server
+      // never loaded. Refusing to boot is the only honest behavior.
+      process.env.PACK_PATH = '/packs/missing';
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
 
-      const rawTokens = tokenService.loadRawTokens();
-
-      expect(rawTokens).toEqual(mockTokensObject);
-      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/missing.tokens.json');
-      expect(fs.readFileSync.mock.calls[1][0]).not.toBe('/packs/missing.tokens.json');
+      expect(() => tokenService.loadRawTokens()).toThrow(/PACK_PATH override active/);
+      expect(fs.readFileSync).toHaveBeenCalledTimes(1); // submodule fallbacks never touched
     });
   });
 

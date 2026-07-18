@@ -15,6 +15,10 @@ const videoQueueService = require('./videoQueueService');
 // live there; this service does orchestration, state mutation, and events
 const scoring = require('../gameRules/scoring');
 const duplicatePolicy = require('../gameRules/duplicatePolicy');
+const modeSemantics = require('../gameRules/modeSemantics');
+// Active pack's game.json (slice 1): mode behavior resolves through the
+// modeSemantics seam against this config — never mode-id string equality
+const packService = require('./packService');
 const { buildScanResponse } = require('../websocket/scanResponse');
 
 const listenerRegistry = require('../websocket/listenerRegistry');
@@ -146,8 +150,15 @@ class TransactionService extends EventEmitter {
     }
 
     try {
-      // Create transaction from scan request
-      const transaction = Transaction.fromScanRequest(scanRequest, session.id);
+      // Create transaction from scan request. Mode defaulting is a
+      // pack-aware ingress concern (slice 1): absent mode = the pack's
+      // first declared mode ('blackmarket' for ALN — wire behavior
+      // unchanged). GM wire submissions always carry mode (schema
+      // requires it); this covers manual/defensive callers.
+      const transaction = Transaction.fromScanRequest({
+        ...scanRequest,
+        mode: scanRequest.mode || modeSemantics.defaultModeId(packService.getGameConfig()),
+      }, session.id);
 
       // Validate token exists
       const token = this.tokens.get(transaction.tokenId);
@@ -208,20 +219,24 @@ class TransactionService extends EventEmitter {
       session.addTransaction(transaction);
 
       // GM scanners don't care about video playback - that's player scanner territory
-      // Accept the transaction with appropriate points (detective mode = 0 points)
-      const points = scoring.pointsFor(token, transaction.mode);
+      // Accept the transaction with appropriate points (the mode's
+      // scoringPolicy decides — 'standard' pays token value, else 0)
+      const gameConfig = packService.getGameConfig();
+      const points = scoring.pointsFor(token, transaction.mode, gameConfig);
       transaction.accept(points)
 
-      // Update team score and get result (only for blackmarket mode)
+      // Update team score and get result (standard-scoring modes only)
       let scoreResult = null;
-      if (transaction.mode !== 'detective') {
+      const modeRecord = modeSemantics.resolveMode(gameConfig, transaction.mode);
+      if (modeRecord && modeRecord.scoringPolicy === 'standard') {
         scoreResult = this.updateTeamScore(transaction.teamId, token);
       } else {
-        logger.info('Detective mode transaction - skipping scoring', {
+        logger.info('Non-scoring mode transaction - skipping scoring', {
           transactionId: transaction.id,
           tokenId: transaction.tokenId,
           teamId: transaction.teamId,
-          mode: transaction.mode
+          mode: transaction.mode,
+          scoringPolicy: modeRecord ? modeRecord.scoringPolicy : 'unknown-mode'
         });
       }
 
@@ -349,9 +364,10 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Check if group is complete for team — Decision A1: only blackmarket
-   * transactions count. Thin adapter over gameRules/scoring (the pure rule
-   * shared in intent with the standalone scanner — F-SCAN-06 parity).
+   * Check if group is complete for team — Decision A1 generalized by
+   * slice 1: only transactions in a countsTowardGroups mode count. Thin
+   * adapter over gameRules/scoring (the pure rule shared in intent with
+   * the standalone scanner — F-SCAN-06 parity).
    * @param {string} teamId - Team ID
    * @param {string} groupId - Group ID
    * @param {string} currentTokenId - Optional token ID being processed (not yet in session)
@@ -368,6 +384,7 @@ class TransactionService extends EventEmitter {
       teamId,
       groupId,
       currentTokenId,
+      gameConfig: packService.getGameConfig(),
     });
   }
 
@@ -679,8 +696,8 @@ class TransactionService extends EventEmitter {
   /**
    * Rebuild team scores from transaction history.
    * The COMPUTATION is the pure gameRules/scoring.computeTeamScores (same
-   * rules as the live path — A1 blackmarket-only groups, recorded points
-   * authoritative); this method only applies the result onto the live
+   * rules as the live path — A1 counting-modes-only groups, recorded
+   * points authoritative); this method only applies the result onto the live
    * TeamScore instances in session.scores (the canonical store) and
    * re-applies admin adjustments on top (F-BCORE-03: the audit trail
    * survives in place — wiping it silently reverted every score:adjust).
@@ -698,6 +715,7 @@ class TransactionService extends EventEmitter {
       tokens: this.tokens,
       transactions: transactions || [],
       teamIds: scores.map(s => s.teamId),
+      gameConfig: packService.getGameConfig(),
     });
     const rowByTeam = new Map(rows.map(r => [r.teamId, r]));
 

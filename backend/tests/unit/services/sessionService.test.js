@@ -1258,3 +1258,32 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
     });
   });
 });
+
+describe('SessionService - pack stamping at creation (Phase 3 A2)', () => {
+  const packService = require('../../../src/services/packService');
+
+  beforeEach(async () => {
+    await resetAllServices();
+  });
+
+  afterEach(async () => {
+    if (sessionService.currentSession) {
+      await sessionService.endSession();
+    }
+    sessionService.removeAllListeners();
+  });
+
+  it('stamps the ACTIVE pack identity onto the session at creation', async () => {
+    const active = packService.getActivePackInfo();
+    // Test env runs on the real ALN-TokenData pack — non-null by construction
+    expect(active).not.toBeNull();
+
+    await sessionService.createSession({ name: 'Pack Stamp Test', teams: [] });
+
+    expect(sessionService.currentSession.metadata.pack).toEqual(active);
+    expect(sessionService.currentSession.metadata.pack.contentHash)
+      .toMatch(/^sha256:[0-9a-f]{64}$/);
+    // And it persists: the stamp is part of the session's toJSON
+    expect(sessionService.currentSession.toJSON().metadata.pack).toEqual(active);
+  });
+});
