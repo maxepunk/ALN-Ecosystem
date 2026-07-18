@@ -28,7 +28,12 @@ info:
          token: "JWT_TOKEN",           // Required: JWT from POST /api/admin/auth
          deviceId: "DEVICE_ID",        // Required: Unique device identifier
          deviceType: "gm" | "admin",   // Required: Device type for permissions
-         version: "1.0.0"              // Optional: Client version string
+         version: "1.0.0",             // Optional: Client version string
+         packHash: "sha256:..."        // Optional (A2 staleness): contentHash of the
+                                       // pack the CLIENT has loaded. The server
+                                       // records it on the device connection and
+                                       // loud-warns on mismatch with its active
+                                       // pack; C1 preflight fails on mismatch.
        }
        ```
     3. Server validates JWT in Socket.io middleware during connection handshake
@@ -312,7 +317,32 @@ components:
               - music
               - sound
               - displayStatus
+              - pack
             properties:
+              pack:
+                description: |
+                  The server's ACTIVE game pack identity (Phase 3 A2
+                  staleness visibility — the F-TOOL-05 killer). Clients
+                  compare their loaded pack contentHash against this; C1
+                  preflight fails on mismatch. `null` when the active pack
+                  directory has no pack-manifest.json (pre-pack checkout).
+                  Delivered ONLY here and in GET /health — pack identity
+                  changes at app start / new-session boundaries, never
+                  mid-session, so no push event exists for it.
+                oneOf:
+                  - type: "null"
+                  - type: object
+                    required: [packId, version, contentHash]
+                    properties:
+                      packId:
+                        type: string
+                        example: "about-last-night"
+                      version:
+                        type: string
+                        example: "1.0.0"
+                      contentHash:
+                        type: string
+                        pattern: '^sha256:[0-9a-f]{64}$'
               session:
                 description: Current session (matches Session schema from OpenAPI)
                 oneOf:
@@ -381,6 +411,23 @@ components:
                             example:
                               GM_STATION_1: ["kaa001", "kaa002"]
                               PLAYER_001: ["kaa003", "kaa004"]
+                          pack:
+                            description: |
+                              The pack this session was created under (A2 —
+                              rules frozen at start). Null for legacy
+                              sessions and pre-pack checkouts.
+                            oneOf:
+                              - type: "null"
+                              - type: object
+                                required: [packId, version, contentHash]
+                                properties:
+                                  packId:
+                                    type: string
+                                  version:
+                                    type: string
+                                  contentHash:
+                                    type: string
+                                    pattern: '^sha256:[0-9a-f]{64}$'
                   - type: "null"
               scores:
                 type: array
@@ -402,6 +449,10 @@ components:
                       example: "Team Alpha"
                     currentScore:
                       type: integer
+                      description: >-
+                        Signed. May be negative when the active pack declares
+                        scoring.semantics.allowNegative; otherwise the engine
+                        rejects negative-going admin adjustments (A3 slice 2, D2s2).
                       example: 11500
                     baseScore:
                       type: integer
@@ -479,7 +530,11 @@ components:
                       example: "GM_Station_1"
                     mode:
                       type: string
-                      enum: [detective, blackmarket]
+                      description: >-
+                        Game mode id — validated at runtime against the
+                        ACTIVE pack's declared modes (game.json modes[].id),
+                        not a closed enum (Phase 3 slice 1). ALN wire values
+                        remain "blackmarket"/"detective" through Phase 3 (R12).
                       example: "blackmarket"
                     points:
                       type: integer
@@ -718,6 +773,9 @@ components:
                   broadcast sync:full re-emissions, hence optional. Load-bearing
                   for the GM Scanner's duplicate-detection restore (TQ-7) and
                   offline-queue reconciliation (TQ-6). (F-GMS-12)
+                  Only CONSUMING claims register here (D3s2): a transaction in a
+                  mode declaring claims 'non-consuming' never appears — it is a
+                  repeatable action outside the duplicate rules entirely.
                 example: ["kaa001", "kaa002"]
               reconnection:
                 type: boolean
@@ -784,12 +842,17 @@ components:
                 example: "GM_Station_1"
               mode:
                 type: string
-                enum: [detective, blackmarket]
-                description: Scan mode (game logic)
+                description: >-
+                  Game mode id (game logic). Not a closed enum (Phase 3
+                  slice 1, open mode vocabulary): the server validates the
+                  value at runtime against the ACTIVE pack's declared modes
+                  (game.json modes[].id) and rejects unknown ids with the
+                  same error shape the old enum produced. ALN wire values
+                  remain "blackmarket"/"detective" through Phase 3 (R12).
                 example: "blackmarket"
               summary:
                 type: [string, "null"]
-                description: Optional custom summary for detective mode scans (overrides token default)
+                description: Optional custom summary for evidence-surface mode scans (overrides token default)
                 maxLength: 350
                 example: "Security footage from warehouse district - timestamp 23:47"
               clientTxId:
@@ -934,8 +997,11 @@ components:
                     example: "GM_Station_1"
                   mode:
                     type: string
-                    enum: [detective, blackmarket]
-                    description: Scan mode
+                    description: >-
+                      Game mode id — validated at runtime against the ACTIVE
+                      pack's declared modes (game.json modes[].id), not a
+                      closed enum (Phase 3 slice 1). ALN wire values remain
+                      "blackmarket"/"detective" through Phase 3 (R12).
                     example: "blackmarket"
                   points:
                     type: integer
@@ -986,6 +1052,9 @@ components:
                     type: string
                   currentScore:
                     type: integer
+                    description: >-
+                      Signed. May be negative when the active pack declares
+                      scoring.semantics.allowNegative (A3 slice 2, D2s2).
                   baseScore:
                     type: integer
                   bonusPoints:
@@ -1060,6 +1129,10 @@ components:
                     type: string
                   currentScore:
                     type: integer
+                    description: >-
+                      Signed. May be negative when the active pack declares
+                      scoring.semantics.allowNegative (A3 slice 2, D2s2) —
+                      a deletion-rebuild keeps negatives under such packs.
                   baseScore:
                     type: integer
                   bonusPoints:
@@ -1130,7 +1203,11 @@ components:
                     example: "Team Alpha"
                   currentScore:
                     type: integer
-                    description: Total score
+                    description: >-
+                      Total score. Signed: negative when the active pack declares
+                      scoring.semantics.allowNegative and adjustments took the team
+                      below zero; packs without the flag never see negatives —
+                      score:adjust commands that would cross zero fail their ack.
                     example: 16500
                   baseScore:
                     type: integer
@@ -1976,7 +2053,12 @@ components:
                 example: "jaw_group"
               bonusPoints:
                 type: integer
-                description: Bonus points awarded
+                description: |
+                  Bonus points awarded. The bonus base sums only SCORED
+                  contributions (A3 slice 2 §2f): members claimed in a
+                  scoringPolicy 'none' counting mode contribute presence
+                  but $0, so an event-only completion broadcasts 0 here —
+                  the completion event itself is the payload.
                 example: 500
               completedAt:
                 type: string

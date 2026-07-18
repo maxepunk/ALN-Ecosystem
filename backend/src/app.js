@@ -34,6 +34,7 @@ const stateRoutes = require('./routes/stateRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
+const packRoutes = require('./routes/packRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const createMusicRouter = require('./routes/musicRoutes');
 
@@ -116,16 +117,18 @@ app.use('/api/state', stateRoutes);         // GET /api/state
 app.use('/api/admin', adminRoutes);         // POST /api/admin/auth, GET /api/admin/logs
 app.use('/api/music', createMusicRouter({ musicService })); // GET /api/music/{tracks,playlists}, PUT /api/music/playlists
 app.use('/api', resourceRoutes);            // GET /api/tokens
+app.use('/api', packRoutes);                // GET /api/pack/manifest, /api/pack/files/<path> (A2)
 app.use('/', healthRoutes);                 // GET /health (with optional device tracking)
 app.use('/', resourceRoutes);               // GET /scoreboard
 
 // Static files (if needed)
-// Injection seam (2.x.4): when TOKENS_PATH is set, the scanners' relative
-// token fetches (gm-scanner standalone: 'data/tokens.json'; player-scanner)
-// must resolve to the SAME injected set the backend loaded — otherwise the
-// system would run split-brained on two packs. Registered before static so
-// it shadows the bundled dist copies. Not registered at all in production.
-if (process.env.TOKENS_PATH) {
+// Injection seam (2.x.4, generalized to a pack DIRECTORY in Phase 3 A2):
+// when PACK_PATH is set, the scanners' relative token fetches (gm-scanner
+// standalone: 'data/tokens.json'; player-scanner) must resolve to the SAME
+// injected pack the backend loaded — otherwise the system would run
+// split-brained on two packs. Registered before static so it shadows the
+// bundled dist copies. Not registered at all in production.
+if (process.env.PACK_PATH) {
   const injectedTokenPaths = [
     '/gm-scanner/tokens.json',
     '/gm-scanner/data/tokens.json',
@@ -133,7 +136,7 @@ if (process.env.TOKENS_PATH) {
     '/player-scanner/data/tokens.json',
   ];
   app.get(injectedTokenPaths, (req, res) => {
-    res.sendFile(path.resolve(process.env.TOKENS_PATH));
+    res.sendFile(path.join(path.resolve(process.env.PACK_PATH), 'tokens.json'));
   });
 }
 
@@ -178,6 +181,15 @@ async function initializeServices() {
 
     // Initialize persistence first
     await persistenceService.init();
+
+    // A2/A3: freeze the pack identity + serving whitelist BEFORE loading
+    // token data, so token values bake from the SAME frozen snapshot the
+    // process advertises (/health contentHash). Ordering matters (review
+    // finding): activating after loadTokens left a window where a pack
+    // edit landed between the two — token values from one game.json,
+    // identity from another — and made every per-token getScoringRules()
+    // call take the uncached live-disk path.
+    require('./services/packService').activatePack();
 
     // Load tokens from service (handles submodule paths and fallback)
     const tokenService = require('./services/tokenService');

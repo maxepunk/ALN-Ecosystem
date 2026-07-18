@@ -1,12 +1,15 @@
 /**
- * ScoringIntegrityCheck - Verify blackmarket scores calculated correctly
+ * ScoringIntegrityCheck - Verify scored-mode totals calculated correctly
  *
  * ARCHITECTURE:
  * - session.scores contains team score objects with baseScore, currentScore, adminAdjustments
  * - Scores are delivered to clients via transaction:new (teamScore payload) — not separately logged
  * - This validator compares independently calculated scores against session.scores
  * - Also cross-references "Team score adjusted" log entries for admin adjustments
- * - Scoring config loaded from shared ALN-TokenData/scoring-config.json (single source of truth)
+ * - Scoring config + mode semantics come from the RESOLVED pack (D4s2:
+ *   the session's stamped pack via packResolver, threaded through the
+ *   calculator); every accepted transaction's recorded points are checked
+ *   against the seam-resolved expectation (non-scoring/unknown modes → 0)
  */
 
 class ScoringIntegrityCheck {
@@ -90,7 +93,14 @@ class ScoringIntegrityCheck {
       const storedScore = sessionScoreMap.get(teamId);
       const adjustment = adjustmentsByTeam.get(teamId);
       const adjustmentTotal = adjustment?.total || 0;
-      const adjustedCalculated = calculated.totalScore + adjustmentTotal;
+      let adjustedCalculated = calculated.totalScore + adjustmentTotal;
+      // Model the engine's pack-conditional floor (D2s2): under a
+      // no-negatives pack, a deletion-rebuild floors the persisted score
+      // at 0 — recomputing WITHOUT the floor false-FAILed every floored
+      // session (review finding). allowNegative packs keep the negative.
+      if (adjustedCalculated < 0 && !this.calculator.allowNegative) {
+        adjustedCalculated = 0;
+      }
 
       const row = {
         teamId,
@@ -102,8 +112,8 @@ class ScoringIntegrityCheck {
         broadcastScore: storedScore?.score ?? 'N/A',
         broadcastBonus: storedScore?.bonus ?? 'N/A',
         tokenCount: calculated.tokenCount,
-        blackmarketCount: calculated.blackmarketCount,
-        detectiveCount: calculated.detectiveCount,
+        scoredCount: calculated.scoredCount,
+        unscoredCount: calculated.unscoredCount,
         match: 'N/A'
       };
 
@@ -158,8 +168,8 @@ class ScoringIntegrityCheck {
               teamId,
               calculated: calculated.totalScore,
               adminAdjustment: adjustmentTotal,
-              blackmarketCount: calculated.blackmarketCount,
-              detectiveCount: calculated.detectiveCount
+              scoredCount: calculated.scoredCount,
+              unscoredCount: calculated.unscoredCount
             }
           });
           if (status === 'PASS') status = 'WARNING';
@@ -181,10 +191,13 @@ class ScoringIntegrityCheck {
       }
     }
 
-    // Verify individual transaction points
+    // Verify individual transaction points — EVERY accepted transaction:
+    // calculateExpectedPoints resolves the mode through the seam (D4s2),
+    // so non-scoring and unknown modes expect 0 (the old skip-detective
+    // literal left every other unscored mode unchecked).
     const pointsMismatches = [];
     for (const tx of transactions) {
-      if (tx.status !== 'accepted' || tx.mode === 'detective') continue;
+      if (tx.status !== 'accepted') continue;
 
       const expectedPoints = this.calculator.calculateExpectedPoints(tx);
       const actualPoints = tx.points || 0;

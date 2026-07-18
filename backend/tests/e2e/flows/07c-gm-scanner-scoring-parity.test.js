@@ -48,7 +48,7 @@ const { selectTestTokens } = require('../helpers/token-selection');
 const {
   calculateExpectedScore,
   calculateExpectedGroupBonus,
-  calculateExpectedTotalScore,
+  loadPackScoring,
 } = require('../helpers/scoring');
 
 // Global state
@@ -56,6 +56,7 @@ let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
+let packScoring = null; // ACTIVE pack (parity-pack) scoring block — the single score oracle (L5 retired)
 
 test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
   // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
@@ -81,12 +82,14 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     // completable group (Marcus Mention is x1), so the group-parity test
     // self-skipped forever. The injected pack adds a 2-member x2 group —
     // backend, /api/tokens, AND the standalone scanner's relative
-    // tokens.json all serve the same set (TOKENS_PATH seam).
+    // tokens.json all serve the same set (PACK_PATH seam).
     orchestratorInfo = await startOrchestrator({
       https: true,
       timeout: 30000,
-      tokensPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack.tokens.json')
+      packPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack')
     });
+
+    packScoring = await loadPackScoring(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -156,7 +159,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     orchestratorInfo = await startOrchestrator({
       https: true,
       timeout: 30000,
-      tokensPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack.tokens.json')
+      packPath: require('path').resolve(__dirname, '../fixtures/packs/parity-pack')
     });
     console.log(`[afterEach] ✓ Orchestrator restarted for test isolation`);
   });
@@ -167,7 +170,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
   test('Personal token scores identically in both modes', async () => {
     const token = testTokens.personalToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
     const parityTeam = `ParityP_${Date.now()}`;
 
     // STANDALONE MODE
@@ -231,7 +234,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
   test('Business token scores identically in both modes', async () => {
     const token = testTokens.businessToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
     const parityTeam = `ParityB_${Date.now()}`;
 
     // STANDALONE MODE
@@ -305,8 +308,8 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const parityTeam = `ParityG_${Date.now()}`;
 
     // Calculate expected scores using production logic
-    const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
-    const bonus = calculateExpectedGroupBonus(groupTokens);
+    const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t, packScoring), 0);
+    const bonus = calculateExpectedGroupBonus(groupTokens, packScoring);
     const expectedTotal = baseScore + bonus;
 
     console.log(`Testing group completion parity: ${groupTokens[0].SF_Group}`);
@@ -402,11 +405,11 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     const parityTeam = `ParityM_${Date.now()}`;
 
     // Calculate expected score (sum of individual tokens, NO bonus)
-    const expectedScore = mixedTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
+    const expectedScore = mixedTokens.reduce((sum, t) => sum + calculateExpectedScore(t, packScoring), 0);
 
     console.log('Testing mixed sequence (incomplete group):');
     mixedTokens.forEach((t, i) => {
-      console.log(`  ${i + 1}. ${t.SF_RFID}: ${t.SF_MemoryType} ${t.SF_ValueRating}⭐ = $${calculateExpectedScore(t).toLocaleString()}${t.SF_Group ? ` (group: ${t.SF_Group})` : ''}`);
+      console.log(`  ${i + 1}. ${t.SF_RFID}: ${t.SF_MemoryType} ${t.SF_ValueRating}⭐ = $${calculateExpectedScore(t, packScoring).toLocaleString()}${t.SF_Group ? ` (group: ${t.SF_Group})` : ''}`);
     });
     console.log(`  Expected total (no bonus): $${expectedScore.toLocaleString()}`);
 
@@ -487,7 +490,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
   test('Duplicate rejection behavior matches in both modes', async () => {
     // Use unique token for duplicate detection test
     const token = testTokens.uniqueTokens.length > 0 ? testTokens.uniqueTokens[0] : testTokens.personalToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
     const parityTeam = `ParityD_${Date.now()}`;
 
     console.log(`Testing duplicate rejection with token ${token.SF_RFID} (expected score: $${expectedScore.toLocaleString()})`);

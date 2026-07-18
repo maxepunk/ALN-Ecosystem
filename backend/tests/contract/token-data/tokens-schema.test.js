@@ -16,7 +16,7 @@ const path = require('path');
 const Ajv2020 = require('ajv/dist/2020');
 
 const TOKEN_DATA_DIR = path.resolve(__dirname, '../../../../ALN-TokenData');
-const TOKENS_PATH = path.join(TOKEN_DATA_DIR, 'tokens.json');
+const TOKENS_FILE = path.join(TOKEN_DATA_DIR, 'tokens.json');
 const SCHEMA_PATH = path.join(TOKEN_DATA_DIR, 'tokens.schema.json');
 
 describe('ALN-TokenData/tokens.json schema contract', () => {
@@ -25,7 +25,7 @@ describe('ALN-TokenData/tokens.json schema contract', () => {
   let validate;
 
   beforeAll(() => {
-    tokens = JSON.parse(fs.readFileSync(TOKENS_PATH, 'utf8'));
+    tokens = JSON.parse(fs.readFileSync(TOKENS_FILE, 'utf8'));
     schema = JSON.parse(fs.readFileSync(SCHEMA_PATH, 'utf8'));
     const ajv = new Ajv2020({ allErrors: true, strict: true });
     validate = ajv.compile(schema);
@@ -66,11 +66,11 @@ describe('ALN-TokenData/tokens.json schema contract', () => {
     expect(inconsistent).toEqual([]);
   });
 
-  it('SF_MemoryType values are scoreable against scoring-config.json (or null = intentional 0x)', () => {
-    const scoringConfig = JSON.parse(
-      fs.readFileSync(path.join(TOKEN_DATA_DIR, 'scoring-config.json'), 'utf8')
+  it('SF_MemoryType values are scoreable against game.json scoring (or null = intentional 0x)', () => {
+    const { scoring } = JSON.parse(
+      fs.readFileSync(path.join(TOKEN_DATA_DIR, 'game.json'), 'utf8')
     );
-    const knownTypes = new Set(Object.keys(scoringConfig.typeMultipliers || {}));
+    const knownTypes = new Set(Object.keys(scoring.typeMultipliers || {}));
     const unscoreable = Object.entries(tokens)
       .filter(([, t]) => t.SF_MemoryType !== null && !knownTypes.has(t.SF_MemoryType))
       .map(([key, t]) => `${key}: '${t.SF_MemoryType}'`);
@@ -78,22 +78,27 @@ describe('ALN-TokenData/tokens.json schema contract', () => {
   });
 
   it('E2E fixture packs validate against the same schema (merge-readiness review minor)', () => {
-    // The TOKENS_PATH injection seam runs the whole system on fixture packs —
+    // The PACK_PATH injection seam runs the whole system on fixture packs —
     // a drifted fixture would make E2E exercise token shapes production can
-    // never produce. Every pack under tests/e2e/fixtures/packs/ must satisfy
-    // the same contract as production tokens.json.
+    // never produce. Every pack DIRECTORY under tests/e2e/fixtures/packs/
+    // (parity-pack, toy-heist, future packs) must carry a tokens.json that
+    // satisfies the same contract as production tokens.json.
     const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
-    const packs = fs.readdirSync(packsDir).filter(f => f.endsWith('.tokens.json'));
+    const packs = fs.readdirSync(packsDir, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
     expect(packs.length).toBeGreaterThan(0); // the seam has at least one consumer
 
     for (const pack of packs) {
-      const packTokens = JSON.parse(fs.readFileSync(path.join(packsDir, pack), 'utf8'));
+      const tokensFile = path.join(packsDir, pack, 'tokens.json');
+      expect(fs.existsSync(tokensFile)).toBe(true); // a pack dir without tokens.json cannot boot
+      const packTokens = JSON.parse(fs.readFileSync(tokensFile, 'utf8'));
       const valid = validate(packTokens);
       if (!valid) {
         const details = validate.errors
           .map(e => `${e.instancePath || '(root)'}: ${e.message}`)
           .join('\n  ');
-        throw new Error(`${pack} schema violations:\n  ${details}`);
+        throw new Error(`${pack}/tokens.json schema violations:\n  ${details}`);
       }
     }
   });

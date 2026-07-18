@@ -44,20 +44,27 @@ const validateSummary = (summary, tokenId) => {
 };
 
 /**
- * Calculate token value based on rating and type
+ * Calculate token value based on rating and type (A3 slice 2: tables come
+ * from the ACTIVE pack's game.json scoring block via packService — the
+ * legacy scoring-config.json read retired with ledger L1. Token load runs
+ * at the same boot moment as activatePack(), so values always derive from
+ * the frozen pack snapshot; packless checkouts ride the baked legacy shim
+ * inside getScoringRules(), loudly.)
  * @param {number} rating - SF_ValueRating (1-5)
  * @param {string} type - SF_MemoryType
  * @returns {number} Calculated point value
  */
 const calculateTokenValue = (rating, type) => {
-  // Get base value from rating map
-  const baseValue = config.game.valueRatingMap[rating] || 0;
+  const packService = require('./packService');
+  const scoring = packService.getScoringRules();
 
-  // Get type multiplier
+  const baseValue = scoring.baseValues[rating] || 0;
   const typeKey = (type || 'unknown').toLowerCase();
-  const multiplier = config.game.typeMultipliers[typeKey] || config.game.typeMultipliers.unknown || 0;
+  // `unknown` is always present in normalized tables (0 unless the pack
+  // overrides), so this chain never needs a numeric tail — and `??`
+  // (not `||`) lets a pack legitimately declare a 0 multiplier.
+  const multiplier = scoring.typeMultipliers[typeKey] ?? scoring.typeMultipliers.unknown;
 
-  // Return calculated value
   return Math.floor(baseValue * multiplier);
 };
 
@@ -67,22 +74,32 @@ const calculateTokenValue = (rating, type) => {
  * @returns {Object} Raw tokens object (tokenId -> token data)
  */
 const _loadTokensFile = () => {
+  // Injection seam (Phase 2.x.4, generalized from a tokens.json FILE to a
+  // whole pack DIRECTORY in Phase 3 A2): PACK_PATH points the entire engine
+  // at an alternate game pack. packService.getPackDir() resolves it and
+  // loud-warns when the override is active. With an explicit override there
+  // is NO fallback: a harness-injected pack missing tokens.json must fail
+  // the boot, not silently run a different token set (split-brain — the
+  // harness would test against data the server never loaded).
+  const packService = require('./packService');
+  if (process.env.PACK_PATH) {
+    const injected = path.join(packService.getPackDir(), 'tokens.json');
+    try {
+      const data = fs.readFileSync(injected, 'utf8');
+      logger.info(`Loaded tokens from: ${injected}`);
+      return JSON.parse(data);
+    } catch (e) {
+      logger.error(`PACK_PATH is set but its tokens.json is unreadable: ${injected} (${e.message})`);
+      throw new Error(
+        `CRITICAL: PACK_PATH override active but ${injected} is unreadable — refusing to fall back to a different pack.`
+      );
+    }
+  }
+
   const paths = [
-    // Injection seam (Phase 2.x.4 → grows into Phase 3 runtime pack
-    // loading): an explicit TOKENS_PATH wins over the submodule defaults.
-    // Used by the E2E harness to run the system on a fixture token set
-    // (and later: a full game pack).
-    ...(process.env.TOKENS_PATH ? [process.env.TOKENS_PATH] : []),
-    path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
+    path.join(packService.getPackDir(), 'tokens.json'),  // ALN-TokenData (default pack dir)
     path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
   ];
-
-  if (process.env.TOKENS_PATH) {
-    // LOUD by design (merge-readiness review minor): a production process
-    // accidentally started with TOKENS_PATH set would silently run the game
-    // on a non-production token set — make the override unmissable in logs.
-    logger.warn(`TOKENS_PATH override ACTIVE — token data injected from: ${process.env.TOKENS_PATH}`);
-  }
 
   const failures = [];
   for (const tokenPath of paths) {

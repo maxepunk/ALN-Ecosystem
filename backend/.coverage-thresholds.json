@@ -5,9 +5,9 @@
     "lines": 70
   },
   "./src/config/index.js": {
-    "branches": 50,
+    "branches": 60,
     "functions": 100,
-    "lines": 80
+    "lines": 100
   },
   "./src/gameRules/cueVocabulary.js": {
     "branches": 50,
@@ -19,8 +19,13 @@
     "functions": 100,
     "lines": 100
   },
+  "./src/gameRules/modeSemantics.js": {
+    "branches": 100,
+    "functions": 90,
+    "lines": 90
+  },
   "./src/gameRules/scoring.js": {
-    "branches": 85,
+    "branches": 90,
     "functions": 100,
     "lines": 100
   },
@@ -73,6 +78,11 @@
     "branches": 85,
     "functions": 100,
     "lines": 85
+  },
+  "./src/routes/packRoutes.js": {
+    "branches": 100,
+    "functions": 100,
+    "lines": 80
   },
   "./src/routes/resourceRoutes.js": {
     "branches": 70,
@@ -170,9 +180,9 @@
     "lines": 95
   },
   "./src/services/lightingService.js": {
-    "branches": 80,
+    "branches": 95,
     "functions": 100,
-    "lines": 90
+    "lines": 95
   },
   "./src/services/mpdConfigBuilder.js": {
     "branches": 90,
@@ -185,7 +195,7 @@
     "lines": 95
   },
   "./src/services/musicService.js": {
-    "branches": 80,
+    "branches": 85,
     "functions": 95,
     "lines": 95
   },
@@ -193,6 +203,11 @@
     "branches": 65,
     "functions": 55,
     "lines": 70
+  },
+  "./src/services/packService.js": {
+    "branches": 95,
+    "functions": 100,
+    "lines": 100
   },
   "./src/services/persistenceService.js": {
     "branches": 60,
@@ -220,9 +235,9 @@
     "lines": 90
   },
   "./src/services/sessionService.js": {
-    "branches": 60,
-    "functions": 70,
-    "lines": 75
+    "branches": 70,
+    "functions": 75,
+    "lines": 80
   },
   "./src/services/soundService.js": {
     "branches": 75,
@@ -235,12 +250,12 @@
     "lines": 85
   },
   "./src/services/tokenService.js": {
-    "branches": 95,
+    "branches": 100,
     "functions": 100,
-    "lines": 95
+    "lines": 100
   },
   "./src/services/transactionService.js": {
-    "branches": 55,
+    "branches": 60,
     "functions": 90,
     "lines": 85
   },
@@ -280,9 +295,9 @@
     "lines": 100
   },
   "./src/utils/displayDriver.js": {
-    "branches": 85,
+    "branches": 100,
     "functions": 100,
-    "lines": 95
+    "lines": 100
   },
   "./src/utils/dockerHelper.js": {
     "branches": 100,
@@ -300,9 +315,9 @@
     "lines": 70
   },
   "./src/utils/processMonitor.js": {
-    "branches": 90,
+    "branches": 100,
     "functions": 100,
-    "lines": 95
+    "lines": 100
   },
   "./src/utils/responseBuilder.js": {
     "branches": 25,
@@ -315,7 +330,7 @@
     "lines": 90
   },
   "./src/utils/validators.js": {
-    "branches": 80,
+    "branches": 85,
     "functions": 100,
     "lines": 95
   },
@@ -370,7 +385,7 @@
     "lines": 95
   },
   "./src/websocket/socketServer.js": {
-    "branches": 65,
+    "branches": 70,
     "functions": 100,
     "lines": 80
   },

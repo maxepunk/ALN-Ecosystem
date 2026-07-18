@@ -5,24 +5,14 @@
 
 const path = require('path');
 const dotenv = require('dotenv');
-const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
 
-// Load shared scoring config from ALN-TokenData submodule
-const scoringConfigPath = path.join(__dirname, '../../../ALN-TokenData/scoring-config.json');
-let sharedScoringConfig;
-try {
-  sharedScoringConfig = JSON.parse(fs.readFileSync(scoringConfigPath, 'utf8'));
-  console.log('Loaded shared scoring config from:', scoringConfigPath);
-} catch (e) {
-  console.warn('Failed to load shared scoring config, using defaults:', e.message);
-  sharedScoringConfig = {
-    baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
-    typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
-  };
-}
+// A3 slice 2 (ledger L1 retirement): scoring tables no longer load here.
+// They come from the ACTIVE pack's game.json via packService.getScoringRules()
+// (activation-snapshot semantics; baked legacy shim for packless checkouts) —
+// consumed by tokenService.calculateTokenValue at token load.
 
 const config = {
   // Server Configuration
@@ -65,20 +55,11 @@ const config = {
     archiveAfter: parseInt(process.env.ARCHIVE_AFTER || '24', 10), // hours
   },
 
-  // Game Configuration
+  // Game Configuration (scoring tables moved to the pack — see the
+  // slice-2 note at the top of this file)
   game: {
     transactionHistoryLimit: parseInt(process.env.TRANSACTION_HISTORY_LIMIT || '1000', 10),
     recentTransactionsCount: parseInt(process.env.RECENT_TRANSACTIONS_COUNT || '10', 10),
-    // Value rating to points mapping (from shared scoring-config.json)
-    valueRatingMap: Object.fromEntries(
-      Object.entries(sharedScoringConfig.baseValues).map(([k, v]) => [parseInt(k, 10), v])
-    ),
-
-    // Type multipliers - dynamically mapped from shared config (lowercase keys)
-    typeMultipliers: Object.fromEntries(
-      Object.entries(sharedScoringConfig.typeMultipliers)
-        .map(([k, v]) => [k.toLowerCase(), v])
-    ),
   },
 
   // Security Configuration

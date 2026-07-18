@@ -7,7 +7,15 @@ const fs = require('fs');
 const path = require('path');
 
 class TokenLoader {
-  constructor() {
+  /**
+   * @param {string|null} packDir - resolved pack directory (D4s2). When
+   *   given, tokens.json MUST live there — no silent fallback (the
+   *   engine's PACK_PATH rule: an explicitly-resolved pack that is
+   *   missing its tokens is an error, never a quiet substitute). When
+   *   absent, the legacy production-checkout chain applies.
+   */
+  constructor(packDir = null) {
+    this.packDir = packDir;
     this.tokens = null;
     this.tokensMap = null;
   }
@@ -37,6 +45,15 @@ class TokenLoader {
    * Load raw tokens.json file
    */
   loadRawTokens() {
+    if (this.packDir) {
+      const tokenPath = path.join(this.packDir, 'tokens.json');
+      try {
+        return JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+      } catch (e) {
+        throw new Error(`Resolved pack has no readable tokens.json (${tokenPath}): ${e.message}`);
+      }
+    }
+
     const paths = [
       path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
       path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
@@ -63,17 +80,21 @@ class TokenLoader {
 
     const rawTokens = this.loadRawTokens();
 
-    const { BASE_VALUES, TYPE_MULTIPLIERS } = require('./scoringConfigLoader').loadScoringConstants();
+    const { BASE_VALUES, TYPE_MULTIPLIERS } =
+      require('./scoringConfigLoader').loadScoringConstants(this.packDir || undefined);
 
     this.tokens = Object.entries(rawTokens).map(([id, token]) => {
       const groupName = TokenLoader.extractGroupName(token.SF_Group);
       const groupMultiplier = TokenLoader.parseGroupMultiplier(token.SF_Group);
 
-      // Calculate value
-      const rating = token.SF_ValueRating || 1;
-      const typeKey = (token.SF_MemoryType || 'personal').toLowerCase();
-      const baseValue = BASE_VALUES[rating] || BASE_VALUES[1];
-      const multiplier = TYPE_MULTIPLIERS[typeKey] || 1;
+      // Calculate value — mirror the ENGINE (tokenService.calculateTokenValue):
+      // missing rating → 0 base, unknown type → `unknown` multiplier (0x).
+      // The old 'personal'/`|| 1` defaults made validators pay tokens the
+      // engine scored 0x (review finding).
+      const rating = token.SF_ValueRating || 0;
+      const typeKey = (token.SF_MemoryType || 'unknown').toLowerCase();
+      const baseValue = BASE_VALUES[rating] || 0;
+      const multiplier = TYPE_MULTIPLIERS[typeKey] ?? TYPE_MULTIPLIERS.unknown;
       const value = Math.floor(baseValue * multiplier);
 
       return {

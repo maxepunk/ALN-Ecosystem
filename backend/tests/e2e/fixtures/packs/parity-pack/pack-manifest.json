@@ -1,0 +1,33 @@
+{
+  "kind": "pack-manifest",
+  "schemaVersion": 1,
+  "packId": "parity-pack",
+  "version": "0.1.0",
+  "contentHash": "sha256:bd00e0e6a90ac25e56a8a094c01300a9d4abe72f73edd33c361805c5d50052fe",
+  "engine": {
+    "minVersion": "3.0.0"
+  },
+  "files": [
+    {
+      "path": "game.json",
+      "role": "game",
+      "sha1": "7f0fc7ab4e02d46acf2865a688221d5853cd9332",
+      "size": 1329
+    },
+    {
+      "path": "tokens.json",
+      "role": "tokens",
+      "sha1": "572d9b296c26041c8f08cafb0dd1bd9cd40b96bd",
+      "size": 3218
+    }
+  ],
+  "hardware": {
+    "deviceClasses": [
+      {
+        "class": "staffed",
+        "min": 1,
+        "rationale": "TODO: author the hardware section"
+      }
+    ]
+  }
+}

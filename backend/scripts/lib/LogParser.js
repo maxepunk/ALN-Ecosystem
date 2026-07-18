@@ -245,22 +245,6 @@ class LogParser {
   }
 
   /**
-   * Find detective mode transaction events
-   * @param {string} startTime - Session start time
-   * @param {string} endTime - Session end time
-   */
-  async findDetectiveModeEvents(startTime, endTime) {
-    return this.filterLogs(
-      entry => {
-        const msg = entry.message.toLowerCase();
-        return msg.includes('detective mode') ||
-               entry.metadata?.mode === 'detective';
-      },
-      { startTime, endTime }
-    );
-  }
-
-  /**
    * Get all events in time order for a session
    * @param {string} startTime - Session start time
    * @param {string} endTime - Session end time
