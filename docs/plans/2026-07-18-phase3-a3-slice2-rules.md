@@ -1,10 +1,15 @@
 # Phase 3 A3 Slice 2 — Rules Migration & Gate Headroom-Rejection (design)
 
 **Date:** 2026-07-18
-**Status:** DRAFT for owner ratification (program §12.3: slice 2 does NOT
-open without this consolidated restatement + honest re-price; it also does
-not open before the slice-1 gate is CI-green). Decisions D1s2–D4s2 in §6
-need owner answers.
+**Status:** ✅ EXECUTED IN FULL — SLICE CLOSED 2026-07-18. Decision-free
+core + all four owner-ratified closers (§6a rulings, §6b execution
+record) + the 35-agent closer adversarial review (25 confirmed findings
+fixed + pinned at parent `4b9464c` / scanner `10d7467`, 4 refuted).
+Close gate: backend 2328 + integration 342 + scanner 1442
+(fresh-coverage ratchet) + PWA/config-tool/ESP32 green + dual-pack
+Tier L twice (112P+113P/0F/0-flaky both times) + CI green on both heads.
+Actual cost ≈ the honest estimate's upper band (§5 priced 2.5–3.5
+sessions; the fallout line priced the gate catching things — it did).
 **Ground truth this draft is built on (censused 2026-07-18, not
 estimated):** every consumer/obligation in §2 was located by grep/read the
 day this doc was written; both real packs' rule blocks were diffed (§3).
