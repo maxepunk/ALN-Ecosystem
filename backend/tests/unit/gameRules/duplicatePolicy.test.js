@@ -110,4 +110,88 @@ describe('gameRules/duplicatePolicy (pure)', () => {
       expect(found).toBeNull();
     });
   });
+
+  describe('per-mode claims flag (D3s2 — non-consuming actions are repeatable by design)', () => {
+    // A pack declaring one consuming and one non-consuming mode
+    const CLAIMS_CONFIG = {
+      modes: [
+        { id: 'sell', label: 'Sell', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true },
+        {
+          id: 'appraise', label: 'Appraise', scoringPolicy: 'none', entityRole: 'ledger',
+          countsTowardGroups: false, claims: 'non-consuming',
+        },
+      ],
+    };
+
+    it('a non-consuming scan is NEVER blocked — not per-device, not FCFS', () => {
+      const result = duplicatePolicy.checkDuplicate({
+        transaction: { ...gmScan('tok1', 'Team Beta'), mode: 'appraise' },
+        transactions: [{ ...accepted('tok1', 'Team Alpha'), mode: 'sell' }], // consuming claim exists
+        scannedTokensByDevice: { GM_A: ['tok1'] },                           // and this device saw it
+        gameConfig: CLAIMS_CONFIG,
+      });
+      expect(result.isDuplicate).toBe(false);
+      expect(result.original).toBeNull();
+    });
+
+    it('a stored non-consuming transaction never registers the FCFS claim', () => {
+      const result = duplicatePolicy.checkDuplicate({
+        transaction: { ...gmScan('tok1', 'Team Beta'), mode: 'sell' },
+        transactions: [{ ...accepted('tok1', 'Team Alpha'), mode: 'appraise' }],
+        scannedTokensByDevice: {},
+        gameConfig: CLAIMS_CONFIG,
+      });
+      expect(result.isDuplicate).toBe(false);
+    });
+
+    it('findOriginalTransaction skips non-consuming claims and returns the first CONSUMING one', () => {
+      const consuming = { ...accepted('tok1', 'Team Gamma'), mode: 'sell' };
+      const found = duplicatePolicy.findOriginalTransaction({
+        transactions: [{ ...accepted('tok1', 'Team Alpha'), mode: 'appraise' }, consuming],
+        tokenId: 'tok1',
+        sessionId: SESSION_ID,
+        gameConfig: CLAIMS_CONFIG,
+      });
+      expect(found).toBe(consuming);
+    });
+
+    it('consuming FCFS behavior is unchanged when claims flags are in play', () => {
+      const result = duplicatePolicy.checkDuplicate({
+        transaction: { ...gmScan('tok1', 'Team Beta'), mode: 'sell' },
+        transactions: [{ ...accepted('tok1', 'Team Alpha'), mode: 'sell' }],
+        scannedTokensByDevice: {},
+        gameConfig: CLAIMS_CONFIG,
+      });
+      expect(result.isDuplicate).toBe(true);
+      expect(result.original.teamId).toBe('Team Alpha');
+    });
+
+    it('an UNRESOLVABLE stored mode is treated as consuming (legacy history keeps blocking)', () => {
+      const legacy = { ...accepted('tok1', 'Team Alpha'), mode: 'blackmarket' }; // not in CLAIMS_CONFIG
+      const result = duplicatePolicy.checkDuplicate({
+        transaction: { ...gmScan('tok1', 'Team Beta'), mode: 'sell' },
+        transactions: [legacy],
+        scannedTokensByDevice: {},
+        gameConfig: CLAIMS_CONFIG,
+      });
+      expect(result.isDuplicate).toBe(true);
+      expect(result.original).toBe(legacy);
+    });
+
+    it('NO gameConfig (packless) — every transaction is consuming, exactly the pre-D3s2 behavior', () => {
+      const result = duplicatePolicy.checkDuplicate({
+        transaction: gmScan('tok1', 'Team Beta'),
+        transactions: [accepted('tok1', 'Team Alpha')],
+        scannedTokensByDevice: {},
+      });
+      expect(result.isDuplicate).toBe(true);
+    });
+
+    it('isConsumingClaim: absent flag defaults to consuming; explicit non-consuming is not', () => {
+      expect(duplicatePolicy.isConsumingClaim(CLAIMS_CONFIG, 'sell')).toBe(true);
+      expect(duplicatePolicy.isConsumingClaim(CLAIMS_CONFIG, 'appraise')).toBe(false);
+      expect(duplicatePolicy.isConsumingClaim(CLAIMS_CONFIG, 'unknown-mode')).toBe(true);
+      expect(duplicatePolicy.isConsumingClaim(null, 'anything')).toBe(true);
+    });
+  });
 });

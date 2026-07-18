@@ -374,6 +374,19 @@ describe('packService', () => {
       expect(err.message).toMatch(/bad2.*displayBehavior\.surface 'holo'/);
       expect(err.message).not.toMatch(/mode 'ok'/);
     });
+
+    it('refuses an unimplemented claims value; drives both implemented policies (D3s2)', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'weird', claims: 'per-actor' })));
+      expect(() => packService.activatePack())
+        .toThrow(/mode 'weird' is not driveable.*claims 'per-actor'/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'sell', claims: 'consuming' }),
+        mode({ id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false, claims: 'non-consuming' })
+      ));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
   });
 
   describe('rules-block drivability (A3 slice 2 — §2i/§2j: the engine implements the declared table only)', () => {
@@ -615,12 +628,33 @@ describe('packService', () => {
       });
     });
 
-    // The flavor-(ii) refusal (scoringPolicy 'none' ∧ countsTowardGroups)
-    // was RETIRED ON SCHEDULE in slice 2: scored-only contribution
-    // semantics landed in gameRules/scoring (§2f — completion counts any
-    // counting claim, the bonus base sums only scored contributions), so
-    // unscored claims can no longer mint catalog-priced bonuses and the
-    // combination is legal. Its legality is pinned below.
+    // The flavor-(ii) FOUNDING member (scoringPolicy 'none' ∧
+    // countsTowardGroups) was RETIRED ON SCHEDULE in slice 2: scored-only
+    // contribution semantics landed in gameRules/scoring (§2f — completion
+    // counts any counting claim, the bonus base sums only scored
+    // contributions), so unscored claims can no longer mint catalog-priced
+    // bonuses and the combination is legal. Its legality is pinned below.
+
+    describe('flavor (ii) — drivability limitations (named retirement, honest language)', () => {
+      it("refuses non-consuming ∧ countsTowardGroups (D3s2 v1 constraint) with the limitation wording", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'sample', scoringPolicy: 'none', countsTowardGroups: true, claims: 'non-consuming',
+        })));
+        expect(() => packService.activatePack())
+          .toThrow(/COHERENCE CHECK.*'sample'.*non-consuming.*not driveable by this engine yet.*contribution-semantics design/);
+      });
+
+      it('the limitation is NEVER called incoherent or self-contradictory (language rule pinned)', () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'sample', scoringPolicy: 'none', countsTowardGroups: true, claims: 'non-consuming',
+        })));
+        let message = '';
+        try { packService.activatePack(); } catch (err) { message = err.message; }
+        expect(message).toMatch(/not driveable by this engine yet/);
+        expect(message).not.toMatch(/incoherent/i);
+        expect(message).not.toMatch(/self-contradictory/i);
+      });
+    });
 
     describe('deliberately LEGAL combinations (documented so nobody "fixes" them)', () => {
       it("accepts none ∧ countsTowardGroups — event-only groups (§2f semantics landed, flavor-ii retired)", () => {
@@ -645,6 +679,14 @@ describe('packService', () => {
         writeGame(tmpDir, gameWith(mode({
           id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false,
           displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts non-consuming with countsTowardGroups FALSE — the drivable half of D3s2", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'inspect', scoringPolicy: 'none', countsTowardGroups: false,
+          claims: 'non-consuming', displayBehavior: { surface: 'none' },
         })));
         expect(() => packService.activatePack()).not.toThrow();
       });

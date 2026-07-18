@@ -773,6 +773,9 @@ components:
                   broadcast sync:full re-emissions, hence optional. Load-bearing
                   for the GM Scanner's duplicate-detection restore (TQ-7) and
                   offline-queue reconciliation (TQ-6). (F-GMS-12)
+                  Only CONSUMING claims register here (D3s2): a transaction in a
+                  mode declaring claims 'non-consuming' never appears — it is a
+                  repeatable action outside the duplicate rules entirely.
                 example: ["kaa001", "kaa002"]
               reconnection:
                 type: boolean

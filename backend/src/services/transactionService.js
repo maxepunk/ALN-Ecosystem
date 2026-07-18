@@ -201,11 +201,13 @@ class TransactionService extends EventEmitter {
         });
       }
 
-      // Check GM duplicate rules (pure policy — gameRules/duplicatePolicy)
+      // Check GM duplicate rules (pure policy — gameRules/duplicatePolicy;
+      // gameConfig threads the per-mode claims flag, D3s2)
       const { isDuplicate, original } = duplicatePolicy.checkDuplicate({
         transaction,
         transactions: session.transactions || [],
         scannedTokensByDevice: session.metadata?.scannedTokensByDevice || {},
+        gameConfig: packService.getGameConfig(),
       });
       if (isDuplicate) {
         transaction.markAsDuplicate(original?.id || 'unknown');
@@ -272,15 +274,21 @@ class TransactionService extends EventEmitter {
       this.addRecentTransaction(transaction);
 
       // Emit transaction:accepted with NEW format (Slice 3)
-      // This is the SINGLE event for this transaction - sessionService handles persistence
+      // This is the SINGLE event for this transaction - sessionService handles persistence.
+      // deviceTracking is the per-device claim registration payload
+      // (persistenceListeners → session.addDeviceScannedToken): a
+      // NON-CONSUMING mode's transaction must never register (D3s2), so
+      // the emission — the single decision point — carries null for it.
       this.emit('transaction:accepted', {
         transaction: transaction.toJSON(),
         teamScore: scoreResult?.teamScore?.toJSON() || null,
         groupBonus: scoreResult?.groupBonusInfo || null,
-        deviceTracking: {
-          deviceId: transaction.deviceId,
-          tokenId: transaction.tokenId
-        }
+        deviceTracking: duplicatePolicy.isConsumingClaim(gameConfig, transaction.mode)
+          ? {
+            deviceId: transaction.deviceId,
+            tokenId: transaction.tokenId
+          }
+          : null
       });
 
       logger.info('Scan accepted', {

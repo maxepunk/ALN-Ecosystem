@@ -84,12 +84,14 @@ function _modesFrom(gameConfig) {
  * config does not declare it. The record always carries every flag:
  * absent displayBehavior normalizes to {surface:'none'} (a mode that
  * declares no display surfaces nothing), absent fields to [], absent
- * `when` to 'immediate'.
+ * `when` to 'immediate', absent claims to 'consuming' (D3s2: every
+ * pre-claims mode consumed its token — the default IS the legacy
+ * behavior, which is why neither real pack needs an edit).
  * @param {Object|null} gameConfig - The active pack's game.json (packService.getGameConfig())
  * @param {string} modeId
  * @returns {{id: string, label: string, verb: string|null,
  *   scoringPolicy: string, entityRole: string, defaultEntity: string|null,
- *   countsTowardGroups: boolean,
+ *   countsTowardGroups: boolean, claims: string,
  *   displayBehavior: {surface: string, fields: string[], when: string}}|null}
  */
 function resolveMode(gameConfig, modeId) {
@@ -105,6 +107,7 @@ function resolveMode(gameConfig, modeId) {
     entityRole: mode.entityRole,
     defaultEntity: mode.defaultEntity || null,
     countsTowardGroups: mode.countsTowardGroups === true,
+    claims: mode.claims === undefined ? 'consuming' : mode.claims,
     displayBehavior: {
       surface: db.surface || 'none',
       fields: Array.isArray(db.fields) ? [...db.fields] : [],

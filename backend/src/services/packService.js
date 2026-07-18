@@ -60,6 +60,7 @@ const ENGINE_MODE_CAPS = Object.freeze({
   scoringPolicy: new Set(['standard', 'none']),
   entityRole: new Set(['ledger', 'attribution']),
   surface: new Set(['scoreboard-rankings', 'scoreboard-evidence', 'none']),
+  claims: new Set(['consuming', 'non-consuming']), // D3s2: both policies driven
 });
 
 // Manifest cache, invalidated on file mtime change (same pattern as the
@@ -232,7 +233,9 @@ function _gateCheck(manifest, gameConfig) {
       if (dp.claim !== undefined && dp.claim !== 'once') {
         problems.push(
           `duplicatePolicy.claim '${dp.claim}' — this engine implements 'once' only ` +
-          `(gameRules/duplicatePolicy.js; a non-consuming claim policy lands with its enforcement, design §2i)`
+          `(gameRules/duplicatePolicy.js; per-MODE non-consuming claims landed as the ` +
+          `modes[].claims flag in D3s2 — pack-LEVEL variants like 'per-entity' still ` +
+          `arrive WITH their enforcement, never schema-dead)`
         );
       }
       if (dp.view !== undefined && dp.view !== 'unlimited') {
@@ -291,6 +294,12 @@ function _gateCheck(manifest, gameConfig) {
         if (!ENGINE_MODE_CAPS.surface.has(surface)) {
           undrivable.push(`displayBehavior.surface '${surface}'`);
         }
+        // claims is OPTIONAL (absent normalizes to 'consuming' — the
+        // legacy behavior), so only a DECLARED unknown value is undrivable
+        const claims = mode.claims === undefined ? 'consuming' : mode.claims;
+        if (!ENGINE_MODE_CAPS.claims.has(claims)) {
+          undrivable.push(`claims '${claims}'`);
+        }
         if (undrivable.length > 0) {
           problems.push(`mode '${mode.id}' is not driveable by this engine: ${undrivable.join(', ')} not implemented`);
         }
@@ -326,7 +335,12 @@ function _gateCheck(manifest, gameConfig) {
  *   semantics landed (completion counts any counting claim; the bonus
  *   base sums only scored contributions), so unscored claims can no
  *   longer mint catalog-priced bonuses and event-only groups are legal.
- *   The flavor exists for future limitations of the same family.
+ *   CURRENT member (D3s2 v1 constraint): claims:'non-consuming' ∧
+ *   countsTowardGroups — a non-consumed claim never registers with the
+ *   duplicate rules, so what "presence in a group" means for a
+ *   repeatable action (count once? every scan? survives deletion how?)
+ *   needs its own contribution-semantics design before the engine can
+ *   drive it. RETIREMENT: that design, when a pack wants the combination.
  *
  * Deliberately LEGAL (documented so nobody "fixes" them):
  *   entityRole:'attribution' ∧ scoringPolicy:'standard' (future
@@ -361,13 +375,11 @@ function _coherenceCheck(gameConfig) {
 
   if (!Array.isArray(gameConfig.modes)) return;
 
-  // Flavor-(ii) note: no drivability limitations live here right now —
-  // the founding member retired in slice 2 (see header). The language
-  // rule for the next one: gate-family wording with a NAMED retirement
-  // ("not driveable by this engine yet (see slice N)"), never
-  // "incoherent" — pushed as its own problem line, distinct from
-  // contradictions.
+  // Two problem channels, deliberately separate (the ratified language
+  // rule): contradictions say "self-contradictory"; limitations use
+  // gate-family wording with a NAMED retirement and NEVER "incoherent".
   const contradictions = [];
+  const limitations = [];
 
   if (gameConfig.modes.length === 0) {
     contradictions.push('the modes array is EMPTY — a pack that declares modes must declare at least one');
@@ -389,12 +401,31 @@ function _coherenceCheck(gameConfig) {
     // (The none∧countsTowardGroups flavor-(ii) refusal that lived here
     // was DELETED in slice 2 — see the header. Event-only groups are
     // legal now that the bonus base sums only scored contributions.)
+
+    // Flavor (ii), D3s2 v1 constraint: a non-consuming claim never
+    // registers, so group presence for a repeatable action has no
+    // defined contribution semantics yet (see header for the named
+    // retirement). Legal design, undrivable engine — say so honestly.
+    if (mode.claims === 'non-consuming' && mode.countsTowardGroups === true) {
+      limitations.push(
+        `mode '${mode.id}' combines claims 'non-consuming' with countsTowardGroups — ` +
+        'not driveable by this engine yet (non-consumed presence in group completion ' +
+        "needs its own contribution-semantics design); declare countsTowardGroups: false " +
+        "or claims: 'consuming'"
+      );
+    }
   }
 
   if (contradictions.length > 0) {
     throw new Error(
       `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
       `self-contradictory pack: ${contradictions.join('; ')}.`
+    );
+  }
+  if (limitations.length > 0) {
+    throw new Error(
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
+      `${limitations.join('; ')}.`
     );
   }
 }
