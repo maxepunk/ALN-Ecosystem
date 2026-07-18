@@ -7,28 +7,32 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-07-17 · **Working branch:** `claude/phase3-foundations`
-(parent + all four submodules). The parent→main merge has happened (live-state
-parity PRs, 2026-07-11). Decision: FINISH A2 on foundations — `origin/main`
-was merged back into foundations 2026-07-17 (ALNScanner pin fast-forwarded to
-main's `e38c1ea`) — then rebase foundations onto main at the A2 boundary;
-slice-sized branches begin there.
+**Last updated:** 2026-07-18 · **Working branch:** `claude/phase3-a3-slice1`
+(parent; chained from the verified slice-0 tip `8a944b4`, draft PR #20).
+Under the frozen-production model (see the development-model row) slice
+branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
+keeps a draft PR to main for CI, and the stacked PRs land in R14 order
+whenever the owner merges. The earlier "rebase foundations onto main at the
+A2 boundary" directive is SUPERSEDED — foundations is frozen history beneath
+slice 0. (History: parent→main live-state parity merge 2026-07-11; A2
+finished on foundations with `origin/main` merged back in 2026-07-17.)
 
 ## Where we are
 
 | Item | State |
 |---|---|
 | Phase 2 (+2.x, + two review rounds, + field fixes) | ✅ merged to all mains, production-validated |
-| Phase 3.0 program + all 3.1 design docs | ✅ complete, ratified 2026-07-09 (incl. the ATTRIBUTION CORRECTION — see below) |
+| Phase 3.0 program + all 3.1 design docs | ✅ complete 2026-07-09 (incl. the ATTRIBUTION CORRECTION — see below). Precision (2026-07-18 holistic review): pack-schemas §5 review points RESOLVED and standalone-loading stamped EXECUTED; one-auth and installation-profile remain **DRAFT-status docs proceeding on recorded defaults** (open: token lifetimes, scoreboard token, legacy-preset import) — "ratified" covers the program + the decided review points, not every open point. |
 | **A1 slice 1** — schemas as files, ALN as a pack, toy pack, manifest generator, 24-test contract suite | ✅ FULLY landed 2026-07-10: TokenData `0b5cd93` on its origin, parent pin bumped, loud-skip guard deleted. Suite runs 24/24 in every checkout. |
 | **Live-state parity cluster** (field-reported stale-UI bugs) | ✅ **MERGED TO MAIN 2026-07-11 by owner** — parent PR #18 then ALNScanner PR #11, in the documented order. Owner follow-ups on the PR branch (`6d03cb7` music gameclock pause/resume also refresh state — closes the last idle-FIFO dependency; `77f905f` docker-lifecycle repaired under the blanked HA token) were absorbed into foundations 2026-07-17 via merge of `origin/main`. Zero open PRs in either repo. |
 | **A2 runtime pack loading** | ✅ **COMPLETE 2026-07-17** (parent `e73a020`→`3267b30`+, ALNScanner `df7cfed`/`707368d`, PWA `73ac71c`, ESP32 `92d763d`). Pack channel contracted + served (whitelist-only, frozen at boot); staleness identity reported by EVERY consumer (backend /health + sync:full + session stamp; GM UI + WS handshake; PWA config page; ESP32 boot log + CONFIG); PACK_PATH harness seam; GM packLoader with staged atomic refresh + runtime scoring (F-TOOL-05 dead); sync pipeline regenerates the pack manifest (Python builder, byte-parity-pinned); sync:full completeness structural test. Verified: backend 2187 unit/contract + 342 integration + coverage ratchet; scanner 1389 + ratchet + build artifacts + 07b/07c full-stack E2E; PWA 161; ESP32 native 120; scripts 66. Execution detail: "A2 execution record" below. |
 | 2026-07-17 plan review (blind-spot audit) | ✅ six real gaps + five ambiguities found and resolved; all folded into A2 and landed |
 | **2026-07-17 ADVERSARIAL five-phase review** | ✅ six lenses, findings R1-R24 in `2026-07-17-adversarial-plan-review.md`; all doc corrections APPLIED same day (program §1/§3/§7/§9/§11, pack-schemas, one-auth, BILL scoping, this file). OWNER decisions: timeline = HONEST accepted (≈13-20, cut set declined); tokens-v2+genericization = ADDED as slice 2b; E2/S2 = warn-only default adopted, S2 run pending. |
 | **Development model (owner-corrected 2026-07-18)** | **Production is FROZEN until the program completes**: the game-running Pis will NOT pull new code mid-program (one game 2026-07-18/19 — which does NOT use the PWAs — then a break until development is done; final deployment = one coordinated cutover through the preflight). `production-2026-07` branches in ALL FIVE repos pin the exact main SHAs serving that game (created via the GitHub API — the session proxy refuses tag pushes). Consequences: main = integration trunk, NOT deployed state; deploy-choreography constraints relax to architectural ordering (the R12 skew policy + the slice-2 same-pin-bump coupling apply only to the FINAL cutover); tests-green-at-every-merge, contract-first, the coverage ratchet, and the debt ledger stay fully in force. **A2 landing timing (owner decision 2026-07-18): ALL merges to main wait until after the game** — the four submodule PRs then the parent PR land in the R14 order. **Development does NOT wait**: slice 0 branched from the frozen foundations tip (`claude/phase3-a3-slice0`) and PRs against main once the train lands. |
-| **A2 boundary work** | ⬅ **NEXT**: rebase foundations onto main (per the branch decision above); slice-sized branches begin. Then **A3 per the REVISED slice list (program §3 + §11)**: slice 0 (dual-pack gate infra + capability-gate skeleton + getGameConfig + toy-pack growth) → slice 1 (mode BEHAVIOR to open semantics flags) → slice 2 (rules migration + gate extension) → **slice 2b (tokens v2 + pack-declared category vocabulary — added by owner decision)** → 3a/3b/3c → slice 4 (with the R4 resolver/fallback guard) → 5/6/7. |
-| **A3 slice 0 (dual-pack gate infra)** | 🔨 **IN PROGRESS on `claude/phase3-a3-slice0`** (started 2026-07-18, branched from foundations per the frozen-production model — PRs against main once the A2 train lands). LANDED: E2E_PACK_PATH inherited by every non-pinning startOrchestrator call (explicit pins win) + `npm run test:e2e:toy-pack`; toy pack 6→14 tokens / 11 distinct qualifying owners + second group; `packService.getGameConfig()` (activation-snapshot, audit F4); capability gate in activatePack (audit F2 + R6: engine.minVersion semver + schemaVersion exact + `requires` ⊆ ENGINE_CAPABILITIES, refusal = boot failure; ENGINE_VERSION=3.0.0 decoupled from npm version; baseline caps: scoring.tabular / groupRules.all / duplicatePolicy.once); `requires` block in game.schema.json (TokenData `0eef578`) with BOTH real packs declaring the baseline — the gate exercises on every activation. Verified: backend 2199 unit/contract + ratchet; pack contract 37; scripts byte-parity 66. Extraction brake (R13): no matrix rows moved — pure infrastructure. **CORRECTION (2026-07-18, owner-caught):** the earlier "CI has no E2E runner" note was FALSE — read off a truncated grep. Parent CI's `backend-e2e-tier-l` job runs full Tier L (Playwright Chromium, GM dist rebuild, workers=3) on every PR to main; the F3 CI matrix over {production, toy-heist} is therefore implemented FOR REAL in `.github/workflows/test.yml` (fail-fast:false, per-leg artifacts). **DUAL-PACK TIER L RESULTS (2026-07-18, first run in project history):** production leg 112P/0F/58S; toy leg 111P/2F/57S — the 2 failures were ONE test (07a standalone scoring, both projects) and the GATE'S FIRST REAL CATCH: the E2E scoring ORACLE was pack-blind (expected ALN's 75000; the scanner CORRECTLY scored toy values 1300×2=2600 via runtime game.json — the engine was right, the oracle wrong; the live face of ledger L1's two-oracle window). Fixed: `helpers/scoring.js` `loadPackScoring()` + pack-derived `calculateExpectedScore`; 07a verified 2/2 on BOTH packs; backend expectations stay legacy-oracle until slice 2 (documented at the source, converges with L1 retirement). CI matrix committed (both legs proven). SKIP-DELTA RESOLVED (per-test JSON diff): the one differing test is 07b "completes group and backend applies multiplier bonus" (mobile-chrome) — SKIPPED on production, PASSED on toy. Classification: COVERAGE GAIN, not regression — production tokens.json currently contains exactly ONE grouped token ("Marcus Mention", 1 token), so NO completable group exists in live ALN data and 07b's networked group-bonus path has been silently self-skipping on production all along; the toy pack is now the only pack exercising it full-stack. ⚠ OWNER FINDING: group-completion bonuses can never fire with current production content — intentional content decision or Notion-sync drift? (Docs still cite "Server Logs (x5)" as canonical.) **SLICE 0 COMPLETE & CI-CONFIRMED** — all Tier L executed tests pass on both packs, every skip accounted for; PR #19 run 75 GREEN across all 8 jobs (both matrix legs ~11 min each on real runners; the one first-contact failure — scripts job missing submodule checkout for the A2 byte-parity tests — fixed in `569d7e6`). |
-| A3 slices 1+ → B0/B pages → C2/C3 | queued per program §3/§4 |
+| **A3 sequence** | Per the REVISED slice list (program §3 + §11/§12): slice 0 ✅ → slice 1 🔨 → slice 2 (rules migration + gate headroom-rejection — **opens only with its own design doc + honest re-price**, program §12.3: its scope has accreted from ≥4 documents with no consolidated restatement, and A2 ran 2.3-2.7× estimate) → **slice 2b** (tokens v2 + pack-declared category vocabulary — owner-added) → 3a/3b/3c → slice 4 (R4 resolver/fallback guard; **C1 ratification is an explicit prerequisite**, program §12.4 — the R4 guard needs an in-repo fully-bound ALN installation profile and C1 is still DRAFT) → 5/6/7. *(The old "rebase foundations onto main" NEXT-step here is superseded — see the development-model row.)* |
+| **A3 slice 0 (dual-pack gate infra)** | ✅ **COMPLETE & CI-CONFIRMED 2026-07-18** (developed on `claude/phase3-a3-slice0`, branched from foundations per the frozen-production model — lands via draft PR #19 once the A2 train merges). LANDED: E2E_PACK_PATH inherited by every non-pinning startOrchestrator call (explicit pins win) + `npm run test:e2e:toy-pack`; toy pack 6→14 tokens / 11 distinct qualifying owners + second group; `packService.getGameConfig()` (activation-snapshot, audit F4); capability gate in activatePack (audit F2 + R6: engine.minVersion semver + schemaVersion exact + `requires` ⊆ ENGINE_CAPABILITIES, refusal = boot failure; ENGINE_VERSION=3.0.0 decoupled from npm version; baseline caps: scoring.tabular / groupRules.all / duplicatePolicy.once); `requires` block in game.schema.json (TokenData `0eef578`) with BOTH real packs declaring the baseline — the gate exercises on every activation. Verified: backend 2199 unit/contract + ratchet; pack contract 37; scripts byte-parity 66. Extraction brake (R13): no matrix rows moved — pure infrastructure. **CORRECTION (2026-07-18, owner-caught):** the earlier "CI has no E2E runner" note was FALSE — read off a truncated grep. Parent CI's `backend-e2e-tier-l` job runs full Tier L (Playwright Chromium, GM dist rebuild, workers=3) on every PR to main; the F3 CI matrix over {production, toy-heist} is therefore implemented FOR REAL in `.github/workflows/test.yml` (fail-fast:false, per-leg artifacts). **DUAL-PACK TIER L RESULTS (2026-07-18, first run in project history):** production leg 112P/0F/58S; toy leg 111P/2F/57S — the 2 failures were ONE test (07a standalone scoring, both projects) and the GATE'S FIRST REAL CATCH: the E2E scoring ORACLE was pack-blind (expected ALN's 75000; the scanner CORRECTLY scored toy values 1300×2=2600 via runtime game.json — the engine was right, the oracle wrong; the live face of ledger L1's two-oracle window). Fixed: `helpers/scoring.js` `loadPackScoring()` + pack-derived `calculateExpectedScore`; 07a verified 2/2 on BOTH packs; backend expectations stay legacy-oracle until slice 2 (documented at the source, converges with L1 retirement). CI matrix committed (both legs proven). SKIP-DELTA RESOLVED (per-test JSON diff): the one differing test is 07b "completes group and backend applies multiplier bonus" (mobile-chrome) — SKIPPED on production, PASSED on toy. Classification: COVERAGE GAIN, not regression — production tokens.json currently contains exactly ONE grouped token ("Marcus Mention", 1 token), so NO completable group exists in live ALN data and 07b's networked group-bonus path has been silently self-skipping on production all along; the toy pack is now the only pack exercising it full-stack. ⚠ OWNER FINDING: group-completion bonuses can never fire with current production content — intentional content decision or Notion-sync drift? (Docs still cite "Server Logs (x5)" as canonical. First flagged 2026-06-11 in `docs/pr-drafts/2026-06-11-phase2-merge-prs.md` — "flagged, content decision"; escalated to the owner task list now that the dual-pack run made the coverage consequence concrete.) **SLICE 0 COMPLETE & CI-CONFIRMED** — all Tier L executed tests pass on both packs, every skip accounted for; PR #19 run 75 GREEN across all 8 jobs (both matrix legs ~11 min each on real runners; the one first-contact failure — scripts job missing submodule checkout for the A2 byte-parity tests — fixed in `569d7e6`). |
+| **A3 slice 1 (modes → semantics flags)** | 🔨 **IN PROGRESS on `claude/phase3-a3-slice1`** (chained from slice-0 tip `8a944b4`; draft PR #20 per standing practice). Design **RATIFIED 2026-07-18**: `2026-07-18-phase3-a3-slice1-modes.md` (D1 `area.variant` capability ids ✓ · D2 consuming-appraise ✓ · D3 hard refusal with the two-flavor coherence refinement ✓). Census ground truth: 39 mode-literal sites (backend 8 / 4 files; scanner 31 / 10 files). The 2026-07-18 HOLISTIC REVIEW (5 parallel corpus readers + coherence critic over the full plan corpus) verified the design against every claimed companion section; the one deliberate divergence — the two-flavor refinement supersedes program-§3/R9's "contradictory" framing of `none ∧ countsTowardGroups` — was back-annotated into the program the same day (§12.2). Verified in-repo pre-build: BOTH real packs' game.json already carry complete per-mode flag records (appraise already at the D2 shape incl. `surface:"none"`, which is already schema-legal) — no pack edits needed. Implementation notes from the review: game.schema.json's closed enums (scoringPolicy/entityRole/surface) OPEN to plain strings in the contract-first commit (the capability gate takes over enforcement — openness property 2); the modeSemantics resolver normalizes absent `displayBehavior` → `{surface:'none'}`. |
+| A3 slice 2+ → B0/B pages → C2/C3 | queued per program §3/§4 (slice-2 pre-open design doc required, §12.3; C1 before slice 4, §12.4) |
 
 ## A2 execution record (COMPLETE — scope as set by the 2026-07-17 plan review)
 
@@ -80,18 +84,20 @@ slice-sized branches begin there.
   fresh), captured by AssetService during sync, surfaced in boot log +
   serial CONFIG (120/120 native; scripts 66/66).
 
-**PR-review residue (non-blocking, recorded so it isn't lost — PR #12
-rounds 5-7 converged to traced approvals):** (a) packLoader timeout
-coverage pins the SIGNAL WIRING, not a live hang→abort→fallthrough — a
-behavioral timeout test joins the slice-0/C1 test-hardening bucket
-alongside the live mismatch-warn E2E; (b) the accepted staging-cache
-race (parallel-fetch failure path) is comment-documented but has no
-forced-interleaving regression test; (c) `aln-pack-*` caches have no
-orphan sweep independent of a successful refresh (sw.js GC exempts them
-by design) — revisit only if long-lived devices accumulate strays;
-(d) pack JSON reaches computed-key object writes (benign today — packs
-are fully trusted content; re-examine when the one-auth/E4 era touches
-pack provenance).
+**PR-review residue (recorded so it isn't lost — PR #12 rounds 5-7
+converged to traced approvals; RE-HOMED 2026-07-18: slice 0 closed
+without items a/b, so the old "slice-0/C1 bucket" wording no longer
+holds — both now bind to the C1 preflight slice's test-hardening
+bucket, which already hosts the live mismatch-warn E2E):**
+(a) packLoader timeout coverage pins the SIGNAL WIRING, not a live
+hang→abort→fallthrough — behavioral timeout test → **C1 bucket**;
+(b) the accepted staging-cache race (parallel-fetch failure path) is
+comment-documented but has no forced-interleaving regression test →
+**C1 bucket**; (c) `aln-pack-*` caches have no orphan sweep independent
+of a successful refresh (sw.js GC exempts them by design) — revisit
+only if long-lived devices accumulate strays; (d) pack JSON reaches
+computed-key object writes (benign today — packs are fully trusted
+content; re-examine when the one-auth/E4 era touches pack provenance).
 
 **Decisions taken on review defaults (owner may veto):**
 - GM-scanner standalone pack origin — **AS BUILT: same-origin static**
@@ -214,12 +220,24 @@ Doctrine: every deliberately-transitional construct gets a row here with a
 retirement trigger and a tripwire; retire the row in the commit that
 retires the debt.
 
+**DoD linkage (owner goal, 2026-07-18): the 2026-07-18 holistic-review
+fixes are part of the Phase-3 definition of done.** Phase 3 is not
+complete while (a) any "Doc-refresh obligations" item below lacks
+execution, (b) any ledger row is neither retired nor carrying an
+owner-ratified post-Phase-3 retirement point (today exactly two qualify:
+L2 = final cutover + one cycle, L4 = Phase-4 wire migration), or (c) any
+PR-review residue item still lacks a slice that executed it (a/b → C1;
+c/d are conditional watches with recorded triggers, acceptable to close
+Phase 3 open). Untracked transitional debt is a DoD violation by
+definition.
+
 | # | Debt | Retirement trigger | Tripwire |
 |---|---|---|---|
 | L1 | Scoring dual-source window: GM scanner reads pack `game.json` scoring (A2) while backend still reads `scoring-config.json` | A3 slice 2 — backend reads game.json, `scoring-config.json` deleted from TokenData | Migration-parity contract test in `pack-schemas.test.js` pins game.json scoring == scoring-config.json (its comment already says delete when the legacy file retires) |
-| L2 | GM scanner legacy scoring shim: baked build-time values as last-resort fallback. NOTE: scoring-config.json is deliberately NOT pack inventory — the shim falls back to BAKED values, never a fetched file | One release cycle after A2 ships everywhere | Shim logs a loud warn when used (added with the packLoader work); `grep scoring-config ALNScanner/src` |
+| L2 | GM scanner legacy scoring shim: baked build-time values as last-resort fallback. NOTE: scoring-config.json is deliberately NOT pack inventory — the shim falls back to BAKED values, never a fetched file | One release cycle after the FINAL cutover deploys A2 everywhere (restated 2026-07-18 under frozen production: "ships everywhere" happens only at the coordinated cutover, so this trigger = cutover + one cycle) | Shim logs a loud warn when used (added with the packLoader work); `grep scoring-config ALNScanner/src` |
 | L3 | PWA pack loading scoped to visibility only (manifest fetch + hash display; no staged atomic refresh) | PWA becomes rules-bearing (scoring, or pack-driven display strings — note the A3 3a/3b/3c slices do NOT touch the PWA; a slice that does trips this row) | This row + the ride-along commit message |
 | L4 | `teamId` stays on the wire as the entity-field alias (semantics are mode-dependent per the attribution model) | Phase 4 wire migration (pack-schemas doc §2 entities) | Contracts document the alias at every `teamId` site |
+| L5 | Backend-flow E2E scoring expectations pinned to the LEGACY oracle: `tests/e2e/helpers/scoring.js` `calculateExpectedScore(token)` without a packScoring arg reproduces scoring-config values, used by networked/backend-authoritative flows while the backend itself is pack-blind (the test-side face of L1; row added 2026-07-18 — the slice-0 oracle fix left this deliberately transitional but unrowed, against ledger doctrine) | A3 slice 2 — backend reads game.json and backend-flow expectations switch to the pack oracle in the same change (converges with L1) | TWO-ORACLE comment block in `helpers/scoring.js`; `grep -n packScoring backend/tests/e2e/flows` shows which flows have/haven't converged |
 
 ## Spike results / field validation (2026-07-17, owner-reported)
 
@@ -256,6 +274,25 @@ even where commit pushes succeed): the obsolete parent-repo ref
 from the GitHub UI or any local clone
 (`git push origin :staging/tokendata-phase3-a1`) — see owner task list.
 
+## Doc-refresh obligations (assigned by the 2026-07-18 holistic review)
+
+- `docs/SCORING_LOGIC.md` — root CLAUDE.md's designated scoring
+  single-source-of-truth still describes the dead build-time Vite-import
+  bake and has no pack awareness. Loud staleness banner added 2026-07-18;
+  **FULL REWRITE rides A3 slice 2** (the commit that changes scoring truth).
+- `docs/preflight-checklist.md` — under frozen production this checklist is
+  the instrument of the one coordinated cutover, and it is stale beyond the
+  already-assigned R2 §4.4 rewrite (Spotify/spotifyd-era sections predate
+  the 2026-05-20 MPD cutover; no pack-identity/pack-endpoint checks exist).
+  Banner added 2026-07-18; **full refresh rides Track C2** (decide there:
+  refresh the hand-run doc or absorb it into the C2 preflight mechanism).
+- Adversarial **R20** (B0 draft-store location + backup/export) lives only
+  inside the adversarial review — carry it into the B0 design doc the day
+  B0 opens, or it gets lost.
+- The 2026-06-18 documentation audit's 81 findings have no follow-through
+  tracking — sweep for still-open items when a docs-focused slice next
+  opens (3a is the natural host).
+
 ## Standing practice: draft-PR-per-slice (owner-adopted 2026-07-18)
 
 Parent CI fires ONLY on main pushes and PRs targeting main — a slice
@@ -264,8 +301,9 @@ foundations + slice-0 line turned out to be locally-verified only).
 Practice: the moment a slice branch is cut, open a DRAFT PR to main
 ([DRAFT] title, do-not-merge note). CI then runs on every push; the
 draft state blocks accidental merges; the diff self-corrects once the
-branches beneath it land. Slice 0 = parent PR #19. Manual dispatch
-(`workflow_dispatch` on test.yml, any ref) covers ad-hoc runs.
+branches beneath it land. Slice 0 = parent PR #19 · slice 1 = parent
+PR #20. Manual dispatch (`workflow_dispatch` on test.yml, any ref)
+covers ad-hoc runs.
 
 ## Session mechanics (recurring gotchas)
 
@@ -315,6 +353,16 @@ branches beneath it land. Slice 0 = parent PR #19. Manual dispatch
   owned TP-Link Archer, guidance to be router-agnostic).
 - ~~Confirm ESP-1 verdict~~ ✅ field-validated 2026-07-17. Still open:
   whether a formal Tier H ran on the Pi post-merge.
+- **Group content question (dual-pack run 2026-07-18; first flagged in the
+  Phase-2 merge record):** production tokens.json has NO completable
+  2+-token group ("Marcus Mention" is a 1-token group) — group-completion
+  bonuses can never fire in live ALN content, and the docs still cite
+  "Server Logs (x5)" as canonical. Intentional content decision or Notion
+  drift? If content: fix in Notion + resync before the next real game.
+- **Q10 (capability matrix): ESP32 standalone stance** — never formally
+  resolved in the pack-era decisions; the operative posture is the
+  pre-Phase-3 CLAUDE.md "always networked (offline queue for resilience)".
+  Confirm it as the recorded decision or direct otherwise.
 - Housekeeping someday: delete merged phase2 PR branches; bump nested
   `data/` pins past the schema commit; delete the obsolete
   `staging/tokendata-phase3-a1` ref on ALN-Ecosystem (sessions get 403 on

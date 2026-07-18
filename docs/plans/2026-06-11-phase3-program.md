@@ -10,6 +10,10 @@ state: docs/plans/PHASE3-STATUS.md.
 scoping — see §11): A3 slice list revised in place (§3); E4/E5 sharpened
 in place (Track E); platform-phases vs game-projects framing adopted.
 DoD and phase gates UNCHANGED.
+**AMENDED 2026-07-18** (see §12): frozen-production development model;
+slice-1 ratification back-annotations (R9 two-flavor refinement, R12
+scope, R14 branch chaining); slice-2 pre-open design-doc requirement;
+C1-before-slice-4 sequencing. DoD and phase gates UNCHANGED.
 **Companion deliverable:** the 3.1 schema drafts (game.json,
 pack-manifest, installation-profile) follow this doc.
 
@@ -80,7 +84,11 @@ The engine/game separation itself. Everything else hangs off this.
      {blackmarket, detective} through Phase 3; scoring-config.json
      deletion ships in the SAME TokenData pin bump as the slice-2
      backend deploy; assume SW-cached GM scanners lag the backend by up
-     to one event.
+     to one event. *(Scope corrected 2026-07-18, frozen-production
+     model: the deploy-skew half — same-pin-bump coupling, one-event
+     scanner lag — applies only to the FINAL cutover, since no fleet
+     pulls code mid-program; the mode-id-stability half stands
+     throughout. See PHASE3-STATUS "Development model".)*
    - **Slice 1 — modes:** migrate BEHAVIOR to the pack's per-mode
      semantics flags (`scoringPolicy`/`entityRole`/`countsTowardGroups`/
      `displayBehavior`) — the mode ids are load-bearing string constants
@@ -98,7 +106,15 @@ The engine/game separation itself. Everything else hangs off this.
      expressible + contract-suite rules — e.g. scoringPolicy:none ⇒
      countsTowardGroups:false) — the capability gate catches UNSUPPORTED
      shapes, this catches CONTRADICTORY ones; resolve the toy pack's
-     ambiguous `appraise` mode here.
+     ambiguous `appraise` mode here. *(REFINED by the 2026-07-18 slice-1
+     ratification, owner stress test: refusals split into TWO FLAVORS —
+     timeless incoherence vs drivability limitations carrying NAMED
+     retirements. The example above was RECLASSIFIED to the second
+     flavor: `none ∧ countsTowardGroups` is a legitimate
+     event-only-groups design blocked only by catalog-based bonus math,
+     refused as "not driveable by this engine yet", and becomes legal
+     when slice 2 defines scored-only contribution semantics.
+     Authoritative text: `2026-07-18-phase3-a3-slice1-modes.md` §4.)*
    - **Slice 2 — scoring/group/duplicate/clock rules migration:** backend
      reads game.json via getGameConfig(); scoring-config.json retires;
      gameClock.duration/overtimeAt consumed (delete the masking pin);
@@ -168,7 +184,8 @@ docs/reviews/2026-06-11-config-tool-preread.md): pack/profile store with
 draft→publish lifecycle (the tool stops editing live files), app-shell
 shared store + model-module discipline + frontend test harness, auth from
 the O3 design + backend-served trigger/action vocabulary. B0 is the
-tool-side implementation of the A1/C1/O3 design docs (+≈1 session). Pages
+tool-side implementation of the A1/C1/O3 design docs (≈1.5-2.5 sessions
+per the §9 re-pricing; the original "+≈1" figure retired 2026-07-18). Pages
 then follow, build order = value ÷ effort, gated on the matching A3 slice:
 pack manager (create/open/validate/diff/export, draft+**publish**,
 "commit & push pack" making submodule state visible) → mechanics editor
@@ -386,6 +403,11 @@ Phase 4 sub-gates are UNCHANGED by every item below.
    PR bumping all four pins to the merged SHAs; only then are slice
    branches cut from main. ("Rebase foundations onto main" describes
    starting slices, not landing A2 — the landing is this PR train.)
+   *(Corrected 2026-07-18, frozen-production model: the LANDING order
+   stands, but slice branches do NOT wait for it — they CHAIN from the
+   previous slice's verified tip (slice 0 from frozen foundations,
+   slice 1 from slice 0, …), each with a draft PR to main for CI; the
+   stacked PRs land in this same order whenever the owner merges.)*
 6. **2026-07-17 adversarial review applied:** findings R1-R24 and their
    resolutions live in `2026-07-17-adversarial-plan-review.md`; the
    R-numbers cited inline above trace to it. §1, §7, §9 and the slice
@@ -394,3 +416,37 @@ Phase 4 sub-gates are UNCHANGED by every item below.
    posture (conditional on CYDs-as-BILL-scanners); F5 videos-in-pack
    (B pages' media story); draft-pack real-device preview mechanism
    (B0 design, options recorded in the audit).
+
+## 12. Amendments — 2026-07-18 (frozen-production model + slice-1 ratification)
+
+Sources: the owner's 2026-07-18 development-model correction and the
+same-day whole-plan holistic review (5 parallel corpus readers + a
+coherence critic; findings folded into PHASE3-STATUS). DoD (§7) and the
+Phase 4 sub-gates remain UNCHANGED.
+
+1. **Development model (owner-corrected):** production is FROZEN until
+   the program completes — `production-2026-07` pins in all five repos
+   serve the 2026-07-18/19 game; final deployment = ONE coordinated
+   cutover through the preflight. main = integration trunk, not deployed
+   state; slice branches CHAIN from verified tips with a draft PR to
+   main per slice (CI on every push); deploy-choreography constraints
+   (the R12 skew half, the slice-2 same-pin-bump coupling, ledger L2's
+   "release cycle" trigger) collapse onto the final cutover.
+   Authoritative detail: PHASE3-STATUS "Development model".
+2. **Slice-1 design RATIFIED** (`2026-07-18-phase3-a3-slice1-modes.md`):
+   D1 `area.variant` capability-id convention (append-only) · D2
+   consuming-appraise · D3 hard refusal with the TWO-FLAVOR coherence
+   refinement (§3 slice-1 R9 text back-annotated in place). The
+   refinement adds an explicit slice-2 obligation: scored-only
+   group-contribution semantics, then DELETE the flavor-ii refusal.
+3. **Slice-2 pre-open requirement:** slice 2's scope has accreted from
+   at least four documents (rules migration + gate headroom-rejection +
+   R2 runbook/preflight §4.4 + L1/L2/L5 retirement + backend E2E oracle
+   convergence + contribution semantics + the D2 `claims`-flag
+   consideration) with no consolidated restatement and no re-price.
+   Slice 2 does NOT open without its own design doc and an honest
+   estimate (A2 precedent: 2.3-2.7× its original figure).
+4. **C1-before-slice-4 sequencing:** the R4 ordering guard requires an
+   in-repo fully-bound ALN installation profile, which presupposes a
+   ratified C1 schema — C1 (still DRAFT; legacy-preset import decision
+   pending) is now an explicit slice-4 prerequisite.

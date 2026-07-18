@@ -61,8 +61,11 @@ One new pure module per side (the parity surface extends to modes):
   `wireModeIds(gameConfig)` → the valid-id list for validation.
   Null/absent gameConfig (packs without game.json — see §5 parity-pack
   fix) → the LEGACY ALN table, baked here as the loud-warn shim (exactly
-  the ledger-L2 pattern; new ledger row L5, retires when every pack in
-  play ships game.json).
+  the ledger-L2 pattern; new ledger row **L6** — renumbered 2026-07-18:
+  L5 was taken by the backend E2E legacy-oracle row added in the
+  holistic-review reconciliation — retires when every pack in play ships
+  game.json; tripwire: the shim logs a loud warn + `grep -r "legacy ALN
+  mode table" backend/src`).
 - **Scanner:** `src/core/modeSemantics.js`, same resolution against the
   packLoader's gameConfig. Unknown mode/flag value at the CLIENT logs
   loudly and disables that mode's UI affordance (the server gate is the
@@ -127,7 +130,7 @@ Deliberately LEGAL (documented so nobody "fixes" them):
 ## 5. Fixture + migration mechanics
 
 - **parity-pack gets a minimal game.json** (two ALN-shaped modes) so the
-  scoring-parity flows exercise the seam rather than the L5 shim. The
+  scoring-parity flows exercise the seam rather than the L6 shim. The
   shim path keeps its own unit tests.
 - Both real packs' game.json already carry full flag records (A1) — no
   pack edits needed beyond D2's appraise resolution.

@@ -6,6 +6,16 @@
 **Server Directory:** `backend/` (relative to above)
 **Platform:** Raspberry Pi 5, Linux ARM64
 
+> **⚠ REFRESH OWED (2026-07-18 — see PHASE3-STATUS "Doc-refresh
+> obligations").** Under the frozen-production model this checklist is the
+> instrument of the FINAL coordinated cutover. Known-stale until then:
+> §4.4 validates the retiring `scoring-config.json` (rewrite rides A3
+> slice 2 per adversarial R2); the Spotify/spotifyd-era sections predate
+> the 2026-05-20 MPD cutover; and no pack-identity/pack-endpoint checks
+> exist yet (the pack channel landed in Phase 3 A2). Full refresh rides
+> Track C2 preflight work — decide there whether this hand-run doc is
+> refreshed or absorbed into the C2 preflight mechanism.
+
 ## How to Use This Checklist
 
 1. Run each check in order within its section (later checks depend on earlier ones)
