@@ -33,13 +33,14 @@ const {
 } = require('../helpers/scanner-init');
 
 const { selectTestTokens } = require('../helpers/token-selection');
-const { calculateExpectedScore } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring } = require('../helpers/scoring');
 
 // Global state
 let browser = null;
 let orchestratorInfo = null; // Still needed for backend to exist
 let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
+let packScoring = null; // ACTIVE pack's scoring block (standalone oracle)
 
 test.describe('GM Scanner Standalone Mode - Black Market', () => {
 
@@ -55,6 +56,14 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
 
     // Select test tokens dynamically from production database
     testTokens = await selectTestTokens(orchestratorInfo.url);
+
+    // STANDALONE oracle = the pack the scanner runtime-loads (game.json
+    // scoring), NOT the backend's legacy config — the two diverge during
+    // the L1 window whenever the active pack isn't ALN (first caught by
+    // the slice-0 dual-pack run: toy pack scored 2600, oracle said 75000).
+    // Null (pack without game.json) falls back to the legacy oracle,
+    // mirroring the scanner's own baked shim.
+    packScoring = await loadPackScoring(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -85,7 +94,7 @@ test.describe('GM Scanner Standalone Mode - Black Market', () => {
 
   test('scans single Personal token and awards correct points', async () => {
     const token = testTokens.personalToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
 
     const context = await createBrowserContext(browser, 'mobile');
     const page = await createPage(context);
