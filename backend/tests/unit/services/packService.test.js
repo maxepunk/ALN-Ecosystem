@@ -229,10 +229,10 @@ describe('packService', () => {
     it('activation SNAPSHOTS game.json — later disk edits are invisible (rules frozen)', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'unit-game', modes: [] });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'unit-game' });
       packService.activatePack();
 
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'EDITED', modes: [] });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'EDITED' });
 
       expect(packService.getGameConfig().id).toBe('unit-game');
     });
@@ -242,7 +242,7 @@ describe('packService', () => {
       writeManifest(tmpDir, minimalManifest());
       packService.activatePack();
 
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'late', modes: [] });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'late' });
 
       expect(packService.getGameConfig()).toBeNull();
     });
@@ -273,7 +273,7 @@ describe('packService', () => {
     it('refuses a game.json authored against a future schemaVersion', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'future', modes: [] });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'future' });
       expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 2/);
     });
 
@@ -281,7 +281,7 @@ describe('packService', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'constellation', modes: [],
+        kind: 'game', schemaVersion: 1, id: 'constellation',
         requires: ['scoring.tabular', 'scoring.graph', 'contagion'],
       });
       expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*scoring\.graph, contagion/);
@@ -291,7 +291,7 @@ describe('packService', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'subset', modes: [],
+        kind: 'game', schemaVersion: 1, id: 'subset',
         requires: ['scoring.tabular', 'groupRules.all'],
       });
       expect(() => packService.activatePack()).not.toThrow();
@@ -311,6 +311,164 @@ describe('packService', () => {
       // Not activated: reads stay live-disk (pre-activation semantics).
       writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '1.0.0' }, contentHash: HASH_B }));
       expect(packService.getManifest().contentHash).toBe(HASH_B);
+    });
+  });
+
+  describe('mode drivability (A3 slice 1 — flag values gated, schema stays open)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const mode = (overrides = {}) => ({
+      id: 'm1', label: 'M1', scoringPolicy: 'standard', entityRole: 'ledger',
+      countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' },
+      ...overrides,
+    });
+    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 1, id: 'drv', modes });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('refuses a scoringPolicy this engine does not implement, naming the mode', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'constellation', scoringPolicy: 'graph' })));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*mode 'constellation' is not driveable.*scoringPolicy 'graph'/);
+    });
+
+    it('refuses an unimplemented entityRole', () => {
+      writeGame(tmpDir, gameWith(mode({ entityRole: 'faction' })));
+      expect(() => packService.activatePack())
+        .toThrow(/not driveable.*entityRole 'faction'/);
+    });
+
+    it('refuses an unimplemented display surface', () => {
+      writeGame(tmpDir, gameWith(mode({ displayBehavior: { surface: 'constellation-map' } })));
+      expect(() => packService.activatePack())
+        .toThrow(/not driveable.*displayBehavior\.surface 'constellation-map'/);
+    });
+
+    it('accepts modes the engine has never heard of when every flag value is implemented (open vocabulary)', () => {
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'fence' }),
+        mode({ id: 'tipoff', scoringPolicy: 'none', entityRole: 'attribution', defaultEntity: 'D', countsTowardGroups: false, displayBehavior: { surface: 'scoreboard-evidence' } })
+      ));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('an absent displayBehavior is drivable (normalizes to surface none)', () => {
+      writeGame(tmpDir, gameWith(mode({ displayBehavior: undefined })));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('lists EVERY undrivable flag of every undrivable mode in one refusal', () => {
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'bad1', scoringPolicy: 'graph', entityRole: 'faction' }),
+        mode({ id: 'ok' }),
+        mode({ id: 'bad2', displayBehavior: { surface: 'holo' } })
+      ));
+      let err = null;
+      try { packService.activatePack(); } catch (e) { err = e; }
+      expect(err).not.toBeNull();
+      expect(err.message).toMatch(/bad1.*scoringPolicy 'graph', entityRole 'faction'/);
+      expect(err.message).toMatch(/bad2.*displayBehavior\.surface 'holo'/);
+      expect(err.message).not.toMatch(/mode 'ok'/);
+    });
+  });
+
+  describe('coherence check (A3 slice 1 — R9, two flavors per the 2026-07-18 ratification)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const mode = (overrides = {}) => ({
+      id: 'm1', label: 'M1', scoringPolicy: 'standard', entityRole: 'ledger',
+      countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' },
+      ...overrides,
+    });
+    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 1, id: 'coh', modes });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    describe('flavor (i) — timeless self-contradictions', () => {
+      it('refuses a DECLARED-but-empty modes array', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', modes: [] });
+        expect(() => packService.activatePack())
+          .toThrow(/COHERENCE CHECK.*self-contradictory.*EMPTY/);
+      });
+
+      it('tolerates an ABSENT modes block (nothing declared gates nothing — L6 shim covers it)', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh' });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('refuses duplicate mode ids', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'dupe' }), mode({ id: 'dupe' })));
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*duplicate mode id 'dupe'/);
+      });
+
+      it("refuses defaultEntity on an entityRole 'ledger' mode (cross-wired semantics)", () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'wallet', defaultEntity: 'The House' })));
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*'wallet'.*defaultEntity.*ledger/);
+      });
+    });
+
+    describe('flavor (ii) — drivability limitations with NAMED retirements', () => {
+      it("refuses scoringPolicy 'none' ∧ countsTowardGroups with the RETIREMENT message, never 'incoherent'", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'ritual', scoringPolicy: 'none', entityRole: 'attribution',
+          countsTowardGroups: true, displayBehavior: { surface: 'none' },
+        })));
+        let err = null;
+        try { packService.activatePack(); } catch (e) { err = e; }
+        expect(err).not.toBeNull();
+        // The ratified language rule (design doc §4): honest gate-family
+        // wording with the named slice-2 retirement — this combination is
+        // a legitimate event-only-groups design, not a contradiction.
+        expect(err.message).toMatch(/not driveable by this engine yet \(see slice 2\)/);
+        expect(err.message).toMatch(/'ritual'/);
+        expect(err.message).not.toMatch(/incoheren/i);
+        expect(err.message).not.toMatch(/self-contradictory/);
+      });
+    });
+
+    describe('deliberately LEGAL combinations (documented so nobody "fixes" them)', () => {
+      it("accepts attribution ∧ standard (future scored-attributed modes)", () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bounty', entityRole: 'attribution', defaultEntity: 'Nova' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts surface 'none' with any scoringPolicy (silent modes are a design tool)", () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'silent', displayBehavior: { surface: 'none' } })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts none ∧ ledger — D2 consuming-appraise (claims FCFS for $0)", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false,
+          displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+    });
+
+    it('a coherence refusal FAILS activation — nothing is snapshotted', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'dupe' }), mode({ id: 'dupe' })));
+      expect(() => packService.activatePack()).toThrow(/COHERENCE CHECK/);
+      writeManifest(tmpDir, minimalManifest({ contentHash: HASH_B }));
+      expect(packService.getManifest().contentHash).toBe(HASH_B);
+    });
+
+    it('BOTH real packs pass gate + coherence (ALN default dir and toy-heist)', () => {
+      delete process.env.PACK_PATH; // ALN submodule
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      process.env.PACK_PATH = TOY_PACK;
+      expect(() => packService.activatePack()).not.toThrow();
     });
   });
 });

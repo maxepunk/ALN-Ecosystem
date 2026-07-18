@@ -48,6 +48,20 @@ const ENGINE_CAPABILITIES = new Set([
   'duplicatePolicy.once', // FCFS session-scoped claims
 ]);
 
+// Per-mode flag VALUES this engine can drive (A3 slice 1 — mode
+// drivability). The game.schema.json flag fields are OPEN strings
+// (openness property 2: values gated by engine capability, not closed
+// schema enums) — a pack may declare `scoringPolicy: 'graph'` and be
+// schema-VALID; THIS engine refuses to activate it here, and a future
+// engine that implements graph scoring accepts it with zero schema
+// change. These sets grow only when the engine module that drives the
+// new value ships (the F2 principle at mode level).
+const ENGINE_MODE_CAPS = Object.freeze({
+  scoringPolicy: new Set(['standard', 'none']),
+  entityRole: new Set(['ledger', 'attribution']),
+  surface: new Set(['scoreboard-rankings', 'scoreboard-evidence', 'none']),
+});
+
 // Manifest cache, invalidated on file mtime change (same pattern as the
 // asset manifest in resourceRoutes — the manifest is rewritten wholesale
 // by build-pack-manifest.js, never edited in place).
@@ -167,6 +181,26 @@ function _gateCheck(manifest, gameConfig) {
         problems.push(`pack requires unsupported engine capabilities: ${missing.join(', ')}`);
       }
     }
+    // Mode drivability (slice 1): every declared mode's flag VALUES must
+    // be in the engine's implemented sets — schema-open, gate-enforced.
+    if (Array.isArray(gameConfig.modes)) {
+      for (const mode of gameConfig.modes) {
+        const undrivable = [];
+        if (!ENGINE_MODE_CAPS.scoringPolicy.has(mode.scoringPolicy)) {
+          undrivable.push(`scoringPolicy '${mode.scoringPolicy}'`);
+        }
+        if (!ENGINE_MODE_CAPS.entityRole.has(mode.entityRole)) {
+          undrivable.push(`entityRole '${mode.entityRole}'`);
+        }
+        const surface = (mode.displayBehavior && mode.displayBehavior.surface) || 'none';
+        if (!ENGINE_MODE_CAPS.surface.has(surface)) {
+          undrivable.push(`displayBehavior.surface '${surface}'`);
+        }
+        if (undrivable.length > 0) {
+          problems.push(`mode '${mode.id}' is not driveable by this engine: ${undrivable.join(', ')} not implemented`);
+        }
+      }
+    }
   }
 
   if (problems.length > 0) {
@@ -175,6 +209,84 @@ function _gateCheck(manifest, gameConfig) {
       `${manifest ? `${manifest.packId} v${manifest.version}` : `at ${getPackDir()}`} — ` +
       problems.join('; ') +
       '. The engine will NOT silently run a pack it cannot drive; upgrade the engine or fix the pack.'
+    );
+  }
+}
+
+/**
+ * Coherence validator (A3 slice 1, adversarial R9 refined 2026-07-18 by
+ * the owner's two-flavor ratification — design doc §4). Runs at
+ * activation beside the gate; both flavors hard-refuse (D3), but they
+ * have different LIFETIMES and deliberately different language:
+ *
+ * Flavor (i) — SELF-CONTRADICTIONS (timeless; these rules never retire):
+ *   empty declared modes array · duplicate mode ids · defaultEntity on an
+ *   entityRole:'ledger' mode (prefilling a wallet name is cross-wired
+ *   semantics).
+ *
+ * Flavor (ii) — DRIVABILITY LIMITATIONS (gate family; each carries a
+ *   NAMED retirement and must NEVER be called incoherent):
+ *   scoringPolicy:'none' ∧ countsTowardGroups — a legitimate
+ *   event-only-groups design (group:completed already feeds the cue
+ *   engine), blocked ONLY because groupBonusAmount computes from token
+ *   CATALOG values, so unscored claims completing a group would mint a
+ *   full catalog-priced bonus. RETIRES in slice 2: scored-only
+ *   contribution semantics land, then this refusal is DELETED.
+ *
+ * Deliberately LEGAL (documented so nobody "fixes" them):
+ *   entityRole:'attribution' ∧ scoringPolicy:'standard' (future
+ *   scored-attributed modes) · displayBehavior.surface:'none' with any
+ *   scoringPolicy (silent modes are a real design tool) ·
+ *   scoringPolicy:'none' ∧ entityRole:'ledger' (D2 consuming-appraise).
+ *
+ * An ABSENT modes block is tolerated (nothing declared gates nothing —
+ * the modeSemantics L6 shim covers it); a DECLARED-but-empty one is a
+ * contradiction.
+ * @throws {Error} on any flavor-(i) contradiction or flavor-(ii) limitation
+ */
+function _coherenceCheck(gameConfig) {
+  if (!gameConfig || !Array.isArray(gameConfig.modes)) return;
+
+  const contradictions = [];
+  const limitations = [];
+
+  if (gameConfig.modes.length === 0) {
+    contradictions.push('the modes array is EMPTY — a pack that declares modes must declare at least one');
+  }
+
+  const seen = new Set();
+  for (const mode of gameConfig.modes) {
+    if (seen.has(mode.id)) {
+      contradictions.push(`duplicate mode id '${mode.id}'`);
+    }
+    seen.add(mode.id);
+
+    if (mode.defaultEntity && mode.entityRole === 'ledger') {
+      contradictions.push(
+        `mode '${mode.id}' sets defaultEntity with entityRole 'ledger' — prefilling a wallet name is cross-wired semantics`
+      );
+    }
+
+    if (mode.scoringPolicy === 'none' && mode.countsTowardGroups === true) {
+      limitations.push(
+        `mode '${mode.id}' combines scoringPolicy 'none' with countsTowardGroups — ` +
+        'not driveable by this engine yet (see slice 2): group bonuses compute from token catalog values, ' +
+        'so unscored claims completing a group would mint money; slice 2 defines scored-only contribution ' +
+        'semantics and deletes this refusal'
+      );
+    }
+  }
+
+  const problems = [];
+  if (contradictions.length > 0) {
+    problems.push(`self-contradictory pack: ${contradictions.join('; ')}`);
+  }
+  if (limitations.length > 0) {
+    problems.push(`engine drivability limitation: ${limitations.join('; ')}`);
+  }
+  if (problems.length > 0) {
+    throw new Error(
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ${problems.join(' — ')}.`
     );
   }
 }
@@ -190,6 +302,7 @@ function activatePack() {
   const manifest = _readDiskManifest();
   const gameConfig = _readDiskGameConfig();
   _gateCheck(manifest, gameConfig); // throws = boot fails, by design
+  _coherenceCheck(gameConfig);      // throws = boot fails, by design (D3)
   activeManifest = manifest;
   activeGameConfig = gameConfig;
   activated = true;
@@ -288,4 +401,4 @@ function _resetForTesting() {
   warnedDriftHash = false;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, _resetForTesting };
