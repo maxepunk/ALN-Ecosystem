@@ -76,6 +76,43 @@ let activated = false;
 let activeManifest = null;
 let activeGameConfig = null;
 let warnedDriftHash = false;
+let warnedLegacyScoring = false;
+
+// Mirrors ALN-TokenData/game.json `scoring` tables — the pre-pack ALN
+// game, baked (A3 slice 2, ledger L1 retirement: scoring-config.json is
+// gone; a pack without a usable scoring block runs THIS table with a loud
+// warn — the same shim doctrine as the L6 mode tables, and a unit drift
+// tripwire pins it equal to the real ALN game.json).
+const LEGACY_ALN_SCORING = Object.freeze({
+  baseValues: Object.freeze({ 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 }),
+  typeMultipliers: Object.freeze({ Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }),
+});
+
+/** A usable scoring block has NON-EMPTY value and multiplier tables —
+ *  the same guard the scanner's applyPackScoring enforces (an empty
+ *  table must never silently zero every token). */
+function _isUsableScoring(scoring) {
+  return !!scoring
+    && scoring.baseValues && Object.keys(scoring.baseValues).length > 0
+    && scoring.typeMultipliers && Object.keys(scoring.typeMultipliers).length > 0;
+}
+
+/** Normalize a scoring block for engine consumption: numeric rating keys,
+ *  LOWERCASED type keys (tokenService lowercases lookups), always an
+ *  `unknown` entry. */
+function _normalizeScoring(scoring) {
+  return {
+    baseValues: Object.fromEntries(
+      Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k, 10), v])
+    ),
+    typeMultipliers: {
+      unknown: 0,
+      ...Object.fromEntries(
+        Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
+      ),
+    },
+  };
+}
 
 /**
  * Absolute path of the ACTIVE pack directory.
@@ -354,6 +391,70 @@ function getGameConfig() {
 }
 
 /**
+ * The ACTIVE pack's scoring tables, normalized for the engine (A3 slice 2
+ * — the backend's rules read; retires ledger L1's scoring-config.json).
+ * Snapshot semantics ride getGameConfig(): frozen at activation, live
+ * pre-activation. A pack without a USABLE scoring block (absent game.json,
+ * missing/empty tables) runs the baked legacy ALN tables with a LOUD
+ * once-per-process warn — never a silent zero.
+ * @returns {{baseValues: Object, typeMultipliers: Object}}
+ */
+function getScoringRules() {
+  const gameConfig = getGameConfig();
+  const scoring = gameConfig && gameConfig.scoring;
+  if (_isUsableScoring(scoring)) {
+    return _normalizeScoring(scoring);
+  }
+  if (!warnedLegacyScoring) {
+    warnedLegacyScoring = true;
+    logger.warn(
+      'LEGACY SCORING TABLES ACTIVE (debt ledger L1 shim): the active pack ships no usable ' +
+      'game.json scoring block — token values are running on the baked ALN tables. ' +
+      'Fine for pre-pack checkouts; a real pack should declare its scoring.'
+    );
+  }
+  return _normalizeScoring(LEGACY_ALN_SCORING);
+}
+
+let warnedLegacyClock = false;
+
+/**
+ * The ACTIVE pack's game-clock parameters in SECONDS (A3 slice 2 —
+ * consumes gameClock.duration/overtimeAt, deleting the masking contract
+ * pin; audit F2's "toy pack already diverges silently" ends here).
+ * Snapshot semantics ride getGameConfig(). A pack without a usable
+ * gameClock block falls back to config.session.sessionTimeout (minutes,
+ * env-tunable) for BOTH values — the pre-pack behavior, where overtime
+ * fires exactly at expected duration — with a LOUD once-per-process warn.
+ * @returns {{durationSeconds: number, overtimeAtSeconds: number}}
+ */
+function getClockRules() {
+  const gameConfig = getGameConfig();
+  const clock = gameConfig && gameConfig.gameClock;
+  if (clock && typeof clock.duration === 'number' && clock.duration > 0) {
+    return {
+      durationSeconds: clock.duration,
+      overtimeAtSeconds: (typeof clock.overtimeAt === 'number' && clock.overtimeAt > 0)
+        ? clock.overtimeAt
+        : clock.duration,
+    };
+  }
+  if (!warnedLegacyClock) {
+    warnedLegacyClock = true;
+    logger.warn(
+      'LEGACY CLOCK CONFIG ACTIVE: the active pack ships no usable game.json gameClock block — ' +
+      'game duration/overtime are running on SESSION_TIMEOUT. Fine for pre-pack checkouts; ' +
+      'a real pack should declare its clock.'
+    );
+  }
+  // Lazy require: config never imports packService, so this stays acyclic;
+  // lazy keeps module-load order irrelevant.
+  const config = require('../config');
+  const fallbackSeconds = config.session.sessionTimeout * 60;
+  return { durationSeconds: fallbackSeconds, overtimeAtSeconds: fallbackSeconds };
+}
+
+/**
  * The active pack's identity for staleness comparison (sync:full, /health).
  * @returns {{packId: string, version: string, contentHash: string}|null}
  */
@@ -399,6 +500,8 @@ function _resetForTesting() {
   activeManifest = null;
   activeGameConfig = null;
   warnedDriftHash = false;
+  warnedLegacyScoring = false;
+  warnedLegacyClock = false;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

@@ -140,11 +140,12 @@ describe('game pack schema contract (A1)', () => {
       expect(game.scoring.typeMultipliers).toEqual(legacy.typeMultipliers);
     });
 
-    it('game.json gameClock.duration equals the backend default SESSION_TIMEOUT', () => {
-      // config/index.js: sessionTimeout default 120 minutes. When B11
-      // extraction lands, the env default retires and this pin moves with it.
-      expect(readJson(TOKEN_DATA_DIR, 'game.json').gameClock.duration).toBe(120 * 60);
-    });
+    // The gameClock.duration == SESSION_TIMEOUT masking pin was DELETED
+    // here by design (A3 slice 2): the engine now CONSUMES the pack's
+    // gameClock.duration/overtimeAt via packService.getClockRules(), so
+    // the pack may legitimately diverge from the env default (the toy
+    // pack always did — 3600/3300 — and the dual-pack gate now exercises
+    // that divergence for real).
   });
 
   describe('toy pack is genuinely a SECOND game (methodology guard)', () => {

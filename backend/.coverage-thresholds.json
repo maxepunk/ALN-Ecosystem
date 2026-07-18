@@ -5,9 +5,9 @@
     "lines": 70
   },
   "./src/config/index.js": {
-    "branches": 55,
+    "branches": 60,
     "functions": 100,
-    "lines": 80
+    "lines": 100
   },
   "./src/gameRules/cueVocabulary.js": {
     "branches": 50,
@@ -207,7 +207,7 @@
   "./src/services/packService.js": {
     "branches": 95,
     "functions": 100,
-    "lines": 95
+    "lines": 100
   },
   "./src/services/persistenceService.js": {
     "branches": 60,

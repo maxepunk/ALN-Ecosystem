@@ -44,20 +44,27 @@ const validateSummary = (summary, tokenId) => {
 };
 
 /**
- * Calculate token value based on rating and type
+ * Calculate token value based on rating and type (A3 slice 2: tables come
+ * from the ACTIVE pack's game.json scoring block via packService — the
+ * legacy scoring-config.json read retired with ledger L1. Token load runs
+ * at the same boot moment as activatePack(), so values always derive from
+ * the frozen pack snapshot; packless checkouts ride the baked legacy shim
+ * inside getScoringRules(), loudly.)
  * @param {number} rating - SF_ValueRating (1-5)
  * @param {string} type - SF_MemoryType
  * @returns {number} Calculated point value
  */
 const calculateTokenValue = (rating, type) => {
-  // Get base value from rating map
-  const baseValue = config.game.valueRatingMap[rating] || 0;
+  const packService = require('./packService');
+  const scoring = packService.getScoringRules();
 
-  // Get type multiplier
+  const baseValue = scoring.baseValues[rating] || 0;
   const typeKey = (type || 'unknown').toLowerCase();
-  const multiplier = config.game.typeMultipliers[typeKey] || config.game.typeMultipliers.unknown || 0;
+  // `unknown` is always present in normalized tables (0 unless the pack
+  // overrides), so this chain never needs a numeric tail — and `??`
+  // (not `||`) lets a pack legitimately declare a 0 multiplier.
+  const multiplier = scoring.typeMultipliers[typeKey] ?? scoring.typeMultipliers.unknown;
 
-  // Return calculated value
   return Math.floor(baseValue * multiplier);
 };
 

@@ -471,4 +471,103 @@ describe('packService', () => {
       expect(() => packService.activatePack()).not.toThrow();
     });
   });
+
+  describe('getScoringRules (A3 slice 2 — the rules read that retires ledger L1)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('serves the TOY pack tables normalized (numeric ratings, lowercase types, unknown present)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[4]).toBe(1300);
+      expect(rules.typeMultipliers.personal).toBe(2);
+      expect(rules.typeMultipliers.technical).toBe(6);
+      expect(rules.typeMultipliers.unknown).toBe(0);
+    });
+
+    it('serves the ALN pack tables from the default dir', () => {
+      delete process.env.PACK_PATH;
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[5]).toBe(150000);
+      expect(rules.typeMultipliers.party).toBe(5);
+    });
+
+    it('snapshot semantics: activation freezes the tables; later disk edits are invisible', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'rules',
+        scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
+      });
+      packService.activatePack();
+
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'rules',
+        scoring: { baseValues: { 1: 999 }, typeMultipliers: { Personal: 999 } },
+      });
+
+      expect(packService.getScoringRules().baseValues[1]).toBe(7);
+    });
+
+    it('a pack with NO usable scoring block rides the baked legacy shim with a LOUD warn (once)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir: no game.json at all
+      const rules = packService.getScoringRules();
+      packService.getScoringRules();
+
+      expect(rules.baseValues[5]).toBe(150000);
+      expect(rules.typeMultipliers.mention).toBe(3);
+      const shimWarns = logger.warn.mock.calls.filter(([m]) =>
+        m.includes('LEGACY SCORING TABLES ACTIVE')
+      );
+      expect(shimWarns).toHaveLength(1);
+    });
+
+    it('EMPTY-but-present tables ride the shim too (an empty table must never silently zero every token)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'empty',
+        scoring: { baseValues: {}, typeMultipliers: { Personal: 1 } },
+      });
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[1]).toBe(10000); // legacy, not undefined
+      expect(logger.warn.mock.calls.some(([m]) => m.includes('LEGACY SCORING TABLES ACTIVE'))).toBe(true);
+    });
+
+    it('getClockRules serves the pack clock in seconds (toy: 3600 duration, 3300 overtime)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 3600, overtimeAtSeconds: 3300 });
+    });
+
+    it('getClockRules: ALN declares overtime == duration (7200/7200)', () => {
+      delete process.env.PACK_PATH;
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 7200, overtimeAtSeconds: 7200 });
+    });
+
+    it('getClockRules: absent overtimeAt defaults to the declared duration', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'clk', gameClock: { duration: 500 } });
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 500, overtimeAtSeconds: 500 });
+    });
+
+    it('getClockRules: a PACKLESS checkout falls back to SESSION_TIMEOUT with a LOUD warn (once)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir
+      const rules = packService.getClockRules();
+      packService.getClockRules();
+      const config = require('../../../src/config');
+      expect(rules.durationSeconds).toBe(config.session.sessionTimeout * 60);
+      expect(rules.overtimeAtSeconds).toBe(rules.durationSeconds);
+      const warns = logger.warn.mock.calls.filter(([m]) => m.includes('LEGACY CLOCK CONFIG ACTIVE'));
+      expect(warns).toHaveLength(1);
+    });
+
+    it('DRIFT TRIPWIRE: the baked legacy tables mirror the real ALN game.json scoring block', () => {
+      const gamePath = path.resolve(__dirname, '../../../../ALN-TokenData/game.json');
+      const real = JSON.parse(fs.readFileSync(gamePath, 'utf8')).scoring;
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.baseValues)))
+        .toEqual(Object.fromEntries(Object.entries(real.baseValues).map(([k, v]) => [k, v])));
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.typeMultipliers)))
+        .toEqual(real.typeMultipliers);
+    });
+  });
 });

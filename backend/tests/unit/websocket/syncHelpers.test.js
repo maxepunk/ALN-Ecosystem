@@ -180,36 +180,63 @@ describe('buildSyncFullPayload videoStatus shape', () => {
   });
 });
 
-describe('buildGameClockState expectedDuration', () => {
-  it('should derive expectedDuration from SESSION_TIMEOUT config', async () => {
-    // Save original
-    const originalTimeout = process.env.SESSION_TIMEOUT;
-    process.env.SESSION_TIMEOUT = '90';  // 90 minutes
+describe('buildGameClockState expectedDuration (A3 slice 2: pack clock wins)', () => {
+  const buildArgs = (session) => ({
+    sessionService: { getCurrentSession: () => session },
+    transactionService: { getTeamScores: () => [], getToken: () => null },
+    videoQueueService: { getState: () => ({ status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false }) },
+    gameClockService: null,  // null triggers fallback path
+  });
+  const session = {
+    id: 'test', transactions: [], connectedDevices: [], playerScans: [],
+    toJSON: () => ({ id: 'test', teams: [], status: 'active' }),
+  };
 
-    // Re-require to pick up new env
+  afterEach(() => {
+    delete process.env.PACK_PATH;
+    jest.resetModules();
+  });
+
+  it('derives expectedDuration from the ACTIVE pack gameClock.duration (ALN: 7200s)', async () => {
+    // SESSION_TIMEOUT no longer decides when a pack declares its clock —
+    // the pre-slice-2 behavior this block used to pin is retired.
+    const originalTimeout = process.env.SESSION_TIMEOUT;
+    process.env.SESSION_TIMEOUT = '90';  // must NOT win over the pack
+
     jest.resetModules();
     const { buildSyncFullPayload: freshBuild } = require('../../../src/websocket/syncHelpers');
+    const payload = await freshBuild(buildArgs(session));
 
-    const session = {
-      id: 'test', transactions: [], connectedDevices: [], playerScans: [],
-      toJSON: () => ({ id: 'test', teams: [], status: 'active' }),
-    };
-    const payload = await freshBuild({
-      sessionService: { getCurrentSession: () => session },
-      transactionService: { getTeamScores: () => [], getToken: () => null },
-      videoQueueService: { getState: () => ({ status: 'idle', currentVideo: null, queue: [], queueLength: 0, connected: false }) },
-      gameClockService: null,  // null triggers fallback path
-    });
+    expect(payload.gameClock.expectedDuration).toBe(7200);  // ALN game.json
 
-    expect(payload.gameClock.expectedDuration).toBe(5400);  // 90 * 60
-
-    // Restore
     if (originalTimeout !== undefined) {
       process.env.SESSION_TIMEOUT = originalTimeout;
     } else {
       delete process.env.SESSION_TIMEOUT;
     }
+  });
+
+  it('falls back to SESSION_TIMEOUT for a PACKLESS checkout (loud shim inside getClockRules)', async () => {
+    const os = require('os');
+    const fs = require('fs');
+    const path = require('path');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-clockless-'));
+    const originalTimeout = process.env.SESSION_TIMEOUT;
+    process.env.SESSION_TIMEOUT = '90';
+    process.env.PACK_PATH = tmpDir;  // empty dir: no game.json
+
     jest.resetModules();
+    const { buildSyncFullPayload: freshBuild } = require('../../../src/websocket/syncHelpers');
+    const payload = await freshBuild(buildArgs(session));
+
+    expect(payload.gameClock.expectedDuration).toBe(5400);  // 90 * 60
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (originalTimeout !== undefined) {
+      process.env.SESSION_TIMEOUT = originalTimeout;
+    } else {
+      delete process.env.SESSION_TIMEOUT;
+    }
   });
 });
 
