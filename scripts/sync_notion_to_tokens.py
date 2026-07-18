@@ -900,6 +900,26 @@ def derive_groups(tokens):
     return groups
 
 
+def strip_group_suffixes(tokens):
+    """v2 emission (the cutover half of D3b): rewrite each SF_Group to the
+    pure group name in place — the "(xN)" shorthand is an AUTHORING format
+    that must never reach tokens.json (tokens.schema.json v2 makes it
+    illegal; runtime multipliers come from game.json `groups` only).
+    Call AFTER derive_groups (which parses the raw strings). Returns the
+    number of values rewritten."""
+    changed = 0
+    for t in tokens.values():
+        raw = (t.get('SF_Group') or '').strip()
+        if not raw:
+            continue
+        m = GROUP_SUFFIX_RE.match(raw)
+        pure = m.group(1).strip() if m else raw
+        if pure != t.get('SF_Group'):
+            t['SF_Group'] = pure
+            changed += 1
+    return changed
+
+
 def write_groups_block(game_path, groups):
     """Merge the derived groups block into game.json (atomic, F-TOOL-10).
     Returns True when the file changed."""
@@ -1039,6 +1059,15 @@ def main(argv=None):
     # Sort tokens by RFID for cleaner output
     sorted_tokens = dict(sorted(tokens.items()))
 
+    # D3b parse-once discipline: derive the groups block from the RAW
+    # authored "(xN)" shorthand, THEN flip the emission to v2 pure names —
+    # everything downstream (validation, dry-run, write) sees the exact
+    # shape that lands in tokens.json (a suffixed SF_Group is v2-illegal).
+    derived_groups = derive_groups(sorted_tokens)
+    stripped = strip_group_suffixes(sorted_tokens)
+    if stripped:
+        print(f"Emitted {stripped} SF_Group value(s) as pure names (v2 — multiplier lives in game.json groups)")
+
     # ── Validation summary (pre-write): semantic checks + RFID<->file alignment ──
     validation_warnings = []
     validation_warnings.extend(duplicate_warnings)
@@ -1084,7 +1113,6 @@ def main(argv=None):
 
     # Write to tokens.json (atomic: tmp + fsync + replace)
     print(f"Writing to {TOKENS_JSON}...")
-    derived_groups = derive_groups(sorted_tokens)
     write_tokens_json(TOKENS_JSON, sorted_tokens)
     if write_groups_block(GAME_JSON_PATH, derived_groups):
         print(f"Updated game.json groups block ({len(derived_groups)} group(s))")
