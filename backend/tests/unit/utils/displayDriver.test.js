@@ -90,6 +90,48 @@ describe('displayDriver — window management', () => {
       await expect(freshDriver.showScoreboard()).resolves.toBe(false);
     });
 
+    test('covers the remaining branch arms deterministically (100% pin)', async () => {
+      const { spawn, execFile } = require('child_process');
+      const fsMock = require('fs');
+      // Orphan PID file contains GARBAGE (isNaN arm at recovery) and
+      // xdotool search returns NO windows (empty idList arm)
+      const realRead = fsMock.readFileSync;
+      fsMock.readFileSync = jest.fn((p, enc) => {
+        if (String(p).includes('aln-pm-scoreboard-chromium.pid')) return 'garbage-pid';
+        return realRead(p, enc);
+      });
+      const procHandlers = {};
+      spawn.mockReturnValue({
+        pid: 7777, killed: false,
+        on: jest.fn((ev, h) => { procHandlers[ev] = h; }),
+      });
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') cb = opts;
+        // '\n' is TRUTHY but filters to an empty id list — hits the
+        // length>0 false-arm (a bare '' short-circuits at `if (ids)`)
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '\n', '');
+        else cb(null, '', '');
+      });
+      let freshDriver;
+      const savedPort = process.env.PORT;
+      process.env.PORT = ''; // falsy → module-load PORT-default arm
+      jest.isolateModules(() => {
+        freshDriver = require('../../../src/utils/displayDriver');
+      });
+      if (savedPort === undefined) delete process.env.PORT;
+      else process.env.PORT = savedPort;
+      // Two CONCURRENT calls: the second must reuse launchPromise (memo arm)
+      const [a, b] = await Promise.all([
+        freshDriver.showScoreboard(),
+        freshDriver.showScoreboard(),
+      ]);
+      expect(spawn).toHaveBeenCalledTimes(1); // launchPromise memo held
+      // browser launched but the window was never found → both false
+      expect(a).toBe(false);
+      expect(b).toBe(false);
+      fsMock.readFileSync = realRead;
+    });
+
     test('does NOT relaunch Chromium on subsequent calls', async () => {
       const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };

@@ -295,9 +295,9 @@
     "lines": 100
   },
   "./src/utils/displayDriver.js": {
-    "branches": 90,
+    "branches": 100,
     "functions": 100,
-    "lines": 95
+    "lines": 100
   },
   "./src/utils/dockerHelper.js": {
     "branches": 100,
@@ -315,9 +315,9 @@
     "lines": 70
   },
   "./src/utils/processMonitor.js": {
-    "branches": 95,
+    "branches": 100,
     "functions": 100,
-    "lines": 95
+    "lines": 100
   },
   "./src/utils/responseBuilder.js": {
     "branches": 25,
