@@ -80,6 +80,14 @@
       "bonusFormula": "multiplier-minus-one-times-base"
     }
   },
+  "groups": {
+    "Vault Plans": {
+      "multiplier": 3
+    },
+    "Getaway Route": {
+      "multiplier": 2
+    }
+  },
   "duplicatePolicy": {
     "claim": "once",
     "view": "unlimited"
