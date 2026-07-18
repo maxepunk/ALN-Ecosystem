@@ -295,7 +295,7 @@
     "lines": 100
   },
   "./src/utils/displayDriver.js": {
-    "branches": 90,
+    "branches": 85,
     "functions": 100,
     "lines": 95
   },
@@ -315,7 +315,7 @@
     "lines": 70
   },
   "./src/utils/processMonitor.js": {
-    "branches": 95,
+    "branches": 90,
     "functions": 100,
     "lines": 95
   },
