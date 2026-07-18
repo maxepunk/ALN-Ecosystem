@@ -129,16 +129,12 @@ describe('game pack schema contract (A1)', () => {
   });
 
   describe('ALN pack ↔ legacy config parity (migration guard)', () => {
-    it('game.json scoring equals scoring-config.json (until the legacy file retires)', () => {
-      // Both files exist during the migration window; they MUST agree or
-      // networked (reads legacy at boot today) and future pack consumers
-      // would score differently. Retire scoring-config.json -> delete this.
-      const game = readJson(TOKEN_DATA_DIR, 'game.json');
-      const legacy = readJson(TOKEN_DATA_DIR, 'scoring-config.json');
-      // legacy keys are strings already; compare as plain objects
-      expect(game.scoring.baseValues).toEqual(legacy.baseValues);
-      expect(game.scoring.typeMultipliers).toEqual(legacy.typeMultipliers);
-    });
+    // The game.json scoring == scoring-config.json parity pin was DELETED
+    // here by design (A3 slice 2, ledger L1 retirement): scoring-config.json
+    // no longer exists — the backend reads scoring from the active pack's
+    // game.json via packService.getScoringRules(), and the GM Scanner
+    // vendored its baked L2 shim. game.json's scoring block is now the
+    // sole shared source, guarded by the packService ALN drift tripwire.
 
     // The gameClock.duration == SESSION_TIMEOUT masking pin was DELETED
     // here by design (A3 slice 2): the engine now CONSUMES the pack's

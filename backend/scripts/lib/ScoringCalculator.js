@@ -2,7 +2,7 @@
  * ScoringCalculator - Recalculate scores from transactions
  * Implements the scoring formula from SCORING_LOGIC.md
  *
- * Scoring config loaded from shared ALN-TokenData/scoring-config.json.
+ * Scoring config loaded from ALN-TokenData/game.json's scoring block.
  * Validator compares independently calculated scores against session.scores
  * (persisted final state with baseScore, currentScore, adminAdjustments).
  */

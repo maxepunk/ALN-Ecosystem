@@ -6,7 +6,7 @@
  * - Scores are delivered to clients via transaction:new (teamScore payload) — not separately logged
  * - This validator compares independently calculated scores against session.scores
  * - Also cross-references "Team score adjusted" log entries for admin adjustments
- * - Scoring config loaded from shared ALN-TokenData/scoring-config.json (single source of truth)
+ * - Scoring config loaded from ALN-TokenData/game.json scoring block (single source of truth)
  */
 
 class ScoringIntegrityCheck {

@@ -82,8 +82,8 @@ describe('TokenService - Utility Functions', () => {
   });
 
   describe('calculateTokenValue', () => {
-    // These tests depend on config.game.valueRatingMap and typeMultipliers
-    // Values loaded dynamically from ALN-TokenData/scoring-config.json
+    // Values come from the ACTIVE pack's game.json scoring block via
+    // packService.getScoringRules() (A3 slice 2, ledger L1 retirement)
 
     it('should calculate value with rating 1 and Personal type', () => {
       // Base: 10000, Multiplier: 1.0 = 10000

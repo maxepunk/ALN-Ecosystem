@@ -159,8 +159,8 @@ function _readDiskManifest() {
 /**
  * Live disk read of the pack's game.json (rules file). Null when the pack
  * ships none (pre-pack checkouts, tokens-only fixtures) — every consumer
- * must tolerate null through the L1 transitional window (backend rules
- * still come from scoring-config.json until slice 2).
+ * must tolerate null; the rules getters (getScoringRules, getClockRules,
+ * modeSemantics) fall back to their loud baked legacy shims.
  * @returns {Object|null}
  */
 function _readDiskGameConfig() {
