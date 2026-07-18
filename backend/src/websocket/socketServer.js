@@ -43,7 +43,7 @@ function createSocketServer(httpServer) {
   // PHASE 2.1 (P1.3): Socket.io middleware for GM authentication
   // Validates JWT tokens at handshake level BEFORE connection is established
   io.use((socket, next) => {
-    const { token, deviceId, deviceType, version } = socket.handshake.auth || {};
+    const { token, deviceId, deviceType, version, packHash } = socket.handshake.auth || {};
 
     // Only GM stations require JWT authentication
     if (deviceType === 'gm') {
@@ -101,12 +101,28 @@ function createSocketServer(httpServer) {
       socket.deviceId = deviceId;
       socket.deviceType = deviceType;
       socket.version = version || '1.0.0';
+      socket.packHash = packHash || null;
 
       logger.info('GM station authenticated at handshake', {
         deviceId,
         socketId: socket.id,
-        version: socket.version
+        version: socket.version,
+        packHash: socket.packHash
       });
+
+      // A2 staleness visibility: a client running a DIFFERENT pack than
+      // the server is the F-TOOL-05 class this plumbing exists to catch.
+      // Loud warn now; C1 preflight turns it into a go/no-go check.
+      if (packHash) {
+        const activePack = require('../services/packService').getActivePackInfo();
+        if (activePack && packHash !== activePack.contentHash) {
+          logger.warn('GM client pack MISMATCH: client loaded a different pack than the server is running', {
+            deviceId,
+            clientPackHash: packHash,
+            serverPackHash: activePack.contentHash,
+          });
+        }
+      }
     }
 
     // Allow connection

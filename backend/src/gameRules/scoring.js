@@ -15,40 +15,92 @@
  * channel when runtime pack loading lands (Phase 3).
  *
  * Rule decisions encoded:
- * - A1 (2026-06-09): only accepted BLACKMARKET transactions count toward
- *   group completion — detective scans are evidence, not set progress
- * - A2/B1: detective mode awards 0 points (evidence only)
+ * - A1 (2026-06-09), generalized by slice 1: only accepted transactions in
+ *   a countsTowardGroups mode count toward group completion — evidence
+ *   modes are testimony, not set progress
+ * - A2/B1, generalized by slice 1: a scoringPolicy other than 'standard'
+ *   awards 0 points
  * - Groups need 2+ member tokens to be completable
- * - Group bonus = (multiplier − 1) × Σ all member token values
+ * - §2f (A3 slice 2): group COMPLETION counts any counting-mode claim;
+ *   the group BONUS BASE sums only SCORED contributions — members claimed
+ *   in a standard-scoring mode contribute their catalog value, members
+ *   claimed in a none-scoring counting mode contribute presence and $0.
+ *   (This is what made event-only groups legal and retired the gate's
+ *   flavor-ii refusal. Scanner parity is inherent: LocalStorage sums
+ *   RECORDED points, and unscored claims record 0.)
+ * - Group bonus = (multiplier − 1) × Σ scored member contributions
+ *
+ * MODES (Phase 3 A3 slice 1): behavior branches on the pack's per-mode
+ * semantics flags via gameRules/modeSemantics — never on mode-id string
+ * equality. Every function takes the active gameConfig (callers pass
+ * packService.getGameConfig(); null rides the modeSemantics legacy shim,
+ * ledger L6). A transaction whose mode the config does not declare scores
+ * nothing and counts toward nothing (see modeSemantics header for why
+ * that is the safe reading; wire ingress makes it unreachable live).
  */
+
+const { resolveMode } = require('./modeSemantics');
 
 /**
  * Points awarded for processing a token in a given mode.
  * @param {Object} token - Token with a plain `value` field
- * @param {string} mode - 'blackmarket' | 'detective'
+ * @param {string} mode - A mode id declared by the active pack
+ * @param {Object|null} gameConfig - The active pack's game.json
  * @returns {number}
  */
-function pointsFor(token, mode) {
-  return mode === 'detective' ? 0 : token.value;
+function pointsFor(token, mode, gameConfig) {
+  const semantics = resolveMode(gameConfig, mode);
+  return semantics && semantics.scoringPolicy === 'standard' ? token.value : 0;
 }
 
 /**
- * Token IDs a team has banked: accepted blackmarket transactions only
- * (decision A1 — the group-completion currency).
- * @param {Array<Object>} transactions - Session transaction history
- * @param {string} teamId
- * @returns {Set<string>}
+ * Shared claim-shape filter for the two group currencies below: accepted
+ * claims by the team whose resolved mode satisfies `pick`. One body so a
+ * change to claim acceptance (new status, entity aliasing) can never make
+ * the completion currency and the bonus-base currency silently diverge.
+ * @private
  */
-function teamBankedTokenIds(transactions, teamId) {
+function _teamClaimedTokenIds(transactions, teamId, gameConfig, pick) {
   return new Set(
     (transactions || [])
-      .filter(tx =>
-        tx.teamId === teamId &&
-        tx.status === 'accepted' &&
-        tx.mode === 'blackmarket'
-      )
+      .filter(tx => {
+        if (tx.teamId !== teamId || tx.status !== 'accepted') return false;
+        const semantics = resolveMode(gameConfig, tx.mode);
+        return semantics != null && pick(semantics);
+      })
       .map(tx => tx.tokenId)
   );
+}
+
+/**
+ * Token IDs a team has banked: accepted transactions in group-counting
+ * modes only (decision A1 generalized — the group-completion currency is
+ * `countsTowardGroups`, not a mode id).
+ * @param {Array<Object>} transactions - Session transaction history
+ * @param {string} teamId
+ * @param {Object|null} gameConfig - The active pack's game.json
+ * @returns {Set<string>}
+ */
+function teamBankedTokenIds(transactions, teamId, gameConfig) {
+  return _teamClaimedTokenIds(transactions, teamId, gameConfig,
+    s => s.countsTowardGroups === true);
+}
+
+/**
+ * Token IDs a team has claimed in a SCORED **counting** mode: the §2f
+ * bonus-base currency (contrast teamBankedTokenIds — the completion
+ * currency). BOTH flags required: a standard∧non-counting claim builds no
+ * group progress, so it must not fund a group bonus either — parity with
+ * the scanner, whose bonus base sums recorded points over counting-mode
+ * claims only.
+ * @param {Array<Object>} transactions - Session transaction history
+ * @param {string} teamId
+ * @param {Object|null} gameConfig - The active pack's game.json
+ * @returns {Set<string>}
+ */
+function teamScoredTokenIds(transactions, teamId, gameConfig) {
+  return _teamClaimedTokenIds(transactions, teamId, gameConfig,
+    s => s.scoringPolicy === 'standard' && s.countsTowardGroups === true);
 }
 
 /**
@@ -70,16 +122,21 @@ function groupTokens(tokens, groupId) {
  * @param {string} args.teamId
  * @param {string} args.groupId
  * @param {string|null} [args.currentTokenId] - In-flight token being
- *   processed (claimed but possibly not yet in transactions)
+ *   processed (claimed but possibly not yet in transactions). CALLER
+ *   CONTRACT: pass this ONLY when the in-flight claim's mode has
+ *   countsTowardGroups — the injection bypasses teamBankedTokenIds'
+ *   flag filter, so a non-counting claim passed here would complete a
+ *   group the rebuild path (which honors the flag) later un-completes.
+ * @param {Object|null} [args.gameConfig] - The active pack's game.json
  * @returns {boolean}
  */
-function isGroupComplete({ tokens, transactions, teamId, groupId, currentTokenId = null }) {
+function isGroupComplete({ tokens, transactions, teamId, groupId, currentTokenId = null, gameConfig = null }) {
   const members = groupTokens(tokens, groupId);
 
   // Groups need at least 2 tokens to be completable
   if (members.length <= 1) return false;
 
-  const banked = teamBankedTokenIds(transactions, teamId);
+  const banked = teamBankedTokenIds(transactions, teamId, gameConfig);
   if (currentTokenId) {
     banked.add(currentTokenId);
   }
@@ -103,17 +160,40 @@ function groupMultiplier(tokens, groupId) {
 }
 
 /**
- * Total bonus paid on completing a group:
- * (multiplier − 1) × Σ all member token values.
- * @param {Map<string, Object>} tokens - Token catalog keyed by ID
- * @param {string} groupId
+ * Total bonus paid on completing a group (§2f, A3 slice 2):
+ * (multiplier − 1) × Σ member token values, counting ONLY members the
+ * team claimed in a standard-scoring mode. A counting-but-unscored claim
+ * (none∧countsTowardGroups — event-only groups) contributes presence to
+ * COMPLETION but $0 to the base, so unscored claims can never mint
+ * catalog-priced money. An all-unscored completion pays $0 — the
+ * group:completed event itself is the payload (it feeds the cue engine).
+ * @param {Object} args
+ * @param {Map<string, Object>} args.tokens - Token catalog keyed by ID
+ * @param {string} args.groupId
+ * @param {Array<Object>} args.transactions - Session transaction history
+ * @param {string} args.teamId
+ * @param {Object|null} [args.gameConfig] - The active pack's game.json
+ * @param {string|null} [args.currentTokenId] - In-flight token being
+ *   processed (same belt-and-braces as isGroupComplete: the bonus amount
+ *   must never depend on whether the caller persisted the in-flight
+ *   transaction before or after computing scores)
+ * @param {boolean} [args.currentTokenScored] - Whether the in-flight
+ *   claim is a scored COUNTING claim (funds the bonus base)
  * @returns {number} 0 when the group pays no bonus
  */
-function groupBonusAmount(tokens, groupId) {
+function groupBonusAmount({
+  tokens, groupId, transactions, teamId, gameConfig = null,
+  currentTokenId = null, currentTokenScored = false,
+}) {
   const multiplier = groupMultiplier(tokens, groupId);
   if (multiplier === 0) return 0;
 
+  const scored = teamScoredTokenIds(transactions, teamId, gameConfig);
+  if (currentTokenId && currentTokenScored) {
+    scored.add(currentTokenId);
+  }
   return groupTokens(tokens, groupId)
+    .filter(token => scored.has(token.id))
     .reduce((sum, token) => sum + token.value * (multiplier - 1), 0);
 }
 
@@ -132,11 +212,12 @@ function groupBonusAmount(tokens, groupId) {
  * @param {Array<Object>} args.transactions - Session transaction history
  * @param {Array<string>} args.teamIds - Team membership (teams with no
  *   transactions still get a zero row)
+ * @param {Object|null} [args.gameConfig] - The active pack's game.json
  * @returns {Array<{teamId: string, baseScore: number, bonusPoints: number,
  *   currentScore: number, tokensScanned: number, completedGroups: string[],
  *   lastTokenTime: string|null}>}
  */
-function computeTeamScores({ tokens, transactions, teamIds }) {
+function computeTeamScores({ tokens, transactions, teamIds, gameConfig = null }) {
   const rows = new Map();
   const zeroRow = (teamId) => ({
     teamId,
@@ -152,9 +233,13 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
     rows.set(teamId, zeroRow(teamId));
   }
 
-  // Scoring transactions: accepted, non-detective (parity with live path)
+  // Scoring transactions: accepted, in a standard-scoring mode (parity
+  // with the live path's scoringPolicy gate)
   const scoring = (transactions || [])
-    .filter(tx => tx.status === 'accepted' && tx.mode !== 'detective');
+    .filter(tx =>
+      tx.status === 'accepted' &&
+      resolveMode(gameConfig, tx.mode)?.scoringPolicy === 'standard'
+    );
 
   for (const tx of scoring) {
     let row = rows.get(tx.teamId);
@@ -169,9 +254,24 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
     row.lastTokenTime = tx.timestamp;
   }
 
-  // Group completion per team, from the same banked-token rule (A1)
+  // Defensive symmetry with the scoring loop above: a team present ONLY
+  // via counting-mode claims (event-only groups, §2f) still needs a row,
+  // or its completions would silently drop in the rebuild.
+  for (const tx of transactions || []) {
+    if (
+      tx.status === 'accepted' &&
+      !rows.has(tx.teamId) &&
+      resolveMode(gameConfig, tx.mode)?.countsTowardGroups === true
+    ) {
+      rows.set(tx.teamId, zeroRow(tx.teamId));
+    }
+  }
+
+  // Group completion per team, from the same banked-token rule (A1 —
+  // §2f: over the FULL history, so counting-but-unscored claims build
+  // progress here exactly as they do on the live path)
   for (const row of rows.values()) {
-    const banked = teamBankedTokenIds(scoring, row.teamId);
+    const banked = teamBankedTokenIds(transactions, row.teamId, gameConfig);
     const groupIds = new Set();
     for (const tokenId of banked) {
       const token = tokens.get(tokenId);
@@ -181,9 +281,9 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
     }
 
     for (const groupId of groupIds) {
-      if (isGroupComplete({ tokens, transactions: scoring, teamId: row.teamId, groupId })) {
+      if (isGroupComplete({ tokens, transactions, teamId: row.teamId, groupId, gameConfig })) {
         row.completedGroups.push(groupId);
-        row.bonusPoints += groupBonusAmount(tokens, groupId);
+        row.bonusPoints += groupBonusAmount({ tokens, groupId, transactions, teamId: row.teamId, gameConfig });
       }
     }
 
@@ -196,6 +296,7 @@ function computeTeamScores({ tokens, transactions, teamIds }) {
 module.exports = {
   pointsFor,
   teamBankedTokenIds,
+  teamScoredTokenIds,
   groupTokens,
   isGroupComplete,
   groupMultiplier,

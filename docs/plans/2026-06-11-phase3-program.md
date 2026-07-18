@@ -1,16 +1,33 @@
 # Phase 3 Program — Engine/Game-Pack Separation & Platform Build
 
 **Date:** 2026-06-11 (this is the Phase 3.0 design doc)
-**Status:** Draft for owner review. One decision requires ratification
-(§7 Definition of Done); everything else synthesizes already-made
-decisions into an executable structure.
+**Status:** ACTIVE — DoD RATIFIED by owner (2026-06-12): Phase 3 = A+B+C
+gated by the toy-pack proof; Tracks D and E moved OUT to **Phase 4** (not
+parallel tracks) with E1 spikes + E2 cert/domain + O3 auth DESIGN retained
+inside Phase 3 (E2 reclassified as Track C infrastructure). Live execution
+state: docs/plans/PHASE3-STATUS.md.
+**AMENDED 2026-07-17** (owner-directed, post-A2 forward audit + BILL
+scoping — see §11): A3 slice list revised in place (§3); E4/E5 sharpened
+in place (Track E); platform-phases vs game-projects framing adopted.
+DoD and phase gates UNCHANGED.
+**AMENDED 2026-07-18** (see §12): frozen-production development model;
+slice-1 ratification back-annotations (R9 two-flavor refinement, R12
+scope, R14 branch chaining); slice-2 pre-open design-doc requirement;
+C1-before-slice-4 sequencing. DoD and phase gates UNCHANGED.
 **Companion deliverable:** the 3.1 schema drafts (game.json,
 pack-manifest, installation-profile) follow this doc.
 
 ## 1. Purpose
 
-**Make games data, not code.** Designing a new game = authoring a pack;
-the engine never changes. The falsifiable test (Phase 4 gate): a toy
+**Make ALN-class games data, not code.** For games that fit the
+engine's implemented model (transaction-at-station scoring, tabular
+values, all-of-group completion), designing a new game = authoring a
+pack with ZERO engine changes — that is the falsifiable Phase-3 gate.
+Games in a NEW mechanical class ship a small set of generic,
+pack-parameterized engine modules (see §11.3 platform-vs-game-projects;
+the BILL scoping is the worked example): per-game code TRENDS toward
+zero as the module library grows, but is not zero for the first game of
+a new class. The falsifiable test (Phase 4 gate): a toy
 second game — different title, strings, modes, scoring, group rules, a
 handful of tokens — passes the full E2E suite with **zero engine-code
 changes**, and each claimed install tier runs via scripted capability
@@ -51,20 +68,125 @@ The engine/game separation itself. Everything else hangs off this.
    loaded pack version/hash (sync:full, /health) — kills F-TOOL-05's
    silent-stale-scoring class. Grows directly from the 2.x.4 TOKENS_PATH
    seam (its first consumer and its test harness).
-3. **A3. The extraction grind** (slice by slice, each slice = extract →
-   toy pack exercises it → editor page consumes it):
-   modes & mode names → scoring/group/duplicate policy (gameRules/
-   already pure; this moves their CONFIG into the pack) → strings &
-   theming (window titles, mode labels, transaction verbs, currency/
-   locale, emoji vocabulary, scoreboard branding, CSS taxonomy classes;
-   pre-fixes: scoreboard password, F-SHOW-29 third idle-loop literal) →
-   cue/lighting ROLE references (B8: cues name roles, never HA entity
-   ids) → clock/phase params (B11; overtime threshold out of env config)
-   → display surfaces (B12) → report template refs (B9).
+3. **A3. The extraction grind** (slice by slice; the per-slice GATE =
+   toy pack exercises it + dual-pack Tier L green. The consuming B page
+   follows in Track B after B0 — the editor is NOT part of the slice
+   gate; adversarial review R10 resolved the earlier contradictory
+   wording). *Slice list REVISED 2026-07-17 (§11 amendments):*
+   - **Slice 0 — gate infrastructure (FIRST, small):** dual-pack Tier L
+     plumbing (E2E_PACK_PATH across the harness + npm script + CI matrix
+     over {production, toy-heist}); grow toy pack to ≥10 distinct-owner
+     tokens; `packService.getGameConfig()` (activation-snapshot
+     semantics); capability-gate skeleton + `requires` declaration block
+     in game.schema.json — the gate ALSO enforces `engine.minVersion` +
+     `schemaVersion` (semver compare, loud refusal; adversarial R6).
+     Adopted skew policy (R12): the ALN pack keeps mode ids
+     {blackmarket, detective} through Phase 3; scoring-config.json
+     deletion ships in the SAME TokenData pin bump as the slice-2
+     backend deploy; assume SW-cached GM scanners lag the backend by up
+     to one event. *(Scope corrected 2026-07-18, frozen-production
+     model: the deploy-skew half — same-pin-bump coupling, one-event
+     scanner lag — applies only to the FINAL cutover, since no fleet
+     pulls code mid-program; the mode-id-stability half stands
+     throughout. See PHASE3-STATUS "Development model".)*
+   - **Slice 1 — modes:** migrate BEHAVIOR to the pack's per-mode
+     semantics flags (`scoringPolicy`/`entityRole`/`countsTowardGroups`/
+     `displayBehavior`) — the mode ids are load-bearing string constants
+     in ~40 branch points today; flag vocabulary designed OPEN
+     (modes are proto-verbs — BILL scoping §2.1); wire-mode validation
+     becomes pack-derived; gate rejects undrivable modes. **UI boundary
+     (R3, gate-blocking without it):** the binary mode checkbox becomes a
+     data-driven segmented selector rendered from `gameConfig.modes`
+     (labels from mode.label; scoreboard/evidence surfaces driven by
+     `displayBehavior.surface`, not the 'blackmarket' literal). Scope
+     ENDS there — mode-count ergonomics beyond ~3, per-mode theming, and
+     the four-domain redesign stay Track D; the toy pack stays within
+     what the segmented selector renders for all of Phase 3. **Coherence
+     validator (R9):** cross-field rule table (dependentSchemas where
+     expressible + contract-suite rules — e.g. scoringPolicy:none ⇒
+     countsTowardGroups:false) — the capability gate catches UNSUPPORTED
+     shapes, this catches CONTRADICTORY ones; resolve the toy pack's
+     ambiguous `appraise` mode here. *(REFINED by the 2026-07-18 slice-1
+     ratification, owner stress test: refusals split into TWO FLAVORS —
+     timeless incoherence vs drivability limitations carrying NAMED
+     retirements. The example above was RECLASSIFIED to the second
+     flavor: `none ∧ countsTowardGroups` is a legitimate
+     event-only-groups design blocked only by catalog-based bonus math,
+     refused as "not driveable by this engine yet", and becomes legal
+     when slice 2 defines scored-only contribution semantics.
+     Authoritative text: `2026-07-18-phase3-a3-slice1-modes.md` §4.)*
+   - **Slice 2 — scoring/group/duplicate/clock rules migration:** backend
+     reads game.json via getGameConfig(); scoring-config.json retires;
+     gameClock.duration/overtimeAt consumed (delete the masking pin);
+     gate extended — headroom shapes (threshold/ordered, per-entity/
+     unlimited) flip from silently-ignored to LOUDLY-REJECTED. **Same
+     commit (R2):** pack-rollback runbook lands in DEPLOYMENT_GUIDE
+     (TokenData checkout last-good + restart, or PACK_PATH pin — legal
+     because rules freeze at boot) AND preflight §4.4 is rewritten to
+     validate pack-manifest.json + game.json scoring instead of the
+     retired scoring-config.json.
+   - **Slice 2b — tokens v2 + schema genericization (ADDED 2026-07-17,
+     owner decision on adversarial R5+R11 — "we need to be thorough"):**
+     tokens.schema.json v2 structured group field (kills the "(xN)"
+     microformat — coordinated parser change: backend tokenService,
+     GM-scanner group parsing, sync script, the pack contract suite's
+     methodology guard) PLUS the R11 genericization: the category
+     vocabulary becomes PACK-DECLARED (game.json declares the category
+     set; tokens validate against it — replacing the closed
+     SF_MemoryType enum that would reject any third game's tokens),
+     value-rating scale pack-declared, the Notion SF_ prefix retired
+     from the universal schema (the sync script keeps emitting ALN's
+     fields as an ALN adapter). Both packs' tokens.json migrate
+     mechanically; a dual-accept window gets a debt-ledger row +
+     tripwire; capability-matrix row 1.23 is formally reclassified (the
+     R13 brake's first logged exercise). SEQUENCED HERE deliberately:
+     after slice 2 the scoring/group machinery is already pack-driven,
+     so the vocabulary lands next to its consumers; and slice 3c's
+     CSS type-taxonomy work then builds on the FINAL vocabulary instead
+     of the ALN enum. ≈1-1.5 sessions.
+   - **Slices 3a/3b/3c — strings & theming, SPLIT (audit F9):**
+     3a pure text/branding (pre-fixes: scoreboard password, F-SHOW-29
+     idle-loop literal; the "Case File" title is a FUNCTIONAL xdotool
+     selector — extract as shared config, displayDriver + scoreboard);
+     3b formatting LOGIC (currency ×5 implementations, star rendering ×4
+     with hardcoded 5-scale → one pluggable formatter each);
+     3c CSS/mode/memory-type taxonomy (vocabulary lives in both code and
+     stylesheets).
+   - **Slice 4 — show-control content into the pack (RESCOPED):** cues
+     become pack content referencing ROLES (lighting roles per B8, sound/
+     video by pack-relative reference, never HA entity ids or concrete
+     venue filenames); music/playlist REFERENCES join them (files stay on
+     the venue/asset channel). Settles audit F7 + the reference half of
+     F6. Videos-in-pack (F5) deferred to the B pages' media story.
+     **Ordering guard (R4 — without it, live lighting goes dark):** this
+     slice ships (a) a backend role→scene resolver reading the active
+     installation profile, (b) an in-repo ALN profile whose lighting
+     bindings cover every migrated role, and (c) a concrete-id fallback
+     on cues (ledger row; retires when C4's binding page ships). C4 then
+     only makes already-working bindings editable.
+   - **Slice 5 — clock/phase params (B11)** (duration/overtime landed in
+     slice 2; phases + trigger-starts here) → **Slice 6 — display
+     surfaces (B12** — renderer selection; the surface mechanism BILL's
+     constellation renderer later plugs into**)** → **Slice 7 — report
+     template refs (B9** — bundle schema reserves per-game state
+     namespaces**)**.
+
+   **Extraction brake (R13, standing rule):** no new A3 slice opens
+   without citing the capability-matrix row(s) it moves and confirming
+   they are not `engine-fixed`/`venue-config`; reclassifying a row is an
+   explicit, logged decision. (First row to re-litigate: 1.23, the SF_*
+   token schema — see adversarial review R11.)
 
 ### Track B — Authoring tooling (consumes A, page by page)
 config-tool restructured into **Design** and **Venue** workspaces
-(decided). Build order = value ÷ effort, gated on the matching A3 slice:
+(decided). **B0 first** (per the 2026-06-11 config-tool pre-read,
+docs/reviews/2026-06-11-config-tool-preread.md): pack/profile store with
+draft→publish lifecycle (the tool stops editing live files), app-shell
+shared store + model-module discipline + frontend test harness, auth from
+the O3 design + backend-served trigger/action vocabulary. B0 is the
+tool-side implementation of the A1/C1/O3 design docs (≈1.5-2.5 sessions
+per the §9 re-pricing; the original "+≈1" figure retired 2026-07-18). Pages
+then follow, build order = value ÷ effort, gated on the matching A3 slice:
 pack manager (create/open/validate/diff/export, draft+**publish**,
 "commit & push pack" making submodule state visible) → mechanics editor
 (modes, scoring tables, group rules, duplicate policy, clock/phases;
@@ -119,10 +241,19 @@ golden-master test protects the GenAI pipeline until its migration).
 4. **E4. Function-gated transaction API (O3):** device identity +
    pack-assigned permissions replace the GM-JWT-or-anonymous split; the
    SAME auth model serves bound stations, no-GM tiers, and the config
-   tool (one identity story — see §6.2).
+   tool (one identity story — see §6.2). *Amended 2026-07-17 (§11):
+   function resolution must accept ACTOR identity presented in the
+   interaction (e.g. a scanned band) with the device as transport; and
+   surfaces receive SERVER-SIDE projections scoped to their granted
+   functions — mandatory for hidden-information games, good hygiene for
+   ALN's scoreboard today.*
 5. **E5. Interaction primitives v1 (O4):** scoped AFTER the spikes;
    engine ships few generic primitives, packs compose (P6); station
    primitives constrained by declared affordances (coarse-tap only).
+   *Amended 2026-07-17 (§11): the v1 requirements now EXIST — BILL's tap
+   grammar (compound-scan sessions: accumulate 1–3 identified objects →
+   pack-declared legality → atomic commit → refusal-with-reason; actor-
+   role gating). ALN is the degenerate single-object case.*
 
 ## 4. Dependency spine & sequencing
 
@@ -131,7 +262,8 @@ A1 schemas ←co-design→ C1 installation-profile (+ capability vocabulary, dra
    │
 A2 runtime pack loading  (consumes the 2.x.4 seam; §6.1 standalone design)
    │
-A3 extraction slices ──→ B pages (each slice lands WITH its editor)
+A3 extraction slices ──→ B pages (follow after B0; the slice gate is
+                         the toy pack + dual-pack Tier L, NOT the editor — R10)
    │        │
    │        └─ toy pack grows as second consumer of EVERY slice (§5)
    │
@@ -164,7 +296,7 @@ how-to-make-a-game-by-example.
    LAN auth (decided: shared password + JWT), bound-station device
    identity, and pseudonymous player sessions must be ONE
    identity/permission model with different credential strengths — not
-   three ad-hoc systems. O3 resolves here.
+   four ad-hoc systems (five once bound stations arrive). O3 resolves here.
 3. **Report contract evolution (Q11/B9).** Bundle schema is engine-fixed
    data; presentation is pack-variable; ALN's markdown stays
    byte-compatible (golden master) until the GenAI pipeline consumes the
@@ -175,17 +307,26 @@ how-to-make-a-game-by-example.
    firmware-shipped and tiny (P6, affordance-constrained). Decide the v1
    primitive list with E5, not before the spikes.
 
-## 7. Definition of Done — REQUIRES OWNER RATIFICATION
+## 7. Definition of Done — RATIFIED (owner, 2026-06-12)
 
-**Recommendation:** Phase 3 completes when **A + B + C** are done and
-the Phase 4 gate passes (toy pack + tier ladder). **D and E are named
-parallel tracks with their own gates**, started during Phase 3 but not
-holding the phase boundary; they improve a game that already runs,
-while A is what everything compounds on.
-
-The alternative — all five tracks gate the boundary — roughly doubles
-the phase and delays the falsifiable proof behind UX/platform work that
-doesn't affect it.
+Phase 3 completes when **A + B + C** are done and the toy-pack gate
+passes (second game, zero engine changes, tier ladder via capability
+profiles). **D and E are Phase 4** — a clean phase of their own after the
+foundation, NOT parallel tracks (owner: cleaner boundary, the falsifiable
+proof isn't delayed behind UX/platform work). Carve-ins that stay in
+Phase 3: E1 spikes (owner-run, information only), E2 real domain+cert
+(reclassified as Track C infrastructure — benefits Phase 3's own
+deliverables; **2026-07-17 adversarial review R8:** E2 does NOT gate the
+toy-pack DoD — C2's preflight cert line runs WARN-ONLY until E2 lands;
+spike S2 is the E2 prerequisite and sits atop the owner list), and the
+O3 one-auth story — **Phase 3 implements the OPERATOR-TIER v1 subset**
+(config-tool auth B0.3 including its BACKEND substrate: token claims,
+issuance-time grant computation, the function check in
+commandExecutor/routes; plus the scoreboard token with a PLAIN read
+scope) while the player-facing tiers, enrollment, actor-centric
+resolution, and server-side projection are Phase 4 (adversarial review
+R1 — this replaces the earlier 'paper only' wording, which contradicted
+Track B's stated dependencies).
 
 Sub-gates either way:
 - D gate: four-domain UX shipped + report intake writing B9 bundles.
@@ -206,9 +347,20 @@ Sub-gates either way:
 
 ## 9. Estimates (sessions, same gates discipline as Phase 2)
 
-A1+C1 schemas ≈1.5 · A2 ≈1.5 · A3 ≈2-3 (sliced) · B ≈2-3 (paged) ·
-C2-C4 ≈1.5 · D ≈2-3 (after wireframes) · E2 ≈0.5 · E3-E5 ≈2 (post-spike)
-→ core gate (A+B+C+Phase 4) ≈ 8-10; D+E tracks ≈ 4-6 alongside.
+*Original (2026-06-11):* A1+C1 ≈1.5 · A2 ≈1.5 · A3 ≈2-3 · B ≈2-3 ·
+C2-C4 ≈1.5 · D ≈2-3 · E2 ≈0.5 · E3-E5 ≈2 → core gate ≈ 8-10.
+
+**RE-PRICED 2026-07-17 (adversarial review R7)** — calibrated against
+A2's ACTUAL cost (~2.3-2.7× its estimate; the only track with an
+execution record) AND bottom-up costing of the sliced A3; two methods
+converge: **A3 ≈7-11.5 (incl. the added slice 2b) · B0 ≈1.5-2.5 ·
+B pages ≈3-5 · C2-C4 ≈1.5-3 → remaining Phase 3 ≈ 13-20 sessions**
+(plus ~15-25% review/deploy/doc overhead the original numbers never
+counted). **OWNER DECISION (2026-07-17): the HONEST figures are
+ACCEPTED — the cut set is DECLINED ("we need to be thorough"); slices
+4, 6, 7 and the full B page set stay in Phase 3 scope, and slice 2b
+was ADDED.** Phase-4 figures inherit the same ~2× understatement until
+re-priced at Phase-4 entry.
 
 ## 10. Immediate next deliverables
 
@@ -219,3 +371,82 @@ C2-C4 ≈1.5 · D ≈2-3 (after wireframes) · E2 ≈0.5 · E3-E5 ≈2 (post-spi
 3. Standalone-pack-loading design section (§6.1)
 4. One-auth-story design section (§6.2 / O3)
 5. Owner: ratify §7 DoD; run E1 spikes when convenient
+
+## 11. Amendments — 2026-07-17 (post-A2 forward audit + BILL scoping)
+
+Sources: the five-dimension forward audit (PHASE3-STATUS "2026-07-17
+FORWARD audit") and `2026-07-17-bill-capability-scoping.md` (esp. §7,
+the plan integration). Owner-directed integration; DoD (§7) and the
+Phase 4 sub-gates are UNCHANGED by every item below.
+
+1. **A3 slice list revised in place (§3):** new slice 0 (dual-pack gate
+   infrastructure + capability-gate skeleton + getGameConfig — the
+   program's per-slice toy-pack rule previously had NO executable gate);
+   slice 1 migrates mode BEHAVIOR to open-vocabulary semantics flags;
+   slice 2 extends the capability gate (headroom → loudly-rejected);
+   slice 3 split into 3a/3b/3c (text vs formatting logic vs CSS
+   taxonomy); slice 4 rescoped to "show-control content into the pack"
+   (settles audit F7 + music refs of F6; F5 videos deferred to B).
+2. **Track E sharpened in place:** E5's primitive requirements now exist
+   (BILL tap grammar); E4 gains actor-centric function resolution +
+   server-side per-surface projection.
+3. **Framing adopted: platform PHASES (3–5) vs recurring GAME PROJECTS.**
+   BILL is the first game project with new-module needs (compound-scan
+   engine lands in E5; contagion module, graph scoring model, and
+   constellation renderer belong to the BILL project, entry-gated on
+   Phase 3 DoD + E4/E5). Within Phase 4, E-before-D ordering is
+   AVAILABLE if BILL pressure grows — an option, not a decision.
+4. **D-track note:** the B9 session-bundle schema reserves per-game
+   state namespaces.
+5. **A2→main landing order (R14):** submodule PRs first (TokenData →
+   ALNScanner → PWA → ESP32), each reviewed and merged; THEN the parent
+   PR bumping all four pins to the merged SHAs; only then are slice
+   branches cut from main. ("Rebase foundations onto main" describes
+   starting slices, not landing A2 — the landing is this PR train.)
+   *(Corrected 2026-07-18, frozen-production model: the LANDING order
+   stands, but slice branches do NOT wait for it — they CHAIN from the
+   previous slice's verified tip (slice 0 from frozen foundations,
+   slice 1 from slice 0, …), each with a draft PR to main for CI; the
+   stacked PRs land in this same order whenever the owner merges.)*
+6. **2026-07-17 adversarial review applied:** findings R1-R24 and their
+   resolutions live in `2026-07-17-adversarial-plan-review.md`; the
+   R-numbers cited inline above trace to it. §1, §7, §9 and the slice
+   list were corrected in place the same day.
+7. **Known plan-level gaps intentionally left open:** F8 ESP32 rebrand
+   posture (conditional on CYDs-as-BILL-scanners); F5 videos-in-pack
+   (B pages' media story); draft-pack real-device preview mechanism
+   (B0 design, options recorded in the audit).
+
+## 12. Amendments — 2026-07-18 (frozen-production model + slice-1 ratification)
+
+Sources: the owner's 2026-07-18 development-model correction and the
+same-day whole-plan holistic review (5 parallel corpus readers + a
+coherence critic; findings folded into PHASE3-STATUS). DoD (§7) and the
+Phase 4 sub-gates remain UNCHANGED.
+
+1. **Development model (owner-corrected):** production is FROZEN until
+   the program completes — `production-2026-07` pins in all five repos
+   serve the 2026-07-18/19 game; final deployment = ONE coordinated
+   cutover through the preflight. main = integration trunk, not deployed
+   state; slice branches CHAIN from verified tips with a draft PR to
+   main per slice (CI on every push); deploy-choreography constraints
+   (the R12 skew half, the slice-2 same-pin-bump coupling, ledger L2's
+   "release cycle" trigger) collapse onto the final cutover.
+   Authoritative detail: PHASE3-STATUS "Development model".
+2. **Slice-1 design RATIFIED** (`2026-07-18-phase3-a3-slice1-modes.md`):
+   D1 `area.variant` capability-id convention (append-only) · D2
+   consuming-appraise · D3 hard refusal with the TWO-FLAVOR coherence
+   refinement (§3 slice-1 R9 text back-annotated in place). The
+   refinement adds an explicit slice-2 obligation: scored-only
+   group-contribution semantics, then DELETE the flavor-ii refusal.
+3. **Slice-2 pre-open requirement:** slice 2's scope has accreted from
+   at least four documents (rules migration + gate headroom-rejection +
+   R2 runbook/preflight §4.4 + L1/L2/L5 retirement + backend E2E oracle
+   convergence + contribution semantics + the D2 `claims`-flag
+   consideration) with no consolidated restatement and no re-price.
+   Slice 2 does NOT open without its own design doc and an honest
+   estimate (A2 precedent: 2.3-2.7× its original figure).
+4. **C1-before-slice-4 sequencing:** the R4 ordering guard requires an
+   in-repo fully-bound ALN installation profile, which presupposes a
+   ratified C1 schema — C1 (still DRAFT; legacy-preset import decision
+   pending) is now an explicit slice-4 prerequisite.

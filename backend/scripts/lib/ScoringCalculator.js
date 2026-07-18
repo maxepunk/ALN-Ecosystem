@@ -2,27 +2,49 @@
  * ScoringCalculator - Recalculate scores from transactions
  * Implements the scoring formula from SCORING_LOGIC.md
  *
- * Scoring config loaded from shared ALN-TokenData/scoring-config.json.
- * Validator compares independently calculated scores against session.scores
- * (persisted final state with baseScore, currentScore, adminAdjustments).
+ * Pack-aware since D4s2: mode behavior resolves through the SAME
+ * modeSemantics seam the engine uses (never mode-id literals — under the
+ * old `mode === 'detective'` test every unknown mode string invented
+ * money), and group math adopts the engine's §2f semantics via the pure
+ * gameRules functions: completion counts any countsTowardGroups claim;
+ * the bonus base sums only claims that are BOTH standard-scoring AND
+ * counting (gameRules/scoring.groupBonusAmount).
+ *
+ * The validator's INDEPENDENT-recomputation property is deliberately
+ * preserved where it matters: base scores are recomputed from the token
+ * CATALOG (never trusting recorded tx.points — that is exactly what
+ * lets it catch engine mispricing), while the group currencies reuse the
+ * dependency-free pure seam (re-deriving those by hand is how the old
+ * calculator drifted from §2f in the first place).
  */
 
 const { loadScoringConstants } = require('./scoringConfigLoader');
+const { resolveMode } = require('../../src/gameRules/modeSemantics');
+const gameRules = require('../../src/gameRules/scoring');
 
 class ScoringCalculator {
-  constructor(tokens) {
+  /**
+   * @param {Array} tokens - TokenLoader-transformed tokens
+   * @param {Object} [opts]
+   * @param {Object|null} [opts.gameConfig] - resolved pack game.json
+   *   (packResolver); null rides the baked legacy ALN mode table
+   * @param {string|null} [opts.packDir] - resolved pack dir for scoring
+   *   constants (defaults to the production checkout)
+   */
+  constructor(tokens, opts = {}) {
     this.tokens = tokens;
     this.tokensMap = new Map(tokens.map(t => [t.id, t]));
+    this.gameConfig = opts.gameConfig || null;
 
-    const { BASE_VALUES, TYPE_MULTIPLIERS } = loadScoringConstants();
+    const { BASE_VALUES, TYPE_MULTIPLIERS } = loadScoringConstants(opts.packDir || undefined);
     this.BASE_VALUES = BASE_VALUES;
     this.TYPE_MULTIPLIERS = TYPE_MULTIPLIERS;
   }
 
   /**
-   * Calculate expected value for a token (blackmarket mode only)
-   * @param {string} tokenId - Token ID
-   * @returns {number} Expected point value
+   * Catalog value for a token (what a standard-scoring claim pays)
+   * @param {string} tokenId
+   * @returns {number}
    */
   calculateTokenValue(tokenId) {
     const token = this.tokensMap.get(tokenId);
@@ -31,17 +53,56 @@ class ScoringCalculator {
   }
 
   /**
-   * Calculate expected points for a transaction based on mode
-   * @param {Object} transaction - Transaction with tokenId and mode
-   * @returns {number} Expected points (0 for detective, token.value for blackmarket)
+   * Expected points for a transaction — the engine rule, via the seam:
+   * a standard-scoring mode pays catalog value; every other resolved
+   * policy pays 0; an UNRESOLVED mode pays 0 (the engine's null-record
+   * reading — the old literal test paid unknown modes full value).
+   * @param {Object} transaction - {tokenId, mode}
+   * @returns {number}
    */
   calculateExpectedPoints(transaction) {
-    // Detective mode ALWAYS has 0 points - this is core business logic
-    if (transaction.mode === 'detective') {
+    const record = resolveMode(this.gameConfig, transaction.mode);
+    if (!record || record.scoringPolicy !== 'standard') {
       return 0;
     }
-    // Blackmarket mode uses token value
     return this.calculateTokenValue(transaction.tokenId);
+  }
+
+  /** Is this mode's claim scored? (seam sugar for the checks) */
+  isScoringMode(modeId) {
+    return resolveMode(this.gameConfig, modeId)?.scoringPolicy === 'standard';
+  }
+
+  /**
+   * Does the resolved pack allow negative team scores? (D2s2 —
+   * scoring.semantics.allowNegative, strict === true like the engine's
+   * _normalizeScoring; the legacy/packless reading mirrors ALN: true,
+   * because the baked shim declares it)
+   */
+  get allowNegative() {
+    const semantics = this.gameConfig && this.gameConfig.scoring && this.gameConfig.scoring.semantics;
+    if (this.gameConfig && this.gameConfig.scoring) {
+      return !!(semantics && semantics.allowNegative === true);
+    }
+    return true; // packless → baked ALN shim → allowNegative true
+  }
+
+  /** Does this mode's claim build group progress? (seam sugar) */
+  countsTowardGroups(modeId) {
+    return resolveMode(this.gameConfig, modeId)?.countsTowardGroups === true;
+  }
+
+  /**
+   * A team's banked (counting-claim) token ids — the COMPLETION currency,
+   * straight from the engine seam. The single predicate both group
+   * validators consume (re-implementing it inline is how the old
+   * `!== 'detective'` filters drifted).
+   * @param {Array} transactions
+   * @param {string} teamId
+   * @returns {Set<string>}
+   */
+  teamBankedTokenIds(transactions, teamId) {
+    return gameRules.teamBankedTokenIds(transactions, teamId, this.gameConfig);
   }
 
   /**
@@ -51,16 +112,21 @@ class ScoringCalculator {
    * @returns {number} Expected point value
    */
   calculateFromRatingAndType(rating, memoryType) {
-    const baseValue = this.BASE_VALUES[rating] || this.BASE_VALUES[1];
-    const typeKey = (memoryType || 'personal').toLowerCase();
-    const multiplier = this.TYPE_MULTIPLIERS[typeKey] || 1;
+    // Mirror the ENGINE exactly (tokenService.calculateTokenValue):
+    // missing rating → 0 base; null/unmatched type → the UNKNOWN bucket
+    // (0x). The old `|| 1` / 'personal' defaults made the validator pay
+    // tokens the engine scored 0x (review finding).
+    const baseValue = this.BASE_VALUES[rating] || 0;
+    // EXACT-CASE (D2b): verbatim pack ids; null/unmatched → UNKNOWN (0x)
+    const multiplier = this.TYPE_MULTIPLIERS[memoryType] ?? this.TYPE_MULTIPLIERS.UNKNOWN;
     return Math.floor(baseValue * multiplier);
   }
 
   /**
-   * Calculate total score for a team from transactions
-   * CRITICAL: Only blackmarket mode transactions contribute to score
-   * Detective mode transactions have 0 points by design
+   * Calculate total score for a team from transactions.
+   * Base = catalog value of every SCORED claim (scoringPolicy 'standard').
+   * Completion currency = every COUNTING claim (countsTowardGroups).
+   * Bonus base = engine §2f (scored ∧ counting only, via gameRules).
    * @param {Array} transactions - All session transactions
    * @param {string} teamId - Team to calculate for
    * @returns {Object} Score breakdown
@@ -74,48 +140,38 @@ class ScoringCalculator {
     let baseScore = 0;
     let bonusScore = 0;
     const tokenScores = [];
-    const scannedTokenIds = new Set();
-    let detectiveCount = 0;
-    let blackmarketCount = 0;
+    let scoredCount = 0;
+    let unscoredCount = 0;
+    const modeCounts = {};
 
-    // Calculate base scores from transactions
     for (const tx of teamTxs) {
-      // Detective mode ALWAYS 0 points - this is by design
-      const isDetective = tx.mode === 'detective';
-      if (isDetective) {
-        detectiveCount++;
-        tokenScores.push({
-          tokenId: tx.tokenId,
-          expected: 0,
-          actual: tx.points || 0,
-          match: (tx.points || 0) === 0,
-          mode: 'detective'
-        });
-        // Detective tokens don't count toward group completion bonuses
-        continue;
-      }
-
-      blackmarketCount++;
-      const expectedValue = this.calculateTokenValue(tx.tokenId);
+      const scored = this.isScoringMode(tx.mode);
+      const expectedValue = scored ? this.calculateTokenValue(tx.tokenId) : 0;
       const actualValue = tx.points || 0;
 
-      baseScore += expectedValue;
-      scannedTokenIds.add(tx.tokenId);
+      modeCounts[tx.mode || '(none)'] = (modeCounts[tx.mode || '(none)'] || 0) + 1;
+      if (scored) {
+        scoredCount++;
+        baseScore += expectedValue;
+      } else {
+        unscoredCount++;
+      }
 
       tokenScores.push({
         tokenId: tx.tokenId,
         expected: expectedValue,
         actual: actualValue,
         match: expectedValue === actualValue,
-        mode: tx.mode || 'blackmarket'
+        mode: tx.mode || '(none)'
       });
     }
 
-    // Calculate group bonuses
-    const completedGroups = this.findCompletedGroups(scannedTokenIds);
+    // Group currencies via the engine's pure seam (§2f):
+    // banked (completion) = accepted ∧ countsTowardGroups
+    const bankedTokenIds = gameRules.teamBankedTokenIds(transactions, teamId, this.gameConfig);
+    const completedGroups = this.findCompletedGroups(bankedTokenIds, { transactions, teamId });
     for (const group of completedGroups) {
-      const bonus = this.calculateGroupBonus(group);
-      bonusScore += bonus.amount;
+      bonusScore += group.bonus.amount;
     }
 
     return {
@@ -124,23 +180,26 @@ class ScoringCalculator {
       bonusScore,
       totalScore: baseScore + bonusScore,
       tokenCount: teamTxs.length,
-      blackmarketCount,
-      detectiveCount,
+      scoredCount,
+      unscoredCount,
+      modeCounts,
       tokenScores,
       completedGroups,
-      scannedTokenIds: Array.from(scannedTokenIds)
+      scannedTokenIds: Array.from(bankedTokenIds)
     };
   }
 
   /**
-   * Find all completed groups from scanned tokens
-   * @param {Set} scannedTokenIds - Set of scanned token IDs
+   * Find all completed groups from a team's banked (counting) claims.
+   * When transactions+teamId are supplied, each completed group carries
+   * its §2f bonus (scored-claims-only base via gameRules.groupBonusAmount).
+   * @param {Set} bankedTokenIds - counting-claim token IDs
+   * @param {Object} [context] - {transactions, teamId} for bonus math
    * @returns {Array} Completed group info
    */
-  findCompletedGroups(scannedTokenIds) {
+  findCompletedGroups(bankedTokenIds, context = null) {
     const groups = new Map();
 
-    // Group tokens by groupId
     for (const token of this.tokens) {
       if (!token.groupId) continue;
 
@@ -156,19 +215,20 @@ class ScoringCalculator {
       const group = groups.get(token.groupId);
       group.tokens.push(token);
 
-      if (scannedTokenIds.has(token.id)) {
+      if (bankedTokenIds.has(token.id)) {
         group.scanned.push(token);
       }
     }
 
-    // Find completed groups (all tokens scanned)
     const completed = [];
     for (const group of groups.values()) {
       // Groups need 2+ tokens to be completable
       if (group.tokens.length < 2) continue;
 
-      // Check if all tokens scanned
       if (group.scanned.length === group.tokens.length) {
+        group.bonus = context
+          ? this.calculateGroupBonus(group, context)
+          : { amount: 0, formula: 'no bonus context supplied' };
         completed.push(group);
       }
     }
@@ -177,26 +237,34 @@ class ScoringCalculator {
   }
 
   /**
-   * Calculate bonus for a completed group
+   * §2f bonus for a completed group: (multiplier − 1) × Σ catalog value
+   * of the members this team claimed in a SCORED ∧ COUNTING mode — the
+   * engine's groupBonusAmount, reused verbatim (a none-mode counting
+   * claim contributes presence + $0; the old all-members base over-paid
+   * any pack with event-only contributions).
    * @param {Object} group - Group with tokens
+   * @param {Object} context - {transactions, teamId}
    * @returns {Object} Bonus calculation
    */
-  calculateGroupBonus(group) {
+  calculateGroupBonus(group, context) {
     if (group.multiplier <= 1) {
       return { amount: 0, formula: 'No bonus (multiplier <= 1)' };
     }
 
-    // Total base value of all tokens in group
-    const totalBaseValue = group.tokens.reduce((sum, t) => sum + t.value, 0);
-
-    // Bonus formula: (multiplier - 1) × totalBaseValue
-    const bonus = (group.multiplier - 1) * totalBaseValue;
+    const amount = gameRules.groupBonusAmount({
+      tokens: this.tokensMap,
+      groupId: group.id,
+      transactions: context.transactions,
+      teamId: context.teamId,
+      gameConfig: this.gameConfig,
+    });
+    const scoredBase = amount / (group.multiplier - 1);
 
     return {
-      amount: bonus,
+      amount,
       multiplier: group.multiplier,
-      totalBaseValue,
-      formula: `(${group.multiplier} - 1) × $${totalBaseValue.toLocaleString()} = $${bonus.toLocaleString()}`
+      totalBaseValue: scoredBase,
+      formula: `(${group.multiplier} - 1) × $${scoredBase.toLocaleString()} = $${amount.toLocaleString()} (scored claims only, §2f)`
     };
   }
 

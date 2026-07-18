@@ -64,8 +64,8 @@ function findGroupTokens(tokens, minCount = 2) {
   // Group tokens by SF_Group field (without multiplier)
   Object.values(tokens).forEach(token => {
     if (token.SF_Group && token.SF_Group.trim() !== '') {
-      // Extract group name without multiplier (e.g., "Server Logs (x5)" -> "Server Logs")
-      const groupName = token.SF_Group.replace(/\s*\(x\d+\)/i, '').trim();
+      // v2: SF_Group IS the pure group name (suffix parsers retired)
+      const groupName = token.SF_Group.trim();
 
       if (!grouped[groupName]) {
         grouped[groupName] = [];

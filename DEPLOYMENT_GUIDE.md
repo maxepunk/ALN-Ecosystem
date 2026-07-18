@@ -1233,3 +1233,62 @@ This deployment provides:
 - **Simplicity**: Single `pm2 start` command for production
 - **Flexibility**: Works on any local network without router config
 - **Scalability**: From Raspberry Pi to cloud deployment
+## Backups & pack rollback (2026-07-17, adversarial review R2/R20)
+
+- **Off-device data backup:** after every event, copy the orchestrator's
+  persisted state off the Pi's SD card (it holds sessions, backups, AND
+  archives on the same disk): `rsync -a backend/data/ <other-medium>/aln-data-$(date +%F)/`
+
+### Game Pack Rollback (runbook — A3 slice 2)
+
+The active pack (`ALN-TokenData/`: `game.json` rules, `tokens.json`,
+manifest) is frozen at orchestrator boot by `packService.activatePack()`.
+Rules, mode tables, scoring, and token values all derive from that
+snapshot — which makes rollback a plain git-checkout-and-restart, always.
+
+**When to roll back:**
+- The server REFUSES to boot after a pack publish (gate refusal: the log
+  names the pack, the mode/flag, and why it isn't driveable — this is the
+  gate working, not a crash)
+- Scoring values are visibly wrong after a publish
+- Scanners fail pack refresh (per-file sha1 verify) — usually a pack file
+  edited without regenerating the manifest
+
+**Steps:**
+
+1. **Identify the last-good pack commit.** Session records stamp the pack
+   identity at creation; a running/last server reports it at `/health`
+   (`pack.packId`/`pack.contentHash`). Otherwise: `git -C ALN-TokenData log --oneline -10`.
+2. **Revert the checkout:**
+   ```bash
+   git -C ALN-TokenData checkout <last-good-sha>
+   ```
+3. **Verify the manifest is fresh at that commit** (should always be true
+   for a previously-deployed commit):
+   ```bash
+   node backend/scripts/build-pack-manifest.js ALN-TokenData && git -C ALN-TokenData diff --quiet pack-manifest.json && echo OK
+   ```
+4. **Restart the orchestrator:** `npm run prod:restart` (from `backend/`).
+5. **Verify before doors:** `/health` shows the expected
+   `pack.contentHash`; a GM scanner's settings header shows the same hash
+   after its next load; preflight §4.4/§13.3 pass.
+
+**Alternative — PACK_PATH pin:** start the orchestrator with
+`PACK_PATH=<known-good-pack-dir>` to point the ENTIRE engine (rules,
+tokens, pack channel) at a separate known-good directory without touching
+the submodule checkout. Legal precisely because rules freeze at boot —
+there is no half-old/half-new state. Remove the override once the
+checkout is fixed; a stale PACK_PATH in the environment is the first
+thing preflight §13.3 catches.
+
+**Mid-session honesty:** sessions survive restarts (restored from disk),
+but token values re-bake from the NOW-ACTIVE pack at boot. Scores already
+banked persist as recorded; scans AFTER the rollback score under the
+rolled-back tables. Rolling back mid-session is therefore safe but not
+retroactive — prefer ending the session first if score continuity matters.
+
+**Scanner side:** networked GM scanners fetch the pack from the
+orchestrator's channel on next load (staged atomic refresh — a failed
+verify discards the staged pack and keeps the last-activated one, so a
+bad publish cannot brick a scanner). Standalone scanners refresh on their
+next online page load.

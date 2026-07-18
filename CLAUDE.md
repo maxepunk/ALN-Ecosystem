@@ -103,22 +103,22 @@ BASE_VALUES: {1: $10000, 2: $25000, 3: $50000, 4: $75000, 5: $150000}
 TYPE_MULTIPLIERS: {Personal: 1x, Mention: 3x, Business: 3x, Party: 5x, Technical: 5x, UNKNOWN: 0x}
 ```
 
-**Shared Scoring Config:**
+**Shared Scoring Source (Phase 3 A2/A3 — pack rules):**
 
-Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loaded by both backend and GM Scanner at runtime. No manual sync needed for base values.
-
-**CRITICAL**: The GM Scanner bakes scoring-config.json in at Vite BUILD time (`scoring.js` static import) — after editing scoring values, the backend picks them up on restart, but the GM Scanner requires an ALNScanner rebuild (`npm run build`) or standalone-mode scoring will use stale values (F-TOOL-05).
+Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block) — the SOLE shared source since A3 slice 2 retired the legacy `scoring-config.json` (debt ledger L1, closed 2026-07-18). The backend reads the ACTIVE pack via `packService.getScoringRules()` (frozen at boot by `activatePack()`); the GM Scanner loads the same block at RUNTIME via its packLoader (`src/core/packLoader.js`, network → SW-cache → bundled) — a pack publish changes scoring with NO rebuild. Both sides keep a baked legacy ALN table as a loud-warning last-resort shim for packs without a usable scoring block (ledger L2/L6 family; drift-tripwired against the real game.json).
 
 | Component | File | Notes |
 |-----------|------|-------|
-| Shared Config | `ALN-TokenData/scoring-config.json` | Single source of truth for values |
+| Pack Rules (authoritative) | `ALN-TokenData/game.json` (`scoring` block) | Sole shared source; read by backend + GM Scanner + validators + config-tool economy editor |
 | Token Schema | `ALN-TokenData/tokens.schema.json` | tokens.json format (enforced by backend contract test) |
-| Backend Config | `backend/src/config/index.js` (valueRating map) | Loads shared config (no env override; hardcoded fallback only if the file is missing) |
+| Backend Rules Read | `backend/src/services/packService.js` (`getScoringRules()`) | Normalized active-pack snapshot (numeric ratings, lowercased types, `unknown` present); loud baked shim when packless |
 | Backend Rules | `backend/src/gameRules/scoring.js` (pure functions) | Server-side scoring + group completion (transactionService adapts); GM duplicate rules in `gameRules/duplicatePolicy.js` |
-| GM Scanner Config | `ALNScanner/src/core/scoring.js` (SCORING_CONFIG export) | Loads shared config via Vite import |
+| GM Scanner Loader | `ALNScanner/src/core/packLoader.js` + `scoring.js` (`applyPackScoring`) | Runtime pack scoring; vendored baked shim warns LOUDLY when active |
 | GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` (`_checkGroupCompletion`) | Client-side group completion |
 
-**CRITICAL**: Values are shared, but group completion detection logic is independently implemented between backend (`gameRules/scoring.js`, used by BOTH the live scan path and the post-deletion rebuild) and GM Scanner standalone mode. When updating group logic, verify both — the backend's `gameRules/` modules are the parity surface the scanner implementation must match (decision A1: blackmarket-only).
+**Pack channel & staleness (A2):** backend serves the ACTIVE pack via `GET /api/pack/manifest` + `GET /api/pack/files/*` (whitelist-only, frozen at boot via `packService.activatePack()`; `PACK_PATH` env injects an alternate pack directory for the harness). Every consumer reports its loaded pack identity: backend in `/health` + `sync:full` + the session's creation stamp; GM Scanner in the settings pack line and the WS handshake `packHash`; PWA on its config page; ESP32 in the boot log + serial `CONFIG` (identity rides the asset manifest). After editing any pack file, run `node backend/scripts/build-pack-manifest.js <packDir>` (the Notion sync pipeline does this automatically).
+
+**CRITICAL**: Values are shared, but group completion detection logic is independently implemented between backend (`gameRules/scoring.js`, used by BOTH the live scan path and the post-deletion rebuild) and GM Scanner standalone mode. When updating group logic, verify both — the backend's `gameRules/` modules are the parity surface the scanner implementation must match (decision A1 as generalized by slices 1-2: completion counts any `countsTowardGroups` claim; the bonus base sums only SCORED contributions).
 
 ## Token Data Schema (Cross-Cutting)
 
@@ -133,7 +133,7 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
     "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party" | null,
-    "SF_Group": "Group Name (xN)" | "",
+    "SF_Group": "Group Name" | "",
     "summary": "Optional summary text",
     "owner": "CHARACTER_NAME" | null
   }
@@ -143,6 +143,7 @@ Scoring values are defined once in `ALN-TokenData/scoring-config.json` and loade
 **Field Notes:**
 - `owner`: Character who owns this memory, resolved from Notion Elements→Characters Owner relation during sync (role prefix stripped)
 - `SF_MemoryType`: `null` occurs in production data (3 tokens currently); scoring treats null/unknown types as UNKNOWN → 0x multiplier (tokens.schema.json allows null)
+- `SF_Group` (tokens v2, A3 slice 2b): the PURE group name — a `"(xN)"` suffix is schema-ILLEGAL. Multipliers are declared in `game.json` `groups` (sole source); the activation gate refuses packs whose tokens name undeclared groups. The `(xN)` shorthand survives only as the Notion AUTHORING format, parsed exclusively by `sync_notion_to_tokens.py` (derives the groups block, emits pure names)
 
 **Data Flow:**
 ```
@@ -158,7 +159,7 @@ Notion Elements DB → sync_notion_to_tokens.py → ALN-TokenData/tokens.json
 - `SF_RFID`: Token identifier (matches filename)
 - `SF_ValueRating`: 1-5 star rating
 - `SF_MemoryType`: Personal, Business, Technical, Mention, or Party
-- `SF_Group`: Group name with multiplier, e.g., "Server Logs (x5)"
+- `SF_Group`: Pure group name (v2), e.g., "Server Logs" — the Notion description still authors `Group Name (xN)`; the sync strips the suffix into `game.json` `groups`
 
 ## deviceType Duplicate Detection (Cross-Cutting)
 
@@ -166,7 +167,7 @@ All scan requests MUST include `deviceType` field:
 
 | Scanner | deviceType | Duplicate Logic |
 |---------|------------|-----------------|
-| GM Scanner | `gm` | **Rejected globally** (each token processed once per session) |
+| GM Scanner | `gm` | **Rejected globally** for CONSUMING modes (each token claimed once per session; a mode declaring `claims: 'non-consuming'` — A3 slice 2 D3s2 — is repeatable and never blocks/registers) |
 | Player Scanner (Web) | `player` | **Allowed** (players can re-view same memory) |
 | ESP32 Scanner | `esp32` | **Allowed** (players can re-view same memory) |
 

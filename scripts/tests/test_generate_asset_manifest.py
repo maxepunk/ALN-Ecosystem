@@ -69,3 +69,53 @@ class TestWriteManifest:
         assert not (root / "manifest.json.tmp").exists()
         data = json.loads(out.read_text())
         assert "tok001" in data["images"]
+
+
+# ── Phase 3 A2: pack identity embedded in the asset manifest ──────────────────
+# The ESP32 gets its pack identity from a manifest field instead of a second
+# sync loop; old firmware ignores the extra field (backward compatible).
+
+class TestPackIdentity:
+    def _pack_dir(self, tmp_path, manifest=None):
+        pack_dir = tmp_path / "pack"
+        pack_dir.mkdir()
+        if manifest is not None:
+            (pack_dir / "pack-manifest.json").write_text(json.dumps(manifest))
+        return pack_dir
+
+    def _assets(self, tmp_path):
+        assets = tmp_path / "assets"
+        (assets / "images").mkdir(parents=True)
+        (assets / "audio").mkdir(parents=True)
+        return assets
+
+    def test_embeds_pack_identity_when_pack_dir_given(self, tmp_path):
+        pack = {
+            "packId": "about-last-night",
+            "version": "1.0.0",
+            "contentHash": "sha256:" + "a" * 64,
+            "files": [],  # extra fields ignored by the identity extraction
+        }
+        manifest = gam.build_manifest(
+            self._assets(tmp_path), pack_dir=self._pack_dir(tmp_path, pack)
+        )
+        assert manifest["pack"] == {
+            "packId": "about-last-night",
+            "version": "1.0.0",
+            "contentHash": "sha256:" + "a" * 64,
+        }
+
+    def test_omits_pack_field_without_pack_dir_or_manifest(self, tmp_path):
+        assets = self._assets(tmp_path)
+        assert "pack" not in gam.build_manifest(assets)
+        assert "pack" not in gam.build_manifest(
+            assets, pack_dir=self._pack_dir(tmp_path)  # dir exists, no manifest
+        )
+
+    def test_unreadable_pack_manifest_is_tolerated(self, tmp_path):
+        pack_dir = self._pack_dir(tmp_path)
+        (pack_dir / "pack-manifest.json").write_text("{nope")
+        manifest = gam.build_manifest(
+            self._assets(tmp_path), pack_dir=pack_dir
+        )
+        assert "pack" not in manifest

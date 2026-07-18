@@ -23,43 +23,14 @@ jest.mock('../../../src/utils/logger');
 const logger = require('../../../src/utils/logger');
 
 describe('TokenService - Utility Functions', () => {
-  describe('parseGroupMultiplier', () => {
-    it('should parse multiplier from group string', () => {
-      expect(tokenService.parseGroupMultiplier('Marcus Sucks (x2)')).toBe(2);
-      expect(tokenService.parseGroupMultiplier('Alpha Group (x3)')).toBe(3);
-      expect(tokenService.parseGroupMultiplier('Beta (x5)')).toBe(5);
-    });
-
-    it('should handle case-insensitive multiplier', () => {
-      expect(tokenService.parseGroupMultiplier('Test (X2)')).toBe(2);
-      expect(tokenService.parseGroupMultiplier('Test (x2)')).toBe(2);
-    });
-
-    it('should return 1 when no multiplier present', () => {
-      expect(tokenService.parseGroupMultiplier('No Multiplier Group')).toBe(1);
-      expect(tokenService.parseGroupMultiplier('Simple Name')).toBe(1);
-    });
-
-    it('should return 1 for null or empty group', () => {
-      expect(tokenService.parseGroupMultiplier(null)).toBe(1);
-      expect(tokenService.parseGroupMultiplier('')).toBe(1);
-      expect(tokenService.parseGroupMultiplier(undefined)).toBe(1);
-    });
-
-    it('should handle malformed multiplier syntax', () => {
-      expect(tokenService.parseGroupMultiplier('Group (x)')).toBe(1);
-      expect(tokenService.parseGroupMultiplier('Group (xabc)')).toBe(1);
-      expect(tokenService.parseGroupMultiplier('Group x2')).toBe(1); // No parentheses
-    });
+  // The "(xN)" parser (parseGroupMultiplier) DIED at the tokens-v2
+  // cutover (A3 slice 2b, D3b): the sync is the sole microformat parser;
+  // runtime multipliers come from the pack's `groups` block only.
+  it('the retired suffix parser is NOT exported (v2 cutover pin)', () => {
+    expect(tokenService.parseGroupMultiplier).toBeUndefined();
   });
 
-  describe('extractGroupName', () => {
-    it('should extract group name without multiplier', () => {
-      expect(tokenService.extractGroupName('Marcus Sucks (x2)')).toBe('Marcus Sucks');
-      expect(tokenService.extractGroupName('Alpha Group (x3)')).toBe('Alpha Group');
-      expect(tokenService.extractGroupName('Beta (x5)')).toBe('Beta');
-    });
-
+  describe('extractGroupName (v2: pure name passthrough)', () => {
     it('should handle group without multiplier', () => {
       expect(tokenService.extractGroupName('Simple Group')).toBe('Simple Group');
       expect(tokenService.extractGroupName('No Multiplier')).toBe('No Multiplier');
@@ -71,19 +42,15 @@ describe('TokenService - Utility Functions', () => {
       expect(tokenService.extractGroupName(undefined)).toBe(null);
     });
 
-    it('should trim whitespace after removing multiplier', () => {
-      expect(tokenService.extractGroupName('Group   (x2)')).toBe('Group');
-      expect(tokenService.extractGroupName('  Spaced  (x3)  ')).toBe('Spaced');
-    });
-
-    it('should return null if only multiplier remains after extraction', () => {
-      expect(tokenService.extractGroupName('(x2)')).toBe(null);
+    it('trims whitespace (v2 pure names — a suffixed SF_Group is schema-illegal)', () => {
+      expect(tokenService.extractGroupName('  Spaced Name  ')).toBe('Spaced Name');
+      expect(tokenService.extractGroupName('   ')).toBe(null);
     });
   });
 
   describe('calculateTokenValue', () => {
-    // These tests depend on config.game.valueRatingMap and typeMultipliers
-    // Values loaded dynamically from ALN-TokenData/scoring-config.json
+    // Values come from the ACTIVE pack's game.json scoring block via
+    // packService.getScoringRules() (A3 slice 2, ledger L1 retirement)
 
     it('should calculate value with rating 1 and Personal type', () => {
       // Base: 10000, Multiplier: 1.0 = 10000
@@ -103,13 +70,16 @@ describe('TokenService - Utility Functions', () => {
       expect(value).toBe(450000);
     });
 
-    it('should handle case-insensitive memory types', () => {
-      // Config uses lowercase keys
-      const value1 = tokenService.calculateTokenValue(2, 'TECHNICAL');
-      const value2 = tokenService.calculateTokenValue(2, 'technical');
-      const value3 = tokenService.calculateTokenValue(2, 'Technical');
-      expect(value1).toBe(value2);
-      expect(value2).toBe(value3);
+    it('matches memory types EXACT-CASE — mismatches score the UNKNOWN bucket (D2b canon)', () => {
+      // Types are pack-declared ids matched verbatim (scanner parity —
+      // its lookup was always exact-case). The activation gate refuses
+      // case-mismatched TOKENS at boot, so runtime mismatches only occur
+      // for wire-supplied strings — which score UNKNOWN (0×), never a
+      // silently-wrong table hit.
+      expect(tokenService.calculateTokenValue(2, 'Technical')).toBe(125000);
+      expect(tokenService.calculateTokenValue(2, 'TECHNICAL')).toBe(0);
+      expect(tokenService.calculateTokenValue(2, 'technical')).toBe(0);
+      expect(tokenService.calculateTokenValue(2, null)).toBe(0);
     });
 
     it('should default to $0 for invalid rating', () => {
@@ -156,7 +126,7 @@ describe('TokenService - Token Loading', () => {
       SF_RFID: 'token001',
       SF_ValueRating: 3,
       SF_MemoryType: 'Technical',
-      SF_Group: 'Alpha Group (x2)',
+      SF_Group: 'Alpha Group',
       image: '/assets/images/token001.jpg',
       audio: null,
       video: '/videos/token001.mp4',
@@ -167,7 +137,7 @@ describe('TokenService - Token Loading', () => {
       SF_RFID: 'token002',
       SF_ValueRating: 5,
       SF_MemoryType: 'Business',
-      SF_Group: 'Beta (x3)',
+      SF_Group: 'Beta',
       image: null,
       audio: '/assets/audio/token002.mp3',
       video: null,
@@ -286,35 +256,33 @@ describe('TokenService - Token Loading', () => {
     });
   });
 
-  describe('TOKENS_PATH injection seam (Phase 2.x.4)', () => {
+  describe('PACK_PATH injection seam (Phase 2.x.4, generalized in 3 A2)', () => {
     afterEach(() => {
-      delete process.env.TOKENS_PATH;
+      delete process.env.PACK_PATH;
     });
 
-    it('should try TOKENS_PATH first when set, winning over submodule defaults', () => {
-      process.env.TOKENS_PATH = '/packs/fixture-pack.tokens.json';
+    it('loads <PACK_PATH>/tokens.json first when set, winning over submodule defaults', () => {
+      process.env.PACK_PATH = '/packs/fixture-pack';
       fs.readFileSync.mockReturnValue(JSON.stringify(mockTokensObject));
 
       const rawTokens = tokenService.loadRawTokens();
 
       expect(rawTokens).toEqual(mockTokensObject);
       expect(fs.readFileSync).toHaveBeenCalledTimes(1);
-      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/fixture-pack.tokens.json');
+      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/fixture-pack/tokens.json');
     });
 
-    it('should fall back to submodule paths when the injected path is unreadable', () => {
-      process.env.TOKENS_PATH = '/packs/missing.tokens.json';
-      fs.readFileSync
-        .mockImplementationOnce(() => {
-          throw new Error('ENOENT: no such file or directory');
-        })
-        .mockReturnValueOnce(JSON.stringify(mockTokensObject));
+    it('fails LOUD with no fallback when the injected pack has no readable tokens.json', () => {
+      // An override that silently fell back would run the system
+      // split-brained: the harness thinks it injected a pack the server
+      // never loaded. Refusing to boot is the only honest behavior.
+      process.env.PACK_PATH = '/packs/missing';
+      fs.readFileSync.mockImplementation(() => {
+        throw new Error('ENOENT: no such file or directory');
+      });
 
-      const rawTokens = tokenService.loadRawTokens();
-
-      expect(rawTokens).toEqual(mockTokensObject);
-      expect(fs.readFileSync.mock.calls[0][0]).toBe('/packs/missing.tokens.json');
-      expect(fs.readFileSync.mock.calls[1][0]).not.toBe('/packs/missing.tokens.json');
+      expect(() => tokenService.loadRawTokens()).toThrow(/PACK_PATH override active/);
+      expect(fs.readFileSync).toHaveBeenCalledTimes(1); // submodule fallbacks never touched
     });
   });
 
@@ -335,13 +303,16 @@ describe('TokenService - Token Loading', () => {
       const tokens = tokenService.loadTokens();
       const token001 = tokens.find(t => t.id === 'token001');
 
-      // Check transformed structure
+      // Check transformed structure (v2: SF_Group is the pure name; the
+      // multiplier comes ONLY from the active pack's `groups` block — this
+      // suite never activates a pack, so the undeclared/packless reading
+      // is 1. The pack-derive path is pinned in claimsPolicy.test.js D1b.)
       expect(token001).toMatchObject({
         id: 'token001',
-        name: 'Alpha Group (x2)', // Uses SF_Group as name
+        name: 'Alpha Group', // Uses SF_Group as name
         memoryType: 'Technical',
-        groupId: 'Alpha Group', // Extracted without multiplier
-        groupMultiplier: 2
+        groupId: 'Alpha Group',
+        groupMultiplier: 1
       });
     });
 
@@ -372,7 +343,7 @@ describe('TokenService - Token Loading', () => {
 
       expect(token001.metadata).toEqual({
         rfid: 'token001',
-        group: 'Alpha Group (x2)',
+        group: 'Alpha Group', // v2: SF_Group is the pure name, verbatim in metadata
         originalType: 'Technical',
         rating: 3,
         summary: null,

@@ -35,6 +35,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # Local helper used to emit the ESP32-consumable asset manifest.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_asset_manifest  # noqa: E402
+import build_pack_manifest  # noqa: E402
 
 # Load environment variables from .env file if present
 try:
@@ -78,9 +79,11 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# Shared scoring config — source of truth for valid SF_MemoryType values.
-SCORING_CONFIG_PATH = ECOSYSTEM_ROOT / "ALN-TokenData/scoring-config.json"
-# Fallback when scoring-config.json is unavailable (matches docs/SCORING_LOGIC.md).
+# Pack rules file — its `scoring.typeMultipliers` block is the source of
+# truth for valid SF_MemoryType values (A3 slice 2: scoring-config.json
+# retired with ledger L1; game.json is the sole shared scoring source).
+GAME_JSON_PATH = ECOSYSTEM_ROOT / "ALN-TokenData/game.json"
+# Fallback when game.json is unavailable (matches docs/SCORING_LOGIC.md).
 DEFAULT_VALID_MEMORY_TYPES = frozenset({"Personal", "Business", "Technical", "Mention", "Party"})
 
 # Notion request hardening (F-TOOL-20)
@@ -733,22 +736,22 @@ def process_token(page, character_map, dry_run=False):
     return rfid, token_entry
 
 def load_valid_memory_types(path=None):
-    """Load valid SF_MemoryType values from scoring-config.json typeMultipliers.
+    """Load valid SF_MemoryType values from game.json's scoring.typeMultipliers.
 
     UNKNOWN is excluded — it's the backend's bucket for invalid types, never
     a legitimate authored value. Falls back to the documented defaults when
-    the config is missing/unreadable.
+    the pack rules file is missing/unreadable.
     """
-    path = path or SCORING_CONFIG_PATH
+    path = path or GAME_JSON_PATH
     try:
         with open(path) as f:
             cfg = json.load(f)
-        types = set(cfg.get("typeMultipliers", {}).keys()) - {"UNKNOWN"}
+        types = set(cfg.get("scoring", {}).get("typeMultipliers", {}).keys()) - {"UNKNOWN"}
         if types:
             return types
-        print(f"⚠️  {path} has no typeMultipliers — falling back to defaults")
+        print(f"⚠️  {path} has no scoring.typeMultipliers — falling back to defaults")
     except (OSError, ValueError) as e:
-        print(f"⚠️  Could not load scoring config ({e}) — falling back to default memory types")
+        print(f"⚠️  Could not load game.json scoring ({e}) — falling back to default memory types")
     return set(DEFAULT_VALID_MEMORY_TYPES)
 
 
@@ -765,7 +768,7 @@ def validate_tokens(tokens, valid_memory_types):
             warnings.append(f"{rfid}: SF_MemoryType missing — token will score 0x (UNKNOWN)")
         elif mem_type not in valid_memory_types:
             warnings.append(
-                f"{rfid}: SF_MemoryType '{mem_type}' not in scoring-config typeMultipliers "
+                f"{rfid}: SF_MemoryType '{mem_type}' not in game.json scoring.typeMultipliers "
                 f"({', '.join(sorted(valid_memory_types))}) — token will score 0x"
             )
         rating = token.get("SF_ValueRating")
@@ -864,6 +867,82 @@ def write_tokens_json(path, tokens):
         except OSError:
             pass
         raise
+
+
+GROUP_SUFFIX_RE = re.compile(r'^(.*?)\s*\(x(\d+)\)$')
+
+
+def derive_groups(tokens):
+    """D1b/D3b (A3 slice 2b): the SYNC is the sole parser of the '(xN)'
+    microformat — it derives the pack's `groups` block at authoring time.
+    Two elements declaring the same group with different multipliers is a
+    HARD ERROR here (it used to be a silent runtime split across four
+    independent regex parsers)."""
+    groups = {}
+    first_seen = {}
+    conflicts = []
+    for rfid, t in tokens.items():
+        raw = (t.get('SF_Group') or '').strip()
+        if not raw:
+            continue
+        m = GROUP_SUFFIX_RE.match(raw)
+        name, mult = (m.group(1).strip(), int(m.group(2))) if m else (raw, 1)
+        if name in groups and groups[name]['multiplier'] != mult:
+            conflicts.append(
+                f"'{name}': x{groups[name]['multiplier']} ({first_seen[name]}) vs x{mult} ({rfid})")
+        else:
+            groups[name] = {'multiplier': mult}
+            first_seen.setdefault(name, rfid)
+    if conflicts:
+        raise SystemExit(
+            "GROUP MULTIPLIER CONFLICT (sync-time hard error, D3b) — fix in Notion: "
+            + "; ".join(conflicts))
+    return groups
+
+
+def strip_group_suffixes(tokens):
+    """v2 emission (the cutover half of D3b): rewrite each SF_Group to the
+    pure group name in place — the "(xN)" shorthand is an AUTHORING format
+    that must never reach tokens.json (tokens.schema.json v2 makes it
+    illegal; runtime multipliers come from game.json `groups` only).
+    Call AFTER derive_groups (which parses the raw strings). Returns the
+    number of values rewritten."""
+    changed = 0
+    for t in tokens.values():
+        raw = (t.get('SF_Group') or '').strip()
+        if not raw:
+            continue
+        m = GROUP_SUFFIX_RE.match(raw)
+        pure = m.group(1).strip() if m else raw
+        if pure != t.get('SF_Group'):
+            t['SF_Group'] = pure
+            changed += 1
+    return changed
+
+
+def write_groups_block(game_path, groups):
+    """Merge the derived groups block into game.json (atomic, F-TOOL-10).
+    Returns True when the file changed."""
+    game_path = Path(game_path)
+    game = json.loads(game_path.read_text())
+    if game.get('groups') == groups:
+        return False
+    game['groups'] = groups
+    tmp = game_path.with_name(game_path.name + '.tmp')
+    try:
+        with tmp.open('w') as f:
+            json.dump(game, f, indent=2)
+            f.write('\n')
+            f.flush()
+            os.fsync(f.fileno())
+        tmp.replace(game_path)
+    except Exception:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    return True
 
 
 def parse_args(argv=None):
@@ -980,6 +1059,15 @@ def main(argv=None):
     # Sort tokens by RFID for cleaner output
     sorted_tokens = dict(sorted(tokens.items()))
 
+    # D3b parse-once discipline: derive the groups block from the RAW
+    # authored "(xN)" shorthand, THEN flip the emission to v2 pure names —
+    # everything downstream (validation, dry-run, write) sees the exact
+    # shape that lands in tokens.json (a suffixed SF_Group is v2-illegal).
+    derived_groups = derive_groups(sorted_tokens)
+    stripped = strip_group_suffixes(sorted_tokens)
+    if stripped:
+        print(f"Emitted {stripped} SF_Group value(s) as pure names (v2 — multiplier lives in game.json groups)")
+
     # ── Validation summary (pre-write): semantic checks + RFID<->file alignment ──
     validation_warnings = []
     validation_warnings.extend(duplicate_warnings)
@@ -1026,6 +1114,8 @@ def main(argv=None):
     # Write to tokens.json (atomic: tmp + fsync + replace)
     print(f"Writing to {TOKENS_JSON}...")
     write_tokens_json(TOKENS_JSON, sorted_tokens)
+    if write_groups_block(GAME_JSON_PATH, derived_groups):
+        print(f"Updated game.json groups block ({len(derived_groups)} group(s))")
 
     # Prune orphan BMPs/audio for tokens no longer in Notion. Runs ONLY after
     # a verifiably complete fetch reached this point. DEFAULT is dry-run
@@ -1059,10 +1149,26 @@ def main(argv=None):
         else:
             print("No orphans found.")
 
-    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot.
+    # Phase 3 A2: regenerate the PACK manifest FIRST. tokens.json just
+    # changed, so its sha1 in the pack inventory is stale — and standalone
+    # clients verify every staged download against the manifest, correctly
+    # REJECTING a mismatched update. Skipping this step silently stops the
+    # standalone pack update channel (2026-07-17 plan review, finding A2).
+    # Ordering: before the asset manifest, which EMBEDS this pack identity
+    # for the ESP32 boot log.
+    print()
+    print("Rebuilding pack manifest...")
+    pack_manifest, pack_manifest_path = build_pack_manifest.write_manifest(TOKENS_JSON.parent)
+    print(
+        f"Wrote {pack_manifest_path.relative_to(ECOSYSTEM_ROOT)} "
+        f"({len(pack_manifest['files'])} files, {pack_manifest['contentHash'][:23]}…)"
+    )
+
+    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot
+    # (carries the pack identity from the freshly-rebuilt pack manifest).
     print()
     print("Writing asset manifest...")
-    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT)
+    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT, pack_dir=TOKENS_JSON.parent)
     manifest_path = generate_asset_manifest.write_manifest(ASSETS_ROOT, manifest)
     print(
         f"Wrote {manifest_path.relative_to(ECOSYSTEM_ROOT)} "

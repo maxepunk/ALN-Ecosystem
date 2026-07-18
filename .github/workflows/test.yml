@@ -146,6 +146,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # The A2 byte-parity tests read ALN-TokenData/pack-manifest.json —
+          # this was the ONE job checking out without submodules (caught by
+          # the first-ever CI run of foundations content, PR #19 run 72).
+          submodules: recursive
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -197,9 +202,16 @@ jobs:
           echo "All checks passed"
 
   backend-e2e-tier-l:
-    name: Backend E2E Tier L (logic/UI floor)
+    name: Backend E2E Tier L (${{ matrix.pack }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      # Dual-pack gate (A3 slice 0, program §5): the SAME Tier L suite must
+      # pass as ALN and as the toy game. One leg failing must not cancel
+      # the other — both verdicts are the signal.
+      fail-fast: false
+      matrix:
+        pack: [production, toy-heist]
 
     steps:
       - name: Checkout code
@@ -238,14 +250,18 @@ jobs:
       # no UDP discovery in test env, and the system-global resources that
       # force workers=1 (Chromium kiosk, pkill, real AV PID files) are all
       # Tier H concerns.
+      # Empty E2E_PACK_PATH behaves as unset (production ALN-TokenData);
+      # the toy-heist leg re-runs every non-pinning flow as midnight-heist.
       - name: Run Tier L E2E
         working-directory: backend
+        env:
+          E2E_PACK_PATH: ${{ matrix.pack == 'toy-heist' && 'tests/e2e/fixtures/packs/toy-heist' || '' }}
         run: npm run test:e2e:tier-l
 
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: tier-l-playwright-report
+          name: tier-l-playwright-report-${{ matrix.pack }}
           path: backend/playwright-report/
           retention-days: 7

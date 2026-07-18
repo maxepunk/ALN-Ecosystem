@@ -126,21 +126,52 @@ describe('GM Scanner - Outbound Event Structure (AsyncAPI Contract)', () => {
       });
     });
 
-    it('should reject invalid mode values', () => {
+    it('accepts any string mode at the SCHEMA layer (open vocabulary, slice 1) — rejection is runtime', () => {
+      // Phase 3 A3 slice 1: the contract mode field is type:string, not a
+      // closed enum — valid ids are the ACTIVE pack's declared modes,
+      // enforced by the server's runtime validation (next test). A pack-
+      // unknown id therefore passes SCHEMA validation by design.
       const event = {
         event: 'transaction:submit',
         data: {
           tokenId: 'token_test',
           teamId: 'Team Alpha',
           deviceId: 'GM_Station_1',
-          mode: 'invalid_mode' // Not in enum
+          mode: 'some-future-pack-mode'
         },
         timestamp: new Date().toISOString()
       };
 
       expect(() => {
         validateWebSocketEvent(event, 'transaction:submit');
-      }).toThrow();
+      }).not.toThrow();
+    });
+
+    it('rejects a mode the active pack does not declare at RUNTIME, with the enum-era error shape', () => {
+      // The runtime rule the contracts document: wire mode ∈ the active
+      // pack's game.json modes[].id. Same `any.only` error class the old
+      // closed enum produced, so rejections look identical on the wire.
+      const { gmTransactionSchema, validate } = require('../../../src/utils/validators');
+      const submission = {
+        tokenId: 'token_test',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_Station_1',
+        deviceType: 'gm',
+        mode: 'invalid_mode'
+      };
+
+      let thrown = null;
+      try {
+        validate(submission, gmTransactionSchema);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown).not.toBeNull();
+      expect(String(thrown.message)).toMatch(/mode/);
+
+      // The active pack here is the repo's ALN pack — its declared ids pass
+      expect(() => validate({ ...submission, mode: 'blackmarket' }, gmTransactionSchema)).not.toThrow();
+      expect(() => validate({ ...submission, mode: 'detective' }, gmTransactionSchema)).not.toThrow();
     });
 
     it('should format timestamp as ISO8601 date-time', () => {
