@@ -17,7 +17,10 @@ const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 const DEFAULT_PATHS = {
   envPath: path.join(PROJECT_ROOT, 'backend/.env'),
-  scoringPath: path.join(PROJECT_ROOT, 'ALN-TokenData/scoring-config.json'),
+  // A3 slice 2 (ledger L1): scoring values live in the pack rules file's
+  // `scoring` block — the retired scoring-config.json is gone, and writes
+  // to it were silently ignored by the engine.
+  gamePath: path.join(PROJECT_ROOT, 'ALN-TokenData/game.json'),
   cuesPath: path.join(PROJECT_ROOT, 'backend/config/environment/cues.json'),
   routingPath: path.join(PROJECT_ROOT, 'backend/config/environment/routing.json'),
   tokensPath: path.join(PROJECT_ROOT, 'ALN-TokenData/tokens.json'),
@@ -36,7 +39,7 @@ class ConfigManager {
   readAll() {
     return {
       env: readEnv(this.paths.envPath).values,
-      scoring: this._readJson(this.paths.scoringPath),
+      scoring: this._readJson(this.paths.gamePath).scoring || {},
       cues: this._readJson(this.paths.cuesPath),
       routing: this._readJson(this.paths.routingPath),
     };
@@ -75,7 +78,30 @@ class ConfigManager {
 
   writeScoring(data) {
     assertValid(validateScoring(data), 'scoring config');
-    this._writeJson(this.paths.scoringPath, data);
+    // MERGE into the pack rules file: the scoring block also carries keys
+    // this editor doesn't own (display, semantics) — preserve them. A
+    // missing/empty game.json means there is no pack to edit; writing a
+    // rules file containing ONLY scoring would fabricate a broken pack.
+    const game = this._readJson(this.paths.gamePath);
+    if (Object.keys(game).length === 0) {
+      throw new Error(
+        `Cannot write scoring: ${this.paths.gamePath} is missing or empty — ` +
+        'the pack rules file must exist (check the ALN-TokenData submodule)'
+      );
+    }
+    game.scoring = { ...game.scoring, ...data };
+    this._writeJson(this.paths.gamePath, game);
+    this._rebuildPackManifest();
+  }
+
+  // Any pack-file edit requires a manifest regen (root CLAUDE.md rule) —
+  // a stale manifest fails the scanners' per-file sha1 verify and the
+  // backend's freshness contract test. Same generator the CLI uses.
+  _rebuildPackManifest() {
+    const { build } = require('../../backend/scripts/build-pack-manifest');
+    const packDir = path.dirname(this.paths.gamePath);
+    const { manifest, manifestPath } = build(packDir);
+    this._writeJson(manifestPath, manifest);
   }
 
   writeCues(data) {

@@ -28,6 +28,7 @@ const EXCLUDE = new Set([
   'game.schema.json',
   'pack-manifest.schema.json',
   'tokens.schema.json',
+  'scoring-config.json', // TOMBSTONE: legacy file retired by ledger L1 — a resurrected copy must never re-enter served pack inventory (exclusion is byte-parity-pinned with the Python builder)
   'CLAUDE.md',
   'README.md',
 ]);

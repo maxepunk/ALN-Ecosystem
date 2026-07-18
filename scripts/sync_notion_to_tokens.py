@@ -79,9 +79,11 @@ headers = {
     "Content-Type": "application/json"
 }
 
-# Shared scoring config — source of truth for valid SF_MemoryType values.
-SCORING_CONFIG_PATH = ECOSYSTEM_ROOT / "ALN-TokenData/scoring-config.json"
-# Fallback when scoring-config.json is unavailable (matches docs/SCORING_LOGIC.md).
+# Pack rules file — its `scoring.typeMultipliers` block is the source of
+# truth for valid SF_MemoryType values (A3 slice 2: scoring-config.json
+# retired with ledger L1; game.json is the sole shared scoring source).
+GAME_JSON_PATH = ECOSYSTEM_ROOT / "ALN-TokenData/game.json"
+# Fallback when game.json is unavailable (matches docs/SCORING_LOGIC.md).
 DEFAULT_VALID_MEMORY_TYPES = frozenset({"Personal", "Business", "Technical", "Mention", "Party"})
 
 # Notion request hardening (F-TOOL-20)
@@ -734,22 +736,22 @@ def process_token(page, character_map, dry_run=False):
     return rfid, token_entry
 
 def load_valid_memory_types(path=None):
-    """Load valid SF_MemoryType values from scoring-config.json typeMultipliers.
+    """Load valid SF_MemoryType values from game.json's scoring.typeMultipliers.
 
     UNKNOWN is excluded — it's the backend's bucket for invalid types, never
     a legitimate authored value. Falls back to the documented defaults when
-    the config is missing/unreadable.
+    the pack rules file is missing/unreadable.
     """
-    path = path or SCORING_CONFIG_PATH
+    path = path or GAME_JSON_PATH
     try:
         with open(path) as f:
             cfg = json.load(f)
-        types = set(cfg.get("typeMultipliers", {}).keys()) - {"UNKNOWN"}
+        types = set(cfg.get("scoring", {}).get("typeMultipliers", {}).keys()) - {"UNKNOWN"}
         if types:
             return types
-        print(f"⚠️  {path} has no typeMultipliers — falling back to defaults")
+        print(f"⚠️  {path} has no scoring.typeMultipliers — falling back to defaults")
     except (OSError, ValueError) as e:
-        print(f"⚠️  Could not load scoring config ({e}) — falling back to default memory types")
+        print(f"⚠️  Could not load game.json scoring ({e}) — falling back to default memory types")
     return set(DEFAULT_VALID_MEMORY_TYPES)
 
 
@@ -766,7 +768,7 @@ def validate_tokens(tokens, valid_memory_types):
             warnings.append(f"{rfid}: SF_MemoryType missing — token will score 0x (UNKNOWN)")
         elif mem_type not in valid_memory_types:
             warnings.append(
-                f"{rfid}: SF_MemoryType '{mem_type}' not in scoring-config typeMultipliers "
+                f"{rfid}: SF_MemoryType '{mem_type}' not in game.json scoring.typeMultipliers "
                 f"({', '.join(sorted(valid_memory_types))}) — token will score 0x"
             )
         rating = token.get("SF_ValueRating")

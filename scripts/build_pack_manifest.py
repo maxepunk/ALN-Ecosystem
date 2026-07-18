@@ -29,7 +29,7 @@ EXCLUDE = {
     "game.schema.json",
     "pack-manifest.schema.json",
     "tokens.schema.json",
-    "scoring-config.json",  # legacy shared file — retired by the migration, never pack inventory
+    "scoring-config.json",  # TOMBSTONE: retired by ledger L1 — a resurrected copy must never re-enter served pack inventory
     "CLAUDE.md",
     "README.md",
 }
