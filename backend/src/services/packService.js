@@ -282,6 +282,33 @@ function _gateCheck(manifest, gameConfig) {
         );
       }
     }
+    // Groups coverage (A3 slice 2b, D1b): a pack that DECLARES a groups
+    // block must declare every group its tokens name — an undeclared
+    // name would silently ride the "(xN)" fallback parse, exactly the
+    // split-source drift the block exists to kill. Accepts both the v1
+    // suffix shape and the v2 pure name (the strip is identity for v2);
+    // packs without the block gate nothing until the v2 cutover.
+    if (gameConfig.groups && typeof gameConfig.groups === 'object') {
+      let tokensObj = null;
+      try {
+        tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+      } catch { /* no tokens.json — the loader refuses separately */ }
+      if (tokensObj) {
+        const undeclared = new Set();
+        for (const token of Object.values(tokensObj)) {
+          const raw = (token.SF_Group || '').trim();
+          if (!raw) continue;
+          const name = raw.replace(/\s*\(x\d+\)$/i, '').trim();
+          if (name && !gameConfig.groups[name]) undeclared.add(name);
+        }
+        for (const name of undeclared) {
+          problems.push(
+            `tokens name group '${name}' which is not declared in game.json groups — ` +
+            'group multipliers are pack rules (D1b); declare the group or fix the token'
+          );
+        }
+      }
+    }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {

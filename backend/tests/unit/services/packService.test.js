@@ -543,6 +543,52 @@ describe('packService', () => {
     });
   });
 
+  describe('groups coverage gate (A3 slice 2b — D1b: tokens must name declared groups)', () => {
+    function writePack(dir, { groups, tokens }) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 1, id: 'gc', ...(groups ? { groups } : {}),
+      }));
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify(tokens));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('refuses a declaring pack whose tokens name an UNDECLARED group, naming both', () => {
+      writePack(tmpDir, {
+        groups: { 'Server Logs': { multiplier: 5 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs (x5)' },
+          t2: { SF_RFID: 't2', SF_Group: 'Rogue Set (x3)' },
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'Rogue Set'.*not declared in game\.json groups/);
+    });
+
+    it('accepts full coverage — v1 suffix names AND v2 pure names both resolve', () => {
+      writePack(tmpDir, {
+        groups: { 'Server Logs': { multiplier: 5 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs (x5)' }, // v1 shape
+          t2: { SF_RFID: 't2', SF_Group: 'Server Logs' },      // v2 shape
+          t3: { SF_RFID: 't3', SF_Group: '' },                 // ungrouped
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('a pack WITHOUT a groups block gates nothing (pre-groups packs stay legal until the v2 cutover)', () => {
+      writePack(tmpDir, {
+        groups: null,
+        tokens: { t1: { SF_RFID: 't1', SF_Group: 'Anything (x9)' } },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
   describe('activation-frozen rules memo + operator warns (review fixes)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
