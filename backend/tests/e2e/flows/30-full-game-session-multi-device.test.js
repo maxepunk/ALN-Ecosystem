@@ -782,7 +782,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       await gmScanner1.finishTeam();
       await gmScanner1.toggleMode(); // Switch to detective
       const gm1FinalMode = await gmScanner1.getModeText();
-      expect(gm1FinalMode.toLowerCase()).toContain('detective');
+      expect(gm1FinalMode.toLowerCase()).toContain(modeLabels.evidence);
       console.log('✓ GM1 switched to detective mode for rescan');
 
       // selectTeamFromList auto-confirms
