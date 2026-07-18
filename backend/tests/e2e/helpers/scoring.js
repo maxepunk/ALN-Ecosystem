@@ -1,29 +1,29 @@
 /**
  * Scoring Helper - Expected Score Calculation for E2E Tests
  *
- * Uses PRODUCTION scoring functions to calculate expected scores.
- * This ensures tests validate that backend applies its own logic correctly,
- * rather than duplicating scoring algorithms in test code.
+ * SINGLE ORACLE (ledger L5 retired, A3 slice 2): the ACTIVE pack's
+ * game.json scoring block, fetched from the RUNNING orchestrator's pack
+ * channel. The backend, the standalone scanner, and these expectations
+ * all read the same tables now — the former two-oracle split (backend on
+ * the legacy scoring-config, scanner on the pack) died with ledger L1.
+ * Every flow loads the oracle once in beforeAll via loadPackScoring()
+ * and threads it into the calculators; a calculator called without it
+ * throws instead of silently scoring from a second source.
  *
- * Single source of truth: src/services/tokenService.js
+ * Group parsing (parseGroupMultiplier) still comes from production
+ * tokenService — the "(xN)" group format is pack-universal string
+ * parsing, not a scoring table.
  */
 
 const https = require('https');
-const { calculateTokenValue, parseGroupMultiplier, extractGroupName } = require('../../../src/services/tokenService');
+const { parseGroupMultiplier } = require('../../../src/services/tokenService');
 
 /**
  * Fetch the ACTIVE pack's game.json scoring block from the orchestrator's
  * pack channel. Returns null when the pack ships no game.json (404) or on
- * any fetch problem — callers fall back to the legacy oracle, mirroring
- * the GM scanner's own baked-shim ladder.
- *
- * TWO-ORACLE REALITY (ledger L1, until A3 slice 2): the BACKEND scores
- * from the legacy scoring-config (pack-blind), the STANDALONE SCANNER
- * scores from the pack's game.json (pack-aware). Standalone-mode
- * expectations must therefore use THIS pack-derived oracle; networked/
- * backend expectations keep the legacy oracle until slice 2 migrates the
- * backend — at which point every caller converges on pack-derived and
- * the default-legacy path here retires with L1.
+ * any fetch problem — the calculators below THROW on a null oracle, so a
+ * misconfigured harness (packless orchestrator asserting on scores) fails
+ * loudly at first use instead of validating against wrong values.
  *
  * @param {string} orchestratorUrl
  * @returns {Promise<Object|null>} game.json `scoring` block or null
@@ -98,24 +98,36 @@ function packTokenValue(packScoring, rating, memoryType) {
   return base * mult;
 }
 
-/**
- * Calculate expected score for a single token using production scoring logic
- * @param {Object} token - Token object with SF_ValueRating and SF_MemoryType
- * @returns {number} Expected score (base value × type multiplier)
- */
-function calculateExpectedScore(token, packScoring = null) {
-  if (packScoring) {
-    return packTokenValue(packScoring, token.SF_ValueRating, token.SF_MemoryType);
+/** The pack oracle is REQUIRED (ledger L5 retired) — see file header. */
+function _requireOracle(packScoring, fn) {
+  if (!packScoring?.baseValues || !packScoring?.typeMultipliers) {
+    throw new Error(
+      `${fn}: no pack scoring oracle — load it in beforeAll with ` +
+      `loadPackScoring(orchestratorInfo.url) and thread it through. ` +
+      `(The in-process legacy oracle retired with ledger L5/A3 slice 2.)`
+    );
   }
-  return calculateTokenValue(token.SF_ValueRating, token.SF_MemoryType);
 }
 
 /**
- * Calculate expected group completion bonus using production logic
+ * Calculate expected score for a single token against the pack oracle
+ * @param {Object} token - Token object with SF_ValueRating and SF_MemoryType
+ * @param {Object} packScoring - loadPackScoring() result (REQUIRED)
+ * @returns {number} Expected score (base value × type multiplier)
+ */
+function calculateExpectedScore(token, packScoring) {
+  _requireOracle(packScoring, 'calculateExpectedScore');
+  return packTokenValue(packScoring, token.SF_ValueRating, token.SF_MemoryType);
+}
+
+/**
+ * Calculate expected group completion bonus against the pack oracle
  * @param {Array<Object>} tokens - Array of tokens in the same group
+ * @param {Object} packScoring - loadPackScoring() result (REQUIRED)
  * @returns {number} Expected bonus score (0 if no valid group)
  */
-function calculateExpectedGroupBonus(tokens) {
+function calculateExpectedGroupBonus(tokens, packScoring) {
+  _requireOracle(packScoring, 'calculateExpectedGroupBonus');
   if (!tokens || tokens.length === 0) {
     return 0;
   }
@@ -126,8 +138,7 @@ function calculateExpectedGroupBonus(tokens) {
     return 0;
   }
 
-  // Use production functions to parse group metadata
-  const groupName = extractGroupName(firstToken.SF_Group);
+  // Use the production parser for the "(xN)" group multiplier
   const multiplier = parseGroupMultiplier(firstToken.SF_Group);
 
   // Group bonus only applies if multiplier > 1x
@@ -137,7 +148,7 @@ function calculateExpectedGroupBonus(tokens) {
 
   // Calculate base score for all tokens in group
   const baseScore = tokens.reduce((sum, token) => {
-    return sum + calculateExpectedScore(token);
+    return sum + calculateExpectedScore(token, packScoring);
   }, 0);
 
   // Bonus formula: (multiplier - 1) × baseScore
@@ -145,41 +156,14 @@ function calculateExpectedGroupBonus(tokens) {
   return (multiplier - 1) * baseScore;
 }
 
-/**
- * Calculate expected total score for a team (base scores + group bonuses)
- * @param {Array<Object>} scannedTokens - All tokens scanned by team
- * @returns {number} Expected total score
- */
-function calculateExpectedTotalScore(scannedTokens) {
-  // Calculate base score
-  const baseScore = scannedTokens.reduce((sum, token) => {
-    return sum + calculateExpectedScore(token);
-  }, 0);
-
-  // Calculate group bonuses
-  const groups = {};
-  scannedTokens.forEach(token => {
-    if (token.SF_Group && token.SF_Group.trim() !== '') {
-      const groupName = extractGroupName(token.SF_Group);
-      if (!groups[groupName]) {
-        groups[groupName] = [];
-      }
-      groups[groupName].push(token);
-    }
-  });
-
-  const totalBonus = Object.values(groups).reduce((sum, groupTokens) => {
-    return sum + calculateExpectedGroupBonus(groupTokens);
-  }, 0);
-
-  return baseScore + totalBonus;
-}
+// calculateExpectedTotalScore was DELETED with the L5 convergence: it had
+// zero call sites (flows sum per-token expectations inline), and dead
+// oracle surface is exactly what the single-oracle doctrine forbids.
 
 module.exports = {
   loadPackScoring,
   loadPackModes,
   expectedModeLabels,
   calculateExpectedScore,
-  calculateExpectedGroupBonus,
-  calculateExpectedTotalScore
+  calculateExpectedGroupBonus
 };

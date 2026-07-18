@@ -34,7 +34,7 @@ const {
 
 const { selectTestTokens } = require('../helpers/token-selection');
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
-const { calculateExpectedScore } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring } = require('../helpers/scoring');
 
 /**
  * Helper to add console capture to a page
@@ -53,6 +53,7 @@ let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;
+let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
 
 test.describe('GM Scanner Admin Panel - Session State', () => {
   // Skip on chromium to prevent parallel execution conflicts - session tests only on mobile-chrome
@@ -68,6 +69,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
     });
 
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    packScoring = await loadPackScoring(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -351,7 +353,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
       // Calculate expected score using production scoring logic (DRY)
-      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken);
+      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken, packScoring);
       const adjustmentAmount = 500;
 
       // Wait for score to update from transaction
@@ -433,7 +435,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
       // Calculate expected score using production scoring logic (DRY)
-      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken);
+      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken, packScoring);
       const adjustmentAmount = 250;
       const expectedTotal = expectedTokenScore + adjustmentAmount;
 
@@ -612,7 +614,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       expect(resultTitle).not.toContain('Error');
       expect(resultTitle).not.toContain('Cannot scan');
 
-      const expectedScore = calculateExpectedScore(token);
+      const expectedScore = calculateExpectedScore(token, packScoring);
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {
