@@ -1,0 +1,66 @@
+{
+  "kind": "game",
+  "schemaVersion": 1,
+  "id": "parity-pack",
+  "title": "Scoring Parity Fixture",
+  "requires": [
+    "scoring.tabular",
+    "groupRules.all",
+    "duplicatePolicy.once"
+  ],
+  "modes": [
+    {
+      "id": "blackmarket",
+      "label": "Black Market",
+      "verb": "Sell",
+      "scoringPolicy": "standard",
+      "entityRole": "ledger",
+      "countsTowardGroups": true,
+      "displayBehavior": {
+        "surface": "scoreboard-rankings",
+        "when": "immediate"
+      }
+    },
+    {
+      "id": "detective",
+      "label": "Detective",
+      "verb": "Expose",
+      "scoringPolicy": "none",
+      "entityRole": "attribution",
+      "defaultEntity": "Nova",
+      "countsTowardGroups": false,
+      "displayBehavior": {
+        "surface": "scoreboard-evidence",
+        "fields": [
+          "summary",
+          "owner"
+        ],
+        "when": "immediate"
+      }
+    }
+  ],
+  "scoring": {
+    "baseValues": {
+      "1": 10000,
+      "2": 25000,
+      "3": 50000,
+      "4": 75000,
+      "5": 150000
+    },
+    "typeMultipliers": {
+      "Personal": 1,
+      "Mention": 3,
+      "Business": 3,
+      "Party": 5,
+      "Technical": 5,
+      "UNKNOWN": 0
+    },
+    "display": {
+      "unit": "currency-usd",
+      "format": "$#,###"
+    },
+    "semantics": {
+      "allowNegative": true
+    }
+  }
+}
