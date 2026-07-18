@@ -29,7 +29,7 @@ const HASH_B = `sha256:${'b'.repeat(64)}`;
 // A toy-shaped pack: one scored+counting mode, one unscored+counting
 // mode (event-only groups, §2f), one unscored non-counting mode.
 const GAME_CONFIG = {
-  kind: 'game', schemaVersion: 1, id: 'validator-pack',
+  kind: 'game', schemaVersion: 2, id: 'validator-pack',
   modes: [
     {
       id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger',
@@ -60,7 +60,7 @@ const TOKENS_JSON = {
 
 function writePack(dir, { contentHash = HASH_A } = {}) {
   fs.writeFileSync(path.join(dir, 'pack-manifest.json'), JSON.stringify({
-    kind: 'pack-manifest', schemaVersion: 1, packId: 'validator-pack', version: '0.0.1',
+    kind: 'pack-manifest', schemaVersion: 2, packId: 'validator-pack', version: '0.0.1',
     contentHash, engine: { minVersion: '3.0.0' },
     files: [{ path: 'tokens.json', role: 'tokens', sha1: '0'.repeat(40), size: 2 }],
   }));

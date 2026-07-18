@@ -12,7 +12,7 @@ describe('configManager', () => {
 
     fs.writeFileSync(path.join(tmpDir, '.env'), 'PORT=3000\nHOST=0.0.0.0\n');
     fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
-      kind: 'game', schemaVersion: 1, id: 'test-pack',
+      kind: 'game', schemaVersion: 2, id: 'test-pack',
       scoring: {
         baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
         typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },

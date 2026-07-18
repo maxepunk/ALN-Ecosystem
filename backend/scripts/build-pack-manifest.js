@@ -93,7 +93,7 @@ function build(packDir) {
   const files = buildFiles(packDir);
   const manifest = {
     kind: 'pack-manifest',
-    schemaVersion: 1,
+    schemaVersion: 2,
     packId: existing.packId || path.basename(packDir),
     version: existing.version || '0.1.0',
     contentHash: contentHash(files),

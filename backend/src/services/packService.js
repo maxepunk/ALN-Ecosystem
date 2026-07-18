@@ -34,8 +34,12 @@ const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 const ENGINE_VERSION = '3.0.0';
 // game.json / pack-manifest schemaVersion this engine reads. EXACT match
 // when declared — a pack authored against a future schema must refuse
-// loudly, never half-parse.
-const PACK_SCHEMA_VERSION = 1;
+// loudly, never half-parse. v2 = the tokens-v2 cutover (A3 slice 2b):
+// pure SF_Group names + pack `groups` block. The bump is load-bearing
+// BOTH ways: a v1 engine suffix-parses v2 pure names into silent 1x
+// multipliers, and this engine reads v1 suffixed names as verbatim
+// (undeclared) group names.
+const PACK_SCHEMA_VERSION = 2;
 // Capability ids this engine implements. A pack's `requires` array (in
 // game.json) must be a subset or activation refuses. The v1 baseline
 // names what the engine actually runs today; slices 1/2 grow it as

@@ -1,6 +1,6 @@
 {
   "kind": "game",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "requires": [
     "scoring.tabular",
     "groupRules.all",

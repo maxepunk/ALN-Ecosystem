@@ -45,12 +45,12 @@ describe('claims flag through processScan (D3s2)', () => {
     packService._resetForTesting();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-claims-'));
     fs.writeFileSync(path.join(tmpDir, 'pack-manifest.json'), JSON.stringify({
-      kind: 'pack-manifest', schemaVersion: 1, packId: 'claims-pack', version: '0.0.1',
+      kind: 'pack-manifest', schemaVersion: 2, packId: 'claims-pack', version: '0.0.1',
       contentHash: HASH, engine: { minVersion: '3.0.0' },
       files: [{ path: 'tokens.json', role: 'tokens', sha1: '0'.repeat(40), size: 2 }],
     }));
     fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
-      kind: 'game', schemaVersion: 1, id: 'claims-pack',
+      kind: 'game', schemaVersion: 2, id: 'claims-pack',
       modes: [
         {
           id: 'sell', label: 'Sell', scoringPolicy: 'standard', entityRole: 'ledger',
@@ -189,7 +189,7 @@ describe('D1b/v2 — the pack groups block is the SOLE multiplier source', () =>
     const orig = process.env.PACK_PATH;
     try {
       fs2.writeFileSync(path2.join(dir, 'game.json'), JSON.stringify({
-        kind: 'game', schemaVersion: 1, id: 'g',
+        kind: 'game', schemaVersion: 2, id: 'g',
         groups: { 'Server Logs': { multiplier: 7 } },
       }));
       // NOTE: t2 names an undeclared group — the ACTIVATION gate refuses

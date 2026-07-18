@@ -1,6 +1,6 @@
 {
   "kind": "game",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "parity-pack",
   "title": "Scoring Parity Fixture",
   "requires": [

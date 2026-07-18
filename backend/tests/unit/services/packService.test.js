@@ -41,7 +41,7 @@ function writeManifest(dir, manifest) {
 function minimalManifest(overrides = {}) {
   return {
     kind: 'pack-manifest',
-    schemaVersion: 1,
+    schemaVersion: 2,
     packId: 'unit-pack',
     version: '0.0.1',
     contentHash: HASH_A,
@@ -229,10 +229,10 @@ describe('packService', () => {
     it('activation SNAPSHOTS game.json — later disk edits are invisible (rules frozen)', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'unit-game' });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'unit-game' });
       packService.activatePack();
 
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'EDITED' });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'EDITED' });
 
       expect(packService.getGameConfig().id).toBe('unit-game');
     });
@@ -242,7 +242,7 @@ describe('packService', () => {
       writeManifest(tmpDir, minimalManifest());
       packService.activatePack();
 
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'late' });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'late' });
 
       expect(packService.getGameConfig()).toBeNull();
     });
@@ -266,22 +266,32 @@ describe('packService', () => {
 
     it('refuses a manifest authored against a future schemaVersion', () => {
       process.env.PACK_PATH = tmpDir;
-      writeManifest(tmpDir, minimalManifest({ schemaVersion: 2 }));
-      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*schemaVersion 2/);
+      writeManifest(tmpDir, minimalManifest({ schemaVersion: 3 }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*schemaVersion 3/);
+    });
+
+    it('refuses a game.json authored against a PAST schemaVersion (v1 suffixed tokens would read as verbatim names)', () => {
+      // EXACT match, both directions — the tokens-v2 cutover made this
+      // load-bearing: this engine has no suffix parser, so a v1 pack must
+      // refuse instead of silently reading "(xN)" names as pure names.
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'past' });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 1/);
     });
 
     it('refuses a game.json authored against a future schemaVersion', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'future' });
-      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 2/);
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 3, id: 'future' });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 3/);
     });
 
     it('refuses unknown required capabilities — headroom is never silently absorbed', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'constellation',
+        kind: 'game', schemaVersion: 2, id: 'constellation',
         requires: ['scoring.tabular', 'scoring.graph', 'contagion'],
       });
       expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*scoring\.graph, contagion/);
@@ -291,7 +301,7 @@ describe('packService', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'subset',
+        kind: 'game', schemaVersion: 2, id: 'subset',
         requires: ['scoring.tabular', 'groupRules.all'],
       });
       expect(() => packService.activatePack()).not.toThrow();
@@ -323,7 +333,7 @@ describe('packService', () => {
       countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' },
       ...overrides,
     });
-    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 1, id: 'drv', modes });
+    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 2, id: 'drv', modes });
 
     beforeEach(() => {
       process.env.PACK_PATH = tmpDir;
@@ -393,7 +403,7 @@ describe('packService', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
     }
-    const base = () => ({ kind: 'game', schemaVersion: 1, id: 'rules' });
+    const base = () => ({ kind: 'game', schemaVersion: 2, id: 'rules' });
 
     beforeEach(() => {
       process.env.PACK_PATH = tmpDir;
@@ -452,7 +462,7 @@ describe('packService', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
     }
-    const base = () => ({ kind: 'game', schemaVersion: 1, id: 'phases' });
+    const base = () => ({ kind: 'game', schemaVersion: 2, id: 'phases' });
 
     beforeEach(() => {
       process.env.PACK_PATH = tmpDir;
@@ -546,7 +556,7 @@ describe('packService', () => {
   describe('groups coverage gate (A3 slice 2b — D1b: tokens must name declared groups)', () => {
     function writePack(dir, { groups, tokens }) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
-        kind: 'game', schemaVersion: 1, id: 'gc', ...(groups ? { groups } : {}),
+        kind: 'game', schemaVersion: 2, id: 'gc', ...(groups ? { groups } : {}),
       }));
       fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify(tokens));
     }
@@ -594,7 +604,7 @@ describe('packService', () => {
 
     it('TYPE coverage (D2b): refuses a token whose memory type is not a typeMultipliers key, EXACT-CASE', () => {
       fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
-        kind: 'game', schemaVersion: 1, id: 'tc',
+        kind: 'game', schemaVersion: 2, id: 'tc',
         scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
       }));
       fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
@@ -608,7 +618,7 @@ describe('packService', () => {
 
     it('TYPE coverage: full-coverage tokens (incl. null types) activate cleanly', () => {
       fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
-        kind: 'game', schemaVersion: 1, id: 'tc',
+        kind: 'game', schemaVersion: 2, id: 'tc',
         scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
       }));
       fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
@@ -638,7 +648,7 @@ describe('packService', () => {
     });
 
     it('caches the LEGACY shim tables after activating a scoring-absent pack', () => {
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'memo' }); // absent scoring = legal
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'memo' }); // absent scoring = legal
       packService.activatePack();
       const first = packService.getScoringRules();
       expect(first.baseValues[5]).toBe(150000); // baked ALN shim
@@ -647,7 +657,7 @@ describe('packService', () => {
 
     it('caches the pack tables after activation (per-token loads reuse the snapshot)', () => {
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'memo',
+        kind: 'game', schemaVersion: 2, id: 'memo',
         scoring: { baseValues: { 1: 5 }, typeMultipliers: { A: 2 } },
       });
       packService.activatePack();
@@ -658,7 +668,7 @@ describe('packService', () => {
     it('warns ONCE that SESSION_TIMEOUT is ignored when the pack clock differs (review finding)', () => {
       const logger = require('../../../src/utils/logger');
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'clock',
+        kind: 'game', schemaVersion: 2, id: 'clock',
         gameClock: { duration: 3600, overtimeAt: 3300 },
       });
       logger.warn.mockClear();
@@ -678,7 +688,7 @@ describe('packService', () => {
       countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' },
       ...overrides,
     });
-    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 1, id: 'coh', modes });
+    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 2, id: 'coh', modes });
 
     beforeEach(() => {
       process.env.PACK_PATH = tmpDir;
@@ -689,24 +699,24 @@ describe('packService', () => {
       it('refuses a DECLARED-but-unusable scoring block (empty tables must not ride the shim)', () => {
         // Review finding: pre-fix, scoring:{baseValues:{},...} activated
         // cleanly and silently ran the baked ALN economy behind one warn.
-        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', scoring: { baseValues: {}, typeMultipliers: { A: 1 } } });
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh', scoring: { baseValues: {}, typeMultipliers: { A: 1 } } });
         expect(() => packService.activatePack())
           .toThrow(/self-contradictory.*scoring block is DECLARED.*missing\/empty/);
       });
 
       it('tolerates an ABSENT scoring block (packless checkouts ride the loud shim by design)', () => {
-        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh' });
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh' });
         expect(() => packService.activatePack()).not.toThrow();
       });
 
       it('refuses a DECLARED-but-empty modes array', () => {
-        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', modes: [] });
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh', modes: [] });
         expect(() => packService.activatePack())
           .toThrow(/COHERENCE CHECK.*self-contradictory.*EMPTY/);
       });
 
       it('tolerates an ABSENT modes block (nothing declared gates nothing — L6 shim covers it)', () => {
-        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh' });
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh' });
         expect(() => packService.activatePack()).not.toThrow();
       });
 
@@ -840,7 +850,7 @@ describe('packService', () => {
     it('declared scoring WITHOUT a semantics block gets the conservative floor (allowNegative false)', () => {
       process.env.PACK_PATH = tmpDir;
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'nosem',
+        kind: 'game', schemaVersion: 2, id: 'nosem',
         scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
       });
       expect(packService.getScoringRules().allowNegative).toBe(false);
@@ -850,13 +860,13 @@ describe('packService', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'rules',
+        kind: 'game', schemaVersion: 2, id: 'rules',
         scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
       });
       packService.activatePack();
 
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'rules',
+        kind: 'game', schemaVersion: 2, id: 'rules',
         scoring: { baseValues: { 1: 999 }, typeMultipliers: { Personal: 999 } },
       });
 
@@ -879,7 +889,7 @@ describe('packService', () => {
     it('EMPTY-but-present tables ride the shim too (an empty table must never silently zero every token)', () => {
       process.env.PACK_PATH = tmpDir;
       writeGame(tmpDir, {
-        kind: 'game', schemaVersion: 1, id: 'empty',
+        kind: 'game', schemaVersion: 2, id: 'empty',
         scoring: { baseValues: {}, typeMultipliers: { Personal: 1 } },
       });
       const rules = packService.getScoringRules();
@@ -899,7 +909,7 @@ describe('packService', () => {
 
     it('getClockRules: absent overtimeAt defaults to the declared duration', () => {
       process.env.PACK_PATH = tmpDir;
-      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'clk', gameClock: { duration: 500 } });
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'clk', gameClock: { duration: 500 } });
       expect(packService.getClockRules()).toEqual({ durationSeconds: 500, overtimeAtSeconds: 500 });
     });
 
