@@ -181,6 +181,58 @@ semantics BOTH sides with parity tests ≈0.75 · scripts/lib re-point
 WILL catch something) ≈0.5 → **≈2.5–3.5 sessions** (A2 ran 2.3–2.7× its
 estimate; this figure already prices the fallout line).
 
+## 6b. CLOSER EXECUTION RECORD (2026-07-18 — all four rulings BUILT)
+
+- **D1s2 BUILT** (parent `5ab7fdc`): phases gate in `_gateCheck` — anything
+  beyond the degenerate single-phase-at-0 (multi-phase, non-zero start,
+  trigger-start) refuses with "not driveable by this engine yet (see
+  slice 5)"; language rule pinned both directions. The gate's FIRST catch
+  was the toy pack itself (casing@0/the-job@1800, the §2g census shape) —
+  trimmed to a single phase until slice 5 restores it, manifest regen'd.
+- **D2s2 BUILT** (parent `d2e69f5`, scanner `41381c8`): contract-first
+  signed-currentScore descriptions (wire schemas never had a minimum);
+  `getScoringRules().allowNegative` (strict === true; shim mirrors ALN
+  true, tripwire extended); adjustTeamScore REJECTS zero-crossing
+  adjustments under a no-negatives pack (before the audit push — ledger
+  stays additive for the validators); rebuild path floors loudly (the one
+  reachable negative); **LATENT CRASH FIXED**: the Joi min(0) fired at
+  session-restore hydration, so any persisted negative (reachable — no
+  mutation path checked) crashed restore at boot. Scanner parity + TWO
+  pre-existing standalone bugs fixed (adjustment wiped by next scan's
+  invariant recompute; rebuild dropping adminAdjustments entirely).
+- **D3s2 BUILT** (parent `e6877c5`, scanner `67996b3`, TokenData
+  `ca90dc0`): schema+gate+engine+scanner as ONE change. `claims` open
+  string on modes[] (absent → 'consuming' — the legacy behavior, so
+  NEITHER real pack changes and every tripwire stays green);
+  duplicatePolicy: non-consuming never blocked AND never registers
+  (findOriginalTransaction skips it; deviceTracking emission gated —
+  single decision point); ENGINE_MODE_CAPS.claims; flavor-ii
+  re-instantiated per its header (separate limitations channel):
+  non-consuming ∧ countsTowardGroups refuses with the named retirement.
+  Scanner: isConsumingMode + all five local claim sites gated (incl. the
+  transaction:new broadcast that would otherwise lock a non-consuming
+  token fleet-wide). Group math needed NO change under the v1 constraint.
+- **D4s2 BUILT** (parent `6b96917`): `packResolver.js` resolves the
+  session's STAMPED pack (match/mismatch/unstamped verdicts, PACK_PATH,
+  logger-free so validation can't pollute its own evidence; report opens
+  with a Pack Resolution section); TokenLoader/scoringConfigLoader
+  parameterized by pack dir (no silent fallback under an explicit dir);
+  every mode literal through the seam (ScoringCalculator's old literal
+  paid UNKNOWN modes full catalog value); DetectiveModeCheck →
+  NonScoringModeCheck; TransactionFlowCheck's closed enum → wireModeIds;
+  §2f bonus math reused from gameRules (scored∧counting only); dead
+  LogParser method deleted; the two UNWIRED validators swept (fixing
+  GroupBonusCheck's mode-blind completion set); scripts/lib gained its
+  FIRST tests (11); backend/CLAUDE.md's "15 validators" corrected to the
+  9 wired. Full pipeline smoke-verified against a synthetic stamped
+  session.
+- **CI ratchet catch** (scanner `cd0a9d6`, parent `8a7df6f`): the
+  closers' new gameOps branches dropped coverage below the floor — CI's
+  fresh-coverage run caught what the stale local check passed; six
+  App-facade tests cover the claims gates + floor surfacing (60-floor →
+  69.04% branches). Lesson recorded: scanner coverage:check is only as
+  fresh as the last local --coverage run.
+
 ## 6a. RULINGS (owner, 2026-07-18) — slice 2 decision items CLOSED
 
 - **D1s2 = GATE + TOY TRIM.** Owner challenged whether act support is
