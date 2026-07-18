@@ -1,8 +1,9 @@
 # Phase 3 A3 Slice 2b — Tokens v2 + Pack-Declared Category Vocabulary (design)
 
-**Status: DRAFT — pre-open census complete (2026-07-18); design + estimate
-NOT yet written; owner ratification required before any build (program
-§12.3 discipline, same as slice 2).**
+**Status: DRAFT — pre-open census complete + design recommendations
+drafted (2026-07-18); owner ratification of D1b–D3b required before any
+build (program §12.3 discipline, same as slice 2). Sequenced AFTER slice
+2 closes (D1s2–D4s2).**
 
 Slice 2b was owner-added at the 2026-07-17 adversarial review: replace the
 string-parsed token microformats with structured, pack-declared vocabulary
@@ -166,16 +167,90 @@ in the census transcript and re-derived trivially (`grep -rn SF_Group
 
 ---
 
-## Not yet written (blocks opening the slice)
+## Design (RECOMMENDATIONS — drafted 2026-07-18, pending owner ratification)
 
-1. **Design**: v2 shapes (structured group object? pack-declared
-   `categories` block replacing the SF_MemoryType free string? star-count
-   as presentation?), migration strategy (v1 tolerance window vs atomic
-   cutover — note the schema enum and pattern fail LOUD, which is an
-   asset), Notion authoring format changes, and the ONE-parser rule
-   (4 regex impls → a single shared parse seam per side, or none at all).
-2. **Sequencing interaction**: slice 3a (strings/presentation) touches the
-   same display sites; decide which slice owns which sites to avoid
-   double-migration.
-3. **Honest estimate** from the census counts.
-4. **Owner decisions** (to be enumerated with the design).
+### D-2b-1. Group shape: multiplier moves to the PACK, tokens carry only the name
+
+Two candidate shapes for killing the "(xN)" microformat:
+
+- **(a) Structured per-token object**: `"group": {"name": "Server Logs",
+  "multiplier": 5}`. Kills the regex but KEEPS the redundancy — every
+  member token still repeats the multiplier, and the
+  inconsistent-variant failure class (typo'd multiplier splits a group;
+  pinned today by `tokens-schema.test.js:59`) survives in structured form.
+- **(b) RECOMMENDED — pack-declared groups block**: tokens carry only
+  `SF_Group: "Server Logs"` (pure name); `game.json` gains a `groups`
+  block (`{"Server Logs": {"multiplier": 5}}`). The multiplier is a GAME
+  RULE and moves to where rules live (scoring/clock/modes are already
+  there); the per-token redundancy and its whole failure class DIE; the
+  backend loader derives `groupMultiplier` from the pack instead of
+  parsing; the contract test flips from "members agree on the suffix" to
+  "every token group name is declared in game.json groups" (stronger,
+  simpler). Gate: a v2 pack whose tokens name an undeclared group is
+  refused at activation (loud, boot-time).
+
+### D-2b-2. Authoring stays in Notion; the SYNC becomes the only parser
+
+Notion authors keep writing `SF_Group: [Server Logs (x5)]` — the
+authoring UX does not change. `sync_notion_to_tokens.py` becomes the
+SINGLE parser of the microformat: it splits name/multiplier at
+authoring-time, emits v2 `tokens.json` (name only) AND the `game.json`
+`groups` block (+ manifest regen, which it already does). Consequence:
+the four runtime regex implementations are DELETED, not consolidated —
+parsing exists exactly once, in Python, at the authoring boundary.
+(Consistency check moves into the sync: two elements declaring the same
+group with different multipliers is a sync-time ERROR, not a runtime
+split.) The `.claude/skills/about-last-night-notion/scripts/sync_to_tokens.py`
+near-duplicate must be updated or retired in the same change.
+
+### D-2b-3. Type vocabulary: open the enum, gate the coverage, fix the case split
+
+`tokens.schema.json` `SF_MemoryType` enum OPENS to plain string (the same
+openness move as slice 1's mode flags); enforcement moves to the gate
+family: activation refuses a pack whose tokens use a type absent from its
+own `scoring.typeMultipliers` (the existing contract test already checks
+this repo-side; the gate makes it engine-side). THE CASE RULING lands
+here: RECOMMEND canonical-exact-case (types are pack-declared ids; the
+backend drops its lowercase normalization in `getScoringRules`/
+`calculateTokenValue`, the scanner already matches exact-case) — one rule
+both sides, no silent 0× divergence. (The alternative — lowercase
+everywhere — touches more sites and changes the pack authoring contract.)
+
+### D-2b-4. Migration: ATOMIC per-pack cutover, no dual-format window
+
+tokens.json has a SINGLE producer (the sync) and packs ship atomically
+(manifest contentHash). RECOMMEND: `tokens.schema.json` v2 + a
+`schemaVersion` bump the capability gate already enforces exactly — a v1
+engine refuses a v2 pack and vice versa, loudly, at boot. No tolerance
+window, no dual-parser debt. Both real packs regenerate in the cutover
+commit; the frozen-production model means nothing deployed reads mid-
+migration state.
+
+### D-2b-5. Slice-3a ownership split
+
+2b owns DATA-SHAPE sites (everything in the census parse tables). 3a owns
+DISPLAY-STRING sites: `uiManager.js:457/455/467`, `GameOpsRenderer`
+card text, config-tool browser cells, star-glyph rendering. Rule of
+thumb: if the site would break under a v2 shape it is 2b; if it would
+merely show different TEXT it is 3a. `SF_ValueRating` stays a 1-5 int
+(display semantics are 3a; no 2b change).
+
+### Estimate (census-based, honest)
+
+Backend loader + scripts TokenLoader (2 derive sites + gate) ≈ 0.5
+session; scanner (delete 4 parser impls, group inventory from pack
+groups block, ~11 sites) ≈ 1 session; sync emission + consistency errors
++ skill-helper twin ≈ 0.5; schema v2 + contract tests + both packs
+regenerated + dual-pack gate ≈ 0.5-1. **Total ≈ 2.5-3 sessions** (A2
+correction factor already applied — census is real, not estimated).
+
+### Owner decisions needed before opening (D1b-D3b)
+
+- **D1b**: group shape (a) vs (b) — recommendation (b), multiplier in the
+  pack's `groups` block.
+- **D2b**: type-case canon — recommendation exact-case pack ids, backend
+  drops lowercase normalization (the parity split dies by making the
+  scanner's behavior the canon, not the bug).
+- **D3b**: Notion authoring unchanged + sync-as-sole-parser
+  (recommendation: yes) — includes ruling that same-group-different-
+  multiplier becomes a sync-time hard error.
