@@ -154,7 +154,9 @@ describe('game pack schema contract (A1)', () => {
       expect(toy.entities.label.singular).not.toBe(aln.entities.label.singular);
     });
 
-    it('toy tokens include a completable group (>= minSize members, multiplier > 1)', () => {
+    it('toy tokens include a completable group (>= minSize members, declared multiplier > 1)', () => {
+      // v2 (D1b): SF_Group is the pure name; the multiplier is DECLARED
+      // in game.json `groups` — the "(xN)" suffix is schema-illegal now.
       const toy = readJson(TOY_PACK_DIR, 'game.json');
       const tokens = readJson(TOY_PACK_DIR, 'tokens.json');
       const groups = {};
@@ -162,7 +164,8 @@ describe('game pack schema contract (A1)', () => {
         if (t.SF_Group) (groups[t.SF_Group] = groups[t.SF_Group] || []).push(t);
       }
       const completable = Object.entries(groups).filter(([name, members]) =>
-        members.length >= toy.groupRules.minSize && /\(x([2-9]|[1-9][0-9]+)\)$/.test(name));
+        members.length >= toy.groupRules.minSize
+        && (toy.groups?.[name]?.multiplier ?? 1) > 1);
       expect(completable.length).toBeGreaterThan(0);
     });
   });

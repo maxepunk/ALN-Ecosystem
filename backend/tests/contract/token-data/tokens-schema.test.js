@@ -50,20 +50,19 @@ describe('ALN-TokenData/tokens.json schema contract', () => {
     expect(mismatches).toEqual([]);
   });
 
-  it('group members carry the identical SF_Group string (multiplier parse depends on it)', () => {
-    // The "(xN)" microformat is parsed independently by backend and GM
-    // scanner — a typo'd variant inside one group silently splits it.
-    const groups = new Map();
-    for (const [key, token] of Object.entries(tokens)) {
-      if (!token.SF_Group) continue;
-      const name = token.SF_Group.replace(/ \(x\d+\)$/, '');
-      if (!groups.has(name)) groups.set(name, new Set());
-      groups.get(name).add(token.SF_Group);
-    }
-    const inconsistent = [...groups.entries()]
-      .filter(([, variants]) => variants.size > 1)
-      .map(([name, variants]) => `${name}: ${[...variants].join(' | ')}`);
-    expect(inconsistent).toEqual([]);
+  it('every named SF_Group is declared in game.json groups (v2 — multipliers are pack rules)', () => {
+    // v2 cutover (A3 slice 2b, D1b): SF_Group is the PURE name (schema
+    // makes a "(xN)" suffix illegal) and the multiplier lives ONLY in
+    // game.json `groups`. An undeclared name would read 1x silently —
+    // this mirrors the engine's activation gate at contract level.
+    const { groups } = JSON.parse(
+      fs.readFileSync(path.join(TOKEN_DATA_DIR, 'game.json'), 'utf8')
+    );
+    const undeclared = Object.entries(tokens)
+      .filter(([, t]) => t.SF_Group && t.SF_Group.trim())
+      .filter(([, t]) => !(groups || {})[t.SF_Group.trim()])
+      .map(([key, t]) => `${key}: '${t.SF_Group}'`);
+    expect(undeclared).toEqual([]);
   });
 
   it('SF_MemoryType values are scoreable against game.json scoring (or null = intentional 0x)', () => {

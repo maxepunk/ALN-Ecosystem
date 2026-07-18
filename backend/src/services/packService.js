@@ -315,10 +315,10 @@ function _gateCheck(manifest, gameConfig) {
     }
     // Groups coverage (A3 slice 2b, D1b): a pack that DECLARES a groups
     // block must declare every group its tokens name — an undeclared
-    // name would silently ride the "(xN)" fallback parse, exactly the
-    // split-source drift the block exists to kill. Accepts both the v1
-    // suffix shape and the v2 pure name (the strip is identity for v2);
-    // packs without the block gate nothing until the v2 cutover.
+    // name would silently read a 1x multiplier, exactly the split-source
+    // drift the block exists to kill. v2: SF_Group IS the pure name
+    // (tokens.schema.json makes a "(xN)" suffix illegal; the sync is the
+    // sole parser of the authoring shorthand — D3b).
     if (gameConfig.groups && typeof gameConfig.groups === 'object') {
       let tokensObj = null;
       try {
@@ -327,9 +327,7 @@ function _gateCheck(manifest, gameConfig) {
       if (tokensObj) {
         const undeclared = new Set();
         for (const token of Object.values(tokensObj)) {
-          const raw = (token.SF_Group || '').trim();
-          if (!raw) continue;
-          const name = raw.replace(/\s*\(x\d+\)$/i, '').trim();
+          const name = (token.SF_Group || '').trim();
           if (name && !gameConfig.groups[name]) undeclared.add(name);
         }
         for (const name of undeclared) {

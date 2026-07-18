@@ -49,6 +49,7 @@ const {
   calculateExpectedScore,
   calculateExpectedGroupBonus,
   loadPackScoring,
+  loadPackGroups,
 } = require('../helpers/scoring');
 
 // Global state
@@ -57,6 +58,7 @@ let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
 let packScoring = null; // ACTIVE pack (parity-pack) scoring block — the single score oracle (L5 retired)
+let packGroups = null;  // ACTIVE pack groups block — sole multiplier source (v2 cutover)
 
 test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
   // CRITICAL: Skip on desktop (chromium) project - only run on mobile-chrome
@@ -90,6 +92,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
     });
 
     packScoring = await loadPackScoring(orchestratorInfo.url);
+    packGroups = await loadPackGroups(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -309,7 +312,7 @@ test.describe('GM Scanner Scoring Parity - Standalone vs Networked', () => {
 
     // Calculate expected scores using production logic
     const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t, packScoring), 0);
-    const bonus = calculateExpectedGroupBonus(groupTokens, packScoring);
+    const bonus = calculateExpectedGroupBonus(groupTokens, packScoring, packGroups);
     const expectedTotal = baseScore + bonus;
 
     console.log(`Testing group completion parity: ${groupTokens[0].SF_Group}`);

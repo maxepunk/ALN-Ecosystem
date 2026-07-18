@@ -5,23 +5,16 @@ const logger = require('../utils/logger');
 
 /**
  * Parse group bonus multiplier from group field
- * @param {string} group - Group field like "Marcus Sucks (x2)"
- * @returns {number} Multiplier value, defaults to 1 if not found
+ * @param {string} group - v2 SF_Group: the PURE group name ('' = none)
+ * @returns {string|null} Trimmed group name, null when ungrouped
  */
-const parseGroupMultiplier = (group) => {
-  if (!group) return 1;
-  const match = group.match(/\(x(\d+)\)/i);
-  return match ? parseInt(match[1], 10) : 1;
-};
-
-/**
- * Extract group name without multiplier
- * @param {string} group - Group field like "Marcus Sucks (x2)"
- * @returns {string} Group name without multiplier
- */
+// The "(xN)" microformat parsers died at the tokens-v2 cutover (A3
+// slice 2b, D3b): the Notion sync is the SOLE parser of the authoring
+// shorthand; runtime consumers read the pure name + the pack's `groups`
+// block. tokens.schema.json v2 makes a suffixed SF_Group ILLEGAL.
 const extractGroupName = (group) => {
   if (!group) return null;
-  return group.replace(/\s*\(x\d+\)/i, '').trim() || null;
+  return group.trim() || null;
 };
 
 /**
@@ -138,20 +131,21 @@ const loadRawTokens = () => _loadTokensFile();
 const loadTokens = () => {
   const tokensObject = _loadTokensFile();
 
-  // D1b (A3 slice 2b): group multipliers are pack RULES. When the active
-  // pack declares a `groups` block, it is AUTHORITATIVE — the "(xN)"
-  // suffix parse below survives only for packs published before the
-  // block existed, and deletes entirely at the tokens-v2 cutover (D3b:
-  // the Notion sync becomes the sole microformat parser).
+  // D1b/v2 (A3 slice 2b): group multipliers are pack RULES — resolved
+  // from the active pack's `groups` block, never parsed from tokens.
   // eslint-disable-next-line global-require
   const packGroups = require('./packService').getGameConfig()?.groups || null;
 
   // Transform object format to array format expected by backend
   const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
     const groupName = extractGroupName(token.SF_Group);
+    // v2: multiplier comes from the pack's groups block ONLY (1 for
+    // undeclared names — unreachable for gated packs, the coverage gate
+    // refuses them; reachable in packless legacy checkouts, where a
+    // 1x multiplier means "group with no completion bonus", safe)
     const groupMultiplier = (packGroups && groupName && packGroups[groupName])
       ? packGroups[groupName].multiplier
-      : parseGroupMultiplier(token.SF_Group);
+      : 1;
     const calculatedValue = calculateTokenValue(
       token.SF_ValueRating,
       token.SF_MemoryType
@@ -188,7 +182,6 @@ const loadTokens = () => {
 module.exports = {
   loadTokens,
   loadRawTokens,
-  parseGroupMultiplier,
   extractGroupName,
   calculateTokenValue
 };

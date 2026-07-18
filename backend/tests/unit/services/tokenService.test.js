@@ -23,43 +23,14 @@ jest.mock('../../../src/utils/logger');
 const logger = require('../../../src/utils/logger');
 
 describe('TokenService - Utility Functions', () => {
-  describe('parseGroupMultiplier', () => {
-    it('should parse multiplier from group string', () => {
-      expect(tokenService.parseGroupMultiplier('Marcus Sucks (x2)')).toBe(2);
-      expect(tokenService.parseGroupMultiplier('Alpha Group (x3)')).toBe(3);
-      expect(tokenService.parseGroupMultiplier('Beta (x5)')).toBe(5);
-    });
-
-    it('should handle case-insensitive multiplier', () => {
-      expect(tokenService.parseGroupMultiplier('Test (X2)')).toBe(2);
-      expect(tokenService.parseGroupMultiplier('Test (x2)')).toBe(2);
-    });
-
-    it('should return 1 when no multiplier present', () => {
-      expect(tokenService.parseGroupMultiplier('No Multiplier Group')).toBe(1);
-      expect(tokenService.parseGroupMultiplier('Simple Name')).toBe(1);
-    });
-
-    it('should return 1 for null or empty group', () => {
-      expect(tokenService.parseGroupMultiplier(null)).toBe(1);
-      expect(tokenService.parseGroupMultiplier('')).toBe(1);
-      expect(tokenService.parseGroupMultiplier(undefined)).toBe(1);
-    });
-
-    it('should handle malformed multiplier syntax', () => {
-      expect(tokenService.parseGroupMultiplier('Group (x)')).toBe(1);
-      expect(tokenService.parseGroupMultiplier('Group (xabc)')).toBe(1);
-      expect(tokenService.parseGroupMultiplier('Group x2')).toBe(1); // No parentheses
-    });
+  // The "(xN)" parser (parseGroupMultiplier) DIED at the tokens-v2
+  // cutover (A3 slice 2b, D3b): the sync is the sole microformat parser;
+  // runtime multipliers come from the pack's `groups` block only.
+  it('the retired suffix parser is NOT exported (v2 cutover pin)', () => {
+    expect(tokenService.parseGroupMultiplier).toBeUndefined();
   });
 
-  describe('extractGroupName', () => {
-    it('should extract group name without multiplier', () => {
-      expect(tokenService.extractGroupName('Marcus Sucks (x2)')).toBe('Marcus Sucks');
-      expect(tokenService.extractGroupName('Alpha Group (x3)')).toBe('Alpha Group');
-      expect(tokenService.extractGroupName('Beta (x5)')).toBe('Beta');
-    });
-
+  describe('extractGroupName (v2: pure name passthrough)', () => {
     it('should handle group without multiplier', () => {
       expect(tokenService.extractGroupName('Simple Group')).toBe('Simple Group');
       expect(tokenService.extractGroupName('No Multiplier')).toBe('No Multiplier');
@@ -71,13 +42,9 @@ describe('TokenService - Utility Functions', () => {
       expect(tokenService.extractGroupName(undefined)).toBe(null);
     });
 
-    it('should trim whitespace after removing multiplier', () => {
-      expect(tokenService.extractGroupName('Group   (x2)')).toBe('Group');
-      expect(tokenService.extractGroupName('  Spaced  (x3)  ')).toBe('Spaced');
-    });
-
-    it('should return null if only multiplier remains after extraction', () => {
-      expect(tokenService.extractGroupName('(x2)')).toBe(null);
+    it('trims whitespace (v2 pure names — a suffixed SF_Group is schema-illegal)', () => {
+      expect(tokenService.extractGroupName('  Spaced Name  ')).toBe('Spaced Name');
+      expect(tokenService.extractGroupName('   ')).toBe(null);
     });
   });
 
@@ -159,7 +126,7 @@ describe('TokenService - Token Loading', () => {
       SF_RFID: 'token001',
       SF_ValueRating: 3,
       SF_MemoryType: 'Technical',
-      SF_Group: 'Alpha Group (x2)',
+      SF_Group: 'Alpha Group',
       image: '/assets/images/token001.jpg',
       audio: null,
       video: '/videos/token001.mp4',
@@ -170,7 +137,7 @@ describe('TokenService - Token Loading', () => {
       SF_RFID: 'token002',
       SF_ValueRating: 5,
       SF_MemoryType: 'Business',
-      SF_Group: 'Beta (x3)',
+      SF_Group: 'Beta',
       image: null,
       audio: '/assets/audio/token002.mp3',
       video: null,
@@ -336,13 +303,16 @@ describe('TokenService - Token Loading', () => {
       const tokens = tokenService.loadTokens();
       const token001 = tokens.find(t => t.id === 'token001');
 
-      // Check transformed structure
+      // Check transformed structure (v2: SF_Group is the pure name; the
+      // multiplier comes ONLY from the active pack's `groups` block — this
+      // suite never activates a pack, so the undeclared/packless reading
+      // is 1. The pack-derive path is pinned in claimsPolicy.test.js D1b.)
       expect(token001).toMatchObject({
         id: 'token001',
-        name: 'Alpha Group (x2)', // Uses SF_Group as name
+        name: 'Alpha Group', // Uses SF_Group as name
         memoryType: 'Technical',
-        groupId: 'Alpha Group', // Extracted without multiplier
-        groupMultiplier: 2
+        groupId: 'Alpha Group',
+        groupMultiplier: 1
       });
     });
 
@@ -373,7 +343,7 @@ describe('TokenService - Token Loading', () => {
 
       expect(token001.metadata).toEqual({
         rfid: 'token001',
-        group: 'Alpha Group (x2)',
+        group: 'Alpha Group', // v2: SF_Group is the pure name, verbatim in metadata
         originalType: 'Technical',
         rating: 3,
         summary: null,

@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "packId": "parity-pack",
   "version": "0.1.0",
-  "contentHash": "sha256:bd00e0e6a90ac25e56a8a094c01300a9d4abe72f73edd33c361805c5d50052fe",
+  "contentHash": "sha256:7e8752a97e0da0fd686532a6c7370de669703cdad306ec52328883b2273c10f6",
   "engine": {
     "minVersion": "3.0.0"
   },
@@ -11,14 +11,14 @@
     {
       "path": "game.json",
       "role": "game",
-      "sha1": "7f0fc7ab4e02d46acf2865a688221d5853cd9332",
-      "size": 1329
+      "sha1": "fd43a4282c3ecfcc159eab3d2c35c535459ced17",
+      "size": 1400
     },
     {
       "path": "tokens.json",
       "role": "tokens",
-      "sha1": "572d9b296c26041c8f08cafb0dd1bd9cd40b96bd",
-      "size": 3218
+      "sha1": "57f2494b9d236c72d2640a6f7a8b61ff98601017",
+      "size": 3208
     }
   ],
   "hardware": {

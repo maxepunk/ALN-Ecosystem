@@ -556,25 +556,37 @@ describe('packService', () => {
       writeManifest(tmpDir, minimalManifest());
     });
 
-    it('refuses a declaring pack whose tokens name an UNDECLARED group, naming both', () => {
+    it('refuses a declaring pack whose tokens name an UNDECLARED group', () => {
       writePack(tmpDir, {
         groups: { 'Server Logs': { multiplier: 5 } },
         tokens: {
-          t1: { SF_RFID: 't1', SF_Group: 'Server Logs (x5)' },
-          t2: { SF_RFID: 't2', SF_Group: 'Rogue Set (x3)' },
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs' },
+          t2: { SF_RFID: 't2', SF_Group: 'Rogue Set' },
         },
       });
       expect(() => packService.activatePack())
         .toThrow(/CAPABILITY GATE.*'Rogue Set'.*not declared in game\.json groups/);
     });
 
-    it('accepts full coverage — v1 suffix names AND v2 pure names both resolve', () => {
+    it('matches names VERBATIM (v2 cutover: a lingering "(xN)" suffix is a DIFFERENT name and is refused)', () => {
+      // The v1-compat strip died with the suffix parsers (D3b) — a
+      // suffixed SF_Group no longer resolves to its declared pure name.
       writePack(tmpDir, {
         groups: { 'Server Logs': { multiplier: 5 } },
         tokens: {
-          t1: { SF_RFID: 't1', SF_Group: 'Server Logs (x5)' }, // v1 shape
-          t2: { SF_RFID: 't2', SF_Group: 'Server Logs' },      // v2 shape
-          t3: { SF_RFID: 't3', SF_Group: '' },                 // ungrouped
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs (x5)' }, // v1 leftover
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'Server Logs \(x5\)'.*not declared/);
+    });
+
+    it('accepts full coverage — pure names resolve; ungrouped tokens gate nothing', () => {
+      writePack(tmpDir, {
+        groups: { 'Server Logs': { multiplier: 5 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs' },
+          t2: { SF_RFID: 't2', SF_Group: '' }, // ungrouped
         },
       });
       expect(() => packService.activatePack()).not.toThrow();

@@ -48,11 +48,13 @@ const GAME_CONFIG = {
     baseValues: { 1: 100, 2: 200, 3: 300, 4: 400, 5: 500 },
     typeMultipliers: { Personal: 1, Technical: 2, UNKNOWN: 0 },
   },
+  // v2 (D1b): multipliers live HERE — tokens carry the pure group name
+  groups: { Duo: { multiplier: 3 } },
 };
 
 const TOKENS_JSON = {
-  g1: { SF_RFID: 'g1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Duo (x3)' },
-  g2: { SF_RFID: 'g2', SF_ValueRating: 2, SF_MemoryType: 'Personal', SF_Group: 'Duo (x3)' },
+  g1: { SF_RFID: 'g1', SF_ValueRating: 1, SF_MemoryType: 'Personal', SF_Group: 'Duo' },
+  g2: { SF_RFID: 'g2', SF_ValueRating: 2, SF_MemoryType: 'Personal', SF_Group: 'Duo' },
   solo: { SF_RFID: 'solo', SF_ValueRating: 3, SF_MemoryType: 'Technical', SF_Group: '' },
 };
 

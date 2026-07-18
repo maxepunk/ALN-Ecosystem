@@ -62,5 +62,10 @@
     "semantics": {
       "allowNegative": true
     }
+  },
+  "groups": {
+    "Fixture Ledger": {
+      "multiplier": 2
+    }
   }
 }
