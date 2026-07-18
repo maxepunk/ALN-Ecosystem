@@ -256,6 +256,17 @@ even where commit pushes succeed): the obsolete parent-repo ref
 from the GitHub UI or any local clone
 (`git push origin :staging/tokendata-phase3-a1`) — see owner task list.
 
+## Standing practice: draft-PR-per-slice (owner-adopted 2026-07-18)
+
+Parent CI fires ONLY on main pushes and PRs targeting main — a slice
+branch gets ZERO CI until a PR exists (discovered when the entire
+foundations + slice-0 line turned out to be locally-verified only).
+Practice: the moment a slice branch is cut, open a DRAFT PR to main
+([DRAFT] title, do-not-merge note). CI then runs on every push; the
+draft state blocks accidental merges; the diff self-corrects once the
+branches beneath it land. Slice 0 = parent PR #19. Manual dispatch
+(`workflow_dispatch` on test.yml, any ref) covers ad-hoc runs.
+
 ## Session mechanics (recurring gotchas)
 
 - Bootstrap hook (`.claude/hooks/session-start.sh`) handles cold-start; it
