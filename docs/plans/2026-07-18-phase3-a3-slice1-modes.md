@@ -1,8 +1,10 @@
 # Phase 3 A3 Slice 1 — Modes to Open-Vocabulary Semantics Flags (design)
 
 **Date:** 2026-07-18
-**Status:** DRAFT for owner review — decisions D1–D3 open, everything else
-proposed-with-rationale. Companion: program §3 slice 1, pack-schemas §1
+**Status:** RATIFIED 2026-07-18 (owner): D1 area.variant convention ✓;
+D2 consuming-appraise ✓; D3 hard refusal ✓ WITH the §4 two-flavor
+refinement below (owner-driven: the lighting-cue-on-group-completion
+stress test). Companion: program §3 slice 1, pack-schemas §1
 (modes block) + addendum 4, adversarial R3/R9/R12, BILL scoping §2.1.
 **Ground truth this design is built on (censused 2026-07-18, not
 estimated):** 39 mode-literal branch points — backend 8 sites / 4 files
@@ -87,18 +89,33 @@ mode(s). ENGINE_CAPABILITIES gains nothing yet (D1 governs how it grows
 later): drivability derives from the mode records; `requires` remains the
 pack's explicit extra declaration.
 
-## 4. Coherence validator (R9)
+## 4. Coherence validator (R9) — TWO FLAVORS (refined 2026-07-18)
 
 Lives beside the gate (`_coherenceCheck`), runs at activation AND in the
-pack contract suite. The gate answers "can the engine run each field";
-coherence answers "do the fields contradict each other."
+pack contract suite. Both flavors hard-refuse activation (D3), but they
+have different LIFETIMES and different refusal messages:
 
-Hard errors (refuse activation):
-- `scoringPolicy: 'none'` ∧ `countsTowardGroups: true` — group progress
-  that can never pay out is an authoring bug, not a mechanic.
+**Flavor (i) — coherence proper (timeless self-contradictions; never
+retire):**
 - `defaultEntity` present ∧ `entityRole: 'ledger'` — prefilling a wallet
   name is cross-wired semantics.
 - Duplicate mode ids; empty modes array.
+
+**Flavor (ii) — drivability limitations (gate family: the ENGINE can't
+run it yet; each carries a NAMED retirement):**
+- `scoringPolicy: 'none'` ∧ `countsTowardGroups: true` — NOT meaningless
+  (group completion is already a cue-engine event source via
+  `cueEngineWiring.js` `group:completed`, so event-only groups are a real
+  future design — owner's lighting-cue stress test). The current defect
+  is `groupBonusAmount` computing from token CATALOG values: unscored
+  claims completing a group would pay a full catalog-priced bonus —
+  money from nowhere. RETIREMENT: slice 2's group-rules migration
+  defines contribution semantics (completion counts any counting-mode
+  claim; the bonus base sums only SCORED contributions, so none-mode
+  claims contribute presence + $0), then this refusal is DELETED and
+  the combination is legal with zero new vocabulary. Refusal message
+  must say "not driveable by this engine yet (see slice 2)", never
+  "incoherent".
 
 Deliberately LEGAL (documented so nobody "fixes" them):
 - `entityRole: 'attribution'` ∧ `scoringPolicy: 'standard'` (future
@@ -129,10 +146,9 @@ surfaces render by `displayBehavior.surface`. Everything visual beyond
 that (badge styling, >3-mode layout, per-mode theming) is Track D, and
 the toy pack stays within what the segmented control renders.
 
-## 7. Open decisions (owner)
+## 7. Decisions (RESOLVED 2026-07-18 — owner)
 
-**D1 — capability-id naming convention (pre-slice-1, binds the gate's
-wire vocabulary forever).** PROPOSED: lowercase `area.variant` where
+**D1 ✓ RATIFIED — capability-id naming convention.** As proposed: lowercase `area.variant` where
 `area` = the game.json block governed (`scoring`, `groupRules`,
 `duplicatePolicy`, `clock`, `surfaces`, `interaction`) and `variant`
 names the model (`scoring.tabular`, `scoring.graph`, `groupRules.all`,
@@ -141,7 +157,7 @@ append-only: never renamed or removed while any deployed engine reads
 them; adding = engine minor bump, removing = major. The slice-0 baseline
 already follows this shape.
 
-**D2 — `appraise` semantics (R9's forced example).** As authored
+**D2 ✓ RATIFIED as (a) consuming-appraise.** As authored
 (`none`+`ledger`+surface `none`), appraising CLAIMS a token FCFS for $0 —
 a consuming evaluation. Options:
   (a) RATIFY consuming-appraise: a real risk mechanic, drivable today
@@ -157,7 +173,9 @@ a consuming evaluation. Options:
   (c) Drop appraise — rejected by default: the 3-mode pack is what
       forces the R3 selector to be actually data-driven.
 
-**D3 — coherence severity posture.** PROPOSED: the §4 hard-error list
+**D3 ✓ RATIFIED — hard refusal, with the §4 two-flavor refinement**
+(flavor-ii refusals carry named retirements and honest messages). As
+proposed otherwise: the §4 hard-error list
 refuses activation (same channel as the gate); everything else is legal
 and documented — no warning tier in slice 1 (warnings that gate nothing
 rot into noise; a future authoring-time lint in the B pages is the right
