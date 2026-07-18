@@ -4,6 +4,8 @@
  * NOTE: This is Layer 1 (service logic) - validates unwrapped events, NOT WebSocket structure
  */
 
+const fs = require('fs');
+const path = require('path');
 const transactionService = require('../../../src/services/transactionService');
 const { resetAllServices } = require('../../helpers/service-reset');
 const sessionService = require('../../../src/services/sessionService');
@@ -805,6 +807,115 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       const rebuiltScore = getScore('Team Alpha').currentScore;
 
       expect(rebuiltScore).toBe(liveScore);
+    });
+  });
+
+  describe('Group Completion — scored-only bonus base + event-only groups (§2f, A3 slice 2)', () => {
+    // The flavor-ii retirement executed: a none∧counting mode is legal,
+    // its claims build group progress, and the completion bonus sums only
+    // SCORED contributions (catalog values of members claimed in a
+    // standard-scoring mode). Parity: the scanner's LocalStorage path has
+    // always summed recorded points, where unscored claims contribute 0.
+    const os = require('os');
+    const Token = require('../../../src/models/token');
+    const packService = require('../../../src/services/packService');
+
+    const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+    let tmpPack, savedPackPath;
+
+    beforeEach(async () => {
+      savedPackPath = process.env.PACK_PATH;
+      tmpPack = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-2f-'));
+      fs.writeFileSync(path.join(tmpPack, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 1, id: 'event-pack',
+        modes: [
+          { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' } },
+          { id: 'stash', label: 'Stash', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'none' } },
+        ],
+      }));
+      packService._resetForTesting();
+      process.env.PACK_PATH = tmpPack;
+
+      await sessionService.createSession({ name: 'Event Groups', teams: ['Crew'] });
+      await sessionService.startGame();
+
+      for (const id of ['setA', 'setB']) {
+        transactionService.tokens.set(id, new Token({
+          id, name: id, value: 100, memoryType: 'Technical',
+          groupId: 'heist-set', groupMultiplier: 2,
+          mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+          metadata: { rating: 3 },
+        }));
+      }
+    });
+
+    afterEach(() => {
+      if (savedPackPath === undefined) delete process.env.PACK_PATH;
+      else process.env.PACK_PATH = savedPackPath;
+      packService._resetForTesting();
+      fs.rmSync(tmpPack, { recursive: true, force: true });
+    });
+
+    const scan = (tokenId, mode) => transactionService.processScan({
+      tokenId,
+      teamId: 'Crew',
+      deviceId: 'GM_EVT',
+      deviceType: 'gm',
+      mode,
+      timestamp: new Date().toISOString()
+    });
+
+    it('an unscored counting claim COMPLETES the group live; bonus = scored contributions only', async () => {
+      const completions = [];
+      transactionService.on('group:completed', (info) => completions.push(info));
+
+      await scan('setA', 'fence');   // scored: 100
+      const result = await scan('setB', 'stash'); // presence only
+      await wait();
+
+      expect(result.status).toBe('accepted');
+      expect(result.points).toBe(0);
+
+      const teamScore = getScore('Crew');
+      expect(teamScore.completedGroups).toContain('heist-set');
+      expect(teamScore.baseScore).toBe(100);
+      expect(teamScore.bonusPoints).toBe(100); // (2-1) × 100 scored, NOT × 200 catalog
+      expect(teamScore.currentScore).toBe(200);
+      expect(teamScore.tokensScanned).toBe(1); // unscored claims are not "scanned" for scoring stats
+
+      expect(completions).toHaveLength(1);
+      expect(completions[0]).toEqual(expect.objectContaining({
+        teamId: 'Crew', groupId: 'heist-set', bonus: 100, multiplier: 2,
+      }));
+    });
+
+    it('an all-unscored completion fires group:completed with a $0 bonus (the event IS the point)', async () => {
+      const completions = [];
+      transactionService.on('group:completed', (info) => completions.push(info));
+
+      await scan('setA', 'stash');
+      await scan('setB', 'stash');
+      await wait();
+
+      const teamScore = getScore('Crew');
+      expect(teamScore.completedGroups).toContain('heist-set');
+      expect(teamScore.currentScore).toBe(0);
+      expect(completions).toHaveLength(1);
+      expect(completions[0].bonus).toBe(0);
+    });
+
+    it('live path agrees with the rebuild path for mixed scored/unscored groups', async () => {
+      await scan('setA', 'fence');
+      await scan('setB', 'stash');
+      await wait();
+
+      const liveScore = getScore('Crew').currentScore;
+      const session = sessionService.getCurrentSession();
+      transactionService.rebuildScoresFromTransactions(session.transactions);
+      const rebuilt = getScore('Crew');
+
+      expect(rebuilt.currentScore).toBe(liveScore);
+      expect(rebuilt.completedGroups).toContain('heist-set');
     });
   });
 

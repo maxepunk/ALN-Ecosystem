@@ -238,6 +238,20 @@ class TransactionService extends EventEmitter {
           mode: transaction.mode,
           scoringPolicy: modeRecord ? modeRecord.scoringPolicy : 'unknown-mode'
         });
+        // §2f (A3 slice 2): a counting-but-unscored claim adds no points
+        // and no scanned-count, but it DOES build group progress — and can
+        // therefore complete a group (bonus = scored contributions only,
+        // possibly $0). When that happens the team score changed (bonus),
+        // so the result must carry it for the transaction:new broadcast.
+        if (modeRecord && modeRecord.countsTowardGroups === true && token.isGrouped()) {
+          const teamScore = this._getTeamScore(transaction.teamId);
+          if (teamScore) {
+            const groupBonusInfo = this._applyGroupCompletion(transaction.teamId, token, teamScore);
+            if (groupBonusInfo) {
+              scoreResult = { teamScore, groupBonusInfo };
+            }
+          }
+        }
       }
 
       // Add to recent transactions
@@ -316,7 +330,6 @@ class TransactionService extends EventEmitter {
    */
   updateTeamScore(teamId, token) {
     let teamScore = this._getTeamScore(teamId);
-    let groupBonusInfo = null;
 
     // Team should already exist via sessionService.addTeamToSession()
     // But handle gracefully if not (auto-create directly in the canonical store)
@@ -332,35 +345,67 @@ class TransactionService extends EventEmitter {
     teamScore.addPoints(token.value);
     teamScore.incrementTokensScanned();
 
-    // Check for group completion bonus (pure rules — gameRules/scoring)
-    if (token.isGrouped() && !teamScore.hasCompletedGroup(token.groupId)) {
-      // CRITICAL: Pass current token ID so the rule includes the transaction
-      // being processed even if it isn't in session.transactions yet
-      if (this.isGroupComplete(teamId, token.groupId, token.id)) {
-        teamScore.completeGroup(token.groupId);
-
-        const multiplier = scoring.groupMultiplier(this.tokens, token.groupId);
-        if (multiplier > 0) {
-          const totalGroupBonus = scoring.groupBonusAmount(this.tokens, token.groupId);
-          teamScore.addBonus(totalGroupBonus);
-
-          groupBonusInfo = {
-            teamId,
-            groupId: token.groupId,
-            bonus: totalGroupBonus,
-            multiplier
-          };
-
-          logger.info('Group completed', groupBonusInfo);
-
-          // Emit group:completed for broadcasts (still needed for WebSocket broadcast)
-          this.emit('group:completed', groupBonusInfo);
-        }
-      }
-    }
+    // Group completion (pure rules — gameRules/scoring, shared with the
+    // unscored-counting path in processScan)
+    const groupBonusInfo = this._applyGroupCompletion(teamId, token, teamScore);
 
     // Return result (caller handles event emission)
     return { teamScore, groupBonusInfo };
+  }
+
+  /**
+   * Apply group completion if this claim completes the token's group
+   * (§2f, A3 slice 2): runs for EVERY counting-mode claim — scored or
+   * not — because completion counts any counting claim, while the bonus
+   * base (groupBonusAmount) sums only scored contributions. An
+   * all-unscored completion pays $0 but still fires group:completed
+   * (the event feeds the cue engine — for event-only groups it IS the
+   * payload).
+   * @param {string} teamId
+   * @param {Token} token - The token just claimed
+   * @param {TeamScore} teamScore - The team's live score instance
+   * @returns {Object|null} groupBonusInfo when a completion fired
+   * @private
+   */
+  _applyGroupCompletion(teamId, token, teamScore) {
+    if (!token.isGrouped() || teamScore.hasCompletedGroup(token.groupId)) {
+      return null;
+    }
+    // CRITICAL: Pass current token ID so the rule includes the transaction
+    // being processed even if it isn't in session.transactions yet
+    if (!this.isGroupComplete(teamId, token.groupId, token.id)) {
+      return null;
+    }
+
+    teamScore.completeGroup(token.groupId);
+
+    const multiplier = scoring.groupMultiplier(this.tokens, token.groupId);
+    if (multiplier === 0) {
+      return null; // x1 groups: tracked, never evented (unchanged behavior)
+    }
+
+    const session = sessionService.getCurrentSession();
+    const totalGroupBonus = scoring.groupBonusAmount({
+      tokens: this.tokens,
+      groupId: token.groupId,
+      transactions: session?.transactions || [],
+      teamId,
+      gameConfig: packService.getGameConfig(),
+    });
+    teamScore.addBonus(totalGroupBonus);
+
+    const groupBonusInfo = {
+      teamId,
+      groupId: token.groupId,
+      bonus: totalGroupBonus,
+      multiplier
+    };
+
+    logger.info('Group completed', groupBonusInfo);
+
+    // Emit group:completed for broadcasts (still needed for WebSocket broadcast)
+    this.emit('group:completed', groupBonusInfo);
+    return groupBonusInfo;
   }
 
   /**

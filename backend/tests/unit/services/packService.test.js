@@ -376,6 +376,65 @@ describe('packService', () => {
     });
   });
 
+  describe('rules-block drivability (A3 slice 2 — §2i/§2j: the engine implements the declared table only)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const base = () => ({ kind: 'game', schemaVersion: 1, id: 'rules' });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it("refuses duplicatePolicy.claim other than 'once' (non-consuming claims arrive WITH their enforcement)", () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'unlimited', view: 'unlimited' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*duplicatePolicy\.claim 'unlimited'/);
+    });
+
+    it("refuses duplicatePolicy.view other than 'unlimited'", () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'once', view: 'once' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*duplicatePolicy\.view 'once'/);
+    });
+
+    it('accepts the declared table (once / unlimited) — the policy the engine implements', () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'once', view: 'unlimited' } });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it("refuses groupRules.type other than 'all' with the named slice-2 message", () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'any', minSize: 2 } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*groupRules\.type 'any'.*declared table only/);
+    });
+
+    it('refuses groupRules.minSize other than 2', () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'all', minSize: 3 } });
+      expect(() => packService.activatePack())
+        .toThrow(/groupRules\.minSize 3/);
+    });
+
+    it("refuses an unimplemented completion.bonusFormula", () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'all', minSize: 2, completion: { bonusFormula: 'flat-thousand' } } });
+      expect(() => packService.activatePack())
+        .toThrow(/bonusFormula 'flat-thousand'/);
+    });
+
+    it('accepts the full declared ALN/toy table and an ABSENT block alike', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        groupRules: { type: 'all', minSize: 2, completion: { bonusFormula: 'multiplier-minus-one-times-base' } },
+        duplicatePolicy: { claim: 'once', view: 'unlimited' },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, base()); // nothing declared gates nothing
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
   describe('coherence check (A3 slice 1 — R9, two flavors per the 2026-07-18 ratification)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
@@ -417,26 +476,22 @@ describe('packService', () => {
       });
     });
 
-    describe('flavor (ii) — drivability limitations with NAMED retirements', () => {
-      it("refuses scoringPolicy 'none' ∧ countsTowardGroups with the RETIREMENT message, never 'incoherent'", () => {
+    // The flavor-(ii) refusal (scoringPolicy 'none' ∧ countsTowardGroups)
+    // was RETIRED ON SCHEDULE in slice 2: scored-only contribution
+    // semantics landed in gameRules/scoring (§2f — completion counts any
+    // counting claim, the bonus base sums only scored contributions), so
+    // unscored claims can no longer mint catalog-priced bonuses and the
+    // combination is legal. Its legality is pinned below.
+
+    describe('deliberately LEGAL combinations (documented so nobody "fixes" them)', () => {
+      it("accepts none ∧ countsTowardGroups — event-only groups (§2f semantics landed, flavor-ii retired)", () => {
         writeGame(tmpDir, gameWith(mode({
           id: 'ritual', scoringPolicy: 'none', entityRole: 'attribution',
           countsTowardGroups: true, displayBehavior: { surface: 'none' },
         })));
-        let err = null;
-        try { packService.activatePack(); } catch (e) { err = e; }
-        expect(err).not.toBeNull();
-        // The ratified language rule (design doc §4): honest gate-family
-        // wording with the named slice-2 retirement — this combination is
-        // a legitimate event-only-groups design, not a contradiction.
-        expect(err.message).toMatch(/not driveable by this engine yet \(see slice 2\)/);
-        expect(err.message).toMatch(/'ritual'/);
-        expect(err.message).not.toMatch(/incoheren/i);
-        expect(err.message).not.toMatch(/self-contradictory/);
+        expect(() => packService.activatePack()).not.toThrow();
       });
-    });
 
-    describe('deliberately LEGAL combinations (documented so nobody "fixes" them)', () => {
       it("accepts attribution ∧ standard (future scored-attributed modes)", () => {
         writeGame(tmpDir, gameWith(mode({ id: 'bounty', entityRole: 'attribution', defaultEntity: 'Nova' })));
         expect(() => packService.activatePack()).not.toThrow();

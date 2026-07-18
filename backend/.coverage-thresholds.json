@@ -255,7 +255,7 @@
     "lines": 100
   },
   "./src/services/transactionService.js": {
-    "branches": 55,
+    "branches": 60,
     "functions": 90,
     "lines": 85
   },

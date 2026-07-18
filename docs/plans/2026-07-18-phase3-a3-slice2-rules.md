@@ -135,6 +135,13 @@ the active pack's game.json; `ScoringCalculator`/`ScoringIntegrityCheck`/
 seam family. Owner decision D4s2 on depth (recommendation: in-scope —
 they mis-validate any non-ALN session today and the wall-scoreboard
 precedent shows out-of-census consumers bite at the gate).
+*Execution note (2026-07-18):* the FORCED minimal fix landed with the L1
+retirement — `scoringConfigLoader` re-points at `ALN-TokenData/game.json`
+scoring with a loud throw on a missing block (no baked fallback: a
+validator must never silently validate against wrong constants). Depth
+beyond that (stamped-pack resolution, mode-literal seams, AND §2f
+scored-only bonus math in `ScoringCalculator` — which diverges for any
+future none∧counting pack, though not for ALN) still rides D4s2.
 
 **o. Wall scoreboard rankings side (precedent check).** Slice 1 made the
 scoreboard's EVIDENCE filter pack-driven after the gate caught it; slice

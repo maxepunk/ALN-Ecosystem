@@ -2035,7 +2035,12 @@ components:
                 example: "jaw_group"
               bonusPoints:
                 type: integer
-                description: Bonus points awarded
+                description: |
+                  Bonus points awarded. The bonus base sums only SCORED
+                  contributions (A3 slice 2 §2f): members claimed in a
+                  scoringPolicy 'none' counting mode contribute presence
+                  but $0, so an event-only completion broadcasts 0 here —
+                  the completion event itself is the payload.
                 example: 500
               completedAt:
                 type: string

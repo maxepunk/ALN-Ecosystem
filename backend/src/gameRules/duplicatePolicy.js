@@ -14,6 +14,14 @@
  *
  * Pure: no session reads, no events, no Node APIs (scanner-parity surface,
  * like gameRules/scoring.js).
+ *
+ * PACK DECLARATION (A3 slice 2 §2i): this module IS the implementation of
+ * the pack's declared duplicatePolicy table — `{claim: 'once', view:
+ * 'unlimited'}`, declared identically by both real packs. The capability
+ * gate (packService._gateCheck) refuses any OTHER declared value with a
+ * named message, so a pack can never declare a policy this code doesn't
+ * enforce. A new policy value (e.g. non-consuming claims, the D2-deferred
+ * `claims` flag) arrives WITH its enforcement here — never schema-dead.
  */
 
 /**

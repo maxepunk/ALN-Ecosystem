@@ -218,6 +218,39 @@ function _gateCheck(manifest, gameConfig) {
         problems.push(`pack requires unsupported engine capabilities: ${missing.join(', ')}`);
       }
     }
+    // Rules-block drivability (A3 slice 2 §2i/§2j): the engine implements
+    // exactly the table both real packs declare — anything else is refused
+    // with a named message, never silently ignored. A future variant
+    // arrives WITH its enforcement (schema + gate + engine in one change).
+    const dp = gameConfig.duplicatePolicy;
+    if (dp) {
+      if (dp.claim !== undefined && dp.claim !== 'once') {
+        problems.push(
+          `duplicatePolicy.claim '${dp.claim}' — this engine implements 'once' only ` +
+          `(gameRules/duplicatePolicy.js; a non-consuming claim policy lands with its enforcement, design §2i)`
+        );
+      }
+      if (dp.view !== undefined && dp.view !== 'unlimited') {
+        problems.push(
+          `duplicatePolicy.view '${dp.view}' — this engine implements 'unlimited' only (design §2i)`
+        );
+      }
+    }
+    const gr = gameConfig.groupRules;
+    if (gr) {
+      if (gr.type !== undefined && gr.type !== 'all') {
+        problems.push(`groupRules.type '${gr.type}' — slice 2 implements the declared table only ('all')`);
+      }
+      if (gr.minSize !== undefined && gr.minSize !== 2) {
+        problems.push(`groupRules.minSize ${gr.minSize} — slice 2 implements the declared table only (2)`);
+      }
+      const bf = gr.completion && gr.completion.bonusFormula;
+      if (bf !== undefined && bf !== 'multiplier-minus-one-times-base') {
+        problems.push(
+          `groupRules.completion.bonusFormula '${bf}' — slice 2 implements the declared table only ('multiplier-minus-one-times-base')`
+        );
+      }
+    }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {
@@ -262,19 +295,21 @@ function _gateCheck(manifest, gameConfig) {
  *   semantics).
  *
  * Flavor (ii) — DRIVABILITY LIMITATIONS (gate family; each carries a
- *   NAMED retirement and must NEVER be called incoherent):
- *   scoringPolicy:'none' ∧ countsTowardGroups — a legitimate
- *   event-only-groups design (group:completed already feeds the cue
- *   engine), blocked ONLY because groupBonusAmount computes from token
- *   CATALOG values, so unscored claims completing a group would mint a
- *   full catalog-priced bonus. RETIRES in slice 2: scored-only
- *   contribution semantics land, then this refusal is DELETED.
+ *   NAMED retirement and must NEVER be called incoherent). The founding
+ *   member — scoringPolicy:'none' ∧ countsTowardGroups — RETIRED ON
+ *   SCHEDULE in slice 2: gameRules/scoring's §2f scored-only contribution
+ *   semantics landed (completion counts any counting claim; the bonus
+ *   base sums only scored contributions), so unscored claims can no
+ *   longer mint catalog-priced bonuses and event-only groups are legal.
+ *   The flavor exists for future limitations of the same family.
  *
  * Deliberately LEGAL (documented so nobody "fixes" them):
  *   entityRole:'attribution' ∧ scoringPolicy:'standard' (future
  *   scored-attributed modes) · displayBehavior.surface:'none' with any
  *   scoringPolicy (silent modes are a real design tool) ·
- *   scoringPolicy:'none' ∧ entityRole:'ledger' (D2 consuming-appraise).
+ *   scoringPolicy:'none' ∧ entityRole:'ledger' (D2 consuming-appraise) ·
+ *   scoringPolicy:'none' ∧ countsTowardGroups (event-only groups, since
+ *   the §2f retirement).
  *
  * An ABSENT modes block is tolerated (nothing declared gates nothing —
  * the modeSemantics L6 shim covers it); a DECLARED-but-empty one is a
@@ -284,8 +319,13 @@ function _gateCheck(manifest, gameConfig) {
 function _coherenceCheck(gameConfig) {
   if (!gameConfig || !Array.isArray(gameConfig.modes)) return;
 
+  // Flavor-(ii) note: no drivability limitations live here right now —
+  // the founding member retired in slice 2 (see header). The language
+  // rule for the next one: gate-family wording with a NAMED retirement
+  // ("not driveable by this engine yet (see slice N)"), never
+  // "incoherent" — pushed as its own problem line, distinct from
+  // contradictions.
   const contradictions = [];
-  const limitations = [];
 
   if (gameConfig.modes.length === 0) {
     contradictions.push('the modes array is EMPTY — a pack that declares modes must declare at least one');
@@ -304,26 +344,15 @@ function _coherenceCheck(gameConfig) {
       );
     }
 
-    if (mode.scoringPolicy === 'none' && mode.countsTowardGroups === true) {
-      limitations.push(
-        `mode '${mode.id}' combines scoringPolicy 'none' with countsTowardGroups — ` +
-        'not driveable by this engine yet (see slice 2): group bonuses compute from token catalog values, ' +
-        'so unscored claims completing a group would mint money; slice 2 defines scored-only contribution ' +
-        'semantics and deletes this refusal'
-      );
-    }
+    // (The none∧countsTowardGroups flavor-(ii) refusal that lived here
+    // was DELETED in slice 2 — see the header. Event-only groups are
+    // legal now that the bonus base sums only scored contributions.)
   }
 
-  const problems = [];
   if (contradictions.length > 0) {
-    problems.push(`self-contradictory pack: ${contradictions.join('; ')}`);
-  }
-  if (limitations.length > 0) {
-    problems.push(`engine drivability limitation: ${limitations.join('; ')}`);
-  }
-  if (problems.length > 0) {
     throw new Error(
-      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ${problems.join(' — ')}.`
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
+      `self-contradictory pack: ${contradictions.join('; ')}.`
     );
   }
 }

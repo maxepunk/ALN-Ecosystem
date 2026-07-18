@@ -16,7 +16,10 @@
  * - A1 (generalized): only counting-mode transactions build group progress
  * - A2/B1 (generalized): non-'standard' scoringPolicy = 0 points
  * - Groups need 2+ member tokens to be completable
- * - Group bonus = (multiplier − 1) × Σ member token values
+ * - Group bonus = (multiplier − 1) × Σ SCORED member contributions (A3
+ *   slice 2 §2f: completion counts ANY counting-mode claim; the bonus
+ *   BASE sums only members claimed in a standard-scoring mode — an
+ *   unscored counting claim contributes presence, not money)
  */
 
 const scoring = require('../../../src/gameRules/scoring');
@@ -45,6 +48,16 @@ const TOY_CONFIG = {
     { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' } },
     { id: 'tipoff', label: 'Tip-Off', scoringPolicy: 'none', entityRole: 'attribution', countsTowardGroups: false, displayBehavior: { surface: 'scoreboard-evidence' } },
     { id: 'appraise', label: 'Appraise', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: false, displayBehavior: { surface: 'none' } },
+  ],
+};
+
+// Event-only-groups config (§2f): a legal none∧counting mode — claims
+// build group progress but score nothing (the flavor-ii refusal this
+// combination used to trip was DELETED in slice 2).
+const EVENT_CONFIG = {
+  modes: [
+    { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' } },
+    { id: 'stash', label: 'Stash', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'none' } },
   ],
 };
 
@@ -172,14 +185,71 @@ describe('gameRules/scoring (pure)', () => {
       expect(scoring.groupMultiplier(TOKENS, 'gNoBonus')).toBe(0);
     });
 
-    it('bonus = (multiplier − 1) × sum of all member values', () => {
+    it('bonus = (multiplier − 1) × sum of member values when every claim scored', () => {
       // g1: (3-1) × (100+250) = 700
-      expect(scoring.groupBonusAmount(TOKENS, 'g1')).toBe(700);
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [tx('t1'), tx('t2')],
+        teamId: 'Team Alpha', gameConfig: ALN_CONFIG,
+      })).toBe(700);
     });
 
     it('bonus is 0 when the group pays no multiplier', () => {
-      expect(scoring.groupBonusAmount(TOKENS, 'gNoBonus')).toBe(0);
-      expect(scoring.groupBonusAmount(TOKENS, null)).toBe(0);
+      const args = { tokens: TOKENS, transactions: [tx('n1'), tx('n2')], teamId: 'Team Alpha', gameConfig: ALN_CONFIG };
+      expect(scoring.groupBonusAmount({ ...args, groupId: 'gNoBonus' })).toBe(0);
+      expect(scoring.groupBonusAmount({ ...args, groupId: null })).toBe(0);
+    });
+
+    it('§2f: an unscored counting claim contributes presence but $0 to the base', () => {
+      // t1 claimed via fence (scored), t2 via stash (none∧counting):
+      // bonus base = t1 only → (3-1) × 100 = 200
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [
+          tx('t1', 'Crew', { mode: 'fence' }),
+          tx('t2', 'Crew', { mode: 'stash', points: 0 }),
+        ],
+        teamId: 'Crew', gameConfig: EVENT_CONFIG,
+      })).toBe(200);
+    });
+
+    it('§2f: an all-unscored completion pays a $0 bonus (event-only groups)', () => {
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [
+          tx('t1', 'Crew', { mode: 'stash', points: 0 }),
+          tx('t2', 'Crew', { mode: 'stash', points: 0 }),
+        ],
+        teamId: 'Crew', gameConfig: EVENT_CONFIG,
+      })).toBe(0);
+    });
+
+    it('rides the legacy ALN shim when no gameConfig is passed (default arg, ledger L6)', () => {
+      // Omit gameConfig AND currentTokenId entirely: resolveMode falls back
+      // to the baked ALN table, where 'blackmarket' is standard∧counting.
+      expect(scoring.isGroupComplete({
+        tokens: TOKENS,
+        transactions: [tx('t1'), tx('t2')],
+        teamId: 'Team Alpha',
+        groupId: 'g1',
+      })).toBe(true);
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [tx('t1'), tx('t2')],
+        teamId: 'Team Alpha',
+      })).toBe(700);
+    });
+
+    it('§2f: another team\'s scored claims never feed this team\'s bonus base', () => {
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [
+          tx('t1', 'Crew', { mode: 'stash', points: 0 }),
+          tx('t2', 'Crew', { mode: 'stash', points: 0 }),
+          tx('t1', 'Rivals', { mode: 'fence' }),
+        ],
+        teamId: 'Crew', gameConfig: EVENT_CONFIG,
+      })).toBe(0);
     });
   });
 
@@ -255,6 +325,56 @@ describe('gameRules/scoring (pure)', () => {
         gameConfig: ALN_CONFIG,
       });
       expect(result[0].lastTokenTime).toBe('2026-06-10T13:30:00.000Z');
+    });
+
+    it('§2f: unscored counting claims complete groups in the rebuild (event-only)', () => {
+      const result = scoring.computeTeamScores({
+        tokens: TOKENS,
+        transactions: [
+          tx('t1', 'Crew', { mode: 'stash', points: 0 }),
+          tx('t2', 'Crew', { mode: 'stash', points: 0 }),
+        ],
+        teamIds: ['Crew'],
+        gameConfig: EVENT_CONFIG,
+      });
+      expect(result[0].completedGroups).toEqual(['g1']);
+      expect(result[0].baseScore).toBe(0);
+      expect(result[0].bonusPoints).toBe(0); // no scored contributions → $0 bonus
+      expect(result[0].tokensScanned).toBe(0); // parity: live path counts scored claims only
+    });
+
+    it('§2f: a team present ONLY via counting claims still gets its completion row (defensive symmetry)', () => {
+      // 'Ghost Crew' is absent from teamIds and has no scoring transactions
+      // — only stash claims. The rebuild must still record the completion.
+      const result = scoring.computeTeamScores({
+        tokens: TOKENS,
+        transactions: [
+          tx('t1', 'Ghost Crew', { mode: 'stash', points: 0 }),
+          tx('t2', 'Ghost Crew', { mode: 'stash', points: 0 }),
+        ],
+        teamIds: [],
+        gameConfig: EVENT_CONFIG,
+      });
+      const ghost = result.find(r => r.teamId === 'Ghost Crew');
+      expect(ghost).toBeDefined();
+      expect(ghost.completedGroups).toEqual(['g1']);
+      expect(ghost.currentScore).toBe(0);
+    });
+
+    it('§2f: mixed scored/unscored completion pays the bonus from scored contributions only', () => {
+      const result = scoring.computeTeamScores({
+        tokens: TOKENS,
+        transactions: [
+          tx('t1', 'Crew', { mode: 'fence' }),               // scored: 100
+          tx('t2', 'Crew', { mode: 'stash', points: 0 }),    // presence only
+        ],
+        teamIds: ['Crew'],
+        gameConfig: EVENT_CONFIG,
+      });
+      expect(result[0].baseScore).toBe(100);
+      expect(result[0].completedGroups).toEqual(['g1']);
+      expect(result[0].bonusPoints).toBe(200); // (3-1) × 100, NOT × 350
+      expect(result[0].currentScore).toBe(300);
     });
   });
 
