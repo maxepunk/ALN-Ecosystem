@@ -251,6 +251,26 @@ function _gateCheck(manifest, gameConfig) {
         );
       }
     }
+    // Phases drivability (A3 slice 2 §2g, owner ruling D1s2): the engine
+    // reads gameClock.duration/overtimeAt but drives NO phase machinery —
+    // anything beyond the degenerate single-phase-at-0 is declared
+    // headroom the doctrine refuses. Flavor-ii family: a NAMED retirement
+    // ("see slice 5" — program §3: phases + trigger-starts land there),
+    // never "incoherent". Absent/empty phases declare nothing and pass.
+    const phases = gameConfig.gameClock && gameConfig.gameClock.phases;
+    if (Array.isArray(phases) && phases.length > 0) {
+      const degenerate =
+        phases.length === 1 &&
+        phases[0].start && phases[0].start.at === 0 &&
+        phases[0].start.trigger === undefined;
+      if (!degenerate) {
+        problems.push(
+          `gameClock.phases (${phases.length} phase${phases.length === 1 ? '' : 's'}) — ` +
+          'multi-phase and trigger-started clocks are not driveable by this engine yet (see slice 5); ' +
+          'the engine drives only the degenerate single-phase-at-0'
+        );
+      }
+    }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {

@@ -435,6 +435,90 @@ describe('packService', () => {
     });
   });
 
+  describe('phases gate (A3 slice 2 — D1s2: multi-phase clocks refuse until slice 5)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const base = () => ({ kind: 'game', schemaVersion: 1, id: 'phases' });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('refuses a multi-phase clock with the named slice-5 retirement', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+            { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('refuses a single phase that does not start at 0', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'late', label: 'Late', start: { at: 600 } }] },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('refuses a trigger-started phase (trigger-starts are slice 5 too)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'main', label: 'Game', start: { trigger: 'cue:fired' } }] },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+    });
+
+    it('is a drivability LIMITATION, never a contradiction (language rule pinned)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'a', start: { at: 0 } }, { id: 'b', start: { at: 10 } }] },
+      });
+      let message = '';
+      try {
+        packService.activatePack();
+      } catch (err) {
+        message = err.message;
+      }
+      expect(message).toMatch(/not driveable by this engine yet \(see slice 5\)/);
+      expect(message).not.toMatch(/incoherent/i);
+      expect(message).not.toMatch(/self-contradictory/i);
+    });
+
+    it('accepts the degenerate single-phase-at-0 (the ALN shape)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 7200,
+          overtimeAt: 7200,
+          phases: [{ id: 'main', label: 'Game', start: { at: 0 } }],
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts absent gameClock, absent phases, and an empty phases array (nothing declared gates nothing)', () => {
+      writeGame(tmpDir, base());
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { duration: 3600 } });
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { duration: 3600, phases: [] } });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
   describe('activation-frozen rules memo + operator warns (review fixes)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
