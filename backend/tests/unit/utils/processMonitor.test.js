@@ -520,6 +520,21 @@ describe('ProcessMonitor', () => {
       killSpy.mockRestore();
     });
 
+    it('should ignore a GARBAGE PID file (isNaN arm — deflaked coverage pin)', () => {
+      // This arm's coverage used to depend on suite interleaving — the
+      // recurring displayDriver/processMonitor ratchet flake. Pin it.
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-test-monitor.pid') return 'not-a-pid';
+        throw new Error('ENOENT');
+      });
+
+      pidMonitor.start();
+
+      expect(killSpy).not.toHaveBeenCalled();
+      killSpy.mockRestore();
+    });
+
     it('should NOT kill process if PID was reused by different command', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {

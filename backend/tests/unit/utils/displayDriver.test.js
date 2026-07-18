@@ -67,6 +67,29 @@ describe('displayDriver — window management', () => {
       );
     });
 
+    test('returns false when the browser cannot launch (!running arm — deflaked coverage pin)', async () => {
+      // This arm's coverage used to depend on suite interleaving — the
+      // recurring ratchet flake. Force the launch failure deterministically.
+      const { spawn, execFile } = require('child_process');
+      // Chromium spawns but dies during the 1s alive-check (the handled
+      // early-crash path: on('exit') nulls browserProcess → return false)
+      spawn.mockReturnValue({
+        pid: 4321,
+        killed: false,
+        on: jest.fn((event, handler) => { if (event === 'exit') setImmediate(handler); }),
+      });
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') cb = opts;
+        cb(null, '', '');
+      });
+
+      let freshDriver;
+      jest.isolateModules(() => {
+        freshDriver = require('../../../src/utils/displayDriver');
+      });
+      await expect(freshDriver.showScoreboard()).resolves.toBe(false);
+    });
+
     test('does NOT relaunch Chromium on subsequent calls', async () => {
       const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };
