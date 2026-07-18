@@ -181,6 +181,29 @@ semantics BOTH sides with parity tests ≈0.75 · scripts/lib re-point
 WILL catch something) ≈0.5 → **≈2.5–3.5 sessions** (A2 ran 2.3–2.7× its
 estimate; this figure already prices the fallout line).
 
+## 6a. RULINGS (owner, 2026-07-18) — slice 2 decision items CLOSED
+
+- **D1s2 = GATE + TOY TRIM.** Owner challenged whether act support is
+  SPECIFICALLY planned; verified against program §3: "Slice 5 —
+  clock/phase params (B11): duration/overtime landed in slice 2; phases +
+  trigger-starts here" — a concrete named slice, not a vague deferral.
+  Build: refuse multi-phase packs with the named "see slice 5" retirement;
+  trim toy to single phase until slice 5 restores it.
+- **D2s2 = IMPLEMENT allowNegative.** Pack-conditional score floor:
+  admin adjustments may take a team negative when the pack declares
+  allowNegative true. Contract-first (teamScore schema min(0) becomes
+  pack-conditional); both sides + validators aligned.
+- **D3s2 = BOTH claim policies available.** Supersedes the keep-consuming
+  recommendation: a per-mode claims flag (consuming default,
+  non-consuming available to pack authors) lands WITH its full
+  enforcement — schema + gate + duplicatePolicy + scanner parity in one
+  change, never schema-dead. v1 constraint: non-consuming ∧
+  countsTowardGroups gates as a flavor-ii limitation (non-consumed
+  presence in group completion needs its own design — named retirement).
+- **D4s2 = FULL validator sweep.** Validators resolve the session's
+  stamped pack, mode literals go through the semantics seam,
+  ScoringCalculator adopts §2f scored-only bonus math.
+
 ## 6. Owner decisions needed before opening
 
 - **D1s2 — phases gate:** refuse multi-phase packs with the slice-5

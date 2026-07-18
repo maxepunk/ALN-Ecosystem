@@ -1,9 +1,8 @@
 # Phase 3 A3 Slice 2b — Tokens v2 + Pack-Declared Category Vocabulary (design)
 
-**Status: DRAFT — pre-open census complete + design recommendations
-drafted (2026-07-18); owner ratification of D1b–D3b required before any
-build (program §12.3 discipline, same as slice 2). Sequenced AFTER slice
-2 closes (D1s2–D4s2).**
+**Status: RATIFIED 2026-07-18 — owner ruled YES on all three decisions
+(D1b groups block in game.json / D2b exact-case canon / D3b sync as the
+sole "(xN)" parser). Build opens after slice 2 closes.**
 
 Slice 2b was owner-added at the 2026-07-17 adversarial review: replace the
 string-parsed token microformats with structured, pack-declared vocabulary
