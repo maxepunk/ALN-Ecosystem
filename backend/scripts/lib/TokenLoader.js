@@ -83,9 +83,22 @@ class TokenLoader {
     const { BASE_VALUES, TYPE_MULTIPLIERS } =
       require('./scoringConfigLoader').loadScoringConstants(this.packDir || undefined);
 
+    // D1b (A3 slice 2b): a declared pack `groups` block is AUTHORITATIVE
+    // for multipliers — the "(xN)" parse survives only as the fallback
+    // for undeclared groups / pre-groups packs (deletes at the v2 cutover).
+    let packGroups = null;
+    if (this.packDir) {
+      try {
+        // eslint-disable-next-line global-require, import/no-dynamic-require
+        packGroups = require(path.join(this.packDir, 'game.json')).groups || null;
+      } catch { /* no game.json — fallback parse below */ }
+    }
+
     this.tokens = Object.entries(rawTokens).map(([id, token]) => {
       const groupName = TokenLoader.extractGroupName(token.SF_Group);
-      const groupMultiplier = TokenLoader.parseGroupMultiplier(token.SF_Group);
+      const groupMultiplier = (packGroups && groupName && packGroups[groupName])
+        ? packGroups[groupName].multiplier
+        : TokenLoader.parseGroupMultiplier(token.SF_Group);
 
       // Calculate value — mirror the ENGINE (tokenService.calculateTokenValue):
       // missing rating → 0 base, unknown type → `unknown` multiplier (0x).
