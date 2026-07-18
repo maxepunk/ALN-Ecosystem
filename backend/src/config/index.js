@@ -5,7 +5,6 @@
 
 const path = require('path');
 const dotenv = require('dotenv');
-const fs = require('fs');
 
 // Load environment variables
 dotenv.config();

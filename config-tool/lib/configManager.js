@@ -89,9 +89,23 @@ class ConfigManager {
         'the pack rules file must exist (check the ALN-TokenData submodule)'
       );
     }
+    // PAIR ATOMICITY (review finding): if the manifest rebuild throws
+    // after game.json was replaced, the pack would be left edited with a
+    // stale manifest — the exact state that fails the scanners' per-file
+    // sha1 verify, behind a 500 that implies nothing changed. Restore the
+    // pre-edit game.json on rebuild failure so the pair stays consistent.
+    const previousGame = JSON.parse(JSON.stringify(game));
     game.scoring = { ...game.scoring, ...data };
     this._writeJson(this.paths.gamePath, game);
-    this._rebuildPackManifest();
+    try {
+      this._rebuildPackManifest();
+    } catch (err) {
+      this._writeJson(this.paths.gamePath, previousGame);
+      throw new Error(
+        `Scoring write rolled back: pack-manifest rebuild failed (${err.message}). ` +
+        'game.json was restored to its previous state; fix the pack directory and retry.'
+      );
+    }
   }
 
   // Any pack-file edit requires a manifest regen (root CLAUDE.md rule) —
@@ -253,7 +267,13 @@ class ConfigManager {
       if (!backup) throw err; // current config was unreadable — nothing to restore
       try {
         this.writeEnvValues(backup.env);
-        this.writeScoring(backup.scoring);
+        // Skip the scoring restore when the backup captured nothing real
+        // (readAll returns {} for a missing game.json): writeScoring({})
+        // would throw validation and convert a recoverable partial
+        // failure into the false 'half-applied' path (review finding).
+        if (backup.scoring && Object.keys(backup.scoring).length > 0) {
+          this.writeScoring(backup.scoring);
+        }
         this.writeCues(backup.cues);
         this.writeRouting(backup.routing);
       } catch (restoreErr) {

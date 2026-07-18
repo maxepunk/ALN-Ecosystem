@@ -717,17 +717,22 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       transactionService.tokens.set('token1', token1);
 
-      const multiplier = transactionService.calculateGroupBonus('bonus-group');
+      // (the dead calculateGroupBonus adapter was deleted — review finding;
+      // the pure rule is the surface production actually uses)
+      const scoringRules = require('../../../src/gameRules/scoring');
+      const multiplier = scoringRules.groupMultiplier(transactionService.tokens, 'bonus-group');
       expect(multiplier).toBe(3);
     });
 
     it('should return 0 for null groupId bonus', () => {
-      const multiplier = transactionService.calculateGroupBonus(null);
+      const scoringRules = require('../../../src/gameRules/scoring');
+      const multiplier = scoringRules.groupMultiplier(transactionService.tokens, null);
       expect(multiplier).toBe(0);
     });
 
     it('should return 0 for non-existent group', () => {
-      const multiplier = transactionService.calculateGroupBonus('nonexistent-group');
+      const scoringRules = require('../../../src/gameRules/scoring');
+      const multiplier = scoringRules.groupMultiplier(transactionService.tokens, 'nonexistent-group');
       expect(multiplier).toBe(0);
     });
   });
@@ -831,6 +836,7 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
         modes: [
           { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' } },
           { id: 'stash', label: 'Stash', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'none' } },
+          { id: 'quickcash', label: 'Quick Cash', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: false, displayBehavior: { surface: 'scoreboard-rankings' } },
         ],
       }));
       packService._resetForTesting();
@@ -916,6 +922,56 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
 
       expect(rebuilt.currentScore).toBe(liveScore);
       expect(rebuilt.completedGroups).toContain('heist-set');
+    });
+
+    it('a standard∧NON-counting claim never completes a group (review finding: live/rebuild parity)', async () => {
+      // quickcash scores money but builds no group progress. Pre-fix, the
+      // live path's unconditional currentTokenId injection completed the
+      // group here while the rebuild (which honors countsTowardGroups)
+      // un-completed it on the next transaction:delete.
+      const completions = [];
+      transactionService.on('group:completed', (info) => completions.push(info));
+
+      await scan('setA', 'fence');       // counting, scored: 100
+      await scan('setB', 'quickcash');   // scored, NON-counting: 100, no progress
+      await wait();
+
+      const teamScore = getScore('Crew');
+      expect(teamScore.baseScore).toBe(200);
+      expect(teamScore.completedGroups).not.toContain('heist-set');
+      expect(teamScore.bonusPoints).toBe(0);
+      expect(completions).toHaveLength(0);
+
+      // and the rebuild agrees exactly
+      const session = sessionService.getCurrentSession();
+      transactionService.rebuildScoresFromTransactions(session.transactions);
+      const rebuilt = getScore('Crew');
+      expect(rebuilt.completedGroups).not.toContain('heist-set');
+      expect(rebuilt.currentScore).toBe(200);
+    });
+
+    it('an event-only completion for an UNREGISTERED team auto-creates the score row and still fires (review finding)', async () => {
+      // Pre-fix, the unscored branch guarded with `if (teamScore)` and
+      // silently dropped the completion — the cue engine missed the event
+      // that IS the payload for event-only groups.
+      const completions = [];
+      transactionService.on('group:completed', (info) => completions.push(info));
+
+      const ghostScan = (tokenId) => transactionService.processScan({
+        tokenId, teamId: 'Ghost Crew', deviceId: 'GM_EVT', deviceType: 'gm',
+        mode: 'stash', timestamp: new Date().toISOString()
+      });
+      await ghostScan('setA');
+      await ghostScan('setB');
+      await wait();
+
+      const teamScore = getScore('Ghost Crew');
+      expect(teamScore).toBeDefined(); // auto-created
+      expect(teamScore.completedGroups).toContain('heist-set');
+      expect(completions).toHaveLength(1);
+      expect(completions[0]).toEqual(expect.objectContaining({
+        teamId: 'Ghost Crew', groupId: 'heist-set', bonus: 0,
+      }));
     });
   });
 

@@ -317,7 +317,24 @@ function _gateCheck(manifest, gameConfig) {
  * @throws {Error} on any flavor-(i) contradiction or flavor-(ii) limitation
  */
 function _coherenceCheck(gameConfig) {
-  if (!gameConfig || !Array.isArray(gameConfig.modes)) return;
+  if (!gameConfig) return;
+
+  // DECLARED-but-unusable scoring is a contradiction (same doctrine as
+  // declared-but-empty modes): a pack that ships a scoring block with
+  // missing/empty tables would silently run the baked ALN economy behind
+  // one scrolling warn — refuse at boot instead (review finding). An
+  // ABSENT scoring block stays legal: packless checkouts and rules-only
+  // fixtures ride the loud shim by design.
+  if (gameConfig.scoring !== undefined && !_isUsableScoring(gameConfig.scoring)) {
+    throw new Error(
+      `COHERENCE CHECK: refusing to activate pack at ${getPackDir()} — ` +
+      'self-contradictory pack: the scoring block is DECLARED but has missing/empty ' +
+      'baseValues or typeMultipliers; a declared economy must be usable (omit the ' +
+      'block entirely to run the legacy shim).'
+    );
+  }
+
+  if (!Array.isArray(gameConfig.modes)) return;
 
   // Flavor-(ii) note: no drivability limitations live here right now —
   // the founding member retired in slice 2 (see header). The language
@@ -373,6 +390,7 @@ function activatePack() {
   activeGameConfig = gameConfig;
   activated = true;
   warnedDriftHash = false;
+  _cachedScoringRules = null;
   if (activeManifest) {
     logger.info(`Pack ACTIVATED: ${activeManifest.packId} v${activeManifest.version} (${activeManifest.contentHash})`);
   } else {
@@ -428,11 +446,21 @@ function getGameConfig() {
  * once-per-process warn — never a silent zero.
  * @returns {{baseValues: Object, typeMultipliers: Object}}
  */
+let _cachedScoringRules = null;
+
 function getScoringRules() {
+  // Activation-frozen memo: post-activation the snapshot cannot change,
+  // so normalize once (calculateTokenValue calls this per token during
+  // the full token load). Pre-activation reads stay live (uncached).
+  if (activated && _cachedScoringRules) {
+    return _cachedScoringRules;
+  }
   const gameConfig = getGameConfig();
   const scoring = gameConfig && gameConfig.scoring;
   if (_isUsableScoring(scoring)) {
-    return _normalizeScoring(scoring);
+    const rules = _normalizeScoring(scoring);
+    if (activated) _cachedScoringRules = rules;
+    return rules;
   }
   if (!warnedLegacyScoring) {
     warnedLegacyScoring = true;
@@ -442,7 +470,9 @@ function getScoringRules() {
       'Fine for pre-pack checkouts; a real pack should declare its scoring.'
     );
   }
-  return _normalizeScoring(LEGACY_ALN_SCORING);
+  const rules = _normalizeScoring(LEGACY_ALN_SCORING);
+  if (activated) _cachedScoringRules = rules;
+  return rules;
 }
 
 let warnedLegacyClock = false;
@@ -457,10 +487,29 @@ let warnedLegacyClock = false;
  * fires exactly at expected duration — with a LOUD once-per-process warn.
  * @returns {{durationSeconds: number, overtimeAtSeconds: number}}
  */
+let warnedIgnoredSessionTimeout = false;
+
 function getClockRules() {
   const gameConfig = getGameConfig();
   const clock = gameConfig && gameConfig.gameClock;
   if (clock && typeof clock.duration === 'number' && clock.duration > 0) {
+    // The pack clock is authoritative — but SESSION_TIMEOUT was the
+    // operator's knob for years, and silently ignoring a set-and-
+    // differing value would burn a real event (review finding: overtime
+    // firing 30 min late with zero log output). Loud, once.
+    if (!warnedIgnoredSessionTimeout) {
+      // eslint-disable-next-line global-require
+      const config = require('../config');
+      const envSeconds = config.session.sessionTimeout * 60;
+      if (envSeconds !== clock.duration) {
+        warnedIgnoredSessionTimeout = true;
+        logger.warn(
+          `SESSION_TIMEOUT (${config.session.sessionTimeout} min) is IGNORED: the active pack declares ` +
+          `gameClock.duration=${clock.duration}s, which is authoritative since A3 slice 2. ` +
+          'Edit the pack\'s game.json to change game duration.'
+        );
+      }
+    }
     return {
       durationSeconds: clock.duration,
       overtimeAtSeconds: (typeof clock.overtimeAt === 'number' && clock.overtimeAt > 0)
@@ -531,6 +580,8 @@ function _resetForTesting() {
   warnedDriftHash = false;
   warnedLegacyScoring = false;
   warnedLegacyClock = false;
+  warnedIgnoredSessionTimeout = false;
+  _cachedScoringRules = null;
 }
 
 module.exports = { getPackDir, getManifest, getGameConfig, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

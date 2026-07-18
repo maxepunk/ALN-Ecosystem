@@ -69,11 +69,14 @@ class TokenLoader {
       const groupName = TokenLoader.extractGroupName(token.SF_Group);
       const groupMultiplier = TokenLoader.parseGroupMultiplier(token.SF_Group);
 
-      // Calculate value
-      const rating = token.SF_ValueRating || 1;
-      const typeKey = (token.SF_MemoryType || 'personal').toLowerCase();
-      const baseValue = BASE_VALUES[rating] || BASE_VALUES[1];
-      const multiplier = TYPE_MULTIPLIERS[typeKey] || 1;
+      // Calculate value — mirror the ENGINE (tokenService.calculateTokenValue):
+      // missing rating → 0 base, unknown type → `unknown` multiplier (0x).
+      // The old 'personal'/`|| 1` defaults made validators pay tokens the
+      // engine scored 0x (review finding).
+      const rating = token.SF_ValueRating || 0;
+      const typeKey = (token.SF_MemoryType || 'unknown').toLowerCase();
+      const baseValue = BASE_VALUES[rating] || 0;
+      const multiplier = TYPE_MULTIPLIERS[typeKey] ?? TYPE_MULTIPLIERS.unknown;
       const value = Math.floor(baseValue * multiplier);
 
       return {

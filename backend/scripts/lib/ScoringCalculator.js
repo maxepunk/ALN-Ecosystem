@@ -51,9 +51,14 @@ class ScoringCalculator {
    * @returns {number} Expected point value
    */
   calculateFromRatingAndType(rating, memoryType) {
-    const baseValue = this.BASE_VALUES[rating] || this.BASE_VALUES[1];
-    const typeKey = (memoryType || 'personal').toLowerCase();
-    const multiplier = this.TYPE_MULTIPLIERS[typeKey] || 1;
+    // Mirror the ENGINE exactly (tokenService.calculateTokenValue):
+    // missing rating → 0 base, missing/unknown type → the `unknown`
+    // multiplier (0x). The old `|| 1` / 'personal' defaults made the
+    // validator score unknown-typed tokens at 1x where the engine paid
+    // 0x — false discrepancies on ALN's null-type tokens (review finding).
+    const baseValue = this.BASE_VALUES[rating] || 0;
+    const typeKey = (memoryType || 'unknown').toLowerCase();
+    const multiplier = this.TYPE_MULTIPLIERS[typeKey] ?? this.TYPE_MULTIPLIERS.unknown;
     return Math.floor(baseValue * multiplier);
   }
 

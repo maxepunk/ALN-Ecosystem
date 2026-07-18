@@ -435,6 +435,48 @@ describe('packService', () => {
     });
   });
 
+  describe('activation-frozen rules memo + operator warns (review fixes)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('caches the LEGACY shim tables after activating a scoring-absent pack', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'memo' }); // absent scoring = legal
+      packService.activatePack();
+      const first = packService.getScoringRules();
+      expect(first.baseValues[5]).toBe(150000); // baked ALN shim
+      expect(packService.getScoringRules()).toBe(first); // memoized reference
+    });
+
+    it('caches the pack tables after activation (per-token loads reuse the snapshot)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'memo',
+        scoring: { baseValues: { 1: 5 }, typeMultipliers: { A: 2 } },
+      });
+      packService.activatePack();
+      const first = packService.getScoringRules();
+      expect(packService.getScoringRules()).toBe(first);
+    });
+
+    it('warns ONCE that SESSION_TIMEOUT is ignored when the pack clock differs (review finding)', () => {
+      const logger = require('../../../src/utils/logger');
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'clock',
+        gameClock: { duration: 3600, overtimeAt: 3300 },
+      });
+      logger.warn.mockClear();
+      packService.getClockRules();
+      packService.getClockRules();
+      const warns = logger.warn.mock.calls.filter(c => /SESSION_TIMEOUT.*IGNORED/.test(c[0]));
+      expect(warns).toHaveLength(1); // loud, once — config default 120min != 3600s
+    });
+  });
+
   describe('coherence check (A3 slice 1 — R9, two flavors per the 2026-07-18 ratification)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
@@ -452,6 +494,19 @@ describe('packService', () => {
     });
 
     describe('flavor (i) — timeless self-contradictions', () => {
+      it('refuses a DECLARED-but-unusable scoring block (empty tables must not ride the shim)', () => {
+        // Review finding: pre-fix, scoring:{baseValues:{},...} activated
+        // cleanly and silently ran the baked ALN economy behind one warn.
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', scoring: { baseValues: {}, typeMultipliers: { A: 1 } } });
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*scoring block is DECLARED.*missing\/empty/);
+      });
+
+      it('tolerates an ABSENT scoring block (packless checkouts ride the loud shim by design)', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh' });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
       it('refuses a DECLARED-but-empty modes array', () => {
         writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'coh', modes: [] });
         expect(() => packService.activatePack())

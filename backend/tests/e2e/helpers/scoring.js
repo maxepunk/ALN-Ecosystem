@@ -29,6 +29,15 @@ const { parseGroupMultiplier } = require('../../../src/services/tokenService');
  * @returns {Promise<Object|null>} game.json `scoring` block or null
  */
 function loadPackScoring(orchestratorUrl) {
+  return _fetchGameJsonField(orchestratorUrl, 'scoring');
+}
+
+/** Fetch one top-level field of the ACTIVE pack's game.json from the
+ *  running orchestrator's pack channel. Null on 404/parse/network
+ *  failure — the calculators throw on a null oracle, so failures stay
+ *  loud at the assertion site. One fetcher for every field (scoring,
+ *  modes, and whatever slice 3a/3b need next). */
+function _fetchGameJsonField(orchestratorUrl, field) {
   return new Promise((resolve) => {
     const url = `${orchestratorUrl}/api/pack/files/game.json`;
     https.get(url, { rejectUnauthorized: false }, (res) => {
@@ -37,7 +46,7 @@ function loadPackScoring(orchestratorUrl) {
       res.on('end', () => {
         if (res.statusCode !== 200) return resolve(null);
         try {
-          resolve(JSON.parse(data).scoring || null);
+          resolve(JSON.parse(data)[field] || null);
         } catch {
           resolve(null);
         }
@@ -54,21 +63,7 @@ function loadPackScoring(orchestratorUrl) {
  * @returns {Promise<Array|null>} game.json `modes` array or null
  */
 function loadPackModes(orchestratorUrl) {
-  return new Promise((resolve) => {
-    const url = `${orchestratorUrl}/api/pack/files/game.json`;
-    https.get(url, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode !== 200) return resolve(null);
-        try {
-          resolve(JSON.parse(data).modes || null);
-        } catch {
-          resolve(null);
-        }
-      });
-    }).on('error', () => resolve(null));
-  });
+  return _fetchGameJsonField(orchestratorUrl, 'modes');
 }
 
 /**
@@ -89,12 +84,20 @@ function expectedModeLabels(modes) {
   };
 }
 
-/** Score a token against a pack scoring block (same math as the scanner's
- *  applyPackScoring path: baseValues[rating] × typeMultipliers[type],
- *  unknown/absent type → UNKNOWN multiplier). */
+/** Score a token against a pack scoring block, mirroring the ENGINE's
+ *  normalization (packService._normalizeScoring: LOWERCASED type keys,
+ *  `unknown` always present at 0) — the oracle must match what the
+ *  backend actually computes, including for case-mismatched packs
+ *  (review finding; the scanner's exact-case lookup is the open D2b
+ *  canon question for slice 2b — until it's ruled, the backend is the
+ *  networked-mode authority this oracle validates). */
 function packTokenValue(packScoring, rating, memoryType) {
   const base = packScoring.baseValues[String(rating)] ?? packScoring.baseValues[rating] ?? 0;
-  const mult = packScoring.typeMultipliers[memoryType] ?? packScoring.typeMultipliers.UNKNOWN ?? 0;
+  const multipliers = { unknown: 0 };
+  for (const [k, v] of Object.entries(packScoring.typeMultipliers)) {
+    multipliers[k.toLowerCase()] = v;
+  }
+  const mult = multipliers[String(memoryType || 'unknown').toLowerCase()] ?? multipliers.unknown;
   return base * mult;
 }
 

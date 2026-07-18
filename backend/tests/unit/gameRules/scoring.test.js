@@ -58,6 +58,7 @@ const EVENT_CONFIG = {
   modes: [
     { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' } },
     { id: 'stash', label: 'Stash', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: true, displayBehavior: { surface: 'none' } },
+    { id: 'quickcash', label: 'Quick Cash', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: false, displayBehavior: { surface: 'scoreboard-rankings' } },
   ],
 };
 
@@ -238,6 +239,37 @@ describe('gameRules/scoring (pure)', () => {
         transactions: [tx('t1'), tx('t2')],
         teamId: 'Team Alpha',
       })).toBe(700);
+    });
+
+    it('§2f: a standard∧NON-counting claim funds NO bonus base (review finding — both flags required)', () => {
+      // t1 via fence (scored∧counting), t2 via quickcash (scored∧NON-counting):
+      // completion would need t2 as a counting claim (it is not), and even
+      // where a group completes otherwise, quickcash claims contribute $0
+      // to the base — parity with the scanner, whose base sums recorded
+      // points over counting-mode claims only.
+      expect(scoring.teamScoredTokenIds([
+        tx('t1', 'Crew', { mode: 'fence' }),
+        tx('t2', 'Crew', { mode: 'quickcash' }),
+      ], 'Crew', EVENT_CONFIG)).toEqual(new Set(['t1']));
+    });
+
+    it('bonus base honors the in-flight claim via currentTokenId (ordering defense, review finding)', () => {
+      // The completing claim is NOT yet in transactions — same belt-and-
+      // braces as isGroupComplete: the bonus must not depend on
+      // persistence ordering.
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [tx('t1', 'Crew', { mode: 'fence' })],
+        teamId: 'Crew', gameConfig: EVENT_CONFIG,
+        currentTokenId: 't2', currentTokenScored: true,
+      })).toBe(700); // (3-1) × (100+250) — the in-flight t2 counts
+
+      expect(scoring.groupBonusAmount({
+        tokens: TOKENS, groupId: 'g1',
+        transactions: [tx('t1', 'Crew', { mode: 'fence' })],
+        teamId: 'Crew', gameConfig: EVENT_CONFIG,
+        currentTokenId: 't2', currentTokenScored: false, // unscored counting claim
+      })).toBe(200); // (3-1) × 100 — presence only
     });
 
     it('§2f: another team\'s scored claims never feed this team\'s bonus base', () => {

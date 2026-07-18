@@ -78,6 +78,26 @@ describe('configManager', () => {
     assert.ok(manifest.contentHash.startsWith('sha256:'));
   });
 
+  it('restores game.json when the manifest rebuild fails (pair atomicity)', () => {
+    const original = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    const realRebuild = configManager._rebuildPackManifest.bind(configManager);
+    configManager._rebuildPackManifest = () => { throw new Error('disk on fire'); };
+    try {
+      assert.throws(
+        () => configManager.writeScoring({
+          baseValues: { '1': 99999, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+          typeMultipliers: { Personal: 1 },
+        }),
+        /rolled back.*manifest rebuild failed/
+      );
+    } finally {
+      configManager._rebuildPackManifest = realRebuild;
+    }
+    // the edit did NOT survive — pack + manifest stay consistent
+    const after = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    assert.deepStrictEqual(after, original);
+  });
+
   it('refuses to write scoring when game.json is missing (never fabricates a pack)', () => {
     fs.rmSync(path.join(tmpDir, 'game.json'));
     assert.throws(

@@ -229,7 +229,7 @@ class TransactionService extends EventEmitter {
       let scoreResult = null;
       const modeRecord = modeSemantics.resolveMode(gameConfig, transaction.mode);
       if (modeRecord && modeRecord.scoringPolicy === 'standard') {
-        scoreResult = this.updateTeamScore(transaction.teamId, token);
+        scoreResult = this.updateTeamScore(transaction.teamId, token, modeRecord);
       } else {
         logger.info('Non-scoring mode transaction - skipping scoring', {
           transactionId: transaction.id,
@@ -243,13 +243,14 @@ class TransactionService extends EventEmitter {
         // therefore complete a group (bonus = scored contributions only,
         // possibly $0). When that happens the team score changed (bonus),
         // so the result must carry it for the transaction:new broadcast.
+        // Auto-create the score row like the scored path does: dropping
+        // the completion for an unregistered team would permanently lose
+        // the group:completed cue an event-only group exists to fire.
         if (modeRecord && modeRecord.countsTowardGroups === true && token.isGrouped()) {
-          const teamScore = this._getTeamScore(transaction.teamId);
-          if (teamScore) {
-            const groupBonusInfo = this._applyGroupCompletion(transaction.teamId, token, teamScore);
-            if (groupBonusInfo) {
-              scoreResult = { teamScore, groupBonusInfo };
-            }
+          const teamScore = this._getOrCreateTeamScore(transaction.teamId);
+          const groupBonusInfo = this._applyGroupCompletion(transaction.teamId, token, teamScore, modeRecord);
+          if (groupBonusInfo) {
+            scoreResult = { teamScore, groupBonusInfo };
           }
         }
       }
@@ -322,32 +323,48 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Update team score (Slice 3: No event emissions - caller handles events)
-   * @param {string} teamId - Team ID
-   * @param {Token} token - Scanned token
-   * @returns {Object} Result with teamScore and optional groupBonus info
+   * Fetch the team's live TeamScore, auto-creating it in the canonical
+   * store when missing. Teams should exist via addTeamToSession(), but
+   * BOTH scoring paths must tolerate a missing row (offline-queue replay
+   * into a recreated session, a scan racing session:addTeam) — a dropped
+   * group completion is a permanently lost show moment for event-only
+   * groups.
+   * @param {string} teamId
+   * @returns {TeamScore}
    * @private
    */
-  updateTeamScore(teamId, token) {
+  _getOrCreateTeamScore(teamId) {
     let teamScore = this._getTeamScore(teamId);
-
-    // Team should already exist via sessionService.addTeamToSession()
-    // But handle gracefully if not (auto-create directly in the canonical store)
     if (!teamScore) {
       teamScore = TeamScore.createInitial(teamId);
       const scores = this._getSessionScores();
       if (scores) {
         scores.push(teamScore);
       }
-      logger.warn('Team auto-created in updateTeamScore (should use addTeamToSession)', { teamId });
+      logger.warn('Team auto-created during scoring (should use addTeamToSession)', { teamId });
     }
+    return teamScore;
+  }
+
+  /**
+   * Update team score (Slice 3: No event emissions - caller handles events)
+   * @param {string} teamId - Team ID
+   * @param {Token} token - Scanned token
+   * @param {Object|null} modeRecord - The claim's resolved mode semantics
+   *   (modeSemantics.resolveMode result) — drives the group-completion
+   *   flags (§2f)
+   * @returns {Object} Result with teamScore and optional groupBonus info
+   * @private
+   */
+  updateTeamScore(teamId, token, modeRecord = null) {
+    const teamScore = this._getOrCreateTeamScore(teamId);
 
     teamScore.addPoints(token.value);
     teamScore.incrementTokensScanned();
 
     // Group completion (pure rules — gameRules/scoring, shared with the
     // unscored-counting path in processScan)
-    const groupBonusInfo = this._applyGroupCompletion(teamId, token, teamScore);
+    const groupBonusInfo = this._applyGroupCompletion(teamId, token, teamScore, modeRecord);
 
     // Return result (caller handles event emission)
     return { teamScore, groupBonusInfo };
@@ -357,22 +374,35 @@ class TransactionService extends EventEmitter {
    * Apply group completion if this claim completes the token's group
    * (§2f, A3 slice 2): runs for EVERY counting-mode claim — scored or
    * not — because completion counts any counting claim, while the bonus
-   * base (groupBonusAmount) sums only scored contributions. An
+   * base (groupBonusAmount) sums only scored COUNTING contributions. An
    * all-unscored completion pays $0 but still fires group:completed
    * (the event feeds the cue engine — for event-only groups it IS the
    * payload).
+   *
+   * A claim in a NON-counting mode builds no group progress and can
+   * therefore never be the completing claim — this gate is what keeps the
+   * live path in parity with the rebuild (teamBankedTokenIds honors the
+   * flag) and the standalone scanner (countsTowardGroups guard): without
+   * it, isGroupComplete's currentTokenId injection would complete a group
+   * the rebuild later un-completes.
    * @param {string} teamId
    * @param {Token} token - The token just claimed
    * @param {TeamScore} teamScore - The team's live score instance
+   * @param {Object|null} modeRecord - The claim's resolved mode semantics
    * @returns {Object|null} groupBonusInfo when a completion fired
    * @private
    */
-  _applyGroupCompletion(teamId, token, teamScore) {
+  _applyGroupCompletion(teamId, token, teamScore, modeRecord) {
+    if (!modeRecord || modeRecord.countsTowardGroups !== true) {
+      return null; // non-counting claims never complete groups (§2f)
+    }
     if (!token.isGrouped() || teamScore.hasCompletedGroup(token.groupId)) {
       return null;
     }
     // CRITICAL: Pass current token ID so the rule includes the transaction
-    // being processed even if it isn't in session.transactions yet
+    // being processed even if it isn't in session.transactions yet (legal
+    // here because the counting gate above holds — see isGroupComplete's
+    // caller contract)
     if (!this.isGroupComplete(teamId, token.groupId, token.id)) {
       return null;
     }
@@ -391,6 +421,10 @@ class TransactionService extends EventEmitter {
       transactions: session?.transactions || [],
       teamId,
       gameConfig: packService.getGameConfig(),
+      // Same ordering defense as isGroupComplete: the bonus must not
+      // depend on whether the in-flight claim is persisted yet
+      currentTokenId: token.id,
+      currentTokenScored: modeRecord.scoringPolicy === 'standard',
     });
     teamScore.addBonus(totalGroupBonus);
 
@@ -431,17 +465,6 @@ class TransactionService extends EventEmitter {
       currentTokenId,
       gameConfig: packService.getGameConfig(),
     });
-  }
-
-  /**
-   * Group completion multiplier (0 when the group pays no bonus).
-   * Thin adapter over gameRules/scoring.
-   * @param {string} groupId - Group ID
-   * @returns {number} Group multiplier value
-   * @private
-   */
-  calculateGroupBonus(groupId) {
-    return scoring.groupMultiplier(this.tokens, groupId);
   }
 
   /**

@@ -54,6 +54,25 @@ function pointsFor(token, mode, gameConfig) {
 }
 
 /**
+ * Shared claim-shape filter for the two group currencies below: accepted
+ * claims by the team whose resolved mode satisfies `pick`. One body so a
+ * change to claim acceptance (new status, entity aliasing) can never make
+ * the completion currency and the bonus-base currency silently diverge.
+ * @private
+ */
+function _teamClaimedTokenIds(transactions, teamId, gameConfig, pick) {
+  return new Set(
+    (transactions || [])
+      .filter(tx => {
+        if (tx.teamId !== teamId || tx.status !== 'accepted') return false;
+        const semantics = resolveMode(gameConfig, tx.mode);
+        return semantics != null && pick(semantics);
+      })
+      .map(tx => tx.tokenId)
+  );
+}
+
+/**
  * Token IDs a team has banked: accepted transactions in group-counting
  * modes only (decision A1 generalized — the group-completion currency is
  * `countsTowardGroups`, not a mode id).
@@ -63,35 +82,25 @@ function pointsFor(token, mode, gameConfig) {
  * @returns {Set<string>}
  */
 function teamBankedTokenIds(transactions, teamId, gameConfig) {
-  return new Set(
-    (transactions || [])
-      .filter(tx =>
-        tx.teamId === teamId &&
-        tx.status === 'accepted' &&
-        resolveMode(gameConfig, tx.mode)?.countsTowardGroups === true
-      )
-      .map(tx => tx.tokenId)
-  );
+  return _teamClaimedTokenIds(transactions, teamId, gameConfig,
+    s => s.countsTowardGroups === true);
 }
 
 /**
- * Token IDs a team has claimed in a SCORING mode: the §2f bonus-base
- * currency (contrast teamBankedTokenIds — the completion currency).
+ * Token IDs a team has claimed in a SCORED **counting** mode: the §2f
+ * bonus-base currency (contrast teamBankedTokenIds — the completion
+ * currency). BOTH flags required: a standard∧non-counting claim builds no
+ * group progress, so it must not fund a group bonus either — parity with
+ * the scanner, whose bonus base sums recorded points over counting-mode
+ * claims only.
  * @param {Array<Object>} transactions - Session transaction history
  * @param {string} teamId
  * @param {Object|null} gameConfig - The active pack's game.json
  * @returns {Set<string>}
  */
 function teamScoredTokenIds(transactions, teamId, gameConfig) {
-  return new Set(
-    (transactions || [])
-      .filter(tx =>
-        tx.teamId === teamId &&
-        tx.status === 'accepted' &&
-        resolveMode(gameConfig, tx.mode)?.scoringPolicy === 'standard'
-      )
-      .map(tx => tx.tokenId)
-  );
+  return _teamClaimedTokenIds(transactions, teamId, gameConfig,
+    s => s.scoringPolicy === 'standard' && s.countsTowardGroups === true);
 }
 
 /**
@@ -113,7 +122,11 @@ function groupTokens(tokens, groupId) {
  * @param {string} args.teamId
  * @param {string} args.groupId
  * @param {string|null} [args.currentTokenId] - In-flight token being
- *   processed (claimed but possibly not yet in transactions)
+ *   processed (claimed but possibly not yet in transactions). CALLER
+ *   CONTRACT: pass this ONLY when the in-flight claim's mode has
+ *   countsTowardGroups — the injection bypasses teamBankedTokenIds'
+ *   flag filter, so a non-counting claim passed here would complete a
+ *   group the rebuild path (which honors the flag) later un-completes.
  * @param {Object|null} [args.gameConfig] - The active pack's game.json
  * @returns {boolean}
  */
@@ -158,16 +171,27 @@ function groupMultiplier(tokens, groupId) {
  * @param {Map<string, Object>} args.tokens - Token catalog keyed by ID
  * @param {string} args.groupId
  * @param {Array<Object>} args.transactions - Session transaction history
- *   (the in-flight transaction is already claimed into it by processScan)
  * @param {string} args.teamId
  * @param {Object|null} [args.gameConfig] - The active pack's game.json
+ * @param {string|null} [args.currentTokenId] - In-flight token being
+ *   processed (same belt-and-braces as isGroupComplete: the bonus amount
+ *   must never depend on whether the caller persisted the in-flight
+ *   transaction before or after computing scores)
+ * @param {boolean} [args.currentTokenScored] - Whether the in-flight
+ *   claim is a scored COUNTING claim (funds the bonus base)
  * @returns {number} 0 when the group pays no bonus
  */
-function groupBonusAmount({ tokens, groupId, transactions, teamId, gameConfig = null }) {
+function groupBonusAmount({
+  tokens, groupId, transactions, teamId, gameConfig = null,
+  currentTokenId = null, currentTokenScored = false,
+}) {
   const multiplier = groupMultiplier(tokens, groupId);
   if (multiplier === 0) return 0;
 
   const scored = teamScoredTokenIds(transactions, teamId, gameConfig);
+  if (currentTokenId && currentTokenScored) {
+    scored.add(currentTokenId);
+  }
   return groupTokens(tokens, groupId)
     .filter(token => scored.has(token.id))
     .reduce((sum, token) => sum + token.value * (multiplier - 1), 0);

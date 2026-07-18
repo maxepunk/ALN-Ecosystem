@@ -21,7 +21,11 @@ function loadScoringConstants() {
   if (_cached) return _cached;
 
   const { scoring } = require(path.join(__dirname, '../../../ALN-TokenData/game.json'));
-  if (!scoring?.baseValues || !scoring?.typeMultipliers) {
+  // NON-EMPTY required (same guard as packService._isUsableScoring):
+  // empty-but-present tables would pass a truthiness check and make the
+  // validator recompute NaN scores instead of throwing (review finding).
+  if (!scoring?.baseValues || Object.keys(scoring.baseValues).length === 0
+      || !scoring?.typeMultipliers || Object.keys(scoring.typeMultipliers).length === 0) {
     throw new Error('ALN-TokenData/game.json has no usable scoring block — cannot validate scores');
   }
 
@@ -29,9 +33,14 @@ function loadScoringConstants() {
     BASE_VALUES: Object.fromEntries(
       Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k), v])
     ),
-    TYPE_MULTIPLIERS: Object.fromEntries(
-      Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
-    ),
+    // `unknown` always present, mirroring packService._normalizeScoring —
+    // the engine scores unknown types at 0x and validators must agree
+    TYPE_MULTIPLIERS: {
+      unknown: 0,
+      ...Object.fromEntries(
+        Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
+      ),
+    },
   };
 
   return _cached;

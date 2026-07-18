@@ -9,7 +9,6 @@
  * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
  */
 
-const config = require('../config');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 const displayControlService = require('../services/displayControlService');
 const { DisplayMode } = displayControlService;
