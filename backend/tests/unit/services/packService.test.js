@@ -208,4 +208,109 @@ describe('packService', () => {
       expect(packService.resolvePackFile('../outside.txt')).toBeNull();
     });
   });
+
+  describe('getGameConfig (A3 slice 0 — audit F4)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('reads the toy pack game.json pre-activation (live disk)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const game = packService.getGameConfig();
+      expect(game.id).toBe('midnight-heist');
+      expect(Array.isArray(game.modes)).toBe(true);
+    });
+
+    it('is null when the pack ships no game.json (parity fixtures, pre-pack checkouts)', () => {
+      process.env.PACK_PATH = tmpDir;
+      expect(packService.getGameConfig()).toBeNull();
+    });
+
+    it('activation SNAPSHOTS game.json — later disk edits are invisible (rules frozen)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'unit-game', modes: [] });
+      packService.activatePack();
+
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'EDITED', modes: [] });
+
+      expect(packService.getGameConfig().id).toBe('unit-game');
+    });
+
+    it('a pack activated without game.json stays null for the process lifetime', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      packService.activatePack();
+
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'late', modes: [] });
+
+      expect(packService.getGameConfig()).toBeNull();
+    });
+  });
+
+  describe('capability gate (A3 slice 0 — audit F2 + adversarial R6)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('activates the REAL packs unchanged (ALN default dir + toy pack declare only what the engine has)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('refuses a pack requiring a NEWER engine (manifest engine.minVersion)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '99.0.0' } }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*engine >= 99\.0\.0/);
+    });
+
+    it('refuses a manifest authored against a future schemaVersion', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ schemaVersion: 2 }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*schemaVersion 2/);
+    });
+
+    it('refuses a game.json authored against a future schemaVersion', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'future', modes: [] });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 2/);
+    });
+
+    it('refuses unknown required capabilities — headroom is never silently absorbed', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'constellation', modes: [],
+        requires: ['scoring.tabular', 'scoring.graph', 'contagion'],
+      });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*scoring\.graph, contagion/);
+    });
+
+    it('accepts a requires array the engine fully implements', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'subset', modes: [],
+        requires: ['scoring.tabular', 'groupRules.all'],
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getGameConfig().id).toBe('subset');
+    });
+
+    it('a pack that declares NOTHING gates nothing (pre-pack + v1 behavior preserved)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir: no manifest, no game.json
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getActivePackInfo()).toBeNull();
+    });
+
+    it('the refusal FAILS activation — nothing is snapshotted', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '99.0.0' } }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE/);
+      // Not activated: reads stay live-disk (pre-activation semantics).
+      writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '1.0.0' }, contentHash: HASH_B }));
+      expect(packService.getManifest().contentHash).toBe(HASH_B);
+    });
+  });
 });

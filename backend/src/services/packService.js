@@ -26,6 +26,28 @@ const logger = require('../utils/logger');
 
 const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 
+// ── Capability gate constants (Phase 3 A3 slice 0) ─────────────────────
+// ENGINE_VERSION is the PACK-INTERFACE version (what pack-manifest
+// `engine.minVersion` compares against), deliberately decoupled from the
+// npm package version: it bumps when the engine's pack-consuming
+// capabilities change, nothing else. Phase 3 = 3.x.
+const ENGINE_VERSION = '3.0.0';
+// game.json / pack-manifest schemaVersion this engine reads. EXACT match
+// when declared — a pack authored against a future schema must refuse
+// loudly, never half-parse.
+const PACK_SCHEMA_VERSION = 1;
+// Capability ids this engine implements. A pack's `requires` array (in
+// game.json) must be a subset or activation refuses. The v1 baseline
+// names what the engine actually runs today; slices 1/2 grow it as
+// modes/rules become pack-driven. Unknown id = the pack needs something
+// this engine cannot do = LOUD refusal (audit F2: headroom must never be
+// silently absorbed).
+const ENGINE_CAPABILITIES = new Set([
+  'scoring.tabular',      // baseValues × typeMultipliers tables
+  'groupRules.all',       // all-of-group completion
+  'duplicatePolicy.once', // FCFS session-scoped claims
+]);
+
 // Manifest cache, invalidated on file mtime change (same pattern as the
 // asset manifest in resourceRoutes — the manifest is rewritten wholesale
 // by build-pack-manifest.js, never edited in place).
@@ -38,6 +60,7 @@ let warnedPackPath = false;
 // whole process lifetime even if a manifest appears on disk later.
 let activated = false;
 let activeManifest = null;
+let activeGameConfig = null;
 let warnedDriftHash = false;
 
 /**
@@ -83,6 +106,80 @@ function _readDiskManifest() {
 }
 
 /**
+ * Live disk read of the pack's game.json (rules file). Null when the pack
+ * ships none (pre-pack checkouts, tokens-only fixtures) — every consumer
+ * must tolerate null through the L1 transitional window (backend rules
+ * still come from scoring-config.json until slice 2).
+ * @returns {Object|null}
+ */
+function _readDiskGameConfig() {
+  const gamePath = path.join(getPackDir(), 'game.json');
+  try {
+    return JSON.parse(fs.readFileSync(gamePath, 'utf8'));
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      logger.warn(`game.json unreadable at ${gamePath}: ${err.message}`);
+    }
+    return null;
+  }
+}
+
+/** Numeric 3-part semver compare: negative when a < b. Pre-release tags
+ *  are out of scope for pack versioning (generator never emits them). */
+function _compareVersions(a, b) {
+  const pa = String(a).split('.').map(Number);
+  const pb = String(b).split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d;
+  }
+  return 0;
+}
+
+/**
+ * Capability gate (A3 slice 0, audit F2 + adversarial R6): refuse LOUDLY
+ * — by throwing out of activation, which fails the boot — any pack this
+ * engine cannot faithfully run. Nothing is checked for a pack that
+ * declares nothing (pre-pack checkouts and v1 packs activate exactly as
+ * before); every declared constraint is enforced.
+ * @throws {Error} when the pack requires what this engine lacks
+ */
+function _gateCheck(manifest, gameConfig) {
+  const problems = [];
+
+  if (manifest) {
+    if (manifest.schemaVersion !== undefined && manifest.schemaVersion !== PACK_SCHEMA_VERSION) {
+      problems.push(`pack-manifest schemaVersion ${manifest.schemaVersion} (engine reads ${PACK_SCHEMA_VERSION})`);
+    }
+    const minVersion = manifest.engine && manifest.engine.minVersion;
+    if (minVersion && _compareVersions(ENGINE_VERSION, minVersion) < 0) {
+      problems.push(`pack requires engine >= ${minVersion} (this engine is ${ENGINE_VERSION})`);
+    }
+  }
+
+  if (gameConfig) {
+    if (gameConfig.schemaVersion !== undefined && gameConfig.schemaVersion !== PACK_SCHEMA_VERSION) {
+      problems.push(`game.json schemaVersion ${gameConfig.schemaVersion} (engine reads ${PACK_SCHEMA_VERSION})`);
+    }
+    if (Array.isArray(gameConfig.requires)) {
+      const missing = gameConfig.requires.filter((cap) => !ENGINE_CAPABILITIES.has(cap));
+      if (missing.length > 0) {
+        problems.push(`pack requires unsupported engine capabilities: ${missing.join(', ')}`);
+      }
+    }
+  }
+
+  if (problems.length > 0) {
+    throw new Error(
+      `CAPABILITY GATE: refusing to activate pack ` +
+      `${manifest ? `${manifest.packId} v${manifest.version}` : `at ${getPackDir()}`} — ` +
+      problems.join('; ') +
+      '. The engine will NOT silently run a pack it cannot drive; upgrade the engine or fix the pack.'
+    );
+  }
+}
+
+/**
  * Freeze the pack the engine is RUNNING. Called by initializeServices()
  * at the same moment tokenService loads token data, so the advertised
  * identity always describes the loaded pack — never a directory that
@@ -90,7 +187,11 @@ function _readDiskManifest() {
  * @returns {{packId: string, version: string, contentHash: string}|null}
  */
 function activatePack() {
-  activeManifest = _readDiskManifest();
+  const manifest = _readDiskManifest();
+  const gameConfig = _readDiskGameConfig();
+  _gateCheck(manifest, gameConfig); // throws = boot fails, by design
+  activeManifest = manifest;
+  activeGameConfig = gameConfig;
   activated = true;
   warnedDriftHash = false;
   if (activeManifest) {
@@ -123,6 +224,20 @@ function getManifest() {
     );
   }
   return activeManifest;
+}
+
+/**
+ * The ACTIVE pack's game.json: the activation snapshot once activated
+ * (rules are frozen for the process lifetime, same as the manifest —
+ * disk drift is surfaced by getManifest()'s warn), else the live disk
+ * state. Null when the pack ships no game.json. Consumers: the slice-0
+ * capability gate today; the slice-2 rules migration + the one-auth
+ * grant computation next (audit F4 — one accessor serves all three).
+ * @returns {Object|null}
+ */
+function getGameConfig() {
+  if (!activated) return _readDiskGameConfig();
+  return activeGameConfig;
 }
 
 /**
@@ -169,7 +284,8 @@ function _resetForTesting() {
   warnedPackPath = false;
   activated = false;
   activeManifest = null;
+  activeGameConfig = null;
   warnedDriftHash = false;
 }
 
-module.exports = { getPackDir, getManifest, getActivePackInfo, resolvePackFile, activatePack, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, _resetForTesting };
