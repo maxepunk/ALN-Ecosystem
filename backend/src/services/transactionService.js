@@ -116,6 +116,19 @@ class TransactionService extends EventEmitter {
       throw new Error(`Team ${teamId} not found`);
     }
 
+    // Pack-conditional score floor (A3 slice 2, D2s2): reject — never
+    // silently clamp — an adjustment that would cross zero when the pack
+    // does not allow negative scores. Rejection keeps the adjustment
+    // ledger additive (post-session validators replay deltas) and keeps
+    // the audit trail honest (checked BEFORE adjustScore records it).
+    const projected = teamScore.currentScore + delta;
+    if (projected < 0 && !packService.getScoringRules().allowNegative) {
+      throw new Error(
+        `score:adjust refused: ${delta} would take ${teamId} to ${projected}, ` +
+        'and the active pack does not allow negative scores (scoring.semantics.allowNegative)'
+      );
+    }
+
     teamScore.adjustScore(delta, gmStation, reason);
 
     logger.info('Team score adjusted', {
@@ -803,6 +816,21 @@ class TransactionService extends EventEmitter {
       const totalDelta = adjustments.reduce((sum, adj) => sum + (adj.delta || 0), 0);
       teamScore.baseScore += totalDelta;
       teamScore.currentScore = teamScore.baseScore + teamScore.bonusPoints;
+
+      // Pack-conditional floor on the RECOMPUTE path (D2s2): live
+      // adjustments are rejected before crossing zero, but a deletion can
+      // shrink the base an already-accepted adjustment leaned on — the
+      // one reachable negative under a no-negatives pack. Floor loudly;
+      // baseScore follows so currentScore = baseScore + bonusPoints holds.
+      if (teamScore.currentScore < 0 && !packService.getScoringRules().allowNegative) {
+        logger.warn('Score floored at 0 during rebuild (pack disallows negative scores)', {
+          teamId: teamScore.teamId,
+          unflooredScore: teamScore.currentScore,
+          adjustmentCount: adjustments.length,
+        });
+        teamScore.currentScore = 0;
+        teamScore.baseScore = -teamScore.bonusPoints;
+      }
 
       if (adjustments.length > 0) {
         teamsWithReplayedAdjustments++;

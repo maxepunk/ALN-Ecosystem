@@ -687,6 +687,28 @@ describe('packService', () => {
       expect(rules.typeMultipliers.party).toBe(5);
     });
 
+    it('carries allowNegative (D2s2): ALN true, toy false, shim mirrors ALN (true)', () => {
+      delete process.env.PACK_PATH;
+      expect(packService.getScoringRules().allowNegative).toBe(true);
+
+      packService._resetForTesting();
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getScoringRules().allowNegative).toBe(false);
+
+      packService._resetForTesting();
+      process.env.PACK_PATH = tmpDir; // empty dir → baked legacy shim
+      expect(packService.getScoringRules().allowNegative).toBe(true);
+    });
+
+    it('declared scoring WITHOUT a semantics block gets the conservative floor (allowNegative false)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 1, id: 'nosem',
+        scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
+      });
+      expect(packService.getScoringRules().allowNegative).toBe(false);
+    });
+
     it('snapshot semantics: activation freezes the tables; later disk edits are invisible', () => {
       process.env.PACK_PATH = tmpDir;
       writeManifest(tmpDir, minimalManifest());
@@ -762,6 +784,8 @@ describe('packService', () => {
         .toEqual(Object.fromEntries(Object.entries(real.baseValues).map(([k, v]) => [k, v])));
       expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.typeMultipliers)))
         .toEqual(real.typeMultipliers);
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.semantics)))
+        .toEqual(real.semantics);
     });
   });
 });

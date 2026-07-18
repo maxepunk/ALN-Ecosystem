@@ -449,6 +449,10 @@ components:
                       example: "Team Alpha"
                     currentScore:
                       type: integer
+                      description: >-
+                        Signed. May be negative when the active pack declares
+                        scoring.semantics.allowNegative; otherwise the engine
+                        rejects negative-going admin adjustments (A3 slice 2, D2s2).
                       example: 11500
                     baseScore:
                       type: integer
@@ -1189,7 +1193,11 @@ components:
                     example: "Team Alpha"
                   currentScore:
                     type: integer
-                    description: Total score
+                    description: >-
+                      Total score. Signed: negative when the active pack declares
+                      scoring.semantics.allowNegative and adjustments took the team
+                      below zero; packs without the flag never see negatives —
+                      score:adjust commands that would cross zero fail their ack.
                     example: 16500
                   baseScore:
                     type: integer

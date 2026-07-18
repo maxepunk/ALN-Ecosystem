@@ -86,6 +86,7 @@ let warnedLegacyScoring = false;
 const LEGACY_ALN_SCORING = Object.freeze({
   baseValues: Object.freeze({ 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 }),
   typeMultipliers: Object.freeze({ Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }),
+  semantics: Object.freeze({ allowNegative: true }),
 });
 
 /** A usable scoring block has NON-EMPTY value and multiplier tables —
@@ -111,6 +112,10 @@ function _normalizeScoring(scoring) {
         Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
       ),
     },
+    // D2s2: pack-conditional score floor. Strict === true so a pack that
+    // declares scoring but omits semantics gets the conservative floor;
+    // the packless shim mirrors ALN (true) like every other shim value.
+    allowNegative: !!(scoring.semantics && scoring.semantics.allowNegative === true),
   };
 }
 
@@ -464,7 +469,7 @@ function getGameConfig() {
  * pre-activation. A pack without a USABLE scoring block (absent game.json,
  * missing/empty tables) runs the baked legacy ALN tables with a LOUD
  * once-per-process warn — never a silent zero.
- * @returns {{baseValues: Object, typeMultipliers: Object}}
+ * @returns {{baseValues: Object, typeMultipliers: Object, allowNegative: boolean}}
  */
 let _cachedScoringRules = null;
 
