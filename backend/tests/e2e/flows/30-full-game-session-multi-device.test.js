@@ -44,6 +44,7 @@ const { selectTestTokens, fetchTokenDatabase } = require('../helpers/token-selec
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
 const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
+const { loadPackModes, expectedModeLabels } = require('../helpers/scoring');
 
 let browser = null;
 let orchestratorInfo = null;
@@ -224,8 +225,11 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // 5. Verify GM1 is in blackmarket mode, GM2 is in detective mode
     const gm1Mode = await gmScanner1.getModeText();
     const gm2Mode = await gmScanner2.getModeText();
-    expect(gm1Mode.toLowerCase()).toContain('black market');
-    expect(gm2Mode.toLowerCase()).toContain('detective');
+    // Slice 1: mode labels are pack-declared — assert against the ACTIVE
+    // pack's scoring/evidence mode labels, not ALN literals (dual-pack gate)
+    const modeLabels = expectedModeLabels(await loadPackModes(orchestratorInfo.url));
+    expect(gm1Mode.toLowerCase()).toContain(modeLabels.scoring);
+    expect(gm2Mode.toLowerCase()).toContain(modeLabels.evidence);
     console.log(`✓ Mode verification: GM1=${gm1Mode}, GM2=${gm2Mode}`);
 
     // ============================================
@@ -734,7 +738,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // Verify still in blackmarket mode
     const gm1CurrentMode = await gmScanner1.getModeText();
-    expect(gm1CurrentMode.toLowerCase()).toContain('black market');
+    expect(gm1CurrentMode.toLowerCase()).toContain(modeLabels.scoring);
     console.log('✓ GM1 still in blackmarket mode');
 
     // selectTeamFromList auto-confirms
