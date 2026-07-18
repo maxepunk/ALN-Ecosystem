@@ -240,6 +240,30 @@ definition.
 | ~~L5~~ | **RETIRED ON SCHEDULE 2026-07-18 (A3 slice 2, converged with L1).** Every E2E scoring expectation now uses the SINGLE pack oracle (`loadPackScoring()` from the running orchestrator, threaded through all five flows: 07a/07b/07c/07d-02/23); the calculators THROW on a missing oracle (no silent second source); the in-process legacy import and the unused `calculateExpectedTotalScore` deleted; TWO-ORACLE comment block retired. Verified: Tier L 23P/0F/0-flaky on the five touched flows | — (done) | — (retired) |
 | L6 | Legacy ALN mode-table shims BOTH sides: backend `gameRules/modeSemantics.js` and scanner `src/core/modeSemantics.js` resolve against a baked ALN modes table when the active pack ships no game.json modes block (packless checkouts, parity fixtures, integration harness). Also covers the wall scoreboard's legacy detective evidence-filter fallback | Every pack in play ships game.json with a modes block (parity-pack gained one in slice 1; retire when the pre-pack deployment class is gone — at latest the final cutover) | LOUD once-per-process warns on all three shims ('LEGACY MODE TABLE ACTIVE'/'LEGACY SHIM ACTIVE'/'LEGACY MODE FILTER ACTIVE'); DRIFT TRIPWIRE tests both sides pin the baked tables byte-equal to the real ALN game.json modes |
 
+## Owner rulings 2026-07-18 (batch — plain-English queue session)
+
+- **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
+  program §3), D2s2 implement allowNegative, D3s2 BOTH claim policies
+  (per-mode flag + full enforcement), D4s2 full validator sweep. Recorded
+  in the slice-2 design doc §6a. Build = task #24.
+- **Slice 2b RATIFIED** (D1b/D2b/D3b all yes) — opens after slice 2 closes.
+- **Q10 CLOSED — ESP32 is a FIRST-CLASS platform** (owner, emphatic): a
+  bespoke platform created for this system. Future pack-capability work
+  targets it fully (pack delivery via asset-manifest sync stands; E5
+  primitives are for it).
+- **Group content**: production's no-completable-group state is an
+  INTENTIONAL content choice — 07b's production self-skip is accepted;
+  the toy pack owns that coverage. Owner-flag resolved.
+- **Tier H**: hardware suite ran (owner-confirmed). **backend/.env HA
+  token**: accepted as-is. **Merge train**: blocks nothing (confirmed).
+- **Phase-4 timing correction**: NOT months away — D-track wireframes and
+  Phase-4 prep are nearer-term than previously assumed.
+- **C1 precision (correction)**: the installation-profile doc's review
+  points were ALL RESOLVED 2026-07-09 — the "open points" previously
+  attributed to it belong to the ONE-AUTH doc. C1 ratification is a
+  one-word owner sign-off of the doc as written; only a minor one-time
+  legacy-preset import note remains inside it.
+
 ## Spike results / field validation (2026-07-17, owner-reported)
 
 - **S1 iPhone-taps-token: PASS** — the NDEF URL background read fires on a
