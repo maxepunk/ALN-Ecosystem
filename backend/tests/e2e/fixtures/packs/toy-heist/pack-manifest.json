@@ -3,7 +3,7 @@
   "schemaVersion": 1,
   "packId": "midnight-heist",
   "version": "0.1.0",
-  "contentHash": "sha256:cb48fcd60addf99882fb6fa14ddfc8aaf9cd6898bf0c76bdfc0ff2e7a3bcf6a7",
+  "contentHash": "sha256:035b1c23db00de11ed77a066540dc34134e259d2106768b41ee41b330d030e98",
   "engine": {
     "minVersion": "3.0.0"
   },
@@ -17,8 +17,8 @@
     {
       "path": "tokens.json",
       "role": "tokens",
-      "sha1": "5c5085536b87511feac6e7b135e1f9870870d68f",
-      "size": 1799
+      "sha1": "3e6958c239e578f9a5c772f0cebb749d9798634e",
+      "size": 4217
     }
   ],
   "hardware": {

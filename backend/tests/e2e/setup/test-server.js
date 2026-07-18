@@ -122,8 +122,14 @@ async function startOrchestrator(options = {}) {
     // Injection seam (2.x.4, generalized in Phase 3 A2): run the system on
     // a fixture PACK DIRECTORY instead of production ALN-TokenData (backend
     // + /api/tokens + /api/pack/* + the scanners' relative token paths all
-    // see the same injected pack). Defaults to production data.
-    packPath = null
+    // see the same injected pack).
+    //
+    // Dual-pack Tier L gate (A3 slice 0): flows that don't pin a pack
+    // inherit E2E_PACK_PATH, so one env var re-runs the whole suite
+    // against another pack (npm run test:e2e:toy-pack). An explicit
+    // caller packPath always WINS — a test that pins a fixture pack
+    // (e.g. 07c's parity-pack) is testing THAT pack deliberately.
+    packPath = process.env.E2E_PACK_PATH || null
   } = options;
 
   // Resolve dynamic port if requested (port=0 or port='auto')
