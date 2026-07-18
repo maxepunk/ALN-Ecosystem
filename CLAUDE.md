@@ -133,7 +133,7 @@ Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block
     "SF_RFID": "tokenId",
     "SF_ValueRating": 1-5,
     "SF_MemoryType": "Personal" | "Business" | "Technical" | "Mention" | "Party" | null,
-    "SF_Group": "Group Name (xN)" | "",
+    "SF_Group": "Group Name" | "",
     "summary": "Optional summary text",
     "owner": "CHARACTER_NAME" | null
   }
@@ -143,6 +143,7 @@ Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block
 **Field Notes:**
 - `owner`: Character who owns this memory, resolved from Notion Elements→Characters Owner relation during sync (role prefix stripped)
 - `SF_MemoryType`: `null` occurs in production data (3 tokens currently); scoring treats null/unknown types as UNKNOWN → 0x multiplier (tokens.schema.json allows null)
+- `SF_Group` (tokens v2, A3 slice 2b): the PURE group name — a `"(xN)"` suffix is schema-ILLEGAL. Multipliers are declared in `game.json` `groups` (sole source); the activation gate refuses packs whose tokens name undeclared groups. The `(xN)` shorthand survives only as the Notion AUTHORING format, parsed exclusively by `sync_notion_to_tokens.py` (derives the groups block, emits pure names)
 
 **Data Flow:**
 ```
@@ -158,7 +159,7 @@ Notion Elements DB → sync_notion_to_tokens.py → ALN-TokenData/tokens.json
 - `SF_RFID`: Token identifier (matches filename)
 - `SF_ValueRating`: 1-5 star rating
 - `SF_MemoryType`: Personal, Business, Technical, Mention, or Party
-- `SF_Group`: Group name with multiplier, e.g., "Server Logs (x5)"
+- `SF_Group`: Pure group name (v2), e.g., "Server Logs" — the Notion description still authors `Group Name (xN)`; the sync strips the suffix into `game.json` `groups`
 
 ## deviceType Duplicate Detection (Cross-Cutting)
 
