@@ -580,6 +580,32 @@ describe('packService', () => {
       expect(() => packService.activatePack()).not.toThrow();
     });
 
+    it('TYPE coverage (D2b): refuses a token whose memory type is not a typeMultipliers key, EXACT-CASE', () => {
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 1, id: 'tc',
+        scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'personal' }, // case mismatch
+        t2: { SF_RFID: 't2', SF_ValueRating: 1, SF_MemoryType: 'Personal' },
+        t3: { SF_RFID: 't3', SF_ValueRating: 1, SF_MemoryType: null },       // legal UNKNOWN bucket
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'personal'.*EXACT-CASE/);
+    });
+
+    it('TYPE coverage: full-coverage tokens (incl. null types) activate cleanly', () => {
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 1, id: 'tc',
+        scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'Personal' },
+        t2: { SF_RFID: 't2', SF_ValueRating: 1, SF_MemoryType: null },
+      }));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
     it('a pack WITHOUT a groups block gates nothing (pre-groups packs stay legal until the v2 cutover)', () => {
       writePack(tmpDir, {
         groups: null,
@@ -774,16 +800,16 @@ describe('packService', () => {
       process.env.PACK_PATH = TOY_PACK;
       const rules = packService.getScoringRules();
       expect(rules.baseValues[4]).toBe(1300);
-      expect(rules.typeMultipliers.personal).toBe(2);
-      expect(rules.typeMultipliers.technical).toBe(6);
-      expect(rules.typeMultipliers.unknown).toBe(0);
+      expect(rules.typeMultipliers.Personal).toBe(2);
+      expect(rules.typeMultipliers.Technical).toBe(6);
+      expect(rules.typeMultipliers.UNKNOWN).toBe(0);
     });
 
     it('serves the ALN pack tables from the default dir', () => {
       delete process.env.PACK_PATH;
       const rules = packService.getScoringRules();
       expect(rules.baseValues[5]).toBe(150000);
-      expect(rules.typeMultipliers.party).toBe(5);
+      expect(rules.typeMultipliers.Party).toBe(5);
     });
 
     it('carries allowNegative (D2s2): ALN true, toy false, shim mirrors ALN (true)', () => {
@@ -831,7 +857,7 @@ describe('packService', () => {
       packService.getScoringRules();
 
       expect(rules.baseValues[5]).toBe(150000);
-      expect(rules.typeMultipliers.mention).toBe(3);
+      expect(rules.typeMultipliers.Mention).toBe(3);
       const shimWarns = logger.warn.mock.calls.filter(([m]) =>
         m.includes('LEGACY SCORING TABLES ACTIVE')
       );

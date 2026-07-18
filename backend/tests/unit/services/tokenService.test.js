@@ -103,13 +103,16 @@ describe('TokenService - Utility Functions', () => {
       expect(value).toBe(450000);
     });
 
-    it('should handle case-insensitive memory types', () => {
-      // Config uses lowercase keys
-      const value1 = tokenService.calculateTokenValue(2, 'TECHNICAL');
-      const value2 = tokenService.calculateTokenValue(2, 'technical');
-      const value3 = tokenService.calculateTokenValue(2, 'Technical');
-      expect(value1).toBe(value2);
-      expect(value2).toBe(value3);
+    it('matches memory types EXACT-CASE — mismatches score the UNKNOWN bucket (D2b canon)', () => {
+      // Types are pack-declared ids matched verbatim (scanner parity —
+      // its lookup was always exact-case). The activation gate refuses
+      // case-mismatched TOKENS at boot, so runtime mismatches only occur
+      // for wire-supplied strings — which score UNKNOWN (0×), never a
+      // silently-wrong table hit.
+      expect(tokenService.calculateTokenValue(2, 'Technical')).toBe(125000);
+      expect(tokenService.calculateTokenValue(2, 'TECHNICAL')).toBe(0);
+      expect(tokenService.calculateTokenValue(2, 'technical')).toBe(0);
+      expect(tokenService.calculateTokenValue(2, null)).toBe(0);
     });
 
     it('should default to $0 for invalid rating', () => {

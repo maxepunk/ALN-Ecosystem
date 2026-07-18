@@ -113,13 +113,12 @@ class ScoringCalculator {
    */
   calculateFromRatingAndType(rating, memoryType) {
     // Mirror the ENGINE exactly (tokenService.calculateTokenValue):
-    // missing rating → 0 base, missing/unknown type → the `unknown`
-    // multiplier (0x). The old `|| 1` / 'personal' defaults made the
-    // validator score unknown-typed tokens at 1x where the engine paid
-    // 0x — false discrepancies on ALN's null-type tokens (review finding).
+    // missing rating → 0 base; null/unmatched type → the UNKNOWN bucket
+    // (0x). The old `|| 1` / 'personal' defaults made the validator pay
+    // tokens the engine scored 0x (review finding).
     const baseValue = this.BASE_VALUES[rating] || 0;
-    const typeKey = (memoryType || 'unknown').toLowerCase();
-    const multiplier = this.TYPE_MULTIPLIERS[typeKey] ?? this.TYPE_MULTIPLIERS.unknown;
+    // EXACT-CASE (D2b): verbatim pack ids; null/unmatched → UNKNOWN (0x)
+    const multiplier = this.TYPE_MULTIPLIERS[memoryType] ?? this.TYPE_MULTIPLIERS.UNKNOWN;
     return Math.floor(baseValue * multiplier);
   }
 

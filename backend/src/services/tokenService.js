@@ -59,11 +59,13 @@ const calculateTokenValue = (rating, type) => {
   const scoring = packService.getScoringRules();
 
   const baseValue = scoring.baseValues[rating] || 0;
-  const typeKey = (type || 'unknown').toLowerCase();
-  // `unknown` is always present in normalized tables (0 unless the pack
-  // overrides), so this chain never needs a numeric tail — and `??`
-  // (not `||`) lets a pack legitimately declare a 0 multiplier.
-  const multiplier = scoring.typeMultipliers[typeKey] ?? scoring.typeMultipliers.unknown;
+  // EXACT-CASE lookup (D2b): types are pack-declared ids, matched
+  // verbatim — scanner parity (its lookup was always exact-case). The
+  // activation gate refuses tokens whose type is absent from the pack's
+  // own typeMultipliers, so the UNKNOWN fallback is reached only by
+  // null-typed tokens (legal, scores 0×) and packless legacy paths.
+  // `??` (not `||`) lets a pack legitimately declare a 0 multiplier.
+  const multiplier = scoring.typeMultipliers[type] ?? scoring.typeMultipliers.UNKNOWN;
 
   return Math.floor(baseValue * multiplier);
 };

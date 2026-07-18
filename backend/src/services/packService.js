@@ -107,11 +107,16 @@ function _normalizeScoring(scoring) {
     baseValues: Object.fromEntries(
       Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k, 10), v])
     ),
+    // EXACT-CASE keys (A3 slice 2b, D2b): types are pack-declared ids —
+    // the backend's old lowercase normalization diverged from the
+    // scanner's exact-case lookup (a lowercased vocabulary silently
+    // scored 0× standalone-only, the worst divergence class). The
+    // scanner's behavior is the canon; the type-coverage gate makes a
+    // case-mismatched token REFUSE at boot instead of silently zeroing.
+    // UNKNOWN (schema-required) is the null/unrecognized bucket.
     typeMultipliers: {
-      unknown: 0,
-      ...Object.fromEntries(
-        Object.entries(scoring.typeMultipliers).map(([k, v]) => [k.toLowerCase(), v])
-      ),
+      UNKNOWN: 0,
+      ...scoring.typeMultipliers,
     },
     // D2s2: pack-conditional score floor. Strict === true so a pack that
     // declares scoring but omits semantics gets the conservative floor;
@@ -280,6 +285,32 @@ function _gateCheck(manifest, gameConfig) {
           'multi-phase and trigger-started clocks are not driveable by this engine yet (see slice 5); ' +
           'the engine drives only the degenerate single-phase-at-0'
         );
+      }
+    }
+    // Type coverage (A3 slice 2b, D2b): with exact-case lookup, a token
+    // whose SF_MemoryType is absent from the pack's own typeMultipliers
+    // would silently score 0× — refuse it at boot instead. null types
+    // are LEGAL (the UNKNOWN bucket, 3 in ALN production data); packs
+    // without a usable scoring block gate nothing (shim path).
+    if (_isUsableScoring(gameConfig.scoring)) {
+      let tokensForTypes = null;
+      try {
+        tokensForTypes = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+      } catch { /* no tokens.json — the loader refuses separately */ }
+      if (tokensForTypes) {
+        const uncovered = new Set();
+        for (const token of Object.values(tokensForTypes)) {
+          const t = token.SF_MemoryType;
+          if (t !== null && t !== undefined && !(t in gameConfig.scoring.typeMultipliers)) {
+            uncovered.add(t);
+          }
+        }
+        for (const t of uncovered) {
+          problems.push(
+            `tokens use memory type '${t}' which is not a key of scoring.typeMultipliers — ` +
+            'types match EXACT-CASE (D2b); declare the type or fix the tokens'
+          );
+        }
       }
     }
     // Groups coverage (A3 slice 2b, D1b): a pack that DECLARES a groups

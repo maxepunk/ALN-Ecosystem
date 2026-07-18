@@ -105,9 +105,10 @@ class TokenLoader {
       // The old 'personal'/`|| 1` defaults made validators pay tokens the
       // engine scored 0x (review finding).
       const rating = token.SF_ValueRating || 0;
-      const typeKey = (token.SF_MemoryType || 'unknown').toLowerCase();
+      // EXACT-CASE lookup (D2b, engine parity): pack-declared ids matched
+      // verbatim; null/unmatched types score the UNKNOWN bucket (0x)
       const baseValue = BASE_VALUES[rating] || 0;
-      const multiplier = TYPE_MULTIPLIERS[typeKey] ?? TYPE_MULTIPLIERS.unknown;
+      const multiplier = TYPE_MULTIPLIERS[token.SF_MemoryType] ?? TYPE_MULTIPLIERS.UNKNOWN;
       const value = Math.floor(baseValue * multiplier);
 
       return {
@@ -115,7 +116,7 @@ class TokenLoader {
         value,
         rating,
         memoryType: token.SF_MemoryType || 'Personal',
-        memoryTypeLower: typeKey,
+        memoryTypeLower: (token.SF_MemoryType || 'unknown').toLowerCase(),
         groupId: groupName,
         groupMultiplier,
         rawGroup: token.SF_Group,

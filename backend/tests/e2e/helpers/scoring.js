@@ -87,17 +87,15 @@ function expectedModeLabels(modes) {
 /** Score a token against a pack scoring block, mirroring the ENGINE's
  *  normalization (packService._normalizeScoring: LOWERCASED type keys,
  *  `unknown` always present at 0) — the oracle must match what the
- *  backend actually computes, including for case-mismatched packs
- *  (review finding; the scanner's exact-case lookup is the open D2b
- *  canon question for slice 2b — until it's ruled, the backend is the
- *  networked-mode authority this oracle validates). */
+ *  backend actually computes. EXACT-CASE since D2b (ruled 2026-07-18):
+ *  types are pack-declared ids matched verbatim — the scanner's
+ *  always-exact-case lookup became the canon and the backend dropped
+ *  its lowercase normalization; the activation gate refuses tokens
+ *  whose type is absent from the pack's own typeMultipliers. */
 function packTokenValue(packScoring, rating, memoryType) {
   const base = packScoring.baseValues[String(rating)] ?? packScoring.baseValues[rating] ?? 0;
-  const multipliers = { unknown: 0 };
-  for (const [k, v] of Object.entries(packScoring.typeMultipliers)) {
-    multipliers[k.toLowerCase()] = v;
-  }
-  const mult = multipliers[String(memoryType || 'unknown').toLowerCase()] ?? multipliers.unknown;
+  const mult = packScoring.typeMultipliers[memoryType]
+    ?? packScoring.typeMultipliers.UNKNOWN ?? 0;
   return base * mult;
 }
 
