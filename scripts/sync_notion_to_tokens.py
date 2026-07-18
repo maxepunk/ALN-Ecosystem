@@ -869,6 +869,62 @@ def write_tokens_json(path, tokens):
         raise
 
 
+GROUP_SUFFIX_RE = re.compile(r'^(.*?)\s*\(x(\d+)\)$')
+
+
+def derive_groups(tokens):
+    """D1b/D3b (A3 slice 2b): the SYNC is the sole parser of the '(xN)'
+    microformat — it derives the pack's `groups` block at authoring time.
+    Two elements declaring the same group with different multipliers is a
+    HARD ERROR here (it used to be a silent runtime split across four
+    independent regex parsers)."""
+    groups = {}
+    first_seen = {}
+    conflicts = []
+    for rfid, t in tokens.items():
+        raw = (t.get('SF_Group') or '').strip()
+        if not raw:
+            continue
+        m = GROUP_SUFFIX_RE.match(raw)
+        name, mult = (m.group(1).strip(), int(m.group(2))) if m else (raw, 1)
+        if name in groups and groups[name]['multiplier'] != mult:
+            conflicts.append(
+                f"'{name}': x{groups[name]['multiplier']} ({first_seen[name]}) vs x{mult} ({rfid})")
+        else:
+            groups[name] = {'multiplier': mult}
+            first_seen.setdefault(name, rfid)
+    if conflicts:
+        raise SystemExit(
+            "GROUP MULTIPLIER CONFLICT (sync-time hard error, D3b) — fix in Notion: "
+            + "; ".join(conflicts))
+    return groups
+
+
+def write_groups_block(game_path, groups):
+    """Merge the derived groups block into game.json (atomic, F-TOOL-10).
+    Returns True when the file changed."""
+    game_path = Path(game_path)
+    game = json.loads(game_path.read_text())
+    if game.get('groups') == groups:
+        return False
+    game['groups'] = groups
+    tmp = game_path.with_name(game_path.name + '.tmp')
+    try:
+        with tmp.open('w') as f:
+            json.dump(game, f, indent=2)
+            f.write('\n')
+            f.flush()
+            os.fsync(f.fileno())
+        tmp.replace(game_path)
+    except Exception:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+    return True
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Sync Notion Elements database to tokens.json")
     parser.add_argument(
@@ -1028,7 +1084,10 @@ def main(argv=None):
 
     # Write to tokens.json (atomic: tmp + fsync + replace)
     print(f"Writing to {TOKENS_JSON}...")
+    derived_groups = derive_groups(sorted_tokens)
     write_tokens_json(TOKENS_JSON, sorted_tokens)
+    if write_groups_block(GAME_JSON_PATH, derived_groups):
+        print(f"Updated game.json groups block ({len(derived_groups)} group(s))")
 
     # Prune orphan BMPs/audio for tokens no longer in Notion. Runs ONLY after
     # a verifiably complete fetch reached this point. DEFAULT is dry-run
