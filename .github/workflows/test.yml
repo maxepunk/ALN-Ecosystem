@@ -146,6 +146,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # The A2 byte-parity tests read ALN-TokenData/pack-manifest.json —
+          # this was the ONE job checking out without submodules (caught by
+          # the first-ever CI run of foundations content, PR #19 run 72).
+          submodules: recursive
 
       - name: Setup Python
         uses: actions/setup-python@v5
