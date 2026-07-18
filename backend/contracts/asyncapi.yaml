@@ -526,7 +526,11 @@ components:
                       example: "GM_Station_1"
                     mode:
                       type: string
-                      enum: [detective, blackmarket]
+                      description: >-
+                        Game mode id — validated at runtime against the
+                        ACTIVE pack's declared modes (game.json modes[].id),
+                        not a closed enum (Phase 3 slice 1). ALN wire values
+                        remain "blackmarket"/"detective" through Phase 3 (R12).
                       example: "blackmarket"
                     points:
                       type: integer
@@ -831,12 +835,17 @@ components:
                 example: "GM_Station_1"
               mode:
                 type: string
-                enum: [detective, blackmarket]
-                description: Scan mode (game logic)
+                description: >-
+                  Game mode id (game logic). Not a closed enum (Phase 3
+                  slice 1, open mode vocabulary): the server validates the
+                  value at runtime against the ACTIVE pack's declared modes
+                  (game.json modes[].id) and rejects unknown ids with the
+                  same error shape the old enum produced. ALN wire values
+                  remain "blackmarket"/"detective" through Phase 3 (R12).
                 example: "blackmarket"
               summary:
                 type: [string, "null"]
-                description: Optional custom summary for detective mode scans (overrides token default)
+                description: Optional custom summary for evidence-surface mode scans (overrides token default)
                 maxLength: 350
                 example: "Security footage from warehouse district - timestamp 23:47"
               clientTxId:
@@ -981,8 +990,11 @@ components:
                     example: "GM_Station_1"
                   mode:
                     type: string
-                    enum: [detective, blackmarket]
-                    description: Scan mode
+                    description: >-
+                      Game mode id — validated at runtime against the ACTIVE
+                      pack's declared modes (game.json modes[].id), not a
+                      closed enum (Phase 3 slice 1). ALN wire values remain
+                      "blackmarket"/"detective" through Phase 3 (R12).
                     example: "blackmarket"
                   points:
                     type: integer
