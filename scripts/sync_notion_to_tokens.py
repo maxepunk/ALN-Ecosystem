@@ -35,6 +35,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 # Local helper used to emit the ESP32-consumable asset manifest.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_asset_manifest  # noqa: E402
+import build_pack_manifest  # noqa: E402
 
 # Load environment variables from .env file if present
 try:
@@ -1059,10 +1060,26 @@ def main(argv=None):
         else:
             print("No orphans found.")
 
-    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot.
+    # Phase 3 A2: regenerate the PACK manifest FIRST. tokens.json just
+    # changed, so its sha1 in the pack inventory is stale — and standalone
+    # clients verify every staged download against the manifest, correctly
+    # REJECTING a mismatched update. Skipping this step silently stops the
+    # standalone pack update channel (2026-07-17 plan review, finding A2).
+    # Ordering: before the asset manifest, which EMBEDS this pack identity
+    # for the ESP32 boot log.
+    print()
+    print("Rebuilding pack manifest...")
+    pack_manifest, pack_manifest_path = build_pack_manifest.write_manifest(TOKENS_JSON.parent)
+    print(
+        f"Wrote {pack_manifest_path.relative_to(ECOSYSTEM_ROOT)} "
+        f"({len(pack_manifest['files'])} files, {pack_manifest['contentHash'][:23]}…)"
+    )
+
+    # Emit the asset manifest consumed by the ESP32 CYD scanner at boot
+    # (carries the pack identity from the freshly-rebuilt pack manifest).
     print()
     print("Writing asset manifest...")
-    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT)
+    manifest = generate_asset_manifest.build_manifest(ASSETS_ROOT, pack_dir=TOKENS_JSON.parent)
     manifest_path = generate_asset_manifest.write_manifest(ASSETS_ROOT, manifest)
     print(
         f"Wrote {manifest_path.relative_to(ECOSYSTEM_ROOT)} "

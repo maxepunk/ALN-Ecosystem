@@ -8,14 +8,62 @@
  * Single source of truth: src/services/tokenService.js
  */
 
+const https = require('https');
 const { calculateTokenValue, parseGroupMultiplier, extractGroupName } = require('../../../src/services/tokenService');
+
+/**
+ * Fetch the ACTIVE pack's game.json scoring block from the orchestrator's
+ * pack channel. Returns null when the pack ships no game.json (404) or on
+ * any fetch problem — callers fall back to the legacy oracle, mirroring
+ * the GM scanner's own baked-shim ladder.
+ *
+ * TWO-ORACLE REALITY (ledger L1, until A3 slice 2): the BACKEND scores
+ * from the legacy scoring-config (pack-blind), the STANDALONE SCANNER
+ * scores from the pack's game.json (pack-aware). Standalone-mode
+ * expectations must therefore use THIS pack-derived oracle; networked/
+ * backend expectations keep the legacy oracle until slice 2 migrates the
+ * backend — at which point every caller converges on pack-derived and
+ * the default-legacy path here retires with L1.
+ *
+ * @param {string} orchestratorUrl
+ * @returns {Promise<Object|null>} game.json `scoring` block or null
+ */
+function loadPackScoring(orchestratorUrl) {
+  return new Promise((resolve) => {
+    const url = `${orchestratorUrl}/api/pack/files/game.json`;
+    https.get(url, { rejectUnauthorized: false }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode !== 200) return resolve(null);
+        try {
+          resolve(JSON.parse(data).scoring || null);
+        } catch {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+/** Score a token against a pack scoring block (same math as the scanner's
+ *  applyPackScoring path: baseValues[rating] × typeMultipliers[type],
+ *  unknown/absent type → UNKNOWN multiplier). */
+function packTokenValue(packScoring, rating, memoryType) {
+  const base = packScoring.baseValues[String(rating)] ?? packScoring.baseValues[rating] ?? 0;
+  const mult = packScoring.typeMultipliers[memoryType] ?? packScoring.typeMultipliers.UNKNOWN ?? 0;
+  return base * mult;
+}
 
 /**
  * Calculate expected score for a single token using production scoring logic
  * @param {Object} token - Token object with SF_ValueRating and SF_MemoryType
  * @returns {number} Expected score (base value × type multiplier)
  */
-function calculateExpectedScore(token) {
+function calculateExpectedScore(token, packScoring = null) {
+  if (packScoring) {
+    return packTokenValue(packScoring, token.SF_ValueRating, token.SF_MemoryType);
+  }
   return calculateTokenValue(token.SF_ValueRating, token.SF_MemoryType);
 }
 
@@ -85,6 +133,7 @@ function calculateExpectedTotalScore(scannedTokens) {
 }
 
 module.exports = {
+  loadPackScoring,
   calculateExpectedScore,
   calculateExpectedGroupBonus,
   calculateExpectedTotalScore

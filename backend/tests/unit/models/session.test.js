@@ -208,3 +208,37 @@ describe('Session Model - Per-Device Duplicate Detection (P0.1)', () => {
     });
   });
 });
+
+describe('Session Model - pack stamp (Phase 3 A2)', () => {
+  const PACK = {
+    packId: 'about-last-night',
+    version: '1.0.0',
+    contentHash: `sha256:${'a'.repeat(64)}`,
+  };
+
+  test('new sessions default metadata.pack to null (stamped by sessionService)', () => {
+    const session = new Session({ name: 'Fresh' });
+    expect(session.metadata.pack).toBeNull();
+  });
+
+  test('legacy sessions without a pack stamp migrate to explicit null', () => {
+    const legacy = new Session({
+      name: 'Old Session',
+      metadata: {
+        gmStations: 1,
+        playerDevices: 2,
+        totalScans: 10,
+        uniqueTokensScanned: ['kaa001'],
+        // No pack (pre-A2 session)
+      },
+    });
+    expect(legacy.metadata.pack).toBeNull();
+  });
+
+  test('a stamped pack survives the toJSON/fromJSON persistence round-trip', () => {
+    const session = new Session({ name: 'Stamped' });
+    session.metadata.pack = PACK;
+    const restored = Session.fromJSON(session.toJSON());
+    expect(restored.metadata.pack).toEqual(PACK);
+  });
+});

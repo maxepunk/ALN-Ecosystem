@@ -67,6 +67,13 @@ const sessionSchema = Joi.object({
     playerDevices: Joi.number().integer().min(0).required(),
     totalScans: Joi.number().integer().min(0).required(),
     uniqueTokensScanned: Joi.array().items(Joi.string()).required(),
+    // A2: the pack this session was created under ("rules frozen at
+    // start"); null for legacy sessions and pre-pack checkouts.
+    pack: Joi.object({
+      packId: Joi.string().required(),
+      version: Joi.string().required(),
+      contentHash: Joi.string().required(),
+    }).allow(null).optional(),
   }).required(),
 });
 
