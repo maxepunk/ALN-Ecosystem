@@ -7,7 +7,15 @@ const fs = require('fs');
 const path = require('path');
 
 class TokenLoader {
-  constructor() {
+  /**
+   * @param {string|null} packDir - resolved pack directory (D4s2). When
+   *   given, tokens.json MUST live there — no silent fallback (the
+   *   engine's PACK_PATH rule: an explicitly-resolved pack that is
+   *   missing its tokens is an error, never a quiet substitute). When
+   *   absent, the legacy production-checkout chain applies.
+   */
+  constructor(packDir = null) {
+    this.packDir = packDir;
     this.tokens = null;
     this.tokensMap = null;
   }
@@ -37,6 +45,15 @@ class TokenLoader {
    * Load raw tokens.json file
    */
   loadRawTokens() {
+    if (this.packDir) {
+      const tokenPath = path.join(this.packDir, 'tokens.json');
+      try {
+        return JSON.parse(fs.readFileSync(tokenPath, 'utf8'));
+      } catch (e) {
+        throw new Error(`Resolved pack has no readable tokens.json (${tokenPath}): ${e.message}`);
+      }
+    }
+
     const paths = [
       path.join(__dirname, '../../../ALN-TokenData/tokens.json'),
       path.join(__dirname, '../../../aln-memory-scanner/data/tokens.json')
@@ -63,7 +80,8 @@ class TokenLoader {
 
     const rawTokens = this.loadRawTokens();
 
-    const { BASE_VALUES, TYPE_MULTIPLIERS } = require('./scoringConfigLoader').loadScoringConstants();
+    const { BASE_VALUES, TYPE_MULTIPLIERS } =
+      require('./scoringConfigLoader').loadScoringConstants(this.packDir || undefined);
 
     this.tokens = Object.entries(rawTokens).map(([id, token]) => {
       const groupName = TokenLoader.extractGroupName(token.SF_Group);

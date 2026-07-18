@@ -1,35 +1,41 @@
 /**
  * Shared scoring config loader for validator scripts.
- * Loads the scoring block from ALN-TokenData/game.json (the pack rules
- * file — sole shared scoring source since A3 slice 2 retired the legacy
- * scoring-config.json) and transforms keys to match the backend's
+ * Loads the scoring block from a pack directory's game.json (the pack
+ * rules file — sole shared scoring source since A3 slice 2 retired the
+ * legacy scoring-config.json) and transforms keys to match the backend's
  * runtime format.
  *
- * Scope note (owner decision D4s2 pending): validators always read the
- * PRODUCTION pack checkout, same as before the migration. Deeper
- * pack-awareness (validating a session against whichever pack it ran
- * under) is a separate decision — this loader only fixes the retirement
- * break. An unreadable game.json throws: a validator must never fall
- * back to baked constants and silently validate against wrong values.
+ * Pack-aware since D4s2: callers pass the RESOLVED pack directory
+ * (packResolver.resolveSessionPack — the session's stamped pack, or the
+ * production checkout for unstamped sessions). The default keeps the
+ * production checkout so ad-hoc uses stay working. An unreadable
+ * game.json throws: a validator must never fall back to baked constants
+ * and silently validate against wrong values.
  */
 
 const path = require('path');
 
-let _cached = null;
+const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 
-function loadScoringConstants() {
-  if (_cached) return _cached;
+// Cache keyed by resolved dir — a pack-repoint must never serve another
+// pack's memoized tables (the old single-slot memo would have).
+const _cache = new Map();
 
-  const { scoring } = require(path.join(__dirname, '../../../ALN-TokenData/game.json'));
+function loadScoringConstants(packDir = DEFAULT_PACK_DIR) {
+  const dir = path.resolve(packDir);
+  if (_cache.has(dir)) return _cache.get(dir);
+
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  const { scoring } = require(path.join(dir, 'game.json'));
   // NON-EMPTY required (same guard as packService._isUsableScoring):
   // empty-but-present tables would pass a truthiness check and make the
   // validator recompute NaN scores instead of throwing (review finding).
   if (!scoring?.baseValues || Object.keys(scoring.baseValues).length === 0
       || !scoring?.typeMultipliers || Object.keys(scoring.typeMultipliers).length === 0) {
-    throw new Error('ALN-TokenData/game.json has no usable scoring block — cannot validate scores');
+    throw new Error(`${dir}/game.json has no usable scoring block — cannot validate scores`);
   }
 
-  _cached = {
+  const constants = {
     BASE_VALUES: Object.fromEntries(
       Object.entries(scoring.baseValues).map(([k, v]) => [parseInt(k), v])
     ),
@@ -43,7 +49,8 @@ function loadScoringConstants() {
     },
   };
 
-  return _cached;
+  _cache.set(dir, constants);
+  return constants;
 }
 
-module.exports = { loadScoringConstants };
+module.exports = { loadScoringConstants, DEFAULT_PACK_DIR };

@@ -67,14 +67,17 @@ class GroupBonusCheck {
     const findings = [];
     let status = 'PASS';
 
-    // Get team's scanned tokens
+    // The team's COUNTING claims (countsTowardGroups via the seam —
+    // the old mode-blind set included non-counting claims in completion,
+    // a live bug caught by the D4s2 census)
     const teamTxs = transactions.filter(tx =>
-      tx.teamId === teamId && tx.status === 'accepted'
+      tx.teamId === teamId && tx.status === 'accepted' &&
+      this.calculator.countsTowardGroups(tx.mode)
     );
     const scannedTokenIds = new Set(teamTxs.map(tx => tx.tokenId));
 
-    // Find which groups should be completed
-    const expectedGroups = this.calculator.findCompletedGroups(scannedTokenIds);
+    // Find which groups should be completed (§2f bonus context)
+    const expectedGroups = this.calculator.findCompletedGroups(scannedTokenIds, { transactions, teamId });
 
     // Normalize stored groups
     const storedGroupIds = new Set(
@@ -89,7 +92,7 @@ class GroupBonusCheck {
 
       if (!storedGroupIds.has(group.id)) {
         status = 'FAIL';
-        const bonus = this.calculator.calculateGroupBonus(group);
+        const bonus = group.bonus;
         findings.push({
           severity: 'ERROR',
           message: `Missing group bonus for Team ${teamId}`,
@@ -103,7 +106,7 @@ class GroupBonusCheck {
           }
         });
       } else {
-        const bonus = this.calculator.calculateGroupBonus(group);
+        const bonus = group.bonus;
         findings.push({
           severity: 'INFO',
           message: `Group bonus verified for Team ${teamId}`,
@@ -219,10 +222,11 @@ class GroupBonusCheck {
 
     for (const teamId of teams) {
       const teamTxs = transactions.filter(tx =>
-        tx.teamId === teamId && tx.status === 'accepted'
+        tx.teamId === teamId && tx.status === 'accepted' &&
+        this.calculator.countsTowardGroups(tx.mode)
       );
       const scannedTokenIds = new Set(teamTxs.map(tx => tx.tokenId));
-      const completed = this.calculator.findCompletedGroups(scannedTokenIds);
+      const completed = this.calculator.findCompletedGroups(scannedTokenIds, { transactions, teamId });
 
       for (const group of completed) {
         if (group.multiplier > 1) {

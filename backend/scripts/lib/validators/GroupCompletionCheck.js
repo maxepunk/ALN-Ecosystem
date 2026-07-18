@@ -46,10 +46,12 @@ class GroupCompletionCheck {
       }
     }
 
-    // Get unique teams (only from blackmarket transactions)
+    // Get unique teams (only from COUNTING-mode transactions — the
+    // completion currency is countsTowardGroups via the seam, D4s2;
+    // the old `!== 'detective'` literal happened to match ALN only)
     const teams = new Set(
       transactions
-        .filter(tx => tx.teamId && tx.status === 'accepted' && tx.mode !== 'detective')
+        .filter(tx => tx.teamId && tx.status === 'accepted' && this.calculator.countsTowardGroups(tx.mode))
         .map(tx => tx.teamId)
     );
 
@@ -90,16 +92,17 @@ class GroupCompletionCheck {
     const findings = [];
     let status = 'PASS';
 
-    // Get team's blackmarket scanned tokens (detective mode doesn't count)
+    // The team's COUNTING claims (countsTowardGroups via the seam, D4s2)
     const teamTxs = transactions.filter(tx =>
       tx.teamId === teamId &&
       tx.status === 'accepted' &&
-      tx.mode !== 'detective'
+      this.calculator.countsTowardGroups(tx.mode)
     );
     const scannedTokenIds = new Set(teamTxs.map(tx => tx.tokenId));
 
-    // Find which groups should be completed
-    const expectedGroups = this.calculator.findCompletedGroups(scannedTokenIds);
+    // Find which groups should be completed (bonus math rides §2f:
+    // scored-claims-only base via the transactions context)
+    const expectedGroups = this.calculator.findCompletedGroups(scannedTokenIds, { transactions, teamId });
 
     // Get broadcasts for this team
     const teamBroadcasts = groupBroadcasts.filter(b => b.teamId === teamId);
@@ -109,7 +112,7 @@ class GroupCompletionCheck {
     for (const group of expectedGroups) {
       if (group.multiplier <= 1) continue; // No bonus for 1x groups
 
-      const bonus = this.calculator.calculateGroupBonus(group);
+      const bonus = group.bonus; // computed with §2f context in findCompletedGroups
       const wasBroadcast = broadcastedGroupIds.has(group.id);
 
       if (wasBroadcast) {

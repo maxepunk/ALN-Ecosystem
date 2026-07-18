@@ -4,14 +4,22 @@
  */
 
 class TransactionFlowCheck {
-  constructor(tokensMap) {
+  /**
+   * @param {Map} tokensMap
+   * @param {Object} [opts]
+   * @param {Object|null} [opts.gameConfig] - resolved pack config; valid
+   *   modes are the PACK's declared ids (D4s2 — the old hardcoded
+   *   ['detective','blackmarket'] enum warned on every non-ALN mode)
+   */
+  constructor(tokensMap, opts = {}) {
     this.tokensMap = tokensMap;
     this.name = 'Transaction Flow';
 
     // Required fields for a valid transaction
     this.requiredFields = ['tokenId', 'teamId', 'status', 'timestamp'];
     this.validStatuses = ['accepted', 'duplicate', 'rejected'];
-    this.validModes = ['detective', 'blackmarket'];
+    const { wireModeIds } = require('../../../src/gameRules/modeSemantics');
+    this.validModes = wireModeIds(opts.gameConfig || null);
   }
 
   /**
@@ -121,7 +129,7 @@ class TransactionFlowCheck {
         fieldStats.missingMode++;
         findings.push({
           severity: 'WARNING',
-          message: `${txRef}: Missing mode field (detective/blackmarket)`,
+          message: `${txRef}: Missing mode field (pack modes: ${this.validModes.join('/')})`,
           details: { transactionIndex: i, tokenId: tx.tokenId }
         });
         warningCount++;
