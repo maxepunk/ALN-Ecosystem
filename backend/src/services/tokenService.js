@@ -140,9 +140,11 @@ const loadTokens = () => {
   const tokensArray = Object.entries(tokensObject).map(([id, token]) => {
     const groupName = extractGroupName(token.SF_Group);
     // v2: multiplier comes from the pack's groups block ONLY (1 for
-    // undeclared names — unreachable for gated packs, the coverage gate
-    // refuses them; reachable in packless legacy checkouts, where a
-    // 1x multiplier means "group with no completion bonus", safe)
+    // undeclared names — unreachable for ANY activated pack with a
+    // game.json: the coverage gate is unconditional, an absent block is
+    // an empty declaration set. Reachable only in packless legacy
+    // checkouts (no game.json at all), where a 1x multiplier means
+    // "group with no completion bonus", safe)
     const groupMultiplier = (packGroups && groupName && packGroups[groupName])
       ? packGroups[groupName].multiplier
       : 1;

@@ -628,10 +628,23 @@ describe('packService', () => {
       expect(() => packService.activatePack()).not.toThrow();
     });
 
-    it('a pack WITHOUT a groups block gates nothing (pre-groups packs stay legal until the v2 cutover)', () => {
+    it('a pack WITHOUT a groups block REFUSES grouped tokens (adversarial-review fix: the pre-cutover tolerance retired with v2)', () => {
+      // The gate is UNCONDITIONAL now: an absent block = empty declaration
+      // set, so any grouped token is undeclared. This is exactly how a
+      // lingering v1 pack (suffixed names, no groups block) refuses on the
+      // v2 engine instead of silently reading every multiplier as 1x.
       writePack(tmpDir, {
         groups: null,
         tokens: { t1: { SF_RFID: 't1', SF_Group: 'Anything (x9)' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'Anything \(x9\)'.*not declared/);
+    });
+
+    it('a pack without a groups block and NO grouped tokens still activates (nothing named, nothing gated)', () => {
+      writePack(tmpDir, {
+        groups: null,
+        tokens: { t1: { SF_RFID: 't1', SF_Group: '' }, t2: { SF_RFID: 't2' } },
       });
       expect(() => packService.activatePack()).not.toThrow();
     });

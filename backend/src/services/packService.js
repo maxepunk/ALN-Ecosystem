@@ -317,22 +317,29 @@ function _gateCheck(manifest, gameConfig) {
         }
       }
     }
-    // Groups coverage (A3 slice 2b, D1b): a pack that DECLARES a groups
-    // block must declare every group its tokens name — an undeclared
-    // name would silently read a 1x multiplier, exactly the split-source
-    // drift the block exists to kill. v2: SF_Group IS the pure name
+    // Groups coverage (A3 slice 2b, D1b — UNCONDITIONAL since the v2
+    // cutover): every group a token names must be DECLARED in game.json
+    // `groups`, the sole multiplier source. An ABSENT block is an empty
+    // declaration set, so ANY grouped token refuses — the pre-cutover
+    // "declares nothing gates nothing" tolerance retired with the bump
+    // to PACK_SCHEMA_VERSION 2 (this engine has no suffix parser; an
+    // undeclared name would silently read 1x, the exact silent-drift
+    // class D1b exists to kill). v2: SF_Group IS the pure name
     // (tokens.schema.json makes a "(xN)" suffix illegal; the sync is the
     // sole parser of the authoring shorthand — D3b).
-    if (gameConfig.groups && typeof gameConfig.groups === 'object') {
+    {
       let tokensObj = null;
       try {
         tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
       } catch { /* no tokens.json — the loader refuses separately */ }
       if (tokensObj) {
+        const declaredGroups = (gameConfig.groups && typeof gameConfig.groups === 'object')
+          ? gameConfig.groups
+          : {};
         const undeclared = new Set();
         for (const token of Object.values(tokensObj)) {
           const name = (token.SF_Group || '').trim();
-          if (name && !gameConfig.groups[name]) undeclared.add(name);
+          if (name && !declaredGroups[name]) undeclared.add(name);
         }
         for (const name of undeclared) {
           problems.push(
