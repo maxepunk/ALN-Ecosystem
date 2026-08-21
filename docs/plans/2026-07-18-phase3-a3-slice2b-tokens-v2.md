@@ -253,3 +253,101 @@ correction factor already applied — census is real, not estimated).
 - **D3b**: Notion authoring unchanged + sync-as-sole-parser
   (recommendation: yes) — includes ruling that same-group-different-
   multiplier becomes a sync-time hard error.
+
+---
+
+## Execution record (2026-07-18 → close)
+
+**Status: EXECUTED IN FULL — SLICE CLOSED** (all three rulings ratified
+as recommended: D1b groups-block, D2b exact-case canon, D3b
+sync-as-sole-parser + atomic cutover).
+
+### Landed, in order
+
+1. **D1b staged** — pack `groups` block authoritative everywhere a
+   multiplier is read: backend tokenService (`c0db062`), scripts
+   TokenLoader (`4dcdd7c`), activation groups-coverage gate (`e92d1e9`),
+   scanner PACK_GROUPS mirror (ALNScanner `1072805`).
+2. **D3b authoring side** — sync `derive_groups` (conflict = hard error)
+   + `write_groups_block` (atomic merge) (`5a3bbc2`); the standalone
+   skill sync twin retired to a loud stub (`64c12e8`).
+3. **D2b** — exact-case type canon: backend dropped lowercase
+   normalization (`_normalizeScoring` keys verbatim + `UNKNOWN` bucket),
+   type-coverage gate refuses case-mismatched tokens at boot, all
+   loaders/oracles mirrored (`e8fcaf3`).
+4. **The atomic v2 cutover** (`99e34e5` + TokenData `a80fafc`): all four
+   runtime "(xN)" parsers DELETED (tokenService, TokenLoader, scanner
+   parseGroupInfo + tokenManager fallback), the gate's v1-compat strip
+   removed, E2E oracle moved to `loadPackGroups()` (throws on undeclared
+   names), tokens.schema.json v2 (`not`-pattern makes a suffixed
+   SF_Group ILLEGAL), production + fixture packs stripped to pure names,
+   contract tests flipped to declared-in-groups.
+5. **D3b emission side** (`fe31732`): sync parses the raw shorthand ONCE
+   (derive), then `strip_group_suffixes` emits pure names — validation/
+   dry-run/write all see the exact v2 shape.
+6. **PACK_SCHEMA_VERSION 1→2** (`33953c6` + TokenData `072b772`):
+   engine const, both manifest stampers (JS + python), schemas
+   const-pinned, all three packs restamped + manifests regenerated;
+   NEW gate pin: a PAST-version pack refuses too (this engine has no
+   suffix parser to read v1 tokens correctly). Scanner mirror landed in
+   the round-2 sweep (below).
+7. **Scanner cutover** (ALNScanner `c0022bc`): suffix regexes deleted,
+   fixtures flipped to pure names + `applyPackGroups` declarations,
+   nested data pin → v2, dist rebuilt.
+8. **Docs** (`6716626` + TokenData `5af9082` + ALNScanner `7feb214`):
+   SCORING_LOGIC.md v2 posture, all CLAUDE.md schema sections.
+
+### Adversarial review (workflow-orchestrated, two rounds)
+
+- **Round 1** (8 finder lenses → 3-lens refuter panels): the verify
+  fleet hit a usage-credit wall (91/107 agents failed) — ONE finding
+  fully verified 3-0 and fixed: **the D1b groups gate ran only when a
+  groups block was DECLARED**, so a v2 pack omitting `groups` activated
+  with every grouped token silently reading 1x, and a lingering v1
+  suffixed SF_Group activated verbatim. Gate made UNCONDITIONAL (absent
+  block = empty declaration set) + stale pin flipped (`8c741ac`).
+- **Round 2** (rerun: 8 finders → 1 strict refuter each; 40 agents,
+  0 errors): **23 confirmed / 9 refuted**. All 23 fixed same-day
+  (`0baca9b` + ALNScanner `b89d1c3`):
+  - *Scanner v2 enforcement* (5 lenses converged): scanner-side
+    PACK_SCHEMA_VERSION gate (EXACT match both directions at the load
+    boundary, covering SW-cache/Pages tiers the backend gate never
+    sees) + `_warnUndeclaredGroups` client defense (L2/L6 shim
+    doctrine applied to groups) + wiring/behavior pins incl. the C20
+    mutation gap (deleting applyPackGroups now fails a test).
+  - *Prototype-safety*: `Object.hasOwn` in every gate/lookup (a group
+    or type named `constructor` resolved via the prototype chain into
+    NaN scores); declared group entries validated (integer multiplier
+    >= 1).
+  - *Sync hard edges*: suffix-only `(x5)`, `(x0)`, and double-suffix
+    values are sync-time HARD ERRORS; dry-run previews the groups-block
+    write; the stale "scores 0x" type warning now says the engine
+    REFUSES at boot.
+  - *TokenLoader*: game.json read via fs, not require() (require's
+    path cache served stale groups across runs).
+  - *Contract*: manifest-freshness pin for every bootable fixture pack.
+  - *Doc truth*: "LOWERCASED type keys" claims surviving D2b corrected
+    (packService JSDoc, root CLAUDE.md, SCORING_LOGIC.md); _gateCheck
+    header no longer promises "v1 packs activate exactly as before";
+    openapi manifest example → schemaVersion 2.
+
+### Accepted residual exposure (documented, not fixable in new code)
+
+An OLD deployed scanner build (pre-cutover dist on GitHub Pages / a
+waiting SW) loading a v2 pack would suffix-parse pure names into silent
+1x multipliers — old code cannot be gated by new code. Cover: frozen
+production until the coordinated cutover (R12 skew policy); the NEW
+scanner gates both directions, so post-cutover skew is loud everywhere
+new code runs. The PWA/ESP32 do not read SF_Group; the PWA's nested
+data/ pin (pre-v2) rides the R14 merge train.
+
+### Close gate
+
+Backend 2336 unit+contract + fresh ratchet + lint; integration 342;
+scanner 1447 + fresh ratchet, dist rebuilt; scripts 72; PWA 165, ESP32
+native 125, config-tool green. Dual-pack Tier L TWICE: after the
+cutover ALN 111P/0F (1 retry-passed UI-timing flaky) + toy 113P/0F/0;
+after the round-2 sweep, against the FINAL heads: **ALN 112P/0F/0-flaky,
+toy 113P/0F/0-flaky**. CI green on every one of the 12 slice-branch
+runs, including the final heads: parent `0baca9b` (run 32459144808),
+scanner `b89d1c3` (dispatch run 32459154080).
