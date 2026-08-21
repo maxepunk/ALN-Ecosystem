@@ -78,6 +78,29 @@ describe('Score Events - Contract Validation (Server→Client)', () => {
         validateWebSocketEvent(event, 'score:adjusted');
       }).not.toThrow();
     });
+
+    it('accepts a NEGATIVE currentScore (D2s2: signed per pack scoring.semantics.allowNegative)', () => {
+      const event = {
+        event: 'score:adjusted',
+        data: {
+          teamScore: {
+            teamId: 'Team Alpha',
+            currentScore: -500,
+            baseScore: -500,
+            bonusPoints: 0,
+            tokensScanned: 0,
+            completedGroups: [],
+            adminAdjustments: [{ delta: -500, reason: 'penalty' }],
+            lastUpdate: new Date().toISOString()
+          }
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      expect(() => {
+        validateWebSocketEvent(event, 'score:adjusted');
+      }).not.toThrow();
+    });
   });
 
   describe('group:completed - Group Completion Broadcast', () => {

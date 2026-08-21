@@ -11,10 +11,13 @@ describe('configManager', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-config-test-'));
 
     fs.writeFileSync(path.join(tmpDir, '.env'), 'PORT=3000\nHOST=0.0.0.0\n');
-    fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
-      version: '1.0',
-      baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
-      typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
+    fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+      kind: 'game', schemaVersion: 2, id: 'test-pack',
+      scoring: {
+        baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+        typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
+        display: { currency: 'currency-usd' }
+      }
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
     fs.writeFileSync(path.join(tmpDir, 'routing.json'), JSON.stringify({
@@ -32,7 +35,7 @@ describe('configManager', () => {
     const { ConfigManager } = require('../lib/configManager');
     configManager = new ConfigManager({
       envPath: path.join(tmpDir, '.env'),
-      scoringPath: path.join(tmpDir, 'scoring-config.json'),
+      gamePath: path.join(tmpDir, 'game.json'),
       cuesPath: path.join(tmpDir, 'cues.json'),
       routingPath: path.join(tmpDir, 'routing.json'),
       tokensPath: path.join(tmpDir, 'tokens.json'),
@@ -54,16 +57,56 @@ describe('configManager', () => {
     assert.strictEqual(config.routing.routes.video.sink, 'hdmi');
   });
 
-  it('writes scoring config', () => {
+  it('writes scoring into game.json, preserving non-editor scoring keys + rebuilding the manifest', () => {
     configManager.writeScoring({
-      version: '1.0',
       baseValues: { '1': 99999, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
       typeMultipliers: { Personal: 1, UNKNOWN: 0 },
     });
-    const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
-    assert.strictEqual(reread.baseValues['1'], 99999);
+    const game = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    assert.strictEqual(game.scoring.baseValues['1'], 99999);
+    assert.deepStrictEqual(game.scoring.typeMultipliers, { Personal: 1, UNKNOWN: 0 });
+    // MERGE: keys this editor doesn't own survive the write
+    assert.deepStrictEqual(game.scoring.display, { currency: 'currency-usd' });
+    // the rest of the pack rules file is untouched
+    assert.strictEqual(game.id, 'test-pack');
     // atomic write leaves no tmp file behind (F-TOOL-10)
-    assert.ok(!fs.existsSync(path.join(tmpDir, 'scoring-config.json.tmp')));
+    assert.ok(!fs.existsSync(path.join(tmpDir, 'game.json.tmp')));
+    // a pack-file edit regenerates the manifest (stale manifests fail the
+    // scanners' sha1 verify + the backend freshness contract test)
+    const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pack-manifest.json'), 'utf8'));
+    assert.ok(manifest.files.some(f => f.path === 'game.json'));
+    assert.ok(manifest.contentHash.startsWith('sha256:'));
+  });
+
+  it('restores game.json when the manifest rebuild fails (pair atomicity)', () => {
+    const original = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    const realRebuild = configManager._rebuildPackManifest.bind(configManager);
+    configManager._rebuildPackManifest = () => { throw new Error('disk on fire'); };
+    try {
+      assert.throws(
+        () => configManager.writeScoring({
+          baseValues: { '1': 99999, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+          typeMultipliers: { Personal: 1 },
+        }),
+        /rolled back.*manifest rebuild failed/
+      );
+    } finally {
+      configManager._rebuildPackManifest = realRebuild;
+    }
+    // the edit did NOT survive — pack + manifest stay consistent
+    const after = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    assert.deepStrictEqual(after, original);
+  });
+
+  it('refuses to write scoring when game.json is missing (never fabricates a pack)', () => {
+    fs.rmSync(path.join(tmpDir, 'game.json'));
+    assert.throws(
+      () => configManager.writeScoring({
+        baseValues: { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 },
+        typeMultipliers: { Personal: 1 },
+      }),
+      /missing or empty/
+    );
   });
 
   it('writes env values preserving structure', () => {
@@ -166,8 +209,8 @@ describe('configManager', () => {
       assert.ok(!content.includes('PORT=7777'));
       // scoring never took the preset value (first write threw; rollback
       // rewrote the original)
-      const scoring = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
-      assert.strictEqual(scoring.baseValues['1'], 10000);
+      const game = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+      assert.strictEqual(game.scoring.baseValues['1'], 10000);
       assert.strictEqual(calls, 2);
     });
 

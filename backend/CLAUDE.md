@@ -776,25 +776,33 @@ npm run session:validate <name>            # Match by partial name (e.g., "1207"
 npm run session:validate latest > report.md  # Save report to file
 ```
 
-**15 Holistic Validators:**
+**9 Holistic Validators (wired by validate-session.js):**
 
 | Check | Detects |
 |-------|---------|
-| TransactionFlow | Missing/orphaned transactions, token lookup failures |
-| TransactionIntegrity | Transaction data consistency and correctness |
-| ScoringIntegrity | Score vs broadcast discrepancies (compares log broadcasts) |
-| ScoreParity | Networked vs standalone scoring parity |
-| DetectiveMode | Detective-specific validation issues |
+| TransactionFlow | Missing/orphaned transactions, token lookup failures, undeclared modes (pack-derived vocabulary) |
+| ScoringIntegrity | Score vs session discrepancies; every accepted transaction's points vs the seam-resolved expectation |
+| NonScoringModes | Non-scoring-mode transactions with points; evidence-surfaced transactions missing summary (was DetectiveMode — generalized D4s2) |
 | VideoPlayback | Queue failures, playback errors, missing videos |
 | DeviceConnectivity | Connection drops, reconnection patterns |
-| GroupCompletion | Bonus calculation errors, missed completions |
-| GroupBonus | Group bonus calculation correctness |
+| GroupCompletion | Bonus calculation errors, missed completions (§2f scored-only bonus base) |
 | DuplicateHandling | False positives, ghost scoring, rejection accuracy |
-| DuplicateConsistency | Cross-device duplicate detection consistency |
-| PlayerCorrelation | Player scan to transaction correlation |
-| EventTimeline | Event ordering and timing anomalies |
 | ErrorAnalysis | Error patterns, frequency, categorization |
 | SessionLifecycle | Deletions, resets, pause/resume anomalies |
+
+Six more validator modules exist in `scripts/lib/validators/` but are NOT
+wired into validate-session.js (TransactionIntegrity, ScoreParity,
+DuplicateConsistency, GroupBonus, PlayerCorrelation, EventTimeline) — the
+earlier "15 Holistic Validators" table overstated the wired set.
+
+**Pack-aware since A3 slice 2 (D4s2):** the validator resolves the
+SESSION'S STAMPED pack identity (`session.metadata.pack`, stamped at
+creation since A2) via `scripts/lib/packResolver.js` — the report opens
+with a Pack Resolution section (match / mismatch / unstamped verdict,
+loud notes). Tokens + scoring constants load from the resolved pack dir
+(`PACK_PATH` overrides, same seam as the engine); mode behavior resolves
+through `src/gameRules/modeSemantics.js` (never mode-id literals) and
+group math reuses `src/gameRules/scoring.js` (§2f).
 
 **Key Files:** `scripts/validate-session.js`, `scripts/lib/`
 

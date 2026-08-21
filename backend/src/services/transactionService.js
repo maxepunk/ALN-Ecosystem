@@ -15,6 +15,10 @@ const videoQueueService = require('./videoQueueService');
 // live there; this service does orchestration, state mutation, and events
 const scoring = require('../gameRules/scoring');
 const duplicatePolicy = require('../gameRules/duplicatePolicy');
+const modeSemantics = require('../gameRules/modeSemantics');
+// Active pack's game.json (slice 1): mode behavior resolves through the
+// modeSemantics seam against this config — never mode-id string equality
+const packService = require('./packService');
 const { buildScanResponse } = require('../websocket/scanResponse');
 
 const listenerRegistry = require('../websocket/listenerRegistry');
@@ -112,6 +116,19 @@ class TransactionService extends EventEmitter {
       throw new Error(`Team ${teamId} not found`);
     }
 
+    // Pack-conditional score floor (A3 slice 2, D2s2): reject — never
+    // silently clamp — an adjustment that would cross zero when the pack
+    // does not allow negative scores. Rejection keeps the adjustment
+    // ledger additive (post-session validators replay deltas) and keeps
+    // the audit trail honest (checked BEFORE adjustScore records it).
+    const projected = teamScore.currentScore + delta;
+    if (projected < 0 && !packService.getScoringRules().allowNegative) {
+      throw new Error(
+        `score:adjust refused: ${delta} would take ${teamId} to ${projected}, ` +
+        'and the active pack does not allow negative scores (scoring.semantics.allowNegative)'
+      );
+    }
+
     teamScore.adjustScore(delta, gmStation, reason);
 
     logger.info('Team score adjusted', {
@@ -146,8 +163,15 @@ class TransactionService extends EventEmitter {
     }
 
     try {
-      // Create transaction from scan request
-      const transaction = Transaction.fromScanRequest(scanRequest, session.id);
+      // Create transaction from scan request. Mode defaulting is a
+      // pack-aware ingress concern (slice 1): absent mode = the pack's
+      // first declared mode ('blackmarket' for ALN — wire behavior
+      // unchanged). GM wire submissions always carry mode (schema
+      // requires it); this covers manual/defensive callers.
+      const transaction = Transaction.fromScanRequest({
+        ...scanRequest,
+        mode: scanRequest.mode || modeSemantics.defaultModeId(packService.getGameConfig()),
+      }, session.id);
 
       // Validate token exists
       const token = this.tokens.get(transaction.tokenId);
@@ -177,11 +201,13 @@ class TransactionService extends EventEmitter {
         });
       }
 
-      // Check GM duplicate rules (pure policy — gameRules/duplicatePolicy)
+      // Check GM duplicate rules (pure policy — gameRules/duplicatePolicy;
+      // gameConfig threads the per-mode claims flag, D3s2)
       const { isDuplicate, original } = duplicatePolicy.checkDuplicate({
         transaction,
         transactions: session.transactions || [],
         scannedTokensByDevice: session.metadata?.scannedTokensByDevice || {},
+        gameConfig: packService.getGameConfig(),
       });
       if (isDuplicate) {
         transaction.markAsDuplicate(original?.id || 'unknown');
@@ -208,36 +234,61 @@ class TransactionService extends EventEmitter {
       session.addTransaction(transaction);
 
       // GM scanners don't care about video playback - that's player scanner territory
-      // Accept the transaction with appropriate points (detective mode = 0 points)
-      const points = scoring.pointsFor(token, transaction.mode);
+      // Accept the transaction with appropriate points (the mode's
+      // scoringPolicy decides — 'standard' pays token value, else 0)
+      const gameConfig = packService.getGameConfig();
+      const points = scoring.pointsFor(token, transaction.mode, gameConfig);
       transaction.accept(points)
 
-      // Update team score and get result (only for blackmarket mode)
+      // Update team score and get result (standard-scoring modes only)
       let scoreResult = null;
-      if (transaction.mode !== 'detective') {
-        scoreResult = this.updateTeamScore(transaction.teamId, token);
+      const modeRecord = modeSemantics.resolveMode(gameConfig, transaction.mode);
+      if (modeRecord && modeRecord.scoringPolicy === 'standard') {
+        scoreResult = this.updateTeamScore(transaction.teamId, token, modeRecord);
       } else {
-        logger.info('Detective mode transaction - skipping scoring', {
+        logger.info('Non-scoring mode transaction - skipping scoring', {
           transactionId: transaction.id,
           tokenId: transaction.tokenId,
           teamId: transaction.teamId,
-          mode: transaction.mode
+          mode: transaction.mode,
+          scoringPolicy: modeRecord ? modeRecord.scoringPolicy : 'unknown-mode'
         });
+        // §2f (A3 slice 2): a counting-but-unscored claim adds no points
+        // and no scanned-count, but it DOES build group progress — and can
+        // therefore complete a group (bonus = scored contributions only,
+        // possibly $0). When that happens the team score changed (bonus),
+        // so the result must carry it for the transaction:new broadcast.
+        // Auto-create the score row like the scored path does: dropping
+        // the completion for an unregistered team would permanently lose
+        // the group:completed cue an event-only group exists to fire.
+        if (modeRecord && modeRecord.countsTowardGroups === true && token.isGrouped()) {
+          const teamScore = this._getOrCreateTeamScore(transaction.teamId);
+          const groupBonusInfo = this._applyGroupCompletion(transaction.teamId, token, teamScore, modeRecord);
+          if (groupBonusInfo) {
+            scoreResult = { teamScore, groupBonusInfo };
+          }
+        }
       }
 
       // Add to recent transactions
       this.addRecentTransaction(transaction);
 
       // Emit transaction:accepted with NEW format (Slice 3)
-      // This is the SINGLE event for this transaction - sessionService handles persistence
+      // This is the SINGLE event for this transaction - sessionService handles persistence.
+      // deviceTracking is the per-device claim registration payload
+      // (persistenceListeners → session.addDeviceScannedToken): a
+      // NON-CONSUMING mode's transaction must never register (D3s2), so
+      // the emission — the single decision point — carries null for it.
       this.emit('transaction:accepted', {
         transaction: transaction.toJSON(),
         teamScore: scoreResult?.teamScore?.toJSON() || null,
         groupBonus: scoreResult?.groupBonusInfo || null,
-        deviceTracking: {
-          deviceId: transaction.deviceId,
-          tokenId: transaction.tokenId
-        }
+        deviceTracking: duplicatePolicy.isConsumingClaim(gameConfig, transaction.mode)
+          ? {
+            deviceId: transaction.deviceId,
+            tokenId: transaction.tokenId
+          }
+          : null
       });
 
       logger.info('Scan accepted', {
@@ -293,65 +344,130 @@ class TransactionService extends EventEmitter {
   }
 
   /**
-   * Update team score (Slice 3: No event emissions - caller handles events)
-   * @param {string} teamId - Team ID
-   * @param {Token} token - Scanned token
-   * @returns {Object} Result with teamScore and optional groupBonus info
+   * Fetch the team's live TeamScore, auto-creating it in the canonical
+   * store when missing. Teams should exist via addTeamToSession(), but
+   * BOTH scoring paths must tolerate a missing row (offline-queue replay
+   * into a recreated session, a scan racing session:addTeam) — a dropped
+   * group completion is a permanently lost show moment for event-only
+   * groups.
+   * @param {string} teamId
+   * @returns {TeamScore}
    * @private
    */
-  updateTeamScore(teamId, token) {
+  _getOrCreateTeamScore(teamId) {
     let teamScore = this._getTeamScore(teamId);
-    let groupBonusInfo = null;
-
-    // Team should already exist via sessionService.addTeamToSession()
-    // But handle gracefully if not (auto-create directly in the canonical store)
     if (!teamScore) {
       teamScore = TeamScore.createInitial(teamId);
       const scores = this._getSessionScores();
       if (scores) {
         scores.push(teamScore);
       }
-      logger.warn('Team auto-created in updateTeamScore (should use addTeamToSession)', { teamId });
+      logger.warn('Team auto-created during scoring (should use addTeamToSession)', { teamId });
     }
+    return teamScore;
+  }
+
+  /**
+   * Update team score (Slice 3: No event emissions - caller handles events)
+   * @param {string} teamId - Team ID
+   * @param {Token} token - Scanned token
+   * @param {Object|null} modeRecord - The claim's resolved mode semantics
+   *   (modeSemantics.resolveMode result) — drives the group-completion
+   *   flags (§2f)
+   * @returns {Object} Result with teamScore and optional groupBonus info
+   * @private
+   */
+  updateTeamScore(teamId, token, modeRecord = null) {
+    const teamScore = this._getOrCreateTeamScore(teamId);
 
     teamScore.addPoints(token.value);
     teamScore.incrementTokensScanned();
 
-    // Check for group completion bonus (pure rules — gameRules/scoring)
-    if (token.isGrouped() && !teamScore.hasCompletedGroup(token.groupId)) {
-      // CRITICAL: Pass current token ID so the rule includes the transaction
-      // being processed even if it isn't in session.transactions yet
-      if (this.isGroupComplete(teamId, token.groupId, token.id)) {
-        teamScore.completeGroup(token.groupId);
-
-        const multiplier = scoring.groupMultiplier(this.tokens, token.groupId);
-        if (multiplier > 0) {
-          const totalGroupBonus = scoring.groupBonusAmount(this.tokens, token.groupId);
-          teamScore.addBonus(totalGroupBonus);
-
-          groupBonusInfo = {
-            teamId,
-            groupId: token.groupId,
-            bonus: totalGroupBonus,
-            multiplier
-          };
-
-          logger.info('Group completed', groupBonusInfo);
-
-          // Emit group:completed for broadcasts (still needed for WebSocket broadcast)
-          this.emit('group:completed', groupBonusInfo);
-        }
-      }
-    }
+    // Group completion (pure rules — gameRules/scoring, shared with the
+    // unscored-counting path in processScan)
+    const groupBonusInfo = this._applyGroupCompletion(teamId, token, teamScore, modeRecord);
 
     // Return result (caller handles event emission)
     return { teamScore, groupBonusInfo };
   }
 
   /**
-   * Check if group is complete for team — Decision A1: only blackmarket
-   * transactions count. Thin adapter over gameRules/scoring (the pure rule
-   * shared in intent with the standalone scanner — F-SCAN-06 parity).
+   * Apply group completion if this claim completes the token's group
+   * (§2f, A3 slice 2): runs for EVERY counting-mode claim — scored or
+   * not — because completion counts any counting claim, while the bonus
+   * base (groupBonusAmount) sums only scored COUNTING contributions. An
+   * all-unscored completion pays $0 but still fires group:completed
+   * (the event feeds the cue engine — for event-only groups it IS the
+   * payload).
+   *
+   * A claim in a NON-counting mode builds no group progress and can
+   * therefore never be the completing claim — this gate is what keeps the
+   * live path in parity with the rebuild (teamBankedTokenIds honors the
+   * flag) and the standalone scanner (countsTowardGroups guard): without
+   * it, isGroupComplete's currentTokenId injection would complete a group
+   * the rebuild later un-completes.
+   * @param {string} teamId
+   * @param {Token} token - The token just claimed
+   * @param {TeamScore} teamScore - The team's live score instance
+   * @param {Object|null} modeRecord - The claim's resolved mode semantics
+   * @returns {Object|null} groupBonusInfo when a completion fired
+   * @private
+   */
+  _applyGroupCompletion(teamId, token, teamScore, modeRecord) {
+    if (!modeRecord || modeRecord.countsTowardGroups !== true) {
+      return null; // non-counting claims never complete groups (§2f)
+    }
+    if (!token.isGrouped() || teamScore.hasCompletedGroup(token.groupId)) {
+      return null;
+    }
+    // CRITICAL: Pass current token ID so the rule includes the transaction
+    // being processed even if it isn't in session.transactions yet (legal
+    // here because the counting gate above holds — see isGroupComplete's
+    // caller contract)
+    if (!this.isGroupComplete(teamId, token.groupId, token.id)) {
+      return null;
+    }
+
+    teamScore.completeGroup(token.groupId);
+
+    const multiplier = scoring.groupMultiplier(this.tokens, token.groupId);
+    if (multiplier === 0) {
+      return null; // x1 groups: tracked, never evented (unchanged behavior)
+    }
+
+    const session = sessionService.getCurrentSession();
+    const totalGroupBonus = scoring.groupBonusAmount({
+      tokens: this.tokens,
+      groupId: token.groupId,
+      transactions: session?.transactions || [],
+      teamId,
+      gameConfig: packService.getGameConfig(),
+      // Same ordering defense as isGroupComplete: the bonus must not
+      // depend on whether the in-flight claim is persisted yet
+      currentTokenId: token.id,
+      currentTokenScored: modeRecord.scoringPolicy === 'standard',
+    });
+    teamScore.addBonus(totalGroupBonus);
+
+    const groupBonusInfo = {
+      teamId,
+      groupId: token.groupId,
+      bonus: totalGroupBonus,
+      multiplier
+    };
+
+    logger.info('Group completed', groupBonusInfo);
+
+    // Emit group:completed for broadcasts (still needed for WebSocket broadcast)
+    this.emit('group:completed', groupBonusInfo);
+    return groupBonusInfo;
+  }
+
+  /**
+   * Check if group is complete for team — Decision A1 generalized by
+   * slice 1: only transactions in a countsTowardGroups mode count. Thin
+   * adapter over gameRules/scoring (the pure rule shared in intent with
+   * the standalone scanner — F-SCAN-06 parity).
    * @param {string} teamId - Team ID
    * @param {string} groupId - Group ID
    * @param {string} currentTokenId - Optional token ID being processed (not yet in session)
@@ -368,18 +484,8 @@ class TransactionService extends EventEmitter {
       teamId,
       groupId,
       currentTokenId,
+      gameConfig: packService.getGameConfig(),
     });
-  }
-
-  /**
-   * Group completion multiplier (0 when the group pays no bonus).
-   * Thin adapter over gameRules/scoring.
-   * @param {string} groupId - Group ID
-   * @returns {number} Group multiplier value
-   * @private
-   */
-  calculateGroupBonus(groupId) {
-    return scoring.groupMultiplier(this.tokens, groupId);
   }
 
   /**
@@ -556,17 +662,31 @@ class TransactionService extends EventEmitter {
     const deviceId = deletedTx.deviceId;
     const tokenId = deletedTx.tokenId;
 
+    // Claims-aware unregistration (review finding, D3s2 symmetry): a
+    // NON-CONSUMING transaction never registered, so deleting it must not
+    // strip the entry a prior CONSUMING claim placed for the same
+    // device+token (the add path gates the deviceTracking emission; the
+    // remove path must mirror it or a delete corrupts the registry).
+    const deletedWasConsuming = duplicatePolicy.isConsumingClaim(
+      packService.getGameConfig(), deletedTx.mode
+    );
+
     // DEBUG: Log state BEFORE removal
     const deviceTokensBefore = session.metadata.scannedTokensByDevice?.[deviceId] || [];
     logger.info('🔍 BEFORE removing from duplicate detection', {
       deviceId,
       tokenId,
       tokensForDevice: deviceTokensBefore.length,
-      tokenExists: deviceTokensBefore.includes(tokenId)
+      tokenExists: deviceTokensBefore.includes(tokenId),
+      deletedWasConsuming
     });
 
     // Remove from device-specific tracking (source of truth for duplicate detection)
-    if (session.metadata.scannedTokensByDevice && session.metadata.scannedTokensByDevice[deviceId]) {
+    if (!deletedWasConsuming) {
+      logger.info('Non-consuming transaction deleted — device registry untouched (it never registered)', {
+        deviceId, tokenId, mode: deletedTx.mode
+      });
+    } else if (session.metadata.scannedTokensByDevice && session.metadata.scannedTokensByDevice[deviceId]) {
       const index = session.metadata.scannedTokensByDevice[deviceId].indexOf(tokenId);
       if (index > -1) {
         session.metadata.scannedTokensByDevice[deviceId].splice(index, 1);
@@ -679,8 +799,8 @@ class TransactionService extends EventEmitter {
   /**
    * Rebuild team scores from transaction history.
    * The COMPUTATION is the pure gameRules/scoring.computeTeamScores (same
-   * rules as the live path — A1 blackmarket-only groups, recorded points
-   * authoritative); this method only applies the result onto the live
+   * rules as the live path — A1 counting-modes-only groups, recorded
+   * points authoritative); this method only applies the result onto the live
    * TeamScore instances in session.scores (the canonical store) and
    * re-applies admin adjustments on top (F-BCORE-03: the audit trail
    * survives in place — wiping it silently reverted every score:adjust).
@@ -698,6 +818,7 @@ class TransactionService extends EventEmitter {
       tokens: this.tokens,
       transactions: transactions || [],
       teamIds: scores.map(s => s.teamId),
+      gameConfig: packService.getGameConfig(),
     });
     const rowByTeam = new Map(rows.map(r => [r.teamId, r]));
 
@@ -717,6 +838,21 @@ class TransactionService extends EventEmitter {
       const totalDelta = adjustments.reduce((sum, adj) => sum + (adj.delta || 0), 0);
       teamScore.baseScore += totalDelta;
       teamScore.currentScore = teamScore.baseScore + teamScore.bonusPoints;
+
+      // Pack-conditional floor on the RECOMPUTE path (D2s2): live
+      // adjustments are rejected before crossing zero, but a deletion can
+      // shrink the base an already-accepted adjustment leaned on — the
+      // one reachable negative under a no-negatives pack. Floor loudly;
+      // baseScore follows so currentScore = baseScore + bonusPoints holds.
+      if (teamScore.currentScore < 0 && !packService.getScoringRules().allowNegative) {
+        logger.warn('Score floored at 0 during rebuild (pack disallows negative scores)', {
+          teamId: teamScore.teamId,
+          unflooredScore: teamScore.currentScore,
+          adjustmentCount: adjustments.length,
+        });
+        teamScore.currentScore = 0;
+        teamScore.baseScore = -teamScore.bonusPoints;
+      }
 
       if (adjustments.length > 0) {
         teamsWithReplayedAdjustments++;

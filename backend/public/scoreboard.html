@@ -1103,8 +1103,33 @@
             ).join('');
         }
 
+        // Slice 1: evidence membership is pack-declared — a mode whose
+        // displayBehavior.surface is 'scoreboard-evidence' — never a
+        // mode-id literal. Loaded in initialize() BEFORE the socket
+        // connects (no ingest race). Legacy fallback + loud warn when the
+        // pack ships no game.json (ledger L6 family; found by the
+        // dual-pack Tier L gate: tipoff evidence never rendered).
+        let evidenceModes = new Set(['detective']);
+        async function loadEvidenceModes() {
+            try {
+                const res = await fetch('/api/pack/files/game.json', { cache: 'no-store' });
+                if (res.ok) {
+                    const game = await res.json();
+                    const ids = (game.modes || [])
+                        .filter(m => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence')
+                        .map(m => m.id);
+                    if (ids.length > 0) {
+                        evidenceModes = new Set(ids);
+                        console.log(`[Scoreboard] Evidence modes from pack: ${ids.join(', ')}`);
+                        return;
+                    }
+                }
+            } catch (e) { /* fall through to the legacy filter */ }
+            console.warn('[Scoreboard] LEGACY MODE FILTER ACTIVE (ledger L6 family): pack game.json unavailable — evidence filter running on the baked detective literal.');
+        }
+
         function addEvidence(transaction) {
-            if (transaction.mode !== 'detective') return;
+            if (!evidenceModes.has(transaction.mode)) return;
 
             const owner = transaction.owner || 'Unknown';
             if (!state.evidenceByOwner.has(owner)) {
@@ -1610,7 +1635,7 @@
                 state.evidenceByOwner.clear();
                 if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
                     data.recentTransactions
-                        .filter(tx => tx.mode === 'detective')
+                        .filter(tx => evidenceModes.has(tx.mode))
                         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))  // Chronological
                         .forEach(tx => {
                             const owner = tx.owner || 'Unknown';
@@ -1686,6 +1711,9 @@
         async function initialize() {
             console.log('[Scoreboard] Initializing Evidence Board...');
             initModes();
+            // Before any transaction ingest: the evidence filter must be
+            // pack-driven from the first WS event (slice 1)
+            await loadEvidenceModes();
 
             const authenticated = await authenticate();
             if (!authenticated) return;
