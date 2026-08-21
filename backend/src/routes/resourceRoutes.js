@@ -153,8 +153,8 @@ router.get('/assets/audio/:file', (req, res) => {
 function jsonForScript(value) {
   return JSON.stringify(value)
     .replaceAll('<', '\\u003c')
-    .replaceAll(' ', '\\u2028')
-    .replaceAll(' ', '\\u2029');
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
 }
 
 function renderScoreboardHtml() {
