@@ -769,7 +769,9 @@
         // CONFIGURATION
         // ============================================
         const CONFIG = {
-            adminPassword: '@LN-c0nn3ct',
+            // Injected at serve time from config.security.adminPassword
+            // (slice 3a pre-fix 2) — never bake a credential here.
+            adminPassword: '%%ADMIN_PASSWORD%%',
             deviceId: generateDeviceId(),
             apiUrl: window.location.origin,
             reconnectDelay: 2000,

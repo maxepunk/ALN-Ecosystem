@@ -148,14 +148,24 @@ router.get('/assets/audio/:file', (req, res) => {
 function renderScoreboardHtml() {
   const config = require('../config');
   const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
-  return html.replaceAll('%%WINDOW_MARKER%%', config.display.scoreboardWindowMarker);
+  return html
+    .replaceAll('%%WINDOW_MARKER%%', config.display.scoreboardWindowMarker)
+    // Serve-time credential injection (slice 3a pre-fix 2, matrix 2.34):
+    // the placeholder is QUOTED in the page ('%%ADMIN_PASSWORD%%'), so the
+    // replacement includes the quotes via JSON.stringify — quote-safe for
+    // any env value. Same delivery to the same LAN clients as the old
+    // baked literal; the source just moved out of git into env/config.
+    .replaceAll("'%%ADMIN_PASSWORD%%'", JSON.stringify(config.security.adminPassword));
 }
 
 /**
  * GET /scoreboard - Scoreboard display
  * TV-optimized scoreboard display for Black Market mode
  */
-router.get('/scoreboard', (req, res) => {
+// BOTH paths: the express.static('public') mount would otherwise serve
+// the RAW file (placeholders unreplaced — no credential, no window
+// marker) at /scoreboard.html. Routes mount before static in app.js.
+router.get(['/scoreboard', '/scoreboard.html'], (req, res) => {
   res.type('html').send(renderScoreboardHtml());
 });
 

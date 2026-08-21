@@ -575,7 +575,7 @@ HTTP_REDIRECT_PORT=8000
 
 **Critical Gotchas:**
 - VLC controlled via D-Bus MPRIS (no HTTP interface needed)
-- `ADMIN_PASSWORD` must match hardcoded value in `public/scoreboard.html`
+- `ADMIN_PASSWORD` is injected into the served scoreboard page at serve time (`resourceRoutes.renderScoreboardHtml`, slice 3a pre-fix 2) — the old must-match-the-hardcoded-copy gotcha is dead; the page source carries only the `%%ADMIN_PASSWORD%%` placeholder
 
 ### HTTPS Architecture
 

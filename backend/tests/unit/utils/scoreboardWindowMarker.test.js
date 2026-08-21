@@ -60,3 +60,31 @@ describe('scoreboard window marker (shared engine config — slice 3a pre-fix 1)
   // marker) is pinned in displayDriver.test.js, which owns the full
   // spawn/fs harness the driver needs.
 });
+
+describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2.34)', () => {
+  // The page used to BAKE the live venue admin password into a file
+  // committed to git. Serve-time injection moves the source to env/config
+  // (same delivery to the same LAN clients — no new exposure; the deeper
+  // scoped display-token flow is future work, noted in the design doc).
+  const scoreboardPath = path.resolve(__dirname, '../../../public/scoreboard.html');
+
+  it('the on-disk page carries the placeholder and NO baked password', () => {
+    const html = fs.readFileSync(scoreboardPath, 'utf8');
+    expect(html).toContain("adminPassword: '%%ADMIN_PASSWORD%%'");
+    expect(html).not.toContain('@LN-c0nn3ct');
+  });
+
+  it('renderScoreboardHtml injects the CONFIG password as a JSON string (quote-safe)', () => {
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const original = config.security.adminPassword;
+    try {
+      config.security.adminPassword = `qu"ote'n\\slash`;
+      const html = renderScoreboardHtml();
+      // Injected as JSON.stringify output — valid JS whatever the value
+      expect(html).toContain(`adminPassword: ${JSON.stringify(config.security.adminPassword)}`);
+      expect(html).not.toContain('%%ADMIN_PASSWORD%%');
+    } finally {
+      config.security.adminPassword = original;
+    }
+  });
+});
