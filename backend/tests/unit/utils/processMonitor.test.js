@@ -520,6 +520,51 @@ describe('ProcessMonitor', () => {
       killSpy.mockRestore();
     });
 
+    it('removes the previous exit handler on re-start and tolerates a proc without stderr (100% pin)', () => {
+      const { spawn } = require('child_process');
+      const removeSpy = jest.spyOn(process, 'removeListener');
+      // proc WITHOUT stderr (stderr-null arm)
+      spawn.mockReturnValue({
+        pid: 4242, killed: false,
+        stdout: { on: jest.fn() }, stderr: null,
+        on: jest.fn(), kill: jest.fn(),
+      });
+      pidMonitor.start();
+      const firstHandler = pidMonitor._processExitHandler;
+      expect(firstHandler).toBeDefined();
+      pidMonitor.stop();
+      pidMonitor.start(); // exit-handler-cleanup arm: previous handler removed
+      expect(removeSpy).toHaveBeenCalledWith('exit', firstHandler);
+      removeSpy.mockRestore();
+    });
+
+    it('tolerates a PID-file write failure (debug-logged, never fatal — 100% pin)', () => {
+      const { spawn } = require('child_process');
+      spawn.mockReturnValue({
+        pid: 5151, killed: false,
+        stdout: { on: jest.fn() }, stderr: { on: jest.fn() },
+        on: jest.fn(), kill: jest.fn(),
+      });
+      fs.writeFileSync.mockImplementation(() => { throw new Error('EACCES'); });
+      expect(() => pidMonitor.start()).not.toThrow();
+      fs.writeFileSync.mockReset();
+    });
+
+    it('should ignore a GARBAGE PID file (isNaN arm — deflaked coverage pin)', () => {
+      // This arm's coverage used to depend on suite interleaving — the
+      // recurring displayDriver/processMonitor ratchet flake. Pin it.
+      const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
+      fs.readFileSync.mockImplementation((filePath) => {
+        if (filePath === '/tmp/aln-pm-test-monitor.pid') return 'not-a-pid';
+        throw new Error('ENOENT');
+      });
+
+      pidMonitor.start();
+
+      expect(killSpy).not.toHaveBeenCalled();
+      killSpy.mockRestore();
+    });
+
     it('should NOT kill process if PID was reused by different command', () => {
       const killSpy = jest.spyOn(process, 'kill').mockImplementation(() => {});
       fs.readFileSync.mockImplementation((filePath) => {

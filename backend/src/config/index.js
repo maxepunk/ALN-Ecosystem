@@ -5,24 +5,14 @@
 
 const path = require('path');
 const dotenv = require('dotenv');
-const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
 
-// Load shared scoring config from ALN-TokenData submodule
-const scoringConfigPath = path.join(__dirname, '../../../ALN-TokenData/scoring-config.json');
-let sharedScoringConfig;
-try {
-  sharedScoringConfig = JSON.parse(fs.readFileSync(scoringConfigPath, 'utf8'));
-  console.log('Loaded shared scoring config from:', scoringConfigPath);
-} catch (e) {
-  console.warn('Failed to load shared scoring config, using defaults:', e.message);
-  sharedScoringConfig = {
-    baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
-    typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 }
-  };
-}
+// A3 slice 2 (ledger L1 retirement): scoring tables no longer load here.
+// They come from the ACTIVE pack's game.json via packService.getScoringRules()
+// (activation-snapshot semantics; baked legacy shim for packless checkouts) —
+// consumed by tokenService.calculateTokenValue at token load.
 
 const config = {
   // Server Configuration
@@ -65,20 +55,11 @@ const config = {
     archiveAfter: parseInt(process.env.ARCHIVE_AFTER || '24', 10), // hours
   },
 
-  // Game Configuration
+  // Game Configuration (scoring tables moved to the pack — see the
+  // slice-2 note at the top of this file)
   game: {
     transactionHistoryLimit: parseInt(process.env.TRANSACTION_HISTORY_LIMIT || '1000', 10),
     recentTransactionsCount: parseInt(process.env.RECENT_TRANSACTIONS_COUNT || '10', 10),
-    // Value rating to points mapping (from shared scoring-config.json)
-    valueRatingMap: Object.fromEntries(
-      Object.entries(sharedScoringConfig.baseValues).map(([k, v]) => [parseInt(k, 10), v])
-    ),
-
-    // Type multipliers - dynamically mapped from shared config (lowercase keys)
-    typeMultipliers: Object.fromEntries(
-      Object.entries(sharedScoringConfig.typeMultipliers)
-        .map(([k, v]) => [k.toLowerCase(), v])
-    ),
   },
 
   // Security Configuration
@@ -110,6 +91,26 @@ const config = {
     videoPlayback: process.env.ENABLE_VIDEO_PLAYBACK !== 'false', // default true
     adminPanel: process.env.ENABLE_ADMIN_PANEL !== 'false', // default true
     debugging: process.env.ENABLE_DEBUGGING === 'true',
+  },
+
+  // Display / kiosk configuration (A3 slice 3a pre-fix 1)
+  display: {
+    // FUNCTIONAL window marker (capability-matrix 2.5): displayDriver
+    // discovers the kiosk Chromium window by title via
+    // `xdotool search --name <marker>`, and the served scoreboard page
+    // injects the SAME value into its <title> (%%WINDOW_MARKER%%
+    // placeholder, resourceRoutes.renderScoreboardHtml). One shared
+    // value, two consumers — never rebrand either side independently
+    // (tests/unit/utils/scoreboardWindowMarker.test.js is the tripwire).
+    // Stable and non-themed by design: game branding lives in the pack;
+    // this is engine/venue plumbing.
+    scoreboardWindowMarker: process.env.SCOREBOARD_WINDOW_MARKER || 'ALN-SCOREBOARD',
+    // Idle-loop video filename (slice 3a pre-fix 3, F-SHOW-29): ONE key
+    // for the three vlcMprisService sites (init play, return play, and
+    // the existence guard) — three independent literals let the guard
+    // check a different file than VLC played. Venue/engine config for
+    // now: videos are not pack content until slice 6/B12+F5.
+    idleLoopFile: process.env.IDLE_LOOP_FILE || 'idle-loop.mp4',
   },
 
   // Bluetooth Configuration

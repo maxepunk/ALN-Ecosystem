@@ -54,12 +54,19 @@ class Session {
         totalScans: 0,
         uniqueTokensScanned: [],
         scannedTokensByDevice: {},  // Per-device duplicate detection tracking
+        pack: null,  // A2: stamped by sessionService.createSession
       };
     }
 
     // Ensure scannedTokensByDevice exists (migration for old sessions)
     if (!data.metadata.scannedTokensByDevice) {
       data.metadata.scannedTokensByDevice = {};
+    }
+
+    // A2 migration: legacy sessions predate pack stamping — explicit null
+    // (unknown provenance), distinguished from a genuine pack identity.
+    if (data.metadata.pack === undefined) {
+      data.metadata.pack = null;
     }
 
     this.validate({

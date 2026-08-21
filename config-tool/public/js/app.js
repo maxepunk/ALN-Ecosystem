@@ -69,6 +69,7 @@ async function loadSection(section) {
     // Ensure config is loaded
     if (!configCache) {
       configCache = await api.getConfig();
+      applyPackIdentity(configCache);
     }
 
     const mod = await import(`./sections/${section}.js`);
@@ -117,10 +118,21 @@ saveBtn.addEventListener('click', async () => {
   }
 });
 
+// -- Pack Identity (slice 3a) --
+
+// The tool edits ONE pack; its chrome says which. Derived from
+// GET /api/config `pack` (game.json title) — baked wording only for a
+// packless/partial dir.
+function applyPackIdentity(config) {
+  const title = config?.pack?.title;
+  if (title) document.title = `${title} — Config Tool`;
+}
+
 // -- Config Refresh --
 
 async function refreshConfig() {
   configCache = await api.getConfig();
+  applyPackIdentity(configCache);
   // Re-render all loaded sections with fresh data
   for (const [section, mod] of Object.entries(sectionModules)) {
     if (mod && mod.render) {
