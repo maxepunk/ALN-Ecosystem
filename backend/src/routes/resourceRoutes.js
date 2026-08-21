@@ -160,18 +160,22 @@ function jsonForScript(value) {
 function renderScoreboardHtml() {
   const config = require('../config');
   const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
+  // Every replacement is a FUNCTION: a string replacement would run
+  // GetSubstitution, where $$, $&, $' and $` are active patterns — a
+  // password like p@$$w0rd was served mangled and $' splices the rest
+  // of the file. Function replacements are inserted verbatim.
   return html
-    .replaceAll('%%WINDOW_MARKER%%', config.display.scoreboardWindowMarker)
+    .replaceAll('%%WINDOW_MARKER%%', () => config.display.scoreboardWindowMarker)
     // Serve-time credential injection (slice 3a pre-fix 2, matrix 2.34):
     // the placeholder is QUOTED in the page ('%%ADMIN_PASSWORD%%'), so the
     // replacement includes the quotes via jsonForScript — quote-safe AND
     // script-context-safe for any env value. Same delivery to the same
     // LAN clients as the old baked literal; the source just moved out of
     // git into env/config.
-    .replaceAll("'%%ADMIN_PASSWORD%%'", jsonForScript(config.security.adminPassword))
+    .replaceAll("'%%ADMIN_PASSWORD%%'", () => jsonForScript(config.security.adminPassword))
     // Pack-declared display strings (A3 slice 3a): the activation
     // snapshot (or null — page falls back to baked wording per key).
-    .replaceAll("'%%PACK_STRINGS%%'", jsonForScript(require('../services/packService').getStrings()));
+    .replaceAll("'%%PACK_STRINGS%%'", () => jsonForScript(require('../services/packService').getStrings()));
 }
 
 /**

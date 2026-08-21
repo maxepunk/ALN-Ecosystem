@@ -163,6 +163,16 @@ describe('game pack schema contract (A1)', () => {
       expect(declaring.length).toBeGreaterThan(0);
     });
 
+    it('a NON-CANONICAL sidecar filename is schema-ILLEGAL (review D — filename contract)', () => {
+      // Manifest role assignment + the scanner's staged-refresh rules
+      // set are keyed to the literal 'strings.json'; a divergent pointer
+      // rebranded the backend while the scanner silently stayed baked.
+      const game = readJson(TOKEN_DATA_DIR, 'game.json');
+      const mutated = JSON.parse(JSON.stringify(game));
+      mutated.strings = 'wording.json';
+      expect(validateGame(mutated)).toBe(false);
+    });
+
     it.each(declaring.map(d => [d.name, d.dir]))('%s strings.json validates', (name, dir) => {
       const validate = ajv.compile(stringsSchema);
       const strings = readJson(dir, readJson(dir, 'game.json').strings);

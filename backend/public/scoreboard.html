@@ -783,13 +783,20 @@
         // when the pack declares no strings sidecar). Every key falls
         // back to the baked ALN wording — missing strings are benign.
         const PACK_STRINGS = '%%PACK_STRINGS%%';
+        // Non-empty STRING leaves only — the same leaf rule every other
+        // sidecar reader applies (gate, scanner mirror): a schema-drifted
+        // nested value must fall back to baked wording, never render
+        // '[object Object]' or reach escapeHtml as a non-string.
+        function packStr(value, baked) {
+            return (typeof value === 'string' && value.length > 0) ? value : baked;
+        }
         const STR = {
-            header: PACK_STRINGS?.scoreboard?.header || 'CASE FILE: ABOUT LAST NIGHT',
-            emptyTicker: PACK_STRINGS?.scoreboard?.emptyTicker || 'No scores recorded',
-            emptyEvidence: PACK_STRINGS?.scoreboard?.emptyEvidence || 'Awaiting evidence...',
+            header: packStr(PACK_STRINGS?.scoreboard?.header, 'CASE FILE: ABOUT LAST NIGHT'),
+            emptyTicker: packStr(PACK_STRINGS?.scoreboard?.emptyTicker, 'No scores recorded'),
+            emptyEvidence: packStr(PACK_STRINGS?.scoreboard?.emptyEvidence, 'Awaiting evidence...'),
             // Doubles as the evidence-page GROUPING KEY (evidenceByOwner
             // Map + scoreboard:page owner jump) — one value, all sites.
-            unknownOwner: PACK_STRINGS?.scoreboard?.unknownOwner || 'Unknown',
+            unknownOwner: packStr(PACK_STRINGS?.scoreboard?.unknownOwner, 'Unknown'),
         };
 
         // Apply the pack strings to the static markup (the baked HTML

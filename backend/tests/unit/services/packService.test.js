@@ -618,13 +618,44 @@ describe('packService', () => {
         .toThrow(/CAPABILITY GATE.*strings\.json kind 'theme'/);
     });
 
-    it('declared + wrong schemaVersion refuses (EXACT match, same posture as the pack gate)', () => {
+    it.each([1, 3])('declared + schemaVersion %i refuses (EXACT match BOTH directions, same posture as the pack gate)', (v) => {
       writeStringsPack(tmpDir, {
         game: { strings: 'strings.json' },
-        strings: { kind: 'strings', schemaVersion: 1, scanner: { appTitle: 'X' } },
+        strings: { kind: 'strings', schemaVersion: v, scanner: { appTitle: 'X' } },
       });
       expect(() => packService.activatePack())
-        .toThrow(/CAPABILITY GATE.*strings\.json schemaVersion 1/);
+        .toThrow(new RegExp(`CAPABILITY GATE.*strings\\.json schemaVersion ${v}`));
+    });
+
+    it('declared under a NON-CANONICAL filename refuses (review D — filename contract)', () => {
+      // Manifest role + scanner rules-set are keyed to 'strings.json'; a
+      // divergent pointer rebrands the backend while the scanner silently
+      // stays baked. Schema pins it (const) for authored packs; the gate
+      // covers hand-built PACK_PATH packs that bypass the schema.
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'sp', strings: 'wording.json',
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'wording.json'), JSON.stringify({
+        kind: 'strings', schemaVersion: 2, scanner: { appTitle: 'X' },
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*wording\.json.*must be named 'strings\.json'/);
+    });
+
+    it.each([
+      ['JSON null', 'null'],
+      ['a bare string', '"strings"'],
+      ['a number', '42'],
+      ['an array', '["a"]'],
+    ])('declared + top-level %s refuses cleanly (never crashes, never passes silently)', (_label, raw) => {
+      // Regression: JSON null crashed the gate (TypeError reading
+      // .schemaVersion); primitives/arrays destructured to an empty
+      // sections object and PASSED — a declared-but-broken sidecar
+      // slipping through as silent baked wording, the exact failure
+      // class the gate exists to refuse.
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' }, stringsRaw: raw });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*not a JSON object/);
     });
 
     it('declared + valid: activates and getStrings() returns the ACTIVATION SNAPSHOT (frozen)', () => {

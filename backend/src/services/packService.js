@@ -204,6 +204,18 @@ function _loadDeclaredStrings(gameConfig) {
   const declared = gameConfig && gameConfig.strings;
   if (!declared) return { value: null, problems: [] };
 
+  // Canonical filename is the CONTRACT (review D, game.schema.json const):
+  // manifest role assignment and the scanner's staged-refresh rules set
+  // are keyed to 'strings.json' — a divergent pointer would rebrand the
+  // backend while the GM scanner silently stayed baked. Hand-authored
+  // PACK_PATH packs bypass the schema, so the gate enforces it too.
+  if (declared !== 'strings.json') {
+    return {
+      value: null,
+      problems: [`game.json declares strings '${declared}' — the sidecar must be named 'strings.json' (canonical filename contract; manifest role + scanner loader are keyed to it)`],
+    };
+  }
+
   const stringsPath = path.join(getPackDir(), declared);
   let parsed;
   try {
@@ -212,6 +224,18 @@ function _loadDeclaredStrings(gameConfig) {
     return {
       value: null,
       problems: [`game.json declares strings '${declared}' but ${declared} is unreadable (${err.message})`],
+    };
+  }
+
+  // Top-level type guard (the scanner mirror has the same one): JSON
+  // null/primitives/arrays parse fine but are not a sidecar — without
+  // this, null CRASHED the gate and primitives destructured to an empty
+  // sections object and passed silently (declared-but-broken must
+  // refuse loudly, never slip through as baked wording).
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      value: null,
+      problems: [`game.json declares strings '${declared}' but ${declared} is not a JSON object (sidecar must be {kind, schemaVersion, ...sections})`],
     };
   }
 

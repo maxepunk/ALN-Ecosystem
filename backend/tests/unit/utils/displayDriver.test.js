@@ -86,10 +86,19 @@ describe('displayDriver — window management', () => {
         } else cb(null, '', '');
       });
 
-      await displayDriver.showScoreboard();
+      // Mutation-proof: the config DEFAULT equals the old hardcoded
+      // literal, so asserting against the default would stay green if
+      // the driver re-baked it. Search must follow a RUNTIME override.
+      const original = config.display.scoreboardWindowMarker;
+      try {
+        config.display.scoreboardWindowMarker = 'MUTATION-SENTINEL-MARKER';
+        await displayDriver.showScoreboard();
+      } finally {
+        config.display.scoreboardWindowMarker = original;
+      }
 
       expect(searchValues.length).toBeGreaterThan(0);
-      expect(new Set(searchValues)).toEqual(new Set([config.display.scoreboardWindowMarker]));
+      expect(new Set(searchValues)).toEqual(new Set(['MUTATION-SENTINEL-MARKER']));
     });
 
     test('returns false when the browser cannot launch (!running arm — deflaked coverage pin)', async () => {

@@ -74,17 +74,68 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(html).not.toContain('@LN-c0nn3ct');
   });
 
-  it('renderScoreboardHtml injects the ACTIVE pack strings as JSON (null-safe)', () => {
+  it('renderScoreboardHtml injects the ACTIVE pack strings as JSON — all four scoreboard keys ride', () => {
     // The default pack dir is ALN-TokenData, whose strings.json declares
     // the scoreboard section — the rendered page must carry it (and no
-    // placeholder). The null path (pack without strings) is covered by
-    // the parity-pack E2E leg + the packService unit pins.
+    // placeholder).
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const packService = require('../../../src/services/packService');
     const html = renderScoreboardHtml();
     expect(html).not.toContain('%%PACK_STRINGS%%');
     expect(html).toContain(`const PACK_STRINGS = ${JSON.stringify(packService.getStrings())}`);
-    expect(packService.getStrings().scoreboard.header).toBe('CASE FILE: ABOUT LAST NIGHT');
+    const sb = packService.getStrings().scoreboard;
+    expect(sb.header).toBe('CASE FILE: ABOUT LAST NIGHT');
+    expect(sb.emptyTicker).toBe('No scores recorded');
+    expect(sb.emptyEvidence).toBe('Awaiting evidence...');
+    expect(sb.unknownOwner).toBe('Unknown');
+  });
+
+  it('packless serve path: PACK_STRINGS renders as null and the page keeps its baked STR fallbacks', () => {
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const spy = jest.spyOn(packService, 'getStrings').mockReturnValue(null);
+    try {
+      const html = renderScoreboardHtml();
+      expect(html).toContain('const PACK_STRINGS = null;');
+      expect(html).not.toContain('%%PACK_STRINGS%%');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('DRIFT TRIPWIRE: the page STR baked fallbacks mirror the ALN sidecar verbatim', () => {
+    // The baked fallbacks ARE the ALN wording — if the pack rewords,
+    // the bake must follow (or a packless venue silently diverges from
+    // the shipped game). Parses the on-disk STR table's packStr() calls.
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '../../../public/scoreboard.html'), 'utf8'
+    );
+    const fallback = (key) => {
+      const m = html.match(new RegExp(
+        `${key}: packStr\\(PACK_STRINGS\\?\\.scoreboard\\?\\.${key}, '([^']*)'\\)`
+      ));
+      expect(m).not.toBeNull();
+      return m[1];
+    };
+    const aln = JSON.parse(fs.readFileSync(
+      path.resolve(__dirname, '../../../../ALN-TokenData/strings.json'), 'utf8'
+    ));
+    expect(fallback('header')).toBe(aln.scoreboard.header);
+    expect(fallback('emptyTicker')).toBe(aln.scoreboard.emptyTicker);
+    expect(fallback('emptyEvidence')).toBe(aln.scoreboard.emptyEvidence);
+    expect(fallback('unknownOwner')).toBe(aln.scoreboard.unknownOwner);
+  });
+
+  it('non-string leaves in a drifted sidecar fall back to baked wording (packStr type guard on the page)', () => {
+    // The page must apply the same non-empty-STRING leaf rule as every
+    // other reader — a nested object where a string is expected must
+    // never render '[object Object]' or reach escapeHtml as a non-string.
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '../../../public/scoreboard.html'), 'utf8'
+    );
+    expect(html).toContain("return (typeof value === 'string' && value.length > 0) ? value : baked;");
+    // Every STR entry routes through the guard — no bare || truthiness
+    expect(html).not.toMatch(/PACK_STRINGS\?\.scoreboard\?\.\w+ \|\|/);
   });
 
   it('script-context breakout is neutralized: injected JSON never contains a literal </script>', () => {
@@ -106,6 +157,28 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
       // yields the original value (escaping changed encoding, not content)
       const m = html.match(/const PACK_STRINGS = (.*);/);
       expect(JSON.parse(m[1]).scoreboard.header).toBe(payload);
+    } finally {
+      config.security.adminPassword = original;
+      spy.mockRestore();
+    }
+  });
+
+  it('$-substitution patterns pass through verbatim (replaceAll replacement-string hazard)', () => {
+    // String.replaceAll with a STRING replacement interprets $$, $&, $',
+    // $` — a password like p@$$w0rd was served mangled (p@$w0rd) and a
+    // pack string containing $' spliced the rest of the page into the
+    // literal. Function replacements are verbatim; this pins that.
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const strings = { scoreboard: { header: `all the $$ and $& and $' and \`$\`` } };
+    const spy = jest.spyOn(packService, 'getStrings').mockReturnValue(strings);
+    const original = config.security.adminPassword;
+    try {
+      config.security.adminPassword = 'p@$$w0rd$&';
+      const html = renderScoreboardHtml();
+      expect(html).toContain(`adminPassword: ${JSON.stringify('p@$$w0rd$&')}`);
+      const m = html.match(/const PACK_STRINGS = (.*);/);
+      expect(JSON.parse(m[1])).toEqual(strings);
     } finally {
       config.security.adminPassword = original;
       spy.mockRestore();
