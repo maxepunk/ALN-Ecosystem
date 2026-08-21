@@ -84,13 +84,42 @@ def _scan_dir(dirpath: Path, valid_exts: tuple[str, ...]) -> dict[str, dict]:
     return entries
 
 
-def build_manifest(assets_root: Path) -> dict:
-    """Produce the manifest dict ready to `json.dump`."""
-    return {
+def _read_pack_identity(pack_dir: Path) -> Optional[dict]:
+    """Pack identity for the ESP32 boot log (Phase 3 A2).
+
+    The pack rides the EXISTING asset-manifest sync — the device gets its
+    pack identity from a manifest field instead of a second sync loop.
+    None when the pack has no manifest (pre-pack checkout) — old firmware
+    ignores the missing/extra field either way (backward compatible).
+    """
+    try:
+        data = json.loads((pack_dir / "pack-manifest.json").read_text(encoding="utf-8"))
+        return {
+            "packId": data["packId"],
+            "version": data["version"],
+            "contentHash": data["contentHash"],
+        }
+    except Exception:
+        return None
+
+
+def build_manifest(assets_root: Path, pack_dir: Optional[Path] = None) -> dict:
+    """Produce the manifest dict ready to `json.dump`.
+
+    `pack_dir` (the TOP-LEVEL ALN-TokenData checkout — never the nested
+    `data/` submodule, whose pin may lag) adds the A2 `pack` identity
+    field when its manifest is readable.
+    """
+    manifest = {
         "version": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "images": _scan_dir(assets_root / "images", IMAGE_EXTS),
         "audio": _scan_dir(assets_root / "audio", AUDIO_EXTS),
     }
+    if pack_dir is not None:
+        pack = _read_pack_identity(pack_dir)
+        if pack:
+            manifest["pack"] = pack
+    return manifest
 
 
 def write_manifest(assets_root: Path, manifest: Optional[dict] = None) -> Path:
@@ -167,7 +196,8 @@ def _cli(argv: list[str]) -> int:
     if not assets_root.exists():
         print(f"error: assets root does not exist: {assets_root}", file=sys.stderr)
         return 1
-    manifest = build_manifest(assets_root)
+    default_pack_dir = Path(__file__).resolve().parent.parent / "ALN-TokenData"
+    manifest = build_manifest(assets_root, pack_dir=default_pack_dir)
     out = write_manifest(assets_root, manifest)
     print(
         f"Wrote {out} "
