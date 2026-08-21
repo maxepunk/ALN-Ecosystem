@@ -1,0 +1,10 @@
+{
+  "kind": "strings",
+  "schemaVersion": 2,
+  "scoreboard": {
+    "header": "JOB BOARD: MIDNIGHT HEIST",
+    "emptyTicker": "No takes recorded",
+    "emptyEvidence": "Awaiting tips...",
+    "unknownOwner": "Unattributed"
+  }
+}

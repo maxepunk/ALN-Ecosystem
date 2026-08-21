@@ -689,7 +689,7 @@
         <!-- Case File Header -->
         <header class="case-header">
             <div class="case-title">
-                <span>CASE FILE: ABOUT LAST NIGHT</span>
+                <span id="scoreboardHeader">CASE FILE: ABOUT LAST NIGHT</span>
             </div>
             <div class="header-status">
                 <div class="status-indicator" id="connectionStatus">
@@ -777,6 +777,29 @@
             reconnectDelay: 2000,
             tokenRefreshInterval: 23 * 60 * 60 * 1000,
         };
+
+        // Pack-declared display strings (A3 slice 3a): injected at serve
+        // time from packService.getStrings() as a JSON object (or null
+        // when the pack declares no strings sidecar). Every key falls
+        // back to the baked ALN wording — missing strings are benign.
+        const PACK_STRINGS = '%%PACK_STRINGS%%';
+        const STR = {
+            header: PACK_STRINGS?.scoreboard?.header || 'CASE FILE: ABOUT LAST NIGHT',
+            emptyTicker: PACK_STRINGS?.scoreboard?.emptyTicker || 'No scores recorded',
+            emptyEvidence: PACK_STRINGS?.scoreboard?.emptyEvidence || 'Awaiting evidence...',
+            // Doubles as the evidence-page GROUPING KEY (evidenceByOwner
+            // Map + scoreboard:page owner jump) — one value, all sites.
+            unknownOwner: PACK_STRINGS?.scoreboard?.unknownOwner || 'Unknown',
+        };
+
+        // Apply the pack strings to the static markup (the baked HTML
+        // text is the no-JS/fallback state; runs before any data lands).
+        function applyPackStrings() {
+            const header = document.getElementById('scoreboardHeader');
+            if (header) header.textContent = STR.header;
+            const seedEmpty = document.querySelector('#tickerContent .ticker-empty');
+            if (seedEmpty) seedEmpty.textContent = STR.emptyTicker;
+        }
 
         // ============================================
         // STATE (Task 8: New state model)
@@ -1000,7 +1023,7 @@
                 .sort((a, b) => (b[1].lastExposed || 0) - (a[1].lastExposed || 0));
 
             if (sortedOwners.length === 0) {
-                elements.evidencePage.innerHTML = '<div class="evidence-empty">Awaiting evidence...</div>';
+                elements.evidencePage.innerHTML = `<div class="evidence-empty">${escapeHtml(STR.emptyEvidence)}</div>`;
                 elements.pageDots.innerHTML = '';
                 stopPageCycling();
                 return;
@@ -1133,7 +1156,7 @@
         function addEvidence(transaction) {
             if (!evidenceModes.has(transaction.mode)) return;
 
-            const owner = transaction.owner || 'Unknown';
+            const owner = transaction.owner || STR.unknownOwner;
             if (!state.evidenceByOwner.has(owner)) {
                 state.evidenceByOwner.set(owner, { entries: [], lastExposed: null });
             }
@@ -1285,7 +1308,7 @@
                 .sort((a, b) => b.currentScore - a.currentScore);
 
             if (scores.length === 0) {
-                elements.tickerContent.innerHTML = '<span class="ticker-empty">No scores recorded</span>';
+                elements.tickerContent.innerHTML = `<span class="ticker-empty">${escapeHtml(STR.emptyTicker)}</span>`;
                 elements.tickerContent.style.removeProperty('--ticker-duration');
                 return;
             }
@@ -1640,7 +1663,7 @@
                         .filter(tx => evidenceModes.has(tx.mode))
                         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))  // Chronological
                         .forEach(tx => {
-                            const owner = tx.owner || 'Unknown';
+                            const owner = tx.owner || STR.unknownOwner;
                             if (!state.evidenceByOwner.has(owner)) {
                                 state.evidenceByOwner.set(owner, { entries: [], lastExposed: null });
                             }
@@ -1712,6 +1735,7 @@
         // ============================================
         async function initialize() {
             console.log('[Scoreboard] Initializing Evidence Board...');
+            applyPackStrings();
             initModes();
             // Before any transaction ingest: the evidence filter must be
             // pack-driven from the first WS event (slice 1)

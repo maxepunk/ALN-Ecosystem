@@ -154,5 +154,6 @@
         }
       }
     ]
-  }
+  },
+  "strings": "strings.json"
 }

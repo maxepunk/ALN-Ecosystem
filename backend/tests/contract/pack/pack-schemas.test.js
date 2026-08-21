@@ -144,6 +144,34 @@ describe('game pack schema contract (A1)', () => {
     // that divergence for real).
   });
 
+  describe('declared strings sidecars validate against strings.schema.json (A3 slice 3a)', () => {
+    // Every pack whose game.json declares `strings` must ship a sidecar
+    // that satisfies the schema — the engine gate walks leaves at
+    // activation; this is the authoring-time contract twin.
+    const stringsSchema = readJson(TOKEN_DATA_DIR, 'strings.schema.json');
+    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
+    const declaring = [
+      { name: 'about-last-night', dir: TOKEN_DATA_DIR },
+      ...fs.readdirSync(packsDir, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => ({ name: e.name, dir: path.join(packsDir, e.name) })),
+    ].filter(({ dir }) => {
+      try { return !!readJson(dir, 'game.json').strings; } catch { return false; }
+    });
+
+    it('at least one pack declares a strings sidecar (the contract has a consumer)', () => {
+      expect(declaring.length).toBeGreaterThan(0);
+    });
+
+    it.each(declaring.map(d => [d.name, d.dir]))('%s strings.json validates', (name, dir) => {
+      const validate = ajv.compile(stringsSchema);
+      const strings = readJson(dir, readJson(dir, 'game.json').strings);
+      if (!validate(strings)) {
+        throw new Error(`${name} strings violations:\n  ${explain(validate)}`);
+      }
+    });
+  });
+
   describe('EVERY bootable fixture pack has a FRESH manifest (round-2 review C6)', () => {
     // The full-schema contract runs on the two real packs above; fixture
     // packs may carry PARTIAL game.json overlays (parity-pack does), but

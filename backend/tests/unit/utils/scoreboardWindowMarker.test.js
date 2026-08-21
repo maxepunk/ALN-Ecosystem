@@ -74,6 +74,19 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(html).not.toContain('@LN-c0nn3ct');
   });
 
+  it('renderScoreboardHtml injects the ACTIVE pack strings as JSON (null-safe)', () => {
+    // The default pack dir is ALN-TokenData, whose strings.json declares
+    // the scoreboard section — the rendered page must carry it (and no
+    // placeholder). The null path (pack without strings) is covered by
+    // the parity-pack E2E leg + the packService unit pins.
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const html = renderScoreboardHtml();
+    expect(html).not.toContain('%%PACK_STRINGS%%');
+    expect(html).toContain(`const PACK_STRINGS = ${JSON.stringify(packService.getStrings())}`);
+    expect(packService.getStrings().scoreboard.header).toBe('CASE FILE: ABOUT LAST NIGHT');
+  });
+
   it('renderScoreboardHtml injects the CONFIG password as a JSON string (quote-safe)', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const original = config.security.adminPassword;

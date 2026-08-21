@@ -155,7 +155,10 @@ function renderScoreboardHtml() {
     // replacement includes the quotes via JSON.stringify — quote-safe for
     // any env value. Same delivery to the same LAN clients as the old
     // baked literal; the source just moved out of git into env/config.
-    .replaceAll("'%%ADMIN_PASSWORD%%'", JSON.stringify(config.security.adminPassword));
+    .replaceAll("'%%ADMIN_PASSWORD%%'", JSON.stringify(config.security.adminPassword))
+    // Pack-declared display strings (A3 slice 3a): the activation
+    // snapshot (or null — page falls back to baked wording per key).
+    .replaceAll("'%%PACK_STRINGS%%'", JSON.stringify(require('../services/packService').getStrings()));
 }
 
 /**

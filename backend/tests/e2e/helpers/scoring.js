@@ -80,6 +80,34 @@ function loadPackGroups(orchestratorUrl) {
 }
 
 /**
+ * Fetch the ACTIVE pack's display strings sidecar (A3 slice 3a): read
+ * game.json's `strings` pointer, then fetch that pack file. Null when
+ * the pack declares no sidecar — assertions fall back to the baked
+ * wording, mirroring the page's own per-key fallbacks.
+ * @param {string} orchestratorUrl
+ * @returns {Promise<Object|null>} strings sections or null
+ */
+async function loadPackStrings(orchestratorUrl) {
+  const pointer = await _fetchGameJsonField(orchestratorUrl, 'strings');
+  if (!pointer) return null;
+  return new Promise((resolve) => {
+    https.get(`${orchestratorUrl}/api/pack/files/${pointer}`, { rejectUnauthorized: false }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode !== 200) return resolve(null);
+        try {
+          const { kind, schemaVersion, ...sections } = JSON.parse(data);
+          resolve(sections);
+        } catch {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+/**
  * Pack-derived UI labels for mode assertions (lowercase, as the pill
  * renders them minus the ' Mode' suffix). Tests written against ALN's
  * "black market"/"detective" literals use these so the same assertion
@@ -194,6 +222,7 @@ module.exports = {
   loadPackScoring,
   loadPackModes,
   loadPackGroups,
+  loadPackStrings,
   expectedModeLabels,
   calculateExpectedScore,
   calculateExpectedGroupBonus
