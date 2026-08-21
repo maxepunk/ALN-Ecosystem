@@ -144,6 +144,25 @@ describe('game pack schema contract (A1)', () => {
     // that divergence for real).
   });
 
+  describe('EVERY bootable fixture pack has a FRESH manifest (round-2 review C6)', () => {
+    // The full-schema contract runs on the two real packs above; fixture
+    // packs may carry PARTIAL game.json overlays (parity-pack does), but
+    // any pack the PACK_PATH seam can boot still needs a fresh manifest —
+    // slice 2b edited parity-pack twice relying on manual regen alone.
+    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
+    const fixturePacks = fs.readdirSync(packsDir, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
+
+    it.each(fixturePacks)('%s manifest sha1s/contentHash match the tree', (pack) => {
+      const dir = path.join(packsDir, pack);
+      const manifest = readJson(dir, 'pack-manifest.json');
+      const files = buildFiles(dir);
+      expect(manifest.files).toEqual(files);
+      expect(manifest.contentHash).toBe(contentHash(files));
+    });
+  });
+
   describe('toy pack is genuinely a SECOND game (methodology guard)', () => {
     it('differs from ALN in id, modes, scoring values, and entity labels', () => {
       const aln = readJson(TOKEN_DATA_DIR, 'game.json');

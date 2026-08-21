@@ -111,7 +111,7 @@ Scoring values live in the game pack: `ALN-TokenData/game.json` (`scoring` block
 |-----------|------|-------|
 | Pack Rules (authoritative) | `ALN-TokenData/game.json` (`scoring` block) | Sole shared source; read by backend + GM Scanner + validators + config-tool economy editor |
 | Token Schema | `ALN-TokenData/tokens.schema.json` | tokens.json format (enforced by backend contract test) |
-| Backend Rules Read | `backend/src/services/packService.js` (`getScoringRules()`) | Normalized active-pack snapshot (numeric ratings, lowercased types, `unknown` present); loud baked shim when packless |
+| Backend Rules Read | `backend/src/services/packService.js` (`getScoringRules()`) | Normalized active-pack snapshot (numeric ratings, EXACT-CASE type keys per D2b, `UNKNOWN` present); loud baked shim when packless |
 | Backend Rules | `backend/src/gameRules/scoring.js` (pure functions) | Server-side scoring + group completion (transactionService adapts); GM duplicate rules in `gameRules/duplicatePolicy.js` |
 | GM Scanner Loader | `ALNScanner/src/core/packLoader.js` + `scoring.js` (`applyPackScoring`) | Runtime pack scoring; vendored baked shim warns LOUDLY when active |
 | GM Scanner Group Logic | `ALNScanner/src/core/storage/LocalStorage.js` (`_checkGroupCompletion`) | Client-side group completion |

@@ -104,8 +104,8 @@ function _isUsableScoring(scoring) {
 }
 
 /** Normalize a scoring block for engine consumption: numeric rating keys,
- *  LOWERCASED type keys (tokenService lowercases lookups), always an
- *  `unknown` entry. */
+ *  EXACT-CASE pack-declared type keys (D2b — tokenService matches
+ *  verbatim), always an `UNKNOWN` entry (the null/unrecognized bucket). */
 function _normalizeScoring(scoring) {
   return {
     baseValues: Object.fromEntries(
@@ -205,9 +205,14 @@ function _compareVersions(a, b) {
 /**
  * Capability gate (A3 slice 0, audit F2 + adversarial R6): refuse LOUDLY
  * — by throwing out of activation, which fails the boot — any pack this
- * engine cannot faithfully run. Nothing is checked for a pack that
- * declares nothing (pre-pack checkouts and v1 packs activate exactly as
- * before); every declared constraint is enforced.
+ * engine cannot faithfully run. Declared constraints are enforced; the
+ * old "declares nothing gates nothing" posture survives ONLY where the
+ * silent reading is safe (e.g. capabilities, modes). Since the tokens-v2
+ * cutover (slice 2b) two checks are UNCONDITIONAL over any pack with a
+ * game.json: groups coverage (an absent block refuses grouped tokens —
+ * the silent reading was 1x multipliers) and type coverage when scoring
+ * is usable. A game.json-less checkout (pre-pack legacy) still rides the
+ * loud shims.
  * @throws {Error} when the pack requires what this engine lacks
  */
 function _gateCheck(manifest, gameConfig) {
@@ -305,7 +310,10 @@ function _gateCheck(manifest, gameConfig) {
         const uncovered = new Set();
         for (const token of Object.values(tokensForTypes)) {
           const t = token.SF_MemoryType;
-          if (t !== null && t !== undefined && !(t in gameConfig.scoring.typeMultipliers)) {
+          // Object.hasOwn (not `in`): a type named 'constructor' would
+          // pass an `in` check via the prototype chain, then score NaN
+          // downstream (round-2 review C10)
+          if (t !== null && t !== undefined && !Object.hasOwn(gameConfig.scoring.typeMultipliers, t)) {
             uncovered.add(t);
           }
         }
@@ -336,10 +344,23 @@ function _gateCheck(manifest, gameConfig) {
         const declaredGroups = (gameConfig.groups && typeof gameConfig.groups === 'object')
           ? gameConfig.groups
           : {};
+        // Declared entries must be USABLE: an integer multiplier >= 1
+        // (schema-required, but the gate cannot assume schema validation
+        // ran — a malformed entry would flow NaN into every bonus)
+        for (const [gname, entry] of Object.entries(declaredGroups)) {
+          if (!entry || !Number.isInteger(entry.multiplier) || entry.multiplier < 1) {
+            problems.push(
+              `game.json groups['${gname}'] has no usable multiplier ` +
+              `(integer >= 1 required; got ${JSON.stringify(entry && entry.multiplier)})`
+            );
+          }
+        }
         const undeclared = new Set();
         for (const token of Object.values(tokensObj)) {
           const name = (token.SF_Group || '').trim();
-          if (name && !declaredGroups[name]) undeclared.add(name);
+          // Object.hasOwn (not truthy-index): a group named 'constructor'
+          // would resolve via the prototype chain (round-2 review C11)
+          if (name && !Object.hasOwn(declaredGroups, name)) undeclared.add(name);
         }
         for (const name of undeclared) {
           problems.push(

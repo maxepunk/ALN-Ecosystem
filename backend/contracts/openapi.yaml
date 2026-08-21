@@ -461,7 +461,7 @@ paths:
                     const: pack-manifest
                   schemaVersion:
                     type: integer
-                    example: 1
+                    example: 2
                   packId:
                     type: string
                     example: "about-last-night"

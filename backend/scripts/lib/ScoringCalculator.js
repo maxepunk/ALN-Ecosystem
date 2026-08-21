@@ -117,8 +117,11 @@ class ScoringCalculator {
     // (0x). The old `|| 1` / 'personal' defaults made the validator pay
     // tokens the engine scored 0x (review finding).
     const baseValue = this.BASE_VALUES[rating] || 0;
-    // EXACT-CASE (D2b): verbatim pack ids; null/unmatched → UNKNOWN (0x)
-    const multiplier = this.TYPE_MULTIPLIERS[memoryType] ?? this.TYPE_MULTIPLIERS.UNKNOWN;
+    // EXACT-CASE (D2b): verbatim pack ids; null/unmatched → UNKNOWN (0x).
+    // Object.hasOwn: prototype-chain names never resolve (engine parity)
+    const multiplier = Object.hasOwn(this.TYPE_MULTIPLIERS, memoryType ?? '')
+      ? this.TYPE_MULTIPLIERS[memoryType]
+      : this.TYPE_MULTIPLIERS.UNKNOWN;
     return Math.floor(baseValue * multiplier);
   }
 

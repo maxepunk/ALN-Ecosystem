@@ -769,7 +769,8 @@ def validate_tokens(tokens, valid_memory_types):
         elif mem_type not in valid_memory_types:
             warnings.append(
                 f"{rfid}: SF_MemoryType '{mem_type}' not in game.json scoring.typeMultipliers "
-                f"({', '.join(sorted(valid_memory_types))}) — token will score 0x"
+                f"({', '.join(sorted(valid_memory_types))}) — since D2b the engine REFUSES to "
+                f"activate a pack with an undeclared type (boot fails); declare it or fix the token"
             )
         rating = token.get("SF_ValueRating")
         if rating is None:
@@ -881,18 +882,38 @@ def derive_groups(tokens):
     groups = {}
     first_seen = {}
     conflicts = []
+    malformed = []
     for rfid, t in tokens.items():
         raw = (t.get('SF_Group') or '').strip()
         if not raw:
             continue
         m = GROUP_SUFFIX_RE.match(raw)
         name, mult = (m.group(1).strip(), int(m.group(2))) if m else (raw, 1)
+        # Round-2 review C7/C8/C21 hard edges — all authoring errors:
+        # - suffix-only value '(x5)': name '' would silently ungroup the
+        #   token AND write an empty-string group key into game.json
+        # - '(x0)': schema requires multiplier >= 1
+        # - double suffix 'A (x2) (x3)': one strip leaves 'A (x2)', a
+        #   schema-illegal emission the activation gate then refuses as
+        #   a bizarre verbatim name
+        if not name:
+            malformed.append(f"{rfid}: SF_Group '{raw}' has no group NAME before the (xN) suffix")
+        elif mult < 1:
+            malformed.append(f"{rfid}: SF_Group '{raw}' declares multiplier x{mult} (must be >= 1)")
+        elif GROUP_SUFFIX_RE.match(name):
+            malformed.append(
+                f"{rfid}: SF_Group '{raw}' still carries a (xN) suffix after one strip "
+                f"(nested/double suffix) — the pure name would be '{name}', which is illegal")
         if name in groups and groups[name]['multiplier'] != mult:
             conflicts.append(
                 f"'{name}': x{groups[name]['multiplier']} ({first_seen[name]}) vs x{mult} ({rfid})")
         else:
             groups[name] = {'multiplier': mult}
             first_seen.setdefault(name, rfid)
+    if malformed:
+        raise SystemExit(
+            "MALFORMED SF_Group (sync-time hard error, D3b) — fix in Notion: "
+            + "; ".join(malformed))
     if conflicts:
         raise SystemExit(
             "GROUP MULTIPLIER CONFLICT (sync-time hard error, D3b) — fix in Notion: "
@@ -1101,6 +1122,9 @@ def main(argv=None):
 
     if args.dry_run:
         print(f"[dry-run] Would write {len(sorted_tokens)} tokens to {TOKENS_JSON}")
+        # The real run also rewrites the game.json groups block (D1b) —
+        # the preview must say so (round-2 review C9)
+        print(f"[dry-run] Would write {len(derived_groups)} group(s) to {GAME_JSON_PATH} groups block")
         removed = generate_asset_manifest.prune_orphans(ASSETS_ROOT, sorted_tokens.keys(), dry_run=True)
         for p in removed:
             print(f"[dry-run] Would remove orphan {p.relative_to(ECOSYSTEM_ROOT)}")

@@ -90,14 +90,19 @@ class TokenLoader {
     const groupsDir = this.packDir || this._loadedDir;
     if (groupsDir) {
       try {
-        // eslint-disable-next-line global-require, import/no-dynamic-require
-        packGroups = require(path.join(groupsDir, 'game.json')).groups || null;
+        // fs read, NOT require(): require caches by path, so a validator
+        // run against a dir whose game.json changed between constructions
+        // would silently serve the stale block (round-2 review note)
+        packGroups = JSON.parse(
+          fs.readFileSync(path.join(groupsDir, 'game.json'), 'utf8')
+        ).groups || null;
       } catch { /* no game.json — every multiplier reads 1 */ }
     }
 
     this.tokens = Object.entries(rawTokens).map(([id, token]) => {
       const groupName = TokenLoader.extractGroupName(token.SF_Group);
-      const groupMultiplier = (packGroups && groupName && packGroups[groupName])
+      // Object.hasOwn: engine parity — prototype-chain names never resolve
+      const groupMultiplier = (packGroups && groupName && Object.hasOwn(packGroups, groupName))
         ? packGroups[groupName].multiplier
         : 1;
 
@@ -109,7 +114,9 @@ class TokenLoader {
       // EXACT-CASE lookup (D2b, engine parity): pack-declared ids matched
       // verbatim; null/unmatched types score the UNKNOWN bucket (0x)
       const baseValue = BASE_VALUES[rating] || 0;
-      const multiplier = TYPE_MULTIPLIERS[token.SF_MemoryType] ?? TYPE_MULTIPLIERS.UNKNOWN;
+      const multiplier = Object.hasOwn(TYPE_MULTIPLIERS, token.SF_MemoryType ?? '')
+        ? TYPE_MULTIPLIERS[token.SF_MemoryType]
+        : TYPE_MULTIPLIERS.UNKNOWN;
       const value = Math.floor(baseValue * multiplier);
 
       return {

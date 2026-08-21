@@ -98,8 +98,8 @@ function expectedModeLabels(modes) {
 }
 
 /** Score a token against a pack scoring block, mirroring the ENGINE's
- *  normalization (packService._normalizeScoring: LOWERCASED type keys,
- *  `unknown` always present at 0) — the oracle must match what the
+ *  normalization (packService._normalizeScoring: EXACT-CASE type keys,
+ *  `UNKNOWN` always present at 0) — the oracle must match what the
  *  backend actually computes. EXACT-CASE since D2b (ruled 2026-07-18):
  *  types are pack-declared ids matched verbatim — the scanner's
  *  always-exact-case lookup became the canon and the backend dropped
@@ -107,8 +107,10 @@ function expectedModeLabels(modes) {
  *  whose type is absent from the pack's own typeMultipliers. */
 function packTokenValue(packScoring, rating, memoryType) {
   const base = packScoring.baseValues[String(rating)] ?? packScoring.baseValues[rating] ?? 0;
-  const mult = packScoring.typeMultipliers[memoryType]
-    ?? packScoring.typeMultipliers.UNKNOWN ?? 0;
+  // Object.hasOwn mirrors the engine: prototype-chain names never resolve
+  const mult = Object.hasOwn(packScoring.typeMultipliers, memoryType ?? '')
+    ? packScoring.typeMultipliers[memoryType]
+    : (packScoring.typeMultipliers.UNKNOWN ?? 0);
   return base * mult;
 }
 

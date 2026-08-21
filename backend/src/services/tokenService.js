@@ -57,8 +57,12 @@ const calculateTokenValue = (rating, type) => {
   // activation gate refuses tokens whose type is absent from the pack's
   // own typeMultipliers, so the UNKNOWN fallback is reached only by
   // null-typed tokens (legal, scores 0×) and packless legacy paths.
-  // `??` (not `||`) lets a pack legitimately declare a 0 multiplier.
-  const multiplier = scoring.typeMultipliers[type] ?? scoring.typeMultipliers.UNKNOWN;
+  // Object.hasOwn (not bare index): a type named 'constructor' would
+  // resolve via the prototype chain into NaN (round-2 review C10).
+  // `??`-style fallback preserved: a declared 0 multiplier pays 0.
+  const multiplier = Object.hasOwn(scoring.typeMultipliers, type ?? '')
+    ? scoring.typeMultipliers[type]
+    : scoring.typeMultipliers.UNKNOWN;
 
   return Math.floor(baseValue * multiplier);
 };
@@ -145,7 +149,9 @@ const loadTokens = () => {
     // an empty declaration set. Reachable only in packless legacy
     // checkouts (no game.json at all), where a 1x multiplier means
     // "group with no completion bonus", safe)
-    const groupMultiplier = (packGroups && groupName && packGroups[groupName])
+    // Object.hasOwn: a group named 'constructor' must not resolve via
+    // the prototype chain (round-2 review C11)
+    const groupMultiplier = (packGroups && groupName && Object.hasOwn(packGroups, groupName))
       ? packGroups[groupName].multiplier
       : 1;
     const calculatedValue = calculateTokenValue(

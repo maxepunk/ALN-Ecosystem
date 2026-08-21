@@ -26,9 +26,11 @@ and the dual-pack test gate runs both.
 | Post-session validators | `scripts/lib/scoringConfigLoader.js` → `ALN-TokenData/game.json` scoring | None — throws (a validator must never validate against baked constants) |
 
 **Normalization (backend `getScoringRules()`):** rating keys become
-numbers, type keys are LOWERCASED, and an `unknown` multiplier is always
-present (0 unless the pack overrides it). Lookups use `??` (not `||`) so a
-pack may legitimately declare a `0` multiplier.
+numbers, type keys stay EXACT-CASE (D2b — pack-declared ids matched
+verbatim; the scanner's always-exact-case lookup is the canon), and an
+`UNKNOWN` multiplier is always present (0 unless the pack overrides it).
+Declared-type lookups honor a legitimate `0` multiplier; unmatched/null
+types read the `UNKNOWN` bucket.
 
 **Rules freeze at boot:** the pack snapshot is frozen by
 `packService.activatePack()`. A pack publish changes scoring only on the

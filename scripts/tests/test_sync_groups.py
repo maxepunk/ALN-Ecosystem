@@ -27,6 +27,23 @@ def test_derives_groups_from_suffixes_and_pure_names():
     }
 
 
+def test_malformed_group_values_hard_error():
+    """Round-2 review C7/C8/C21: suffix-only, x0, and double-suffix values
+    are authoring errors that must refuse at sync time — each would
+    otherwise emit schema-illegal or silently-wrong v2 data."""
+    with pytest.raises(SystemExit) as exc:
+        derive_groups({'t1': {'SF_Group': '(x5)'}})
+    assert 'no group NAME' in str(exc.value)
+
+    with pytest.raises(SystemExit) as exc:
+        derive_groups({'t1': {'SF_Group': 'Zero Group (x0)'}})
+    assert 'must be >= 1' in str(exc.value)
+
+    with pytest.raises(SystemExit) as exc:
+        derive_groups({'t1': {'SF_Group': 'Doubled (x2) (x3)'}})
+    assert 'still carries a (xN) suffix' in str(exc.value)
+
+
 def test_conflicting_multipliers_hard_error_names_both_tokens():
     tokens = {
         't1': {'SF_Group': 'Server Logs (x5)'},

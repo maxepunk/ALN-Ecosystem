@@ -648,6 +648,41 @@ describe('packService', () => {
       });
       expect(() => packService.activatePack()).not.toThrow();
     });
+
+    it("prototype-chain names never satisfy the gate: a group named 'constructor' is undeclared (round-2 C11)", () => {
+      // A truthy-index or `in` check would resolve 'constructor' via
+      // Object.prototype, pass the gate, then flow NaN into every bonus.
+      writePack(tmpDir, {
+        groups: { 'Real Group': { multiplier: 2 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'constructor' },
+          t2: { SF_RFID: 't2', SF_Group: 'Real Group' },
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'constructor'.*not declared/);
+    });
+
+    it('a declared group entry without a usable multiplier refuses (integer >= 1)', () => {
+      writePack(tmpDir, {
+        groups: { 'Broken': {}, 'AlsoBroken': { multiplier: 0 }, 'Fine': { multiplier: 3 } },
+        tokens: { t1: { SF_RFID: 't1', SF_Group: 'Fine' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*groups\['Broken'\] has no usable multiplier/);
+    });
+
+    it("TYPE coverage: a type named 'constructor' is uncovered (Object.hasOwn, round-2 C10)", () => {
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'proto',
+        scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'constructor' },
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'constructor'.*not a key of scoring\.typeMultipliers/);
+    });
   });
 
   describe('activation-frozen rules memo + operator warns (review fixes)', () => {
