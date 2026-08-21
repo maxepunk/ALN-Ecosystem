@@ -1,0 +1,62 @@
+/**
+ * Scoreboard window-marker coupling (A3 slice 3a, pre-fix 1 — the
+ * "Case File" booby trap, capability-matrix 2.5)
+ *
+ * displayDriver discovers the kiosk Chromium window by TITLE
+ * (`xdotool search --name <marker>`), so the scoreboard page's <title>
+ * and the driver's search string are a FUNCTIONAL coupling: before this
+ * suite existed, a rebrand of either side passed CI green and broke
+ * HDMI show/hide at the venue (runtime-only failure — the driver unit
+ * mocks match `--name` by argument position, never the literal).
+ *
+ * The fix is a single shared engine config value
+ * (config.display.scoreboardWindowMarker, env SCOREBOARD_WINDOW_MARKER)
+ * consumed by BOTH sides: the driver searches for it, and the served
+ * page's title carries it via server-side injection
+ * (resourceRoutes.renderScoreboardHtml replaces %%WINDOW_MARKER%%).
+ * These tests are the tripwire: each half is pinned against the SAME
+ * config value, and the injection placeholder is pinned into the real
+ * public/scoreboard.html on disk.
+ */
+
+const fs = require('fs');
+const path = require('path');
+
+jest.mock('../../../src/utils/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+}));
+
+const config = require('../../../src/config');
+
+describe('scoreboard window marker (shared engine config — slice 3a pre-fix 1)', () => {
+  it('config declares the marker with a stable non-themed default', () => {
+    expect(config.display.scoreboardWindowMarker).toBe('ALN-SCOREBOARD');
+  });
+
+  it('the REAL scoreboard.html carries the injection placeholder in its <title>', () => {
+    // Pins the page half of the coupling: a rebrand that drops the
+    // placeholder would sever the xdotool discovery chain.
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '../../../public/scoreboard.html'), 'utf8'
+    );
+    const title = html.match(/<title>([^<]*)<\/title>/);
+    expect(title).not.toBeNull();
+    expect(title[1]).toContain('%%WINDOW_MARKER%%');
+  });
+
+  it('renderScoreboardHtml injects the CONFIG marker into the served title (cross-file tripwire)', () => {
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const html = renderScoreboardHtml();
+    const title = html.match(/<title>([^<]*)<\/title>/);
+    expect(title[1]).toContain(config.display.scoreboardWindowMarker);
+    // The placeholder itself must never reach the browser
+    expect(html).not.toContain('%%WINDOW_MARKER%%');
+  });
+
+  // The driver half of the coupling (xdotool search uses the CONFIG
+  // marker) is pinned in displayDriver.test.js, which owns the full
+  // spawn/fs harness the driver needs.
+});

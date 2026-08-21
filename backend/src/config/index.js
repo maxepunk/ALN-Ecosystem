@@ -93,6 +93,20 @@ const config = {
     debugging: process.env.ENABLE_DEBUGGING === 'true',
   },
 
+  // Display / kiosk configuration (A3 slice 3a pre-fix 1)
+  display: {
+    // FUNCTIONAL window marker (capability-matrix 2.5): displayDriver
+    // discovers the kiosk Chromium window by title via
+    // `xdotool search --name <marker>`, and the served scoreboard page
+    // injects the SAME value into its <title> (%%WINDOW_MARKER%%
+    // placeholder, resourceRoutes.renderScoreboardHtml). One shared
+    // value, two consumers — never rebrand either side independently
+    // (tests/unit/utils/scoreboardWindowMarker.test.js is the tripwire).
+    // Stable and non-themed by design: game branding lives in the pack;
+    // this is engine/venue plumbing.
+    scoreboardWindowMarker: process.env.SCOREBOARD_WINDOW_MARKER || 'ALN-SCOREBOARD',
+  },
+
   // Bluetooth Configuration
   bluetooth: {
     scanTimeout: parseInt(process.env.BLUETOOTH_SCAN_TIMEOUT_SEC || '15', 10), // seconds

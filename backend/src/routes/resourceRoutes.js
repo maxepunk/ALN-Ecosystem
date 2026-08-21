@@ -138,11 +138,26 @@ router.get('/assets/audio/:file', (req, res) => {
 });
 
 /**
+ * Render scoreboard.html with the window marker injected (A3 slice 3a
+ * pre-fix 1): the %%WINDOW_MARKER%% placeholder in the page <title>
+ * becomes config.display.scoreboardWindowMarker — the SAME value
+ * displayDriver's xdotool search uses to find the kiosk window. Served
+ * fresh per request (page loads are rare; no cache needed).
+ * @returns {string} rendered HTML
+ */
+function renderScoreboardHtml() {
+  const config = require('../config');
+  const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
+  return html.replaceAll('%%WINDOW_MARKER%%', config.display.scoreboardWindowMarker);
+}
+
+/**
  * GET /scoreboard - Scoreboard display
  * TV-optimized scoreboard display for Black Market mode
  */
 router.get('/scoreboard', (req, res) => {
-  res.sendFile('scoreboard.html', { root: './public' });
+  res.type('html').send(renderScoreboardHtml());
 });
 
 module.exports = router;
+module.exports.renderScoreboardHtml = renderScoreboardHtml;
