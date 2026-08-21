@@ -59,9 +59,14 @@ class SessionService extends EventEmitter {
         return;
       }
 
+      // A3 slice 2: expected duration comes from the ACTIVE pack's clock
+      // (wire payload stays in MINUTES per the session:overtime contract)
+      const expectedDurationMinutes = Math.round(
+        require('./packService').getClockRules().durationSeconds / 60
+      );
       logger.warn('Session overtime - exceeded expected duration', {
         sessionId: this.currentSession.id,
-        expectedDuration: config.session.sessionTimeout,
+        expectedDuration: expectedDurationMinutes,
         startTime: this.currentSession.startTime,
         elapsed: payload.elapsed
       });
@@ -71,7 +76,7 @@ class SessionService extends EventEmitter {
         sessionId: this.currentSession.id,
         sessionName: this.currentSession.name,
         startTime: this.currentSession.startTime,
-        expectedDuration: config.session.sessionTimeout,
+        expectedDuration: expectedDurationMinutes,
         overtimeDuration: 0 // Will be calculated by listener
       });
     }, 'sessionService->gameClockService:gameclock:overtime');
@@ -89,6 +94,21 @@ class SessionService extends EventEmitter {
       if (sessionData) {
         this.currentSession = Session.fromJSON(sessionData);
         logger.info('Session restored from storage', { sessionId: this.currentSession.id });
+
+        // A2: a restart that resumes a session under a DIFFERENT active
+        // pack is loud — the session's transactions were scored under the
+        // rules of the pack it was created with, not the one now on disk.
+        {
+          const sessionPack = this.currentSession.metadata?.pack || null;
+          const activePack = require('./packService').getActivePackInfo();
+          if ((sessionPack?.contentHash || null) !== (activePack?.contentHash || null)) {
+            logger.warn(
+              'Restored session was created under a DIFFERENT pack than the active one — ' +
+              'its existing transactions were scored under the session pack\'s rules',
+              { sessionId: this.currentSession.id, sessionPack, activePack }
+            );
+          }
+        }
 
         // Mark all devices as disconnected — WebSocket connections don't survive restarts
         if (this.currentSession.connectedDevices) {
@@ -168,6 +188,12 @@ class SessionService extends EventEmitter {
         scores: this.initializeTeamScores(sessionData.teams),
       });
 
+      // A2: stamp the pack this session is created under — a session's
+      // rules are frozen at start, and this stamp is the mechanism (restore
+      // compares it against the active pack; reports get provenance).
+      this.currentSession.metadata.pack =
+        require('./packService').getActivePackInfo();
+
       // Save to persistence (both specific ID and 'current' reference),
       // serialized through the write queue (F-BCORE-07) behind any pending
       // writes from the just-ended previous session
@@ -223,9 +249,11 @@ class SessionService extends EventEmitter {
     // Record game start time on the session
     this.currentSession.gameStartTime = new Date().toISOString();
 
-    // Set overtime threshold before starting the clock
-    const overtimeThresholdSeconds = config.session.sessionTimeout * 60; // Convert minutes to seconds
-    gameClockService.setOvertimeThreshold(overtimeThresholdSeconds);
+    // Set overtime threshold before starting the clock (A3 slice 2: the
+    // ACTIVE pack's gameClock.overtimeAt; SESSION_TIMEOUT only as the
+    // packless fallback inside getClockRules)
+    const packService = require('./packService');
+    gameClockService.setOvertimeThreshold(packService.getClockRules().overtimeAtSeconds);
 
     // Start the game clock
     gameClockService.start();

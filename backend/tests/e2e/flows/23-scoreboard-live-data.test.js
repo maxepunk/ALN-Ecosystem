@@ -30,7 +30,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
-const { calculateExpectedScore } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 // Tests are serial — they share one orchestrator instance and must not race each other
@@ -42,6 +42,7 @@ test.skip(({ isMobile }) => !isMobile, 'Scoreboard live-data tests only run on m
 let browser = null;
 let orchestratorInfo = null;
 let testTokens = null;
+let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
 
 test.describe('Scoreboard Live Data', () => {
 
@@ -58,6 +59,7 @@ test.describe('Scoreboard Live Data', () => {
       ]
     });
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    packScoring = await loadPackScoring(orchestratorInfo.url);
   });
 
   test.afterAll(async () => {
@@ -194,8 +196,16 @@ test.describe('Scoreboard Live Data', () => {
       const score = await scoreboard.getTeamScoreNumeric('Scoring Team');
       expect(score).toBeGreaterThan(0);
 
-      const expectedScore = calculateExpectedScore(token);
+      const expectedScore = calculateExpectedScore(token, packScoring);
       expect(score).toBe(expectedScore);
+
+      // Rendered-AFFIX pin (3b review C): the ticker's text must carry
+      // the PACK's money spec verbatim — this is the Tier-L tripwire for
+      // scoreboard.html's vendored MONEY grammar (numeric parses above
+      // are deliberately affix-blind). Dual-pack: '$X' on ALN,
+      // 'X cr' on toy-heist.
+      const renderedScore = await scoreboard.getTeamScore('Scoring Team');
+      expect(renderedScore.trim()).toBe(formatMoneyExpected(expectedScore, moneySpec(packScoring)));
 
       console.log(`Black market transaction updated ticker: $${score} (expected $${expectedScore})`);
 

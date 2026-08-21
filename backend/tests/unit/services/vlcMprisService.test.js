@@ -528,6 +528,65 @@ describe('VlcMprisService', () => {
     });
   });
 
+  // ── idle-loop file consolidation (slice 3a pre-fix 3, F-SHOW-29) ──
+
+  describe('idle-loop file comes from config.display.idleLoopFile (one key, three sites)', () => {
+    // Before this pin, three independent 'idle-loop.mp4' literals lived
+    // in this service (initializeIdleLoop, returnToIdleLoop,
+    // _idleLoopExists) — the existence GUARD could silently check a
+    // different file than VLC actually played. One config key kills the
+    // class; this test drives all three sites through an override.
+    let config;
+    let originalFile;
+
+    beforeEach(() => {
+      // Require AFTER the outer beforeEach's jest.resetModules() so we
+      // mutate the same config instance the freshly-required service sees
+      config = require('../../../src/config');
+      originalFile = config.display.idleLoopFile;
+      config.display.idleLoopFile = 'custom-idle.mp4';
+      mockExecFileSuccess('');
+      vlcMprisService._initializeIdleLoopDelay = jest.fn().mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      config.display.idleLoopFile = originalFile;
+    });
+
+    it('initializeIdleLoop plays the CONFIG file and the existence guard checks the SAME file', async () => {
+      const fsReal = require('fs');
+      const existsSpy = jest.spyOn(fsReal, 'existsSync').mockReturnValue(true);
+
+      await vlcMprisService.initializeIdleLoop();
+
+      expect(existsSpy).toHaveBeenCalledWith(expect.stringContaining('custom-idle.mp4'));
+      expect(execFile).toHaveBeenCalledWith(
+        'dbus-send',
+        expect.arrayContaining([
+          'org.mpris.MediaPlayer2.Player.OpenUri',
+          expect.stringContaining('custom-idle.mp4'),
+        ]),
+        expect.any(Object),
+        expect.any(Function)
+      );
+      existsSpy.mockRestore();
+    });
+
+    it('returnToIdleLoop plays the CONFIG file', async () => {
+      await vlcMprisService.returnToIdleLoop();
+
+      expect(execFile).toHaveBeenCalledWith(
+        'dbus-send',
+        expect.arrayContaining([
+          'org.mpris.MediaPlayer2.Player.OpenUri',
+          expect.stringContaining('custom-idle.mp4'),
+        ]),
+        expect.any(Object),
+        expect.any(Function)
+      );
+    });
+  });
+
   // ── initializeIdleLoop ──
 
   describe('initializeIdleLoop', () => {
