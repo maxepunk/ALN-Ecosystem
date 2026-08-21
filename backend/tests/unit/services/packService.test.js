@@ -820,6 +820,64 @@ describe('packService', () => {
     });
   });
 
+  describe('scoring.display drivability + normalization (A3 slice 3b, R-3b-1)', () => {
+    function writeDisplayPack(dir, display) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'disp',
+        scoring: {
+          baseValues: { 1: 7 },
+          typeMultipliers: { Personal: 3 },
+          ...(display !== undefined ? { display } : {}),
+        },
+      }));
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1' },
+      }));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('getScoringRules() carries the declared display block (the normalizers no longer DROP it)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits', format: '#,### cr' });
+      const rules = packService.getScoringRules();
+      expect(rules.display).toEqual({ unit: 'credits', format: '#,### cr' });
+    });
+
+    it('no display block → display null (consumers use the baked ALN format)', () => {
+      writeDisplayPack(tmpDir, undefined);
+      expect(packService.getScoringRules().display).toBeNull();
+    });
+
+    it('the baked legacy shim serves the ALN display spec (drift-mirrored)', () => {
+      // Packless: the shim must format like ALN, same as its tables.
+      const rules = packService.getScoringRules(); // tmpDir empty → shim
+      expect(rules.display).toEqual({ unit: 'currency-usd', format: '$#,###' });
+    });
+
+    it.each(['dollars', '$#,###-#,###', '##,###', ''])(
+      'activation REFUSES an undrivable format %j (gate twin of the schema pattern)',
+      (format) => {
+        writeDisplayPack(tmpDir, { unit: 'x', format });
+        expect(() => packService.activatePack())
+          .toThrow(/CAPABILITY GATE.*display\.format/);
+      }
+    );
+
+    it('a drivable non-ALN format activates (the toy class)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits', format: '#,### cr' });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('display without a format key activates and normalizes to null (nothing to drive)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits' });
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getScoringRules().display).toBeNull();
+    });
+  });
+
   describe('activation-frozen rules memo + operator warns (review fixes)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));

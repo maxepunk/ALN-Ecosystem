@@ -15,14 +15,19 @@
     "lines": 100
   },
   "./src/gameRules/duplicatePolicy.js": {
-    "branches": 85,
+    "branches": 90,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/gameRules/formatting.js": {
+    "branches": 100,
     "functions": 100,
     "lines": 100
   },
   "./src/gameRules/modeSemantics.js": {
     "branches": 100,
-    "functions": 90,
-    "lines": 90
+    "functions": 100,
+    "lines": 100
   },
   "./src/gameRules/scoring.js": {
     "branches": 90,
@@ -86,7 +91,7 @@
   },
   "./src/routes/resourceRoutes.js": {
     "branches": 70,
-    "functions": 85,
+    "functions": 100,
     "lines": 80
   },
   "./src/routes/scanRoutes.js": {
@@ -225,7 +230,7 @@
     "lines": 100
   },
   "./src/services/session/persistenceListeners.js": {
-    "branches": 60,
+    "branches": 65,
     "functions": 100,
     "lines": 75
   },
@@ -255,7 +260,7 @@
     "lines": 100
   },
   "./src/services/transactionService.js": {
-    "branches": 60,
+    "branches": 65,
     "functions": 90,
     "lines": 85
   },
@@ -266,8 +271,8 @@
   },
   "./src/services/vlcMprisService.js": {
     "branches": 85,
-    "functions": 80,
-    "lines": 90
+    "functions": 85,
+    "lines": 95
   },
   "./src/storage/FileStorage.js": {
     "branches": 20,
@@ -380,7 +385,7 @@
     "lines": 70
   },
   "./src/websocket/scanResponse.js": {
-    "branches": 85,
+    "branches": 90,
     "functions": 100,
     "lines": 95
   },
