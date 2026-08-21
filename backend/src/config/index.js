@@ -105,6 +105,12 @@ const config = {
     // Stable and non-themed by design: game branding lives in the pack;
     // this is engine/venue plumbing.
     scoreboardWindowMarker: process.env.SCOREBOARD_WINDOW_MARKER || 'ALN-SCOREBOARD',
+    // Idle-loop video filename (slice 3a pre-fix 3, F-SHOW-29): ONE key
+    // for the three vlcMprisService sites (init play, return play, and
+    // the existence guard) — three independent literals let the guard
+    // check a different file than VLC played. Venue/engine config for
+    // now: videos are not pack content until slice 6/B12+F5.
+    idleLoopFile: process.env.IDLE_LOOP_FILE || 'idle-loop.mp4',
   },
 
   // Bluetooth Configuration
