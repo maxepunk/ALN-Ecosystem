@@ -1145,8 +1145,9 @@
         // R-3b-1 money spec (slice 3b): scoring.display.format drives the
         // ticker's money rendering. Vendored grammar twin of the backend's
         // gameRules/formatting.js (one '#,###' token + literal affixes);
-        // baked ALN spec when the pack declares none. The toy Tier-L leg
-        // pins this copy's output ('25,000 cr').
+        // baked ALN spec when the pack declares none. Tier-L tripwire:
+        // flow 23's rendered-affix pin asserts the ticker text equals
+        // formatMoneyExpected(...) on BOTH packs (dollar-prefixed / 'X cr').
         let MONEY = { prefix: '$', suffix: '' };
         function applyMoneyFormat(format) {
             const m = typeof format === 'string' ? format.match(/^([^#]*)#,###([^#]*)$/) : null;

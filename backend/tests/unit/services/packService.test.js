@@ -876,6 +876,16 @@ describe('packService', () => {
       expect(() => packService.activatePack()).not.toThrow();
       expect(packService.getScoringRules().display).toBeNull();
     });
+
+    it('display rides the ACTIVATION-FROZEN snapshot — later disk edits are invisible (review E)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits', format: '#,### cr' });
+      packService.activatePack();
+
+      writeDisplayPack(tmpDir, { unit: 'gold', format: '#,### gp' });
+
+      expect(packService.getScoringRules().display)
+        .toEqual({ unit: 'credits', format: '#,### cr' });
+    });
   });
 
   describe('activation-frozen rules memo + operator warns (review fixes)', () => {

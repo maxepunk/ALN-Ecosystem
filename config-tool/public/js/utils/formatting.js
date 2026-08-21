@@ -7,7 +7,10 @@
 // grouped-integer token wrapped by literal affixes (grammar twin of
 // backend gameRules/formatting.js). Baked ALN spec fallback; applied by
 // app.js from GET /api/config after each load. Replaces the old
-// hardcoded Intl USD formatter (byte-identical output for the ALN spec).
+// hardcoded Intl USD formatter — byte-identical for the ALN spec on
+// NON-NEGATIVE values (the tool's previews never render negatives);
+// negatives now follow the engine convention ($-25,000, the sign on
+// the number token) instead of Intl's -$25,000.
 let MONEY_SPEC = { prefix: '$', suffix: '' };
 
 export function applyPackMoneyFormat(format) {
