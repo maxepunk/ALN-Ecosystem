@@ -148,10 +148,24 @@
     "overtimeAt": 3300,
     "phases": [
       {
-        "id": "the-heist",
-        "label": "The Heist",
+        "id": "casing",
+        "label": "Casing the Joint",
         "start": {
           "at": 0
+        }
+      },
+      {
+        "id": "the-job",
+        "label": "The Job",
+        "start": {
+          "at": 1800
+        }
+      },
+      {
+        "id": "the-getaway",
+        "label": "The Getaway",
+        "start": {
+          "trigger": "group:completed"
         }
       }
     ]
