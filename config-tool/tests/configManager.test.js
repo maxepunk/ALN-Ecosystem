@@ -57,6 +57,44 @@ describe('configManager', () => {
     assert.strictEqual(config.routing.routes.video.sink, 'hdmi');
   });
 
+  describe('pack identity (slice 3a — the tool shows WHICH pack it edits)', () => {
+    it('readAll exposes pack identity from game.json + pack-manifest.json', () => {
+      const game = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+      game.title = 'Midnight Heist';
+      game.modes = [
+        { id: 'fence', label: 'Fence', scoringPolicy: 'standard' },
+        { id: 'tipoff', label: 'Tip-Off' },
+      ];
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify(game));
+      fs.writeFileSync(path.join(tmpDir, 'pack-manifest.json'), JSON.stringify({
+        kind: 'pack-manifest', schemaVersion: 2, packId: 'test-pack',
+        version: '2.1.0', contentHash: 'sha256:abc123', files: [],
+      }));
+
+      const { pack } = configManager.readAll();
+
+      assert.strictEqual(pack.id, 'test-pack');
+      assert.strictEqual(pack.title, 'Midnight Heist');
+      assert.strictEqual(pack.version, '2.1.0');
+      assert.strictEqual(pack.contentHash, 'sha256:abc123');
+      assert.deepStrictEqual(pack.modes, [
+        { id: 'fence', label: 'Fence', scoringPolicy: 'standard' },
+        { id: 'tipoff', label: 'Tip-Off', scoringPolicy: null },
+      ]);
+    });
+
+    it('degrades to nulls when manifest/title/modes are absent (packless dir still serves)', () => {
+      // Fixture default: game.json has id but no title/modes, no manifest.
+      const { pack } = configManager.readAll();
+
+      assert.strictEqual(pack.id, 'test-pack');
+      assert.strictEqual(pack.title, null);
+      assert.strictEqual(pack.version, null);
+      assert.strictEqual(pack.contentHash, null);
+      assert.deepStrictEqual(pack.modes, []);
+    });
+  });
+
   it('writes scoring into game.json, preserving non-editor scoring keys + rebuilding the manifest', () => {
     configManager.writeScoring({
       baseValues: { '1': 99999, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },

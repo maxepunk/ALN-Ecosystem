@@ -42,6 +42,34 @@ class ConfigManager {
       scoring: this._readJson(this.paths.gamePath).scoring || {},
       cues: this._readJson(this.paths.cuesPath),
       routing: this._readJson(this.paths.routingPath),
+      pack: this._readPackIdentity(),
+    };
+  }
+
+  /**
+   * Identity of the pack this tool is editing (slice 3a): id/title/modes
+   * from game.json, version/contentHash from the manifest beside it. The
+   * SPA derives its title and mode labels from here instead of baked ALN
+   * wording. Nulls (not errors) for a packless/partial dir — the tool
+   * still serves.
+   */
+  _readPackIdentity() {
+    const game = this._readJson(this.paths.gamePath);
+    const manifest = this._readJson(
+      path.join(path.dirname(this.paths.gamePath), 'pack-manifest.json')
+    );
+    return {
+      id: game.id || null,
+      title: game.title || null,
+      version: manifest.version || null,
+      contentHash: manifest.contentHash || null,
+      modes: Array.isArray(game.modes)
+        ? game.modes.map((m) => ({
+          id: m.id,
+          label: m.label,
+          scoringPolicy: m.scoringPolicy || null,
+        }))
+        : [],
     };
   }
 

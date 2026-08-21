@@ -109,11 +109,11 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
       expect(state.dropdown).toBe(false);
 
       const hint = await gmScanner.scoreboardEvidenceHint.textContent();
-      // This hint is the GM SCANNER's admin-panel text (index.html:519),
-      // which still ships BAKED wording — when the scanner consumes pack
-      // strings (3a scanner-consumer unit), flip this to
-      // packStrings?.scoreboard?.emptyEvidence || the literal.
-      expect(hint.trim()).toBe('Awaiting evidence...');
+      // Shared ×3 key (slice 3a): the scanner shell consumes the pack's
+      // scoreboard.emptyEvidence via applyPackStringsToDom, so the same
+      // assertion holds on every pack — baked literal only for a pack
+      // that declares no sidecar (parity-pack).
+      expect(hint.trim()).toBe(packStrings?.scoreboard?.emptyEvidence || 'Awaiting evidence...');
 
       const options = await gmScanner.scoreboardDropdownOptions();
       expect(options).toEqual([]);
