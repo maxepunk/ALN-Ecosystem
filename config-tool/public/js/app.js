@@ -3,6 +3,7 @@
  * Handles navigation, dirty state, toast notifications, and section lifecycle.
  */
 import * as api from './utils/api.js';
+import { applyPackMoneyFormat } from './utils/formatting.js';
 
 // Section modules loaded lazily
 const sectionModules = {};
@@ -126,6 +127,8 @@ saveBtn.addEventListener('click', async () => {
 function applyPackIdentity(config) {
   const title = config?.pack?.title;
   if (title) document.title = `${title} — Config Tool`;
+  // Slice 3b: the money formatter follows the edited pack's declared spec
+  applyPackMoneyFormat(config?.scoring?.display?.format);
 }
 
 // -- Config Refresh --

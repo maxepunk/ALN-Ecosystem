@@ -1142,11 +1142,25 @@
         // pack ships no game.json (ledger L6 family; found by the
         // dual-pack Tier L gate: tipoff evidence never rendered).
         let evidenceModes = new Set(['detective']);
+        // R-3b-1 money spec (slice 3b): scoring.display.format drives the
+        // ticker's money rendering. Vendored grammar twin of the backend's
+        // gameRules/formatting.js (one '#,###' token + literal affixes);
+        // baked ALN spec when the pack declares none. The toy Tier-L leg
+        // pins this copy's output ('25,000 cr').
+        let MONEY = { prefix: '$', suffix: '' };
+        function applyMoneyFormat(format) {
+            const m = typeof format === 'string' ? format.match(/^([^#]*)#,###([^#]*)$/) : null;
+            if (m) MONEY = { prefix: m[1], suffix: m[2] };
+        }
+        function formatMoney(value) {
+            return MONEY.prefix + (value || 0).toLocaleString('en-US') + MONEY.suffix;
+        }
         async function loadEvidenceModes() {
             try {
                 const res = await fetch('/api/pack/files/game.json', { cache: 'no-store' });
                 if (res.ok) {
                     const game = await res.json();
+                    applyMoneyFormat(game.scoring && game.scoring.display && game.scoring.display.format);
                     const ids = (game.modes || [])
                         .filter(m => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence')
                         .map(m => m.id);
@@ -1325,7 +1339,7 @@
                 return `<span class="ticker-entry" data-team="${escapeHtml(team.teamId)}">
                     <span class="ticker-entry__rank">#${rank}</span>
                     <span class="ticker-entry__name">${escapeHtml(team.teamId)}</span>
-                    <span class="ticker-entry__score">$${team.currentScore.toLocaleString()}</span>
+                    <span class="ticker-entry__score">${escapeHtml(formatMoney(team.currentScore))}</span>
                 </span>
                 <span class="ticker-separator">&bull;</span>`;
             }).join('');

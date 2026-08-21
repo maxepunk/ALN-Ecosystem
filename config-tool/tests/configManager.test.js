@@ -16,7 +16,7 @@ describe('configManager', () => {
       scoring: {
         baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
         typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
-        display: { currency: 'currency-usd' }
+        display: { unit: 'currency-usd', format: '$#,###' }
       }
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
@@ -104,7 +104,7 @@ describe('configManager', () => {
     assert.strictEqual(game.scoring.baseValues['1'], 99999);
     assert.deepStrictEqual(game.scoring.typeMultipliers, { Personal: 1, UNKNOWN: 0 });
     // MERGE: keys this editor doesn't own survive the write
-    assert.deepStrictEqual(game.scoring.display, { currency: 'currency-usd' });
+    assert.deepStrictEqual(game.scoring.display, { unit: 'currency-usd', format: '$#,###' });
     // the rest of the pack rules file is untouched
     assert.strictEqual(game.id, 'test-pack');
     // atomic write leaves no tmp file behind (F-TOOL-10)

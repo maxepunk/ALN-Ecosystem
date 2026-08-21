@@ -2,14 +2,22 @@
  * Shared formatting utilities.
  */
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-});
+// Pack-driven money spec (A3 slice 3b, R-3b-1): the edited pack's
+// scoring.display.format drives rendering — one '#,###' signed
+// grouped-integer token wrapped by literal affixes (grammar twin of
+// backend gameRules/formatting.js). Baked ALN spec fallback; applied by
+// app.js from GET /api/config after each load. Replaces the old
+// hardcoded Intl USD formatter (byte-identical output for the ALN spec).
+let MONEY_SPEC = { prefix: '$', suffix: '' };
+
+export function applyPackMoneyFormat(format) {
+  const m = typeof format === 'string' ? format.match(/^([^#]*)#,###([^#]*)$/) : null;
+  MONEY_SPEC = m ? { prefix: m[1], suffix: m[2] } : { prefix: '$', suffix: '' };
+  return m !== null;
+}
 
 export function formatCurrency(value) {
-  return currencyFormatter.format(value);
+  return MONEY_SPEC.prefix + (value || 0).toLocaleString('en-US') + MONEY_SPEC.suffix;
 }
 
 export function formatFileSize(bytes) {
