@@ -113,7 +113,6 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
       // which still ships BAKED wording — when the scanner consumes pack
       // strings (3a scanner-consumer unit), flip this to
       // packStrings?.scoreboard?.emptyEvidence || the literal.
-      void packStrings; // loaded in beforeAll, consumed at that flip
       expect(hint.trim()).toBe('Awaiting evidence...');
 
       const options = await gmScanner.scoreboardDropdownOptions();
@@ -186,6 +185,13 @@ test.describe('Scoreboard Evidence Navigation (GM-driven)', () => {
     try {
       await scoreboard.goto(orchestratorInfo.url);
       await scoreboard.waitForConnection(10000);
+
+      // Slice 3a vertical, asserted at the E2E layer: the served page's
+      // header is the ACTIVE pack's wording (falls back to the baked
+      // literal when the pack declares no strings sidecar — parity-pack).
+      await expect(sbPage.locator('#scoreboardHeader')).toHaveText(
+        packStrings?.scoreboard?.header || 'CASE FILE: ABOUT LAST NIGHT'
+      );
 
       const gmScanner = await initializeGMScannerWithMode(gmPage, 'networked', 'detective', {
         orchestratorUrl: orchestratorInfo.url,
