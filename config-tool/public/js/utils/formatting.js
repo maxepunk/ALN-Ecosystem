@@ -23,6 +23,16 @@ export function formatCurrency(value) {
   return MONEY_SPEC.prefix + (value || 0).toLocaleString('en-US') + MONEY_SPEC.suffix;
 }
 
+/**
+ * Star construction (slice 3b twin of the scanner's formatStars):
+ * clamped to the pack's rating scale so out-of-range data never throws
+ * a negative-repeat RangeError. Glyphs stay per-surface (Q-3b-2 held).
+ */
+export function formatStars(rating, scale = 5, { filled = '\u2605', empty = null } = {}) {
+  const r = Math.max(0, Math.min(scale, rating || 0));
+  return filled.repeat(r) + (empty ? empty.repeat(scale - r) : '');
+}
+
 export function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';

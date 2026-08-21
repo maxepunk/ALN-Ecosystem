@@ -31,4 +31,13 @@ describe('formatting grammar twin (slice 3b)', () => {
     assert.strictEqual(applyPackMoneyFormat('dollars'), false);
     assert.strictEqual(formatCurrency(25000), '$25,000'); // reset to baked, not stale
   });
+
+  it('formatStars clamps to the scale (never a negative-repeat RangeError)', async () => {
+    const { formatStars } = await mod;
+    assert.strictEqual(formatStars(3), '★★★');
+    assert.strictEqual(formatStars(9), '★★★★★'); // clamped to 5
+    assert.strictEqual(formatStars(0), '');
+    assert.strictEqual(formatStars(2, 3, { empty: '☆' }), '★★☆');
+    assert.doesNotThrow(() => formatStars(-4));
+  });
 });
