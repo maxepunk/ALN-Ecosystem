@@ -128,8 +128,14 @@ class SessionService extends EventEmitter {
         // into live TeamScore instances — the single canonical store that
         // transactionService reads and mutates directly.
 
-        // Restore game clock from session data (if session was active/paused)
+        // Restore game clock from session data (if session was active/paused).
+        // A3 slice 5: inject the ACTIVE pack's phase table BEFORE restore()
+        // so the persisted phaseId can be re-seated (E1 mark-don't-fire;
+        // a stamped-pack mismatch already loud-warns above — the phase
+        // table, like all rules, comes from the pack now on disk)
         if (this.currentSession.gameClock && this.currentSession.status !== 'ended') {
+          const packService = require('./packService');
+          gameClockService.setPhases(packService.getClockRules().phases);
           gameClockService.restore(this.currentSession.gameClock);
           logger.info('Game clock restored from session', {
             sessionId: this.currentSession.id,
@@ -249,11 +255,14 @@ class SessionService extends EventEmitter {
     // Record game start time on the session
     this.currentSession.gameStartTime = new Date().toISOString();
 
-    // Set overtime threshold before starting the clock (A3 slice 2: the
-    // ACTIVE pack's gameClock.overtimeAt; SESSION_TIMEOUT only as the
-    // packless fallback inside getClockRules)
+    // Set overtime threshold + phase table before starting the clock
+    // (A3 slice 2: the ACTIVE pack's gameClock.overtimeAt; SESSION_TIMEOUT
+    // only as the packless fallback inside getClockRules. A3 slice 5: the
+    // declared phases table — inert clock-side when absent/degenerate)
     const packService = require('./packService');
-    gameClockService.setOvertimeThreshold(packService.getClockRules().overtimeAtSeconds);
+    const clockRules = packService.getClockRules();
+    gameClockService.setOvertimeThreshold(clockRules.overtimeAtSeconds);
+    gameClockService.setPhases(clockRules.phases);
 
     // Start the game clock
     gameClockService.start();

@@ -458,7 +458,7 @@ describe('packService', () => {
     });
   });
 
-  describe('phases gate (A3 slice 2 — D1s2: multi-phase clocks refuse until slice 5)', () => {
+  describe('phases gate (A3 slice 5 — the D1s2 refusal retired on schedule; residual coherence/drivability rules)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
     }
@@ -469,7 +469,7 @@ describe('packService', () => {
       writeManifest(tmpDir, minimalManifest());
     });
 
-    it('refuses a multi-phase clock with the named slice-5 retirement', () => {
+    it('ACCEPTS a multi-phase time-started clock (the real toy shape — D1s2 retirement honored)', () => {
       writeGame(tmpDir, {
         ...base(),
         gameClock: {
@@ -480,32 +480,41 @@ describe('packService', () => {
           ],
         },
       });
-      expect(() => packService.activatePack())
-        .toThrow(/CAPABILITY GATE.*gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+      expect(() => packService.activatePack()).not.toThrow();
     });
 
-    it('refuses a single phase that does not start at 0', () => {
+    it('ACCEPTS a single phase starting later than 0 (no phase until its boundary is legal)', () => {
       writeGame(tmpDir, {
         ...base(),
-        gameClock: { phases: [{ id: 'late', label: 'Late', start: { at: 600 } }] },
+        gameClock: { duration: 3600, phases: [{ id: 'late', label: 'Late', start: { at: 600 } }] },
       });
-      expect(() => packService.activatePack())
-        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+      expect(() => packService.activatePack()).not.toThrow();
     });
 
-    it('refuses a trigger-started phase (trigger-starts are slice 5 too)', () => {
+    it('ACCEPTS a trigger-started phase whose event is in the engine trigger vocabulary', () => {
       writeGame(tmpDir, {
         ...base(),
-        gameClock: { phases: [{ id: 'main', label: 'Game', start: { trigger: 'cue:fired' } }] },
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+            { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+          ],
+        },
       });
-      expect(() => packService.activatePack())
-        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+      expect(() => packService.activatePack()).not.toThrow();
     });
 
-    it('is a drivability LIMITATION, never a contradiction (language rule pinned)', () => {
+    it('refuses a duplicate phase id as SELF-CONTRADICTORY (flavor-i language pinned)', () => {
       writeGame(tmpDir, {
         ...base(),
-        gameClock: { phases: [{ id: 'a', start: { at: 0 } }, { id: 'b', start: { at: 10 } }] },
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'twin', label: 'A', start: { at: 0 } },
+            { id: 'twin', label: 'B', start: { at: 600 } },
+          ],
+        },
       });
       let message = '';
       try {
@@ -513,20 +522,82 @@ describe('packService', () => {
       } catch (err) {
         message = err.message;
       }
-      expect(message).toMatch(/not driveable by this engine yet \(see slice 5\)/);
+      expect(message).toMatch(/CAPABILITY GATE.*gameClock\.phases.*duplicate phase id 'twin'/);
+      expect(message).toMatch(/self-contradictory/);
       expect(message).not.toMatch(/incoherent/i);
-      expect(message).not.toMatch(/self-contradictory/i);
     });
 
-    it('a NULL/malformed phase entry refuses with the NAMED message, never a raw TypeError (review pin)', () => {
+    it('refuses a later-declared time phase starting no later than an earlier one (unreachable — flavor-i)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'a', label: 'A', start: { at: 1800 } },
+            { id: 'b', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\['b'\].*not after the previous time-started phase.*self-contradictory/);
+    });
+
+    it('refuses an unknown trigger event as a DRIVABILITY limitation naming the vocabulary (flavor-ii language pinned)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing', start: { at: 0 } },
+            { id: 'x', label: 'X', start: { trigger: 'aliens:landed' } },
+          ],
+        },
+      });
+      let message = '';
+      try {
+        packService.activatePack();
+      } catch (err) {
+        message = err.message;
+      }
+      expect(message).toMatch(/gameClock\.phases\['x'\].*start\.trigger 'aliens:landed'.*not an event this engine emits/);
+      expect(message).toMatch(/not driveable by this engine yet/);
+      expect(message).toMatch(/group:completed/); // the vocabulary is NAMED in the refusal
+      expect(message).not.toMatch(/incoherent/i);
+      expect(message).not.toMatch(/self-contradictory/);
+    });
+
+    it("refuses 'phase:changed' as a phase-start trigger (phase machinery cannot start on its own event)", () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing', start: { at: 0 } },
+            { id: 'x', label: 'X', start: { trigger: 'phase:changed' } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/start\.trigger 'phase:changed'.*not an event this engine emits/);
+    });
+
+    it('a NULL/malformed phase entry refuses with a NAMED message, never a raw TypeError (review pin carried over)', () => {
       writeGame(tmpDir, { ...base(), gameClock: { phases: [null] } });
       expect(() => packService.activatePack())
-        .toThrow(/gameClock\.phases.*not driveable by this engine yet \(see slice 5\)/);
+        .toThrow(/gameClock\.phases\[0\].*malformed phase entry/);
 
       packService._resetForTesting();
-      writeGame(tmpDir, { ...base(), gameClock: { phases: [{ id: 'x', start: null }] } });
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [{ id: 'x', label: 'X', start: null }] } });
       expect(() => packService.activatePack())
-        .toThrow(/not driveable by this engine yet \(see slice 5\)/);
+        .toThrow(/gameClock\.phases\[0\].*malformed phase entry/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'x', label: 'X', start: { at: 0, trigger: 'group:completed' } }] },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\['x'\].*exactly one of \{at: seconds\} or \{trigger: event\}/);
     });
 
     it('accepts the degenerate single-phase-at-0 (the ALN shape)', () => {
@@ -1148,31 +1219,50 @@ describe('packService', () => {
       expect(logger.warn.mock.calls.some(([m]) => m.includes('LEGACY SCORING TABLES ACTIVE'))).toBe(true);
     });
 
-    it('getClockRules serves the pack clock in seconds (toy: 3600 duration, 3300 overtime)', () => {
+    it('getClockRules serves the pack clock in seconds + the declared phases table (toy)', () => {
       process.env.PACK_PATH = TOY_PACK;
-      expect(packService.getClockRules()).toEqual({ durationSeconds: 3600, overtimeAtSeconds: 3300 });
+      expect(packService.getClockRules()).toEqual({
+        durationSeconds: 3600,
+        overtimeAtSeconds: 3300,
+        phases: expect.any(Array), // the toy's declared table, served verbatim
+      });
+      const { phases } = packService.getClockRules();
+      expect(phases[0]).toEqual({ id: expect.any(String), label: expect.any(String), start: expect.any(Object) });
     });
 
-    it('getClockRules: ALN declares overtime == duration (7200/7200)', () => {
+    it('getClockRules: ALN declares overtime == duration (7200/7200) + its degenerate phase table', () => {
       delete process.env.PACK_PATH;
-      expect(packService.getClockRules()).toEqual({ durationSeconds: 7200, overtimeAtSeconds: 7200 });
+      expect(packService.getClockRules()).toEqual({
+        durationSeconds: 7200,
+        overtimeAtSeconds: 7200,
+        phases: [{ id: 'main', label: 'Game', start: { at: 0 } }],
+      });
     });
 
-    it('getClockRules: absent overtimeAt defaults to the declared duration', () => {
+    it('getClockRules: absent overtimeAt defaults to the declared duration; absent phases serve null', () => {
       process.env.PACK_PATH = tmpDir;
       writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'clk', gameClock: { duration: 500 } });
-      expect(packService.getClockRules()).toEqual({ durationSeconds: 500, overtimeAtSeconds: 500 });
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 500, overtimeAtSeconds: 500, phases: null });
     });
 
-    it('getClockRules: a PACKLESS checkout falls back to SESSION_TIMEOUT with a LOUD warn (once)', () => {
+    it('getClockRules: a PACKLESS checkout falls back to SESSION_TIMEOUT with a LOUD warn (once); phases null', () => {
       process.env.PACK_PATH = tmpDir; // empty dir
       const rules = packService.getClockRules();
       packService.getClockRules();
       const config = require('../../../src/config');
       expect(rules.durationSeconds).toBe(config.session.sessionTimeout * 60);
       expect(rules.overtimeAtSeconds).toBe(rules.durationSeconds);
+      expect(rules.phases).toBeNull();
       const warns = logger.warn.mock.calls.filter(([m]) => m.includes('LEGACY CLOCK CONFIG ACTIVE'));
       expect(warns).toHaveLength(1);
+    });
+
+    it('getClockRules serves phases as a DEFENSIVE COPY (mutating the result cannot poison later reads)', () => {
+      delete process.env.PACK_PATH;
+      const first = packService.getClockRules();
+      first.phases[0].id = 'vandalized';
+      first.phases[0].start.at = 9999;
+      expect(packService.getClockRules().phases[0]).toEqual({ id: 'main', label: 'Game', start: { at: 0 } });
     });
 
     it('DRIFT TRIPWIRE: the baked legacy tables mirror the real ALN game.json scoring block', () => {

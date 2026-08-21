@@ -474,6 +474,19 @@ describe('SessionService - Business Logic (Layer 1 Unit Tests)', () => {
       expect(setOvertimeThresholdSpy).toHaveBeenCalledWith(7200);
     });
 
+    it('startGame injects the pack phase table into the clock (A3 slice 5)', async () => {
+      const gameClockService = require('../../../src/services/gameClockService');
+      const packService = require('../../../src/services/packService');
+      const setPhasesSpy = jest.spyOn(gameClockService, 'setPhases');
+
+      await sessionService.createSession({ name: 'Phases Test', teams: ['Team Alpha'] });
+      await sessionService.startGame();
+
+      // Injected VERBATIM from getClockRules (ALN in this checkout: the
+      // degenerate main@0 table — inert clock-side, but the seam is the pin)
+      expect(setPhasesSpy).toHaveBeenCalledWith(packService.getClockRules().phases);
+    });
+
     it('should emit session:overtime when game clock exceeds threshold', async () => {
       const gameClockService = require('../../../src/services/gameClockService');
       const handler = jest.fn();

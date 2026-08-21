@@ -29,7 +29,7 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
     heldItems: [],
     playerScans: [],
     environment: { bluetooth: {}, audio: {}, lighting: {} },
-    gameClock: { status: 'stopped', elapsed: 0, expectedDuration: 7200 },
+    gameClock: { status: 'stopped', elapsed: 0, expectedDuration: 7200, phase: null },
     cueEngine: { loaded: false, cues: [], activeCues: [], disabledCues: [] },
     music: { connected: false, state: 'stopped', volume: 50, playlists: [] },
     sound: { playing: [] },

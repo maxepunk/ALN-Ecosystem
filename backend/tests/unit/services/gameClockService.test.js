@@ -172,7 +172,8 @@ describe('GameClockService', () => {
         status: 'stopped',
         elapsed: 0,
         startTime: null,
-        totalPausedMs: 0
+        totalPausedMs: 0,
+        phase: null
       });
     });
 
@@ -313,6 +314,200 @@ describe('GameClockService', () => {
       jest.advanceTimersByTime(6000);
 
       expect(handler).toHaveBeenCalledTimes(2); // Should fire again after reset
+    });
+  });
+
+  // ── Phases (A3 slice 5 — R-5-1: derived "latest satisfied start") ──
+
+  describe('phases (A3 slice 5)', () => {
+    const TOY_PHASES = [
+      { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+      { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+    ];
+
+    it('is INERT with no declared table — phase stays null forever', () => {
+      gameClockService.start();
+      jest.advanceTimersByTime(5000);
+      expect(gameClockService.getState().phase).toBeNull();
+    });
+
+    it('is INERT with a degenerate single-phase table (B11: ALN byte-identical)', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases([{ id: 'main', label: 'Game', start: { at: 0 } }]);
+      gameClockService.start();
+      jest.advanceTimersByTime(10000);
+      expect(gameClockService.getState().phase).toBeNull();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('seeds the initial phase SILENTLY at start() — no phase:changed', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.start();
+      expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('a first phase starting later than 0 means NO phase until its boundary', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases([
+        { id: 'late', label: 'Late', start: { at: 300 } },
+        { id: 'later', label: 'Later', start: { at: 600 } },
+      ]);
+      gameClockService.start();
+      expect(gameClockService.getState().phase).toBeNull();
+      jest.advanceTimersByTime(300000);
+      expect(gameClockService.getState().phase).toEqual({ id: 'late', label: 'Late' });
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ phaseId: 'late', previousPhaseId: null, via: 'time' })
+      );
+    });
+
+    it('crosses a time boundary ONCE with the full payload', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.start();
+      jest.advanceTimersByTime(1800000);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith({
+        phaseId: 'the-job',
+        label: 'The Job',
+        previousPhaseId: 'casing',
+        elapsed: expect.any(Number),
+        via: 'time',
+      });
+      jest.advanceTimersByTime(60000); // well past — never re-fires
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(gameClockService.getState().phase).toEqual({ id: 'the-job', label: 'The Job' });
+    });
+
+    it('a trigger-started phase advances on its observed event (via trigger)', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+      gameClockService.start();
+      jest.advanceTimersByTime(10000);
+      gameClockService.handlePhaseTrigger('group:completed');
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ phaseId: 'the-getaway', previousPhaseId: 'casing', via: 'trigger' })
+      );
+      // Dedup: the same trigger observed again is a no-op
+      gameClockService.handlePhaseTrigger('group:completed');
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('trigger observation is GATED on a running clock (paused events are ignored, not deferred)', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+      gameClockService.start();
+      gameClockService.pause();
+      gameClockService.handlePhaseTrigger('group:completed');
+      gameClockService.resume();
+      expect(handler).not.toHaveBeenCalled();
+      expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+      // Observed while running → advances
+      gameClockService.handlePhaseTrigger('group:completed');
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('unknown events never advance anything', () => {
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+      gameClockService.start();
+      gameClockService.handlePhaseTrigger('transaction:accepted');
+      expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+    });
+
+    it('SKIP-FORWARD: a trigger landing past un-entered phases emits ONCE for the landing', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+      gameClockService.start();
+      jest.advanceTimersByTime(10000); // still in casing
+      gameClockService.handlePhaseTrigger('group:completed');
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ phaseId: 'the-getaway', previousPhaseId: 'casing', via: 'trigger' })
+      );
+      // the-job's 1800s boundary later must NOT regress or re-fire
+      jest.advanceTimersByTime(1800000);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(gameClockService.getState().phase).toEqual({ id: 'the-getaway', label: 'The Getaway' });
+    });
+
+    it('toPersistence() carries the current phaseId (null when none)', () => {
+      expect(gameClockService.toPersistence().phaseId).toBeNull();
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.start();
+      expect(gameClockService.toPersistence().phaseId).toBe('casing');
+    });
+
+    it('restore() re-derives a TIME boundary crossed during downtime WITHOUT emitting (E1)', () => {
+      const handler = jest.fn();
+      gameClockService.on('phase:changed', handler);
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.restore({
+        startTime: Date.now() - 2000000, // elapsed ~2000s — past the-job@1800
+        pausedAt: null,
+        totalPausedMs: 0,
+        phaseId: 'casing',
+      });
+      expect(handler).not.toHaveBeenCalled();
+      expect(gameClockService.getState().phase).toEqual({ id: 'the-job', label: 'The Job' });
+    });
+
+    it('restore() keeps a persisted TRIGGER phase that time alone cannot re-derive', () => {
+      gameClockService.setPhases([
+        { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+        { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+        { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+      ]);
+      gameClockService.restore({
+        startTime: Date.now() - 100000, // elapsed ~100s — time says casing
+        pausedAt: null,
+        totalPausedMs: 0,
+        phaseId: 'the-getaway',
+      });
+      expect(gameClockService.getState().phase).toEqual({ id: 'the-getaway', label: 'The Getaway' });
+    });
+
+    it('restore() with a phaseId unknown to the active table warns and recomputes from time', () => {
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.restore({
+        startTime: Date.now() - 100000, // elapsed ~100s
+        pausedAt: null,
+        totalPausedMs: 0,
+        phaseId: 'ghost-phase',
+      });
+      expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+    });
+
+    it('setPhases() resets phase state between games', () => {
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.start();
+      expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+      gameClockService.stop();
+      gameClockService.setPhases(null);
+      expect(gameClockService.getState().phase).toBeNull();
     });
   });
 
