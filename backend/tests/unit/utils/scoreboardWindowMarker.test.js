@@ -87,6 +87,31 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(packService.getStrings().scoreboard.header).toBe('CASE FILE: ABOUT LAST NIGHT');
   });
 
+  it('script-context breakout is neutralized: injected JSON never contains a literal </script>', () => {
+    // JSON.stringify does NOT escape '<' — a pack string (or env value)
+    // containing '</script>' would close the inline script block in the
+    // served page and inject markup. The injections must emit \u003c.
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const payload = 'x</script><script>alert(1)</script>';
+    const spy = jest.spyOn(packService, 'getStrings')
+      .mockReturnValue({ scoreboard: { header: payload } });
+    const original = config.security.adminPassword;
+    try {
+      config.security.adminPassword = payload;
+      const html = renderScoreboardHtml();
+      expect(html).not.toContain('</script><script>alert(1)');
+      expect(html).toContain('\\u003c/script>');
+      // Still valid JSON-in-JS: parsing the injected strings object back
+      // yields the original value (escaping changed encoding, not content)
+      const m = html.match(/const PACK_STRINGS = (.*);/);
+      expect(JSON.parse(m[1]).scoreboard.header).toBe(payload);
+    } finally {
+      config.security.adminPassword = original;
+      spy.mockRestore();
+    }
+  });
+
   it('renderScoreboardHtml injects the CONFIG password as a JSON string (quote-safe)', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const original = config.security.adminPassword;

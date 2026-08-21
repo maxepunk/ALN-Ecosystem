@@ -145,6 +145,18 @@ router.get('/assets/audio/:file', (req, res) => {
  * fresh per request (page loads are rare; no cache needed).
  * @returns {string} rendered HTML
  */
+// JSON.stringify does NOT escape '<' — a value containing '</script>'
+// would close the served page's inline script block and inject markup
+// (the pack strings are semi-trusted pack data; doctrine treats them
+// defensively). < (and the JS-line-separator pair) are equivalent
+// inside a JSON string literal, so the parsed content is unchanged.
+function jsonForScript(value) {
+  return JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll(' ', '\\u2028')
+    .replaceAll(' ', '\\u2029');
+}
+
 function renderScoreboardHtml() {
   const config = require('../config');
   const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
@@ -152,13 +164,14 @@ function renderScoreboardHtml() {
     .replaceAll('%%WINDOW_MARKER%%', config.display.scoreboardWindowMarker)
     // Serve-time credential injection (slice 3a pre-fix 2, matrix 2.34):
     // the placeholder is QUOTED in the page ('%%ADMIN_PASSWORD%%'), so the
-    // replacement includes the quotes via JSON.stringify — quote-safe for
-    // any env value. Same delivery to the same LAN clients as the old
-    // baked literal; the source just moved out of git into env/config.
-    .replaceAll("'%%ADMIN_PASSWORD%%'", JSON.stringify(config.security.adminPassword))
+    // replacement includes the quotes via jsonForScript — quote-safe AND
+    // script-context-safe for any env value. Same delivery to the same
+    // LAN clients as the old baked literal; the source just moved out of
+    // git into env/config.
+    .replaceAll("'%%ADMIN_PASSWORD%%'", jsonForScript(config.security.adminPassword))
     // Pack-declared display strings (A3 slice 3a): the activation
     // snapshot (or null — page falls back to baked wording per key).
-    .replaceAll("'%%PACK_STRINGS%%'", JSON.stringify(require('../services/packService').getStrings()));
+    .replaceAll("'%%PACK_STRINGS%%'", jsonForScript(require('../services/packService').getStrings()));
 }
 
 /**
