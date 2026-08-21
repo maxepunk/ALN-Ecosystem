@@ -63,7 +63,8 @@
       "Business": 4,
       "Party": 2,
       "Technical": 6,
-      "UNKNOWN": 0
+      "UNKNOWN": 0,
+      "Contraband": 3
     },
     "display": {
       "unit": "credits",

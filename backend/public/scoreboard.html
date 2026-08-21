@@ -629,11 +629,11 @@
         }
 
         /* Detective mode - hide score ticker */
-        body.mode-detective .score-ticker {
+        body.mode-evidence .score-ticker {
             display: none;
         }
 
-        body.mode-detective .evidence-content {
+        body.mode-evidence .evidence-content {
             height: calc(100vh - var(--header-height));
             padding-bottom: var(--content-padding);
         }
@@ -975,11 +975,15 @@
                 }, { once: true });
             }
 
-            // View mode (detective hides ticker)
+            // Evidence view (hides the ticker). Surface-keyed since 3c:
+            // any declared mode publishing to scoreboard-evidence
+            // qualifies — 'detective' stays the pre-modes baked alias;
+            // pack ids are re-evaluated in loadEvidenceModes() once the
+            // mode table arrives.
             const modeParam = urlParams.get('mode');
             if (modeParam === 'detective') {
-                document.body.classList.add('mode-detective');
-                console.log('[Scoreboard] Detective mode - ticker hidden');
+                document.body.classList.add('mode-evidence');
+                console.log('[Scoreboard] Evidence view - ticker hidden');
             }
         }
 
@@ -1168,6 +1172,14 @@
                     if (ids.length > 0) {
                         evidenceModes = new Set(ids);
                         console.log(`[Scoreboard] Evidence modes from pack: ${ids.join(', ')}`);
+                        // 3c: the ?mode= evidence view accepts ANY declared
+                        // evidence-surface id (pack-open) — re-evaluate now
+                        // that the table is here.
+                        const modeParam = new URLSearchParams(window.location.search).get('mode');
+                        if (modeParam && evidenceModes.has(modeParam)) {
+                            document.body.classList.add('mode-evidence');
+                            console.log('[Scoreboard] Evidence view - ticker hidden (surface-keyed)');
+                        }
                         return;
                     }
                 }
