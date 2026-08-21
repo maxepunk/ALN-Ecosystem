@@ -42,6 +42,14 @@ Unit pins moving in lockstep: `initializationSteps.test.js:18/31/34/45` + `uiMan
 
 - **Q-3c-1 — theme.json scope** (overlaps 3a's Q5 scoreboard-theming-depth and 3b's Q-3b-2 star glyphs): should packs declare visual identity (mode colors, type colors, glyphs, fonts) via the `theme` pointer? The pointer exists with zero consumers and no canonical-filename pin (the `strings` lesson says pin it before consuming). Recommend: 3c ships the SEMANTIC layer only; theme.json is designed once, with Q5 + Q-3b-2 folded in, as its own unit after the owner rules on theming depth.
 
-## 5. Estimate
+## 5. Execution record (2026-08-21 — decision-free core COMPLETE)
+
+Built same-day in landing order: **scanner lockstep commit** (ALNScanner `a05afc2`: modeClassNames + slugifyId + three emitters + static seed + CSS re-key + orphan deletion + type-badge floor + lockstep/new pins); **scoreboard surface-keyed view + toy divergent type** (parent `fd636bd`: `body.mode-evidence` + two-site branch, toy `Contraband` ×3 with `alibi01` retyped, NEW dual-pack flow-23 pin — a toy `?mode=` was a silent no-op before). Flow 23 verified dual-pack at the step.
+
+**Adversarial review round 1** (workflow: 4 lenses → strict refuters; 13 agents / 0 errors; 9 deduped → **8 confirmed / 1 refuted → 4 distinct defects, all fixed same-day** — ALNScanner `d407f19`, parent pin `fd04970`): (A, MAJOR, three lenses independently + computed-style verified) the bare re-keyed pill rules leaked the pill's glow + white text onto Game Activity status bars and timeline rows, which now carry the same semantic classes — pill visuals SCOPED to `.mode-indicator.mode-*`; (B) a schema-legal mode id `scoring`/`evidence` FORGED the semantic class and `indicator`/`segment` collided with structural classes — reserved slugs suppress the id class, keeping only true semantics; (C, MAJOR test) the timeline claim-row emission was unpinned despite the test header's claim (revert survived the whole suite) — pinned; (D) the type-badge floor had no pin — CSS-source tripwires added (pill scoping, floor, re-keyed activity rules; jsdom cannot compute the cascade).
+
+**Close gate (final heads parent `fd04970` / ALNScanner `d407f19`, exit codes direct):** backend 2411 + fresh ratchet + lint; integration 342; scanner 1525 + ratchet (slugify.js at 100%) + L2 50 ×2; dual-pack Tier L **ALN 113P / 0F / 0-flaky** + **toy 114P / 0F / 0-flaky** (both +1: the surface-keyed view pin); scanner CI runs 88 + 89 green. **Remaining 3c work = Q-3c-1 only (held for owner).**
+
+## 6. Estimate
 
 ~1-2 focused sessions for the decision-free core. The scanner commit is the big one (emitters + CSS + pins in lockstep); the scoreboard and fixture steps are small.
