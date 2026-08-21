@@ -23,6 +23,7 @@ const TRIGGER_EVENTS = {
   'music:playback:changed': { label: 'Music Playback Changed', fields: ['state'] },
   'music:playlist:changed': { label: 'Music Playlist Changed', fields: ['playlistId', 'playlistName', 'shuffle', 'loop'] },
   'gameclock:started': { label: 'Game Clock Started', fields: ['gameStartTime'] },
+  'phase:changed': { label: 'Game Phase Changed', fields: ['phaseId', 'previousPhaseId', 'label', 'elapsed', 'via'] },
 };
 
 const SINK_OPTIONS = ['(default)', 'hdmi', 'bluetooth'];

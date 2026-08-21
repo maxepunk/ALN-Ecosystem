@@ -99,6 +99,30 @@ describe('standingEvaluator', () => {
       expect(() => parseClockTime('not-a-time')).toThrow(/invalid/i);
     });
   });
+
+  describe("ENGINE_EVENT_NORMALIZERS['phase:changed'] (A3 slice 5 / B11)", () => {
+    it('normalizes phase:changed to flat condition fields (phaseId eq ... authorable)', () => {
+      const { EVENT_NORMALIZERS } = require('../../../../src/services/cue/standingEvaluator');
+      const normalizer = EVENT_NORMALIZERS['phase:changed'];
+      expect(normalizer).toBeDefined();
+
+      const result = normalizer({
+        phaseId: 'the-job',
+        previousPhaseId: 'casing',
+        label: 'The Job',
+        elapsed: 1800,
+        via: 'time',
+      });
+
+      expect(result).toEqual({
+        phaseId: 'the-job',
+        previousPhaseId: 'casing',
+        label: 'The Job',
+        elapsed: 1800,
+        via: 'time',
+      });
+    });
+  });
 });
 
 describe('cueVocabulary (game-event normalizers)', () => {
