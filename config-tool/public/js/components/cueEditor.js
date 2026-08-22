@@ -7,7 +7,7 @@ import { renderConditionBuilder } from './conditionBuilder.js';
 import { renderCommandList } from './commandForm.js';
 import { renderTimelineView } from './timelineView.js';
 
-const TRIGGER_EVENTS = {
+export const TRIGGER_EVENTS = {
   'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'memoryType', 'valueRating', 'groupId', 'teamScore', 'hasGroupBonus'] },
   'group:completed': { label: 'Group Completed', fields: ['teamId', 'groupId', 'multiplier', 'bonus'] },
   'video:loading': { label: 'Video Loading', fields: ['tokenId'] },

@@ -78,6 +78,12 @@ class GameClockService extends EventEmitter {
     // while paused; after 'stopped' it counts wall-clock again)
     const elapsed = this.getElapsed();
     this.status = 'stopped';
+    // A3 slice 5 (review A): clear phase state BEFORE the stopped push —
+    // otherwise the ended game's phase rides this push and every sync:full
+    // through the NEXT session's whole setup period (the contract says
+    // phase is null when the clock has not started)
+    this.currentPhaseIndex = -1;
+    this._phaseTriggerFired.clear();
     // F-SHOW-13: without an event, no gameclock service:state push happens at
     // session end and the GM panel keeps showing a running clock
     this.emit('gameclock:stopped', { elapsed });

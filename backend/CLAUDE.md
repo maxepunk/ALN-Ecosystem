@@ -166,7 +166,7 @@ Domain Event (Service) → Listener (broadcasts.js) → WebSocket Broadcast
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
 - `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`, `routing:error`, `sink:added`, `sink:removed`, `ducking:changed`, `ducking:failed`
 - `lightingService`: `scene:activated`, `scenes:refreshed`
-- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`
+- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`, `phase:changed` (A3 slice 5 — pack-declared phase boundary crossed; cue trigger + gameclock service:state push)
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
 - `musicService`: `playback:changed`, `volume:changed`, `track:changed`, `position:changed`, `playlist:changed`, `playlists:reloaded`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
@@ -496,7 +496,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 
 **`sync:full` Phase 2 Additions:**
 - `music`: `{connected, state, volume, track, playlist, playlists, pausedByGameClock}` via `buildMusicState()`
-- `gameClock`: `{status, elapsed, expectedDuration}` via `buildGameClockState()`
+- `gameClock`: `{status, elapsed, expectedDuration, phase}` via `buildGameClockState()` (`phase` is required-nullable `{id, label}|null` since A3 slice 5 — the pack-declared current phase; null for degenerate/absent declarations)
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
 **`sync:full` Phase 4 Additions:**

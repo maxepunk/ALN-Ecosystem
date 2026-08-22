@@ -80,6 +80,21 @@ class SessionService extends EventEmitter {
         overtimeDuration: 0 // Will be calculated by listener
       });
     }, 'sessionService->gameClockService:gameclock:overtime');
+
+    // A3 slice 5 (review D): a trigger-landed phase must not wait for the
+    // next unrelated session write to be persisted — a crash in that window
+    // restores a STALE phaseId (regressing the live game) and, because the
+    // trigger-fired set is empty after restore, a repeat of the trigger
+    // re-lands the phase and RE-FIRES its cues. _persistCurrentSession
+    // refreshes session.gameClock from the live clock, so a queued save is
+    // the whole fix. (Time-started phases self-heal on restore via the
+    // elapsed derivation — this listener still persists them promptly.)
+    listenerRegistry.addTrackedListener(gameClockService, 'phase:changed', () => {
+      if (!this.currentSession) return;
+      this.saveCurrentSession().catch((err) => {
+        logger.error('Failed to persist session after phase change', { error: err.message });
+      });
+    }, 'sessionService->gameClockService:phase:changed');
   }
 
   /**

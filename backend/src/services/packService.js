@@ -369,22 +369,46 @@ function _gateCheck(manifest, gameConfig) {
     // machinery's own event). Absent/empty phases declare nothing and pass.
     const phases = gameConfig.gameClock && gameConfig.gameClock.phases;
     if (Array.isArray(phases) && phases.length > 0) {
+      // A declared phases table needs a usable duration or getClockRules'
+      // legacy branch silently discards it (review C: gate-validated phases
+      // running phase-less would be exactly the silently-absorbed class).
+      // Schema already requires duration whenever gameClock exists — only
+      // hand-authored PACK_PATH packs can reach this.
+      const declaredDuration = gameConfig.gameClock.duration;
+      if (!(typeof declaredDuration === 'number' && declaredDuration > 0)) {
+        problems.push(
+          'gameClock.phases declared without a usable gameClock.duration — the clock cannot serve a ' +
+          'phase table it will never run (schema requires duration); self-contradictory'
+        );
+      }
       // Lazy require: standingEvaluator is a pure evaluation table (logger +
       // gameRules/cueVocabulary only) — acyclic; lazy keeps load order moot.
       // eslint-disable-next-line global-require
       const { EVENT_NORMALIZERS } = require('./cue/standingEvaluator');
+      // Excluded from the phase-trigger vocabulary (review B):
+      // - phase:changed: phase machinery cannot start on its own event
+      // - session:created: its ONLY emission happens while the clock is
+      //   stopped (createSession precedes startGame), and handlePhaseTrigger
+      //   gates on a running clock — a phase declared on it is silently dead,
+      //   the exact class this gate exists to refuse
+      const PHASE_TRIGGER_EXCLUDED = new Set(['phase:changed', 'session:created']);
       const triggerVocabulary = new Set(
-        Object.keys(EVENT_NORMALIZERS).filter(name => name !== 'phase:changed')
+        Object.keys(EVENT_NORMALIZERS).filter(name => !PHASE_TRIGGER_EXCLUDED.has(name))
       );
       const seenIds = new Set();
       let latestAt = null;
       phases.forEach((p, i) => {
         // Null/malformed entries refuse with a named message, never a raw
-        // TypeError (carried over from the D1s2 gate — review finding)
-        if (!p || typeof p !== 'object' || typeof p.id !== 'string' || typeof p.label !== 'string'
+        // TypeError (carried over from the D1s2 gate — review finding).
+        // Non-EMPTY id/label enforced here for schema-bypassing packs
+        // (review E: an id '' persists as phaseId '' which restore's
+        // truthiness check reads as absent — the E1 re-seat silently fails)
+        if (!p || typeof p !== 'object'
+            || typeof p.id !== 'string' || p.id.length === 0
+            || typeof p.label !== 'string' || p.label.length === 0
             || !p.start || typeof p.start !== 'object') {
           problems.push(
-            `gameClock.phases[${i}] — malformed phase entry (id, label, and start are required); self-contradictory`
+            `gameClock.phases[${i}] — malformed phase entry (non-empty id, non-empty label, and start are required); self-contradictory`
           );
           return;
         }
@@ -396,6 +420,16 @@ function _gateCheck(manifest, gameConfig) {
         seenIds.add(p.id);
         const { at, trigger } = p.start;
         if (typeof at === 'number' && trigger === undefined) {
+          // Finite non-negative only (review F): schema says integer >= 0,
+          // but hand-authored packs can carry -300 (satisfied before the
+          // game starts, reordering the initial phase) or 1e999 → Infinity
+          // (a phase the engine can literally never enter)
+          if (!Number.isFinite(at) || at < 0) {
+            problems.push(
+              `gameClock.phases['${p.id}'] — start.at ${at} is not a finite non-negative number of seconds; self-contradictory`
+            );
+            return;
+          }
           if (latestAt !== null && at <= latestAt) {
             problems.push(
               `gameClock.phases['${p.id}'] — start.at ${at} is not after the previous time-started phase (${latestAt}); ` +
@@ -407,7 +441,8 @@ function _gateCheck(manifest, gameConfig) {
           if (!triggerVocabulary.has(trigger)) {
             problems.push(
               `gameClock.phases['${p.id}'] — start.trigger '${trigger}' is not an event this engine emits ` +
-              `(engine trigger vocabulary: ${[...triggerVocabulary].sort().join(', ')}); ` +
+              'while the clock runs ' +
+              `(phase-trigger vocabulary: ${[...triggerVocabulary].sort().join(', ')}); ` +
               'not driveable by this engine yet'
             );
           }

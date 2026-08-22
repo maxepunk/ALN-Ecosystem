@@ -501,6 +501,19 @@ describe('GameClockService', () => {
       expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
     });
 
+    it('stop() clears the phase BEFORE the stopped push — an ended game\'s phase never leaks into the next session\'s setup (review A)', () => {
+      const pushes = [];
+      gameClockService.on('gameclock:stopped', () => pushes.push(gameClockService.getState().phase));
+      gameClockService.setPhases(TOY_PHASES);
+      gameClockService.start();
+      expect(gameClockService.getState().phase).toEqual({ id: 'casing', label: 'Casing the Joint' });
+      gameClockService.stop();
+      // The state carried by the stopped push itself is already phase-null
+      expect(pushes).toEqual([null]);
+      // ...and it STAYS null through the next session's setup (no setPhases yet)
+      expect(gameClockService.getState().phase).toBeNull();
+    });
+
     it('setPhases() resets phase state between games', () => {
       gameClockService.setPhases(TOY_PHASES);
       gameClockService.start();
