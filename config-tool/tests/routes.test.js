@@ -31,10 +31,12 @@ describe('routes (HTTP layer)', () => {
       path.join(tmpDir, '.env'),
       'PORT=3000\nHOST=0.0.0.0\nADMIN_PASSWORD=super-secret\nJWT_SECRET=jwt-secret-value\nHOME_ASSISTANT_TOKEN=ha-token-value\nEMPTY_TOKEN=\nNOTION_API_KEY=notion-key-value\nMPD_PASS=mpd-pass-value\nSSL_KEY_PATH=/etc/ssl/server.key\n'
     );
-    fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
-      version: '1.0',
-      baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
-      typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
+    fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+      kind: 'game', schemaVersion: 2, id: 'test-pack',
+      scoring: {
+        baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
+        typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
+      },
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
     fs.writeFileSync(path.join(tmpDir, 'routing.json'), JSON.stringify({
@@ -50,7 +52,7 @@ describe('routes (HTTP layer)', () => {
 
     const configManager = new ConfigManager({
       envPath: path.join(tmpDir, '.env'),
-      scoringPath: path.join(tmpDir, 'scoring-config.json'),
+      gamePath: path.join(tmpDir, 'game.json'),
       cuesPath: path.join(tmpDir, 'cues.json'),
       routingPath: path.join(tmpDir, 'routing.json'),
       tokensPath: path.join(tmpDir, 'tokens.json'),
@@ -69,15 +71,18 @@ describe('routes (HTTP layer)', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('GET /api/config returns env, scoring, cues, and routing', async () => {
+  it('GET /api/config returns env, scoring, cues, routing, and pack identity', async () => {
     const res = await request(app).get('/api/config').expect(200);
     assert.deepStrictEqual(
       Object.keys(res.body).sort(),
-      ['cues', 'env', 'routing', 'scoring']
+      ['cues', 'env', 'pack', 'routing', 'scoring']
     );
     assert.strictEqual(res.body.env.PORT, '3000');
     assert.strictEqual(res.body.scoring.baseValues['1'], 10000);
     assert.deepStrictEqual(res.body.cues, { cues: [] });
+    // Pack identity (slice 3a): the SPA derives its title + mode labels
+    // from here instead of baked ALN wording.
+    assert.strictEqual(res.body.pack.id, 'test-pack');
   });
 
   it('PUT /api/config/scoring with valid body writes the scoring file', async () => {
@@ -88,8 +93,8 @@ describe('routes (HTTP layer)', () => {
     };
     const res = await request(app).put('/api/config/scoring').send(body).expect(200);
     assert.deepStrictEqual(res.body, { success: true });
-    const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
-    assert.strictEqual(onDisk.baseValues['1'], 99999);
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    assert.strictEqual(onDisk.scoring.baseValues['1'], 99999);
   });
 
   describe('schema validation on writers (F-TOOL-04)', () => {
@@ -97,8 +102,8 @@ describe('routes (HTTP layer)', () => {
       const res = await request(app).put('/api/config/scoring').send({}).expect(400);
       assert.ok(Array.isArray(res.body.details) && res.body.details.length > 0);
       // file untouched
-      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
-      assert.strictEqual(onDisk.baseValues['1'], 10000);
+      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+      assert.strictEqual(onDisk.scoring.baseValues['1'], 10000);
     });
 
     it('PUT /api/config/scoring rejects non-numeric base values', async () => {

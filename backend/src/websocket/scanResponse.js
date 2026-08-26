@@ -4,8 +4,27 @@
  * Builds the scan-result payload returned by transactionService.processScan
  * and forwarded to scanners as transaction:result (adminEvents) or the HTTP
  * scan response. Pure: takes the video status as plain values — the caller
- * (transactionService) injects videoQueueService state.
+ * (transactionService) injects videoQueueService state. (The award-message
+ * wording reads the activation-frozen pack strings snapshot — config, not
+ * state, same standing as renderScoreboardHtml's injection.)
  */
+
+const { getStrings } = require('../services/packService');
+
+// Baked ALN wording, `{points}` placeholder. The ALN sidecar declares it
+// VERBATIM (drift-pinned in scanResponse.test.js) — packs reword it via
+// strings.scoring.awardMessage (slice 3a); everything else in this file
+// stays engine chrome (A7 duplicate/rejection messages are
+// contract-adjacent, census §2 out-of-pack list).
+const BAKED_AWARD_MESSAGE = 'Token scanned successfully. {points} points awarded.';
+
+function awardMessage(points) {
+  const declared = getStrings()?.scoring?.awardMessage;
+  const template = (typeof declared === 'string' && declared.length > 0)
+    ? declared
+    : BAKED_AWARD_MESSAGE;
+  return template.replaceAll('{points}', String(points));
+}
 
 /**
  * Human-readable result message for a processed transaction.
@@ -15,7 +34,7 @@
  */
 function responseMessage(transaction, claimedBy) {
   if (transaction.isAccepted()) {
-    return `Token scanned successfully. ${transaction.points} points awarded.`;
+    return awardMessage(transaction.points);
   } else if (transaction.isDuplicate()) {
     if (claimedBy) {
       return `Token already claimed by ${claimedBy}`;

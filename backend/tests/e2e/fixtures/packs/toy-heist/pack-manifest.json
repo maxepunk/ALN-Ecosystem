@@ -1,0 +1,45 @@
+{
+  "kind": "pack-manifest",
+  "schemaVersion": 2,
+  "packId": "midnight-heist",
+  "version": "0.1.0",
+  "contentHash": "sha256:b166f6652d61e8ab37170dbd3b4cf594267dfba651027b08f57886fc2b6fa0df",
+  "engine": {
+    "minVersion": "3.0.0"
+  },
+  "files": [
+    {
+      "path": "game.json",
+      "role": "game",
+      "sha1": "21a7bcf2de9a655aa02c77f58a34f9077199b5c2",
+      "size": 3203
+    },
+    {
+      "path": "strings.json",
+      "role": "strings",
+      "sha1": "bef7a20ad07031d8ee5aaaa7149904bf50bb694d",
+      "size": 481
+    },
+    {
+      "path": "tokens.json",
+      "role": "tokens",
+      "sha1": "0e590053a8b68bbecf1631f2b55ed6ad01c485e5",
+      "size": 4194
+    }
+  ],
+  "hardware": {
+    "deviceClasses": [
+      {
+        "class": "staffed",
+        "min": 1,
+        "rationale": "all transacting is staffed in this toy"
+      }
+    ],
+    "tokens": {
+      "count": 6,
+      "tech": "nfc-ntag"
+    },
+    "stack": {},
+    "endpoints": {}
+  }
+}

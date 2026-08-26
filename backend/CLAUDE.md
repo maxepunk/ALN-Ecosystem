@@ -166,7 +166,7 @@ Domain Event (Service) → Listener (broadcasts.js) → WebSocket Broadcast
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
 - `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`, `routing:error`, `sink:added`, `sink:removed`, `ducking:changed`, `ducking:failed`
 - `lightingService`: `scene:activated`, `scenes:refreshed`
-- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`
+- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`, `phase:changed` (A3 slice 5 — pack-declared phase boundary crossed; cue trigger + gameclock service:state push)
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
 - `musicService`: `playback:changed`, `volume:changed`, `track:changed`, `position:changed`, `playlist:changed`, `playlists:reloaded`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
@@ -224,7 +224,7 @@ displayControlService (State Machine)
 
 **Key Implementation Details:**
 - Chromium is launched ONCE and persisted for the session. Display transitions use `xdotool windowminimize` (hide) and `xdotool windowactivate` + `wmctrl -b add,fullscreen` (show). No kill/spawn per video cycle.
-- `xdotool search --name "Case File"` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached.
+- `xdotool search --name <marker>` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached. The marker is `config.display.scoreboardWindowMarker` (env `SCOREBOARD_WINDOW_MARKER`, default `ALN-SCOREBOARD`, slice 3a pre-fix 1): ONE shared value the served page's `<title>` also carries via `resourceRoutes.renderScoreboardHtml` `%%WINDOW_MARKER%%` injection — never rebrand either side independently (tripwire: `tests/unit/utils/scoreboardWindowMarker.test.js`).
 - `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler). Sends SIGTERM, waits 1s, escalates to SIGKILL via `process.kill(pid, 0)` alive-check.
 - `_doLaunch()` two-stage orphan recovery before spawning: (1) SIGKILL via PID file (`/tmp/aln-pm-scoreboard-chromium.pid`, verified against `/proc/pid/cmdline`), (2) `pkill -9 -f chromium.*--kiosk` fallback to catch children reparented to init. 2s wait after either kill for lock release. 1s alive-check after spawn detects early crashes (e.g., single-instance lock conflict).
 - System dependencies: `sudo apt-get install -y xdotool wmctrl`
@@ -496,7 +496,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 
 **`sync:full` Phase 2 Additions:**
 - `music`: `{connected, state, volume, track, playlist, playlists, pausedByGameClock}` via `buildMusicState()`
-- `gameClock`: `{status, elapsed, expectedDuration}` via `buildGameClockState()`
+- `gameClock`: `{status, elapsed, expectedDuration, phase}` via `buildGameClockState()` (`phase` is required-nullable `{id, label}|null` since A3 slice 5 — the pack-declared current phase; null for degenerate/absent declarations)
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
 **`sync:full` Phase 4 Additions:**
@@ -575,7 +575,7 @@ HTTP_REDIRECT_PORT=8000
 
 **Critical Gotchas:**
 - VLC controlled via D-Bus MPRIS (no HTTP interface needed)
-- `ADMIN_PASSWORD` must match hardcoded value in `public/scoreboard.html`
+- `ADMIN_PASSWORD` is injected into the served scoreboard page at serve time (`resourceRoutes.renderScoreboardHtml`, slice 3a pre-fix 2) — the old must-match-the-hardcoded-copy gotcha is dead; the page source carries only the `%%ADMIN_PASSWORD%%` placeholder
 
 ### HTTPS Architecture
 
@@ -776,25 +776,33 @@ npm run session:validate <name>            # Match by partial name (e.g., "1207"
 npm run session:validate latest > report.md  # Save report to file
 ```
 
-**15 Holistic Validators:**
+**9 Holistic Validators (wired by validate-session.js):**
 
 | Check | Detects |
 |-------|---------|
-| TransactionFlow | Missing/orphaned transactions, token lookup failures |
-| TransactionIntegrity | Transaction data consistency and correctness |
-| ScoringIntegrity | Score vs broadcast discrepancies (compares log broadcasts) |
-| ScoreParity | Networked vs standalone scoring parity |
-| DetectiveMode | Detective-specific validation issues |
+| TransactionFlow | Missing/orphaned transactions, token lookup failures, undeclared modes (pack-derived vocabulary) |
+| ScoringIntegrity | Score vs session discrepancies; every accepted transaction's points vs the seam-resolved expectation |
+| NonScoringModes | Non-scoring-mode transactions with points; evidence-surfaced transactions missing summary (was DetectiveMode — generalized D4s2) |
 | VideoPlayback | Queue failures, playback errors, missing videos |
 | DeviceConnectivity | Connection drops, reconnection patterns |
-| GroupCompletion | Bonus calculation errors, missed completions |
-| GroupBonus | Group bonus calculation correctness |
+| GroupCompletion | Bonus calculation errors, missed completions (§2f scored-only bonus base) |
 | DuplicateHandling | False positives, ghost scoring, rejection accuracy |
-| DuplicateConsistency | Cross-device duplicate detection consistency |
-| PlayerCorrelation | Player scan to transaction correlation |
-| EventTimeline | Event ordering and timing anomalies |
 | ErrorAnalysis | Error patterns, frequency, categorization |
 | SessionLifecycle | Deletions, resets, pause/resume anomalies |
+
+Six more validator modules exist in `scripts/lib/validators/` but are NOT
+wired into validate-session.js (TransactionIntegrity, ScoreParity,
+DuplicateConsistency, GroupBonus, PlayerCorrelation, EventTimeline) — the
+earlier "15 Holistic Validators" table overstated the wired set.
+
+**Pack-aware since A3 slice 2 (D4s2):** the validator resolves the
+SESSION'S STAMPED pack identity (`session.metadata.pack`, stamped at
+creation since A2) via `scripts/lib/packResolver.js` — the report opens
+with a Pack Resolution section (match / mismatch / unstamped verdict,
+loud notes). Tokens + scoring constants load from the resolved pack dir
+(`PACK_PATH` overrides, same seam as the engine); mode behavior resolves
+through `src/gameRules/modeSemantics.js` (never mode-id literals) and
+group math reuses `src/gameRules/scoring.js` (§2f).
 
 **Key Files:** `scripts/validate-session.js`, `scripts/lib/`
 
