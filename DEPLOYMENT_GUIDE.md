@@ -1028,6 +1028,82 @@ python3 -m http.server 8001
 # Check WebSocket connection in browser console
 ```
 
+## Emergency Rollback (Game Day)
+
+**Last-known-stable production build: the `production-2026-07` branch.** This is the
+build that has been running on the Pi since 2026-07-11. If a mid-game failure traces
+to recently merged code, the sequence below returns every component to it.
+
+The branch exists on **all five repositories** — the parent and each submodule — and in
+each one it points at the exact commit that shipped:
+
+| Repository | `production-2026-07` commit |
+|------------|------------------------------|
+| ALN-Ecosystem (parent) | `a4ebacdf` |
+| ALN-TokenData | `3e60fad` |
+| ALNScanner | `e38c1ea` |
+| aln-memory-scanner | `e14f4b7` |
+| arduino-cyd-player-scanner | `af74fbd` |
+
+The parent commit records those four submodule pins, so checking out the parent branch
+and running `submodule update` restores the whole system. You do not need to check out
+each submodule by hand.
+
+### Rollback procedure
+
+```bash
+cd /path/to/ALN-Ecosystem
+
+# 1. Stop the running system (also restores the desktop session)
+cd backend && npm run stop && cd ..
+
+# 2. Move to the stable build.
+#    -f discards uncommitted local edits — stash first if you need to keep them.
+git fetch origin
+git checkout -f -B production-2026-07 origin/production-2026-07
+
+# 3. CRITICAL: submodules do not follow the parent checkout on their own.
+git submodule update --init --recursive --force
+
+# 4. Restart. Use `npm start` — it runs the prestart hook that rebuilds the GM Scanner.
+cd backend && npm start
+
+# 5. Verify
+npm run health
+```
+
+### Why steps 3 and 4 matter
+
+- **Step 3 is the classic footgun.** `git checkout` on the parent moves the gitlinks but
+  leaves each submodule's working tree exactly where it was. Skip it and you get the old
+  backend running against the new scanner code — often worse than the bug you're fleeing.
+- **Step 4 must be `npm start`, not `pm2 restart`.** `backend/public/gm-scanner` is a
+  symlink to `ALNScanner/dist`, and `dist/` is **not committed** — it exists only as a
+  build artifact. `npm start` fires `prestart` → `scripts/build-scanner.sh`, which
+  rebuilds it from the rolled-back source. `pm2 restart all` skips `prestart` entirely
+  and leaves the previously built `dist` in place, so the GM Scanner would keep serving
+  the code you just rolled back.
+- If the scanner build fails, its dependencies likely changed between the two commits.
+  `build-scanner.sh` only runs `npm ci` when `node_modules` is missing, so force it:
+  `cd ALNScanner && npm ci && npm run build`. Do the same for the backend if the
+  orchestrator won't start: `cd backend && npm ci`.
+
+### Returning to current development code
+
+```bash
+git checkout main
+git submodule update --init --recursive --force
+cd backend && npm start
+```
+
+### Keeping this note accurate
+
+`production-2026-07` is a branch, not a tag, so it can be moved or force-pushed. When a
+newer build is proven stable in a real session, repoint the branch in all five
+repositories — **submodules first, parent last**, so the parent's gitlinks always
+reference commits that already exist on their remotes — then update the commit table
+above and the branch name in this section's heading text.
+
 ## Troubleshooting
 
 ### Common Issues and Solutions
@@ -1199,6 +1275,8 @@ backend/logs/
 
 ## Quick Reference
 
+**Something broken mid-game?** Jump to [Emergency Rollback (Game Day)](#emergency-rollback-game-day) — the stable build is the `production-2026-07` branch.
+
 | Feature | Development | Production (PM2) |
 |---------|------------|------------------|
 | Start | `npm start` | `pm2 start ecosystem.config.js` |
@@ -1224,6 +1302,7 @@ For issues or questions:
 2. Verify configuration: `pm2 show aln-orchestrator`
 3. Test health endpoint: `curl -k https://localhost:3000/health`
 4. Review this guide's troubleshooting section
+5. If a recent merge is the suspect, see [Emergency Rollback (Game Day)](#emergency-rollback-game-day)
 
 ## Summary
 
