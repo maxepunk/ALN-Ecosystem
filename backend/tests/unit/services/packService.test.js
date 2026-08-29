@@ -1672,6 +1672,14 @@ describe('packService', () => {
       expect(message).toMatch(/kind 'strings'/);
       expect(message).toMatch(/schemaVersion 1/);
     });
+
+    it("refuses a correct header whose 'cues' is not an array", () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, { kind: 'cues', schemaVersion: 2, cues: { oops: 'an object' } });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/'cues' must be an array/);
+    });
   });
 
 });
