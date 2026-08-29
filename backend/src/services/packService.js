@@ -209,14 +209,19 @@ function _readDiskGameConfig() {
 }
 
 /**
- * Load the pack's DECLARED strings sidecar (A3 slice 3a). Posture:
- * an UNDECLARED file gates nothing (missing strings are benign wording —
- * consumers keep their baked defaults, the opposite class from silent
- * wrong scoring); a DECLARED file must load and validate or activation
- * REFUSES (declared ⇒ must load, the PACK_PATH rule's shape).
- * @param {Object|null} gameConfig
- * @returns {{value: Object|null, problems: string[]}}
+ * Read the pack's tokens.json, or null when absent/unreadable (the
+ * token loader refuses separately). Shared by every gate block that
+ * resolves against the token database — one read shape, three readers.
+ * @returns {Object|null}
  */
+function _readPackTokens() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Load and shape-check the declared show-cues sidecar (A3 slice 4 S2).
  * Mirrors _loadDeclaredStrings: declared means present, canonical, and
@@ -273,6 +278,15 @@ function _loadDeclaredCues(gameConfig) {
   return { value: problems.length === 0 ? parsed.cues : null, problems };
 }
 
+/**
+ * Load the pack's DECLARED strings sidecar (A3 slice 3a). Posture:
+ * an UNDECLARED file gates nothing (missing strings are benign wording —
+ * consumers keep their baked defaults, the opposite class from silent
+ * wrong scoring); a DECLARED file must load and validate or activation
+ * REFUSES (declared ⇒ must load, the PACK_PATH rule's shape).
+ * @param {Object|null} gameConfig
+ * @returns {{value: Object|null, problems: string[]}}
+ */
 function _loadDeclaredStrings(gameConfig) {
   const declared = gameConfig && gameConfig.strings;
   if (!declared) return { value: null, problems: [] };
@@ -520,10 +534,7 @@ function _gateCheck(manifest, gameConfig) {
     // are LEGAL (the UNKNOWN bucket, 3 in ALN production data); packs
     // without a usable scoring block gate nothing (shim path).
     if (_isUsableScoring(gameConfig.scoring)) {
-      let tokensForTypes = null;
-      try {
-        tokensForTypes = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
-      } catch { /* no tokens.json — the loader refuses separately */ }
+      const tokensForTypes = _readPackTokens();
       if (tokensForTypes) {
         const uncovered = new Set();
         for (const token of Object.values(tokensForTypes)) {
@@ -554,10 +565,7 @@ function _gateCheck(manifest, gameConfig) {
     // (tokens.schema.json makes a "(xN)" suffix illegal; the sync is the
     // sole parser of the authoring shorthand — D3b).
     {
-      let tokensObj = null;
-      try {
-        tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
-      } catch { /* no tokens.json — the loader refuses separately */ }
+      const tokensObj = _readPackTokens();
       if (tokensObj) {
         const declaredGroups = (gameConfig.groups && typeof gameConfig.groups === 'object')
           ? gameConfig.groups
@@ -617,11 +625,9 @@ function _gateCheck(manifest, gameConfig) {
     {
       const cuesLoad = _loadDeclaredCues(gameConfig);
       problems.push(...cuesLoad.problems);
-      let tokensObj = {};
-      try {
-        tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
-      } catch { /* no tokens.json — the loader refuses separately; rule 3 then has nothing to resolve against */ }
-      problems.push(...validateCuesBlock(cuesLoad.value, gameConfig, tokensObj));
+      // Absent tokens.json: the token loader refuses separately; rule 3
+      // then has nothing to resolve against.
+      problems.push(...validateCuesBlock(cuesLoad.value, gameConfig, _readPackTokens() || {}));
     }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.

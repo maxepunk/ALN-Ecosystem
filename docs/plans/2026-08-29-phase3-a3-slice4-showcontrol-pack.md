@@ -644,8 +644,9 @@ carried the marker since S1); `duration` migrates verbatim.
 
 ### S2 — gate (DONE 2026-08-29)
 
-Built test-first: validator unit suite red → module green → gate
-integration red → packService wiring green → hardening red → green.
+Built test-first in three cycles: the validator module, the packService
+wiring, then the engine hardening. Each cycle wrote its failing tests
+before its code.
 
 **Landed:**
 - `backend/src/gameRules/cueValidation.js` (NEW): `validateCuesBlock`
@@ -667,7 +668,7 @@ integration red → packService wiring green → hardening red → green.
   `_loadDeclaredCues` mirrors the strings loader (canonical filename,
   header form, kind/schemaVersion checks); the gate block runs after
   the strings block, file-less rules (5 and the rule-6 requires lint)
-  included. Refusals ride the existing CAPABILITY GATE throw with the
+  included. Refusals join the existing CAPABILITY GATE message in the
   two-flavor language, wording-pinned in tests both ways.
 - Engine hardening: `loadCues` refuses duplicate cue ids (the Map
   silently last-won); `findMatchingClockCues` skips-and-warns on an
@@ -695,3 +696,43 @@ whose action `executeCommand` does not know as COMPLETED — the
 never checked. Pre-existing behavior; the gate now makes it
 unreachable from pack content, and the venue file retires at S4. If it
 survives S6 review it belongs in the backlog, not this slice.
+
+**S2 stage review (two-axis, 2 Opus lenses, 2026-08-29) — adjudication:**
+
+Fixed in the same stage (second commit pair):
+1. (standards — real bug) the `CUE_ACTIONS` lookup used a truthy index:
+   an action named `constructor` resolved through the prototype chain
+   and threw a raw TypeError out of the gate — the exact C11 class the
+   neighboring groups block documents. Now `Object.hasOwn`, with a
+   refusal twin.
+2. (spec — the real hole) rule-2 payload validation was presence-only:
+   `{role: 7}`, `{volume: null}`, `{position: "soon"}` all passed.
+   `CUE_ACTIONS` is now action → {field: type} and the gate checks
+   non-empty-string / finite-number / boolean. This also resolved the
+   standards lens's shape complaint (the `{requiredFields: []}` wrapper
+   objects are gone).
+3. (spec) the module header misquoted the floor: it wrote "session
+   lifecycle, score intervention, and transaction surgery" where
+   CONTEXT.md §6's floor is session lifecycle, SHOW CONTROL, and score
+   intervention. Rationale rewritten: the floor governs WHO may act;
+   the excluded actions are game-state interventions a standing cue
+   would fire with no operator in the loop.
+4. (standards) orphaned JSDoc unstacked (the strings loader has its
+   doc back); the dead `cueId` parameter dropped; the third duplicated
+   tokens read extracted to `_readPackTokens()` (also the spec lens's
+   read-twice nit); metaphor phrasing in this record replaced.
+
+Recorded, not changed:
+- Rule 6 is built as a USAGE-derived lint (standing triggers, timelines,
+  or roles actually used → the matching id required), which is narrower
+  than D-4.1's by-declaration wording: a manual-only, flat,
+  lighting-free cues pointer needs no capability ids. No id for "manual
+  flat cues" exists in the ratified trio, and the residual class is
+  exactly D-4.1's accepted exposure. Pinned by test.
+- The sceneId-in-pack-payload refusal is a deliberate corollary of
+  D-4.2's roles-only clause, now recorded as such.
+- The unknown-op refusal stays flavor-i against the standards lens's
+  consistency argument: D-4.3 classes rule 7 "flavor-i unless noted"
+  and notes only 7b's trigger event as flavor-ii. The ops are a closed
+  seven-entry set; an unknown op is a typo, not an engine-growth
+  request.

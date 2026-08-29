@@ -15,15 +15,19 @@
  *   schema (cues.schema.json) are drift-tripwired against this list —
  *   grow all three together.
  * - CONDITION_OP_NAMES: mirrors CONDITION_OPS the same way.
- * - CUE_ACTIONS: the actions a pack cue may dispatch, with required
- *   payload fields. Deliberately a SUBSET of gm:command: session
- *   lifecycle, score intervention, and transaction surgery are
- *   operator-only (the auth floor) — pack data never drives them.
- *   Admin/maintenance actions (system, bluetooth pairing, held-item
- *   management, per-client scoreboard paging, health probes, direct
- *   cue:fire — chaining rides standing triggers on cue:completed) are
- *   also out. Lighting payloads carry `role`, not `sceneId`; S3
- *   normalizes role → sceneId at the top of executeCommand.
+ * - CUE_ACTIONS: the actions a pack cue may dispatch, each with its
+ *   required payload fields and their types. The key set IS the
+ *   vocabulary, deliberately a SUBSET of gm:command. Excluded: session
+ *   lifecycle, score intervention, and transaction surgery — game-state
+ *   interventions this project reserves for staffed operators (the
+ *   floor, CONTEXT.md §6, governs WHO may act; a standing cue firing
+ *   them would act with no operator in the loop). Also excluded as not
+ *   show content: system reset, bluetooth pairing, held-item
+ *   management, per-client scoreboard paging, and health probes.
+ *   Direct cue:fire is out too — cue chaining works through standing
+ *   triggers on cue:completed. Lighting payloads carry `role`, not
+ *   `sceneId`; S3 normalizes role → sceneId at the top of
+ *   executeCommand.
  *
  * Every rule is a PACK-INTERNAL pure read (red-team G1/R2): nothing here
  * touches a service or checks a venue file. Venue-resource existence
@@ -68,32 +72,50 @@ const TOKEN_DERIVED_TRIGGER_EVENTS = ['player:scan', 'transaction:accepted'];
 /** Strict authoring form for trigger.clock. Same pattern as the schema. */
 const CLOCK_PATTERN = /^[0-9]{1,2}:[0-5][0-9]:[0-5][0-9]$/;
 
-/** The cue-action vocabulary: action → required payload fields. */
+/**
+ * The cue-action vocabulary: action → {field: type} for its required
+ * payload fields. Types: 'string' means a non-empty string, 'number' a
+ * finite number, 'boolean' a boolean — checked at the gate because the
+ * gate cannot assume schema validation ran. Fields not listed here
+ * (e.g. sound:play's optional target/volume) pass through unchecked.
+ */
 const CUE_ACTIONS = {
-  'sound:play': { requiredFields: ['file'] },
-  'sound:stop': { requiredFields: [] },
-  'lighting:scene:activate': { requiredFields: ['role'] },
-  'video:queue:add': { requiredFields: ['videoFile'] },
-  'video:play': { requiredFields: [] },
-  'video:pause': { requiredFields: [] },
-  'video:stop': { requiredFields: [] },
-  'video:skip': { requiredFields: [] },
-  'video:seek': { requiredFields: ['position'] },
-  'music:play': { requiredFields: [] },
-  'music:pause': { requiredFields: [] },
-  'music:stop': { requiredFields: [] },
-  'music:next': { requiredFields: [] },
-  'music:previous': { requiredFields: [] },
-  'music:setVolume': { requiredFields: ['volume'] },
-  'music:setShuffle': { requiredFields: ['enabled'] },
-  'music:setLoop': { requiredFields: ['enabled'] },
-  'music:loadPlaylist': { requiredFields: ['playlistId'] },
-  'music:seek': { requiredFields: ['position'] },
-  'display:scoreboard': { requiredFields: [] },
-  'display:idle-loop': { requiredFields: [] },
-  'display:return-to-video': { requiredFields: [] },
-  'audio:route:set': { requiredFields: ['sink'] },
-  'audio:volume:set': { requiredFields: ['stream', 'volume'] },
+  'sound:play': { file: 'string' },
+  'sound:stop': {},
+  'lighting:scene:activate': { role: 'string' },
+  'video:queue:add': { videoFile: 'string' },
+  'video:play': {},
+  'video:pause': {},
+  'video:stop': {},
+  'video:skip': {},
+  'video:seek': { position: 'number' },
+  'music:play': {},
+  'music:pause': {},
+  'music:stop': {},
+  'music:next': {},
+  'music:previous': {},
+  'music:setVolume': { volume: 'number' },
+  'music:setShuffle': { enabled: 'boolean' },
+  'music:setLoop': { enabled: 'boolean' },
+  'music:loadPlaylist': { playlistId: 'string' },
+  'music:seek': { position: 'number' },
+  'display:scoreboard': {},
+  'display:idle-loop': {},
+  'display:return-to-video': {},
+  'audio:route:set': { sink: 'string' },
+  'audio:volume:set': { stream: 'string', volume: 'number' },
+};
+
+const TYPE_WORDS = {
+  string: 'non-empty string',
+  number: 'finite number',
+  boolean: 'boolean',
+};
+
+const typeOk = (type, value) => {
+  if (type === 'string') return typeof value === 'string' && value.length > 0;
+  if (type === 'number') return typeof value === 'number' && Number.isFinite(value);
+  return typeof value === 'boolean';
 };
 
 const actionVocabulary = () => Object.keys(CUE_ACTIONS).sort().join(', ');
@@ -136,19 +158,21 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
   let usesRoles = roles.size > 0;
 
   // Shared command/timeline-entry checks (rules 1, 2).
-  const checkAction = (cueId, where, entry) => {
+  const checkAction = (where, entry) => {
     if (typeof entry.action !== 'string' || entry.action.length === 0) {
       problems.push(`${where} — action must be a non-empty string; self-contradictory`);
       return;
     }
-    const def = CUE_ACTIONS[entry.action];
-    if (!def) {
+    // Object.hasOwn, not truthy-index: an action named 'constructor'
+    // would resolve via the prototype chain (round-2 review C11 class).
+    if (!Object.hasOwn(CUE_ACTIONS, entry.action)) {
       problems.push(
         `${where} — action '${entry.action}' is not in the engine cue-action vocabulary ` +
         `(${actionVocabulary()}); not driveable by this engine yet`
       );
       return;
     }
+    const fieldTypes = CUE_ACTIONS[entry.action];
     const payload = (entry.payload && typeof entry.payload === 'object') ? entry.payload : {};
     if (entry.action === 'lighting:scene:activate') {
       usesRoles = true;
@@ -159,10 +183,11 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
         );
       }
     }
-    for (const field of def.requiredFields) {
-      if (payload[field] === undefined || payload[field] === '') {
+    for (const [field, type] of Object.entries(fieldTypes)) {
+      if (!typeOk(type, payload[field])) {
         problems.push(
-          `${where} — '${entry.action}' payload is missing required field '${field}'; self-contradictory`
+          `${where} — '${entry.action}' payload needs '${field}' as a ${TYPE_WORDS[type]} ` +
+          `(got ${JSON.stringify(payload[field])}); self-contradictory`
         );
       }
     }
@@ -287,7 +312,7 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
             problems.push(`cues['${cue.id}'].commands[${j}] — malformed command entry; self-contradictory`);
             return;
           }
-          checkAction(cue.id, `cues['${cue.id}'].commands[${j}]`, cmd);
+          checkAction(`cues['${cue.id}'].commands[${j}]`, cmd);
         });
       }
 
@@ -308,7 +333,7 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
             return;
           }
           if (entry.action === 'video:queue:add') videoEntries += 1;
-          checkAction(cue.id, `cues['${cue.id}'].timeline[${j}]`, entry);
+          checkAction(`cues['${cue.id}'].timeline[${j}]`, entry);
         });
         // Rule 7e (F-SHOW-08): the three-segment timeline correlates
         // exactly one video.

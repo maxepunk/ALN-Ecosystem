@@ -151,9 +151,9 @@ describe('cue vocabulary tripwires (row 2.22 — grow every side together)', () 
     }
     for (const [action, fields] of Object.entries(engineRequired)) {
       if (action === 'lighting:scene:activate') continue;
-      if (!CUE_ACTIONS[action]) continue;
+      if (!Object.hasOwn(CUE_ACTIONS, action)) continue;
       for (const f of fields) {
-        expect(CUE_ACTIONS[action].requiredFields).toContain(f);
+        expect(Object.keys(CUE_ACTIONS[action])).toContain(f);
       }
     }
   });
@@ -226,6 +226,21 @@ describe('rule 2 — action vocabulary + payload shape', () => {
   it('video:queue:add without videoFile is refused', () => {
     const out = problemsAfter(c => { delete c.cues[4].timeline[0].payload.videoFile; });
     expect(out.join('\n')).toMatch(/videoFile/);
+  });
+
+  it('a wrong-typed payload field is refused (the gate cannot assume schema validation ran)', () => {
+    expect(problemsAfter(c => { c.cues[3].commands[0].payload = { file: 5 }; }).join('\n')).toMatch(/file/);
+    expect(problemsAfter(c => { c.cues[4].timeline[0].payload = { videoFile: 5 }; }).length).toBeGreaterThan(0);
+    expect(problemsAfter(c => { c.cues[0].commands[1].payload = { role: 7 }; }).length).toBeGreaterThan(0);
+    expect(problemsAfter(c => { c.cues[3].commands[0] = { action: 'music:setVolume', payload: { volume: null } }; }).length).toBeGreaterThan(0);
+    expect(problemsAfter(c => { c.cues[3].commands[0] = { action: 'music:seek', payload: { position: 'soon' } }; }).length).toBeGreaterThan(0);
+    expect(problemsAfter(c => { c.cues[3].commands[0] = { action: 'music:setShuffle', payload: { enabled: 'yes' } }; }).length).toBeGreaterThan(0);
+  });
+
+  it('an action name off the prototype chain is refused as unknown, never a raw TypeError (C11 class)', () => {
+    const out = problemsAfter(c => { c.cues[3].commands[0] = { action: 'constructor', payload: {} }; });
+    expect(out.join('\n')).toMatch(/constructor/);
+    expect(out.join('\n')).toMatch(/not driveable/);
   });
 });
 
