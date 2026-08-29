@@ -321,6 +321,16 @@ function _validateSurfacesBlock(gameConfig) {
   if (surfaces === null || typeof surfaces !== 'object' || Array.isArray(surfaces)) {
     return [`surfaces must be an object; self-contradictory`];
   }
+  // Unknown-key rejection (S6.4 review): the schema is additionalProperties:
+  // false, and this gate's contract is "cannot assume schema ran". Refuse
+  // typo'd keys (e.g. 'evidenceCyleMs') instead of silently no-opping to
+  // the default — a hand-authored/PACK_PATH footgun. Stricter than the
+  // legacy blocks by design.
+  for (const key of Object.keys(surfaces)) {
+    if (key !== 'idleLoop' && key !== 'scoreboard') {
+      problems.push(`surfaces has an unknown key '${key}' (allowed: idleLoop, scoreboard); a typo silently no-ops to the default; self-contradictory`);
+    }
+  }
   const requires = Array.isArray(gameConfig.requires) ? gameConfig.requires : [];
   if (!requires.includes('surfaces.select')) {
     problems.push(
@@ -343,6 +353,11 @@ function _validateSurfacesBlock(gameConfig) {
     if (sb === null || typeof sb !== 'object' || Array.isArray(sb)) {
       problems.push(`surfaces.scoreboard must be an object; self-contradictory`);
     } else {
+      for (const key of Object.keys(sb)) {
+        if (key !== 'enabled' && key !== 'evidenceCycleMs') {
+          problems.push(`surfaces.scoreboard has an unknown key '${key}' (allowed: enabled, evidenceCycleMs); self-contradictory`);
+        }
+      }
       if (Object.hasOwn(sb, 'enabled') && typeof sb.enabled !== 'boolean') {
         problems.push(`surfaces.scoreboard.enabled must be a boolean; self-contradictory`);
       }
@@ -364,7 +379,7 @@ function _validateSurfacesBlock(gameConfig) {
         if (scoreboardModes.length > 0) {
           const ids = scoreboardModes.map((m) => (m && m.id) || '?').join(', ');
           problems.push(
-            `surfaces.scoreboard.enabled is false but mode(s) [${ids}] declare a scoreboard display surface; ` +
+            `surfaces.scoreboard.enabled is false but mode(s) [${ids}] declare a scoreboard MODE display surface; ` +
             `a suppressed scoreboard has nowhere to render them; self-contradictory`
           );
         }

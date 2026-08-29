@@ -574,6 +574,15 @@ describe('VlcMprisService', () => {
       expect(vlcMprisService._resolveIdleLoopFile()).toBe('engine-default.mp4');
       expect(warnSpy.mock.calls.some(([m]) => /no installation-profile binding/.test(m))).toBe(true);
     });
+
+    it('_idleLoopFileExists checks the RESOLVED file against the video dir', () => {
+      const fsReal = require('fs');
+      const existsSpy = jest.spyOn(fsReal, 'existsSync').mockReturnValue(true);
+      expect(vlcMprisService._idleLoopFileExists('idle-loop.mp4')).toBe(true);
+      expect(existsSpy).toHaveBeenCalledWith(expect.stringContaining('public/videos/idle-loop.mp4'));
+      existsSpy.mockReturnValue(false);
+      expect(vlcMprisService._idleLoopFileExists('missing.mp4')).toBe(false);
+    });
   });
 
   // ── initializeIdleLoop ──

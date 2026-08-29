@@ -1,7 +1,7 @@
 # A3 Slice 6 — display surfaces (pack selects/parameterizes the built-in three)
 
-Status: DESIGN, decision-free core buildable; owner questions HELD (§4).
-Program pointer: `2026-06-11-phase3-program.md` §13 item 2 (ratified 2026-08-29,
+Status: BUILT (S6.1 + S6.3), owner rulings RULED (§4), closing (S6.4). See §8
+execution record. Program pointer: `2026-06-11-phase3-program.md` §13 item 2 (ratified 2026-08-29,
 "minimal reading"); ROADMAP §6 (headroom boundary), §8.1/§8.3 (idle-loop home),
 row 8.8 (constellation renderer). Vocabulary: CONTEXT.md §1 "surface" (both senses).
 
@@ -295,7 +295,9 @@ the ruled scoreboard parameter). Estimate moves to the upper band (§7).
   - Opt-out (Q6-1): `displayControlService` honors a suppressed surface —
     `setScoreboard()` refuses cleanly when the pack opts out of the scoreboard;
     idle-loop suppression degrades to a defined output (no crash, no missing-file
-    loop). Scanner `DisplayController`/`MonitoringDisplay` reflect the reduced set.
+    loop). The SCANNER reflection (hiding the "Show Scoreboard" button) is DEFERRED
+    — see §6: the backend refusal is the functional enforcement; hiding the button
+    is cosmetic and costs a full scanner leg.
   - Scoreboard param (Q6-3/D-6.7): `scoreboard.html` reads the ruled parameter from
     the delivered `game.json` `surfaces` block; the pack value drives it.
   - Dual-pack E2E: each pack drives a different idle loop + scoreboard param; the

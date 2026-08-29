@@ -105,11 +105,13 @@ const config = {
     // Stable and non-themed by design: game branding lives in the pack;
     // this is engine/venue plumbing.
     scoreboardWindowMarker: process.env.SCOREBOARD_WINDOW_MARKER || 'ALN-SCOREBOARD',
-    // Idle-loop video filename (slice 3a pre-fix 3, F-SHOW-29): ONE key
-    // for the three vlcMprisService sites (init play, return play, and
-    // the existence guard) — three independent literals let the guard
-    // check a different file than VLC played. Venue/engine config for
-    // now: videos are not pack content until slice 6/B12+F5.
+    // Idle-loop video filename (slice 3a pre-fix 3, F-SHOW-29): the
+    // engine/venue DEFAULT, now the loud FALLBACK for the slice-6 idle-loop
+    // resolver (vlcMprisService._resolveIdleLoopFile). Since slice 6 the
+    // pack NAMES an idle-loop channel (game.json surfaces.idleLoop) and the
+    // installation profile binds it to a file; this key is used only when a
+    // named channel has no profile binding (ledger L12). Media FILES stay
+    // out of the pack (ROADMAP §2.3); slice 6 shipped the channel NAME only.
     idleLoopFile: process.env.IDLE_LOOP_FILE || 'idle-loop.mp4',
   },
 

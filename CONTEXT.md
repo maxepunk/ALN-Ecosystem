@@ -138,9 +138,14 @@ you intend.
   E5 all collide.
 - **"surface"** has two meanings:
   1. *Display surface.* A display output the engine renders: the
-     scoreboard, the idle loop, video playback. Slice 6 lets a pack
-     select and configure the built-in three. Packs cannot define new
-     surfaces yet; that is reserved for the BILL era.
+     scoreboard, the idle loop, video playback. Since slice 6 a pack
+     selects and configures the built-in three through its `surfaces`
+     block: it can opt OUT of a surface (a null idle-loop channel; a
+     disabled scoreboard, which the engine then refuses to show) and
+     set surface parameters (the scoreboard's evidence-page cadence).
+     Packs cannot define new surfaces; that is reserved for the BILL
+     era. (Edit noted 2026-08-29: entry updated from future tense when
+     the slice-6 build landed.)
   2. *Mode display surface.* The per-mode `displayBehavior.surface`
      value in `game.json`: where a mode's results land. The engine
      drives exactly `scoreboard-rankings`, `scoreboard-evidence`, and
@@ -272,6 +277,20 @@ you intend.
   the S4 cutover moves them into the pack as roles. (Edit noted
   2026-08-29: this entry said the whole mechanism was unbuilt until S3
   landed.)
+- **Surface channel / binding / fallback.** The lighting-role pattern
+  applied to display media (slice 6, owner ruling Q6-2). The pack
+  names its idle-loop CHANNEL (`surfaces.idleLoop`, a name like
+  `aln-idle` — never a filename; the schema pattern forbids paths).
+  The installation profile's `bindings.surfaces` maps each channel to
+  a real media file. When a named channel has no binding, the engine
+  falls back loudly to the venue config default
+  (`config.display.idleLoopFile`, ledger row L12; retires with the
+  pack-manager media page, ROADMAP §8.1). A null channel means the
+  game has no idle loop at all — that is a *surface opt-out*, not a
+  fallback. Media files themselves never enter the pack (ROADMAP
+  §2.3). The pack declaring a `surfaces` block must list the
+  `surfaces.select` capability in `requires`; the activation gate
+  refuses the block otherwise.
 - **Held item.** A cue or video that could not run because a needed
   service was down or a video was already playing. The engine parks it
   and tells the GM, who can release or discard it. Nothing is silently

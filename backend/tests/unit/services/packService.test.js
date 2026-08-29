@@ -1804,6 +1804,20 @@ describe('packService', () => {
       });
       expect(() => packService.activatePack()).not.toThrow();
     });
+
+    it('REFUSES an unknown surfaces key — a typo must not silently no-op (S6.4 review)', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle', scorebaord: {} }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces has an unknown key 'scorebaord'/);
+    });
+
+    it("REFUSES an unknown scoreboard key (e.g. a misspelled 'evidenceCyleMs')", () => {
+      writeGame(tmpDir, withSurfaces({ scoreboard: { evidenceCyleMs: 9000 } }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.scoreboard has an unknown key 'evidenceCyleMs'/);
+    });
   });
 
 });
