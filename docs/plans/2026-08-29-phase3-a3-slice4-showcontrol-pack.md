@@ -892,6 +892,41 @@ Recorded, not changed: the dead `getScenes`/`GET /scenes` pair stays
 surface; not this slice's deletion to make). The census's
 "trigger: null" line stays corrected by the §9 S1 record.
 
+### S5 — toy second consumer (DONE 2026-08-29)
+
+**Landed (parent `551ce49`):**
+- Toy pack: `cues.json` with two quickFire manual cues at ONE action
+  class each (R6 — a multi-action cue is held whole when any service is
+  down); `lightingRoles` vault-alarm/all-clear; a deliberately PARTIAL
+  `lightingRoleFallbacks` (vault-alarm bridged, all-clear profile-only —
+  proves both legal states); `requires` gains `lighting.roles` (the
+  usage-derived lint asks for nothing else: manual flat cues need no
+  cues.standing/cues.timeline); manifest hardware.stack claims sound +
+  lighting; manifest regenerated.
+- The `profilePath` seam in test-server's startOrchestrator
+  (E2E_PROFILE_PATH default, caller wins) — pinned per-call beside
+  packPath, exactly the Rm7 shape. Static `toy-test-rig` profile
+  fixture.
+- NEW flow `toy-pack-lighting-roles`: capability-gated on lighting; the
+  toy pack activates through the same gate and exposes both quick-fire
+  summaries; and the core proof — HA scene ids are machine state, so
+  the flow DISCOVERS a real scene from the running system, binds the
+  toy role to it in a runtime-written temp profile, restarts through
+  the seam, and fires the cue asserting ZERO failedCommands and zero
+  cue:error (the S3 visibility fix makes that assertion load-bearing).
+  Run here: 2 passed / 0 failed, lighting live via the HA container.
+- Builder hardening found in-stage: a jest run from a pack cwd made
+  winston create `logs/` INSIDE the toy pack, which the inventory
+  picked up (caught by the Python byte-parity suite). Both builders now
+  skip `logs/` — the contamination class can never enter served
+  inventory.
+
+**Dual-pack gate, toy leg:** full Tier L with E2E_PACK_PATH=toy-heist —
+**116 passed / 0 failed / 0 flaky** (60 capability-gated loud skips;
+Tier H 4/0/18), behind unit+contract 2582/2582. The four ALN-pinned
+flows ran their ALN behavior inside the toy leg (the D-4.7e pins doing
+their job). The ALN default leg runs at S6 with the slice close.
+
 **Delegated-agent judgement calls, adjudicated:**
 1. writeCues refuses on a missing/empty game.json — ACCEPTED (closes a
    real gap: validateCuesBlock's null-gameConfig early-return would

@@ -339,8 +339,13 @@ grep-clean, preflight cue checks rewritten, four E2E flows
 ALN-pack-pinned (Tier L 17/0/0 on this machine; integration 348/348),
 config-tool full surface re-pointed by the FIRST rule-2-delegated
 build agent (writeCues in the writeScoring shape running the gate's
-own validateCuesBlock; presets cues-stripped; role-picker UI) —
-**S5 toy second consumer next**) →
+own validateCuesBlock; presets cues-stripped; role-picker UI);
+**S5 toy second consumer DONE 2026-08-29** — toy cues (one action
+class per cue), partial fallbacks, profilePath seam pinned per-call,
+runtime-discovered-scene E2E green, builders gain the logs/ skip;
+dual-pack TOY LEG: Tier L 116/0/0 (unit+contract 2582/2582) —
+**S6 close next** (ALN leg + ratchet + adversarial review + close
+record)) →
 (iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
 (ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,
