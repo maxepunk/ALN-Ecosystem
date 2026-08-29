@@ -201,6 +201,35 @@ makes the three built-ins pack-selectable/parameterizable; a genuinely NEW surfa
 (the constellation renderer) is BILL-era headroom (ROADMAP §6, row 8.8). The
 RESOLUTION seam built in slice 1 is what the parameterization plugs into.
 
+### D-6.7 — The Q6-3 scoreboard parameter is `surfaces.scoreboard.evidenceCycleMs`
+
+The Q6-3 census (2026-08-29) weighed the scoreboard's hard-coded content/behavior
+knobs against the theme-unit boundary and recommended the **evidence-card cycling
+cadence** — the cleanest cut (pure timing, zero styling), a single scalar with the
+same delivery cost as `idleLoop`, and no new backend wiring (`scoreboard.html` already
+fetches `game.json` at init and reads `scoring.display.format` the same way).
+
+- **Parameter:** `surfaces.scoreboard.evidenceCycleMs` — a positive integer, the BASE
+  evidence-page cycling interval in ms. Today (`scoreboard.html:1287`) the interval is
+  a hard two-tier heuristic: `pages.length <= 3 ? 18000 : 12000`. The pack sets the
+  base (the ≤3-pages value); the engine KEEPS the "speed up when 4+ pages" adaptation
+  as engine behavior, deriving the dense tier as `round(base * 2/3)`. ALN declares
+  `18000` → few=18000, many=12000, BYTE-FAITHFUL to today's two values. The toy pack
+  declares a different base (dual-pack proof). Absent → the engine default (18000).
+- **Delivery:** client-side only — `scoreboard.html` reads
+  `game.surfaces?.scoreboard?.evidenceCycleMs` in the existing `game.json` init fetch;
+  no server engine change (unlike `idleLoop`, which needs the profile resolver). This
+  is the cheaper of the two `surfaces` parameters.
+- **Doc-drift caught (fix when touching the code):** `backend/CLAUDE.md:255-263`
+  describes a STALE scoreboard design (a three-tier 18/15/12s cadence, a "hero
+  evidence card", "dynamic slot calculation") that the actual two-tier code has NONE
+  of. Correct it to ground truth in S6.3.
+- **Boundary held:** styling knobs (paper-tilt jitter, flash timings, ticker scroll
+  speed, pagination px-geometry) stay OUT — theme unit / venue-display concerns. The
+  `displayBehavior.fields` dead letter (declared in packs, parsed by modeSemantics,
+  never read by scoreboard.html) is a pre-existing gap under `modes[]`, NOT this
+  slice's `surfaces` parameter — noted, not touched.
+
 ---
 
 ## 4. Owner answers (RULED 2026-08-29 — build input)

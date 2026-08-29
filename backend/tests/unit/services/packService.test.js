@@ -1702,4 +1702,86 @@ describe('packService', () => {
     });
   });
 
+  describe('display-surfaces gate (A3 slice 6 — pure, gate-internal)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    // Minimal valid game.json that ALSO declares surfaces + the capability.
+    const withSurfaces = (surfaces, requires = ['surfaces.select']) => ({
+      kind: 'game', schemaVersion: 2, id: 'surf-pack', requires, surfaces,
+    });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+    });
+
+    it('accepts a pack that names an idle-loop channel + a scoreboard param', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle', scoreboard: { evidenceCycleMs: 18000 } }));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts the opt-out shapes: idleLoop null and scoreboard.enabled false', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: null, scoreboard: { enabled: false } }));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts an absent surfaces block (nothing to gate)', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('REFUSES a declared surfaces block without surfaces.select in requires', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle' }, []));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.select.*missing from requires/);
+    });
+
+    it('REFUSES a path/filename-shaped idleLoop (a channel NAME, not a file)', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'idle-loop.mp4' }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.idleLoop must be a venue-channel NAME/);
+      // a slash-bearing path too
+      packService._resetForTesting();
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'videos/house.mp4' }));
+      message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.idleLoop must be a venue-channel NAME/);
+    });
+
+    it('REFUSES a non-integer or sub-1000ms evidenceCycleMs', () => {
+      writeGame(tmpDir, withSurfaces({ scoreboard: { evidenceCycleMs: 500 } }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/evidenceCycleMs must be an integer >= 1000/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, withSurfaces({ scoreboard: { evidenceCycleMs: 12.5 } }));
+      message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/evidenceCycleMs must be an integer/);
+    });
+
+    it('REFUSES a non-boolean scoreboard.enabled and a non-object scoreboard', () => {
+      writeGame(tmpDir, withSurfaces({ scoreboard: { enabled: 'yes' } }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/scoreboard\.enabled must be a boolean/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, withSurfaces({ scoreboard: [] }));
+      message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/scoreboard must be an object/);
+    });
+
+    it('REFUSES a non-object surfaces block', () => {
+      writeGame(tmpDir, withSurfaces([]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces must be an object/);
+    });
+  });
+
 });

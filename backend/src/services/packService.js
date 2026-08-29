@@ -56,6 +56,7 @@ const ENGINE_CAPABILITIES = new Set([
   'cues.standing',        // event/clock-triggered standing cues (slice 4)
   'cues.timeline',        // compound cue timelines, three-segment clock (slice 4)
   'lighting.roles',       // role-addressed lighting, profile-bound (slice 4)
+  'surfaces.select',      // select/parameterize the built-in display surfaces (slice 6)
 ]);
 
 // Per-mode flag VALUES this engine can drive (A3 slice 1 — mode
@@ -294,6 +295,68 @@ function _loadDeclaredCues(gameConfig) {
     return { value: null, problems };
   }
   return { value: problems.length === 0 ? parsed.cues : null, problems };
+}
+
+// Slice-6 channel-name shape: lowercase-dash, forbids paths/filenames by
+// construction (a dot or slash cannot match), mirroring lightingRoles.
+const SURFACE_CHANNEL_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
+ * Validate the pack's `surfaces` block (A3 slice 6). PURE, gate-internal
+ * (G1/R2): no service reads, no venue-resource checks — the profile
+ * binding + VLC resolution happen at fire time (S6.3), never here. The
+ * gate cannot assume schema validation ran (hand-authored / PACK_PATH
+ * packs), so it re-checks shape. A pack DECLARING `surfaces` must also
+ * declare the `surfaces.select` capability in `requires` (the
+ * cues.standing / lighting.roles authoring-lint precedent) — otherwise a
+ * capability-blind engine would silently ignore the block and run the
+ * game's display wrong.
+ * @param {Object|null} gameConfig
+ * @returns {string[]} problems
+ */
+function _validateSurfacesBlock(gameConfig) {
+  const surfaces = gameConfig && gameConfig.surfaces;
+  if (surfaces === undefined) return [];
+  const problems = [];
+  if (surfaces === null || typeof surfaces !== 'object' || Array.isArray(surfaces)) {
+    return [`surfaces must be an object; self-contradictory`];
+  }
+  const requires = Array.isArray(gameConfig.requires) ? gameConfig.requires : [];
+  if (!requires.includes('surfaces.select')) {
+    problems.push(
+      `surfaces is declared but 'surfaces.select' is missing from requires; ` +
+      `an engine without it would activate this pack with its display selection silently ignored; self-contradictory`
+    );
+  }
+  // idleLoop: absent | null (opt-out) | a channel NAME (never a path/filename).
+  if (Object.hasOwn(surfaces, 'idleLoop') && surfaces.idleLoop !== null) {
+    if (typeof surfaces.idleLoop !== 'string' || !SURFACE_CHANNEL_PATTERN.test(surfaces.idleLoop)) {
+      problems.push(
+        `surfaces.idleLoop must be a venue-channel NAME (lowercase letters, digits, dashes) or null (opt-out); ` +
+        `got ${JSON.stringify(surfaces.idleLoop)} — a filename/path belongs in the installation profile binding, not the pack; self-contradictory`
+      );
+    }
+  }
+  // scoreboard: absent | { enabled?, evidenceCycleMs? }.
+  if (Object.hasOwn(surfaces, 'scoreboard')) {
+    const sb = surfaces.scoreboard;
+    if (sb === null || typeof sb !== 'object' || Array.isArray(sb)) {
+      problems.push(`surfaces.scoreboard must be an object; self-contradictory`);
+    } else {
+      if (Object.hasOwn(sb, 'enabled') && typeof sb.enabled !== 'boolean') {
+        problems.push(`surfaces.scoreboard.enabled must be a boolean; self-contradictory`);
+      }
+      if (Object.hasOwn(sb, 'evidenceCycleMs')) {
+        const ms = sb.evidenceCycleMs;
+        if (typeof ms !== 'number' || !Number.isInteger(ms) || ms < 1000) {
+          problems.push(
+            `surfaces.scoreboard.evidenceCycleMs must be an integer >= 1000 (ms); got ${JSON.stringify(ms)}; self-contradictory`
+          );
+        }
+      }
+    }
+  }
+  return problems;
 }
 
 /**
@@ -657,6 +720,10 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
       // then has nothing to resolve against.
       problems.push(...validateCuesBlock(cuesCheck.value, gameConfig, _readPackTokens() || {}));
     }
+    // Display-surfaces gate (A3 slice 6 — pure, gate-internal): shape +
+    // the surfaces.select requires-lint. Runs file-less (surfaces lives
+    // in game.json, no sidecar).
+    problems.push(..._validateSurfacesBlock(gameConfig));
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {

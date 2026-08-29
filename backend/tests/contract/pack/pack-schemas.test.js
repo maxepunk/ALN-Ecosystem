@@ -286,6 +286,44 @@ describe('game pack schema contract (A1)', () => {
     });
   });
 
+  describe('surfaces block schema (A3 slice 6 — authoring twin of the activation gate)', () => {
+    let validateSurfaces;
+    beforeAll(() => {
+      const gameSchema = readJson(TOKEN_DATA_DIR, 'game.schema.json');
+      validateSurfaces = new Ajv2020({ allErrors: true, strict: true }).compile({
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        ...gameSchema.properties.surfaces,
+      });
+    });
+
+    it('accepts a channel-name idleLoop plus scoreboard params', () => {
+      expect(validateSurfaces({ idleLoop: 'house-idle', scoreboard: { enabled: true, evidenceCycleMs: 18000 } })).toBe(true);
+    });
+
+    it('accepts the opt-out shapes (null idleLoop, enabled:false)', () => {
+      expect(validateSurfaces({ idleLoop: null, scoreboard: { enabled: false } })).toBe(true);
+    });
+
+    it('accepts an empty surfaces object', () => {
+      expect(validateSurfaces({})).toBe(true);
+    });
+
+    it('rejects a path/filename-shaped idleLoop (channel NAME only)', () => {
+      expect(validateSurfaces({ idleLoop: 'idle-loop.mp4' })).toBe(false);
+      expect(validateSurfaces({ idleLoop: 'videos/house.mp4' })).toBe(false);
+    });
+
+    it('rejects an unknown surfaces key and an unknown scoreboard key (additionalProperties false)', () => {
+      expect(validateSurfaces({ nope: 1 })).toBe(false);
+      expect(validateSurfaces({ scoreboard: { bogus: true } })).toBe(false);
+    });
+
+    it('rejects a sub-1000 or non-integer evidenceCycleMs', () => {
+      expect(validateSurfaces({ scoreboard: { evidenceCycleMs: 500 } })).toBe(false);
+      expect(validateSurfaces({ scoreboard: { evidenceCycleMs: 12.5 } })).toBe(false);
+    });
+  });
+
   describe('schema files never enter pack inventory (slice 4 S1, red-team Gm1)', () => {
     // The EXCLUDE sets used to enumerate schema filenames literally, so
     // every NEW schema (cues.schema.json here; slice 6/7 schemas next)

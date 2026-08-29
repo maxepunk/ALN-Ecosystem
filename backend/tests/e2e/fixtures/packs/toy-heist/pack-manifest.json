@@ -3,7 +3,7 @@
   "schemaVersion": 2,
   "packId": "midnight-heist",
   "version": "0.1.0",
-  "contentHash": "sha256:bbbdf1d8f51783dab8273b08bd7584924b11be7acadce529a0c40a5d03553bd0",
+  "contentHash": "sha256:82d380185a33d88e681921af77a66692749d4d307d56228ceb16850709fbd754",
   "engine": {
     "minVersion": "3.0.0"
   },
@@ -17,8 +17,8 @@
     {
       "path": "game.json",
       "role": "game",
-      "sha1": "f9210b5bb7319eea21b274e6fec8996906d53ae2",
-      "size": 3590
+      "sha1": "98db6f23f3dea4523365e7174ecc9230d325ada8",
+      "size": 3735
     },
     {
       "path": "strings.json",
