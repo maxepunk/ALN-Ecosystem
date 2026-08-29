@@ -323,8 +323,15 @@ slice-4 design doc §9; **S2 gate DONE 2026-08-29** — gameRules
 vocabulary incl. the 24-action cue table, five drift tripwires),
 ENGINE_CAPABILITIES + the ratified trio, strings-mirror cues loader,
 tick guard + loadCues dupe refusal; guard cues green at validator AND
-gate; **S3 resolver + profile next**, opening with the AsyncAPI role
-contract commit) →
+gate; **S3 resolver + profile DONE 2026-08-29** — AsyncAPI role
+alternative opened the stage; profileService (PROFILE_PATH, frozen at
+boot, degrade-not-refuse) + the real aln-full-kit profile (all seven
+OQ1 bindings, contract-validated + drift-pinned); executeCommand-top
+role normalization with the L7 fallback warn + validateCommand silent
+mirror; the cue paths now surface `success:false` on cue:error (the
+D-4.4 promise upgraded the S2 observed swallow into scope); L7
+build-time tripwire + always-on role-resolution integration proof;
+**S4 cutover next**) →
 (iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
 (ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,

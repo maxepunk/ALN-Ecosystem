@@ -87,6 +87,13 @@ describe('installation-profile schema contract (C1 §1, slice 4 S1)', () => {
     if (!validate(c1Example())) throw new Error(`violations:\n  ${explain()}`);
   });
 
+  it('the in-repo ALN full-kit profile validates (S3 — the real venue document)', () => {
+    const real = JSON.parse(fs.readFileSync(
+      path.resolve(__dirname, '../../../config/profiles/aln-full-kit.json'), 'utf8'
+    ));
+    if (!validate(real)) throw new Error(`aln-full-kit violations:\n  ${explain()}`);
+  });
+
   it('a minimal profile validates (kind + schemaVersion + profileId; the harness needs small test profiles)', () => {
     const minimal = {
       kind: 'installation-profile',

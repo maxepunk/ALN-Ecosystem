@@ -191,6 +191,11 @@ async function initializeServices() {
     // call take the uncached live-disk path.
     require('./services/packService').activatePack();
 
+    // A3 slice 4 S3: freeze the installation profile at the same boot
+    // moment (packService template). A broken venue profile degrades
+    // with a loud warn — it never refuses the boot.
+    require('./services/profileService').activateProfile();
+
     // Load tokens from service (handles submodule paths and fallback)
     const tokenService = require('./services/tokenService');
     const tokens = tokenService.loadTokens();

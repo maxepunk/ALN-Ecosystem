@@ -598,6 +598,73 @@ describe('CueEngineService', () => {
     });
   });
 
+  describe('command failure visibility (slice 4 S3 — D-4.4: unresolvable roles must reach cue:error)', () => {
+    // executeCommand catches its own throws and returns {success:false};
+    // the cue paths used to count those as COMPLETED. An unresolvable
+    // lighting role is a gate-VALID pack failing at fire time — it must
+    // land in failedCommands and on the cue:error channel.
+    it('a success:false result in a SIMPLE cue lands in failedCommands and emits cue:error', async () => {
+      executeCommand.mockResolvedValueOnce({
+        success: false, message: "unresolvable lighting role 'disco-mode' (no profile binding, no pack fallback)", source: 'cue',
+      });
+      cueEngineService.loadCues([{
+        id: 'fail-cue', label: 'F',
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'disco-mode' } }],
+      }]);
+      const errors = [];
+      const completed = [];
+      cueEngineService.on('cue:error', e => errors.push(e));
+      cueEngineService.on('cue:completed', e => completed.push(e));
+      await cueEngineService.fireCue('fail-cue');
+      expect(errors).toHaveLength(1);
+      expect(errors[0].error).toMatch(/unresolvable lighting role 'disco-mode'/);
+      expect(completed[0].failedCommands).toEqual([
+        { action: 'lighting:scene:activate', error: "unresolvable lighting role 'disco-mode' (no profile binding, no pack fallback)" },
+      ]);
+      expect(completed[0].completedCommands).toEqual([]);
+    });
+
+    it('a success:false result in a TIMELINE entry lands in failedCommands and emits cue:error with position', async () => {
+      executeCommand.mockResolvedValueOnce({
+        success: false, message: "unresolvable lighting role 'disco-mode' (no profile binding, no pack fallback)", source: 'cue',
+      });
+      cueEngineService.loadCues([{
+        id: 'fail-compound', label: 'FC',
+        timeline: [{ at: 0, action: 'lighting:scene:activate', payload: { role: 'disco-mode' } }],
+      }]);
+      const errors = [];
+      cueEngineService.on('cue:error', e => errors.push(e));
+      await cueEngineService.fireCue('fail-compound');
+      expect(errors).toHaveLength(1);
+      expect(errors[0].position).toBe(0);
+      expect(errors[0].error).toMatch(/unresolvable lighting role/);
+    });
+  });
+
+  describe('held-cue release keeps the single resolution site (slice 4 S3, red-team Rm7 property)', () => {
+    it('release re-enters through fireCue by cueId — the role payload reaches executeCommand in ORIGINAL role form, resolved at release time, never from a stored pre-resolved payload', async () => {
+      const registry = require('../../../src/services/serviceHealthRegistry');
+      cueEngineService.loadCues([{
+        id: 'role-held', label: 'Role Held',
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'gameplay' } }],
+      }]);
+      const heldEvents = [];
+      cueEngineService.on('cue:held', e => heldEvents.push(e));
+
+      registry.report('lighting', 'down', 'test outage');
+      await cueEngineService.fireCue('role-held');
+      expect(heldEvents).toHaveLength(1);
+
+      registry.report('lighting', 'healthy', 'restored');
+      executeCommand.mockClear();
+      await cueEngineService.releaseCue(heldEvents[0].id);
+      expect(executeCommand).toHaveBeenCalledWith(expect.objectContaining({
+        action: 'lighting:scene:activate',
+        payload: { role: 'gameplay' },
+      }));
+    });
+  });
+
   describe('compound cue execution', () => {
     it('should execute timeline entries at correct elapsed positions', async () => {
       cueEngineService.loadCues([{

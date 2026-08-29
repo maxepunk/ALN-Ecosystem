@@ -736,3 +736,55 @@ Recorded, not changed:
   and notes only 7b's trigger event as flavor-ii. The ops are a closed
   seven-entry set; an unknown op is a typo, not an engine-growth
   request.
+
+### S3 — resolver + profile (DONE 2026-08-29)
+
+Opened with the AsyncAPI contract commit (Dm7 disposition honored):
+the `role` payload alternative for `lighting:scene:activate`, with the
+resolution order and the GM bypass documented, plus a role-form
+example.
+
+**Landed:**
+- `backend/src/services/profileService.js` (NEW): loads ONE profile at
+  boot, frozen (packService template — pre-activation reads fall
+  through to live disk for selective-init harnesses); `PROFILE_PATH`
+  seam with the loud warn-once; v1 reads kind, schemaVersion,
+  profileId, forPack, and bindings.lighting ONLY. A missing or broken
+  venue profile warns loudly and resolves every role unbound — the
+  degrade class never kills the boot. `getLightingBinding` drives the
+  `ha` provider only (D-4.5 skip clause) and is prototype-chain safe.
+- `backend/config/profiles/aln-full-kit.json` (NEW): the real venue
+  document — all seven OQ1 roles bound to the confirmed HA scene ids.
+  Deliberately carries NO audio section (D-4.4: no duplication of
+  routing.json) and no invented network values. Contract-validated
+  against the schema; the unit suite pins the OQ1 table verbatim.
+- executeCommand: role → sceneId normalization at the TOP, before the
+  REQUIRED_PAYLOAD_FIELDS loop (red-team R1). Resolution order:
+  profile binding, then the pack's lightingRoleFallbacks (each
+  fallback-resolved FIRE warns loudly — ledger L7), else
+  `{success:false, "unresolvable lighting role 'x'"}`.
+  Concrete-sceneId payloads bypass entirely. validateCommand mirrors
+  the normalization silently (a pre-show sweep is not a fire — no L7
+  warn spam).
+- **Scope call (recorded):** D-4.4 promises the unresolvable role
+  "fails through the existing cue:error channel", but executeCommand
+  catches its own throws into `{success:false}` and BOTH cue dispatch
+  paths counted such results as COMPLETED (the S2 observed-not-changed
+  swallow). The promise upgrades the fix into S3 scope: the simple-cue
+  loop and the timeline entry executor now route `success:false` into
+  failedCommands + cue:error. Side effect, deliberate: every rejected
+  command in a cue (service-down, missing field, unknown action) is now
+  visible on cue:error instead of silently completing — strictly more
+  honest, and the failedCommands array existed for exactly this.
+- app.js: `activateProfile()` beside `activatePack()` at boot.
+- Tests: profileService unit (11, incl. the OQ1 drift pin against the
+  real profile), executor normalization pins (7: bound/fallback-warn/
+  unresolvable/prototype-chain/GM-bypass/validate-mirror-silent/
+  validate-unresolvable), cue-path visibility pins (simple +
+  timeline-with-position), the held-release single-site property pin
+  (the role payload reaches executeCommand in ORIGINAL role form at
+  release time), the L7 BUILD-TIME tripwire (`.ha` projection,
+  non-ha skip, vacuous until S4 authors the fallbacks), and the
+  always-on non-E2E integration proof (real profileService + real
+  executeCommand + stubbed lighting; D-4.8) — 4 cases incl. the
+  PACK_PATH fallback path.

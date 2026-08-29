@@ -246,6 +246,16 @@ class TimelineRuntime {
           source: 'cue',
           trigger: `cue:${cueId}`,
         });
+        // executeCommand catches its own throws and returns
+        // {success:false} — route it to failedCommands + onError like a
+        // throw (slice 4 S3, D-4.4: an unresolvable lighting role fails
+        // through the cue:error channel, never counts completed).
+        if (result && result.success === false) {
+          logger.error(`[TimelineRuntime] Command rejected in "${cueId}" at ${entry.at}s: ${entry.action} — ${result.message}`);
+          activeCue.failedCommands.push({ action: entry.action, position: entry.at, error: result.message });
+          if (onError) onError(entry, new Error(result.message));
+          continue;
+        }
         // Track completion WITHOUT blocking: a cue should ack "started", not wait
         // for a multi-second sound/video to finish playing. Blocking here delayed
         // the gm:command:ack for the whole at:0 sound duration and stalled any
