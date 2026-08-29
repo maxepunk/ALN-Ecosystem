@@ -538,3 +538,67 @@ carry no cue internals (no role leak); scanner-repos-untouched; the §2.1
 inventory (byte-accurate); OQ2 rename safety; R13 row citations faithful +
 1.23 logging precedent; D-4.5 reading-(ii) within R4(c)'s sanction;
 validate-session unaffected.
+
+## 9. Execution record
+
+### S1 — schemas (DONE 2026-08-29)
+
+Branches: TokenData `claude/phase3-a3-slice4` created from closers tip
+`1d323a7`; parent work on the existing slice branch. Built test-first at
+the §5.1 seams (pack-contract suite, Python parity suite, refusal twins).
+
+**Landed:**
+- `ALN-TokenData/cues.schema.json` (NEW): the authoring half of the
+  row-2.22 contract. Commands XOR timeline (oneOf); flat
+  `{at, action, payload}` entries (nested `command` refused); `trigger`
+  accepts an event object, a clock object, null, or absence; trigger
+  event enum (16 values) and condition op enum (7) are enumerated and
+  DRIFT-TRIPWIRED against `standingEvaluator` `EVENT_NORMALIZERS` /
+  `CONDITION_OPS` by the contract suite; `lighting:scene:activate`
+  payloads require `role` and refuse `sceneId`; `op: in` requires an
+  array value; conditions on clock triggers are refused (engine never
+  evaluates them); file header `kind: 'cues'` + `schemaVersion: 1`
+  follows the strings sidecar convention (S4 authors the header in).
+- `ALN-TokenData/game.schema.json`: `cues` const-pinned to `cues.json`
+  (3a role-vs-pointer lesson); NEW `lightingRoleFallbacks` (role-name
+  keys → concrete scene-id strings; description marks it ledger L7,
+  temporary, retires at C4).
+- Both manifest builders: schema exclusion moved from literal names to a
+  `.schema.json` SUFFIX rule (`isSchemaFile`/`_is_schema_file`);
+  redundant literals pruned so the suffix rule is the single source; the
+  L1 `scoring-config.json` tombstone stays.
+- Manifests regenerated: the ALN inventory dropped `strings.schema.json`
+  — a LIVE instance of red-team Gm1 that had already slipped past the
+  literal list (4 files → 3, contentHash moved). Toy and parity-pack
+  regens were byte-identical (no schema files inside). No consumer pins
+  the old hash (grepped).
+- `backend/config/profiles/installation-profile.schema.json` (NEW,
+  OQ6 home): the ratified C1 §1 shape. Required core is
+  kind/schemaVersion/profileId so harness profiles stay minimal;
+  `bindings.lighting` values require `ha` (v1 drives ha only — WLED is
+  schema evolution); `endpoints` interior deliberately open until C2
+  consumes it; network v1 covers kit-network, venue-wifi dynamic-DNS
+  fields arrive with Track-E E2.
+- Tests: `tests/contract/pack/cues-schema.test.js` (26, incl. the two
+  vocabulary tripwires), pack-schemas extensions (const-pin +
+  fallbacks twins, guarded declared-cues walk — S4 adds the
+  ≥1-declarer assertion, no-inventoried-schema assertion over all
+  packs + a literal-list-can't-cover-this case),
+  `tests/contract/profile/installation-profile-schema.test.js` (11),
+  Python suffix-exclusion test. Counts: pack+profile contract 82/82,
+  scripts pytest 74/74, config-tool 100/100, full backend suite green
+  (see stage commits).
+
+**Census correction found during build:** the repo venue cues file has
+NO `trigger` key on the five operator cues — §2.1's "explicit
+`trigger: null`" is wrong for this checkout (null may exist on the
+venue Pi's copy). No design consequence: the schema accepts both null
+and absence, and both mean manual-only.
+
+**In-sanction calls made at build time (recorded for the reviewer):**
+the engine-unread `duration` key is schema-refused (S4 drops it at
+migration; behavior verbatim since nothing reads it); clock strings
+pinned to `^[0-9]{1,2}:[0-5][0-9]:[0-5][0-9]$` (schema stricter than
+`parseClockTime` is the safe direction); cue `icon` pinned to
+class-name-safe characters (it renders as a CSS class key); cue-level
+`routing` keys pinned to the three engine stream names.

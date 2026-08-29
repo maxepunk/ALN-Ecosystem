@@ -78,6 +78,21 @@ def test_excludes_schemas_legacy_and_tooling(tmp_path):
     assert [f["path"] for f in manifest["files"]] == ["game.json", "tokens.json"]
 
 
+def test_excludes_any_schema_by_suffix(tmp_path):
+    """Slice 4 S1 (red-team Gm1): schema files are excluded by the
+    `.schema.json` SUFFIX, not by a literal name list — so cues.schema.json
+    and every future slice-6/7 schema stay out of served pack inventory
+    without another builder edit. strings.schema.json had already slipped
+    past the literal list once."""
+    for name in [
+        "tokens.json", "cues.schema.json", "strings.schema.json",
+        "theme.schema.json", "installation-profile.schema.json",
+    ]:
+        (tmp_path / name).write_text("x")
+    manifest, _ = build_pack_manifest.build(tmp_path)
+    assert [f["path"] for f in manifest["files"]] == ["tokens.json"]
+
+
 def test_role_inference():
     role = build_pack_manifest.role_for
     assert role("game.json") == "game"

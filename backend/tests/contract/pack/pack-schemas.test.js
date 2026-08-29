@@ -230,6 +230,107 @@ describe('game pack schema contract (A1)', () => {
     });
   });
 
+  describe('cues pointer + lightingRoleFallbacks (slice 4 S1, D-4.2/D-4.5)', () => {
+    const mutated = (fn) => {
+      const game = readJson(TOKEN_DATA_DIR, 'game.json');
+      const copy = JSON.parse(JSON.stringify(game));
+      fn(copy);
+      return validateGame(copy);
+    };
+
+    it('the cues pointer is const-pinned to the canonical filename (3a strings precedent)', () => {
+      // Both manifest builders and the loader key on the literal
+      // 'cues.json'; a free-form pointer rebrands one consumer while the
+      // others stay keyed to the canonical name.
+      expect(mutated(g => { g.cues = 'cues.json'; })).toBe(true);
+      expect(mutated(g => { g.cues = 'show.json'; })).toBe(false);
+    });
+
+    it('lightingRoleFallbacks maps role names to concrete scene ids (ledger L7 — temporary)', () => {
+      expect(mutated(g => {
+        g.lightingRoles = ['gameplay', 'blackout'];
+        g.lightingRoleFallbacks = { gameplay: 'scene.game', blackout: 'scene.off' };
+      })).toBe(true);
+      // non-string scene id refused
+      expect(mutated(g => {
+        g.lightingRoleFallbacks = { gameplay: 7 };
+      })).toBe(false);
+      // a key outside the role-name convention refused
+      expect(mutated(g => {
+        g.lightingRoleFallbacks = { 'Scene.Game': 'scene.game' };
+      })).toBe(false);
+    });
+  });
+
+  describe('declared cues sidecars validate against cues.schema.json (slice 4 S1)', () => {
+    // Authoring-time twin of the S2 activation gate. No pack declares
+    // cues until the S4 cutover — the walk is forward-wired now; S4 adds
+    // the at-least-one-declarer assertion (strings-block precedent).
+    const cuesSchema = readJson(TOKEN_DATA_DIR, 'cues.schema.json');
+    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
+    const declaring = [
+      { name: 'about-last-night', dir: TOKEN_DATA_DIR },
+      ...fs.readdirSync(packsDir, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => ({ name: e.name, dir: path.join(packsDir, e.name) })),
+    ].filter(({ dir }) => {
+      try { return !!readJson(dir, 'game.json').cues; } catch { return false; }
+    });
+
+    it('every pack declaring a cues pointer ships a schema-valid sidecar', () => {
+      const validate = ajv.compile(cuesSchema);
+      for (const { name, dir } of declaring) {
+        const cues = readJson(dir, readJson(dir, 'game.json').cues);
+        if (!validate(cues)) {
+          throw new Error(`${name} cues violations:\n  ${explain(validate)}`);
+        }
+      }
+    });
+  });
+
+  describe('schema files never enter pack inventory (slice 4 S1, red-team Gm1)', () => {
+    // The EXCLUDE sets used to enumerate schema filenames literally, so
+    // every NEW schema (cues.schema.json here; slice 6/7 schemas next)
+    // silently entered inventory, got served, and moved contentHash —
+    // strings.schema.json had already slipped through when this landed.
+    // Both builders now exclude by the `.schema.json` suffix.
+    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
+    const allPacks = [
+      ...PACKS,
+      ...fs.readdirSync(packsDir, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => ({ name: `${e.name} (fixture)`, dir: path.join(packsDir, e.name) })),
+    ];
+
+    it.each(allPacks.map(p => [p.name, p.dir]))(
+      '%s: no committed or rebuilt inventory path ends .schema.json',
+      (name, dir) => {
+        const manifest = readJson(dir, 'pack-manifest.json');
+        const offenders = manifest.files
+          .map(f => f.path)
+          .filter(p => p.endsWith('.schema.json'));
+        expect(offenders).toEqual([]);
+        const rebuilt = buildFiles(dir)
+          .map(f => f.path)
+          .filter(p => p.endsWith('.schema.json'));
+        expect(rebuilt).toEqual([]);
+      }
+    );
+
+    it('the suffix rule covers schemas the literal EXCLUDE set never named', () => {
+      const os = require('os');
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-suffix-'));
+      try {
+        fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'cues.schema.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'theme.schema.json'), '{}');
+        expect(buildFiles(tmp).map(f => f.path)).toEqual(['tokens.json']);
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
+  });
+
   describe('toy pack is genuinely a SECOND game (methodology guard)', () => {
     it('differs from ALN in id, modes, scoring values, and entity labels', () => {
       const aln = readJson(TOKEN_DATA_DIR, 'game.json');

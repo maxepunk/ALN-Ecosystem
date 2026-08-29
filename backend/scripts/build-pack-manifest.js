@@ -25,13 +25,16 @@ const crypto = require('crypto');
 
 const EXCLUDE = new Set([
   'pack-manifest.json',
-  'game.schema.json',
-  'pack-manifest.schema.json',
-  'tokens.schema.json',
   'scoring-config.json', // TOMBSTONE: legacy file retired by ledger L1 — a resurrected copy must never re-enter served pack inventory (exclusion is byte-parity-pinned with the Python builder)
   'CLAUDE.md',
   'README.md',
 ]);
+
+// Slice 4 S1 (red-team Gm1): schemas are excluded by SUFFIX, not by a
+// literal name list — cues.schema.json and every future schema stay out
+// of served inventory without another builder edit. strings.schema.json
+// had already slipped past the old literal list into the ALN manifest.
+const isSchemaFile = (rel) => rel.endsWith('.schema.json');
 
 function roleFor(relPath) {
   if (relPath === 'game.json') return 'game';
@@ -55,7 +58,7 @@ function walk(dir, base = dir, out = []) {
       if (entry.name === 'node_modules' || entry.name === 'shared') continue;
       walk(full, base, out);
     } else if (entry.isFile()) {
-      if (EXCLUDE.has(rel)) continue;
+      if (EXCLUDE.has(rel) || isSchemaFile(rel)) continue;
       // Non-pack top-level extras (HTML utilities etc.) are inventoried as
       // 'other' only when clearly content; skip known repo tooling
       if (/\.(html)$/.test(rel)) continue;
