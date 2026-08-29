@@ -999,7 +999,11 @@ as accepted residuals; nothing manufactured survived refutation.
   ratchet, PWA 165/165. ESP32 `pio` is not installed in this container
   and the slice made ZERO ESP32 changes — that leg is recorded unrun, not
   claimed.
-- Dual-pack Tier L: toy leg (S5) 116/0/0; ALN default leg run at close.
+- Dual-pack Tier L: toy leg (S5) 116/0/0; ALN default leg at close
+  115/0/61 (0 flaky; Tier H 4/0/18). Skips are capability-gated + loud
+  (no VLC/MPD/audio/BT on this runner) — the cue-bearing flows
+  (admin-state-reactivity cue held/fire, toy activation) pass, so the
+  fixed gate/engine/executor are proven live on both packs.
 
 **Mixed-model adversarial review — findings + adjudication:**
 

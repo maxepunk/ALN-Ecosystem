@@ -353,10 +353,16 @@ you intend.
   the pack schema locks the floor structurally (`game.schema.json`
   pins the floor functions to `["staffed"]`) and a contract test
   checks it at authoring time. The activation gate does not read the
-  `functions` block, and no runtime check enforces function assignment
-  yet. Issuance-time and execution-time enforcement arrive with the
-  auth work; Phase 3 builds only the operator-tier subset (program
-  §13.6).
+  `functions` block, and no runtime check enforces the full
+  function→tier assignment yet. One narrow execution-time floor guard
+  DOES exist as of slice 4 (S6 review): `commandExecutor.executeCommand`
+  refuses any command from a cue source (`source !== 'gm'`) that is not
+  in the `CUE_ACTIONS` vocabulary — so pack content (the lowest trust)
+  cannot drive session lifecycle, score intervention, or system reset,
+  even if the activation gate is bypassed. The general issuance-time and
+  execution-time enforcement (mapping every function to its tier) still
+  arrives with the auth work; Phase 3 builds only the operator-tier
+  subset (program §13.6).
 - **Pseudonymous default.** The engine's only built-in identity is the
   device or session id. Whether a person is ever named is each game's
   design choice, never an engine requirement.

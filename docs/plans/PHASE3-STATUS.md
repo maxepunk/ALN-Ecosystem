@@ -343,9 +343,43 @@ own validateCuesBlock; presets cues-stripped; role-picker UI);
 **S5 toy second consumer DONE 2026-08-29** — toy cues (one action
 class per cue), partial fallbacks, profilePath seam pinned per-call,
 runtime-discovered-scene E2E green, builders gain the logs/ skip;
-dual-pack TOY LEG: Tier L 116/0/0 (unit+contract 2582/2582) —
-**S6 close next** (ALN leg + ratchet + adversarial review + close
-record)) →
+dual-pack TOY LEG: Tier L 116/0/0 (unit+contract 2582/2582);
+**S6 close DONE 2026-08-29 — SLICE 4 CLOSED.** Dist rebuilt; dual-pack
+Tier L gate COMPLETE (toy leg 116/0/0 at S5, ALN default leg 115/0/61
+at close — skips capability-gated + loud, no VLC/MPD/audio/BT on this
+runner). Backend 2597 unit+contract + ratchet RAISED (cueValidation +
+profileService floors, app.js 30→65 branches, commandExecutor 90→95,
+standingEvaluator 70→75 — never lowered); config-tool 114, Python
+parity 75, GM Scanner 1556, PWA 165. ESP32 `pio` not installed here +
+zero ESP32 changes → leg recorded unrun. **Mixed-model adversarial
+review of the WHOLE slice** (subagent policy: two Opus refuters —
+security + state-machine — a Fable doctrine/parity leg, a Haiku sweep):
+10 findings FIXED (`847d7c5`), 2 accepted residuals. The two MAJORs:
+(1) the gate validated a DIFFERENT read of cues.json than it froze +
+executed — a boot-window swap ran unvalidated cues (session:end /
+score:adjust / transaction:delete reachable); hoisted to a single read.
+(2) CUE_ACTIONS was validation-time-only — added a dispatch-time
+auth-floor guard (cue source ⇒ CUE_ACTIONS only) so operator-only
+functions stay operator-only even if the gate is bypassed. Both
+refuters CONFIRMED the commands-XOR-timeline predicate gap (gate
+non-empty vs engine truthy → gate-passing cue crashed boot / half-reset,
+also via the config-tool PUT path); one fix in the shared validateCuesBlock
+closes both. Minors: profile drift-warn re-arm, sceneId gate `!== undefined`,
+CONDITION_OPS hasOwn, invalid-clock warn latch, writeCues schemaVersion,
+buildAssetUsageMap null-proto, Node tombstone regression test. Doctrine
+leg: FAITHFUL-implementation verdict (owner answers present exactly,
+migration byte-faithful under only the sanctioned deltas, five tripwires
+bind under live mutation). Records: slice-4 design doc §9 S6 entry.
+**Accepted residuals (ledger):** HA scene ids on the unauthenticated
+pack channel → closes at C4 with L7; persisted cue-id rename collision
+across a restart straddling the ONE cutover (production frozen, no live
+session straddles it). **§6 residue RE-HOMED (design-doc obligation
+landing at S6):** the PR-review residue (a) packLoader behavioral
+timeout and (b) staging-cache race test are DEFERRED to the C2+C3 slice
+(this slice never touched the scanner repos; the C1-preflight bucket has
+no queue slot). R13 extraction brake: no matrix rows moved — the slice
+adds pack content + a gate + a resolver, no scanner-parity surface
+shifted. Merge-train entry #28 (parent) is READY; owner-paced) →
 (iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
 (ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,
