@@ -1,9 +1,14 @@
 # Phase 3.1 — Installation-Profile Schema (C1)
 
 **Date:** 2026-07-09
-**Status:** DRAFT for owner review (deliverable 2 of the Phase 3.0 program
-§10). Companion to the pack schemas
-(docs/plans/2026-06-13-phase3-1-pack-schemas.md).
+**Status:** **RATIFIED 2026-08-22** — owner ratified all 12 items of the
+item-by-item walkthrough (chat session; recorded in PHASE3-STATUS "Owner
+rulings 2026-08-22"). The §5 legacy-preset open point is DECIDED: **drop
+cold** — the new profile store never reads old preset files (they remain
+on disk untouched; no importer, no legacy-snapshot kind). Slice 4's C1
+prerequisite (program §12.4) is SATISFIED. Originally DRAFT for owner
+review (deliverable 2 of the Phase 3.0 program §10). Companion to the
+pack schemas (docs/plans/2026-06-13-phase3-1-pack-schemas.md).
 **Inputs:** kit-model decision (+stack/endpoints), capability vocabulary
 (docs/proposals/2026-06-11-capability-vocabulary.md), B7/B8 (routing/
 ducking = venue; lighting roles → instruments), F-TOOL-12 (versioned,
@@ -148,8 +153,12 @@ field.
 
 - Lives in the config-tool profile store (B0.1), NOT in the pack; kinded +
   versioned; export/import as single JSON.
-- Legacy presets: importable one-time as `legacy-snapshot` (owner decision
-  pending from the pre-read, §8.2 there); no new presets after cutover.
+- Legacy presets: **DROP COLD (owner-ratified 2026-08-22)** — the store
+  never reads old preset files; they stay on disk, retrievable by hand.
+  No importer, no `legacy-snapshot` kind. No new presets after cutover.
+  (The import-once option from the pre-read was considered and declined:
+  zero preset files exist in the repo, the live system is the freshest
+  snapshot of itself, and B0 stays smaller.)
 
 ## 6. Review points — resolved (2026-07-09)
 

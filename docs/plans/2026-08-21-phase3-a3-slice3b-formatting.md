@@ -72,6 +72,8 @@ Exact-output pins that move WITH their site or pin the baked fallback (full list
 
 ## 4. Owner questions (HELD — do not build)
 
+> **BOTH RULED 2026-08-22**: Q-3b-1 = option (c) + ALN template rewords to formatted value with NO "points"; Q-3b-2 = glyphs → theme unit, AND owner ruled ALN drops the star displays (rating display becomes themed; ALN opts out).
+
 - **Q-3b-1 — award-message number formatting.** The 3a census already flagged the contradiction: ALN declares `currency-usd` but the award message interpolates `{points}` RAW (`150000`) with the word "points". Formatting it (`$150,000`) changes ALN's visible wording and makes "points" read oddly; the clean fix is a reworded ALN template (e.g. "{points} awarded" with a formatted value) — a wording decision. Options: (a) `{points}` stays raw (status quo), (b) `{points}` becomes format-driven and ALN's sidecar rewords, (c) add a second placeholder (`{pointsFormatted}`) and let packs choose. Recommend (c) — additive, zero visible change until a pack opts in.
 - **Q-3b-2 — star glyph declaration.** Three glyphs today (⭐ scan-result/stats, ★/☆ token cards, ★ config-tool). Pack-declaring the glyph (`scoring.display.ratingGlyph`?) is theming; recommend KEEP per-surface baked glyphs in 3b (construction centralizes, glyphs stay) and revisit under 3c/theme.json. Note Q1 (3a, entities.label) is still open and unrelated.
 

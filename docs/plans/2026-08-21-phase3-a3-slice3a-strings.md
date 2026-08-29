@@ -127,6 +127,8 @@ This slice moves the game-content halves of capability-matrix rows **4.3** (resi
 
 ## 5. Open design questions (owner decisions)
 
+> **ALL FIVE RULED 2026-08-22** (PHASE3-STATUS "Owner rulings 2026-08-22"): Q1 = Account rebrand IS intended fiction (wire as declared); Q2 = Option A (claimedLabel+icon on the mode, game.json, red-team before build); Q3 = as proposed; Q4 = OUT confirmed; Q5 = scoreboard chrome joins strings.scoreboard.*. Build = the closers package (`claude/phase3-a3-closers`).
+
 - **Q1 — entities.label ratification (blocks the largest 3a family, ~20 sites).** game.json declares `"Account"/"Accounts"`; every surface says "Team". Wiring consumers as-declared is a **visible copy change** (Team→Account) on GM screens, dropdowns, and toasts. Ratify the intended ALN label — fix the pack to "Team"/"Teams", or accept the rebrand — before any consumer lands. (Wire field stays `teamId` per ledger L4 regardless.)
 - **Q2 — claimed-label mechanism.** "SOLD to"/"EXPOSED by" (+ 💰/🔍 icons) need a declared per-mode past-tense/status form; `modes[].verb` ("Sell"/"Expose") cannot derive it. Choose: new `modes[].claimedLabel` + `modes[].icon` fields (schema change to the modes block) vs `strings.modes.<id>.*` in the sidecar (no game.schema change). Same mechanism later feeds the report's `'Sale'` noun (verbNoun) if Q4 opts in.
 - **Q3 — token-noun boundary.** The pack can name the scannable object ("Memory" vs engine "token"): "Tap Memory Token", `tokenService.js:164` fallback, vs generic "N tokens collected" / config-tool "Token Browser". Decide whether `strings.terminology.tokenNoun` exists and where the line sits (proposal: game-flavored sites only; engine "token" vocabulary stays), or 3a ships without it.
