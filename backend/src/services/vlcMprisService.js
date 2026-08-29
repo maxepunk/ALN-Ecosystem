@@ -306,14 +306,19 @@ class VlcMprisService extends MprisPlayerBase {
       return;
     }
 
-    if (!this._idleLoopExists()) {
-      logger.warn('[VLC] Idle loop video not found');
+    const file = this._resolveIdleLoopFile();
+    if (file === null) {
+      logger.info('[VLC] Idle loop disabled by the active pack (surfaces.idleLoop: null)');
+      return;
+    }
+    if (!this._idleLoopFileExists(file)) {
+      logger.warn(`[VLC] Idle loop video not found: ${file}`);
       return;
     }
 
     try {
       await this._initializeIdleLoopDelay();
-      await this.playVideo(config.display.idleLoopFile);
+      await this.playVideo(file);
       await this.setLoop('Track');
       logger.info('[VLC] Idle loop initialized with continuous playback');
     } catch (err) {
@@ -329,8 +334,14 @@ class VlcMprisService extends MprisPlayerBase {
       return;
     }
 
+    const file = this._resolveIdleLoopFile();
+    if (file === null) {
+      logger.info('[VLC] No idle loop to return to (pack opted out)');
+      return;
+    }
+
     try {
-      await this.playVideo(config.display.idleLoopFile);
+      await this.playVideo(file);
       await this.setLoop('Track');
       logger.info('[VLC] Returned to idle loop');
     } catch (err) {
@@ -339,11 +350,46 @@ class VlcMprisService extends MprisPlayerBase {
   }
 
   /**
-   * Check if idle loop video file exists. Extracted for test mockability.
+   * Resolve the active pack's idle-loop media file (A3 slice 6, Q6-1/Q6-2).
+   * The pack names a venue-channel via game.json `surfaces.idleLoop`:
+   *   - null  → the pack opts OUT of the idle loop (no idle surface).
+   *   - absent → the engine default (config.display.idleLoopFile), no warn.
+   *   - a channel NAME → resolve through the installation profile binding;
+   *     an unbound channel falls back LOUDLY to config.display.idleLoopFile
+   *     (ledger L12, retires with the pack-manager media page — ROADMAP §8.1).
+   * Lazy requires: packService/profileService are frozen at boot, before
+   * VLC init; a top-level require here would risk a load-order surprise.
+   * @returns {string|null} the media filename, or null for opt-out.
+   */
+  _resolveIdleLoopFile() {
+    const packService = require('./packService');
+    const profileService = require('./profileService');
+    const gameConfig = packService.getGameConfig() || {};
+    const surfaces = (gameConfig.surfaces && typeof gameConfig.surfaces === 'object') ? gameConfig.surfaces : {};
+    if (!Object.hasOwn(surfaces, 'idleLoop')) {
+      return config.display.idleLoopFile;
+    }
+    const channel = surfaces.idleLoop;
+    if (channel === null) {
+      return null; // opt-out
+    }
+    const bound = profileService.getSurfaceChannelFile(channel);
+    if (bound) return bound;
+    logger.warn(
+      `[VLC] idle-loop channel '${channel}' has no installation-profile binding — ` +
+      `falling back to ${config.display.idleLoopFile} (ledger L12)`
+    );
+    return config.display.idleLoopFile;
+  }
+
+  /**
+   * Check whether a resolved idle-loop video file exists in the video dir.
+   * Extracted for test mockability.
+   * @param {string} file
    * @returns {boolean}
    */
-  _idleLoopExists() {
-    const idleVideoPath = path.join(__dirname, '../../public/videos', config.display.idleLoopFile);
+  _idleLoopFileExists(file) {
+    const idleVideoPath = path.join(__dirname, '../../public/videos', file);
     return fs.existsSync(idleVideoPath);
   }
 

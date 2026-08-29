@@ -15,6 +15,9 @@
       "police-arrival-2": { "ha": "scene.police2" },
       "police-arrival-3": { "ha": "scene.police3" },
       "police-glitch": { "ha": "scene.policeglitch" }
+    },
+    "surfaces": {
+      "aln-idle": { "file": "idle-loop.mp4" }
     }
   }
 }

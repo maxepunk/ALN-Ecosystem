@@ -530,60 +530,49 @@ describe('VlcMprisService', () => {
 
   // ── idle-loop file consolidation (slice 3a pre-fix 3, F-SHOW-29) ──
 
-  describe('idle-loop file comes from config.display.idleLoopFile (one key, three sites)', () => {
-    // Before this pin, three independent 'idle-loop.mp4' literals lived
-    // in this service (initializeIdleLoop, returnToIdleLoop,
-    // _idleLoopExists) — the existence GUARD could silently check a
-    // different file than VLC actually played. One config key kills the
-    // class; this test drives all three sites through an override.
-    let config;
-    let originalFile;
+  describe('_resolveIdleLoopFile — pack channel → profile binding → config fallback (slice 6, Q6-1/Q6-2)', () => {
+    // The idle-loop identity is no longer a single config literal: the
+    // ACTIVE pack names a venue-channel (game.json surfaces.idleLoop) and
+    // the installation profile binds it to a file. Absent → engine default;
+    // null → opt-out; a channel → profile binding, else a LOUD config
+    // fallback (ledger L12). This suite mocks the two upstream reads.
+    let packService, profileService, config, originalFile;
 
     beforeEach(() => {
-      // Require AFTER the outer beforeEach's jest.resetModules() so we
-      // mutate the same config instance the freshly-required service sees
       config = require('../../../src/config');
       originalFile = config.display.idleLoopFile;
-      config.display.idleLoopFile = 'custom-idle.mp4';
-      mockExecFileSuccess('');
-      vlcMprisService._initializeIdleLoopDelay = jest.fn().mockResolvedValue(undefined);
+      config.display.idleLoopFile = 'engine-default.mp4';
+      packService = require('../../../src/services/packService');
+      profileService = require('../../../src/services/profileService');
     });
 
     afterEach(() => {
       config.display.idleLoopFile = originalFile;
+      jest.restoreAllMocks();
     });
 
-    it('initializeIdleLoop plays the CONFIG file and the existence guard checks the SAME file', async () => {
-      const fsReal = require('fs');
-      const existsSpy = jest.spyOn(fsReal, 'existsSync').mockReturnValue(true);
-
-      await vlcMprisService.initializeIdleLoop();
-
-      expect(existsSpy).toHaveBeenCalledWith(expect.stringContaining('custom-idle.mp4'));
-      expect(execFile).toHaveBeenCalledWith(
-        'dbus-send',
-        expect.arrayContaining([
-          'org.mpris.MediaPlayer2.Player.OpenUri',
-          expect.stringContaining('custom-idle.mp4'),
-        ]),
-        expect.any(Object),
-        expect.any(Function)
-      );
-      existsSpy.mockRestore();
+    it('absent surfaces.idleLoop → the engine default config file (no warn)', () => {
+      jest.spyOn(packService, 'getGameConfig').mockReturnValue({});
+      expect(vlcMprisService._resolveIdleLoopFile()).toBe('engine-default.mp4');
     });
 
-    it('returnToIdleLoop plays the CONFIG file', async () => {
-      await vlcMprisService.returnToIdleLoop();
+    it('surfaces.idleLoop: null → null (opt-out)', () => {
+      jest.spyOn(packService, 'getGameConfig').mockReturnValue({ surfaces: { idleLoop: null } });
+      expect(vlcMprisService._resolveIdleLoopFile()).toBeNull();
+    });
 
-      expect(execFile).toHaveBeenCalledWith(
-        'dbus-send',
-        expect.arrayContaining([
-          'org.mpris.MediaPlayer2.Player.OpenUri',
-          expect.stringContaining('custom-idle.mp4'),
-        ]),
-        expect.any(Object),
-        expect.any(Function)
-      );
+    it('a channel WITH a profile binding → the bound file', () => {
+      jest.spyOn(packService, 'getGameConfig').mockReturnValue({ surfaces: { idleLoop: 'aln-idle' } });
+      jest.spyOn(profileService, 'getSurfaceChannelFile').mockReturnValue('idle-loop.mp4');
+      expect(vlcMprisService._resolveIdleLoopFile()).toBe('idle-loop.mp4');
+    });
+
+    it('a channel with NO profile binding → the LOUD config fallback', () => {
+      jest.spyOn(packService, 'getGameConfig').mockReturnValue({ surfaces: { idleLoop: 'aln-idle' } });
+      jest.spyOn(profileService, 'getSurfaceChannelFile').mockReturnValue(null);
+      const warnSpy = jest.spyOn(require('../../../src/utils/logger'), 'warn').mockImplementation(() => {});
+      expect(vlcMprisService._resolveIdleLoopFile()).toBe('engine-default.mp4');
+      expect(warnSpy.mock.calls.some(([m]) => /no installation-profile binding/.test(m))).toBe(true);
     });
   });
 
@@ -593,10 +582,12 @@ describe('VlcMprisService', () => {
     beforeEach(() => {
       mockExecFileSuccess('');
       vlcMprisService._initializeIdleLoopDelay = jest.fn().mockResolvedValue(undefined);
+      // Isolate the PLAY behavior from resolution (resolver has its own suite).
+      vlcMprisService._resolveIdleLoopFile = jest.fn().mockReturnValue('idle-loop.mp4');
     });
 
     it('should play idle-loop.mp4 with loop enabled', async () => {
-      vlcMprisService._idleLoopExists = jest.fn().mockReturnValue(true);
+      vlcMprisService._idleLoopFileExists = jest.fn().mockReturnValue(true);
 
       await vlcMprisService.initializeIdleLoop();
 
@@ -639,7 +630,7 @@ describe('VlcMprisService', () => {
     });
 
     it('should skip when idle video file does not exist', async () => {
-      vlcMprisService._idleLoopExists = jest.fn().mockReturnValue(false);
+      vlcMprisService._idleLoopFileExists = jest.fn().mockReturnValue(false);
 
       await vlcMprisService.initializeIdleLoop();
 
@@ -649,8 +640,22 @@ describe('VlcMprisService', () => {
       expect(openUriCalls).toHaveLength(0);
     });
 
+    it('should skip (no play, no existence check) when the pack opts out (resolver returns null)', async () => {
+      vlcMprisService._resolveIdleLoopFile = jest.fn().mockReturnValue(null);
+      const existsSpy = jest.fn().mockReturnValue(true);
+      vlcMprisService._idleLoopFileExists = existsSpy;
+
+      await vlcMprisService.initializeIdleLoop();
+
+      expect(existsSpy).not.toHaveBeenCalled();
+      const openUriCalls = execFile.mock.calls.filter(
+        c => c[1].includes('org.mpris.MediaPlayer2.Player.OpenUri')
+      );
+      expect(openUriCalls).toHaveLength(0);
+    });
+
     it('should handle errors gracefully without throwing', async () => {
-      vlcMprisService._idleLoopExists = jest.fn().mockReturnValue(true);
+      vlcMprisService._idleLoopFileExists = jest.fn().mockReturnValue(true);
       mockExecFileError('D-Bus error');
 
       // Should not throw — errors are caught and logged
@@ -663,6 +668,7 @@ describe('VlcMprisService', () => {
   describe('returnToIdleLoop', () => {
     beforeEach(() => {
       mockExecFileSuccess('');
+      vlcMprisService._resolveIdleLoopFile = jest.fn().mockReturnValue('idle-loop.mp4');
     });
 
     it('should play idle-loop.mp4 with loop enabled', async () => {
@@ -677,6 +683,17 @@ describe('VlcMprisService', () => {
         expect.any(Object),
         expect.any(Function)
       );
+    });
+
+    it('should NOT play when the pack opts out (resolver returns null)', async () => {
+      vlcMprisService._resolveIdleLoopFile = jest.fn().mockReturnValue(null);
+
+      await vlcMprisService.returnToIdleLoop();
+
+      const openUriCalls = execFile.mock.calls.filter(
+        c => c[1].includes('org.mpris.MediaPlayer2.Player.OpenUri')
+      );
+      expect(openUriCalls).toHaveLength(0);
     });
 
     it('should skip when FEATURE_IDLE_LOOP is false', async () => {

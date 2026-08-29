@@ -201,6 +201,26 @@ describe('profileService', () => {
     });
   });
 
+  describe('getSurfaceChannelFile (slice 6, Q6-2 — the lighting-binding twin)', () => {
+    it('resolves a bound surface channel to its file; unbound/prototype-chain names resolve null', () => {
+      const p = writeProfile(minimalProfile({
+        bindings: { surfaces: { 'aln-idle': { file: 'idle-loop.mp4' } } },
+      }));
+      process.env.PROFILE_PATH = p;
+      profileService.activateProfile();
+      expect(profileService.getSurfaceChannelFile('aln-idle')).toBe('idle-loop.mp4');
+      expect(profileService.getSurfaceChannelFile('unbound')).toBeNull();
+      expect(profileService.getSurfaceChannelFile('constructor')).toBeNull();
+    });
+
+    it('resolves null when the profile declares no surfaces bindings at all', () => {
+      const p = writeProfile(minimalProfile()); // only lighting bindings
+      process.env.PROFILE_PATH = p;
+      profileService.activateProfile();
+      expect(profileService.getSurfaceChannelFile('aln-idle')).toBeNull();
+    });
+  });
+
   describe('degrade class: a broken venue profile never kills the boot', () => {
     it('a missing profile file warns and activates with every role unbound', () => {
       process.env.PROFILE_PATH = path.join(tmpDir, 'nope.json');
