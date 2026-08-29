@@ -30,7 +30,12 @@ const fakeTx = (status, overrides = {}) => ({
 });
 
 describe('websocket/scanResponse', () => {
-  afterEach(() => {
+  // beforeEach, NOT afterEach: jest.config.base.js sets resetMocks:true,
+  // which wipes every mock implementation (INCLUDING the jest.mock factory
+  // values above) before each test — values set in an afterEach are dead
+  // by the time the next test runs (review-confirmed). beforeEach runs
+  // AFTER the automatic reset, so these defaults actually apply.
+  beforeEach(() => {
     packService.getStrings.mockReturnValue(null);
     packService.getScoringRules.mockReturnValue({ display: { unit: 'currency-usd', format: '$#,###' } });
   });
