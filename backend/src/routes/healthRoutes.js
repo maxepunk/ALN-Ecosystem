@@ -34,7 +34,10 @@ router.get('/health', async (req, res) => {
       version: process.env.npm_package_version || '1.0.0',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
-      timezone: getPosixTimezone()
+      timezone: getPosixTimezone(),
+      // A2 staleness visibility: the server's ACTIVE pack identity (null on
+      // pre-pack checkouts). Clients and C1 preflight compare contentHash.
+      pack: require('../services/packService').getActivePackInfo()
     };
 
     // Optional device tracking via query params

@@ -120,6 +120,25 @@ describe('SessionService restart restore (F-SHOW-01)', () => {
     expect(gameClockService.overtimeThreshold).toBe(7200);
   });
 
+  it('injects the ACTIVE pack phase table into the clock BEFORE restore (A3 slice 5)', async () => {
+    // Without setPhases-before-restore the persisted phaseId can never be
+    // re-seated (restore()'s phase block no-ops when this.phases is null) —
+    // this pin catches deleting the injection line in init().
+    const packService = require('../../../src/services/packService');
+    const setPhasesSpy = jest.spyOn(gameClockService, 'setPhases');
+    const restoreSpy = jest.spyOn(gameClockService, 'restore');
+
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? buildSessionJSON() : null
+    );
+
+    await sessionService.init();
+
+    expect(setPhasesSpy).toHaveBeenCalledWith(packService.getClockRules().phases);
+    expect(setPhasesSpy.mock.invocationCallOrder[0])
+      .toBeLessThan(restoreSpy.mock.invocationCallOrder[0]);
+  });
+
   it('marks past clock cues as fired without firing them (E1 mark-don\'t-fire)', async () => {
     persistenceService.load.mockImplementation(async (key) =>
       key === 'session:current' ? buildSessionJSON() : null
@@ -183,6 +202,63 @@ describe('SessionService restart restore (F-SHOW-01)', () => {
       expect.objectContaining({ overtimeThreshold: expect.any(Number) })
     );
 
+    await sessionService.endSession();
+  });
+
+  // ── Phase 3 A2: pack-mismatch warning on restore ────────────────────────
+  // A session's rules are frozen at start; its pack stamp is the mechanism.
+  // Restoring under a DIFFERENT active pack must be loud.
+
+  function packWarns(logger) {
+    return logger.warn.mock.calls.filter(([msg]) =>
+      typeof msg === 'string' && msg.includes('DIFFERENT pack')
+    );
+  }
+
+  it('loud-warns when a restored session was created under a different pack', async () => {
+    const logger = require('../../../src/utils/logger');
+    const json = buildSessionJSON();
+    json.metadata.pack = {
+      packId: 'some-other-game',
+      version: '2.0.0',
+      contentHash: `sha256:${'d'.repeat(64)}`,
+    };
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? json : null
+    );
+
+    await sessionService.init();
+
+    expect(packWarns(logger)).toHaveLength(1);
+    await sessionService.endSession();
+  });
+
+  it('does not warn when the restored session matches the active pack', async () => {
+    const logger = require('../../../src/utils/logger');
+    const packService = require('../../../src/services/packService');
+    const json = buildSessionJSON();
+    json.metadata.pack = packService.getActivePackInfo();
+    expect(json.metadata.pack).not.toBeNull(); // test env runs the real ALN pack
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? json : null
+    );
+
+    await sessionService.init();
+
+    expect(packWarns(logger)).toHaveLength(0);
+    await sessionService.endSession();
+  });
+
+  it('warns for legacy sessions with no pack stamp (unknown provenance)', async () => {
+    const logger = require('../../../src/utils/logger');
+    const json = buildSessionJSON(); // metadata has no pack key at all
+    persistenceService.load.mockImplementation(async (key) =>
+      key === 'session:current' ? json : null
+    );
+
+    await sessionService.init();
+
+    expect(packWarns(logger)).toHaveLength(1);
     await sessionService.endSession();
   });
 });

@@ -67,6 +67,105 @@ describe('displayDriver — window management', () => {
       );
     });
 
+    test('searches xdotool with the CONFIG window marker — never a hardcoded literal (slice 3a pre-fix 1)', async () => {
+      // The driver half of the "Case File" booby-trap coupling
+      // (capability-matrix 2.5): before this pin, the mocks above match
+      // `--name` by POSITION only, so a rebrand of the search literal
+      // passed CI and broke HDMI control at runtime. The page half +
+      // cross-file tripwire live in scoreboardWindowMarker.test.js.
+      const config = require('../../../src/config');
+      const { spawn, execFile } = require('child_process');
+      const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+      spawn.mockReturnValue(mockProc);
+      const searchValues = [];
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') { cb = opts; }
+        if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') {
+          searchValues.push(args[2]);
+          cb(null, '12345678\n', '');
+        } else cb(null, '', '');
+      });
+
+      // Mutation-proof: the config DEFAULT equals the old hardcoded
+      // literal, so asserting against the default would stay green if
+      // the driver re-baked it. Search must follow a RUNTIME override.
+      const original = config.display.scoreboardWindowMarker;
+      try {
+        config.display.scoreboardWindowMarker = 'MUTATION-SENTINEL-MARKER';
+        await displayDriver.showScoreboard();
+      } finally {
+        config.display.scoreboardWindowMarker = original;
+      }
+
+      expect(searchValues.length).toBeGreaterThan(0);
+      expect(new Set(searchValues)).toEqual(new Set(['MUTATION-SENTINEL-MARKER']));
+    });
+
+    test('returns false when the browser cannot launch (!running arm — deflaked coverage pin)', async () => {
+      // This arm's coverage used to depend on suite interleaving — the
+      // recurring ratchet flake. Force the launch failure deterministically.
+      const { spawn, execFile } = require('child_process');
+      // Chromium spawns but dies during the 1s alive-check (the handled
+      // early-crash path: on('exit') nulls browserProcess → return false)
+      spawn.mockReturnValue({
+        pid: 4321,
+        killed: false,
+        on: jest.fn((event, handler) => { if (event === 'exit') setImmediate(handler); }),
+      });
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') cb = opts;
+        cb(null, '', '');
+      });
+
+      let freshDriver;
+      jest.isolateModules(() => {
+        freshDriver = require('../../../src/utils/displayDriver');
+      });
+      await expect(freshDriver.showScoreboard()).resolves.toBe(false);
+    });
+
+    test('covers the remaining branch arms deterministically (100% pin)', async () => {
+      const { spawn, execFile } = require('child_process');
+      const fsMock = require('fs');
+      // Orphan PID file contains GARBAGE (isNaN arm at recovery) and
+      // xdotool search returns NO windows (empty idList arm)
+      const realRead = fsMock.readFileSync;
+      fsMock.readFileSync = jest.fn((p, enc) => {
+        if (String(p).includes('aln-pm-scoreboard-chromium.pid')) return 'garbage-pid';
+        return realRead(p, enc);
+      });
+      const procHandlers = {};
+      spawn.mockReturnValue({
+        pid: 7777, killed: false,
+        on: jest.fn((ev, h) => { procHandlers[ev] = h; }),
+      });
+      execFile.mockImplementation((cmd, args, opts, cb) => {
+        if (typeof opts === 'function') cb = opts;
+        // '\n' is TRUTHY but filters to an empty id list — hits the
+        // length>0 false-arm (a bare '' short-circuits at `if (ids)`)
+        if (cmd === 'xdotool' && args[0] === 'search') cb(null, '\n', '');
+        else cb(null, '', '');
+      });
+      let freshDriver;
+      const savedPort = process.env.PORT;
+      process.env.PORT = ''; // falsy → module-load PORT-default arm
+      jest.isolateModules(() => {
+        freshDriver = require('../../../src/utils/displayDriver');
+      });
+      if (savedPort === undefined) delete process.env.PORT;
+      else process.env.PORT = savedPort;
+      // Two CONCURRENT calls: the second must reuse launchPromise (memo arm)
+      const [a, b] = await Promise.all([
+        freshDriver.showScoreboard(),
+        freshDriver.showScoreboard(),
+      ]);
+      expect(spawn).toHaveBeenCalledTimes(1); // launchPromise memo held
+      // browser launched but the window was never found → both false
+      expect(a).toBe(false);
+      expect(b).toBe(false);
+      fsMock.readFileSync = realRead;
+    });
+
     test('does NOT relaunch Chromium on subsequent calls', async () => {
       const { spawn, execFile } = require('child_process');
       const mockProc = { pid: 1234, on: jest.fn(), killed: false };

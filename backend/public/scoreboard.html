@@ -6,7 +6,7 @@
     <meta name="google-cast-sdk" content="enabled">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>Case File: About Last Night</title>
+    <title>Case File: About Last Night — %%WINDOW_MARKER%%</title>
 
     <!-- Google Fonts - Distinctive Typography Stack -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -629,11 +629,11 @@
         }
 
         /* Detective mode - hide score ticker */
-        body.mode-detective .score-ticker {
+        body.mode-evidence .score-ticker {
             display: none;
         }
 
-        body.mode-detective .evidence-content {
+        body.mode-evidence .evidence-content {
             height: calc(100vh - var(--header-height));
             padding-bottom: var(--content-padding);
         }
@@ -689,7 +689,7 @@
         <!-- Case File Header -->
         <header class="case-header">
             <div class="case-title">
-                <span>CASE FILE: ABOUT LAST NIGHT</span>
+                <span id="scoreboardHeader">CASE FILE: ABOUT LAST NIGHT</span>
             </div>
             <div class="header-status">
                 <div class="status-indicator" id="connectionStatus">
@@ -769,12 +769,66 @@
         // CONFIGURATION
         // ============================================
         const CONFIG = {
-            adminPassword: '@LN-c0nn3ct',
+            // Injected at serve time from config.security.adminPassword
+            // (slice 3a pre-fix 2) — never bake a credential here.
+            adminPassword: '%%ADMIN_PASSWORD%%',
             deviceId: generateDeviceId(),
             apiUrl: window.location.origin,
             reconnectDelay: 2000,
             tokenRefreshInterval: 23 * 60 * 60 * 1000,
         };
+
+        // Pack-declared display strings (A3 slice 3a): injected at serve
+        // time from packService.getStrings() as a JSON object (or null
+        // when the pack declares no strings sidecar). Every key falls
+        // back to the baked ALN wording — missing strings are benign.
+        const PACK_STRINGS = '%%PACK_STRINGS%%';
+        // Non-empty STRING leaves only — the same leaf rule every other
+        // sidecar reader applies (gate, scanner mirror): a schema-drifted
+        // nested value must fall back to baked wording, never render
+        // '[object Object]' or reach escapeHtml as a non-string.
+        function packStr(value, baked) {
+            return (typeof value === 'string' && value.length > 0) ? value : baked;
+        }
+        const STR = {
+            header: packStr(PACK_STRINGS?.scoreboard?.header, 'CASE FILE: ABOUT LAST NIGHT'),
+            emptyTicker: packStr(PACK_STRINGS?.scoreboard?.emptyTicker, 'No scores recorded'),
+            emptyEvidence: packStr(PACK_STRINGS?.scoreboard?.emptyEvidence, 'Awaiting evidence...'),
+            // Doubles as the evidence-page GROUPING KEY (evidenceByOwner
+            // Map + scoreboard:page owner jump) — one value, all sites.
+            unknownOwner: packStr(PACK_STRINGS?.scoreboard?.unknownOwner, 'Unknown'),
+            // Q5 (owner-ruled 2026-08-22): the TV chrome IS pack wording —
+            // status terminal, REC badge, video overlay, boot splash. Baked
+            // defaults stay byte-identical to the legacy literals.
+            statusConnecting: packStr(PACK_STRINGS?.scoreboard?.statusConnecting, 'CONNECTING'),
+            statusLive: packStr(PACK_STRINGS?.scoreboard?.statusLive, 'LIVE'),
+            statusOffline: packStr(PACK_STRINGS?.scoreboard?.statusOffline, 'OFFLINE'),
+            statusAuthFailed: packStr(PACK_STRINGS?.scoreboard?.statusAuthFailed, 'AUTH FAILED'),
+            statusConnFailed: packStr(PACK_STRINGS?.scoreboard?.statusConnFailed, 'CONN FAILED'),
+            statusConnError: packStr(PACK_STRINGS?.scoreboard?.statusConnError, 'CONN ERROR'),
+            recIndicator: packStr(PACK_STRINGS?.scoreboard?.recIndicator, 'REC'),
+            videoOverlay: packStr(PACK_STRINGS?.scoreboard?.videoOverlay, 'Video Playing...'),
+            initializing: packStr(PACK_STRINGS?.scoreboard?.initializing, 'INITIALIZING'),
+        };
+
+        // Apply the pack strings to the static markup (the baked HTML
+        // text is the no-JS/fallback state; runs before any data lands).
+        function applyPackStrings() {
+            const header = document.getElementById('scoreboardHeader');
+            if (header) header.textContent = STR.header;
+            const seedEmpty = document.querySelector('#tickerContent .ticker-empty');
+            if (seedEmpty) seedEmpty.textContent = STR.emptyTicker;
+            // Q5 chrome statics (the JS call sites below overwrite the
+            // status text; these seed the pre-connect frame)
+            const statusText = document.getElementById('statusText');
+            if (statusText) statusText.textContent = STR.statusConnecting;
+            const rec = document.querySelector('.rec-indicator');
+            if (rec) rec.textContent = STR.recIndicator;
+            const overlay = document.querySelector('.display-mode-overlay-text');
+            if (overlay) overlay.textContent = STR.videoOverlay;
+            const loading = document.getElementById('loadingIndicator');
+            if (loading) loading.textContent = STR.initializing;
+        }
 
         // ============================================
         // STATE (Task 8: New state model)
@@ -943,11 +997,15 @@
                 }, { once: true });
             }
 
-            // View mode (detective hides ticker)
+            // Evidence view (hides the ticker). Surface-keyed since 3c:
+            // any declared mode publishing to scoreboard-evidence
+            // qualifies — 'detective' stays the pre-modes baked alias;
+            // pack ids are re-evaluated in loadEvidenceModes() once the
+            // mode table arrives.
             const modeParam = urlParams.get('mode');
             if (modeParam === 'detective') {
-                document.body.classList.add('mode-detective');
-                console.log('[Scoreboard] Detective mode - ticker hidden');
+                document.body.classList.add('mode-evidence');
+                console.log('[Scoreboard] Evidence view - ticker hidden');
             }
         }
 
@@ -998,7 +1056,7 @@
                 .sort((a, b) => (b[1].lastExposed || 0) - (a[1].lastExposed || 0));
 
             if (sortedOwners.length === 0) {
-                elements.evidencePage.innerHTML = '<div class="evidence-empty">Awaiting evidence...</div>';
+                elements.evidencePage.innerHTML = `<div class="evidence-empty">${escapeHtml(STR.emptyEvidence)}</div>`;
                 elements.pageDots.innerHTML = '';
                 stopPageCycling();
                 return;
@@ -1103,10 +1161,58 @@
             ).join('');
         }
 
-        function addEvidence(transaction) {
-            if (transaction.mode !== 'detective') return;
+        // Slice 1: evidence membership is pack-declared — a mode whose
+        // displayBehavior.surface is 'scoreboard-evidence' — never a
+        // mode-id literal. Loaded in initialize() BEFORE the socket
+        // connects (no ingest race). Legacy fallback + loud warn when the
+        // pack ships no game.json (ledger L6 family; found by the
+        // dual-pack Tier L gate: tipoff evidence never rendered).
+        let evidenceModes = new Set(['detective']);
+        // R-3b-1 money spec (slice 3b): scoring.display.format drives the
+        // ticker's money rendering. Vendored grammar twin of the backend's
+        // gameRules/formatting.js (one '#,###' token + literal affixes);
+        // baked ALN spec when the pack declares none. Tier-L tripwire:
+        // flow 23's rendered-affix pin asserts the ticker text equals
+        // formatMoneyExpected(...) on BOTH packs (dollar-prefixed / 'X cr').
+        let MONEY = { prefix: '$', suffix: '' };
+        function applyMoneyFormat(format) {
+            const m = typeof format === 'string' ? format.match(/^([^#]*)#,###([^#]*)$/) : null;
+            if (m) MONEY = { prefix: m[1], suffix: m[2] };
+        }
+        function formatMoney(value) {
+            return MONEY.prefix + (value || 0).toLocaleString('en-US') + MONEY.suffix;
+        }
+        async function loadEvidenceModes() {
+            try {
+                const res = await fetch('/api/pack/files/game.json', { cache: 'no-store' });
+                if (res.ok) {
+                    const game = await res.json();
+                    applyMoneyFormat(game.scoring && game.scoring.display && game.scoring.display.format);
+                    const ids = (game.modes || [])
+                        .filter(m => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence')
+                        .map(m => m.id);
+                    if (ids.length > 0) {
+                        evidenceModes = new Set(ids);
+                        console.log(`[Scoreboard] Evidence modes from pack: ${ids.join(', ')}`);
+                        // 3c: the ?mode= evidence view accepts ANY declared
+                        // evidence-surface id (pack-open) — re-evaluate now
+                        // that the table is here.
+                        const modeParam = new URLSearchParams(window.location.search).get('mode');
+                        if (modeParam && evidenceModes.has(modeParam)) {
+                            document.body.classList.add('mode-evidence');
+                            console.log('[Scoreboard] Evidence view - ticker hidden (surface-keyed)');
+                        }
+                        return;
+                    }
+                }
+            } catch (e) { /* fall through to the legacy filter */ }
+            console.warn('[Scoreboard] LEGACY MODE FILTER ACTIVE (ledger L6 family): pack game.json unavailable — evidence filter running on the baked detective literal.');
+        }
 
-            const owner = transaction.owner || 'Unknown';
+        function addEvidence(transaction) {
+            if (!evidenceModes.has(transaction.mode)) return;
+
+            const owner = transaction.owner || STR.unknownOwner;
             if (!state.evidenceByOwner.has(owner)) {
                 state.evidenceByOwner.set(owner, { entries: [], lastExposed: null });
             }
@@ -1258,7 +1364,7 @@
                 .sort((a, b) => b.currentScore - a.currentScore);
 
             if (scores.length === 0) {
-                elements.tickerContent.innerHTML = '<span class="ticker-empty">No scores recorded</span>';
+                elements.tickerContent.innerHTML = `<span class="ticker-empty">${escapeHtml(STR.emptyTicker)}</span>`;
                 elements.tickerContent.style.removeProperty('--ticker-duration');
                 return;
             }
@@ -1268,7 +1374,7 @@
                 return `<span class="ticker-entry" data-team="${escapeHtml(team.teamId)}">
                     <span class="ticker-entry__rank">#${rank}</span>
                     <span class="ticker-entry__name">${escapeHtml(team.teamId)}</span>
-                    <span class="ticker-entry__score">$${team.currentScore.toLocaleString()}</span>
+                    <span class="ticker-entry__score">${escapeHtml(formatMoney(team.currentScore))}</span>
                 </span>
                 <span class="ticker-separator">&bull;</span>`;
             }).join('');
@@ -1374,7 +1480,7 @@
                 return true;
             } catch (error) {
                 console.error('[Scoreboard] Authentication failed:', error);
-                updateConnectionStatus('offline', 'AUTH FAILED');
+                updateConnectionStatus('offline', STR.statusAuthFailed);
                 setTimeout(authenticate, CONFIG.reconnectDelay);
                 return false;
             }
@@ -1402,7 +1508,7 @@
             }
 
             cleanupSocket();
-            updateConnectionStatus('connecting', 'CONNECTING');
+            updateConnectionStatus('connecting', STR.statusConnecting);
 
             try {
                 state.socket = io(CONFIG.apiUrl, {
@@ -1418,7 +1524,7 @@
                 setupSocketHandlers();
             } catch (error) {
                 console.error('[Scoreboard] WebSocket connection failed:', error);
-                updateConnectionStatus('offline', 'CONN FAILED');
+                updateConnectionStatus('offline', STR.statusConnFailed);
                 setTimeout(connectWebSocket, CONFIG.reconnectDelay);
             }
         }
@@ -1434,7 +1540,7 @@
             state.socket.on('connect', () => {
                 console.log('[Scoreboard] WebSocket connected');
                 state.isConnected = true;
-                updateConnectionStatus('connected', 'LIVE');
+                updateConnectionStatus('connected', STR.statusLive);
                 elements.loadingIndicator.classList.add('hidden');
 
                 state.socket.emit('sync:request');
@@ -1457,7 +1563,7 @@
             state.socket.on('disconnect', (reason) => {
                 console.log('[Scoreboard] WebSocket disconnected:', reason);
                 state.isConnected = false;
-                updateConnectionStatus('offline', 'OFFLINE');
+                updateConnectionStatus('offline', STR.statusOffline);
 
                 if (zombieCheckInterval) {
                     clearInterval(zombieCheckInterval);
@@ -1468,7 +1574,7 @@
             state.socket.on('connect_error', (error) => {
                 const msg = error.message || String(error);
                 console.error('[Scoreboard] Connection error:', msg);
-                updateConnectionStatus('offline', 'CONN ERROR');
+                updateConnectionStatus('offline', STR.statusConnError);
 
                 // Any server-side rejection (auth, device collision, etc.) needs
                 // a fresh auth + reconnect cycle — Socket.io's built-in reconnect
@@ -1610,10 +1716,10 @@
                 state.evidenceByOwner.clear();
                 if (data.recentTransactions && Array.isArray(data.recentTransactions)) {
                     data.recentTransactions
-                        .filter(tx => tx.mode === 'detective')
+                        .filter(tx => evidenceModes.has(tx.mode))
                         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))  // Chronological
                         .forEach(tx => {
-                            const owner = tx.owner || 'Unknown';
+                            const owner = tx.owner || STR.unknownOwner;
                             if (!state.evidenceByOwner.has(owner)) {
                                 state.evidenceByOwner.set(owner, { entries: [], lastExposed: null });
                             }
@@ -1685,7 +1791,11 @@
         // ============================================
         async function initialize() {
             console.log('[Scoreboard] Initializing Evidence Board...');
+            applyPackStrings();
             initModes();
+            // Before any transaction ingest: the evidence filter must be
+            // pack-driven from the first WS event (slice 1)
+            await loadEvidenceModes();
 
             const authenticated = await authenticate();
             if (!authenticated) return;
