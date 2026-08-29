@@ -914,7 +914,14 @@ surface; not this slice's deletion to make). The census's
   toy role to it in a runtime-written temp profile, restarts through
   the seam, and fires the cue asserting ZERO failedCommands and zero
   cue:error (the S3 visibility fix makes that assertion load-bearing).
-  Run here: 2 passed / 0 failed, lighting live via the HA container.
+  Run here: the two UNGATED activation/summaries proofs passed (both
+  browser projects); the HA-bound test SKIPPED LOUDLY — this runner's
+  lighting service is not healthy (docker present is not HA connected).
+  CORRECTED from this record's first draft, which misread the pass
+  count as including the HA test. That is the D-4.8 design working:
+  the slice gate rests on the always-on integration proof (4/4 green
+  here), and the HA-bound flow proves the full path on lighting-capable
+  rigs (the Pi).
 - Builder hardening found in-stage: a jest run from a pack cwd made
   winston create `logs/` INSIDE the toy pack, which the inventory
   picked up (caught by the Python byte-parity suite). Both builders now
@@ -926,6 +933,35 @@ surface; not this slice's deletion to make). The census's
 Tier H 4/0/18), behind unit+contract 2582/2582. The four ALN-pinned
 flows ran their ALN behavior inside the toy leg (the D-4.7e pins doing
 their job). The ALN default leg runs at S6 with the slice close.
+
+**S5 stage review (one combined lens, 2026-08-29) — adjudication:**
+
+Verdict "ship" with every spec item MET (the lens re-ran the gate on
+the toy pack, the always-on integration proof, and the parity suite
+itself). Fixed in the same stage:
+1. The `logs/` builder exclusion gained regression tests on BOTH sides
+   (it had none — the hard find).
+2. startOrchestrator's JSDoc now documents packPath and profilePath.
+3. `sendGMCommand` was a third verbatim copy — extracted to
+   `tests/e2e/helpers/gm-command.js`, all three flows re-pointed.
+4. A trap note added where the toy flow restarts mid-test (a third test
+   would inherit the runtime profile; the afterEach idiom is named).
+5. The exact-shape completedCommands assertion relaxed (length +
+   action, not the whole object).
+6. The toy manifest's stale `tokens.count` (6 vs 14 real entries)
+   corrected — pre-existing, hand-authored half.
+
+Record corrections the lens caught in the S5 entry above (both now
+folded into it): the FIRST toy-flow test runs ungated — and the
+post-refactor rerun settled the rest of the story: the HA-bound test
+skips loudly on this runner in EVERY run, so the original "lighting
+live" claim was a misread of the pass count, corrected above. The toy
+`requires` array was also re-sorted alphabetically by the authoring
+script (cosmetic, unrecorded at the time). Noted, kept.
+
+Accepted as-is: the hand-rolled stop/start instead of
+restartOrchestrator is CORRECT — that helper drops both pins (a
+pre-existing trap the lens flagged for a future sweep).
 
 **Delegated-agent judgement calls, adjudicated:**
 1. writeCues refuses on a missing/empty game.json — ACCEPTED (closes a

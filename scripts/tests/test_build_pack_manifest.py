@@ -78,6 +78,17 @@ def test_excludes_schemas_legacy_and_tooling(tmp_path):
     assert [f["path"] for f in manifest["files"]] == ["game.json", "tokens.json"]
 
 
+def test_excludes_stray_logs_dir(tmp_path):
+    """Slice 4 S5: a test run from a pack cwd made winston create logs/
+    INSIDE the pack, which the inventory picked up (caught by the parity
+    suite). Runtime log dirs must never enter served inventory."""
+    (tmp_path / "tokens.json").write_text("{}")
+    (tmp_path / "logs").mkdir()
+    (tmp_path / "logs" / "combined.log").write_text("")
+    manifest, _ = build_pack_manifest.build(tmp_path)
+    assert [f["path"] for f in manifest["files"]] == ["tokens.json"]
+
+
 def test_excludes_any_schema_by_suffix(tmp_path):
     """Slice 4 S1 (red-team Gm1): schema files are excluded by the
     `.schema.json` SUFFIX, not by a literal name list — so cues.schema.json

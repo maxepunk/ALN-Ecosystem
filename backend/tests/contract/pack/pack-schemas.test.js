@@ -318,6 +318,10 @@ describe('game pack schema contract (A1)', () => {
         fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');
         fs.writeFileSync(path.join(tmp, 'cues.schema.json'), '{}');
         fs.writeFileSync(path.join(tmp, 'theme.schema.json'), '{}');
+        // S5: a stray runtime logs/ dir (winston mkdirs relative to cwd)
+        // must never enter served inventory either
+        fs.mkdirSync(path.join(tmp, 'logs'));
+        fs.writeFileSync(path.join(tmp, 'logs', 'combined.log'), '');
         expect(buildFiles(tmp).map(f => f.path)).toEqual(['tokens.json']);
       } finally {
         fs.rmSync(tmp, { recursive: true, force: true });

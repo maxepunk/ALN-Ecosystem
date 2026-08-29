@@ -29,27 +29,10 @@ const { startOrchestrator, stopOrchestrator, clearSessionData } = require('../se
 const { getCapabilities, requireCapabilities, formatManifest } = require('../helpers/capabilities');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
+const { sendGMCommand } = require('../helpers/gm-command');
 
 const TOY_PACK = path.resolve(__dirname, '../fixtures/packs/toy-heist');
 const STATIC_PROFILE = path.resolve(__dirname, '../fixtures/profiles/toy-test-rig.json');
-
-/** Send one gm:command over a temporary socket (07d-04 idiom). */
-async function sendGMCommand(orchestratorUrl, action, payload = {}) {
-  const deviceId = `TOY_CMD_${Date.now()}`;
-  const socket = await connectWithAuth(orchestratorUrl, ADMIN_PASSWORD, deviceId, 'gm');
-  try {
-    const ackPromise = waitForEvent(socket, 'gm:command:ack',
-      (ack) => ack?.data?.action === action, 10000);
-    socket.emit('gm:command', {
-      event: 'gm:command',
-      data: { action, payload },
-      timestamp: new Date().toISOString()
-    });
-    return await ackPromise;
-  } finally {
-    disconnectSocket(socket);
-  }
-}
 
 /** GET /api/state (self-signed cert tolerated). */
 function getState(orchestratorUrl) {
@@ -134,6 +117,11 @@ test.describe('Toy pack — role-addressed lighting (second consumer)', () => {
       orchestrator: true,
       bindings: { lighting: { 'vault-alarm': { ha: realSceneId } } },
     }));
+    // TRAP NOTE for the next author (S5 review): this restart replaces
+    // the beforeAll pinning for the REST of the file — any test added
+    // after this one inherits the runtime profile. Add an afterEach that
+    // restarts with the static pins (the 24-flow idiom) before adding a
+    // third test.
     await stopOrchestrator();
     await clearSessionData();
     orchestratorInfo = await startOrchestrator({
@@ -165,9 +153,8 @@ test.describe('Toy pack — role-addressed lighting (second consumer)', () => {
 
       const completed = await completedPromise;
       expect(completed.data.failedCommands || []).toEqual([]);
-      expect(completed.data.completedCommands).toEqual([
-        { action: 'lighting:scene:activate' },
-      ]);
+      expect(completed.data.completedCommands).toHaveLength(1);
+      expect(completed.data.completedCommands[0].action).toBe('lighting:scene:activate');
       expect(errors).toEqual([]);
       console.log(`Toy role 'vault-alarm' drove ${realSceneId} through the resolver — second consumer proven`);
     } finally {

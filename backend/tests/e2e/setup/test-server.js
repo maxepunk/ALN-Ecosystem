@@ -110,6 +110,11 @@ const TEST_ENV = {
  *
  * // Specific port (may conflict in parallel execution)
  * const server = await startOrchestrator({ https: true, port: 3001 });
+ * @param {string} [options.packPath] - Fixture pack directory (PACK_PATH);
+ *   defaults from E2E_PACK_PATH, explicit caller value WINS (dual-pack gate).
+ * @param {string} [options.profilePath] - Installation profile file
+ *   (PROFILE_PATH); defaults from E2E_PROFILE_PATH, caller wins — always
+ *   pin per-call beside packPath (slice 4 S5, Rm7).
  */
 async function startOrchestrator(options = {}) {
   // Extract options FIRST to validate against running instance
