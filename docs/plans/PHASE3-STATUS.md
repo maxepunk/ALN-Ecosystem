@@ -404,14 +404,22 @@ BILL-era headroom (ROADMAP §6/row 8.8). **Decision-free housekeeping DONE
 2026-08-29:** ledger L10 RETIRED (7200 fallback documented as inert
 pre-connect chrome — value already delivered live; source comments at
 `scoreboard.html:853,951`); the slice1-modes.md:39 "pack-extensible surface
-set" wording CORRECTED to match the ratified honesty table. **OWNER
-QUESTIONS HELD (design doc §4):** Q6-1 (does SELECT include opt-out of a
-surface?), Q6-2 (idle-loop resolution mechanism — installation-profile
-binding a la slice-4 lighting roles, a new venue-channel map, or engine-
-config passthrough?), Q6-3 (is PARAMETERIZE just idleLoop, or does
-scoreboard gain a pack parameter too?). The schema+gate (S6.1) is
-decision-free per §13.2's ratified "venue-channel name reference"; the
-RESOLVER (S6.3) waits on Q6-2.
+set" wording CORRECTED to match the ratified honesty table. **OWNER RULED
+2026-08-29 (design doc §4 — all three the EXPANSIVE way; minimal
+recommendations DECLINED):** Q6-1 → ALLOW OPT-OUT (a pack may declare no
+idle loop / no scoreboard; the display-mode state machine honors it —
+own E2E matrix); Q6-2 → PROFILE-BINDING RESOLVER NOW (reuse slice-4's
+installation-profile pattern: pack names an idle-loop CHANNEL, the
+profile binds it, `config.display.idleLoopFile` is the loud fallback —
+S6.3 UN-HELD, full resolver this slice); Q6-3 → SCOREBOARD ALSO GAINS A
+PARAM (the specific parameter is NOT yet named — a focused Q6-3
+scoreboard-parameter census runs at open, content/behavior NOT styling
+so the theme-unit boundary stays clean; D-6.7 records the pick).
+Consequence: slice 6 is a FULL slice, estimate ≈3.5–5.5 sessions
+(design doc §7). Build order (design doc §5): S6.2 housekeeping DONE;
+S6.1 schema+gate (idleLoop channel + opt-out + the ruled scoreboard
+param); S6.3 profile resolver + opt-out state machine + scoreboard
+param; S6.4 close.
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

@@ -203,55 +203,77 @@ RESOLUTION seam built in slice 1 is what the parameterization plugs into.
 
 ---
 
-## 4. Owner questions (HELD — do not build past these)
+## 4. Owner answers (RULED 2026-08-29 — build input)
 
-These gate the parts of "select and parameterize" that §13.2's one-line "minimal"
-does not pin. The decision-free core (§5) builds everything NOT gated here.
+The owner ruled all three the EXPANSIVE way — this is a full slice, not the minimal
+reading. Recommendations (minimal) were declined; the rulings below are the build
+contract.
 
-- **Q6-1 (SELECT depth):** Does "select the three surfaces" let a pack OPT OUT of a
-  built-in surface — e.g. a game with no idle loop, or no scoreboard — or is "select"
-  satisfied by parameterizing content within the always-present three? (Recommend:
-  minimal = no opt-out this slice; a pack that wants a blank idle loop names an empty/
-  black channel. Opt-out is a larger state-machine change.)
-- **Q6-2 (idle-loop RESOLUTION mechanism):** How does `surfaces.idleLoop`'s venue-
-  channel name resolve to a file? (a) Installation-profile binding (slice-4 lighting-
-  role symmetry) + `config.display.idleLoopFile` loud fallback; (b) a new venue-channel
-  map (C-series territory); (c) engine-config passthrough only (the pack name is
-  advisory, the venue env var still wins). Recommend (a) for symmetry, but it couples
-  slice 6 to the profile mechanism and may overreach the "minimal" reading — owner
-  call.
-- **Q6-3 (PARAMETERIZE breadth):** Is the minimal reading JUST `surfaces.idleLoop`,
-  or does the SCOREBOARD surface also gain a pack parameter this slice (beyond the
-  already-done mode-surface/strings/scoring)? (Recommend: idleLoop only; scoreboard
-  content is already pack-driven through three prior slices.)
+- **Q6-1 (SELECT depth) → ALLOW OPT-OUT.** A pack may declare it has no idle loop, or
+  no scoreboard, and the display-mode state machine HONORS it (skips the surface).
+  This is a real `displayControlService` change: `setIdleLoop()`/`setScoreboard()`
+  and the return-to-previous-mode logic must degrade gracefully when a surface is
+  suppressed (e.g. a no-idle-loop pack returns to a blank/black output or stays on
+  the last surface, never to a missing idle loop; a no-scoreboard pack's
+  `display:scoreboard` command is refused with a clean message). Own E2E matrix.
+- **Q6-2 (idle-loop RESOLUTION) → PROFILE-BINDING RESOLVER NOW.** Reuse slice-4's
+  installation-profile pattern: the pack names an idle-loop CHANNEL
+  (`surfaces.idleLoop`), the installation profile binds the channel to a concrete
+  media file/target, and `config.display.idleLoopFile` is the loud L-ledger fallback
+  when the profile has no binding (the L7 lighting-role shape, exactly). Build the
+  full resolver this slice (S6.3 UN-HELD). profileService gains a
+  `bindings.surfaces` (or equivalent) read beside `bindings.lighting`;
+  `vlcMprisService` idle-loop init resolves through it.
+- **Q6-3 (PARAMETERIZE breadth) → SCOREBOARD ALSO GAINS A PARAMETER.** Beyond
+  `surfaces.idleLoop`, the SCOREBOARD surface gains one pack-declared parameter this
+  slice. The specific parameter is NOT yet named ("e.g. layout/columns") — the ruling
+  explicitly calls for "its own census of what's worth parameterizing." So a focused
+  scoreboard-parameter census runs at S6 open (in flight); the candidate must be
+  CONTENT/behavior config that belongs to the surface, NOT visual styling (colors/
+  fonts/star-drop are the THEME UNIT's scope — keep the slice-6/theme-unit boundary
+  clean). Candidate axes the census weighs: evidence-card cycling cadence, rankings
+  display count / column set, idle↔scoreboard auto-switch timing. Decision recorded
+  once the census lands (D-6.7, pending).
 
-Until Q6-1/2/3 are ruled, the build lands the schema + gate + declaration and the
-L10/wording/R13 housekeeping; the RESOLVER + any opt-out state-machine work waits.
+Scope consequence: S6.3 is now in-scope and larger (resolver + opt-out state machine +
+the ruled scoreboard parameter). Estimate moves to the upper band (§7).
 
 ---
 
-## 5. Build order (decision-free core first)
+## 5. Build order (per the RULED expanded scope)
 
-- **S6.1 (schema + gate, decision-free):** fill `surfaces` sub-schema with
-  `idleLoop` (string, venue-channel name; NOT a path — a refusal if it looks like a
-  filename/path is a candidate rule). Add capability id (e.g. `surfaces.select`) to
-  `ENGINE_CAPABILITIES`; a pack declaring `surfaces` must list it in `requires`
-  (the cues/lightingRoles precedent). Gate: `surfaces` shape + the requires lint.
-  Contract tests both sides. TokenData ALN pack declares its idle-loop channel name
-  (byte-faithful to today's `idle-loop.mp4` intent). Toy pack declares a DIFFERENT
-  name (dual-pack proof). Manifest regen.
-- **S6.2 (housekeeping, decision-free):** L10 retire (D-6.4 comments + ledger),
-  slice1-modes:39 correction (D-6.6), the R13 table recorded in this doc (done in §1),
-  matrix reclassification logged in PHASE3-STATUS.
-- **S6.3 (resolver — GATED on Q6-2):** engine consumption of `surfaces.idleLoop`
-  through the ruled resolution mechanism; `vlcMprisService` idle-loop init reads the
-  resolved value; loud fallback. Dual-pack E2E: each pack drives a different idle
-  loop (capability-gated on VLC, same posture as slice-4 lighting).
-- **S6.4 (close):** dual-pack Tier L, ratchet, adversarial review, close record.
-
-If Q6-1/2/3 come back "minimal, idleLoop-only, profile-resolved", S6.1→S6.4 is a
-small slice (schema + one engine read + housekeeping). If "select includes opt-out"
-or "scoreboard also parameterized", the state-machine work widens S6.3.
+- **S6.2 (housekeeping, decision-free) — DONE 2026-08-29:** L10 retired (D-6.4
+  comments + ledger), slice1-modes:39 correction (D-6.6), the R13 table (§1),
+  matrix reclassification logged in PHASE3-STATUS. Landed with the slice-open commit.
+- **S6.1 (schema + gate):** fill the `surfaces` sub-schema:
+  - `surfaces.idleLoop` — a venue-channel NAME (non-empty string; refuse a path/
+    filename shape). OPT-OUT (Q6-1): absent or explicit `null` = "this game has no
+    idle loop" (schema-legal, gate-accepted).
+  - `surfaces.scoreboard` — an object carrying `enabled` (Q6-1 opt-out: `false` =
+    no scoreboard) plus the ONE ruled content parameter from the Q6-3 census (D-6.7,
+    pending — schema shape lands once the census picks the parameter).
+  - Capability id (e.g. `surfaces.select`) in `ENGINE_CAPABILITIES`; a pack declaring
+    `surfaces` lists it in `requires` (cues/lightingRoles precedent). Gate: shape +
+    requires lint + the opt-out coherence rules. Contract tests + gate unit tests.
+  - TokenData: ALN pack declares its idle-loop channel + scoreboard param
+    (byte-faithful intent); toy pack declares DIFFERENT values AND exercises an
+    opt-out (e.g. toy has no idle loop) for the dual-pack proof. Manifest regen.
+- **S6.3 (resolver + opt-out state machine + scoreboard param):**
+  - Profile resolver (Q6-2): profileService reads `bindings.surfaces.idleLoop`
+    (beside `bindings.lighting`); `vlcMprisService` idle-loop init resolves the pack
+    channel → profile binding → `config.display.idleLoopFile` loud fallback (the L7
+    shape). New ledger row for the fallback.
+  - Opt-out (Q6-1): `displayControlService` honors a suppressed surface —
+    `setScoreboard()` refuses cleanly when the pack opts out of the scoreboard;
+    idle-loop suppression degrades to a defined output (no crash, no missing-file
+    loop). Scanner `DisplayController`/`MonitoringDisplay` reflect the reduced set.
+  - Scoreboard param (Q6-3/D-6.7): `scoreboard.html` reads the ruled parameter from
+    the delivered `game.json` `surfaces` block; the pack value drives it.
+  - Dual-pack E2E: each pack drives a different idle loop + scoreboard param; the
+    toy's opt-out path proves surface suppression. Capability-gated on VLC (slice-4
+    lighting posture).
+- **S6.4 (close):** dual-pack Tier L (both legs), coverage ratchet, mixed-model
+  adversarial review (subagent policy), PHASE3-STATUS close + queue advance to slice 7.
 
 ---
 
@@ -271,13 +293,17 @@ or "scoreboard also parameterized", the state-machine work widens S6.3.
 
 ## 7. Honest estimate (program §12.3 calibration)
 
-**≈1.5–3 sessions** if the owner rules Q6-1/2/3 minimal (schema + gate + one engine
-read + housekeeping + dual-pack gate + review — smaller than slice 4, no new service,
-no contract-event change, no config-tool UI). **≈3–4.5** if "select" gains opt-out
-(a display-state-machine change with its own E2E matrix) or Q6-2 rules a new
-venue-channel map (a resolution mechanism rather than a profile binding). The
-calibration multiplier (program's own ~2× under-estimation history) is already folded
-in. Widest band: S6.3 (resolver), pending Q6-2.
+**≈3.5–5.5 sessions** at the RULED (expansive) scope. The owner took all three the
+big way: profile-binding resolver (couples to profileService, `vlcMprisService`
+idle-loop init, a new ledger fallback row), opt-out (a `displayControlService`
+state-machine change with its own dual-pack E2E matrix, plus the scanner-side reduced
+surface set), AND a new pack-declared scoreboard parameter (a fresh census + a
+`scoreboard.html` consumer + delivery). That is three of slice-4's kinds of work
+(schema+gate, profile resolver, a state-machine touch) minus the config-tool UI. The
+calibration multiplier (program's own ~2× under-estimation history) is folded in.
+Widest bands: S6.3 opt-out state machine (the return-to-previous-mode logic with a
+surface missing) and the Q6-3 parameter (its behavior + its E2E). The minimal-reading
+≈1.5–3 estimate is RETRACTED — it assumed the recommendations the owner declined.
 
 ---
 
