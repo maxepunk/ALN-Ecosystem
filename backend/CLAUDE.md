@@ -255,7 +255,7 @@ The scoreboard (`public/scoreboard.html`) renders one of two mode display
 surfaces (the per-mode `displayBehavior.surface`, pack-driven since slice 1/3c),
 toggled by a body CSS class on the SAME page — not two separate pages:
 
-**Evidence surface (`scoreboard-evidence`, ALN detective):**
+**Evidence mode display surface (`scoreboard-evidence`, ALN detective):**
 - Evidence cards paginated by estimated pixel height against the live viewport
   (`calculatePages()`), grouped by owner.
 - Auto-cycling pages: a TWO-tier cadence — base interval at ≤3 pages, and
@@ -263,7 +263,7 @@ toggled by a body CSS class on the SAME page — not two separate pages:
   `surfaces.scoreboard.evidenceCycleMs` (slice 6, Q6-3; default 18000 → 12000
   at the dense tier). A GM manual page nav suspends cycling for `MANUAL_PAUSE_MS`.
 
-**Rankings surface (`scoreboard-rankings`, ALN black market):**
+**Rankings mode display surface (`scoreboard-rankings`, ALN black market):**
 - Team rankings by score (rank / name / money), sorted descending; score
   formatted via the pack's `scoring.display.format` (slice 3b).
 - Updates via WebSocket broadcasts.
@@ -272,8 +272,8 @@ toggled by a body CSS class on the SAME page — not two separate pages:
 ids whose `displayBehavior.surface === 'scoreboard-evidence'`, read from
 `/api/pack/files/game.json`), NOT a hard-coded `'detective'` literal — so it
 works on any pack (ALN `detective`, toy `tipoff`). A pack may OPT OUT of the
-scoreboard surface entirely via `surfaces.scoreboard.enabled: false` (slice 6,
-Q6-1; `displayControlService` then refuses `display:scoreboard`).
+scoreboard DISPLAY surface entirely via `surfaces.scoreboard.enabled: false`
+(slice 6, Q6-1; `displayControlService` then refuses `display:scoreboard`).
 
 ### WebSocket Authentication Flow
 

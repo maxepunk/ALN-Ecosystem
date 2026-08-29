@@ -1190,10 +1190,10 @@
         }
         // Slice 6 (Q6-3): the ACTIVE pack's base evidence-page cycle (ms),
         // from game.json surfaces.scoreboard.evidenceCycleMs. Null = the
-        // engine default (18000). Set in loadEvidenceModes().
+        // engine default (18000). Set in loadEvidenceModes(), which hands
+        // this the unwrapped leaf value (the applyMoneyFormat convention).
         let PACK_EVIDENCE_CYCLE_MS = null;
-        function applyScoreboardSurface(surfaces) {
-            const ms = surfaces && surfaces.scoreboard && surfaces.scoreboard.evidenceCycleMs;
+        function applyEvidenceCycle(ms) {
             if (typeof ms === 'number' && ms >= 1000) PACK_EVIDENCE_CYCLE_MS = ms;
         }
         function formatMoney(value) {
@@ -1205,7 +1205,7 @@
                 if (res.ok) {
                     const game = await res.json();
                     applyMoneyFormat(game.scoring && game.scoring.display && game.scoring.display.format);
-                    applyScoreboardSurface(game.surfaces);
+                    applyEvidenceCycle(game.surfaces && game.surfaces.scoreboard && game.surfaces.scoreboard.evidenceCycleMs);
                     const ids = (game.modes || [])
                         .filter(m => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence')
                         .map(m => m.id);

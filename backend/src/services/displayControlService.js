@@ -248,9 +248,7 @@ class DisplayControlService extends EventEmitter {
    */
   _scoreboardEnabled() {
     const packService = require('./packService');
-    const gameConfig = packService.getGameConfig() || {};
-    const surfaces = (gameConfig.surfaces && typeof gameConfig.surfaces === 'object') ? gameConfig.surfaces : {};
-    const sb = surfaces.scoreboard;
+    const sb = packService.getSurfaces().scoreboard;
     return !(sb && typeof sb === 'object' && sb.enabled === false);
   }
 

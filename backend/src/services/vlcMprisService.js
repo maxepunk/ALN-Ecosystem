@@ -352,7 +352,8 @@ class VlcMprisService extends MprisPlayerBase {
   /**
    * Resolve the active pack's idle-loop media file (A3 slice 6, Q6-1/Q6-2).
    * The pack names a venue-channel via game.json `surfaces.idleLoop`:
-   *   - null  → the pack opts OUT of the idle loop (no idle surface).
+   *   - null  → the pack opts OUT of the idle loop (no idle-loop display
+   *     surface).
    *   - absent → the engine default (config.display.idleLoopFile), no warn.
    *   - a channel NAME → resolve through the installation profile binding;
    *     an unbound channel falls back LOUDLY to config.display.idleLoopFile
@@ -364,8 +365,7 @@ class VlcMprisService extends MprisPlayerBase {
   _resolveIdleLoopFile() {
     const packService = require('./packService');
     const profileService = require('./profileService');
-    const gameConfig = packService.getGameConfig() || {};
-    const surfaces = (gameConfig.surfaces && typeof gameConfig.surfaces === 'object') ? gameConfig.surfaces : {};
+    const surfaces = packService.getSurfaces();
     if (!Object.hasOwn(surfaces, 'idleLoop')) {
       return config.display.idleLoopFile;
     }

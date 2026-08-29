@@ -228,6 +228,21 @@ function getLightingRoleFallback(role) {
 }
 
 /**
+ * The pack's `surfaces` block (A3 slice 6), always an object — `{}` when
+ * undeclared or malformed. Keeps pack-shape knowledge here, behind a
+ * normalized accessor (the getScoringRules idiom); consumers read the
+ * gate-validated keys (`idleLoop`, `scoreboard`) without re-checking the
+ * block's shape. Snapshot semantics ride getGameConfig(): frozen at
+ * activation, live disk before it.
+ * @returns {Object}
+ */
+function getSurfaces() {
+  const gameConfig = getGameConfig();
+  const surfaces = gameConfig && gameConfig.surfaces;
+  return (surfaces && typeof surfaces === 'object' && !Array.isArray(surfaces)) ? surfaces : {};
+}
+
+/**
  * Read the pack's tokens.json, or null when absent/unreadable (the
  * token loader refuses separately). Shared by every gate block that
  * resolves against the token database — one read shape, three readers.
@@ -1185,4 +1200,4 @@ function _resetForTesting() {
   _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getCues, getScoringRules, getClockRules, getLightingRoleFallback, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getCues, getScoringRules, getClockRules, getLightingRoleFallback, getSurfaces, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

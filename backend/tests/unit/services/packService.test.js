@@ -1818,6 +1818,17 @@ describe('packService', () => {
       try { packService.activatePack(); } catch (err) { message = err.message; }
       expect(message).toMatch(/surfaces\.scoreboard has an unknown key 'evidenceCyleMs'/);
     });
+
+    it('getSurfaces() returns the declared block, and {} when undeclared (the normalized accessor)', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle', scoreboard: { evidenceCycleMs: 18000 } }));
+      packService.activatePack();
+      expect(packService.getSurfaces()).toEqual({ idleLoop: 'house-idle', scoreboard: { evidenceCycleMs: 18000 } });
+
+      packService._resetForTesting();
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      packService.activatePack();
+      expect(packService.getSurfaces()).toEqual({});
+    });
   });
 
 });

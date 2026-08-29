@@ -347,4 +347,94 @@ surface missing) and the Q6-3 parameter (its behavior + its E2E). The minimal-re
 
 ## 8. Execution record
 
-(Filled per stage as S6.1–S6.4 land, mirroring slice-4 §9.)
+Branches: parent `claude/phase3-a3-slice6` (chained from the slice-4 tip;
+NOTE for the merge train: the slice-6 opening-docs commit `16aed91` sits on
+the slice-4 branch too — an ordering slip, disclosed in PHASE3-STATUS),
+TokenData `claude/phase3-a3-slice6` (chained from `5ff057b`).
+
+### S6.2 — housekeeping (DONE 2026-08-29, with the slice-open commit)
+
+L10 retired by documentation (the scoreboard `7200` literals are inert
+pre-connect chrome; the real duration is pack-delivered on every sync).
+slice1-modes.md:39 wording corrected to the ratified honesty table. R13
+table recorded in §1; the matrix file untouched (1.23 precedent).
+
+### S6.1 — schema + gate (DONE 2026-08-29; TokenData `4f29720`, parent `c76d42b`)
+
+Filled the reserved `surfaces` schema key (D-6.1): `idleLoop` (channel
+name or null, pattern forbids paths) and `scoreboard` (`enabled`,
+`evidenceCycleMs`), additionalProperties false at both levels.
+`surfaces.select` joined ENGINE_CAPABILITIES; `_validateSurfacesBlock`
+gates shape + the requires-lint, pure and file-less. ALN declares
+`aln-idle` + 18000; the toy declares null (opt-out) + 9000. Both
+manifests regenerated. Contract tests (6) + gate tests (8 at this stage).
+
+### S6.3a — idle-loop profile resolver + opt-out (DONE 2026-08-29, `7fee89c`)
+
+Profile schema gained `bindings.surfaces` (the `bindings.lighting` twin);
+`profileService.getSurfaceChannelFile` mirrors `getLightingBinding`;
+`vlcMprisService._resolveIdleLoopFile` resolves absent → engine default,
+null → opt-out (no play, no existence check), channel → profile binding
+→ loud `config.display.idleLoopFile` fallback (NEW ledger row L12).
+`aln-full-kit` binds `aln-idle` → `idle-loop.mp4` (byte-faithful to the
+pre-slice default). Tests rewritten resolver-aware.
+
+### S6.3b — scoreboard opt-out + evidenceCycleMs (DONE 2026-08-29, `addd402`)
+
+`displayControlService._doSetScoreboard` refuses when the pack disables
+the scoreboard (first statement, no partial state); gate coherence rule
+refuses opt-out alongside a scoreboard mode display surface.
+`scoreboard.html` reads `evidenceCycleMs` in its existing game.json init
+fetch; the engine keeps the density adaptation (base → round(base·2/3)
+at 4+ pages; ALN 18000 → 12000, byte-faithful). backend/CLAUDE.md's
+stale scoreboard section (three-tier/hero-card, none of it in the code)
+rewritten to ground truth.
+
+### S6.4 — close (2026-08-29)
+
+Process note, recorded per the honesty rules: S6.1–S6.3b were built
+during a window when the session ran on a fallback model, outside the
+process.md §1 stage frame — implementation-first in places, and no
+per-stage code-review passes. The owner caught the drift; remediation:
+a retroactive STANDARDS-axis review over the whole slice diff (the one
+axis the close review had not run), the missed CONTEXT.md vocabulary
+capture (the surface entry update + the new "Surface channel / binding /
+fallback" entry, then reworded to the §4 standard on the owner's
+editorial check), and the stage frame restored from here.
+
+Close review, mixed-model per the subagent policy:
+- Opus correctness/security refuter: "essentially clean"; one MINOR
+  CONFIRMED — the gate validated known-key values but accepted unknown
+  keys, so a typo'd key on a schema-bypassing pack silently no-opped.
+  FIXED: unknown-key refusal at both levels + two tests. Refuted (not
+  defects): profile `file` trust tier, evidenceCycleMs upper bound, cue
+  firing display:scoreboard against an opted-out pack.
+- Fable doctrine/parity: faithful to all three owner rulings and every
+  design position; byte-faithfulness proven both legs. Finding A
+  (MAJOR): the ruled dual-pack/opt-out E2E was absent — FIXED with
+  tests/e2e/flows/toy-pack-surfaces.test.js (activation as a second
+  surfaces consumer + the opt-out and cadence values delivered through
+  the exact channel scoreboard.html reads; 4/4). Findings B/C (doc
+  status line, §5-vs-§6 contradiction) FIXED. Vocabulary nits (the
+  coherence message's bare "surface", the stale config comment) FIXED.
+- Haiku mechanical sweep: 8/8 clean (trailers, no model identifiers, no
+  debug residue, manifests fresh, no large/binary).
+- Standards axis (the remediation pass): 7 findings. ACCEPTED and fixed:
+  `packService.getSurfaces()` normalized accessor replacing two
+  byte-identical inline pack reads (the getScoringRules idiom); the §8
+  record itself (this text); backend/CLAUDE.md bare-"surface" sense
+  qualifiers; the "idle surface" JSDoc synonym; `applyEvidenceCycle`
+  rename + unwrapped-leaf convention in scoreboard.html. REJECTED with
+  the rule-of-three trigger recorded: extracting `_resolveBinding` from
+  the two profileService twins (extract at the third binding kind), and
+  moving the E2E `getJson` helper to helpers/ (two copies today; the
+  sendGMCommand precedent extracted at three).
+
+Verification on the FINAL tree (an earlier ALN E2E leg was stopped
+6 minutes in when the standards fixes landed — the close gate runs on
+what ships): unit+contract with coverage + ratchet (never lowered; the
+vlcMprisService functions floor dipped under the resolver refactor and
+was restored with a direct `_idleLoopFileExists` test, all 82 files
+green), sibling suites (config-tool 114, Python parity 75, PWA 165),
+and the dual-pack Tier L gate — numbers recorded below when the legs
+complete.

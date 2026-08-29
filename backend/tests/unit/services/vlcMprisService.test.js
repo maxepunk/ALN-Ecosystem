@@ -552,23 +552,23 @@ describe('VlcMprisService', () => {
     });
 
     it('absent surfaces.idleLoop → the engine default config file (no warn)', () => {
-      jest.spyOn(packService, 'getGameConfig').mockReturnValue({});
+      jest.spyOn(packService, 'getSurfaces').mockReturnValue({});
       expect(vlcMprisService._resolveIdleLoopFile()).toBe('engine-default.mp4');
     });
 
     it('surfaces.idleLoop: null → null (opt-out)', () => {
-      jest.spyOn(packService, 'getGameConfig').mockReturnValue({ surfaces: { idleLoop: null } });
+      jest.spyOn(packService, 'getSurfaces').mockReturnValue({ idleLoop: null });
       expect(vlcMprisService._resolveIdleLoopFile()).toBeNull();
     });
 
     it('a channel WITH a profile binding → the bound file', () => {
-      jest.spyOn(packService, 'getGameConfig').mockReturnValue({ surfaces: { idleLoop: 'aln-idle' } });
+      jest.spyOn(packService, 'getSurfaces').mockReturnValue({ idleLoop: 'aln-idle' });
       jest.spyOn(profileService, 'getSurfaceChannelFile').mockReturnValue('idle-loop.mp4');
       expect(vlcMprisService._resolveIdleLoopFile()).toBe('idle-loop.mp4');
     });
 
     it('a channel with NO profile binding → the LOUD config fallback', () => {
-      jest.spyOn(packService, 'getGameConfig').mockReturnValue({ surfaces: { idleLoop: 'aln-idle' } });
+      jest.spyOn(packService, 'getSurfaces').mockReturnValue({ idleLoop: 'aln-idle' });
       jest.spyOn(profileService, 'getSurfaceChannelFile').mockReturnValue(null);
       const warnSpy = jest.spyOn(require('../../../src/utils/logger'), 'warn').mockImplementation(() => {});
       expect(vlcMprisService._resolveIdleLoopFile()).toBe('engine-default.mp4');
