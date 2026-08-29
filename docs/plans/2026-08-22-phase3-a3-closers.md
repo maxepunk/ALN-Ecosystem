@@ -1,6 +1,6 @@
 # Phase 3 · A3 owner-ruled closers — Q1 + Q2 + Q3 + Q5 + Q-3b-1 (closes slices 3a and 3b)
 
-Status: **BUILD PLAN** (rulings 2026-08-22, recorded in PHASE3-STATUS; site re-verification + Q2 design red-team complete — workflow `wf_b0aa8d32-70a`, the FIRST run under the ratified mixed-model subagent policy: 3 Sonnet readers + 2 Opus + 1 Fable red-team, 6/6 agents, ~1.24M tokens)
+Status: **EXECUTED & CLOSED 2026-08-29** (execution record in §4; this slice closes 3a and 3b — see PHASE3-STATUS rows). Was: BUILD PLAN (rulings 2026-08-22, recorded in PHASE3-STATUS; site re-verification + Q2 design red-team complete — workflow `wf_b0aa8d32-70a`, the FIRST run under the ratified mixed-model subagent policy: 3 Sonnet readers + 2 Opus + 1 Fable red-team, 6/6 agents, ~1.24M tokens)
 Branch: `claude/phase3-a3-closers` (PR #27, chained from the slice-5 tip `094ca22`)
 
 ## 0. Scope (the five rulings)
@@ -41,3 +41,66 @@ OUT (recorded as decisions): report wording (Q4 stands — the generator's "Team
 2. **Scanner**: entities wiring (Q1 — sites incl. new finds + E2E dialog lockstep; baked Team/Teams default, declared wins; dead teamRegistry:206 deleted); modeSemantics bake+resolver; renderer claim sites (substitution/escaping/consuming-headline); pins; dist.
 3. **Backend/parent**: backend modeSemantics bake+resolver; scanResponse `{pointsFormatted}` (pack money grammar) + tripwire/test lockstep; tokenService tokenNoun (getStrings pattern, baked 'Memory'); scoreboard chrome STR keys + pack-derived E2E LIVE pins; gate twins + tests; sync ensure_ascii; toy declarations (all families: modes wording, chrome incl. divergent live-status, awardMessage reword, tokenNoun "Take") + manifest.
 4. Close ladder: full suites + ratchets, dual-pack Tier L, **mixed-model adversarial review per the ratified policy**, close records (3a + 3b move to FULLY CLOSED).
+
+## 4. Execution record (2026-08-29)
+
+Built in the §3 lockstep order; every step green before the next.
+
+1. **TokenData `1d323a7`** (pushed 2026-08-28): schema fields + patterns +
+   descriptions per §2 #1/#10; ALN declares `SOLD to {entity}` 💰 /
+   `EXPOSED by {entity}` 🔍; awardMessage reword + `terminology.tokenNoun:
+   "Memory"`; strings.schema example moved off the losing home; manifest
+   regen. Pack contract suite 38/38.
+2. **Scanner `dc71046`** (PR #13 draft, CI run 91 GREEN): modeSemantics
+   bake+resolver (normalization per §2 #1/#5, DECLINE warns once-per-mode)
+   + `claimAnnouncement()` (§2 #4 — escaped template, function
+   replacement, per-FIELD fallback) + `applyPackEntities`/`entityLabel()`;
+   GameOpsRenderer consuming-claim headline (§2 #7) + declared timeline
+   glyphs (content-only); Q1 across renderer/statics/dialogs/errors/CSS
+   empty-state; dead populateDropdown deleted; byte-identity full-string
+   pins, entities tests, NEW pack-controlled-strings XSS block. 1556 unit
+   + ratchet.
+3. **Backend/parent `8567a8d`** (PR #27, CI run 140 GREEN incl. BOTH
+   dual-pack Tier L legs): backend mirror normalization (silent value-level
+   helpers, §2 #6) + gate refusal twins (claimedLabel/icon/entities.label);
+   scanResponse `{pointsFormatted}` (pack money grammar, function
+   replacements, LOCKSTEP pin "…$150,000 awarded." / no 'points');
+   tokenService tokenNoun; Q5 scoreboard chrome via STR (9 keys, baked
+   byte-identical); ScoreboardPage class-based connection gating +
+   pack-derived text/dialog E2E assertions + 07b dual-pack claim pin;
+   toy pack second-consumer declarations + manifest; sync ensure_ascii
+   (§2 #9) + round-trip test. 2454 unit+contract + ratchet + lint; 344
+   integration; 73 scripts.
+4. **Adversarial review** (mixed-model per the ratified policy — 25
+   agents / ~3.5M tokens: Fable injection lens, Opus parity + state, Sonnet
+   coverage + honesty; per-finding refuters, Fable on MAJORs): 20 findings
+   → **6 CONFIRMED / 14 refuted**, all six fixed (scanner `8c4a75d`,
+   parent `a346dd5`):
+   - MAJOR: local dist stale (the §3-step-2 rebuild was skipped — CI
+     builds fresh so CI was never wrong, but local E2E was provably red;
+     rebuilt, then 07d-01 4P/0F, 07b 6P/0F with the claim pin rendering
+     live, 07d-02 6P/0F).
+   - Two Q1 census-missed toasts (gameOps :124/:224) → entityLabel.
+   - scanResponse afterEach mock defaults dead under `resetMocks:true` →
+     beforeEach (mutation-verified the LOCKSTEP pin now exercises the
+     rules-driven path).
+   - tokenNoun declared branch had zero coverage (mutation: deleting the
+     read stayed green) → PACK_PATH pin in claimsPolicy.test.js.
+   Notable refutations: the U+061C bidi gap (no sink consequence), the
+   maxLength-48 gate mirror (deliberately schema-only per §2 #5), the Q5
+   uppercase mismatch (CSS uppercases all nine sites), the session-details
+   "Teams:" line (dead code, pre-existing, outside the diff).
+5. **Ratchet raises** (scanner `567dfa8`): initializationSteps functions
+   90→95, teamRegistry 45/60/65 — both slice-touched; nothing lowered;
+   backend ratchet unchanged (JSON-identical regen reverted).
+
+Final heads: TokenData `1d323a7` · scanner `567dfa8` · parent `a346dd5`
+(+ the STATUS/close-record commit). Main-build CI green (parent run 140,
+scanner run 91); the small review-fix heads ride the same PRs.
+**Slices 3a and 3b are FULLY CLOSED by this slice.**
+
+Held owner items recorded at close: GitGuardian incident 36469941
+disposition (fake fixtures in scoreboardWindowMarker.test.js — assessment
+delivered; dashboard marking is the owner's half, the optional fixture
+rename awaits the ruling); config-tool modes/entities editing gap → B
+pages; builder consuming-blindness → filed (slice 2 residue).
