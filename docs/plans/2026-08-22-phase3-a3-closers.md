@@ -99,8 +99,8 @@ Final heads: TokenData `1d323a7` · scanner `567dfa8` · parent `a346dd5`
 scanner run 91); the small review-fix heads ride the same PRs.
 **Slices 3a and 3b are FULLY CLOSED by this slice.**
 
-Held owner items recorded at close: GitGuardian incident 36469941
-disposition (fake fixtures in scoreboardWindowMarker.test.js — assessment
-delivered; dashboard marking is the owner's half, the optional fixture
-rename awaits the ruling); config-tool modes/entities editing gap → B
+Held owner items recorded at close: GitGuardian incident 36469941 —
+RESOLVED 2026-08-29, owner marked it false-positive in the dashboard
+(the flagged strings are the 3a review's deliberate fixtures; the
+optional fixture rename was not requested); config-tool modes/entities editing gap → B
 pages; builder consuming-blindness → filed (slice 2 residue).
