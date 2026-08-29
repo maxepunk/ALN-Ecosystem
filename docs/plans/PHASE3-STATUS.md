@@ -312,7 +312,13 @@ owner 2026-08-29** — role names for the SEVEN scenes + confirmed HA ids,
 spine cues migrate renamed `warning-90min/60/30/15` + `endgame`, e2e
 fixtures verbatim, sounds/videos reference-form with logged program-§13
 amendment, playlists deferred, profile home confirmed, bluetooth target
-preserved with L8's ROADMAP-§8.2 checkpoint; build unblocked, S1 next) →
+preserved with L8's ROADMAP-§8.2 checkpoint; build IN PROGRESS —
+**S1 schemas DONE 2026-08-29** (TokenData `42c281e` + parent `0164855`;
+cues.schema.json with engine-tripwired vocabularies, game.schema
+cues const-pin + lightingRoleFallbacks, builder `.schema.json` suffix
+rule, installation-profile.schema.json at the OQ6 home; two-axis review
+folded, incl. the duration reversal — execution record + adjudication:
+slice-4 design doc §9; **S2 gate next**) →
 (iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
 (ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,
