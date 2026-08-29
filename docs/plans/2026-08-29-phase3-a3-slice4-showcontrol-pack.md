@@ -822,3 +822,57 @@ lines); the five lighting:scene:activate sites in commandExecutor
 (inherent to its table design); removing `getProfileInfo` (the C2
 preflight and health surfacing consume profile identity next — kept,
 now also exercised by activateProfile's return).
+
+### S4 — cutover (DONE 2026-08-29)
+
+One train on the slice branches (TokenData `5ff057b`, parent `726b552`
+engine + `c8a2c1c` config-tool):
+
+**Landed:**
+- ALN pack authored: `cues.json` with all 10 cues, verbatim behavior.
+  OQ2 renames applied (warning-90min/60min/30min/15min + endgame;
+  labels preserved; the two e2e fixture cue ids untouched). Lighting
+  payloads carry the OQ1 roles; the ENDGAME bluetooth target migrated
+  verbatim (OQ7a → ledger L8 recorded); `duration` kept (S1 review
+  ruling). game.json: cues pointer, seven lightingRoles, the
+  lightingRoleFallbacks block mirroring the profile (the L7 tripwire is
+  now live on real data), requires + the capability trio. Manifest
+  regenerated.
+- Engine re-point: `packService.getCues()` joins the activation
+  snapshot (frozen; null = benign emptiness; pre-activation live-read;
+  unit-pinned). app.js and systemReset load from it — a reset reloads
+  the SAME frozen snapshot, never mid-run pack edits. The venue
+  `config/environment/cues.json` is DELETED, grep-clean in backend.
+- Preflight checklist: the three cue checks rewritten pack-aware.
+  Found in passing: the old snippets read a `cue.actions` key that
+  never existed in the real file (`commands`/`timeline`); the rewrites
+  use the real shapes.
+- E2E: the four cue-pinning flows (07d-03, 22, 30,
+  admin-state-reactivity) ALN-pack-PINNED via explicit `packPath`
+  (07c precedent). Verified on this machine: Tier L 17 passed /
+  0 failed / 0 flaky (hardware tiers capability-skip loudly).
+  Integration suite 348/348 after the re-point.
+- config-tool (DELEGATED BUILD — the first under process.md rule 2's
+  amendment; a Sonnet agent, brief per §3, report verified
+  independently: suite rerun 109/109, grep-clean rerun, writeCues diff
+  read): cuesPath → the pack; header form flows through the six
+  censused consumers plus three more the sweep found (preset-import
+  gate, preset validators, pack identity); writeCues in the
+  writeScoring shape calling the SAME validateCuesBlock the gate runs;
+  presets stripped of cues at capture/apply/import; the lighting UI
+  authors ROLES (role-picker fed from GET /config pack.lightingRoles).
+
+**Delegated-agent judgement calls, adjudicated:**
+1. writeCues refuses on a missing/empty game.json — ACCEPTED (closes a
+   real gap: validateCuesBlock's null-gameConfig early-return would
+   have let a pack-less write through; writeScoring symmetry).
+2. The old "cue must have quickFire and/or trigger" tool rule dropped —
+   ACCEPTED, and the agent's "permanently unreachable" worry is wrong:
+   `cue:fire` reaches any cue by id; quickFire only controls grid
+   visibility. The old rule was over-strict.
+3. Preset import keeps a legacy `cues` section as inert baggage in the
+   stored preset file (never written to the pack) — ACCEPTED.
+4. `getScenes`/`GET /scenes` left in place, now unused by cue
+   authoring — ACCEPTED (possible future direct-HA surface; not this
+   slice's call to delete).
+5. `lightingRoles` rides the GET /config `pack` sub-object — ACCEPTED.

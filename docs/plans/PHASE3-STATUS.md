@@ -332,7 +332,15 @@ role normalization with the L7 fallback warn + validateCommand silent
 mirror; the cue paths now surface `success:false` on cue:error (the
 D-4.4 promise upgraded the S2 observed swallow into scope); L7
 build-time tripwire + always-on role-resolution integration proof;
-**S4 cutover next**) →
+**S4 cutover DONE 2026-08-29** — ALN cues.json authored (OQ1 roles,
+OQ2 renames, OQ7a target verbatim, L8 recorded), engine loads the
+frozen `packService.getCues()` snapshot, venue cues file DELETED
+grep-clean, preflight cue checks rewritten, four E2E flows
+ALN-pack-pinned (Tier L 17/0/0 on this machine; integration 348/348),
+config-tool full surface re-pointed by the FIRST rule-2-delegated
+build agent (writeCues in the writeScoring shape running the gate's
+own validateCuesBlock; presets cues-stripped; role-picker UI) —
+**S5 toy second consumer next**) →
 (iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
 (ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,
