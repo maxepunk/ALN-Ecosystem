@@ -19,7 +19,9 @@
       "displayBehavior": {
         "surface": "scoreboard-rankings",
         "when": "immediate"
-      }
+      },
+      "claimedLabel": "FENCED by {entity}",
+      "icon": "💼"
     },
     {
       "id": "tipoff",
@@ -35,7 +37,9 @@
           "summary"
         ],
         "when": "immediate"
-      }
+      },
+      "claimedLabel": "TIPPED by {entity}",
+      "icon": "🕵️"
     },
     {
       "id": "appraise",
@@ -46,7 +50,9 @@
       "countsTowardGroups": false,
       "displayBehavior": {
         "surface": "none"
-      }
+      },
+      "claimedLabel": "APPRAISED by {entity}",
+      "icon": "🔍"
     }
   ],
   "scoring": {

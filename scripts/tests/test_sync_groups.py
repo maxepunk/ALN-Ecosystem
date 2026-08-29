@@ -98,3 +98,21 @@ def test_write_groups_block_merges_and_is_idempotent(tmp_path):
     assert written['scoring'] == {'baseValues': {'1': 1}}  # merge preserves
 
     assert write_groups_block(game, groups) is False  # unchanged → no write
+
+
+def test_write_groups_block_round_trips_emoji_bytes(tmp_path):
+    """R-Q2 #9: game.json carries raw emoji (mode icons). The sync's
+    rewrite must not ASCII-escape them — that would churn the file bytes
+    and the pack contentHash on every sync with no content change."""
+    game = tmp_path / 'game.json'
+    original = {
+        'kind': 'game',
+        'modes': [{'id': 'blackmarket', 'claimedLabel': 'SOLD to {entity}', 'icon': '💰'}],
+    }
+    game.write_text(json.dumps(original, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+
+    assert write_groups_block(game, {'G': {'multiplier': 2}}) is True
+    raw = game.read_text(encoding='utf-8')
+    assert '💰' in raw            # raw emoji preserved…
+    assert '\\ud83d' not in raw   # …never surrogate-escaped
+    assert json.loads(raw)['modes'][0]['icon'] == '💰'

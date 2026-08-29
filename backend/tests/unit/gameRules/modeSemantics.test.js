@@ -11,7 +11,11 @@ const fs = require('fs');
 const path = require('path');
 const modeSemantics = require('../../../src/gameRules/modeSemantics');
 
-const { resolveMode, wireModeIds, defaultModeId, setLegacyWarnHook, LEGACY_ALN_MODES } = modeSemantics;
+const {
+  resolveMode, wireModeIds, defaultModeId, setLegacyWarnHook,
+  normalizedClaimedLabel, normalizedIcon, normalizedEntityLabel,
+  LEGACY_ALN_MODES,
+} = modeSemantics;
 
 // ALN-shaped config (mirrors ALN-TokenData/game.json modes)
 const ALN_CONFIG = {
@@ -21,12 +25,14 @@ const ALN_CONFIG = {
       id: 'blackmarket', label: 'Black Market', verb: 'Sell',
       scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true,
       displayBehavior: { surface: 'scoreboard-rankings', when: 'immediate' },
+      claimedLabel: 'SOLD to {entity}', icon: '💰',
     },
     {
       id: 'detective', label: 'Detective', verb: 'Expose',
       scoringPolicy: 'none', entityRole: 'attribution', defaultEntity: 'Nova',
       countsTowardGroups: false,
       displayBehavior: { surface: 'scoreboard-evidence', fields: ['summary', 'owner'], when: 'immediate' },
+      claimedLabel: 'EXPOSED by {entity}', icon: '🔍',
     },
   ],
 };
@@ -40,17 +46,20 @@ const TOY_CONFIG = {
       id: 'fence', label: 'Fence', verb: 'Fence',
       scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true,
       displayBehavior: { surface: 'scoreboard-rankings', when: 'immediate' },
+      claimedLabel: 'FENCED by {entity}', icon: '💼',
     },
     {
       id: 'tipoff', label: 'Tip-Off', verb: 'Leak',
       scoringPolicy: 'none', entityRole: 'attribution', defaultEntity: 'The Dispatcher',
       countsTowardGroups: false,
       displayBehavior: { surface: 'scoreboard-evidence', fields: ['summary'], when: 'immediate' },
+      claimedLabel: 'TIPPED by {entity}', icon: '🕵️',
     },
     {
       id: 'appraise', label: 'Appraise', verb: 'Appraise',
       scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: false,
       displayBehavior: { surface: 'none' },
+      claimedLabel: 'APPRAISED by {entity}', icon: '🔍',
     },
   ],
 };
@@ -66,6 +75,7 @@ describe('resolveMode — pack-declared flags', () => {
       id: 'blackmarket', label: 'Black Market', verb: 'Sell',
       scoringPolicy: 'standard', entityRole: 'ledger', defaultEntity: null,
       countsTowardGroups: true, claims: 'consuming',
+      claimedLabel: 'SOLD to {entity}', icon: '💰',
       displayBehavior: { surface: 'scoreboard-rankings', fields: [], when: 'immediate' },
     });
   });
@@ -125,6 +135,53 @@ describe('resolveMode — pack-declared flags', () => {
     record.scoringPolicy = 'standard';
     expect(resolveMode(ALN_CONFIG, 'detective').displayBehavior.fields).toEqual(['summary', 'owner']);
     expect(resolveMode(ALN_CONFIG, 'detective').scoringPolicy).toBe('none');
+  });
+});
+
+describe('presentation-field normalization (R-Q2 — the scanner-mirror half of the parity claim)', () => {
+  it('resolveMode carries normalized claimedLabel/icon; absent fields normalize to null', () => {
+    expect(resolveMode(TOY_CONFIG, 'fence').claimedLabel).toBe('FENCED by {entity}');
+    expect(resolveMode(TOY_CONFIG, 'fence').icon).toBe('💼');
+    const bare = { modes: [{ id: 'm', label: 'M', scoringPolicy: 'none', entityRole: 'ledger', countsTowardGroups: false }] };
+    expect(resolveMode(bare, 'm').claimedLabel).toBeNull();
+    expect(resolveMode(bare, 'm').icon).toBeNull();
+  });
+
+  it('normalizedClaimedLabel requires exactly one {entity} and no other braces (value-level, silent)', () => {
+    expect(normalizedClaimedLabel('SOLD to {entity}')).toBe('SOLD to {entity}');
+    expect(normalizedClaimedLabel('{entity} strikes')).toBe('{entity} strikes');
+    expect(normalizedClaimedLabel('CLAIMED')).toBeNull();
+    expect(normalizedClaimedLabel('{entity} beats {entity}')).toBeNull();
+    expect(normalizedClaimedLabel('SOLD to {entity} {x}')).toBeNull();
+    expect(normalizedClaimedLabel(42)).toBeNull();
+    // control/bidi strip happens BEFORE the template check
+    expect(normalizedClaimedLabel('SOLD\u202e to {entity}')).toBe('SOLD to {entity}');
+  });
+
+  it('normalizedIcon accepts 1-4 plain code points; markup/empty/over-long/non-string decline', () => {
+    expect(normalizedIcon('💰')).toBe('💰');
+    expect(normalizedIcon('💰⭐')).toBe('💰⭐');
+    expect(normalizedIcon('<b>')).toBeNull();
+    expect(normalizedIcon('')).toBeNull();
+    expect(normalizedIcon('💰💰💰💰💰')).toBeNull();
+    expect(normalizedIcon(7)).toBeNull();
+  });
+
+  it('normalizedEntityLabel requires non-empty singular AND plural strings', () => {
+    expect(normalizedEntityLabel({ singular: 'Account', plural: 'Accounts' }))
+      .toEqual({ singular: 'Account', plural: 'Accounts' });
+    expect(normalizedEntityLabel({ singular: '', plural: 'Xs' })).toBeNull();
+    expect(normalizedEntityLabel({ singular: 'X' })).toBeNull();
+    expect(normalizedEntityLabel('Account')).toBeNull();
+    expect(normalizedEntityLabel(undefined)).toBeNull();
+  });
+
+  it('the baked ALN shim carries the byte-identical legacy announcements', () => {
+    setLegacyWarnHook(() => {});
+    expect(resolveMode(null, 'blackmarket').claimedLabel).toBe('SOLD to {entity}');
+    expect(resolveMode(null, 'blackmarket').icon).toBe('💰');
+    expect(resolveMode(null, 'detective').claimedLabel).toBe('EXPOSED by {entity}');
+    expect(resolveMode(null, 'detective').icon).toBe('🔍');
   });
 });
 

@@ -9,13 +9,18 @@
  * state, same standing as renderScoreboardHtml's injection.)
  */
 
-const { getStrings } = require('../services/packService');
+const { getStrings, getScoringRules } = require('../services/packService');
+const { parseMoneyFormat, formatMoney } = require('../gameRules/formatting');
 
-// Baked ALN wording, `{points}` placeholder. The ALN sidecar declares it
-// VERBATIM (drift-pinned in scanResponse.test.js) — packs reword it via
-// strings.scoring.awardMessage (slice 3a); everything else in this file
-// stays engine chrome (A7 duplicate/rejection messages are
-// contract-adjacent, census §2 out-of-pack list).
+// Baked ALN wording, `{points}` placeholder. Packs reword via
+// strings.scoring.awardMessage (slice 3a) with `{points}` (raw number)
+// and/or `{pointsFormatted}` (pack money grammar — R-Q-3b-1 option c;
+// the ALN sidecar now declares "{pointsFormatted} awarded." and renders
+// "$150,000 awarded.", drift-pinned in scanResponse.test.js). This baked
+// packless default keeps the `{points}` wording byte-identical.
+// Everything else in this file stays engine chrome (A7
+// duplicate/rejection messages are contract-adjacent, census §2
+// out-of-pack list).
 const BAKED_AWARD_MESSAGE = 'Token scanned successfully. {points} points awarded.';
 
 function awardMessage(points) {
@@ -23,7 +28,14 @@ function awardMessage(points) {
   const template = (typeof declared === 'string' && declared.length > 0)
     ? declared
     : BAKED_AWARD_MESSAGE;
-  return template.replaceAll('{points}', String(points));
+  // Function replacements (GetSubstitution): a formatted value like
+  // "$1,300" must never be re-read as a $-pattern by replaceAll.
+  // Optional-chained: a malformed rules snapshot falls back to the baked
+  // money spec — formatting must never crash a scan response.
+  const formatted = formatMoney(points, parseMoneyFormat(getScoringRules()?.display?.format));
+  return template
+    .replaceAll('{points}', () => String(points))
+    .replaceAll('{pointsFormatted}', () => formatted);
 }
 
 /**

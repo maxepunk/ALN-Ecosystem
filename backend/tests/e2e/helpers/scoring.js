@@ -93,6 +93,18 @@ function loadPackClock(orchestratorUrl) {
 }
 
 /**
+ * Fetch the ACTIVE pack's declared `entities` block (Q1 — the entity
+ * noun the screens print; ALN rebrands Team → Account, the toy declares
+ * Crew/Crews). Null when the pack ships no game.json/entities — callers
+ * fall back to the baked Team/Teams wording, mirroring the scanner.
+ * @param {string} orchestratorUrl
+ * @returns {Promise<Object|null>} game.json `entities` block or null
+ */
+function loadPackEntities(orchestratorUrl) {
+  return _fetchGameJsonField(orchestratorUrl, 'entities');
+}
+
+/**
  * Fetch the ACTIVE pack's display strings sidecar (A3 slice 3a): read
  * game.json's `strings` pointer, then fetch that pack file. Null when
  * the pack declares no sidecar — assertions fall back to the baked
@@ -279,6 +291,7 @@ module.exports = {
   loadPackClock,
   loadPackGroups,
   loadPackStrings,
+  loadPackEntities,
   expectedModeLabels,
   calculateExpectedScore,
   calculateExpectedGroupBonus

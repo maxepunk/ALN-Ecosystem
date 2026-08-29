@@ -797,6 +797,18 @@
             // Doubles as the evidence-page GROUPING KEY (evidenceByOwner
             // Map + scoreboard:page owner jump) — one value, all sites.
             unknownOwner: packStr(PACK_STRINGS?.scoreboard?.unknownOwner, 'Unknown'),
+            // Q5 (owner-ruled 2026-08-22): the TV chrome IS pack wording —
+            // status terminal, REC badge, video overlay, boot splash. Baked
+            // defaults stay byte-identical to the legacy literals.
+            statusConnecting: packStr(PACK_STRINGS?.scoreboard?.statusConnecting, 'CONNECTING'),
+            statusLive: packStr(PACK_STRINGS?.scoreboard?.statusLive, 'LIVE'),
+            statusOffline: packStr(PACK_STRINGS?.scoreboard?.statusOffline, 'OFFLINE'),
+            statusAuthFailed: packStr(PACK_STRINGS?.scoreboard?.statusAuthFailed, 'AUTH FAILED'),
+            statusConnFailed: packStr(PACK_STRINGS?.scoreboard?.statusConnFailed, 'CONN FAILED'),
+            statusConnError: packStr(PACK_STRINGS?.scoreboard?.statusConnError, 'CONN ERROR'),
+            recIndicator: packStr(PACK_STRINGS?.scoreboard?.recIndicator, 'REC'),
+            videoOverlay: packStr(PACK_STRINGS?.scoreboard?.videoOverlay, 'Video Playing...'),
+            initializing: packStr(PACK_STRINGS?.scoreboard?.initializing, 'INITIALIZING'),
         };
 
         // Apply the pack strings to the static markup (the baked HTML
@@ -806,6 +818,16 @@
             if (header) header.textContent = STR.header;
             const seedEmpty = document.querySelector('#tickerContent .ticker-empty');
             if (seedEmpty) seedEmpty.textContent = STR.emptyTicker;
+            // Q5 chrome statics (the JS call sites below overwrite the
+            // status text; these seed the pre-connect frame)
+            const statusText = document.getElementById('statusText');
+            if (statusText) statusText.textContent = STR.statusConnecting;
+            const rec = document.querySelector('.rec-indicator');
+            if (rec) rec.textContent = STR.recIndicator;
+            const overlay = document.querySelector('.display-mode-overlay-text');
+            if (overlay) overlay.textContent = STR.videoOverlay;
+            const loading = document.getElementById('loadingIndicator');
+            if (loading) loading.textContent = STR.initializing;
         }
 
         // ============================================
@@ -1458,7 +1480,7 @@
                 return true;
             } catch (error) {
                 console.error('[Scoreboard] Authentication failed:', error);
-                updateConnectionStatus('offline', 'AUTH FAILED');
+                updateConnectionStatus('offline', STR.statusAuthFailed);
                 setTimeout(authenticate, CONFIG.reconnectDelay);
                 return false;
             }
@@ -1486,7 +1508,7 @@
             }
 
             cleanupSocket();
-            updateConnectionStatus('connecting', 'CONNECTING');
+            updateConnectionStatus('connecting', STR.statusConnecting);
 
             try {
                 state.socket = io(CONFIG.apiUrl, {
@@ -1502,7 +1524,7 @@
                 setupSocketHandlers();
             } catch (error) {
                 console.error('[Scoreboard] WebSocket connection failed:', error);
-                updateConnectionStatus('offline', 'CONN FAILED');
+                updateConnectionStatus('offline', STR.statusConnFailed);
                 setTimeout(connectWebSocket, CONFIG.reconnectDelay);
             }
         }
@@ -1518,7 +1540,7 @@
             state.socket.on('connect', () => {
                 console.log('[Scoreboard] WebSocket connected');
                 state.isConnected = true;
-                updateConnectionStatus('connected', 'LIVE');
+                updateConnectionStatus('connected', STR.statusLive);
                 elements.loadingIndicator.classList.add('hidden');
 
                 state.socket.emit('sync:request');
@@ -1541,7 +1563,7 @@
             state.socket.on('disconnect', (reason) => {
                 console.log('[Scoreboard] WebSocket disconnected:', reason);
                 state.isConnected = false;
-                updateConnectionStatus('offline', 'OFFLINE');
+                updateConnectionStatus('offline', STR.statusOffline);
 
                 if (zombieCheckInterval) {
                     clearInterval(zombieCheckInterval);
@@ -1552,7 +1574,7 @@
             state.socket.on('connect_error', (error) => {
                 const msg = error.message || String(error);
                 console.error('[Scoreboard] Connection error:', msg);
-                updateConnectionStatus('offline', 'CONN ERROR');
+                updateConnectionStatus('offline', STR.statusConnError);
 
                 // Any server-side rejection (auth, device collision, etc.) needs
                 // a fresh auth + reconnect cycle — Socket.io's built-in reconnect

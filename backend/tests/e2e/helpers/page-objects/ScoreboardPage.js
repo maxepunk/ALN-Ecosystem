@@ -95,25 +95,31 @@ class ScoreboardPage {
   // ============================================
 
   /**
-   * Wait for WebSocket connection to be established
+   * Wait for WebSocket connection to be established.
+   *
+   * Keys on the STATUS CLASS ('connected'), never the status TEXT — the
+   * text is Q5 pack chrome ('LIVE' is ALN's wording; the toy declares
+   * 'WIRED IN'). state:'attached' (not visible) so kiosk mode, which
+   * hides the indicator via CSS, waits the same way.
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForConnection(timeout = 30000) {
-    await this.statusText.filter({ hasText: 'LIVE' }).waitFor({ state: 'visible', timeout });
+    await this.page.locator('#connectionStatus.connected').waitFor({ state: 'attached', timeout });
   }
 
   /**
-   * Check if scoreboard is connected
+   * Check if scoreboard is connected (status class, pack-independent)
    * @returns {Promise<boolean>}
    */
   async isConnected() {
-    const text = await this.statusText.textContent();
-    return text === 'LIVE';
+    const cls = await this.connectionStatus.getAttribute('class');
+    return (cls || '').split(/\s+/).includes('connected');
   }
 
   /**
-   * Get the current connection status text
-   * @returns {Promise<string>} - 'LIVE', 'OFFLINE', or 'CONNECTING'
+   * Get the current connection status text (Q5 pack chrome — assert it
+   * against loadPackStrings()-derived wording, never a literal)
+   * @returns {Promise<string>}
    */
   async getStatusText() {
     return await this.statusText.textContent();

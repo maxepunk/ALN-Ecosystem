@@ -30,7 +30,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
-const { calculateExpectedScore, loadPackScoring, loadPackModes, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring, loadPackModes, loadPackStrings, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 // Tests are serial — they share one orchestrator instance and must not race each other
@@ -43,6 +43,7 @@ let browser = null;
 let orchestratorInfo = null;
 let testTokens = null;
 let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
+let expectedLive = 'LIVE'; // Q5 pack chrome — pack-derived in beforeAll
 
 test.describe('Scoreboard Live Data', () => {
 
@@ -60,6 +61,12 @@ test.describe('Scoreboard Live Data', () => {
     });
     testTokens = await selectTestTokens(orchestratorInfo.url);
     packScoring = await loadPackScoring(orchestratorInfo.url);
+    // Q5: connection-status wording is pack chrome — derive the expected
+    // text (baked ALN 'LIVE' when undeclared, the toy declares its own)
+    const packStrings = await loadPackStrings(orchestratorInfo.url);
+    expectedLive = (typeof packStrings?.scoreboard?.statusLive === 'string' && packStrings.scoreboard.statusLive.length > 0)
+      ? packStrings.scoreboard.statusLive
+      : 'LIVE';
   });
 
   test.afterAll(async () => {
@@ -89,8 +96,8 @@ test.describe('Scoreboard Live Data', () => {
       await scoreboard.goto(orchestratorInfo.url);
       await scoreboard.waitForConnection(10000);
       expect(await scoreboard.isConnected()).toBe(true);
-      expect(await scoreboard.getStatusText()).toBe('LIVE');
-      console.log('Scoreboard connected, status: LIVE');
+      expect(await scoreboard.getStatusText()).toBe(expectedLive);
+      console.log(`Scoreboard connected, status: ${expectedLive}`);
     } finally {
       await page.close();
       await context.close();

@@ -46,6 +46,7 @@ const {
   calculateExpectedGroupBonus,
   loadPackScoring,
   loadPackGroups,
+  loadPackModes,
 } = require('../helpers/scoring');
 
 let browser = null;
@@ -54,6 +55,7 @@ let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
 let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
 let packGroups = null;  // ACTIVE pack groups block — sole multiplier source (v2 cutover)
+let packModes = null;   // ACTIVE pack modes — claim-wording oracle (closers R-Q2)
 
 test.describe('GM Scanner Networked Mode - Black Market', () => {
   let orchestrator;
@@ -98,6 +100,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     testTokens = await selectTestTokens(orchestratorInfo.url);
     packScoring = await loadPackScoring(orchestratorInfo.url);
     packGroups = await loadPackGroups(orchestratorInfo.url);
+    packModes = await loadPackModes(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -260,6 +263,28 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(score).toBe(expectedScore);
 
     console.log(`✓ Networked mode: Personal token scored $${expectedScore.toLocaleString()}`);
+
+    // Closers R-Q2 (dual-pack pin, PACK-DERIVED): the admin Game Activity
+    // card announces the claim with the scanned mode's declared
+    // claimedLabel template — {entity} = the claiming team. ALN:
+    // 'SOLD to {entity}' 💰; toy fence: 'FENCED by {entity}' 💼. The
+    // scanner is in the pack's SCORING mode here (scanner-init keeps the
+    // first/standard mode); packless falls back to the baked ALN table,
+    // mirroring the engine's L6 shim.
+    const scoringMode = (packModes || []).find(m => m.scoringPolicy === 'standard')
+      || { claimedLabel: 'SOLD to {entity}', icon: '💰' };
+    const expectedAnnouncement = (scoringMode.claimedLabel || 'CLAIMED by {entity}')
+      .replace('{entity}', teamAlpha);
+    await scanner.adminTab.click();
+    await page.waitForFunction(
+      (expected) => document.getElementById('admin-game-activity')?.textContent.includes(expected),
+      expectedAnnouncement,
+      { timeout: 10000 }
+    );
+    if (scoringMode.icon) {
+      expect(await page.locator('#admin-game-activity').textContent()).toContain(scoringMode.icon);
+    }
+    console.log(`✓ Game Activity announces the claim pack-worded: "${expectedAnnouncement}"`);
   });
 
   // ========================================
