@@ -142,10 +142,10 @@
   "./src/services/commandExecutor.js": {
     "branches": 85,
     "functions": 100,
-    "lines": 90
+    "lines": 95
   },
   "./src/services/cue/standingEvaluator.js": {
-    "branches": 70,
+    "branches": 75,
     "functions": 65,
     "lines": 80
   },
