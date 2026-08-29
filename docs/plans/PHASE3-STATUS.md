@@ -255,7 +255,7 @@ a DoD violation by definition.
 | L7 | **[in-queue, recorded 2026-08-29 at S3 — D-4.5 "lands with the code"]** `lightingRoleFallbacks` concrete-id bridge: the game.json key + schema property + gate rule 5 + the resolver fallback branch (`commandExecutor._resolveLightingRole`). One venue scene id per role, used ONLY when the installation profile has no binding; every fallback-resolved FIRE warns loudly. ALN's block itself is authored at S4 | C4 (the bindings page): delete the key from ALN game.json, the schema property, gate rule 5, and the resolver branch | LOUD warn per fallback fire; BUILD-TIME drift tripwire `backend/tests/unit/services/lightingRoleTripwire.test.js` pins fallbacks === profile `.ha` bindings (vacuous until S4 authors the block) |
 | L8 | **[post-Phase-3, owner-ratified 2026-08-29 (OQ7a); recorded at S4]** The ENDGAME cue's `target: "bluetooth"` audio literal, migrated VERBATIM into pack content (`ALN-TokenData/cues.json`, the policesounds entry). Deliberate diegetic staging (police sounds from a specific speaker), but a venue routing-target literal living in pack data | The pack-manager media page's design (ROADMAP §8.2 checkpoint): retire it via audio roles / re-authoring, or explicitly re-ratify it | This row; `grep -n '"target"' ALN-TokenData/cues.json` |
 | L9 | **[post-Phase-3, same family/class as L2]** Scanner `src/core/scoring.js` shim path does not RESTORE the baked tables after a pack applied different ones (benign today: single pack load per session; 3b review note "worth a row", added 2026-08-29 per the ambiguity sweep) | Retires with L2 (the shim family dies together at cutover + one cycle) | 3b's scoring-formatting test snapshot-and-restore pattern; `grep 'LEGACY SHIM' ALNScanner/src` |
-| L10 | **[in-queue]** `scoreboard.html:799/892` numeric `7200` fallback duplicates pack `gameClock.duration` (3a "adjacent note", added 2026-08-29) | Slice 6 (the scoreboard-touching surfaces slice) reads the value from delivered pack state or documents the fallback as engine chrome | This row; grep `7200` in scoreboard.html |
+| L10 | **[RETIRED 2026-08-29 at slice-6 open]** `scoreboard.html` numeric `7200` fallback duplicated pack `gameClock.duration` (3a "adjacent note"). RESOLVED by documentation (design doc D-6.4): the real duration is already delivered live on every sync (`sync:full.gameClock` + `service:state` domain `gameclock` → `syncCountdown`); the two literals (now at `:853` seed + `:951` `|| 7200`) are inert pre-connect chrome / defensive fallback, so there was nothing to wire — both sites now carry a source comment saying so. Line numbers in the original row (799/892) were stale | CLOSED — source comments at `scoreboard.html:853,951` | grep `7200` in scoreboard.html shows only the two commented placeholder/fallback sites |
 | L11 | **[in-queue]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29) | Theme unit (the styling-bearing slice): self-host or fallback-stack the fonts | This row; grep `fonts.googleapis` in scoreboard.html |
 
 ## Owner rulings 2026-08-22 (batch — question-walkthrough chat session)
@@ -385,6 +385,33 @@ shifted. Merge-train entry #28 (parent) is READY; owner-paced) →
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,
 the blue/green cutover (§3b; green-Pi work after Phase-3 close), and the
 deferral registry every future deferral must point into.
+
+**SLICE 6 OPENED 2026-08-29** (branch chains from the slice-4 tip; design
+doc `2026-08-29-phase3-a3-slice6-display-surfaces.md`). Census by 3
+parallel readers (backend machinery / GM-scanner side / schema+deferrals+R13).
+Key finding: the three built-in DISPLAY surfaces are IDLE_LOOP/SCOREBOARD/
+VIDEO (the `displayControlService` device-mode machine); the rankings-vs-
+evidence axis is the MODE-display-surface (`displayBehavior.surface`),
+already pack-driven since slice 1/3c and OUT of scope. The schema already
+reserves a dormant `surfaces` key (`game.schema.json:489-492`, `type:object`,
+no consumer) — slice 6 fills that, NOT a new `display` key (D-6.1). **R13
+reclassification LOGGED (design doc §1):** row 2.3 (idle-loop) — the pack
+gains a NAME reference (`surfaces.idleLoop`, a venue-channel name, NOT the
+media file — file carriage stays ROADMAP §8.1); row 2.4 (display-mode set) —
+Q14 CLOSED, the surface SET stays engine-fixed at three, packs gain
+select/parameterize; genuinely-new surfaces (constellation renderer) stay
+BILL-era headroom (ROADMAP §6/row 8.8). **Decision-free housekeeping DONE
+2026-08-29:** ledger L10 RETIRED (7200 fallback documented as inert
+pre-connect chrome — value already delivered live; source comments at
+`scoreboard.html:853,951`); the slice1-modes.md:39 "pack-extensible surface
+set" wording CORRECTED to match the ratified honesty table. **OWNER
+QUESTIONS HELD (design doc §4):** Q6-1 (does SELECT include opt-out of a
+surface?), Q6-2 (idle-loop resolution mechanism — installation-profile
+binding a la slice-4 lighting roles, a new venue-channel map, or engine-
+config passthrough?), Q6-3 (is PARAMETERIZE just idleLoop, or does
+scoreboard gain a pack parameter too?). The schema+gate (S6.1) is
+decision-free per §13.2's ratified "venue-channel name reference"; the
+RESOLVER (S6.3) waits on Q6-2.
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

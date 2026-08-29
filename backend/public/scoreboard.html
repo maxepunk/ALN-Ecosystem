@@ -850,7 +850,12 @@
             countdown: {                      // Game countdown state
                 status: 'stopped',            // stopped | running | paused
                 elapsed: 0,                   // Seconds elapsed (from server)
-                expectedDuration: 7200,       // Seconds total (from server)
+                // Slice-6 L10: inert pre-connect chrome. The real duration is
+                // the ACTIVE pack's gameClock.duration, delivered on every sync
+                // (sync:full.gameClock + service:state domain 'gameclock' →
+                // syncCountdown). This literal only shows before the first sync
+                // lands; it is NOT the data path, just a placeholder.
+                expectedDuration: 7200,       // pre-sync placeholder (pack value arrives via syncCountdown)
                 tickInterval: null,           // setInterval ID for client-side tick
                 lastSyncTime: null,           // Date.now() of last server sync
             },
@@ -943,6 +948,10 @@
             const cd = state.countdown;
             cd.status = gameClock.status || 'stopped';
             cd.elapsed = gameClock.elapsed || 0;
+            // Slice-6 L10: gameClock.expectedDuration is the ACTIVE pack's
+            // gameClock.duration (packService.getClockRules → buildGameClockState).
+            // The || 7200 is a defensive fallback for a malformed payload only —
+            // the pack value is authoritative and always present in a real sync.
             cd.expectedDuration = gameClock.expectedDuration || 7200;
             cd.lastSyncTime = Date.now();
 
