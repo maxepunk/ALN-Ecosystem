@@ -131,6 +131,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `musicService` | MPD control over Unix socket (mpd2 client); spawns/supervises MPD via ProcessMonitor | `new MusicService()` |
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
 | `scoreboardControlService` | Passthrough for GM scoreboard page-navigation commands (no server-side page state; emits `scoreboard:page:requested` → broadcast as `scoreboard:page`) | `new ScoreboardControlService()` |
+| `profileService` | Installation profile (the venue document): one profile frozen at boot via the `PROFILE_PATH` seam, lighting role → scene bindings; a broken profile degrades loudly, never refuses boot | Function exports (no class) |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
 **System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services (tear-down only), then re-initializes infrastructure via centralized post-reset wiring: broadcast listeners, then `transactionService.registerSessionListener()`, `sessionService.setupScoreListeners()`, `sessionService.setupPersistenceListeners()`, `sessionService.setupGameClockListeners()`, then `cueEngineWiring.setupCueEngineForwarding()`.
@@ -333,7 +334,7 @@ WebSocket command interface for session management:
 | `bluetooth:unpair` | `{address}` | Unpair a BT device |
 | `bluetooth:connect` | `{address}` | Connect a paired BT device |
 | `bluetooth:disconnect` | `{address}` | Disconnect a BT device |
-| `lighting:scene:activate` | `{sceneId}` | Activate a Home Assistant lighting scene |
+| `lighting:scene:activate` | `{sceneId}` or `{role}` | Activate a Home Assistant scene. Concrete `sceneId` = the GM panel form, untouched. `role` = the pack cue form (slice 4): normalized to a sceneId at the top of executeCommand — profile binding, else pack `lightingRoleFallbacks` (loud L7 warn), else "unresolvable lighting role" |
 | `lighting:scenes:refresh` | `{}` | Reload the lighting scene list from HA |
 | `score:adjust` | `{teamId, delta, reason?}` | Manually adjust a team score by `delta` |
 | `score:reset` | `{}` | Reset all team scores |

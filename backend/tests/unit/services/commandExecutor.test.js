@@ -130,6 +130,7 @@ jest.mock('../../../src/services/profileService', () => ({
 }));
 jest.mock('../../../src/services/packService', () => ({
   getGameConfig: jest.fn(),
+  getLightingRoleFallback: jest.fn(),
 }));
 
 jest.mock('../../../src/services/serviceHealthRegistry', () => ({
@@ -1574,7 +1575,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
     lightingService.activateScene.mockResolvedValue(true);
     lightingService.sceneExists.mockReturnValue(true);
     profileService.getLightingBinding.mockReturnValue(null);
-    packService.getGameConfig.mockReturnValue(null);
+    packService.getLightingRoleFallback.mockReturnValue(null);
   });
 
   it('a bound role normalizes to its profile sceneId BEFORE the required-fields guard (red-team R1 kill case)', async () => {
@@ -1591,9 +1592,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
   });
 
   it('an unbound role falls to the pack lightingRoleFallbacks with a LOUD warn per fire (ledger L7)', async () => {
-    packService.getGameConfig.mockReturnValue({
-      lightingRoleFallbacks: { 'police-arrival-1': 'scene.police_1' },
-    });
+    packService.getLightingRoleFallback.mockReturnValue('scene.police_1');
     const result = await executeCommand({
       action: 'lighting:scene:activate',
       payload: { role: 'police-arrival-1' },
@@ -1617,7 +1616,8 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
   });
 
   it('a prototype-chain role name is unresolvable, never a TypeError (C11 class)', async () => {
-    packService.getGameConfig.mockReturnValue({ lightingRoleFallbacks: {} });
+    // The real accessor's Object.hasOwn guard is pinned in the
+    // packService suite; here the mock returns null like any unknown.
     const result = await executeCommand({
       action: 'lighting:scene:activate',
       payload: { role: 'constructor' },
@@ -1640,9 +1640,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
 
   it('validateCommand mirrors the normalization before its sceneExists check — and stays warn-silent (pre-show sweep, not a fire)', async () => {
     profileService.getLightingBinding.mockReturnValue(null);
-    packService.getGameConfig.mockReturnValue({
-      lightingRoleFallbacks: { 'police-arrival-1': 'scene.police_1' },
-    });
+    packService.getLightingRoleFallback.mockReturnValue('scene.police_1');
     lightingService.sceneExists.mockReturnValue(true);
     const result = await validateCommand('lighting:scene:activate', { role: 'police-arrival-1' });
     expect(result.valid).toBe(true);

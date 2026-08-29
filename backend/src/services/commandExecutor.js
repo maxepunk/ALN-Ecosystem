@@ -850,21 +850,15 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
 function _resolveLightingRole(role, { warnOnFallback }) {
   const bound = profileService.getLightingBinding(role);
   if (bound) return bound;
-  const gameConfig = packService.getGameConfig();
-  const fallbacks = gameConfig && gameConfig.lightingRoleFallbacks;
-  // Object.hasOwn: a role named 'constructor' must not resolve off the
-  // prototype chain (C11 class).
-  if (fallbacks && typeof fallbacks === 'object' && Object.hasOwn(fallbacks, role)) {
-    const sceneId = fallbacks[role];
-    if (typeof sceneId === 'string' && sceneId.length > 0) {
-      if (warnOnFallback) {
-        logger.warn(
-          `[executeCommand] lighting role '${role}' resolved via pack lightingRoleFallbacks → '${sceneId}' — ` +
-          'TEMPORARY (ledger L7, retires at C4): bind the role in the installation profile'
-        );
-      }
-      return sceneId;
+  const sceneId = packService.getLightingRoleFallback(role);
+  if (sceneId) {
+    if (warnOnFallback) {
+      logger.warn(
+        `[executeCommand] lighting role '${role}' resolved via pack lightingRoleFallbacks → '${sceneId}' — ` +
+        'TEMPORARY (ledger L7, retires at C4): bind the role in the installation profile'
+      );
     }
+    return sceneId;
   }
   return null;
 }

@@ -250,7 +250,7 @@ class TimelineRuntime {
         // {success:false} — route it to failedCommands + onError like a
         // throw (slice 4 S3, D-4.4: an unresolvable lighting role fails
         // through the cue:error channel, never counts completed).
-        if (result && result.success === false) {
+        if (result?.success === false) {
           logger.error(`[TimelineRuntime] Command rejected in "${cueId}" at ${entry.at}s: ${entry.action} — ${result.message}`);
           activeCue.failedCommands.push({ action: entry.action, position: entry.at, error: result.message });
           if (onError) onError(entry, new Error(result.message));

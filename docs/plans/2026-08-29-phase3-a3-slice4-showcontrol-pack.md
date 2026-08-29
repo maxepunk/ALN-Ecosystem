@@ -788,3 +788,37 @@ example.
   always-on non-E2E integration proof (real profileService + real
   executeCommand + stubbed lighting; D-4.8) — 4 cases incl. the
   PACK_PATH fallback path.
+
+**S3 stage review (two-axis, 2 Opus lenses, 2026-08-29) — adjudication:**
+
+The spec lens found every §5.3 deliverable present, nothing wrong, and
+ruled the cue:error scope call FAITHFUL ("without the change the
+promise is unfulfillable"; special-casing lighting failures would have
+been the arbitrary choice). Fixed in the same stage (third commit):
+1. (standards — doc registry) backend/CLAUDE.md gained the
+   profileService row and the role-form lighting entry in the admin
+   command table.
+2. (standards — the retrofit rule's trigger) CONTEXT.md said "no code
+   reads PROFILE_PATH today" and "the mechanism lands with the slice-4
+   build" — both stale the moment S3 landed. Both entries fixed on the
+   spot with the edit noted, per process.md §4.
+3. (spec — the L7 bookkeeping conflict) D-4.5 says the ledger row
+   "lands with the code" while §5.4 slots it at S4; the resolver code
+   path shipped in S3, so the row is RECORDED NOW in PHASE3-STATUS
+   (L7 in-queue, retires at C4; L8 stays reserved for the S4 pack
+   authoring).
+4. (standards — accepted judgement calls) `packService.
+   getLightingRoleFallback(role)` added as the normalized accessor
+   (getScoringRules idiom; commandExecutor no longer digs raw pack
+   shape) with its own unit twin; profileService gained drift-warn
+   parity with packService (one loud warn when the profile changes on
+   disk after activation) and `activateProfile` returns the identity;
+   the nullish guards in both cue paths made consistent
+   (`result?.success` / `result?.data`).
+
+Rejected, with reasons: factoring the two success:false blocks into a
+shared helper (two files, two error shapes — locality wins over six
+lines); the five lighting:scene:activate sites in commandExecutor
+(inherent to its table design); removing `getProfileInfo` (the C2
+preflight and health surfacing consume profile identity next — kept,
+now also exercised by activateProfile's return).

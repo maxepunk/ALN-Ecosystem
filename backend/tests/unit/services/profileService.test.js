@@ -129,6 +129,28 @@ describe('profileService', () => {
     });
   });
 
+  describe('post-activation disk drift (packService parity)', () => {
+    it('warns ONCE when the profile changes on disk after activation — never a silent no-op', () => {
+      const p = writeProfile(minimalProfile());
+      process.env.PROFILE_PATH = p;
+      profileService.activateProfile();
+      jest.clearAllMocks();
+
+      fs.writeFileSync(p, JSON.stringify(minimalProfile({ label: 'edited' })));
+      const bumped = Math.floor(Date.now() / 1000) + 120;
+      fs.utimesSync(p, bumped, bumped);
+
+      profileService.getProfile();
+      profileService.getProfile();
+      const driftWarns = logger.warn.mock.calls.filter(([msg]) =>
+        msg.includes('changed on disk after activation')
+      );
+      expect(driftWarns).toHaveLength(1);
+      // The frozen snapshot is still served
+      expect(profileService.getProfile().label).not.toBe('edited');
+    });
+  });
+
   describe('getLightingBinding', () => {
     it('an unbound role resolves null; a prototype-chain name resolves null (C11 class)', () => {
       const p = writeProfile(minimalProfile());

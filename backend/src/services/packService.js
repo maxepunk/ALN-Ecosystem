@@ -209,6 +209,23 @@ function _readDiskGameConfig() {
 }
 
 /**
+ * The pack's TEMPORARY concrete-id fallback for one lighting role
+ * (ledger L7 — retires at C4). Null when undeclared. Keeps pack-shape
+ * knowledge here, behind a normalized accessor (the getScoringRules
+ * idiom); Object.hasOwn so prototype-chain names never resolve (C11).
+ * @param {string} role
+ * @returns {string|null}
+ */
+function getLightingRoleFallback(role) {
+  const gameConfig = getGameConfig();
+  const fallbacks = gameConfig && gameConfig.lightingRoleFallbacks;
+  if (!fallbacks || typeof fallbacks !== 'object') return null;
+  if (typeof role !== 'string' || !Object.hasOwn(fallbacks, role)) return null;
+  const sceneId = fallbacks[role];
+  return (typeof sceneId === 'string' && sceneId.length > 0) ? sceneId : null;
+}
+
+/**
  * Read the pack's tokens.json, or null when absent/unreadable (the
  * token loader refuses separately). Shared by every gate block that
  * resolves against the token database — one read shape, three readers.
@@ -1036,4 +1053,4 @@ function _resetForTesting() {
   _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getScoringRules, getClockRules, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getScoringRules, getClockRules, getLightingRoleFallback, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

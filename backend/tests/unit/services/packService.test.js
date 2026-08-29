@@ -1415,6 +1415,33 @@ describe('packService', () => {
     });
   });
 
+  describe('getLightingRoleFallback (slice 4 S3 — the normalized L7 accessor)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('resolves a declared fallback; unknown, prototype-chain, and non-string entries resolve null', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'fb',
+        lightingRoleFallbacks: { gameplay: 'scene.game', broken: 7 },
+      });
+      expect(packService.getLightingRoleFallback('gameplay')).toBe('scene.game');
+      expect(packService.getLightingRoleFallback('disco-mode')).toBeNull();
+      expect(packService.getLightingRoleFallback('constructor')).toBeNull();
+      expect(packService.getLightingRoleFallback('broken')).toBeNull();
+    });
+
+    it('a pack with no fallbacks block (and a packless dir) resolves null', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(packService.getLightingRoleFallback('gameplay')).toBeNull();
+    });
+  });
+
   describe('show-cues gate (A3 slice 4 S2 — D-4.3: pack-internal pure reads, zero services)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));

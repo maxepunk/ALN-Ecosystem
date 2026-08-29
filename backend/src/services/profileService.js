@@ -36,6 +36,8 @@ const PROFILE_SCHEMA_VERSION = 1;
 let warnedProfilePath = false;
 let activated = false;
 let activeProfile = null;
+let activeProfileMtime = null;
+let warnedProfileDrift = false;
 
 /**
  * The active profile file path: PROFILE_PATH override (loud warn once)
@@ -103,6 +105,11 @@ function _readProfile() {
 function activateProfile() {
   activeProfile = _readProfile();
   activated = true;
+  try {
+    activeProfileMtime = fs.statSync(getProfilePath()).mtimeMs;
+  } catch {
+    activeProfileMtime = null;
+  }
   if (activeProfile) {
     const bound = Object.keys((activeProfile.bindings && activeProfile.bindings.lighting) || {}).length;
     logger.info(
@@ -110,6 +117,7 @@ function activateProfile() {
       `(${bound} lighting binding${bound === 1 ? '' : 's'}, frozen for process lifetime)`
     );
   }
+  return getProfileInfo();
 }
 
 /**
@@ -118,7 +126,25 @@ function activateProfile() {
  * @returns {Object|null}
  */
 function getProfile() {
-  if (activated) return activeProfile;
+  if (activated) {
+    // Drift parity with packService: an operator who edits the profile
+    // mid-run gets ONE loud warn that the running system keeps its boot
+    // snapshot — never a silent no-op.
+    if (!warnedProfileDrift) {
+      let currentMtime = null;
+      try {
+        currentMtime = fs.statSync(getProfilePath()).mtimeMs;
+      } catch { /* deleted counts as drift too */ }
+      if (currentMtime !== activeProfileMtime) {
+        warnedProfileDrift = true;
+        logger.warn(
+          `Installation profile at ${getProfilePath()} changed on disk after activation — ` +
+          'the running system keeps the boot snapshot; restart the orchestrator to adopt the edit'
+        );
+      }
+    }
+    return activeProfile;
+  }
   return _readProfile();
 }
 
@@ -156,6 +182,8 @@ function _resetForTesting() {
   warnedProfilePath = false;
   activated = false;
   activeProfile = null;
+  activeProfileMtime = null;
+  warnedProfileDrift = false;
 }
 
 module.exports = {

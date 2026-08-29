@@ -571,13 +571,13 @@ class CueEngineService extends EventEmitter {
         // {success:false} — a failed command must never count as
         // completed (slice 4 S3, D-4.4: an unresolvable lighting role
         // fails through the cue:error channel).
-        if (result && result.success === false) {
+        if (result?.success === false) {
           logger.error(`[CueEngine] Command rejected in cue "${cueId}": ${cmd.action} — ${result.message}`);
           failedCommands.push({ action: cmd.action, error: result.message });
           this.emit('cue:error', { cueId, action: cmd.action, position: null, error: result.message });
           continue;
         }
-        if (result.data?.completion) await result.data.completion;
+        if (result?.data?.completion) await result.data.completion;
         completedCommands.push({ action: cmd.action });
       } catch (err) {
         logger.error(`[CueEngine] Command failed in cue "${cueId}": ${cmd.action}`, err.message);

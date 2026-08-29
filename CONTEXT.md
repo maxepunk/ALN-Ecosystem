@@ -195,9 +195,11 @@ you intend.
 - **PACK_PATH.** The environment variable that points the backend at
   an alternate pack directory (`packService.getPackDir()`). It exists
   for testing, preview, and rollback. **PROFILE_PATH** is the same
-  injection seam for the installation profile. It is a ratified
-  direction only; it lands with `profileService` in the slice-4 build.
-  No code reads it today.
+  injection seam for the installation profile, read by
+  `profileService` (built in slice-4 S3): one profile adopted at boot
+  and frozen, defaulting to the in-repo
+  `backend/config/profiles/aln-full-kit.json`. (Edit noted 2026-08-29:
+  this entry said "no code reads it today" until S3 landed.)
 - **Shim.** A built-in fallback the engine uses when no pack provides
   a value, for example a copy of ALN's scoring table. Every shim
   prints a clear warning when it is active, and every shim has a
@@ -264,9 +266,12 @@ you intend.
   role to a real scene id. The pack's `lightingRoleFallbacks` block
   holds temporary scene ids used only when no binding exists. Every
   such use prints a warning, and the block is scheduled for deletion
-  at C4 (ledger row L7, reserved). This whole mechanism is ratified
-  design (slice 4) and lands with the slice-4 build. Today ALN's cues
-  still name concrete Home Assistant scene ids directly.
+  at C4 (ledger row L7). The engine half landed with slice-4 S3: the
+  profile, the resolver at the top of executeCommand, and the fallback
+  warn. ALN's cues still name concrete Home Assistant scene ids until
+  the S4 cutover moves them into the pack as roles. (Edit noted
+  2026-08-29: this entry said the whole mechanism was unbuilt until S3
+  landed.)
 - **Held item.** A cue or video that could not run because a needed
   service was down or a video was already playing. The engine parks it
   and tells the GM, who can release or discard it. Nothing is silently
