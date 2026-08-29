@@ -13,6 +13,12 @@ describe('configManager', () => {
     fs.writeFileSync(path.join(tmpDir, '.env'), 'PORT=3000\nHOST=0.0.0.0\n');
     fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
       kind: 'game', schemaVersion: 2, id: 'test-pack',
+      // A3 slice 4: declares the same capability ids real packs declare
+      // (ALN-TokenData/game.json) so cue-authoring tests exercising
+      // standing triggers / timelines / lighting roles don't trip the
+      // validateCuesBlock "requires" lint (rule 6).
+      requires: ['cues.standing', 'cues.timeline', 'lighting.roles'],
+      lightingRoles: ['gameplay', 'video-playback'],
       scoring: {
         baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
         typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
@@ -166,11 +172,91 @@ describe('configManager', () => {
     assert.strictEqual(tokens.tok001.SF_ValueRating, 3);
   });
 
-  it('writes cues config', () => {
-    const cues = { cues: [{ id: 'test', label: 'Test', quickFire: true, commands: [] }] };
-    configManager.writeCues(cues);
-    const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
-    assert.strictEqual(reread.cues[0].id, 'test');
+  describe('writeCues (A3 slice 4 — pack content, D-4.7c/D-4.7d)', () => {
+    it('writes a valid header-form cues doc and rebuilds the pack manifest', () => {
+      const cues = {
+        kind: 'cues', schemaVersion: 2,
+        cues: [{ id: 'test', label: 'Test', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+      };
+
+      // Spy on the manifest rebuild the same way writeScoring's tests
+      // stub/override it — count calls without disturbing the real work.
+      const realRebuild = configManager._rebuildPackManifest.bind(configManager);
+      let rebuildCalls = 0;
+      configManager._rebuildPackManifest = () => { rebuildCalls += 1; return realRebuild(); };
+      try {
+        configManager.writeCues(cues);
+      } finally {
+        configManager._rebuildPackManifest = realRebuild;
+      }
+
+      assert.strictEqual(rebuildCalls, 1);
+      const reread = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
+      assert.strictEqual(reread.kind, 'cues');
+      assert.strictEqual(reread.schemaVersion, 2);
+      assert.strictEqual(reread.cues[0].id, 'test');
+      // atomic write leaves no tmp file behind (F-TOOL-10)
+      assert.ok(!fs.existsSync(path.join(tmpDir, 'cues.json.tmp')));
+      // a pack-file edit regenerates the manifest (same pairing as scoring)
+      const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pack-manifest.json'), 'utf8'));
+      assert.ok(manifest.files.some(f => f.path === 'cues.json'));
+    });
+
+    it('refuses a non-header-form payload (bare array) and leaves the file untouched', () => {
+      const before = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
+      assert.throws(
+        () => configManager.writeCues([{ id: 'c1', label: 'C1', quickFire: true, commands: [] }]),
+        /Invalid cues config/
+      );
+      assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), before);
+    });
+
+    it('refuses a header-form payload that fails the pack-internal gate, and leaves the file untouched', () => {
+      const before = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
+      const invalid = {
+        kind: 'cues', schemaVersion: 2,
+        // trigger.event is not in the engine's cue-trigger vocabulary
+        cues: [{ id: 'bad', label: 'Bad', trigger: { event: 'not:a:real:event' }, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+      };
+      assert.throws(
+        () => configManager.writeCues(invalid),
+        /Invalid cues config/
+      );
+      assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), before);
+      // no tmp file left behind either
+      assert.ok(!fs.existsSync(path.join(tmpDir, 'cues.json.tmp')));
+    });
+
+    it('restores cues.json when the manifest rebuild fails (pair atomicity)', () => {
+      // _writeJson always re-serializes (pretty-printed + trailing
+      // newline), so the restored file is not byte-identical to the
+      // fixture's raw JSON.stringify output — compare PARSED content,
+      // same as writeScoring's equivalent rollback test.
+      const before = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
+      const realRebuild = configManager._rebuildPackManifest.bind(configManager);
+      configManager._rebuildPackManifest = () => { throw new Error('disk on fire'); };
+      try {
+        assert.throws(
+          () => configManager.writeCues({
+            kind: 'cues', schemaVersion: 2,
+            cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+          }),
+          /rolled back.*manifest rebuild failed/
+        );
+      } finally {
+        configManager._rebuildPackManifest = realRebuild;
+      }
+      const after = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
+      assert.deepStrictEqual(after, before);
+    });
+
+    it('refuses to write cues when game.json is missing (never edits a pack-less dir)', () => {
+      fs.rmSync(path.join(tmpDir, 'game.json'));
+      assert.throws(
+        () => configManager.writeCues({ kind: 'cues', schemaVersion: 2, cues: [] }),
+        /missing or empty/
+      );
+    });
   });
 
   it('writes routing config', () => {
@@ -201,6 +287,34 @@ describe('configManager', () => {
       assert.ok(presets.some(p => p.name.startsWith('_backup_')));
     });
 
+    // A3 slice 4 (D-4.7c/D-4.7d): a preset saved before this migration may
+    // still carry a `cues` section on disk. loadPreset must never write it
+    // to the pack — the operator's recovery tool must never be able to
+    // write concrete-sceneId cues back into a role-based pack.
+    it('loadPreset never writes cues.json, even from an old cues-bearing preset', () => {
+      const before = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
+      const legacyPreset = {
+        name: 'Legacy', created: 'now', description: '',
+        env: { PORT: '8080' },
+        scoringConfig: {
+          baseValues: { '1': 10000, '2': 25000, '3': 50000, '4': 75000, '5': 150000 },
+          typeMultipliers: { Personal: 1 },
+        },
+        // Pre-migration shape: concrete sceneId, no header envelope.
+        cues: { cues: [{ id: 'legacy', label: 'Legacy Cue', quickFire: true, commands: [{ action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } }] }] },
+        routing: { routes: {}, ducking: [] },
+      };
+      fs.writeFileSync(path.join(tmpDir, 'presets', 'legacy.json'), JSON.stringify(legacyPreset));
+
+      configManager.loadPreset('legacy.json');
+
+      // env/routing DID apply (proves the load actually ran)...
+      const content = fs.readFileSync(path.join(tmpDir, '.env'), 'utf8');
+      assert.ok(content.includes('PORT=8080'));
+      // ...but cues.json is byte-identical to before — never touched
+      assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), before);
+    });
+
     it('deletes a preset', () => {
       configManager.savePreset('To Delete', '');
       configManager.deletePreset('to-delete.json');
@@ -214,6 +328,20 @@ describe('configManager', () => {
       configManager.deletePreset('exportable.json');
       const imported = configManager.importPreset(data);
       assert.strictEqual(imported, 'exportable.json');
+      assert.strictEqual(configManager.listPresets().length, 1);
+    });
+
+    // A3 slice 4 (D-4.7c): savePreset no longer captures cues at all, so a
+    // freshly-captured preset has no `cues` key — importPreset (which runs
+    // the same validators as a direct write) must accept that.
+    it('saves a preset with no cues key, and imports it back without requiring one', () => {
+      configManager.savePreset('Cueless', '');
+      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'presets', 'cueless.json'), 'utf8'));
+      assert.ok(!('cues' in onDisk));
+
+      configManager.deletePreset('cueless.json');
+      const imported = configManager.importPreset(onDisk);
+      assert.strictEqual(imported, 'cueless.json');
       assert.strictEqual(configManager.listPresets().length, 1);
     });
 

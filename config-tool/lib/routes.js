@@ -225,8 +225,11 @@ function createRouter(configManager) {
   router.post('/presets/import', presetImportUpload.single('file'), (req, res) => {
     try {
       const data = JSON.parse(req.file.buffer.toString('utf8'));
-      if (!data.name || !data.env || !data.scoringConfig || !data.cues || !data.routing) {
-        return res.status(400).json({ error: 'Invalid preset format. Required: name, env, scoringConfig, cues, routing' });
+      // Cues are pack content, not preset state (A3 slice 4, D-4.7c) — no
+      // longer required here. An older export that still carries a `cues`
+      // key is accepted (and ignored — see configManager.loadPreset).
+      if (!data.name || !data.env || !data.scoringConfig || !data.routing) {
+        return res.status(400).json({ error: 'Invalid preset format. Required: name, env, scoringConfig, routing' });
       }
       // Deep section validation happens in importPreset (same validators as
       // direct writes); ValidationError surfaces here as 400 with details.

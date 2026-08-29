@@ -5,13 +5,16 @@ const { execFile } = require('child_process');
 const { readEnv, writeEnv } = require('./envParser');
 const {
   validateScoring,
-  validateCues,
   validateRouting,
   validateEnvUpdates,
   validatePresetSections,
   assertValid,
 } = require('./validators');
 const { MASK_SENTINEL } = require('./secrets');
+// A3 slice 4 (D-4.7c): the same pack-internal cue gate packService runs at
+// activation. Dependency-free by design (no winston/dotenv) — safe to
+// import directly from the backend tree without pulling in service wiring.
+const { validateCuesBlock } = require('../../backend/src/gameRules/cueValidation');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
@@ -21,7 +24,13 @@ const DEFAULT_PATHS = {
   // `scoring` block — the retired scoring-config.json is gone, and writes
   // to it were silently ignored by the engine.
   gamePath: path.join(PROJECT_ROOT, 'ALN-TokenData/game.json'),
-  cuesPath: path.join(PROJECT_ROOT, 'backend/config/environment/cues.json'),
+  // A3 slice 4 (design D-4.7c/D-4.7d): cues are PACK content — the old
+  // venue cues file that used to live under backend/config/ (a sibling of
+  // routing.json below) is retired. This tool edits ONLY the checked-in
+  // submodule pack at ALN-TokenData/cues.json. A PACK_PATH-injected
+  // alternate pack directory (backend test-harness seam) is a
+  // runtime-only override this tool never sees or writes.
+  cuesPath: path.join(PROJECT_ROOT, 'ALN-TokenData/cues.json'),
   routingPath: path.join(PROJECT_ROOT, 'backend/config/environment/routing.json'),
   tokensPath: path.join(PROJECT_ROOT, 'ALN-TokenData/tokens.json'),
   soundsDir: path.join(PROJECT_ROOT, 'backend/public/audio'),
@@ -70,6 +79,10 @@ class ConfigManager {
           scoringPolicy: m.scoringPolicy || null,
         }))
         : [],
+      // A3 slice 4 (D-4.7d): the lighting-role vocabulary the cue editor's
+      // role picker draws from — sourced straight from game.json so the
+      // tool never hand-mirrors it out of sync with the pack.
+      lightingRoles: Array.isArray(game.lightingRoles) ? game.lightingRoles : [],
     };
   }
 
@@ -147,8 +160,58 @@ class ConfigManager {
   }
 
   writeCues(data) {
-    assertValid(validateCues(data), 'cues config');
+    // Pack cues are the HEADER form (A3 slice 4): {kind:'cues',
+    // schemaVersion, cues:[...]}. A bare array or the old wrapper-only
+    // shape (both tolerated pre-migration) is refused outright — the pack
+    // manifest tracks this file by its full header doc, and a partial
+    // write would silently drop kind/schemaVersion from the checked-in
+    // pack (D-4.7c).
+    if (data === null || typeof data !== 'object' || Array.isArray(data)
+        || data.kind !== 'cues' || !Array.isArray(data.cues)) {
+      assertValid(
+        ['cues payload must be the pack header form {kind: "cues", schemaVersion, cues: [...]}'],
+        'cues config'
+      );
+    }
+
+    // Pack-internal gate (A3 slice 4 S4, D-4.7c): validateCuesBlock is the
+    // SAME dependency-free pure check packService runs at activation —
+    // trigger/action vocabulary, lighting-role, and token-id cross-checks
+    // against THIS pack's game.json + tokens.json. Refuse the write
+    // outright on any problem (F-TOOL-04) rather than persist cues the
+    // engine would refuse to activate.
+    const game = this._readJson(this.paths.gamePath);
+    if (Object.keys(game).length === 0) {
+      throw new Error(
+        `Cannot write cues: ${this.paths.gamePath} is missing or empty — ` +
+        'the pack rules file must exist (check the ALN-TokenData submodule)'
+      );
+    }
+    const tokens = this._readJson(this.paths.tokensPath);
+    const problems = validateCuesBlock(data.cues, game, tokens);
+    assertValid(problems, 'cues config');
+
+    // PAIR ATOMICITY (same shape as writeScoring): snapshot the previous
+    // file, write, rebuild the pack manifest, restore on rebuild failure —
+    // cues.json and pack-manifest.json must never drift out of sync (a
+    // stale manifest fails the scanners' per-file sha1 verify).
+    const previousCues = this._readJson(this.paths.cuesPath);
     this._writeJson(this.paths.cuesPath, data);
+    try {
+      this._rebuildPackManifest();
+    } catch (err) {
+      this._writeJson(this.paths.cuesPath, previousCues);
+      throw new Error(
+        `Cues write rolled back: pack-manifest rebuild failed (${err.message}). ` +
+        'cues.json was restored to its previous state; fix the pack directory and retry.'
+      );
+    }
+
+    // D-4.7d: this tool writes the CHECKED-IN submodule pack ONLY (see the
+    // cuesPath comment on DEFAULT_PATHS above). A PACK_PATH-injected
+    // alternate pack directory (the backend test harness seam) is a
+    // runtime-only override outside this tool's scope — it is neither
+    // read nor written here.
   }
 
   writeRouting(data) {
@@ -254,7 +317,10 @@ class ConfigManager {
       description,
       env: config.env,
       scoringConfig: config.scoring,
-      cues: config.cues,
+      // Cues are PACK content, not venue/preset state (A3 slice 4,
+      // D-4.7c) — presets no longer capture them. A preset saved before
+      // this migration may still carry an old `cues` section on disk;
+      // loadPreset below never reads it.
       routing: config.routing,
     };
     const filename = name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
@@ -265,8 +331,10 @@ class ConfigManager {
   loadPreset(filename) {
     const preset = JSON.parse(fs.readFileSync(path.join(this.paths.presetsDir, path.basename(filename)), 'utf8'));
 
-    // Validate ALL four sections BEFORE writing any — a preset must apply
-    // fully or not at all (F-TOOL-11: no half-applied presets).
+    // Validate all three venue sections BEFORE writing any — a preset must
+    // apply fully or not at all (F-TOOL-11: no half-applied presets). Cues
+    // are pack content, not a preset section (A3 slice 4) — see the write
+    // sequence below.
     assertValid(validatePresetSections(preset), `preset "${filename}"`);
 
     // Auto-backup current config before overwriting. Tolerate a corrupt
@@ -289,7 +357,11 @@ class ConfigManager {
     try {
       this.writeEnvValues(preset.env);
       this.writeScoring(preset.scoringConfig);
-      this.writeCues(preset.cues);
+      // Cues are pack content (A3 slice 4, D-4.7c/D-4.7d) — NEVER written
+      // from a preset. An old preset/backup saved before this migration
+      // may still carry a `cues` section; it is silently ignored here,
+      // never applied to the pack. The operator's recovery tool must
+      // never be able to write concrete-sceneId cues back into the pack.
       this.writeRouting(preset.routing);
     } catch (err) {
       if (!backup) throw err; // current config was unreadable — nothing to restore
@@ -302,7 +374,7 @@ class ConfigManager {
         if (backup.scoring && Object.keys(backup.scoring).length > 0) {
           this.writeScoring(backup.scoring);
         }
-        this.writeCues(backup.cues);
+        // See note above — cues are never restored either.
         this.writeRouting(backup.routing);
       } catch (restoreErr) {
         throw new Error(
@@ -328,7 +400,10 @@ class ConfigManager {
 
   importPreset(presetData) {
     // Imported presets go through the SAME validators as direct writes —
-    // a preset with `cues: "hello"` must not import-fine and corrupt on load.
+    // a preset with `scoringConfig: "hello"` must not import-fine and
+    // corrupt on load. `cues` is no longer a validated (or required)
+    // section (A3 slice 4, D-4.7c) — an older export that still carries
+    // one is accepted here and simply never acted on by loadPreset.
     assertValid(validatePresetSections(presetData), 'imported preset');
     if (!fs.existsSync(this.paths.presetsDir)) fs.mkdirSync(this.paths.presetsDir, { recursive: true });
     const filename = presetData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.json';
