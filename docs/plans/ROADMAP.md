@@ -1,11 +1,12 @@
 # ROADMAP — the full program, Phase 3 through open source
 
-**Status: DRAFT r1 for owner review — 2026-08-29.**
+**Status: RATIFIED r2 — 2026-08-29 (owner).**
 Produced from the 2026-08-29 owner grill (four rounds + corrections, run
 under the ratified grilling process) and a full read of the post-Phase-3
 corpus (workflows `wf_f2fb3614` ambiguity sweep, `wf_284511f8` corpus
 read). Owner rulings recorded here are dated 2026-08-29 unless cited
-otherwise.
+otherwise. r2 adds §3b (cutover readiness: blue/green ratified; green-Pi
+work deferred past Phase-3 close by owner direction).
 
 **Authority.** This document frames the WHOLE arc: what phases exist,
 their charters, their audiences, and where every deferral lands. For
@@ -159,6 +160,63 @@ merge train (one grand train: submodule PRs → parent stack in slice
 order, enumerated in PHASE3-STATUS's Merge-train block — 2026-08-29,
 Q19) executes at the owner's pace before cutover.
 
+## 3b. Cutover readiness (blue/green — RATIFIED)
+
+**The cutover is a hardware swap, not an in-place upgrade** (owner,
+2026-08-29). A second Pi ("green") is prepared as a COMPLETE production
+environment and tested through the ladder below while the production Pi
+("blue", on `production-2026-07`) runs the §3 show calendar untouched.
+At cutover, blue is unplugged and green takes the kit router's reserved
+orchestrator IP + DNS name — scanners, tablets, and ESP32s never notice
+the machine changed. Rollback is physical and instant: swap back to
+blue, which retains the entire pre-cutover system byte-for-byte.
+Commitments: green is built as production (not a test box); the
+preflight checklist is its gate; blue stays frozen for at least the
+first few post-cutover events, then is wiped and becomes the standing
+test device (the rotating pair — the first concrete step of §7.3's
+fleet story, unplanned beyond that).
+
+**Timing (owner, 2026-08-29): no green-Pi work until AFTER Phase 3 is
+done, at the earliest.** The ladder therefore keys off Phase-3 close,
+not the run calendar (cutover was post-2026-10-18 regardless):
+
+- **Stage A (continuous, now):** CI + containerized E2E (dual-pack
+  Tier L) — logic, contracts, parity. Structurally blind to hardware.
+- **Stage B (home, after Phase-3 close):** green-Pi setup + partial-kit
+  smoke. Setup is done FROM the deployment docs, treating every gap as
+  a doc defect — a dry run of §7.4's "can a stranger stand this up"
+  bar. Spike S2 (Cloudflare DNS-01 cert) rides the setup. Validates
+  what CI cannot: HEVC hw decode + gles2 (the render-blindness class),
+  real PipeWire routing/ducking on a real BT speaker, HA scenes on a
+  real bulb, NFC-over-HTTPS on a real tablet, full ESP32 asset sync,
+  on-device pack activation + preflight. Home peripherals (BT speaker,
+  HA-controllable bulb, spare ESP32, GM tablet) are available when
+  needed; some may be borrowed from ALN stock.
+- **Stage C (venue, full kit):** the q24 bar — full preflight + a
+  simulated game night in production conditions. Off-day sessions are
+  possible via the swap trick (blue unplugged and untouched; green
+  takes the reserved IP; kit peripherals notice nothing; restore =
+  swap back + re-run preflight on blue before leaving). Every Stage-C
+  session IS a dress rehearsal of the real cutover.
+
+**Borrow/restore protocol (owner, 2026-08-29: piece-by-piece; no
+modification that might impact a component's in-game function):** each
+borrowable component gets a safe/risky/restore entry before first
+borrow. Canonical entries — BT speaker: SAFE (pairing is per-host;
+test-Pi pairing cannot disturb venue pairing). Smart bulb: RISKY
+(pairing a venue bulb to the test Pi's HA can unpair it from the venue
+HA — use a home-owned bulb, never a venue instrument, unless a restore
+procedure is proven first). ESP32: REVERSIBLE with checklist (SD
+`config.txt` re-point + re-sync; restore = point back, re-sync, verify
+pack identity in the boot log before it returns to stock).
+
+**Machine-state-not-in-git enumeration** (what green setup must carry
+over; also the §2.3 media story in miniature, done by hand once): OS +
+PM2 + the WirePlumber drop-in, SSL certs, `.env`, the HA Docker
+volume (the `scene.*` definitions live there, in no repo), and the
+gitignored media files (videos/music/audio). The deployment guide owns
+the authoritative checklist; gaps found at Stage B are doc defects.
+
 ## 4. Phase 4 — experience (Tracks D + E)
 
 Ratified charter (2026-06-12, sub-gates unchanged since): a clean phase
@@ -273,10 +331,12 @@ Every deferral in the corpus points here. Re-homings ratified
 ## 9. Sequencing, calendar, method
 
 ### 9.1 The committed order
-Phase 3 remainder (§3 queue) → cutover (post-2026-10-18 window per §3)
-→ Phase 4 (D+E; internal order decided at entry) → BILL-modules block
-(§6) → Phase 5 (§5) → operations era (§7) with BILL-D running
-owner-paced alongside from now.
+Phase 3 remainder (§3 queue) → green-Pi setup + test ladder Stages B/C
+(§3b — opens after Phase-3 close, owner direction) → cutover
+(blue/green swap; post-2026-10-18 window per §3) → Phase 4 (D+E;
+internal order decided at entry) → BILL-modules block (§6) → Phase 5
+(§5) → operations era (§7) with BILL-D running owner-paced alongside
+from now.
 
 ### 9.2 The calendar anchor
 2026-09-18 → 2026-10-18: weekly ALN run on `production-2026-07`.

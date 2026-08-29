@@ -1,6 +1,9 @@
 # Phase 3 · A3 slice 4 — show-control content into the pack (+ ALN installation profile)
 
-**Status: DESIGN r2 — red-teamed and revised; awaiting owner tooling pause + OQ answers, then build.**
+**Status: DESIGN r3 — RATIFIED. OQ1–OQ7 answered by the owner
+(2026-08-29 grill, four rounds); build UNBLOCKED, S1 next.** §4 now
+records the ANSWERS; the sound/playlist scope narrowings are logged as
+program §13.1; landing slots per `ROADMAP.md` (ratified same day).
 Date: 2026-08-29 (r1 same day; r2 folds in the pre-build red-team — workflow
 `wf_0394f96d`, 3 attackers ×2 Opus/1 Fable, 17 MAJOR + 7 minor, ALL accepted;
 adjudication record §8). Branch: `claude/phase3-a3-slice4` (chained from
@@ -18,11 +21,9 @@ role→scene resolver reading the active installation profile, (b) an in-repo
 ALN profile whose lighting bindings cover every migrated role, (c) a
 concrete-id fallback (loud, ledgered, retires at C4).
 
-**r2 scope narrowings held for the owner (§4):** the sound-reference form
-(OQ3, now honestly framed as a program-sentence deviation needing a logged
-amendment if chosen) and the playlists-into-pack move (OQ5r, deferral
-recommended — the definitions drag a contracted live-write surface into the
-frozen pack; zero ALN cues reference music today).
+**r2 scope narrowings — BOTH RULED in r3 (§4):** OQ3 → option B
+(references-only, deviation logged as program §13.1) and OQ5r → playlist
+move deferred entirely (same amendment; landing slots ROADMAP §8.1).
 
 ---
 
@@ -32,8 +33,8 @@ frozen pack; zero ALN cues reference music today).
 |---|---|---|---|
 | 2.21 Cue definitions (incl. token-ID conditions) | game-content, "Pack `cues.json`" | **MOVED** — cues.json becomes pack content | Sanctioned by the matrix change-note verbatim. |
 | 2.18 Cue → scene-ID references | **uncertain (Q9)** — game-content referencing venue entities | **RECLASSIFIED → game-content-referencing-roles, then MOVED** | Explicit reclassification, citing B8: roles are *game events* the pack authors; the venue maps role→instrument in the C1 profile. This is exactly the matrix's own proposed resolution ("Abstract scene *roles* in pack, venue maps role→entity"); logging it here discharges the Q9 uncertainty (1.23 precedent: slice-doc logging suffices, the matrix file is never edited). |
-| 2.8 Music playlists + tracks | game-content, "Move into pack (`playlists.json` + assets)" | **DEFERRED (r2, red-team)** — recommended: no playlist move this slice at all (OQ5r). Rationale: zero cue `music:*` references exist in ALN content, so the program's "playlist REFERENCES join them" clause is vacuous today, while playlist DEFINITIONS carry a contracted LIVE-WRITE surface (OpenAPI `GET/PUT /api/music/playlists`, musicService `fs.watch` hot reload, config-tool music editor, seed script) that cannot enter the boot-frozen pack without either breaking the freeze doctrine or retiring mid-session playlist editing — a design fork that belongs with B0's store/authoring story | If the owner confirms OQ5r, the row stays open with a logged narrowing of the program sentence; the move rides the B-pages media story alongside the files. |
-| 2.10 Sound files | game-content, "Pack `assets/audio/`" | **Held on OQ3** — see §4; r2 retracts r1's "the program sentence is ambiguous" framing | Option A (files into pack) satisfies the sentence and the matrix; option B (concrete-filename references) DEVIATES from the sentence's explicit "never … concrete venue filenames" and requires a logged program-§3 amendment or a ledger row with a B-pages retirement trigger. Both priced in §4. |
+| 2.8 Music playlists + tracks | game-content, "Move into pack (`playlists.json` + assets)" | **DEFERRED (r2, red-team)** — recommended: no playlist move this slice at all (OQ5r). Rationale: zero cue `music:*` references exist in ALN content, so the program's "playlist REFERENCES join them" clause is vacuous today, while playlist DEFINITIONS carry a contracted LIVE-WRITE surface (OpenAPI `GET/PUT /api/music/playlists`, musicService `fs.watch` hot reload, config-tool music editor, seed script) that cannot enter the boot-frozen pack without either breaking the freeze doctrine or retiring mid-session playlist editing — a design fork that belongs with B0's store/authoring story | **OQ5r CONFIRMED (r3, owner 2026-08-29):** deferral ratified — logged narrowing = program §13.1; the move rides the B-pages media story (ROADMAP §8.1). |
+| 2.10 Sound files | game-content, "Pack `assets/audio/`" | **RULED (r3, owner 2026-08-29): option B** — references-only; the 74 MB of wavs stay on the venue channel | The deviation from "never … concrete venue filenames" is LOGGED (program §13.1); packaging lands at the pack-manager media page under the ratified media-bundle model (ROADMAP §2.3/§8.1). |
 | 2.22 Cue-triggerable event vocabulary | engine-fixed | **NOT moved** — stays engine | Its change-note ("document as the cue-authoring contract in game-pack schema") is DISCHARGED by S1: `cues.schema.json` + the S2 gate's trigger/action-vocabulary checks become that contract. |
 | 2.24 Command gating + resource validation | engine-fixed | **NOT moved** — executeCommand gains a role-normalization step (engine work on an engine row) | No classification change. |
 | 2.17 Lighting scenes (HA, runtime fetch) | venue-config | **NOT moved** | Scenes stay venue; only *references* to them leave the venue files. |
@@ -316,7 +317,7 @@ LEGACY_ALN_SCORING drift tripwire. Any harness profile env seam must be
 pinned in the SAME startOrchestrator call as packPath, never as an
 independent global.
 
-### D-4.6 — Audio target literal (`"target": "bluetooth"`) — held as OQ7 (r2)
+### D-4.6 — Audio target literal (`"target": "bluetooth"`) — RULED: option (a) (r3, OQ7)
 
 r1's L8 row had a "revisit when…" trigger that fails the ledger doctrine's
 DoD-linkage clause (every row retires in-phase or carries an owner-ratified
@@ -390,51 +391,49 @@ test proves role resolution end-to-end (executeCommand + stubbed lighting
 service + real profileService), and runs everywhere. Dual-pack Tier L both
 legs green = the standing slice gate.
 
-## 4. Held owner questions
+## 4. Owner answers (2026-08-29 grill — ALL SEVEN RULED; this section is now build input)
 
-- **OQ1 (blocks S3/S4 content):** Role NAMES for the seven-scene
-  vocabulary (`scene.game/off/police_1/police2/police3/policeglitch/video`)
-  — roles are game vocabulary the owner authors (B8) — AND the real HA
-  scene ids for the in-repo ALN profile bindings. *Seven, not the three
-  the census first reported.*
-- **OQ2 (blocks S4 content):** The five timestamp-id operator cues —
-  migrate as ALN game content or prune? Recommended: migrate with honest
-  ids (`warning-90min` etc.). r2 note: the red team VERIFIED the rename is
-  safe — E1 restore is mark-don't-fire and re-marks by elapsed time at
-  loadCues; stale persisted ids cannot replay; nothing else pins them.
-- **OQ3 (r2 reframed — red-team):** sound reference form. **Option A:**
-  move the 7 sound files into pack `assets/audio/` — satisfies the program
-  sentence and matrix 2.10 verbatim; cost: pack asset channel + manifest
-  inventory grows, ESP32-adjacent asset story untouched (sounds are
-  orchestrator-side). **Option B:** references-only (cues keep naming
-  `attention.wav` etc., resolved against the venue dir at preflight) —
-  smaller slice, BUT deviates from the sentence's explicit "never …
-  concrete venue filenames" and therefore REQUIRES a logged program-§3
-  amendment or a ledger row with a B-pages retirement trigger. r1 called
-  this "ambiguity"; it is not — the deviation must be chosen, not assumed.
-- **OQ4:** Interim video reference form under the F5 deferral. Recommended:
-  keep concrete filenames — the SAME reference form tokens.json `video`
-  fields already use; both migrate together under F5. No new debt class.
-- **OQ5r (r2 — replaces r1's OQ5):** playlist scope. Recommended:
-  **DEFER the playlists-into-pack move entirely** — zero ALN cue music
-  references exist (the program clause is vacuous today), and playlist
-  definitions carry a contracted LIVE-WRITE surface (OpenAPI GET/PUT,
-  fs.watch hot reload, config-tool editor, seed script) that cannot enter
-  the boot-frozen pack without breaking the freeze doctrine or retiring
-  mid-session playlist editing. The move rides the B-pages media/authoring
-  story where the write path gets its real home (B0 store). Confirming
-  this logs a narrowing of the program sentence's playlist clause.
-  Alternative (move now, read-only): +OpenAPI music-path rewrites, PUT
-  retirement, fs.watch removal, seed re-point, config-tool music editor
-  rework, row 6.7 — priced into §7's upper band.
-- **OQ6:** Interim profile home `backend/config/profiles/` + `PROFILE_PATH`
-  env, absorbed by B0.1's store later — confirm (amends C1 §5's storage
-  statement rather than silently contradicting it).
-- **OQ7 (r2 — new):** the `target: "bluetooth"` literal — option (a)
-  migrate verbatim + ratify ledger L8's retirement point per the DoD
-  linkage clause (e.g. "B-pages media story or theme unit, whichever first
-  touches cue audio"), or (b) strip it and accept that cue's audio follows
-  the venue's global sound route (behavior change). See D-4.6.
+- **OQ1 ANSWERED — role vocabulary + bindings (S3/S4 content input):**
+  all seven HA scene ids confirmed LIVE as-is; roles as proposed:
+
+  | HA id (profile binding) | Role (pack vocabulary) |
+  |---|---|
+  | `scene.game` | `gameplay` |
+  | `scene.video` | `video-playback` |
+  | `scene.off` | `blackout` |
+  | `scene.police_1` | `police-arrival-1` |
+  | `scene.police2` | `police-arrival-2` |
+  | `scene.police3` | `police-arrival-3` |
+  | `scene.policeglitch` | `police-glitch` |
+
+  Any later HA-side rename is a one-line profile edit (the seam's point).
+- **OQ2 ANSWERED — migrate all five, renamed:** `warning-90min`,
+  `warning-60min`, `warning-30min`, `warning-15min`, `endgame`
+  (labels preserved). They are the show's spine, not cruft. Rename
+  verified safe by the red team (mark-don't-fire restore; nothing pins
+  the timestamp ids). The two e2e fixture cues migrate VERBATIM
+  (ids E2E-pinned; Quick-Fire visibility = today's parity).
+- **OQ3 ANSWERED — Option B (references-only):** cues name the files;
+  the 7 wavs (74 MB — 440x the pack's size) stay on the venue channel.
+  The program-sentence deviation is LOGGED as program §13.1; packaging
+  lands at the pack-manager media page (ROADMAP §8.1) under the
+  ratified media-bundle model (ROADMAP §2.3: media never lives in git
+  packs).
+- **OQ4 ANSWERED — concrete filenames confirmed** (same reference form
+  as tokens.json `video` fields; rides the recorded F5 deferral —
+  ROADMAP §8.1).
+- **OQ5r ANSWERED — DEFERRED entirely** (program §13.1; ROADMAP §8.1).
+  musicService, musicRoutes, OpenAPI music paths, config-tool music
+  editor, seed script: ALL UNTOUCHED this slice.
+- **OQ6 ANSWERED — confirmed:** `backend/config/profiles/aln-full-kit.json`
+  + `PROFILE_PATH` env; B0.1's store absorbs it later (C1 §5 amended by
+  this record rather than silently contradicted).
+- **OQ7 ANSWERED — option (a), migrate verbatim:** the
+  `target: "bluetooth"` routing is deliberate diegetic staging (ENDGAME
+  police sounds from a specific speaker) and is PRESERVED. Ledger
+  **L8** lands post-Phase-3-classed with the owner-ratified checkpoint
+  trigger: the pack-manager media page's design must retire it (audio
+  roles / re-authoring) or explicitly re-ratify it (ROADMAP §8.2).
 
 ## 5. Build order (S1–S6) and obligations
 

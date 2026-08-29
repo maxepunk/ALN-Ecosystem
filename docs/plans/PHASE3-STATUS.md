@@ -227,25 +227,35 @@ Doctrine: every deliberately-transitional construct gets a row here with a
 retirement trigger and a tripwire; retire the row in the commit that
 retires the debt.
 
-**DoD linkage (owner goal, 2026-07-18): the 2026-07-18 holistic-review
-fixes are part of the Phase-3 definition of done.** Phase 3 is not
-complete while (a) any "Doc-refresh obligations" item below lacks
-execution, (b) any ledger row is neither retired nor carrying an
-owner-ratified post-Phase-3 retirement point (today exactly two qualify:
-L2 = final cutover + one cycle, L4 = Phase-4 wire migration), or (c) any
-PR-review residue item still lacks a slice that executed it (a/b → C1;
-c/d are conditional watches with recorded triggers, acceptable to close
-Phase 3 open). Untracked transitional debt is a DoD violation by
-definition.
+**DoD linkage (owner goal, 2026-07-18; clause REFRESHED 2026-08-29 —
+the enumeration had gone stale, per the ambiguity sweep).** Phase 3 is
+not complete while (a) any "Doc-refresh obligations" item below lacks
+execution, (b) any ledger row is not in one of the four classes marked
+in the table itself — **retired / in-queue / post-Phase-3 (owner-
+ratified) / conditional-watch (owner-ratified: "acceptable to close
+Phase 3 open")** — or (c) any PR-review residue item still lacks a
+slice that executed it (a/b → **C2+C3**, re-homed 2026-08-29 from the
+nonexistent "C1 preflight slice"; the packHash mismatch-warn→
+ENFORCEMENT obligation is likewise homed to C2, warn-vs-refuse logged
+as a C2 design point; c/d are conditional watches with recorded
+triggers). Owner ratifications 2026-08-29: **L2, L4, L6 →
+post-Phase-3** (L6 joins the cutover class its trigger always implied);
+**L3 → conditional-watch**. New rows inherit a class at creation —
+never a fresh owner question each time. Untracked transitional debt is
+a DoD violation by definition.
 
 | # | Debt | Retirement trigger | Tripwire |
 |---|---|---|---|
 | ~~L1~~ | **RETIRED ON SCHEDULE 2026-07-18 (A3 slice 2).** Backend reads the pack via `packService.getScoringRules()` (normalized snapshot; loud baked shim for packless checkouts); `scoring-config.json` DELETED from TokenData (`00d35dc`); the migration-parity pin deleted with it per its own comment; scanner's L2 shim vendored first so the deletion can't break scanner builds; validator loader re-pointed at game.json (loud throw, no baked fallback) | — (done) | — (retired; the packService drift tripwire vs ALN game.json is the ongoing guard) |
 | L2 | GM scanner legacy scoring shim: baked build-time values as last-resort fallback. NOTE: scoring-config.json is deliberately NOT pack inventory — the shim falls back to BAKED values, never a fetched file | One release cycle after the FINAL cutover deploys A2 everywhere (restated 2026-07-18 under frozen production: "ships everywhere" happens only at the coordinated cutover, so this trigger = cutover + one cycle) | Shim logs a loud warn when used (added with the packLoader work); `grep scoring-config ALNScanner/src` |
-| L3 | PWA pack loading scoped to visibility only (manifest fetch + hash display; no staged atomic refresh) | PWA becomes rules-bearing (scoring, or pack-driven display strings — note the A3 3a/3b/3c slices do NOT touch the PWA; a slice that does trips this row) | This row + the ride-along commit message |
+| L3 | **[conditional-watch, owner-ratified 2026-08-29]** PWA pack loading scoped to visibility only (manifest fetch + hash display; no staged atomic refresh) | PWA becomes rules-bearing (scoring, or pack-driven display strings — note the A3 3a/3b/3c slices do NOT touch the PWA; a slice that does trips this row) | This row + the ride-along commit message |
 | L4 | `teamId` stays on the wire as the entity-field alias (semantics are mode-dependent per the attribution model) | Phase 4 wire migration (pack-schemas doc §2 entities) | Contracts document the alias at every `teamId` site |
 | ~~L5~~ | **RETIRED ON SCHEDULE 2026-07-18 (A3 slice 2, converged with L1).** Every E2E scoring expectation now uses the SINGLE pack oracle (`loadPackScoring()` from the running orchestrator, threaded through all five flows: 07a/07b/07c/07d-02/23); the calculators THROW on a missing oracle (no silent second source); the in-process legacy import and the unused `calculateExpectedTotalScore` deleted; TWO-ORACLE comment block retired. Verified: Tier L 23P/0F/0-flaky on the five touched flows | — (done) | — (retired) |
-| L6 | Legacy ALN mode-table shims BOTH sides: backend `gameRules/modeSemantics.js` and scanner `src/core/modeSemantics.js` resolve against a baked ALN modes table when the active pack ships no game.json modes block (packless checkouts, parity fixtures, integration harness). Also covers the wall scoreboard's legacy detective evidence-filter fallback | Every pack in play ships game.json with a modes block (parity-pack gained one in slice 1; retire when the pre-pack deployment class is gone — at latest the final cutover) | LOUD once-per-process warns on all three shims ('LEGACY MODE TABLE ACTIVE'/'LEGACY SHIM ACTIVE'/'LEGACY MODE FILTER ACTIVE'); DRIFT TRIPWIRE tests both sides pin the baked tables byte-equal to the real ALN game.json modes |
+| L6 | **[post-Phase-3, owner-ratified 2026-08-29]** Legacy ALN mode-table shims BOTH sides: backend `gameRules/modeSemantics.js` and scanner `src/core/modeSemantics.js` resolve against a baked ALN modes table when the active pack ships no game.json modes block (packless checkouts, parity fixtures, integration harness). Also covers the wall scoreboard's legacy detective evidence-filter fallback | Every pack in play ships game.json with a modes block (parity-pack gained one in slice 1; retire when the pre-pack deployment class is gone — at latest the final cutover) | LOUD once-per-process warns on all three shims ('LEGACY MODE TABLE ACTIVE'/'LEGACY SHIM ACTIVE'/'LEGACY MODE FILTER ACTIVE'); DRIFT TRIPWIRE tests both sides pin the baked tables byte-equal to the real ALN game.json modes |
+| L7/L8 | *(reserved — land with the slice-4 build: L7 = `lightingRoleFallbacks` concrete-id bridge [in-queue, retires at C4]; L8 = the ENDGAME `target:"bluetooth"` audio literal [post-Phase-3: checkpoint at the pack-manager media page, ROADMAP §8.2 — owner-ratified 2026-08-29])* | see slice-4 design doc D-4.5/D-4.6 | land with the code |
+| L9 | **[post-Phase-3, same family/class as L2]** Scanner `src/core/scoring.js` shim path does not RESTORE the baked tables after a pack applied different ones (benign today: single pack load per session; 3b review note "worth a row", added 2026-08-29 per the ambiguity sweep) | Retires with L2 (the shim family dies together at cutover + one cycle) | 3b's scoring-formatting test snapshot-and-restore pattern; `grep 'LEGACY SHIM' ALNScanner/src` |
+| L10 | **[in-queue]** `scoreboard.html:799/892` numeric `7200` fallback duplicates pack `gameClock.duration` (3a "adjacent note", added 2026-08-29) | Slice 6 (the scoreboard-touching surfaces slice) reads the value from delivered pack state or documents the fallback as engine chrome | This row; grep `7200` in scoreboard.html |
+| L11 | **[in-queue]** `scoreboard.html:12-14` Google Fonts CDN links — offline-LAN risk, same class as the fixed socket.io CDN bug (3a "adjacent note", added 2026-08-29) | Theme unit (the styling-bearing slice): self-host or fallback-stack the fonts | This row; grep `fonts.googleapis` in scoreboard.html |
 
 ## Owner rulings 2026-08-22 (batch — question-walkthrough chat session)
 
@@ -296,10 +306,18 @@ Slice 4's §12.4 prerequisite is satisfied — the A3 train is fully unblocked.
 
 CONSEQUENCE — updated work queue: (i) ~~owner-ruled closers package~~
 **DONE 2026-08-29** (Q1+Q2+Q3+Q5+Q-3b-1 built + reviewed + fixed; slices
-3a and 3b FULLY CLOSED — see the closers row) → (ii) **slice 4** (NEXT;
-unblocked; needs the in-repo fully-bound ALN installation profile per
-ratified C1) → (iii) slice 6 (recon paused for the closers) → slice 7 →
-theme unit → B0.
+3a and 3b FULLY CLOSED — see the closers row) → (ii) **slice 4** (OPEN;
+design r2 red-teamed 24/24 findings folded; **OQ1–OQ7 ALL ANSWERED by
+owner 2026-08-29** — role names for the SEVEN scenes + confirmed HA ids,
+spine cues migrate renamed `warning-90min/60/30/15` + `endgame`, e2e
+fixtures verbatim, sounds/videos reference-form with logged program-§13
+amendment, playlists deferred, profile home confirmed, bluetooth target
+preserved with L8's ROADMAP-§8.2 checkpoint; build unblocked, S1 next) →
+(iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
+(ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
+RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,
+the blue/green cutover (§3b; green-Pi work after Phase-3 close), and the
+deferral registry every future deferral must point into.
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
@@ -375,9 +393,10 @@ from the GitHub UI or any local clone
 - Adversarial **R20** (B0 draft-store location + backup/export) lives only
   inside the adversarial review — carry it into the B0 design doc the day
   B0 opens, or it gets lost.
-- The 2026-06-18 documentation audit's 81 findings have no follow-through
-  tracking — sweep for still-open items when a docs-focused slice next
-  opens (3a is the natural host).
+- The 2026-06-18 documentation audit's 81 findings — **RE-HOMED
+  2026-08-29 (owner-ratified; 3a closed without hosting it):** rides the
+  DoD close-out unit as a BOUNDED triage (classify still-open vs
+  superseded, record the residue list here) — not an open-ended sweep.
 
 ## Standing practice: draft-PR-per-slice (owner-adopted 2026-07-18)
 
@@ -456,5 +475,62 @@ covers ad-hoc runs.
 - `backend/.env` is COMMITTED with a live HA long-lived token — it made CI
   jest runs dial a phantom Home Assistant (the lighting flake source,
   neutralized in jest.config.base.js 2026-07-10; docker-lifecycle repaired
-  under it in `77f905f`) and is a mild secret-hygiene smell. Decide
-  someday: untrack it (deploy keeps a local copy) or keep as-is.
+  under it in `77f905f`). **GRADUATED 2026-08-29 from someday-list to
+  MUST-FIX before any public release** (the open-source north star,
+  ROADMAP §7.4): untrack + rotate the token + git-history sweep. Timing
+  stays owner-paced — nothing in Phase 3–5 blocks on it.
+
+## Merge train (owner-ratified 2026-08-29 — ONE grand train)
+
+The answer to "what do I merge, in what order." Ruling: NOT per-slice
+trains — one grand train matching the chained-branch reality. Submodule
+PRs merge FIRST (parent pins reference their SHAs; wrong order breaks
+fresh clones), then the parent stack in slice order. Every future slice
+adds its PRs to this block.
+
+| Order | Repo | PR | Head | Close condition / note |
+|---|---|---|---|---|
+| 1 | ALN-TokenData | **#3** (opened 2026-08-29, the previously-missing vehicle) | `claude/phase3-a3-closers` @ `1d323a7` | Subsumes #2 (foundations-only) — owner closes #2 as subsumed or merges it first; slice-4's TokenData work will chain and re-point this entry |
+| 2 | ALNScanner | **#13** (closers) | `claude/phase3-a3-closers` @ `567dfa8` | Subsumes #12 (foundations/A2, source of the PR-review residue block) — owner closes #12 as subsumed |
+| 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
+| 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
+| 5–14 | ALN-Ecosystem (parent) | **#19 → #28 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #28 (slice 4) is OPEN — train grows with remaining slices (6, 7, theme, B0…) |
+
+Timing: owner-driven, post-run (§ Final cutover below); nothing merges
+before the owner walks this table.
+
+## Final cutover (single enumeration — 2026-08-29; program §12.1's pointer lands here)
+
+Everything parked on "the cutover," in one place. **Mechanism
+(owner-ratified 2026-08-29): the blue/green Pi swap — ROADMAP §3b.**
+Green-Pi preparation opens after Phase-3 close at the earliest (owner
+direction); the 2026-09-18 → 2026-10-18 weekly run executes on
+`production-2026-07` (blue) untouched.
+
+Collapsed onto the cutover (with owners):
+1. **Merge train** (above) — owner walks it first; main becomes the
+   deployable truth.
+2. **R12 skew half + slice-2 same-pin-bump coupling** (development-model
+   row) — dissolved by the swap: green ships all repos at the train tip
+   simultaneously.
+3. **2b residual exposure — THE ordering constraint:** an old deployed
+   scanner build + a v2 pack silently scores groups at 1x. Scanner dist
+   and pack pins ship in the SAME step; on green this is satisfied by
+   construction (one machine, one build), but any tablet/PWA cache is
+   part of the step: verify every consumer's reported packHash at first
+   green preflight.
+4. **Ledger L2 retirement clock starts** (cutover + one cycle); **L6
+   retires at cutover** (with L9 riding the same shim family).
+5. **Preflight = the run instrument** — C2's refresh decides hand-run
+   doc vs absorbed mechanism; the slice-4 S4 cue-check rewrite keeps it
+   truthful until then.
+6. **Nested `data/` pins** (PWA + ESP32 submodules, still pre-v2) bump
+   as part of the train — moved out of "Housekeeping someday" into this
+   list.
+7. **Rollback path:** blue, physically — the entire pre-cutover system
+   retained on the shelf for at least the first few post-cutover events
+   (supersedes the pins-only rollback runbook as primary; the
+   `production-2026-07` pins remain documented as the software-level
+   fallback).
+8. **Stage-C rehearsals** (ROADMAP §3b) — each off-day venue session is
+   a full dress rehearsal of this list.
