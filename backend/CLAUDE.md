@@ -251,19 +251,29 @@ GM Scanner VideoRenderer also shows "Playing" based on queue item state, not VLC
 
 ### Scoreboard Architecture
 
-The scoreboard (`public/scoreboard.html`) displays differently based on game mode:
+The scoreboard (`public/scoreboard.html`) renders one of two mode display
+surfaces (the per-mode `displayBehavior.surface`, pack-driven since slice 1/3c),
+toggled by a body CSS class on the SAME page — not two separate pages:
 
-**Detective Mode - "Classified Evidence Terminal":**
-- Dynamic evidence grid with responsive slot calculation
-- Cycling evidence cards showing ALL discoveries
-- Adaptive cycling intervals: 18s (few), 15s (moderate), 12s (many)
-- Hero evidence card highlighting latest discovery
+**Evidence surface (`scoreboard-evidence`, ALN detective):**
+- Evidence cards paginated by estimated pixel height against the live viewport
+  (`calculatePages()`), grouped by owner.
+- Auto-cycling pages: a TWO-tier cadence — base interval at ≤3 pages, and
+  `round(base × 2/3)` at 4+ pages. The base is the ACTIVE pack's
+  `surfaces.scoreboard.evidenceCycleMs` (slice 6, Q6-3; default 18000 → 12000
+  at the dense tier). A GM manual page nav suspends cycling for `MANUAL_PAUSE_MS`.
 
-**Black Market Mode:**
-- Team rankings by score
-- Score updates via WebSocket broadcasts
+**Rankings surface (`scoreboard-rankings`, ALN black market):**
+- Team rankings by score (rank / name / money), sorted descending; score
+  formatted via the pack's `scoring.display.format` (slice 3b).
+- Updates via WebSocket broadcasts.
 
-**Key Pattern:** Evidence cards filter to detective mode only - cards display when `mode === 'detective'`.
+**Key pattern:** the evidence pane is keyed off `evidenceModes` (the set of mode
+ids whose `displayBehavior.surface === 'scoreboard-evidence'`, read from
+`/api/pack/files/game.json`), NOT a hard-coded `'detective'` literal — so it
+works on any pack (ALN `detective`, toy `tipoff`). A pack may OPT OUT of the
+scoreboard surface entirely via `surfaces.scoreboard.enabled: false` (slice 6,
+Q6-1; `displayControlService` then refuses `display:scoreboard`).
 
 ### WebSocket Authentication Flow
 

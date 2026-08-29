@@ -1782,6 +1782,28 @@ describe('packService', () => {
       try { packService.activatePack(); } catch (err) { message = err.message; }
       expect(message).toMatch(/surfaces must be an object/);
     });
+
+    it('REFUSES scoreboard opt-out while a mode renders to the scoreboard (Q6-1 coherence)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'incoherent',
+        requires: ['surfaces.select'],
+        surfaces: { scoreboard: { enabled: false } },
+        modes: [{ id: 'blackmarket', scoringPolicy: 'standard', entityRole: 'ledger', displayBehavior: { surface: 'scoreboard-rankings' } }],
+      });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/scoreboard\.enabled is false but mode\(s\) \[blackmarket\]/);
+    });
+
+    it('ACCEPTS scoreboard opt-out when no mode renders to the scoreboard', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'noboard',
+        requires: ['surfaces.select'],
+        surfaces: { scoreboard: { enabled: false } },
+        modes: [{ id: 'quiet', scoringPolicy: 'none', entityRole: 'ledger', displayBehavior: { surface: 'none' } }],
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
   });
 
 });

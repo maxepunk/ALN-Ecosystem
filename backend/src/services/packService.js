@@ -354,6 +354,21 @@ function _validateSurfacesBlock(gameConfig) {
           );
         }
       }
+      // Opt-out coherence (Q6-1): a pack that suppresses the scoreboard
+      // surface cannot also declare a mode that renders TO it.
+      if (sb.enabled === false && Array.isArray(gameConfig.modes)) {
+        const scoreboardModes = gameConfig.modes.filter((m) => {
+          const surface = (m && m.displayBehavior && m.displayBehavior.surface) || 'none';
+          return typeof surface === 'string' && surface.startsWith('scoreboard');
+        });
+        if (scoreboardModes.length > 0) {
+          const ids = scoreboardModes.map((m) => (m && m.id) || '?').join(', ');
+          problems.push(
+            `surfaces.scoreboard.enabled is false but mode(s) [${ids}] declare a scoreboard display surface; ` +
+            `a suppressed scoreboard has nowhere to render them; self-contradictory`
+          );
+        }
+      }
     }
   }
   return problems;

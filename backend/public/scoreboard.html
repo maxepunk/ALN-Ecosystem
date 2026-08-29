@@ -1188,6 +1188,14 @@
             const m = typeof format === 'string' ? format.match(/^([^#]*)#,###([^#]*)$/) : null;
             if (m) MONEY = { prefix: m[1], suffix: m[2] };
         }
+        // Slice 6 (Q6-3): the ACTIVE pack's base evidence-page cycle (ms),
+        // from game.json surfaces.scoreboard.evidenceCycleMs. Null = the
+        // engine default (18000). Set in loadEvidenceModes().
+        let PACK_EVIDENCE_CYCLE_MS = null;
+        function applyScoreboardSurface(surfaces) {
+            const ms = surfaces && surfaces.scoreboard && surfaces.scoreboard.evidenceCycleMs;
+            if (typeof ms === 'number' && ms >= 1000) PACK_EVIDENCE_CYCLE_MS = ms;
+        }
         function formatMoney(value) {
             return MONEY.prefix + (value || 0).toLocaleString('en-US') + MONEY.suffix;
         }
@@ -1197,6 +1205,7 @@
                 if (res.ok) {
                     const game = await res.json();
                     applyMoneyFormat(game.scoring && game.scoring.display && game.scoring.display.format);
+                    applyScoreboardSurface(game.surfaces);
                     const ids = (game.modes || [])
                         .filter(m => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence')
                         .map(m => m.id);
@@ -1283,8 +1292,13 @@
             // while the GM is reading a specific page.
             if (state.manualPauseTimer) return;
 
-            // Adaptive interval: 2-3 pages = 18s, 4+ = 12s
-            const interval = state.pages.length <= 3 ? 18000 : 12000;
+            // Base evidence-page cadence is the ACTIVE pack's
+            // surfaces.scoreboard.evidenceCycleMs (slice 6, Q6-3), default
+            // 18000. The engine keeps its density adaptation: 4+ pages
+            // cycle faster, at 2/3 of the base (ALN's 18000 -> 12000, the
+            // pre-slice-6 two-tier values, byte-faithful).
+            const base = PACK_EVIDENCE_CYCLE_MS || 18000;
+            const interval = state.pages.length <= 3 ? base : Math.round(base * 2 / 3);
 
             state.pageCycleTimer = setInterval(() => {
                 const nextPage = (state.currentPage + 1) % state.pages.length;

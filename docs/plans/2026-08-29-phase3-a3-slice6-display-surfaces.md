@@ -308,6 +308,13 @@ the ruled scoreboard parameter). Estimate moves to the upper band (§7).
 
 ## 6. Residue / deferrals (explicit, each pointing at a named roadmap entry)
 
+- SCANNER reflection of a suppressed surface (hiding the GM "Show Scoreboard" button
+  when a pack opts out) → DEFERRED. The owner's ruling ("the state machine honors
+  opt-out") is met by the BACKEND: `displayControlService.setScoreboard()` refuses
+  cleanly (a `gm:command:ack` failure), so the button is functionally inert already.
+  Hiding it is cosmetic UX that costs a full scanner leg (data/ submodule bump + code +
+  dist rebuild); it rides the B-pages surfaces work (ROADMAP §8) or a later scanner
+  touch. Recorded, not built this slice.
 - Pack-DEFINED new surfaces + the constellation renderer → ROADMAP §6 BILL-modules
   block / row 8.8 (post-Phase-4). Slice 6 builds only the select/parameterize seam.
 - Idle-loop media FILE carriage → ROADMAP §8.1 (pack-manager media page). Slice 6
