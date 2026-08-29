@@ -1,13 +1,18 @@
 {
   "./src/app.js": {
-    "branches": 30,
-    "functions": 40,
-    "lines": 70
+    "branches": 65,
+    "functions": 50,
+    "lines": 80
   },
   "./src/config/index.js": {
     "branches": 60,
     "functions": 100,
     "lines": 100
+  },
+  "./src/gameRules/cueValidation.js": {
+    "branches": 90,
+    "functions": 100,
+    "lines": 90
   },
   "./src/gameRules/cueVocabulary.js": {
     "branches": 50,
@@ -142,7 +147,7 @@
   "./src/services/cue/standingEvaluator.js": {
     "branches": 70,
     "functions": 65,
-    "lines": 75
+    "lines": 80
   },
   "./src/services/cue/timelineRuntime.js": {
     "branches": 75,
@@ -218,6 +223,11 @@
     "branches": 60,
     "functions": 95,
     "lines": 85
+  },
+  "./src/services/profileService.js": {
+    "branches": 95,
+    "functions": 100,
+    "lines": 95
   },
   "./src/services/scoreboardControlService.js": {
     "branches": 0,
