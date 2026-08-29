@@ -597,8 +597,47 @@ and absence, and both mean manual-only.
 
 **In-sanction calls made at build time (recorded for the reviewer):**
 the engine-unread `duration` key is schema-refused (S4 drops it at
-migration; behavior verbatim since nothing reads it); clock strings
-pinned to `^[0-9]{1,2}:[0-5][0-9]:[0-5][0-9]$` (schema stricter than
+migration; behavior verbatim since nothing reads it — **REVERSED by the
+stage review; see below**); clock strings pinned to
+`^[0-9]{1,2}:[0-5][0-9]:[0-5][0-9]$` (schema stricter than
 `parseClockTime` is the safe direction); cue `icon` pinned to
 class-name-safe characters (it renders as a CSS class key); cue-level
 `routing` keys pinned to the three engine stream names.
+
+**S1 stage review (two-axis, 2 Opus lenses, 2026-08-29) — adjudication:**
+
+Fixed in the same stage (second commit pair):
+1. **`duration` refusal REVERSED.** The spec lens disproved "nothing
+   reads it": the config-tool timeline editor READS AND WRITES
+   `cue.duration` (`timelineView.js:49-55` write, `:116` read for
+   display length), and the D-4.7c-hardened `writeCues` would have
+   refused the editor's own writes. The schema now accepts `duration`
+   (number > 0, `dependentRequired` on `timeline`). S4 migrates the key
+   VERBATIM instead of dropping it. This paragraph supersedes the
+   in-sanction call above.
+2. Plain-language (§4) breaches in three new schema descriptions
+   rewritten (cues root; profile root; profile `endpoints` metaphor);
+   "tier zero" replaced with the CONTEXT.md term (minimum install
+   tier).
+3. The game.schema `cues` description no longer states the S2 gate rule
+   in the present tense.
+4. Test-helper duplication extracted (`fixturePacks`/`declaringPacks`;
+   one `validateMutated` per file — renamed from `mutate`, which
+   returned a boolean, not a document); `os` require hoisted; PEP8
+   spacing in the Python builder.
+
+Rejected, with reasons: command/timelineEntry duplication in
+cues.schema.json (forced — `additionalProperties: false` does not see
+allOf-referenced properties, so composing one from the other would
+refuse `at`); the mirrored suffix predicate in both builders (the
+two-builder byte-parity architecture is documented and tripwired);
+"speculative generality" on the profile's typed interiors (they are the
+ratified C1 §1 shape, and `venue-wifi` is C1's own mode vocabulary);
+the literal-name pruning in EXCLUDE (deliberate single-source refactor,
+behavior pinned by tests on both sides); the empty declared-cues walk
+(forward wiring; S4 adds the ≥1-declarer assertion); the un-bumped
+ALNScanner `data/` pin (scanner repos are outside this slice's train;
+nested pins ride the merge train — Final-cutover item 2b).
+
+Carried to S4: the L7 ledger row lands there per §5.4 (the code has
+carried the marker since S1); `duration` migrates verbatim.

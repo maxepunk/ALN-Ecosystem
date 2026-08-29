@@ -38,6 +38,7 @@ def _is_schema_file(rel):
     of served inventory without another builder edit."""
     return rel.endswith(".schema.json")
 
+
 SKIP_DIRS = {"node_modules", "shared"}
 
 

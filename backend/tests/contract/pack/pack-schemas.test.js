@@ -13,6 +13,7 @@
  */
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const Ajv2020 = require('ajv/dist/2020');
 const addFormats = require('ajv-formats');
@@ -27,6 +28,22 @@ const PACKS = [
 ];
 
 const readJson = (...p) => JSON.parse(fs.readFileSync(path.join(...p), 'utf8'));
+
+const FIXTURE_PACKS_DIR = path.resolve(__dirname, '../../e2e/fixtures/packs');
+
+// Every fixture pack directory as {name, dir}.
+const fixturePacks = () => fs.readdirSync(FIXTURE_PACKS_DIR, { withFileTypes: true })
+  .filter(e => e.isDirectory())
+  .map(e => ({ name: e.name, dir: path.join(FIXTURE_PACKS_DIR, e.name) }));
+
+// All packs (production + fixtures) whose game.json declares the given
+// sidecar pointer (e.g. 'strings', 'cues').
+const declaringPacks = (pointerKey) => [
+  { name: 'about-last-night', dir: TOKEN_DATA_DIR },
+  ...fixturePacks(),
+].filter(({ dir }) => {
+  try { return !!readJson(dir, 'game.json')[pointerKey]; } catch { return false; }
+});
 
 describe('game pack schema contract (A1)', () => {
   let ajv;
@@ -178,15 +195,7 @@ describe('game pack schema contract (A1)', () => {
     // that satisfies the schema — the engine gate walks leaves at
     // activation; this is the authoring-time contract twin.
     const stringsSchema = readJson(TOKEN_DATA_DIR, 'strings.schema.json');
-    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
-    const declaring = [
-      { name: 'about-last-night', dir: TOKEN_DATA_DIR },
-      ...fs.readdirSync(packsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory())
-        .map(e => ({ name: e.name, dir: path.join(packsDir, e.name) })),
-    ].filter(({ dir }) => {
-      try { return !!readJson(dir, 'game.json').strings; } catch { return false; }
-    });
+    const declaring = declaringPacks('strings');
 
     it('at least one pack declares a strings sidecar (the contract has a consumer)', () => {
       expect(declaring.length).toBeGreaterThan(0);
@@ -216,13 +225,7 @@ describe('game pack schema contract (A1)', () => {
     // packs may carry PARTIAL game.json overlays (parity-pack does), but
     // any pack the PACK_PATH seam can boot still needs a fresh manifest —
     // slice 2b edited parity-pack twice relying on manual regen alone.
-    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
-    const fixturePacks = fs.readdirSync(packsDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name);
-
-    it.each(fixturePacks)('%s manifest sha1s/contentHash match the tree', (pack) => {
-      const dir = path.join(packsDir, pack);
+    it.each(fixturePacks().map(p => [p.name, p.dir]))('%s manifest sha1s/contentHash match the tree', (name, dir) => {
       const manifest = readJson(dir, 'pack-manifest.json');
       const files = buildFiles(dir);
       expect(manifest.files).toEqual(files);
@@ -231,7 +234,8 @@ describe('game pack schema contract (A1)', () => {
   });
 
   describe('cues pointer + lightingRoleFallbacks (slice 4 S1, D-4.2/D-4.5)', () => {
-    const mutated = (fn) => {
+    // Apply one mutation to the committed ALN game.json and return validity.
+    const validateMutated = (fn) => {
       const game = readJson(TOKEN_DATA_DIR, 'game.json');
       const copy = JSON.parse(JSON.stringify(game));
       fn(copy);
@@ -242,21 +246,21 @@ describe('game pack schema contract (A1)', () => {
       // Both manifest builders and the loader key on the literal
       // 'cues.json'; a free-form pointer rebrands one consumer while the
       // others stay keyed to the canonical name.
-      expect(mutated(g => { g.cues = 'cues.json'; })).toBe(true);
-      expect(mutated(g => { g.cues = 'show.json'; })).toBe(false);
+      expect(validateMutated(g => { g.cues = 'cues.json'; })).toBe(true);
+      expect(validateMutated(g => { g.cues = 'show.json'; })).toBe(false);
     });
 
     it('lightingRoleFallbacks maps role names to concrete scene ids (ledger L7 — temporary)', () => {
-      expect(mutated(g => {
+      expect(validateMutated(g => {
         g.lightingRoles = ['gameplay', 'blackout'];
         g.lightingRoleFallbacks = { gameplay: 'scene.game', blackout: 'scene.off' };
       })).toBe(true);
       // non-string scene id refused
-      expect(mutated(g => {
+      expect(validateMutated(g => {
         g.lightingRoleFallbacks = { gameplay: 7 };
       })).toBe(false);
       // a key outside the role-name convention refused
-      expect(mutated(g => {
+      expect(validateMutated(g => {
         g.lightingRoleFallbacks = { 'Scene.Game': 'scene.game' };
       })).toBe(false);
     });
@@ -267,15 +271,7 @@ describe('game pack schema contract (A1)', () => {
     // cues until the S4 cutover — the walk is forward-wired now; S4 adds
     // the at-least-one-declarer assertion (strings-block precedent).
     const cuesSchema = readJson(TOKEN_DATA_DIR, 'cues.schema.json');
-    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
-    const declaring = [
-      { name: 'about-last-night', dir: TOKEN_DATA_DIR },
-      ...fs.readdirSync(packsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory())
-        .map(e => ({ name: e.name, dir: path.join(packsDir, e.name) })),
-    ].filter(({ dir }) => {
-      try { return !!readJson(dir, 'game.json').cues; } catch { return false; }
-    });
+    const declaring = declaringPacks('cues');
 
     it('every pack declaring a cues pointer ships a schema-valid sidecar', () => {
       const validate = ajv.compile(cuesSchema);
@@ -294,12 +290,9 @@ describe('game pack schema contract (A1)', () => {
     // silently entered inventory, got served, and moved contentHash —
     // strings.schema.json had already slipped through when this landed.
     // Both builders now exclude by the `.schema.json` suffix.
-    const packsDir = path.resolve(__dirname, '../../e2e/fixtures/packs');
     const allPacks = [
       ...PACKS,
-      ...fs.readdirSync(packsDir, { withFileTypes: true })
-        .filter(e => e.isDirectory())
-        .map(e => ({ name: `${e.name} (fixture)`, dir: path.join(packsDir, e.name) })),
+      ...fixturePacks().map(p => ({ name: `${p.name} (fixture)`, dir: p.dir })),
     ];
 
     it.each(allPacks.map(p => [p.name, p.dir]))(
@@ -318,7 +311,6 @@ describe('game pack schema contract (A1)', () => {
     );
 
     it('the suffix rule covers schemas the literal EXCLUDE set never named', () => {
-      const os = require('os');
       const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-suffix-'));
       try {
         fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');

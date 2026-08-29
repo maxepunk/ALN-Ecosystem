@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aln.engine/installation-profile.schema.json",
   "title": "Installation Profile — v1",
-  "description": "The venue document (C1, ratified 2026-08-22; design: docs/plans/2026-07-09-phase3-1-installation-profile.md §1): what is INSTALLED for one event and how the pack's abstract names bind to physical things. ENGINE-side config, never pack content — homed here per owner answer OQ6 (slice 4); loaded frozen at boot by profileService through the PROFILE_PATH seam. v1 engine reads kind/schemaVersion/profileId/forPack/bindings.lighting only; the other sections are the ratified C1 shape, typed for authoring-time typo catch and consumed by C2/C3 (resolution, preflight) as they build. Interiors marked open (endpoints) get pinned by the slice that consumes them. Venue details never enter the pack; pack content never names venue instruments.",
+  "description": "The venue document (C1, ratified 2026-08-22; design: docs/plans/2026-07-09-phase3-1-installation-profile.md §1). It records what is installed for one event and binds the pack's abstract names to physical things. It is engine-side config, never pack content, homed here per owner answer OQ6 (slice 4). profileService loads one profile frozen at boot, through the PROFILE_PATH seam. The v1 engine reads kind, schemaVersion, profileId, forPack, and bindings.lighting; nothing else. The other sections are the ratified C1 shape. They are typed to catch authoring typos, and C2/C3 (resolution, preflight) consume them as they build. Open interiors (endpoints) get pinned by the slice that consumes them. Venue details never enter the pack. Pack content never names venue instruments.",
   "type": "object",
   "required": ["kind", "schemaVersion", "profileId"],
   "additionalProperties": false,
@@ -63,11 +63,11 @@
       }
     },
     "orchestrator": {
-      "description": "The stack is ONE switch (kit-model decision): true means every stack service is expected live and absence of any is a FAULT; false is the scanners-only tier zero.",
+      "description": "The stack is ONE switch (kit-model decision). true: every stack service is expected live, and a missing one is a FAULT. false: the minimum install tier (player scanners and tokens only) — no orchestrator features.",
       "type": "boolean"
     },
     "endpoints": {
-      "description": "The physical dials: what equipment is installed tonight. Absence = DORMANT by configuration, never an error (C2/C3 semantics). Interior shape stays open in v1 — C2 (resolution) pins it when it becomes the consumer.",
+      "description": "What equipment is installed tonight. An absent endpoint makes its features DORMANT by configuration, never an error (C2/C3 semantics). The interior shape stays open in v1; C2 pins it when resolution becomes the consumer.",
       "type": "object"
     },
     "bindings": {

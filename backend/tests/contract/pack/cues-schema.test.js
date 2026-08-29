@@ -98,83 +98,87 @@ describe('pack show-cues schema contract (slice 4 S1)', () => {
     .map(e => `${e.instancePath || '(root)'}: ${e.message}`)
     .join('\n  ');
 
+  // Apply one mutation to the valid document and return validity.
+  const validateMutated = (fn) => {
+    const doc = validDoc();
+    fn(doc);
+    return validate(doc);
+  };
+
   it('the migrated-form document validates (every authorable shape)', () => {
     if (!validate(validDoc())) throw new Error(`violations:\n  ${explain()}`);
   });
 
   describe('cue structure refusal twins', () => {
-    const mutate = (fn) => {
-      const doc = validDoc();
-      fn(doc);
-      return validate(doc);
-    };
-
     it('commands AND timeline on one cue is refused (XOR)', () => {
-      expect(mutate(d => { d.cues[2].timeline = [{ at: 0, action: 'sound:play' }]; })).toBe(false);
+      expect(validateMutated(d => { d.cues[2].timeline = [{ at: 0, action: 'sound:play' }]; })).toBe(false);
     });
 
     it('NEITHER commands nor timeline is refused', () => {
-      expect(mutate(d => { delete d.cues[2].commands; })).toBe(false);
+      expect(validateMutated(d => { delete d.cues[2].commands; })).toBe(false);
     });
 
     it('empty commands array is refused (a cue must do something)', () => {
-      expect(mutate(d => { d.cues[2].commands = []; })).toBe(false);
+      expect(validateMutated(d => { d.cues[2].commands = []; })).toBe(false);
     });
 
     it('missing id / missing label are refused', () => {
-      expect(mutate(d => { delete d.cues[0].id; })).toBe(false);
-      expect(mutate(d => { delete d.cues[0].label; })).toBe(false);
+      expect(validateMutated(d => { delete d.cues[0].id; })).toBe(false);
+      expect(validateMutated(d => { delete d.cues[0].label; })).toBe(false);
     });
 
     it('id outside the project id convention is refused', () => {
-      expect(mutate(d => { d.cues[0].id = 'Pre Video Alert'; })).toBe(false);
+      expect(validateMutated(d => { d.cues[0].id = 'Pre Video Alert'; })).toBe(false);
     });
 
     it('icon is a CSS class key — injection-shaped values are refused', () => {
-      expect(mutate(d => { d.cues[0].icon = 'alert"><script>'; })).toBe(false);
+      expect(validateMutated(d => { d.cues[0].icon = 'alert"><script>'; })).toBe(false);
     });
 
-    it('the dead `duration` key is refused (engine-unread; S4 drops it at migration)', () => {
-      expect(mutate(d => { d.cues[4].duration = 7; })).toBe(false);
+    it('`duration` is accepted on compound cues (the config-tool timeline editor reads and writes it; the engine ignores it)', () => {
+      expect(validateMutated(d => { d.cues[4].duration = 7; })).toBe(true);
+    });
+
+    it('`duration` on a flat-commands cue is refused (display length only means something on a timeline)', () => {
+      expect(validateMutated(d => { d.cues[2].duration = 7; })).toBe(false);
+    });
+
+    it('a zero or negative `duration` is refused', () => {
+      expect(validateMutated(d => { d.cues[4].duration = 0; })).toBe(false);
+      expect(validateMutated(d => { d.cues[4].duration = -3; })).toBe(false);
     });
 
     it('routing accepts only the three stream keys', () => {
-      expect(mutate(d => { d.cues[3].routing = { voice: 'bluetooth' }; })).toBe(false);
+      expect(validateMutated(d => { d.cues[3].routing = { voice: 'bluetooth' }; })).toBe(false);
     });
   });
 
   describe('trigger vocabulary (row 2.22 authoring contract)', () => {
-    const mutate = (fn) => {
-      const doc = validDoc();
-      fn(doc);
-      return validate(doc);
-    };
-
     it('an event outside the engine normalizer table is refused', () => {
-      expect(mutate(d => { d.cues[0].trigger.event = 'video:exploded'; })).toBe(false);
+      expect(validateMutated(d => { d.cues[0].trigger.event = 'video:exploded'; })).toBe(false);
     });
 
     it('a condition op outside CONDITION_OPS is refused', () => {
-      expect(mutate(d => { d.cues[0].trigger.conditions[0].op = 'matches'; })).toBe(false);
+      expect(validateMutated(d => { d.cues[0].trigger.conditions[0].op = 'matches'; })).toBe(false);
     });
 
     it('op "in" requires an array value (a scalar silently never fires at runtime)', () => {
-      expect(mutate(d => {
+      expect(validateMutated(d => {
         d.cues[0].trigger.conditions[0] = { field: 'tokenId', op: 'in', value: 'kaa001' };
       })).toBe(false);
     });
 
     it('a trigger with BOTH event and clock is refused', () => {
-      expect(mutate(d => { d.cues[0].trigger = { event: 'video:loading', clock: '00:10:00' }; })).toBe(false);
+      expect(validateMutated(d => { d.cues[0].trigger = { event: 'video:loading', clock: '00:10:00' }; })).toBe(false);
     });
 
     it('an unparseable clock string is refused (it would throw per tick at runtime)', () => {
-      expect(mutate(d => { d.cues[3].trigger = { clock: '90 minutes' }; })).toBe(false);
-      expect(mutate(d => { d.cues[3].trigger = { clock: '1:2:3' }; })).toBe(false);
+      expect(validateMutated(d => { d.cues[3].trigger = { clock: '90 minutes' }; })).toBe(false);
+      expect(validateMutated(d => { d.cues[3].trigger = { clock: '1:2:3' }; })).toBe(false);
     });
 
     it('conditions on a clock trigger are refused (the engine never evaluates them)', () => {
-      expect(mutate(d => {
+      expect(validateMutated(d => {
         d.cues[3].trigger = { clock: '01:00:00', conditions: [{ field: 'x', op: 'eq', value: 1 }] };
       })).toBe(false);
     });
@@ -191,53 +195,41 @@ describe('pack show-cues schema contract (slice 4 S1)', () => {
   });
 
   describe('lighting payloads carry roles, never venue scene ids (B8)', () => {
-    const mutate = (fn) => {
-      const doc = validDoc();
-      fn(doc);
-      return validate(doc);
-    };
-
     it('a concrete sceneId in a flat-command lighting payload is refused', () => {
-      expect(mutate(d => {
+      expect(validateMutated(d => {
         d.cues[0].commands[1].payload = { sceneId: 'scene.video' };
       })).toBe(false);
     });
 
     it('a concrete sceneId in a timeline lighting payload is refused', () => {
-      expect(mutate(d => {
+      expect(validateMutated(d => {
         d.cues[4].timeline[1].payload = { sceneId: 'scene.police_1' };
       })).toBe(false);
     });
 
     it('a lighting payload without a role is refused', () => {
-      expect(mutate(d => { d.cues[0].commands[1].payload = {}; })).toBe(false);
+      expect(validateMutated(d => { d.cues[0].commands[1].payload = {}; })).toBe(false);
     });
 
     it('a role outside the role-name convention is refused', () => {
-      expect(mutate(d => {
+      expect(validateMutated(d => {
         d.cues[0].commands[1].payload = { role: 'Scene.Video' };
       })).toBe(false);
     });
   });
 
   describe('timeline entry shape (flat {at, action, payload})', () => {
-    const mutate = (fn) => {
-      const doc = validDoc();
-      fn(doc);
-      return validate(doc);
-    };
-
     it('a missing `at` is refused (NaN-poisons maxAt at runtime)', () => {
-      expect(mutate(d => { delete d.cues[4].timeline[0].at; })).toBe(false);
+      expect(validateMutated(d => { delete d.cues[4].timeline[0].at; })).toBe(false);
     });
 
     it('a negative or non-numeric `at` is refused', () => {
-      expect(mutate(d => { d.cues[4].timeline[0].at = -1; })).toBe(false);
-      expect(mutate(d => { d.cues[4].timeline[0].at = '180'; })).toBe(false);
+      expect(validateMutated(d => { d.cues[4].timeline[0].at = -1; })).toBe(false);
+      expect(validateMutated(d => { d.cues[4].timeline[0].at = '180'; })).toBe(false);
     });
 
     it('a nested `command` key is refused (two census legs miscounted this shape)', () => {
-      expect(mutate(d => {
+      expect(validateMutated(d => {
         d.cues[4].timeline[0] = { at: 1, command: { action: 'sound:play' } };
       })).toBe(false);
     });
