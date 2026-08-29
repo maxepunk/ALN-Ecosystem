@@ -1,10 +1,12 @@
 # Phase 3 · A3 slice 4 — show-control content into the pack (+ ALN installation profile)
 
-**Status: DESIGN — awaiting pre-build red-team, then owner questions, then build.**
-Date: 2026-08-29. Branch: `claude/phase3-a3-slice4` (chained from closers tip
-`00d39fe`, per the slice-train model). Census: workflow `wf_bb42d8c1-9af`
-(5 legs: 4 Sonnet readers + Fable doctrine leg), disputed facts settled by
-direct verification (§2.4).
+**Status: DESIGN r2 — red-teamed and revised; awaiting owner tooling pause + OQ answers, then build.**
+Date: 2026-08-29 (r1 same day; r2 folds in the pre-build red-team — workflow
+`wf_0394f96d`, 3 attackers ×2 Opus/1 Fable, 17 MAJOR + 7 minor, ALL accepted;
+adjudication record §8). Branch: `claude/phase3-a3-slice4` (chained from
+closers tip `00d39fe`), draft PR #28. Census: workflow `wf_bb42d8c1-9af`
+(5 legs), disputed facts settled by direct verification (§2.4) — and two
+census claims r1 carried were DISPROVEN by the red team (§2.4a).
 
 Program scope sentence (§3, RESCOPED): cues become pack content referencing
 ROLES (lighting roles per B8; sound/video by pack-relative reference, never
@@ -16,6 +18,12 @@ role→scene resolver reading the active installation profile, (b) an in-repo
 ALN profile whose lighting bindings cover every migrated role, (c) a
 concrete-id fallback (loud, ledgered, retires at C4).
 
+**r2 scope narrowings held for the owner (§4):** the sound-reference form
+(OQ3, now honestly framed as a program-sentence deviation needing a logged
+amendment if chosen) and the playlists-into-pack move (OQ5r, deferral
+recommended — the definitions drag a contracted live-write surface into the
+frozen pack; zero ALN cues reference music today).
+
 ---
 
 ## 1. Extraction brake (R13) — capability-matrix rows cited
@@ -23,13 +31,14 @@ concrete-id fallback (loud, ledgered, retires at C4).
 | Row | Matrix classification | This slice | Logged decision |
 |---|---|---|---|
 | 2.21 Cue definitions (incl. token-ID conditions) | game-content, "Pack `cues.json`" | **MOVED** — cues.json becomes pack content | Sanctioned by the matrix change-note verbatim. |
-| 2.18 Cue → scene-ID references | **uncertain (Q9)** — game-content referencing venue entities | **RECLASSIFIED → game-content-referencing-roles, then MOVED** | Explicit reclassification, citing B8: roles are *game events* the pack authors; the venue maps role→instrument in the C1 profile. This is exactly the matrix's own proposed resolution ("Abstract scene *roles* in pack, venue maps role→entity"); logging it here discharges the Q9 uncertainty. |
-| 2.8 Music playlists + tracks | game-content, "Move into pack (`playlists.json` + assets)" | **REFERENCE HALF MOVED** — playlist *definitions* (ids, names, track refs, flags per OQ5) become pack `playlists.json`; MP3 *files* stay `backend/public/music/` (program: "files stay on the venue/asset channel") | Partial move logged; the asset half rides the B-pages media story with F5. |
-| 2.10 Sound files | game-content, "Pack `assets/audio/`" | **REFERENCE-ONLY this slice** (recommended default, held as OQ3) — cues keep referencing sound files by name; files stay `backend/public/audio/` | The program sentence is ambiguous on whether "files stay" covers sound; §4 OQ3 carries it to the owner. Either answer keeps row 2.10's end-state intact. |
-| 2.22 Cue-triggerable event vocabulary | engine-fixed | **NOT moved** — stays engine | Its change-note ("document as the cue-authoring contract in game-pack schema") is DISCHARGED by S1: `cues.schema.json` + the S2 gate's action/trigger-vocabulary check become that contract. |
-| 2.24 Command gating + resource validation | engine-fixed | **NOT moved** — `validateCommand` gains a role-resolution line (engine work on an engine row) | No classification change. |
+| 2.18 Cue → scene-ID references | **uncertain (Q9)** — game-content referencing venue entities | **RECLASSIFIED → game-content-referencing-roles, then MOVED** | Explicit reclassification, citing B8: roles are *game events* the pack authors; the venue maps role→instrument in the C1 profile. This is exactly the matrix's own proposed resolution ("Abstract scene *roles* in pack, venue maps role→entity"); logging it here discharges the Q9 uncertainty (1.23 precedent: slice-doc logging suffices, the matrix file is never edited). |
+| 2.8 Music playlists + tracks | game-content, "Move into pack (`playlists.json` + assets)" | **DEFERRED (r2, red-team)** — recommended: no playlist move this slice at all (OQ5r). Rationale: zero cue `music:*` references exist in ALN content, so the program's "playlist REFERENCES join them" clause is vacuous today, while playlist DEFINITIONS carry a contracted LIVE-WRITE surface (OpenAPI `GET/PUT /api/music/playlists`, musicService `fs.watch` hot reload, config-tool music editor, seed script) that cannot enter the boot-frozen pack without either breaking the freeze doctrine or retiring mid-session playlist editing — a design fork that belongs with B0's store/authoring story | If the owner confirms OQ5r, the row stays open with a logged narrowing of the program sentence; the move rides the B-pages media story alongside the files. |
+| 2.10 Sound files | game-content, "Pack `assets/audio/`" | **Held on OQ3** — see §4; r2 retracts r1's "the program sentence is ambiguous" framing | Option A (files into pack) satisfies the sentence and the matrix; option B (concrete-filename references) DEVIATES from the sentence's explicit "never … concrete venue filenames" and requires a logged program-§3 amendment or a ledger row with a B-pages retirement trigger. Both priced in §4. |
+| 2.22 Cue-triggerable event vocabulary | engine-fixed | **NOT moved** — stays engine | Its change-note ("document as the cue-authoring contract in game-pack schema") is DISCHARGED by S1: `cues.schema.json` + the S2 gate's trigger/action-vocabulary checks become that contract. |
+| 2.24 Command gating + resource validation | engine-fixed | **NOT moved** — executeCommand gains a role-normalization step (engine work on an engine row) | No classification change. |
 | 2.17 Lighting scenes (HA, runtime fetch) | venue-config | **NOT moved** | Scenes stay venue; only *references* to them leave the venue files. |
-| 2.14 Ducking rules | uncertain (Q8), matrix note "likely game-pack with venue override" | **NOT moved** — stays venue | **Matrix-note correction logged:** B7 (ratified with C1, 2026-08-22) ruled routes AND ducking are venue config (profile-resident eventually, `routing.json` today). The matrix's "likely game-pack" note is stale; row 2.14 resolves venue-config. No code motion this slice. |
+| 2.14 Ducking rules | uncertain (Q8), matrix note "likely game-pack with venue override" | **NOT moved** — stays venue | **Matrix-note correction logged:** B7 (ratified with C1, 2026-08-22) ruled routes AND ducking are venue config. The matrix's "likely game-pack" note is stale; row 2.14 resolves venue-config. |
+| 6.7 config-tool music playlist editor | (tool row) | **NOT moved** under the OQ5r deferral — the editor keeps editing the venue file | Logged here per the red team (doctrine MAJOR-2): if OQ5r is answered "move", row 6.7's re-point joins the slice and the price rises. |
 
 No `engine-fixed` row is moved. Brake satisfied.
 
@@ -41,27 +50,47 @@ No `engine-fixed` row is moved. Brake satisfied.
   `tension-hit`, `e2e-compound-test`, `e2e-video-compound`) + 5 timestamp-id
   operator-created (`cue-1772422843217`, `…894866`, `…917681`, `…984913`,
   `…004537` — the 90/60/30/15-minute warnings + ENDGAME; OQ2 triages them).
-  3 carry `timeline` (compound); the rest are flat `commands`.
+  3 carry `timeline` (compound); the rest are flat `commands`. The 5
+  operator cues carry an explicit `"trigger": null` — the S1 schema MUST
+  accept it or "migrate verbatim" is schema-invalid on day one (red team).
 - **22 command instances**: `sound:play` ×9, `lighting:scene:activate` ×11,
   `video:queue:add` ×2, `music:*` ×0.
 - **7 distinct scenes**: `scene.game`, `scene.off`, `scene.police_1`,
   `scene.police2`, `scene.police3`, `scene.policeglitch`, `scene.video`
-  (note the venue-side naming inconsistency `police_1` vs `police2/3` —
-  roles erase it from pack content).
+  (venue-side naming inconsistency `police_1` vs `police2/3` — roles erase
+  it from pack content).
 - **7 distinct sounds**: `15min.wav`, `30min.wav`, `60min.wav`, `90min.wav`,
   `attention.wav`, `policesounds.wav`, `tension.wav`.
-- **2 video refs**: `policesequencewoverlay.mp4` (real show content),
-  `test_2sec.mp4` (E2E fixture — already living in production cues today).
+- **2 video refs**: `policesequencewoverlay.mp4` (real show content —
+  **NOT in the repo**: `backend/public/videos/` holds only test fixtures;
+  the real file lives on the venue Pi. Any gate that checks video-file
+  existence therefore fails every dev/CI machine — one of three reasons the
+  r1 activation sweep died, §8) and `test_2sec.mp4` (E2E fixture, already
+  living in production cues today).
 - **1 routing target literal**: `"target": "bluetooth"` on one `sound:play`
-  (bypasses sink resolution → raw `pw-play --target`; §3 D6 handles it).
-- **2 conditions**: both `{field: tokenId, op: neq, value: 'policesequencewoverlay'}`
-  (pack-internal reference — tokenIds are pack content).
+  (bypasses sink resolution → raw `pw-play --target`; §3 D-4.6 / OQ7).
+- **2 conditions**: both `{field: tokenId, op: neq, value: 'policesequencewoverlay'}`.
+  **r2 CORRECTION (red-team MAJOR):** r1 called this "a pack-internal
+  reference — tokenIds are pack content". FALSE — `policesequencewoverlay`
+  is not a token (tokens.json has 81 keys; it is absent). It is the
+  SYNTHETIC tokenId `videoQueueService.addVideoByFilename` mints for a
+  standalone video (filename minus extension; videoQueueService.js:759-768),
+  which the `video:*` normalizers then surface (standingEvaluator.js:27-29)
+  — exactly what these guard cues compare against. Consequence: cue
+  condition tokenIds on `video:*` triggers live in a filename-derived
+  ENGINE namespace, not the pack token namespace (gate rule 3, §3 D-4.3).
 - **Structure note for future counters**: timeline entries are FLAT
   `{at, action, payload}` objects, NOT nested under a `command` key.
   Two census legs undercounted by walking the wrong shape.
 - **Playlists** (`backend/config/music-playlists.json`): 1 playlist
-  (`all-tracks`, bootstrap), with `shuffle`/`loop`/`crossfadeMs` flags and
-  concrete venue MP3 filenames as track refs.
+  (`all-tracks`, bootstrap), `shuffle`/`loop`/`crossfadeMs` flags, concrete
+  venue MP3 filenames as track refs. **r2 surface census (red-team, three
+  attackers independently):** this file is NOT read-only config — it has a
+  contracted HTTP surface (`GET/PUT /api/music/playlists`, OpenAPI describes
+  both by file path "verbatim"/"atomically replaces"), a live `fs.watch`
+  hot-reloader in musicService, a seed script
+  (`backend/scripts/seed-music-playlist.js`, `npm run music:seed`), and the
+  config-tool music editor riding the HTTP proxy. Grounds for OQ5r.
 
 ### 2.2 Dormant schema headroom (exists TODAY, activated by S1)
 
@@ -71,259 +100,442 @@ No `engine-fixed` row is moved. Brake satisfied.
   `strings: {const: 'strings.json'}`; S1 const-pins it per the 3a
   role-vs-pointer lesson). `surfaces` object also present (slice 6's, untouched).
 - Manifest builder `roleFor('cues.json') → 'cues'` already exists; role enums
-  in openapi/pack-manifest.schema already list it. `playlists` role is NEW (S1).
-- **Zero** role-resolution or installation-profile code exists anywhere
-  (`grep lightingRoles|installationProfile` = 0 hits outside schemas/docs).
+  in openapi/pack-manifest.schema already list it.
+- Both manifest builders' EXCLUDE sets enumerate schema filenames
+  LITERALLY — without an S1 extension, `cues.schema.json` would be
+  inventoried, served, and folded into contentHash (red team; §5 S1).
+- **Zero** role-resolution or installation-profile code exists anywhere.
 
 ### 2.3 Engine load sites and consumers
 
 - Cues load at `backend/src/app.js:239` and `src/services/systemReset.js:228`
-  — both hardcode `config/environment/cues.json`; **zero tests pin the path**
-  (cutover is test-transparent at the load seam).
-- `loadCues` validates structure only (`commands` XOR `timeline`); resource
-  existence lives in `commandExecutor.validateCommand` (5 checks; the role
-  resolver inserts BEFORE `sceneExists`).
+  — both hardcode `config/environment/cues.json`; zero tests pin the PATH.
+  **r2 CORRECTION (red-team MAJOR):** r1 inferred "cutover is
+  test-transparent" — true of the path, FALSE of the CONTENT. Four E2E
+  flows pin ALN cue ids/behavior and today pass on the TOY leg only because
+  the venue file loads pack-independently: `07d-03` (tension-hit,
+  e2e-compound-test, attention-before-video), `22-player-video-lifecycle`
+  (attention-before-video/restore-after-video firing), `30-full-game-session`
+  (fires e2e-compound-test), `admin-state-reactivity` (quick-fire grid
+  data-cue-id). After the cutover the toy leg loads TOY cues and all four
+  fail. (Verified NOT pins: 07d-04 mentions a cue id in a comment only;
+  tests/integration/compound-cues.test.js injects its own fixtures via
+  `loadCues([cue])` — both survive untouched.) Mechanism: §3 D-4.7e.
+- `loadCues` validates structure only (`commands` XOR `timeline`).
+  `validateCommand` resource checks (5) run health-first and read live
+  service state — see §3 D-4.3 for why they CANNOT run at activation.
 - The GM Scanner NEVER receives cue internals (`getCueSummaries` strips to
-  id/label/icon/quickFire/once/triggerType/enabled). E1 persistence is
-  reference-free (`{firedClockCues, disabledCues, active}`). MESSAGE_TYPES
-  untouched. **The scanner repos are NOT in this slice's train** —
-  the lockstep is TokenData → backend/parent only.
-- E2E `07d-03` pins cue ids `tension-hit`/`e2e-compound-test`/
-  `attention-before-video` — migration preserves ids verbatim.
-- config-tool: `PUT /config/cues` → `writeCues` (no manifest rebuild today);
-  its scene-picker fetches live HA ids. §3 D7 re-points it.
+  id/label/icon/quickFire/once/triggerType/enabled — red-team verified).
+  E1 persistence is reference-free. MESSAGE_TYPES untouched. **The scanner
+  repos are NOT in this slice's train** (red-team verified: scanner gates
+  schemaVersion only, no `requires` check; packLoader filters files by
+  RULES_ROLES={game,tokens,strings} and ignores unknown manifest roles).
+- config-tool cues surface (**r2 census, red-team MAJOR** — r1 named only
+  the PUT): `cuesPath` feeds SIX paths in configManager/routes — the
+  `GET /config` bundle read (`readAll`), the sound/video asset-usage maps,
+  `PUT /config/cues` → `writeCues` (bare write, NO manifest rebuild —
+  unlike `writeScoring`, which got validate+rebuild+rollback hardening),
+  preset CAPTURE (`savePreset` snapshots cues), preset APPLY
+  (`loadPreset → writeCues(preset.cues)`), backup RESTORE
+  (`writeCues(backup.cues)`); preset IMPORT validation REQUIRES a `cues`
+  key. Every preset/backup on disk carries PRE-migration cues (concrete
+  sceneIds). §3 D-4.7c handles all of it.
+- Preflight checklist (`docs/preflight-checklist.md`) reads the venue cues
+  file in three checks incl. a hard existence test — the cutover instrument
+  breaks at the cutover unless rewritten in the same train (slice-2 §4.4
+  precedent; §5 S4).
 - Toy pack today: NO cues; `hardware.stack = {}`, `endpoints = {}`. The ALN
-  pack-manifest's `hardware.stack` ALREADY claims `cue playlists`/`cue sound
-  effects`/`lighting cues` usedBy — claims that become true only with this slice.
+  pack-manifest's `hardware.stack` ALREADY claims `cue sound effects`/
+  `lighting cues` usedBy — claims that become true only with this slice.
 
 ### 2.4 Census-leg corrections (settled by direct verification)
 
 - Doctrine leg undercounted scenes (3 vs **7**) and sounds (2 vs **7**);
-  contracts leg said 9 cues vs **10**. All doc numbers above are re-verified.
-  Consequence: the ALN role vocabulary must cover **seven** scenes, not three
-  (OQ1 reworded accordingly).
-- Tooling leg's "pack-manifest schemaVersion drift" surprise is **REFUTED** —
-  it read the stale standalone checkout at `/home/user/ALN-TokenData`
-  (schemaVersion 1). The in-repo submodule manifest and schema both say
-  `schemaVersion: 2, const: 2`. No drift exists.
+  contracts leg said 9 cues vs **10**. Consequence: the ALN role vocabulary
+  must cover **seven** scenes (OQ1).
+- Tooling leg's "pack-manifest schemaVersion drift" surprise REFUTED — it
+  read the stale standalone checkout at `/home/user/ALN-TokenData`
+  (schemaVersion 1). In-repo: `schemaVersion: 2, const: 2`. No drift.
 
-## 3. Design positions (the mechanism — red-team targets)
+### 2.4a r1 claims DISPROVEN by the red team (recorded per program honesty rules)
+
+1. "tokenIds are pack content" for the two cue conditions — false (§2.1).
+2. "07d-03 untouched and green" + "cutover is test-transparent" — false (§2.3).
+3. "reuse the existing validateCommand checks at activation" — structurally
+   impossible AND doctrinally wrong (§3 D-4.3, §8 G1/R2).
+4. The §1 r1 row-2.8 "REFERENCE HALF MOVED" disposition understated a
+   contracted live-write surface (§2.1 playlists; §8 G4/R3/D2).
+
+## 3. Design positions (r2 — the mechanism)
 
 ### D-4.1 — No PACK_SCHEMA_VERSION bump; gate by capability (`requires`)
 
-The doctrine leg leaned "likely bump since consumers change" — **rejected**:
-only ONE consumer changes (the backend engine; §2.3 shows scanners never see
-cue internals). Instead:
+**r2 re-based justification (red-team):** the no-bump position SURVIVED
+adversarial consumer enumeration — packLoader filters by RULES_ROLES and
+ignores unknown roles; `resolvePackFile`'s whitelist IS the manifest
+inventory, so `cues.json` serves the moment it is inventoried; the PWA,
+ESP32, and validate-session packResolver read identity fields only; the
+schema/openapi role enums already carry `cues`. THAT tolerance — no
+consumer breaks — is the argument. r1's second pillar ("rule 6 closes the
+old-engine silent-ignore hole") is RETRACTED as inverted: a gate rule in
+the NEW engine cannot run on a pre-slice-4 engine, and the old engine's
+`requires` check fires only when the array is present. The residual
+exposure (a cues-bearing pack that forgets `requires` activates on an old
+engine with no show control) is ACCEPTED explicitly under the
+frozen-production preconditions: single producer, coordinated cutover, no
+old-engine deployment class after it.
 
-- New keys are ADDITIVE-OPTIONAL in game.schema v2 (they already exist as
-  headroom; old engines schema-accept and ignore them).
+- New keys are ADDITIVE-OPTIONAL in game.schema v2.
 - Three new append-only capability ids (D1 `area.variant` convention):
-  `cues.standing` (event/clock standing cues + manual fire),
-  `cues.timeline` (compound three-segment timelines, E5),
-  `lighting.roles` (role-indirected lighting commands).
-- A cues-bearing pack declares the matching ids in `requires`; the EXISTING
-  slice-0 gate (`requires ⊆ ENGINE_CAPABILITIES`) then makes an old engine
-  refuse loudly, NAMING the missing capability — a strictly better error
-  than "schemaVersion 3 unsupported", with zero touch to the exact-match
-  schemaVersion checks in every consumer.
-- **Closing the silent-ignore hole (new gate rule, flavor-i):** a pack whose
-  game.json declares a `cues` pointer (or `lightingRoles`, or `playlists`)
-  WITHOUT declaring the matching capability in `requires` is refused as
-  self-contradictory ("declares cues but does not require a cue-driving
-  engine"). Without this rule, such a pack would activate on a pre-slice-4
-  engine and silently ship no show control.
+  `cues.standing`, `cues.timeline`, `lighting.roles`.
+- A cues-bearing pack declares the matching ids in `requires`; the existing
+  slice-0 gate refuses on a non-implementing engine, NAMING the missing
+  capability.
+- **Coherence rule (relabeled r2):** a pack declaring a `cues` pointer or
+  `lightingRoles` without the matching `requires` ids is refused — an
+  AUTHORING-coherence lint (flavor-i, same family as the phases/modes
+  self-contradiction rules), NOT a compatibility guard.
 
 ### D-4.2 — Schema activation (S1)
 
-- `game.json` pointers: `cues: {const: 'cues.json'}` (const-pinned NOW, per
-  the 3a lesson: pointers that will ever be role-keyed in the manifest must
-  not float), `playlists: {const: 'playlists.json'}`. `lightingRoles` stays
-  the ratified array-of-role-name-strings (C1 §1: profile binding keys must
-  be ⊆ this list).
+- `game.json` pointers: `cues: {const: 'cues.json'}` (const-pinned; the
+  red team verified nothing reads the free-form pattern — both manifest
+  builders already hardcode the literal). NO `playlists` pointer under the
+  OQ5r deferral.
 - NEW `ALN-TokenData/cues.schema.json`: cue shape = today's engine contract
-  (`commands` XOR `timeline`; flat `{at, action, payload}` timeline entries;
-  trigger/conditions vocabulary enumerated = the row-2.22 authoring contract),
-  EXCEPT `lighting:scene:activate` payloads carry `role` (pack vocabulary),
-  not `sceneId`. NEW `playlists.schema.json` mirroring the current
-  music-playlists shape (per OQ5 flag ownership).
-- Manifest: add `playlists` to roleFor + role enums; regen both real packs'
-  manifests (`build-pack-manifest.js`), Python/Node byte-parity suite extends.
+  (`commands` XOR `timeline`; flat `{at, action, payload}` entries;
+  `"trigger": null` explicitly legal; trigger/conditions vocabulary
+  enumerated = the row-2.22 authoring contract), EXCEPT
+  `lighting:scene:activate` payloads carry `role`, not `sceneId`.
+- `lightingRoles` stays the ratified array-of-role-name-strings; NEW
+  top-level `lightingRoleFallbacks` (D-4.5).
+- Manifest builders: EXCLUDE gains a `.schema.json` SUFFIX rule in BOTH
+  builders (covers slice 6/7 schemas too); pack-contract assertion that no
+  inventoried path ends `.schema.json`; regen both real packs; byte-parity
+  suite extends.
 - `installation-profile.schema.json` to the ratified C1 §1 shape — homed
-  ENGINE-SIDE at `backend/config/profiles/` (profiles are venue config, not
-  pack content; TokenData holds pack schemas only). B0.1 absorbs later (OQ6).
+  ENGINE-SIDE at `backend/config/profiles/` (OQ6).
 
-### D-4.3 — Gate rules (S2, two-flavor wording)
+### D-4.3 — Gate rules (S2) — **r2: pack-internal only, pure reads, zero services**
 
-Activation-time refusals (packService gate, all flavor-i "self-contradictory"
-unless noted):
-1. Cue lighting `role` refs ⊆ declared `lightingRoles` (groups-coverage-gate
+Hard boundary (red-team, two attackers independently): `activatePack()` is
+deliberately the FIRST act of `initializeServices()` (app.js:184-192
+ordering invariant) — every service is health-seeded `down`, lighting's
+scene list and music's playlist map are empty, and one referenced video
+exists only on the venue Pi. Therefore the gate runs NOTHING that touches a
+service or a venue resource. Venue-resource existence (sound/video files,
+HA scenes, sinks) stays where C1 §3 item 5 already homes it: the
+PREFLIGHT/pre-show `validateCommand` sweep, run after services init,
+reported through serviceHealth/held-items — never a boot refusal (a
+`degrade`-class venue absence must never kill the orchestrator).
+
+Activation refusals (flavor-i "self-contradictory" unless noted):
+1. Cue lighting `role` refs ⊆ declared `lightingRoles` (groups-coverage
    precedent).
-2. Cue `action` ∈ engine cue-action vocabulary + payload shape valid
-   (flavor-ii "not driveable by this engine yet" for unknown actions —
-   mirrors ENGINE_MODE_CAPS posture).
-3. Cue condition `tokenId` values resolve against pack tokens.json.
-4. Cue sound/video refs + playlist ids referenced by `music:loadPlaylist`
-   resolve (sounds/videos against the venue asset dirs via the existing
-   validateCommand checks at activation sweep — consistent with
-   "files stay on the venue channel"; playlist ids against pack playlists.json).
-5. `lightingRoleFallbacks` keys ⊆ `lightingRoles` (D-4.5).
-6. Pointer/requires coherence per D-4.1.
-Packless boot = benign emptiness (no cues, no baked-cues shim — there is no
-pre-pack deployment class that had cues from a pack, so no L6-family shim).
+2. Cue `action` ∈ the engine cue-action vocabulary + payload shape valid
+   (flavor-ii "not driveable by this engine yet" for unknown actions).
+3. **(narrowed r2)** Condition `tokenId` values resolve against pack
+   tokens.json ONLY for triggers whose normalizer tokenId is
+   token-derived (`transaction:accepted`, `player:scan`); `video:*`
+   trigger tokenIds are a filename-derived engine namespace — EXEMPT.
+   The two ALN guard cues become green fixtures in the S2 gate suite so
+   this rule can never be re-written to refuse them.
+4. **(replaced r2)** Pack-internal reference completeness only — under
+   OQ5r deferral this reduces to rules 1–3; if OQ5r is answered "move",
+   `music:loadPlaylist` ids ⊆ pack playlists.json joins here.
+5. `lightingRoleFallbacks` keys ⊆ `lightingRoles`.
+6. Pointer/`requires` coherence per D-4.1 (authoring lint).
+7. **(new r2, phases-gate-grade shape rules** — packService's own precedent:
+   "the gate cannot assume schema validation ran"): (a) duplicate/empty cue
+   id → refusal (loadCues silently last-wins today); (b) trigger coherence
+   — at most one of `trigger.event` | `trigger.clock` | null, with
+   `trigger.event` ∈ EVENT_NORMALIZERS (flavor-ii) and `trigger.clock`
+   parseable HH:MM:SS (flavor-i — an unparseable string today THROWS out
+   of the unguarded synchronous tick listener once per second mid-show);
+   (c) every `condition.op` ∈ CONDITION_OPS (unknown ops silently never
+   fire); (d) every timeline entry has a finite non-negative numeric `at`
+   and a string `action` (a missing `at` NaN-poisons maxAt → the cue never
+   completes); (e) ≤1 video entry per timeline (F-SHOW-08, warn-only today).
+
+**Engine hardening (same stage):** guard `findMatchingClockCues`/
+`handleClockTick` so a bad clock string can never escape into the tick
+interval (the restore path already try/catches the same call; the live
+path must too), and make `loadCues` refuse duplicate ids defensively.
+
+Packless boot = benign emptiness (no cues, no baked-cues shim).
 
 ### D-4.4 — Profile loader + fire-time resolver (S3)
 
 - NEW minimal `src/services/profileService.js`: loads ONE profile at boot
-  (frozen, packService template), `PROFILE_PATH` env injection seam (the
-  PACK_PATH precedent — "load-bearing for testing, preview, AND rollback").
-  Default: `backend/config/profiles/aln-full-kit.json` (interim home, OQ6).
-  v1 reads ONLY `kind`/`schemaVersion`/`profileId`/`forPack`/`bindings.lighting`;
-  everything else passes through unread (no duplication of routing.json —
-  B7 data stays where it lives until its own slice).
-- In-repo ALN profile: fully bound — all roles → real HA scene ids (owner
-  supplies, OQ1). R4(b) satisfied; the unbound-role path is UNREACHABLE for
-  ALN in production.
-- Fire-time resolution in `commandExecutor`'s `lighting:scene:activate` case
-  (+ the same line in `validateCommand`, inserted BEFORE `sceneExists`):
-  payload has `sceneId` → GM/manual path, unchanged, zero resolution;
-  payload has `role` → profile binding → else pack `lightingRoleFallbacks`
-  (LOUD warn per fire) → else fail through the existing `cue:error` channel
-  ("unresolvable lighting role 'x'"). One dispatch site serves both the GM
-  path and the cue path; AsyncAPI documents the optional `role` alternative.
+  (frozen, packService template), `PROFILE_PATH` env injection seam.
+  Default: `backend/config/profiles/aln-full-kit.json` (OQ6). v1 reads
+  ONLY `kind`/`schemaVersion`/`profileId`/`forPack`/`bindings.lighting`;
+  everything else passes through unread (no duplication of routing.json).
+- In-repo ALN profile: fully bound — all roles → real HA scene ids (OQ1).
+  R4(b) satisfied; the unbound-role path is UNREACHABLE for ALN.
+- **Resolution point (r2 — red-team MAJOR):** role→sceneId normalization
+  happens at the TOP of `executeCommand`, keyed on action, BEFORE the
+  `REQUIRED_PAYLOAD_FIELDS` loop — because that loop maps
+  `lighting:scene:activate → ['sceneId']` and would reject every role
+  payload with a misleading "sceneId is required" before r1's resolver
+  site was ever reached (this kills 100% of the 11 migrated lighting
+  commands on ALL FOUR dispatch paths: simple cue, compound timeline
+  entry, held-cue release re-fire, direct gm:command — all funnel through
+  `executeCommand`). The required-fields-before-health-gate rationale
+  (commandExecutor.js:68-74) is preserved: normalization runs first, so
+  every downstream guard (required-fields, the inline case guard,
+  `validateCommand`'s sceneExists) sees a normalized `sceneId`.
+  Resolution order: profile binding → pack `lightingRoleFallbacks` (LOUD
+  warn per fire) → fail through the existing `cue:error` channel
+  ("unresolvable lighting role 'x'"). `validateCommand` mirrors the
+  normalization before its sceneExists line. GM concrete-`sceneId`
+  payloads bypass normalization entirely — unchanged.
+- **Contract-first (r2):** the AsyncAPI `role` payload alternative for
+  `lighting:scene:activate` is S3's OPENING commit (root doctrine:
+  contracts first; slice-1 precedent), not an S4 afterthought.
+- Unit pins on all four dispatch paths (incl. held-release re-fire — the
+  red team verified release re-enters via `fireCue` by cueId, never a
+  stored payload, so the single site suffices; pin that property).
 - **Deliberately NOT built (C2/C3 territory):** session-start dormancy
-  disabling, preflight faces, planning view. The minimum R4 subset is
-  fire-time lookup + full ALN bindings; unbound-role dormancy semantics
-  arrive with C2+C3 (queued task) where they belong.
+  disabling, preflight faces, planning view.
 
 ### D-4.5 — Concrete-id fallback: `lightingRoleFallbacks` (R4(c), ledger L7)
 
-Reading (ii) chosen over per-command fallback ids: a separate top-level
-game.json key `lightingRoleFallbacks: {role: 'scene.x', …}` — one venue id
-per role, in ONE clearly-marked temporary block whose entire existence IS
-the debt. Retirement at C4 = delete the key + its schema + its gate rule.
-Drift tripwire: fallback map == the in-repo ALN profile's bindings
-(byte-compared both ways — catches either side rotting). Loud warn on every
-fallback-resolved fire. **Ledger row L7** lands with the code.
+Reading (ii): a top-level game.json key `lightingRoleFallbacks:
+{role: 'scene.x', …}` — one venue id per role, one clearly-marked
+temporary block whose existence IS the debt. Retirement at C4 = delete the
+key + schema + gate rule. Loud warn on every fallback-resolved fire.
+**Ledger row L7** lands with the code.
+**Tripwire (r2 precision — red-team):** a BUILD-TIME unit test, never a
+boot-time check (a boot check would refuse every injected-pack/profile
+combination the harness legitimately mixes). Compare defined as
+`game.json.lightingRoleFallbacks[role] === profile.bindings.lighting[role].ha`
+(projection through the ratified C1 object shape), skipping roles whose
+binding declares a non-`ha` provider (C1 WLED headroom). Same shape as the
+LEGACY_ALN_SCORING drift tripwire. Any harness profile env seam must be
+pinned in the SAME startOrchestrator call as packPath, never as an
+independent global.
 
-### D-4.6 — Audio target literal (`"target": "bluetooth"`) — ledger L8
+### D-4.6 — Audio target literal (`"target": "bluetooth"`) — held as OQ7 (r2)
 
-One migrated cue carries a venue sink name in pack content. Stripping it
-changes behavior (the sound would follow global routing); audio ROLES are
-explicitly C1 headroom ("audio 'roles' if a pack ever needs them"), not this
-slice. Position: migrate verbatim (behavior parity wins), **ledger row L8**:
-"audio target literals ride in pack cues; revisit when C1's audio-roles
-headroom activates or the cue is re-authored." Detection: grep pack cues for
-`target`.
+r1's L8 row had a "revisit when…" trigger that fails the ledger doctrine's
+DoD-linkage clause (every row retires in-phase or carries an owner-ratified
+post-Phase-3 retirement point). r2 puts the choice to the owner (OQ7):
+(a) migrate the target verbatim (behavior parity) + owner ratifies L8's
+retirement point (e.g. "B-pages media story or the theme unit — whichever
+first touches cue audio"); or (b) strip the target so the sound follows the
+venue's global sound route — a BEHAVIOR CHANGE (that cue's audio moves off
+the bluetooth speaker) the owner must approve. No third option: inventing
+per-cue audio overrides in the profile is mechanism C1 does not ratify.
 
 ### D-4.7 — One-shot cutover (S4, tokens-v2 precedent)
 
-Single commit train, no dual-accept window (same three preconditions hold:
-single producer, atomic pack activation, frozen production):
-- ALN pack gains `cues.json` (10 cues verbatim behavior, scene ids → roles;
-  OQ2 triage applied), `playlists.json`, `lightingRoles`,
-  `lightingRoleFallbacks`, `requires` additions; manifest regen.
-- Engine re-points: `app.js:239` + `systemReset.js:228` load cues via
-  `packService.resolvePackFile(gameConfig.cues)`; musicService playlist load
-  re-points from `config/music-playlists.json` to the pack file. Old venue
-  files stop being read (deleted from the repo in the same train — grep-clean,
-  like scoring-config.json's retirement).
-- config-tool `PUT /config/cues`: **re-pointed, not disabled** — it is the
-  owner's only cue-authoring surface until the B pages. Writes go to the
-  active pack dir's cues.json + manifest rebuild (sync-pipeline precedent),
-  after validating through the SAME gate helpers (exported pure
-  `validateCuesBlock(cues, gameConfig, tokens)` shared by packService and
-  config-tool — an invalid save is refused at write time, never discovered
-  at next boot). Scene-picker UI keeps offering live HA ids as FALLBACK
-  authoring targets? No — it now offers the pack's declared roles (small UI
-  swap; live-HA picker moves behind the profile-bindings context, C4's page).
-- E2E `07d-03` and both dual-pack Tier L legs are the behavior-parity
-  tripwire: ALN cues must fire identically end-to-end.
+Single commit train, no dual-accept window (single producer, atomic pack
+activation, frozen production all hold):
+
+a. ALN pack gains `cues.json` (10 cues verbatim behavior, scene ids →
+   roles; OQ2 triage applied), `lightingRoles`, `lightingRoleFallbacks`,
+   `requires` additions; manifest regen. (NO playlists.json under OQ5r.)
+b. Engine re-points: `app.js:239` + `systemReset.js:228` load cues via
+   `packService.resolvePackFile(gameConfig.cues)`. The venue cues file is
+   deleted in the same train (grep-clean, scoring-config precedent).
+   musicService is UNTOUCHED under OQ5r.
+c. **config-tool (r2 — full surface, red-team ×3):** the `cuesPath`
+   re-point covers ALL configManager consumers at once (readAll, usage
+   maps, writeCues, presets, backups). `writeCues` gets the `writeScoring`
+   shape: validate via shared helper → snapshot previous → write →
+   manifest rebuild → restore-on-rebuild-failure. Preset system: `cues`
+   is STRIPPED from preset capture/apply/import in the same train (import
+   validation updated; applying an old preset no longer writes its
+   pre-migration sceneId cues anywhere — the operator's recovery tool must
+   never be able to brick the pack). §6 note: this is a deliberate,
+   logged exception to "presets out of slice" — re-pointing a writer they
+   share forces it.
+d. **Shared validator homing (r2):** `validateCuesBlock(cues, gameConfig,
+   tokens)` lives in `backend/src/gameRules/` (dependency-free seam —
+   config-tool cannot require packService, whose import chain pulls
+   winston + dotenv and mkdirs at module load; precedent:
+   build-pack-manifest.js). packService imports it; config-tool requires
+   it directly. config-tool writes the CHECKED-IN submodule pack
+   (`ALN-TokenData/`), matching writeScoring; PACK_PATH-injected runs are
+   out of the tool's scope (stated limitation).
+e. **E2E (r2 — red-team MAJOR, two attackers):** r1's "07d-03 untouched"
+   is RETRACTED. The four cue-pinning flows (07d-03, 22, 30,
+   admin-state-reactivity) become ALN-pack-PINNED (explicit `packPath` in
+   their startOrchestrator calls — the 07c precedent; an explicit pin wins
+   over E2E_PACK_PATH by design), so they keep testing ALN cue behavior
+   identically on BOTH Tier L legs. Toy cue coverage is a NEW toy-pinned
+   flow (D-4.8). Behavior parity = those four flows green + unchanged.
+f. Preflight checklist: the three venue-cues-file checks are rewritten
+   pack-aware in the same train (slice-2 §4.4 fix-what-you-break
+   precedent) — the checklist is the cutover's own instrument.
+g. Contracts: AsyncAPI `role` alternative landed at S3-open; S4 carries
+   only cutover-specific contract text. (No OpenAPI music changes under
+   OQ5r.)
 
 ### D-4.8 — Toy pack as second consumer (S5)
 
-Toy pack gains: `lightingRoles` (2 toy roles), `lightingRoleFallbacks`, ≥1 cue
-per action class (`sound:play`, `lighting:scene:activate` via role,
-`video:queue:add`, `music:loadPlaylist`), a toy playlist, `requires`
-additions, `hardware.stack`/`endpoints` updated to claim what toy cues use;
-a toy test profile + `E2E_PROFILE_PATH`-analog wiring in `capabilities.js`/
-`startOrchestrator`. Toy cues are **manual/quickFire only** (no standing
-triggers) so existing toy-leg E2E flows can't fire them incidentally; a new
-E2E test fires them explicitly. Dual-pack Tier L both legs = the standing
-slice gate.
+Toy pack gains: `lightingRoles` (2 toy roles), `lightingRoleFallbacks`,
+cues at ONE ACTION CLASS PER CUE (r2 — a single multi-action cue is held
+whole by `fireCue`'s pre-dispatch dependency scan if ANY service is down),
+`requires` additions, `hardware.stack`/`endpoints` updated; a toy test
+profile. Toy cues are manual/quickFire only. Harness: profile env seam
+(`E2E_PROFILE_PATH`-analog) wired in `tests/e2e/setup/test-server.js`'s
+startOrchestrator (r2 correction: capabilities.js is a read-only prober,
+not an env seam), pinned per-call alongside packPath.
+**CI reality (r2):** the toy lighting-role E2E is gated
+`requireCapabilities(test, caps, ['lighting'])` and SKIPS on HA-less
+runners — so the slice gate does NOT rest on it: a NON-E2E integration
+test proves role resolution end-to-end (executeCommand + stubbed lighting
+service + real profileService), and runs everywhere. Dual-pack Tier L both
+legs green = the standing slice gate.
 
-## 4. Held owner questions (build proceeds on decision-free stages; S3+S4 content needs these)
+## 4. Held owner questions
 
-- **OQ1 (blocks S3/S4 content):** Role NAMES for the seven-scene vocabulary
-  (`scene.game/off/police_1/police2/police3/policeglitch/video`) — roles are
-  game vocabulary the owner authors (B8) — AND the real HA scene ids for the
-  in-repo ALN profile bindings (C1's examples are illustrative; R4(b) demands
-  real coverage). *Note: seven, not the three the census first reported.*
-- **OQ2 (blocks S4 content):** The five timestamp-id operator cues — migrate
-  as ALN game content (they look like designed show beats: 90/60/30/15-minute
-  warnings + ENDGAME) or prune as venue/session cruft? Recommended default:
-  migrate, with honest ids (`warning-90min` etc.) since ids are not pinned
-  anywhere (§2.3: only the three named ids are E2E-pinned).
-- **OQ3:** Sound FILES into the pack (matrix 2.10's end-state) vs
-  references-only this slice. Recommended default: references-only (matches
-  the F5 video posture; file movement rides the B-pages media story).
-- **OQ4:** Interim video reference form under the F5 deferral. Recommended
-  default: keep concrete filenames — this is the SAME reference form
-  tokens.json `video` fields already use; both migrate together under F5.
-  No new debt class, no ledger row (F5 deferral is already program-recorded).
-- **OQ5:** Playlist track refs = concrete venue MP3 filenames, ledger-free
-  (consistent with files-stay) — confirm; and do `shuffle`/`loop`/
-  `crossfadeMs` belong to the pack (show design) or profile (venue tuning)?
-  Recommended default: pack (they describe the show's feel, not the room;
-  B7 ruled only routes/ducking venue).
+- **OQ1 (blocks S3/S4 content):** Role NAMES for the seven-scene
+  vocabulary (`scene.game/off/police_1/police2/police3/policeglitch/video`)
+  — roles are game vocabulary the owner authors (B8) — AND the real HA
+  scene ids for the in-repo ALN profile bindings. *Seven, not the three
+  the census first reported.*
+- **OQ2 (blocks S4 content):** The five timestamp-id operator cues —
+  migrate as ALN game content or prune? Recommended: migrate with honest
+  ids (`warning-90min` etc.). r2 note: the red team VERIFIED the rename is
+  safe — E1 restore is mark-don't-fire and re-marks by elapsed time at
+  loadCues; stale persisted ids cannot replay; nothing else pins them.
+- **OQ3 (r2 reframed — red-team):** sound reference form. **Option A:**
+  move the 7 sound files into pack `assets/audio/` — satisfies the program
+  sentence and matrix 2.10 verbatim; cost: pack asset channel + manifest
+  inventory grows, ESP32-adjacent asset story untouched (sounds are
+  orchestrator-side). **Option B:** references-only (cues keep naming
+  `attention.wav` etc., resolved against the venue dir at preflight) —
+  smaller slice, BUT deviates from the sentence's explicit "never …
+  concrete venue filenames" and therefore REQUIRES a logged program-§3
+  amendment or a ledger row with a B-pages retirement trigger. r1 called
+  this "ambiguity"; it is not — the deviation must be chosen, not assumed.
+- **OQ4:** Interim video reference form under the F5 deferral. Recommended:
+  keep concrete filenames — the SAME reference form tokens.json `video`
+  fields already use; both migrate together under F5. No new debt class.
+- **OQ5r (r2 — replaces r1's OQ5):** playlist scope. Recommended:
+  **DEFER the playlists-into-pack move entirely** — zero ALN cue music
+  references exist (the program clause is vacuous today), and playlist
+  definitions carry a contracted LIVE-WRITE surface (OpenAPI GET/PUT,
+  fs.watch hot reload, config-tool editor, seed script) that cannot enter
+  the boot-frozen pack without breaking the freeze doctrine or retiring
+  mid-session playlist editing. The move rides the B-pages media/authoring
+  story where the write path gets its real home (B0 store). Confirming
+  this logs a narrowing of the program sentence's playlist clause.
+  Alternative (move now, read-only): +OpenAPI music-path rewrites, PUT
+  retirement, fs.watch removal, seed re-point, config-tool music editor
+  rework, row 6.7 — priced into §7's upper band.
 - **OQ6:** Interim profile home `backend/config/profiles/` + `PROFILE_PATH`
-  env, absorbed by B0.1's store later — confirm, so C1 §5's ratified storage
-  statement is amended rather than silently contradicted.
+  env, absorbed by B0.1's store later — confirm (amends C1 §5's storage
+  statement rather than silently contradicting it).
+- **OQ7 (r2 — new):** the `target: "bluetooth"` literal — option (a)
+  migrate verbatim + ratify ledger L8's retirement point per the DoD
+  linkage clause (e.g. "B-pages media story or theme unit, whichever first
+  touches cue audio"), or (b) strip it and accept that cue's audio follows
+  the venue's global sound route (behavior change). See D-4.6.
 
 ## 5. Build order (S1–S6) and obligations
 
-Per the lockstep-train precedent (TokenData → backend/parent) and TDD:
+1. **S1 Schemas** (TokenData + backend profile schema): cues.schema.json
+   (trigger:null legal), game.schema `cues` const-pin +
+   `lightingRoleFallbacks`, EXCLUDE `.schema.json` suffix rule in BOTH
+   manifest builders + no-inventoried-schema contract assertion, manifest
+   regen, pack-contract suite extension, Python/Node byte-parity;
+   installation-profile.schema.json.
+2. **S2 Gate** (backend): D-4.3 rules 1–7 in activatePack via shared
+   `validateCuesBlock` homed in `src/gameRules/`; ALN guard cues as green
+   fixtures; engine hardening (tick guard, loadCues dupe refusal).
+   Obligations: refusal-twin unit pins per rule, two-flavor wording tests.
+3. **S3 Resolver + profile** (backend): OPENS with the AsyncAPI `role`
+   contract commit; then profileService (+PROFILE_PATH),
+   executeCommand-top normalization + validateCommand mirror, fallback +
+   loud warns, cue:error path; in-repo ALN profile (OQ1 content).
+   Obligations: unit pins for bound/fallback/unresolvable/GM-sceneId
+   paths ×4 dispatch routes; L7 BUILD-TIME tripwire (D-4.5 projection);
+   non-E2E role-resolution integration test (D-4.8).
+4. **S4 Cutover** (TokenData + backend + config-tool, one train): pack
+   files authored (OQ2/OQ3 applied), engine loads re-pointed, venue cues
+   file deleted, config-tool full-surface re-point + writeCues hardening +
+   preset cues-strip + role picker, preflight checklist cue checks
+   rewritten, four E2E flows ALN-pack-pinned, cutover contract text,
+   manifests regen, ledger rows L7(+L8 if OQ7a) recorded in PHASE3-STATUS.
+   Obligations: behavior-parity = the four pinned flows green + unchanged;
+   grep-clean retirement.
+5. **S5 Toy second consumer**: D-4.8 (one action class per cue, toy
+   profile, test-server profile seam, capability-gated toy E2E + the
+   always-on integration proof). Obligations: dual-pack Tier L green both
+   legs.
+6. **S6 Close**: dist rebuild + full local E2E (closers MAJOR precedent:
+   stale dist), full suites + ratchet raises, mixed-model adversarial
+   review, R13 citation confirmed logged, PHASE3-STATUS row + queue
+   advance + residue re-homing note (§6).
 
-1. **S1 Schemas** (TokenData): cues.schema.json, playlists.schema.json,
-   game.schema pointer const-pins + lightingRoleFallbacks, manifest
-   playlists role; profile schema (backend-side). Obligations: schema
-   refusal-twin tests, manifest regen, pack-contract suite extension,
-   Python/Node manifest byte-parity.
-2. **S2 Gate** (backend): D-4.3 rules in activatePack; exported
-   `validateCuesBlock`. Obligations: refusal-twin unit pins per rule,
-   two-flavor wording tests.
-3. **S3 Resolver + profile** (backend): profileService (+PROFILE_PATH),
-   commandExecutor/validateCommand role line, fallback + loud warns,
-   cue:error path; in-repo ALN profile (OQ1 content). Obligations:
-   unit pins for bound/fallback/unresolvable/GM-sceneId-passthrough paths;
-   L7 tripwire (fallback map == profile bindings).
-4. **S4 Cutover** (TokenData + backend, one train): pack files authored
-   (OQ2 triage), engine loads re-pointed, venue files deleted, config-tool
-   PUT re-pointed + role picker, contracts (AsyncAPI `role`), manifests
-   regen, ledger rows L7/L8 recorded in PHASE3-STATUS. Obligations:
-   behavior-parity pins (07d-03 untouched and green), grep-clean retirement.
-5. **S5 Toy second consumer**: D-4.8. Obligations: dual-pack Tier L green
-   both legs, new toy cue E2E.
-6. **S6 Close**: dist rebuild + full local E2E (the closers MAJOR: stale
-   dist), full suites + ratchet raises both repos, mixed-model adversarial
-   review, R13 citation confirmed logged, PHASE3-STATUS row + queue advance.
+## 6. Residue claims / deferrals (explicit)
 
-## 6. Residue claims / deferrals (explicit, per the closers close-out rule)
+- PR-review residue (a) packLoader behavioral timeout and (b)
+  staging-cache race test — **DEFERRED to the C2+C3 slice** (this slice
+  never touches the scanner repos; the "C1 preflight bucket" has no queue
+  slot, so both are explicitly RE-HOMED to C2+C3). PHASE3-STATUS note
+  lands with S6.
+- Preflight FULL refresh stays with C2; S4 rewrites ONLY the three cue
+  checks it breaks (fix-what-you-break).
+- Dormancy (C2/C3), C4 bindings page, planning view: out of scope by design.
+- config-tool presets: out of slice EXCEPT the D-4.7c cues-strip, a
+  logged exception forced by sharing a writer with the re-pointed path.
+- Playlists/music surface: untouched under OQ5r (else see OQ5r
+  alternative pricing).
 
-- PR-review residue (a) packLoader behavioral timeout and (b) staging-cache
-  race test — **DEFERRED to the C2+C3 slice** (queued task): both live in
-  the GM scanner's packLoader, and this slice does not touch the scanner
-  repos at all; the "C1 preflight bucket" they were homed to has no queue
-  slot, so they are explicitly RE-HOMED to C2+C3 (the next slice that opens
-  scanner-side pack machinery). PHASE3-STATUS re-homing note lands with S6.
-- Preflight §4 bindings check, dormancy (C2/C3), C4 bindings page: out of
-  scope by design (§3 D-4.4).
-- config-tool presets/scene-picker deep rework: out of slice (drop-cold
-  ruling stands); only the minimal PUT re-point + role-picker swap rides.
+## 7. Honest estimate (program §12.3 — r2 re-priced with calibration)
 
-## 7. Honest estimate (program §12.3)
+**≈4–6.5 sessions.** Calibration (red-team; r1's 2.5–3.5 RETRACTED):
+slice 2 — single-repo, no new services, no tool UI — was priced at the
+same 2.5–3.5 and landed at its upper band; 3a priced 5–7 with its
+schema+gate+manifest+loader infrastructure alone at 1–1.5; the program's
+own A2 record is 2.3–2.7× under-estimation. This slice spans two new
+schemas, a new backend service, an executeCommand normalization touching
+every command path, a three-repo cutover train (TokenData + backend +
+config-tool), four E2E flow re-points, preset surgery, contracts in both
+specs, toy expansion, dual-pack Tier L ×2, and the adversarial review.
+The OQ5r deferral is what keeps this below the doctrine attacker's 5–8
+(it removes the OpenAPI/music/fs.watch/seed/row-6.7 surface); if OQ5r is
+answered "move now", adopt **5.5–8**. Widest bands: S4 (cutover +
+config-tool) and S5 (dual-pack fallout).
 
-≈2.5–3.5 sessions: S1+S2 ≈ 1, S3 ≈ 0.5–1, S4 ≈ 0.5–1 (content volume is
-small — 10 cues, 1 playlist), S5+S6 ≈ 1 (dual-pack Tier L ×2 + review +
-close records). Risk concentrations: config-tool PUT re-point (untested
-surface today), AsyncAPI contract ripple, and OQ1 latency (S3/S4 content
-blocks on owner answers — decision-free stages S1/S2 proceed regardless).
+## 8. Red-team adjudication record (r1 → r2)
+
+Workflow `wf_0394f96d`, 2026-08-29: 3 attackers (gate/versioning — Opus;
+runtime/cutover — Opus; doctrine/completeness — Fable), 742k tokens,
+findings verified against the repo with file:line evidence; author
+spot-checked the five most load-bearing claims directly (all confirmed).
+**All 17 MAJOR + 7 minor findings ACCEPTED.** Dispositions:
+
+| # | Finding (abridged) | Resolution in r2 |
+|---|---|---|
+| G1/R2 | validateCommand-at-activation boot-fails everywhere (services down-seeded, playlists unloaded, video file venue-only); venue checks at boot invert `degrade` semantics | D-4.3 rebuilt: gate = pack-internal pure reads only; venue existence stays at preflight (C1 §3.5) |
+| G2 | Rule 3 refuses the real ALN pack — `policesequencewoverlay` is a synthetic filename-derived tokenId | Census corrected (§2.1); rule 3 narrowed to token-derived normalizers; ALN guard cues = green gate fixtures |
+| G3 | Gate shape-blind where engine shape-fragile (clock-parse throw per tick, dupe ids, dead ops, NaN maxAt, F-SHOW-08 warn-only, trigger:null) | Rule 7 added (phases-gate model) + engine tick-guard/loadCues hardening + schema accepts trigger:null |
+| G4/R3/D2 | Playlist re-point puts a contracted live writer + fs.watch + seed script inside the frozen pack, invisibly to drift detection; OpenAPI paths + editor uncensused | OQ5r: deferral recommended (option b); full surface censused (§2.1); "move now" path priced (§7) |
+| G5 | Rule 6 cannot protect pre-slice-4 engines (inverted argument) | D-4.1 re-based on verified consumer tolerance; rule relabeled authoring lint; residual exposure accepted explicitly |
+| R1 | REQUIRED_PAYLOAD_FIELDS rejects role payloads before r1's resolver site, on all four dispatch paths | Resolution moved to executeCommand top, pre-guards (D-4.4) |
+| R4/D3/Gm3 | Preset apply/restore = second unvalidated manifest-blind pack-cue writer; six config-tool consumers uncensused; writeCues lacks writeScoring hardening | D-4.7c: full-surface re-point, writeCues hardened, cues stripped from presets (logged §6 exception) |
+| R5/D1 | "07d-03 untouched" ∧ "dual-pack both legs" contradiction; 4 flows pin ALN cue ids (r2 verified: 07d-04 comment-only, integration suite fixture-injected — not pins) | D-4.7e: four flows ALN-pack-pinned (07c precedent); toy coverage = new pinned flow |
+| R6 | Toy multi-action cue held whole when any service down; capabilities.js is not an env seam | D-4.8: one action class per cue; requireCapabilities gating; always-on integration proof; seam = test-server.js |
+| D4/Gm2 | OQ3 default smuggles a program-sentence deviation as "ambiguity" | OQ3 reframed with both options priced; deviation requires logged amendment/ledger row |
+| D5 | Estimate ignores calibration record | §7 re-priced 4–6.5 (5.5–8 if OQ5r="move") with calibration paragraph |
+| D6 | L8 trigger violates ledger DoD-linkage; not held for owner | OQ7 added; D-4.6 rewritten (ratify retirement point, or strip target = behavior change) |
+| Dm7 | Contract-first inverted (AsyncAPI in S4 after S3 behavior) | AsyncAPI role commit opens S3 |
+| Dm8 | Preflight checklist reads the deleted file (cutover instrument breaks) | S4/D-4.7f: three cue checks rewritten in-train |
+| Gm1 | Manifest EXCLUDE would inventory the new schemas | S1: `.schema.json` suffix rule both builders + contract assertion |
+| Rm7 | L7 tripwire home/shape unstated; C1 binding is an object | D-4.5: build-time only; `.ha` projection; non-ha providers skipped; env seams pinned per-call |
+| Rm8 | validateCuesBlock can't export from packService; config-tool can't know PACK_PATH | D-4.7d: homed in gameRules/ (dep-free); tool writes the checked-in pack; limitation stated |
+
+What the red team CONFIRMED (claims that survived attack, kept
+load-bearing): the no-bump position itself; the const-pin; the three
+capability ids and area.variant granularity; held-release re-entry through
+fireCue (single resolution site suffices); cue:fired/getCueSummaries/E1
+carry no cue internals (no role leak); scanner-repos-untouched; the §2.1
+inventory (byte-accurate); OQ2 rename safety; R13 row citations faithful +
+1.23 logging precedent; D-4.5 reading-(ii) within R4(c)'s sanction;
+validate-session unaffected.
