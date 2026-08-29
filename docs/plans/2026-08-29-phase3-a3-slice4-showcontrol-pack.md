@@ -862,6 +862,36 @@ engine + `c8a2c1c` config-tool):
   presets stripped of cues at capture/apply/import; the lighting UI
   authors ROLES (role-picker fed from GET /config pack.lightingRoles).
 
+**S4 stage review (two-axis, 2 Opus lenses, 2026-08-29) — adjudication:**
+
+The standards lens ran a normalized deep compare of the authored pack
+against the deleted venue file: ZERO deltas beyond the ruled renames,
+the role mapping, and the header — the migration is byte-faithful. The
+spec lens ran the real gate on the real pack (0 problems) and found
+every D-4.7 item MET, one PARTIAL. Fixed in the same stage:
+1. (standards — BLOCKING, in the delegated code) writeCues's rollback
+   fabricated `{}` into a previously-ABSENT cues.json on
+   manifest-rebuild failure (`_readJson` returns `{}` on ENOENT), a
+   file the gate then refuses. The snapshot is now existence-aware:
+   rollback DELETES a first-write file instead. Regression test added
+   (config-tool 110/110).
+2. (standards — delegated seam gap) the show-control page built its
+   PUT payload without the header when the pack had no cues file, so
+   the tool could never author a FIRST cues.json. The page now seeds
+   `{kind, schemaVersion}`.
+3. (spec — D-4.7f partial) the preflight check's PROSE still promised
+   the retired bare-array/wrapper tolerance and the old output line;
+   rewritten. Adjacent retrofit: config-tool README's two
+   scoring-config.json rows (stale since ledger L1) fixed on the spot.
+4. (standards — minor) `getCues` guard polarity aligned to its sibling
+   getters; the trailing restating comment trimmed; two README run-on
+   sentences split (§4 standard).
+
+Recorded, not changed: the dead `getScenes`/`GET /scenes` pair stays
+(adjudicated with the agent's flag #4 — a possible future direct-HA
+surface; not this slice's deletion to make). The census's
+"trigger: null" line stays corrected by the §9 S1 record.
+
 **Delegated-agent judgement calls, adjudicated:**
 1. writeCues refuses on a missing/empty game.json — ACCEPTED (closes a
    real gap: validateCuesBlock's null-gameConfig early-return would

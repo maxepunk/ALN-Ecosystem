@@ -1449,11 +1449,11 @@ node -e "
 "
 ```
 
-**Expected:** `OK: cues.json valid, N cues defined` followed by a list of cue names.
+**Expected:** `OK: pack cues.json valid, N cues defined` followed by a list of cue ids.
 
-**If parse error:** Fix the JSON syntax. Common issues: trailing commas, unescaped quotes in strings.
+**If parse error:** Fix the JSON syntax — and know that the activation gate REFUSES boot on a broken declared cues file, so this check failing means the orchestrator will not start on this pack.
 
-**If missing:** The cue engine starts with no cues loaded. This is non-fatal but means no timed game events will fire. The file supports both plain array `[{...}]` and wrapped `{"cues": [{...}]}` formats.
+**If missing:** The cue engine starts with no cues loaded (benign emptiness — only wrong if this game has a show). The pack format is the header form `{"kind": "cues", "schemaVersion": 2, "cues": [...]}` only; the old bare-array and wrapper-tolerant venue formats retired with slice 4.
 
 ### 13.2 Audio Routing / Ducking Rules [BOTH] — REQUIRED
 

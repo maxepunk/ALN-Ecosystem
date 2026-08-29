@@ -191,27 +191,34 @@ class ConfigManager {
     const problems = validateCuesBlock(data.cues, game, tokens);
     assertValid(problems, 'cues config');
 
-    // PAIR ATOMICITY (same shape as writeScoring): snapshot the previous
-    // file, write, rebuild the pack manifest, restore on rebuild failure —
-    // cues.json and pack-manifest.json must never drift out of sync (a
-    // stale manifest fails the scanners' per-file sha1 verify).
-    const previousCues = this._readJson(this.paths.cuesPath);
+    // PAIR ATOMICITY (the writeScoring shape, existence-aware): snapshot
+    // the previous file, write, rebuild the pack manifest, restore on
+    // rebuild failure — cues.json and pack-manifest.json must never drift
+    // out of sync (a stale manifest fails the scanners' per-file sha1
+    // verify). Unlike scoring (which lives inside the always-present
+    // game.json), an ABSENT cues.json is a legal pack state — so the
+    // snapshot records absence, and the rollback DELETES the new file
+    // instead of fabricating `{}` (which the activation gate would refuse
+    // as not the header form).
+    const hadCuesFile = fs.existsSync(this.paths.cuesPath);
+    const previousCues = hadCuesFile ? this._readJson(this.paths.cuesPath) : null;
     this._writeJson(this.paths.cuesPath, data);
     try {
       this._rebuildPackManifest();
     } catch (err) {
-      this._writeJson(this.paths.cuesPath, previousCues);
+      if (hadCuesFile) {
+        this._writeJson(this.paths.cuesPath, previousCues);
+      } else {
+        fs.rmSync(this.paths.cuesPath, { force: true });
+      }
       throw new Error(
         `Cues write rolled back: pack-manifest rebuild failed (${err.message}). ` +
-        'cues.json was restored to its previous state; fix the pack directory and retry.'
+        `cues.json was ${hadCuesFile ? 'restored to its previous state' : 'removed (the pack had no cues file before this write)'}; ` +
+        'fix the pack directory and retry.'
       );
     }
-
-    // D-4.7d: this tool writes the CHECKED-IN submodule pack ONLY (see the
-    // cuesPath comment on DEFAULT_PATHS above). A PACK_PATH-injected
-    // alternate pack directory (the backend test harness seam) is a
-    // runtime-only override outside this tool's scope — it is neither
-    // read nor written here.
+    // D-4.7d limitation: this tool writes the CHECKED-IN submodule pack
+    // only (see the cuesPath comment on DEFAULT_PATHS).
   }
 
   writeRouting(data) {

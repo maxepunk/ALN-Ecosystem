@@ -910,8 +910,8 @@ function getStrings() {
  * @returns {Array<Object>|null}
  */
 function getCues() {
-  if (activated) return activeCues;
-  return _loadDeclaredCues(getGameConfig()).value;
+  if (!activated) return _loadDeclaredCues(getGameConfig()).value;
+  return activeCues;
 }
 
 /**

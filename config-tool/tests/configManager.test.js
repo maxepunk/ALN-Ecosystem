@@ -202,6 +202,27 @@ describe('configManager', () => {
       assert.ok(manifest.files.some(f => f.path === 'cues.json'));
     });
 
+    it('rollback on a FIRST write REMOVES cues.json instead of fabricating {} (S4 review find)', () => {
+      // An absent cues.json is a legal pack state. The snapshot must
+      // record absence: restoring "{}" would create a file the
+      // activation gate refuses as not the header form.
+      fs.rmSync(path.join(tmpDir, 'cues.json'));
+      const realRebuild = configManager._rebuildPackManifest.bind(configManager);
+      configManager._rebuildPackManifest = () => { throw new Error('disk on fire'); };
+      try {
+        assert.throws(
+          () => configManager.writeCues({
+            kind: 'cues', schemaVersion: 2,
+            cues: [{ id: 'first', label: 'First', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+          }),
+          /rolled back.*manifest rebuild failed/
+        );
+      } finally {
+        configManager._rebuildPackManifest = realRebuild;
+      }
+      assert.ok(!fs.existsSync(path.join(tmpDir, 'cues.json')));
+    });
+
     it('refuses a non-header-form payload (bare array) and leaves the file untouched', () => {
       const before = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
       assert.throws(
