@@ -140,12 +140,13 @@ you intend.
   1. *Display surface.* A display output the engine renders: the
      scoreboard, the idle loop, video playback. Since slice 6 a pack
      selects and configures the built-in three through its `surfaces`
-     block: it can opt OUT of a surface (a null idle-loop channel; a
-     disabled scoreboard, which the engine then refuses to show) and
-     set surface parameters (the scoreboard's evidence-page cadence).
-     Packs cannot define new surfaces; that is reserved for the BILL
-     era. (Edit noted 2026-08-29: entry updated from future tense when
-     the slice-6 build landed.)
+     block. A pack can opt out of a surface: a null idle-loop channel
+     means no idle loop, and a disabled scoreboard makes the engine
+     refuse to show one. A pack can also set surface parameters, such
+     as the scoreboard's evidence-page cadence. Packs cannot define
+     new surfaces; that is reserved for the BILL era. (Edit noted
+     2026-08-29: entry updated from future tense when the slice-6
+     build landed, then reworded to the §4 plain-language standard.)
   2. *Mode display surface.* The per-mode `displayBehavior.surface`
      value in `game.json`: where a mode's results land. The engine
      drives exactly `scoreboard-rankings`, `scoreboard-evidence`, and
@@ -279,18 +280,18 @@ you intend.
   landed.)
 - **Surface channel / binding / fallback.** The lighting-role pattern
   applied to display media (slice 6, owner ruling Q6-2). The pack
-  names its idle-loop CHANNEL (`surfaces.idleLoop`, a name like
-  `aln-idle` — never a filename; the schema pattern forbids paths).
-  The installation profile's `bindings.surfaces` maps each channel to
-  a real media file. When a named channel has no binding, the engine
-  falls back loudly to the venue config default
-  (`config.display.idleLoopFile`, ledger row L12; retires with the
-  pack-manager media page, ROADMAP §8.1). A null channel means the
-  game has no idle loop at all — that is a *surface opt-out*, not a
-  fallback. Media files themselves never enter the pack (ROADMAP
-  §2.3). The pack declaring a `surfaces` block must list the
-  `surfaces.select` capability in `requires`; the activation gate
-  refuses the block otherwise.
+  names its idle-loop channel in `surfaces.idleLoop`. A channel is a
+  name like `aln-idle`, never a filename; the schema pattern forbids
+  paths. The installation profile's `bindings.surfaces` maps each
+  channel to a real media file. When a named channel has no binding,
+  the engine falls back loudly to the venue config default
+  (`config.display.idleLoopFile`). That fallback is ledger row L12
+  and retires with the pack-manager media page (ROADMAP §8.1). A null
+  channel is different: it means the game has no idle loop at all, a
+  *surface opt-out* rather than a fallback. Media files never enter
+  the pack (ROADMAP §2.3). A pack that declares a `surfaces` block
+  must list the `surfaces.select` capability in `requires`, or the
+  activation gate refuses it.
 - **Held item.** A cue or video that could not run because a needed
   service was down or a video was already playing. The engine parks it
   and tells the GM, who can release or discard it. Nothing is silently
@@ -373,15 +374,16 @@ you intend.
   pins the floor functions to `["staffed"]`) and a contract test
   checks it at authoring time. The activation gate does not read the
   `functions` block, and no runtime check enforces the full
-  function→tier assignment yet. One narrow execution-time floor guard
-  DOES exist as of slice 4 (S6 review): `commandExecutor.executeCommand`
-  refuses any command from a cue source (`source !== 'gm'`) that is not
-  in the `CUE_ACTIONS` vocabulary — so pack content (the lowest trust)
-  cannot drive session lifecycle, score intervention, or system reset,
-  even if the activation gate is bypassed. The general issuance-time and
-  execution-time enforcement (mapping every function to its tier) still
-  arrives with the auth work; Phase 3 builds only the operator-tier
-  subset (program §13.6).
+  function-to-tier assignment yet. One narrow execution-time floor
+  guard exists as of slice 4 (its close review):
+  `commandExecutor.executeCommand` refuses any command from a cue
+  source (`source !== 'gm'`) that is not in the `CUE_ACTIONS`
+  vocabulary. Pack content is the lowest trust tier, so it cannot
+  drive session lifecycle, score intervention, or system reset, even
+  if the activation gate is bypassed. The general issuance-time and
+  execution-time enforcement (mapping every function to its tier)
+  still arrives with the auth work; Phase 3 builds only the
+  operator-tier subset (program §13.6).
 - **Pseudonymous default.** The engine's only built-in identity is the
   device or session id. Whether a person is ever named is each game's
   design choice, never an engine requirement.
