@@ -2,9 +2,10 @@
   "kind": "game",
   "schemaVersion": 2,
   "requires": [
-    "scoring.tabular",
+    "duplicatePolicy.once",
     "groupRules.all",
-    "duplicatePolicy.once"
+    "lighting.roles",
+    "scoring.tabular"
   ],
   "id": "midnight-heist",
   "title": "Midnight Heist",
@@ -176,5 +177,13 @@
       }
     ]
   },
-  "strings": "strings.json"
+  "strings": "strings.json",
+  "cues": "cues.json",
+  "lightingRoles": [
+    "vault-alarm",
+    "all-clear"
+  ],
+  "lightingRoleFallbacks": {
+    "vault-alarm": "scene.toy_vault_alarm"
+  }
 }

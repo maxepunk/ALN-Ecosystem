@@ -129,7 +129,12 @@ async function startOrchestrator(options = {}) {
     // against another pack (npm run test:e2e:toy-pack). An explicit
     // caller packPath always WINS — a test that pins a fixture pack
     // (e.g. 07c's parity-pack) is testing THAT pack deliberately.
-    packPath = process.env.E2E_PACK_PATH || null
+    packPath = process.env.E2E_PACK_PATH || null,
+    // Slice 4 S5 (D-4.8): the INSTALLATION-PROFILE seam, the exact
+    // analog of packPath — pinned per-call in the SAME startOrchestrator
+    // call, never as an independent global (red-team Rm7: an unpinned
+    // profile silently mixes with an injected pack).
+    profilePath = process.env.E2E_PROFILE_PATH || null
   } = options;
 
   // Resolve dynamic port if requested (port=0 or port='auto')
@@ -187,7 +192,8 @@ async function startOrchestrator(options = {}) {
     ENABLE_HTTPS: String(enableHttps),
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
     ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD,  // Explicitly override to prevent .env contamination
-    ...(packPath ? { PACK_PATH: packPath } : {})
+    ...(packPath ? { PACK_PATH: packPath } : {}),
+    ...(profilePath ? { PROFILE_PATH: profilePath } : {})
   };
 
   // Path to server entry point

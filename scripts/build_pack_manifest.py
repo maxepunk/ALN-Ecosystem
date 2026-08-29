@@ -39,7 +39,7 @@ def _is_schema_file(rel):
     return rel.endswith(".schema.json")
 
 
-SKIP_DIRS = {"node_modules", "shared"}
+SKIP_DIRS = {"node_modules", "shared", "logs"}  # logs: a stray runtime log dir must never enter served inventory
 
 
 def role_for(rel_path):

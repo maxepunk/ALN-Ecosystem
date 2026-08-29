@@ -55,7 +55,8 @@ function walk(dir, base = dir, out = []) {
     const full = path.join(dir, entry.name);
     const rel = path.relative(base, full).split(path.sep).join('/');
     if (entry.isDirectory()) {
-      if (entry.name === 'node_modules' || entry.name === 'shared') continue;
+      // logs: a stray runtime log dir (winston mkdirs relative to cwd) must never enter served inventory
+      if (entry.name === 'node_modules' || entry.name === 'shared' || entry.name === 'logs') continue;
       walk(full, base, out);
     } else if (entry.isFile()) {
       if (EXCLUDE.has(rel) || isSchemaFile(rel)) continue;
