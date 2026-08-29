@@ -1680,6 +1680,26 @@ describe('packService', () => {
       try { packService.activatePack(); } catch (err) { message = err.message; }
       expect(message).toMatch(/'cues' must be an array/);
     });
+
+    it('reads cues.json EXACTLY ONCE during activation — the gate validates the bytes it freezes (S6 review, F1-sec)', () => {
+      // Before the single-read hoist, activatePack read cues.json twice
+      // (gate + freeze); a swap between the two reads passed the gate but
+      // ran unvalidated. One read closes the TOCTOU.
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'unit-pack', cues: 'cues.json', requires: ['cues.standing'] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X', trigger: { event: 'transaction:accepted' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }]));
+      const cuesPath = path.join(tmpDir, 'cues.json');
+      const spy = jest.spyOn(fs, 'readFileSync');
+      try {
+        packService.activatePack();
+        const cuesReads = spy.mock.calls.filter(([p]) => String(p).endsWith('cues.json') && String(p) === cuesPath);
+        expect(cuesReads).toHaveLength(1);
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
 });

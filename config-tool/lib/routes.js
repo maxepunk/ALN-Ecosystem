@@ -294,7 +294,11 @@ function createRouter(configManager) {
 // -- Helpers --
 
 function buildAssetUsageMap(cuesData, action, payloadKey) {
-  const usage = {};
+  // Object.create(null): the file name is pack-authored and keys the map,
+  // so a cue naming a file '__proto__' / 'constructor' would resolve
+  // usage[file] to Object.prototype (truthy) and then throw on .push
+  // (S6 review, F7-sec — a null-prototype map has no such members).
+  const usage = Object.create(null);
   for (const cue of cuesData.cues || []) {
     for (const cmd of cue.commands || cue.timeline || []) {
       const file = cmd.action === action && cmd.payload?.[payloadKey];

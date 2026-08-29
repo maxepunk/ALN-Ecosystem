@@ -232,6 +232,20 @@ describe('configManager', () => {
       assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), before);
     });
 
+    it('refuses a present-but-wrong schemaVersion — parity with the activation gate (S6 review, F4-sec)', () => {
+      // packService refuses a present-and-wrong schemaVersion at boot, so
+      // persisting schemaVersion 99 would leave the pack unbootable.
+      const before = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
+      assert.throws(
+        () => configManager.writeCues({
+          kind: 'cues', schemaVersion: 99,
+          cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+        }),
+        (err) => err.name === 'ValidationError' && err.details.some(d => /schemaVersion 99/.test(d))
+      );
+      assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), before);
+    });
+
     it('refuses a header-form payload that fails the pack-internal gate, and leaves the file untouched', () => {
       const before = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
       const invalid = {

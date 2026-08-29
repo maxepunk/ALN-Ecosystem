@@ -123,7 +123,13 @@ function evaluateConditions(conditions, context) {
 
   return conditions.every(({ field, op, value }) => {
     const actual = context[field];
-    const opFn = CONDITION_OPS[op];
+    // Object.hasOwn, not truthy-index (S6 review, F5-sec): an op named
+    // 'constructor'/'toString'/'valueOf' resolves off Object.prototype
+    // and evaluates truthy — a cue that matches on everything — instead
+    // of failing closed. Same C11 class the S2 review fixed in the gate's
+    // checkAction; the engine twin was left open. CONDITION_OP_NAMES gates
+    // this for pack content; this defends venue files and fixtures.
+    const opFn = Object.hasOwn(CONDITION_OPS, op) ? CONDITION_OPS[op] : undefined;
     if (!opFn) {
       logger.warn(`[StandingEvaluator] Unknown condition operator: "${op}"`);
       return false;
@@ -157,6 +163,19 @@ function findMatchingEventCues(cues, disabledCues, eventName, rawPayload) {
 }
 
 /**
+ * Cue ids already warned-about for an unparseable clock string, so the
+ * once-per-second tick doesn't re-log the same bad cue (S6 review,
+ * F5-state). Cleared by resetClockWarnings() when a new cue set loads.
+ * @type {Set<string>}
+ */
+const warnedBadClockCues = new Set();
+
+/** Forget prior invalid-clock warnings (called on loadCues / reset). */
+function resetClockWarnings() {
+  warnedBadClockCues.clear();
+}
+
+/**
  * Find all clock-triggered cues whose threshold has been reached.
  *
  * @param {Map<string, Object>} cues - All loaded cue definitions
@@ -181,7 +200,15 @@ function findMatchingClockCues(cues, disabledCues, firedClockCues, elapsedSecond
     try {
       threshold = parseClockTime(cue.trigger.clock);
     } catch (err) {
-      logger.warn(`[StandingEvaluator] Skipping clock cue with invalid time: ${cue.id}`, err.message);
+      // Warn ONCE per bad cue, not every tick (S6 review, F5-state):
+      // findMatchingClockCues runs once per second, so an unparseable
+      // clock would flood ~7,200 log lines across a 2-hour show and
+      // bury real signal during a live run. resetClockWarnings() clears
+      // the latch when a new cue set loads, so a fixed pack re-warns.
+      if (!warnedBadClockCues.has(cue.id)) {
+        warnedBadClockCues.add(cue.id);
+        logger.warn(`[StandingEvaluator] Skipping clock cue with invalid time: ${cue.id}`, err.message);
+      }
       continue;
     }
     if (elapsedSeconds >= threshold) {
@@ -235,6 +262,7 @@ module.exports = {
   evaluateConditions,
   findMatchingEventCues,
   findMatchingClockCues,
+  resetClockWarnings,
   toPersistence,
   fromPersistence,
 };

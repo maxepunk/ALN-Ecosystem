@@ -392,7 +392,7 @@ function _compareVersions(a, b) {
  * loud shims.
  * @throws {Error} when the pack requires what this engine lacks
  */
-function _gateCheck(manifest, gameConfig) {
+function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
   const problems = [];
 
   if (manifest) {
@@ -628,7 +628,11 @@ function _gateCheck(manifest, gameConfig) {
       );
     }
     // Strings sidecar (A3 slice 3a): declared ⇒ must load + validate.
-    for (const prob of _loadDeclaredStrings(gameConfig).problems) {
+    // Use the SINGLE hoisted read (S6 review, F1-sec) so the gate
+    // validates the exact bytes activatePack freezes; a caller that
+    // passed nothing falls back to a fresh read (backward-compat).
+    const stringsCheck = stringsLoad || _loadDeclaredStrings(gameConfig);
+    for (const prob of stringsCheck.problems) {
       problems.push(prob);
     }
     // Show-cues gate (A3 slice 4 S2 — D-4.3). Pack-internal PURE reads
@@ -641,11 +645,17 @@ function _gateCheck(manifest, gameConfig) {
     // writeScoring precedent). Runs even with NO cues file: rule 5
     // (fallbacks ⊆ roles) and the rule-6 requires lint are file-less.
     {
-      const cuesLoad = _loadDeclaredCues(gameConfig);
-      problems.push(...cuesLoad.problems);
+      // The SINGLE hoisted cues read (S6 review, F1-sec): the gate MUST
+      // validate the exact array activatePack freezes and the engine
+      // runs. Reading here AND again at freeze let a cues.json swapped
+      // between the two reads pass the gate but execute unvalidated
+      // (a FIFO/rename primitive an Opus refuter demonstrated reaching
+      // session:end / score:adjust / transaction:delete).
+      const cuesCheck = cuesLoad || _loadDeclaredCues(gameConfig);
+      problems.push(...cuesCheck.problems);
       // Absent tokens.json: the token loader refuses separately; rule 3
       // then has nothing to resolve against.
-      problems.push(...validateCuesBlock(cuesLoad.value, gameConfig, _readPackTokens() || {}));
+      problems.push(...validateCuesBlock(cuesCheck.value, gameConfig, _readPackTokens() || {}));
     }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.
@@ -832,12 +842,19 @@ function _coherenceCheck(gameConfig) {
 function activatePack() {
   const manifest = _readDiskManifest();
   const gameConfig = _readDiskGameConfig();
-  _gateCheck(manifest, gameConfig); // throws = boot fails, by design
+  // Read the declared sidecars ONCE (S6 review, F1-sec) and reuse the
+  // SAME parsed objects for both the gate and the freeze — the gate's
+  // guarantee is meaningless if it validates a different read than the
+  // one the engine runs (a disk swap between two reads, or a sync
+  // landing mid-boot, would otherwise execute unvalidated cues).
+  const cuesLoad = _loadDeclaredCues(gameConfig);
+  const stringsLoad = _loadDeclaredStrings(gameConfig);
+  _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad); // throws = boot fails, by design
   _coherenceCheck(gameConfig);      // throws = boot fails, by design (D3)
   activeManifest = manifest;
   activeGameConfig = gameConfig;
-  activeStrings = _loadDeclaredStrings(gameConfig).value;
-  activeCues = _loadDeclaredCues(gameConfig).value;
+  activeStrings = stringsLoad.value;
+  activeCues = cuesLoad.value;
   activated = true;
   warnedDriftHash = false;
   _cachedScoringRules = null;

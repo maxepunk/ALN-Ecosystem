@@ -977,3 +977,104 @@ pre-existing trap the lens flagged for a future sweep).
    authoring — ACCEPTED (possible future direct-HA surface; not this
    slice's call to delete).
 5. `lightingRoles` rides the GET /config `pack` sub-object — ACCEPTED.
+
+### S6 — close (DONE 2026-08-29)
+
+The heavy stage-close: ALNScanner dist rebuilt, full suites + coverage
+ratchet raised, and the WHOLE slice put through a mixed-model adversarial
+review (the ratified subagent policy — two Opus refuters on distinct
+lenses, a Fable doctrine/parity leg, a Haiku mechanical sweep). Ten
+findings across the four legs were fixed in this stage; two are recorded
+as accepted residuals; nothing manufactured survived refutation.
+
+**Verification (all green on the fixed tree):**
+- ALNScanner dist rebuilt (`npm run build`, source unchanged since S4 —
+  the closers MAJOR precedent: E2E tests stale dist through the
+  `backend/public/gm-scanner` symlink).
+- Backend unit+contract + coverage: green; ratchet RAISED not lowered —
+  new per-file floors for `gameRules/cueValidation.js` and
+  `services/profileService.js`, `app.js` branch floor 30→65, plus the S6
+  fixes' coverage. `coverage:check` green.
+- config-tool 114/114, Python parity 75/75, GM Scanner 1556/1556 +
+  ratchet, PWA 165/165. ESP32 `pio` is not installed in this container
+  and the slice made ZERO ESP32 changes — that leg is recorded unrun, not
+  claimed.
+- Dual-pack Tier L: toy leg (S5) 116/0/0; ALN default leg run at close.
+
+**Mixed-model adversarial review — findings + adjudication:**
+
+Security refuter (Opus) — the two that mattered:
+- **F1 (MAJOR, FIXED): the gate validated a DIFFERENT read of `cues.json`
+  than the one it froze and executed.** `activatePack` read the sidecar
+  twice (gate at the `_gateCheck` call, freeze at the assignment); a FIFO
+  or rename-loop at the pack path made the gate pass benign cues while
+  the engine loaded malicious ones (the refuter drove `session:end` /
+  `score:adjust` / `transaction:delete` through it). Even absent an
+  attacker, a sync landing mid-boot ran unvalidated. FIX: hoist a single
+  `_loadDeclaredCues`/`_loadDeclaredStrings` read; the gate validates and
+  the engine freezes the SAME parsed object. Pinned by a read-count test.
+- **F2 (MAJOR, FIXED): `CUE_ACTIONS` was a validation-time-only
+  allowlist — no execution-time enforcement.** The whole auth floor
+  ("pack data never drives operator-only functions") rested solely on the
+  boot gate. FIX: a dispatch-time guard in `commandExecutor.executeCommand`
+  — a cue source (`source !== 'gm'`) may invoke ONLY `CUE_ACTIONS`
+  (Object.hasOwn), so session lifecycle / score intervention /
+  transaction surgery / system:reset stay operator-only even if the gate
+  is ever bypassed. Two commandExecutor tests that asserted the old
+  passthrough (session:create / cue:fire from source 'cue') were the
+  vulnerability encoded as a test — flipped to assert refusal (cue
+  chaining via cue:fire was never a gated capability: the gate rejects
+  cue:* in cue vocabulary, and no production path dispatches it).
+
+Both refuters independently CONFIRMED the **commands-XOR-timeline
+predicate mismatch** (gate used non-empty-array, engine `loadCues` uses
+truthiness, app.js load lost its try/catch this slice): a cue with
+`commands: []` + a timeline passed the gate then crashed the boot /
+half-reset on `system:reset`, and the config-tool `PUT /api/config/cues`
+path persisted it. FIX: the gate refuses BOTH keys present (key-presence,
+matching the schema `oneOf` and the engine) — one fix in the shared pure
+`validateCuesBlock` closes both the boot gate and the HTTP write path.
+
+State-machine refuter (Opus) + security MINORs, all FIXED:
+- profile drift-warn latched permanently (its comment falsely claimed
+  packService parity) — now re-arms when disk returns to the boot
+  snapshot, and `activateProfile()` clears it.
+- gate's lighting `sceneId`-forbidden rule was string-only while the
+  executor bypasses normalization on ANY defined `sceneId` — tightened to
+  `!== undefined` (matches executor + schema).
+- `CONDITION_OPS[op]` prototype-chain lookup (the C11 class S2 fixed in
+  the gate's `checkAction`, missed in the engine) — Object.hasOwn.
+- invalid-clock warn fired every tick (~7,200 lines across a 2-hour show)
+  — latched per cue id, cleared on loadCues/reset.
+- config-tool `writeCues` skipped the schemaVersion check its own gate
+  parity claimed — added.
+- `buildAssetUsageMap` crashed on a cue file named `__proto__` —
+  null-prototype accumulator.
+
+Doctrine/parity leg (Fable) — **faithful-implementation verdict** (every
+owner answer OQ1/OQ2/OQ3/OQ5r/OQ7a present exactly; migration byte-faithful
+under only the three sanctioned deltas, proven by programmatic deep-compare
+against the recovered venue file; the five drift tripwires bind, proven by
+live mutation). One MINOR, FIXED: the Node-side `scoring-config.json`
+tombstone exclusion had no same-side regression test (its Python twin
+does) — added a tmp-pack test on the Node side.
+
+Haiku mechanical sweep — CLEAN: no model identifiers in code/docs (policy
+docs naming review models are fine), no stale venue-file references (file
+deleted, only design/status docs mention the retirement), no debug
+residue in production code (3 console.log are in the E2E flow, matching
+the idiom), no absolute paths, no merge residue, all 19 commit trailers
+correct.
+
+**Accepted residuals (recorded, no code — ledger):**
+- HA scene ids + the full cue sheet now sit on the unauthenticated pack
+  channel (`game.json` `lightingRoleFallbacks`, `cues.json`). Incremental
+  over `tokens.json` (already served by design), but venue infrastructure
+  ids are a different category from game content — closes at C4 with the
+  L7 `lightingRoleFallbacks` retirement.
+- Persisted `disabledCues`/`firedClockCues` are keyed by raw cue id, so a
+  mid-session restart STRADDLING the OQ2 spine-cue rename would restore
+  stale ids (a renamed cue comes back enabled). Needs a restart across the
+  ONE coordinated cutover; production is frozen and no live session
+  straddles it. Recorded; re-home to the C-series if the restart model
+  changes.

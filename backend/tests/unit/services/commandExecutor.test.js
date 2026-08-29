@@ -240,15 +240,47 @@ describe('commandExecutor', () => {
       expect(result.source).toBe('gm');
     });
 
-    it('should execute session:create with source cue', async () => {
+    it('REFUSES session:create from a cue source — the auth floor (S6 review, F2-sec)', async () => {
+      // Session lifecycle is operator-only (CONTEXT.md §6). Before the
+      // dispatch-time guard this executed with source 'cue'; a refuter
+      // demonstrated exactly this as the pack-drives-operator-functions
+      // vulnerability. session:create is not in CUE_ACTIONS, so a
+      // non-'gm' source now fails closed regardless of the gate.
       const result = await executeCommand({
         action: 'session:create',
         payload: { name: 'Auto Game' },
         source: 'cue',
         trigger: 'manual'
       });
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not permitted from a cue source \(auth floor\)/);
       expect(result.source).toBe('cue');
+    });
+
+    it('REFUSES a prototype-named action from a cue source (hasOwn, not truthy-index)', async () => {
+      // 'constructor' resolves off Object.prototype under a truthy-index
+      // guard; Object.hasOwn(CUE_ACTIONS, 'constructor') is false, so it
+      // fails closed like any other off-vocabulary action.
+      const result = await executeCommand({
+        action: 'constructor',
+        payload: {},
+        source: 'cue'
+      });
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not permitted from a cue source \(auth floor\)/);
+    });
+
+    it('ALLOWS an in-vocabulary action from a cue source (the floor does not block cue content)', async () => {
+      // sound:stop IS in CUE_ACTIONS, so the auth-floor guard lets a
+      // cue-sourced dispatch through to the normal execution path.
+      const result = await executeCommand({
+        action: 'sound:stop',
+        payload: {},
+        source: 'cue'
+      });
+      // Reaches soundService (success depends on the mock), NOT the
+      // auth-floor refusal — that's the point.
+      expect(result.message).not.toMatch(/auth floor/);
     });
 
     it('should execute session:pause', async () => {
@@ -926,17 +958,24 @@ describe('commandExecutor', () => {
       expect(cueEngineService.fireCue).toHaveBeenCalledWith('opening', 'manual', undefined, 'gm');
     });
 
-    it('cue-source cue:fire keeps source cue with no manual trigger (F-SHOW-15)', async () => {
+    it('REFUSES cue:fire from a cue source — cue chaining is not a gated capability (S6 review, F2-sec)', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      // A cue whose command list contains cue:fire (cue chaining)
+      // cue:fire is not in CUE_ACTIONS, so the activation gate (rule 2)
+      // already rejects any pack cue declaring a cue:fire command — cue
+      // chaining is not a supported pack capability. No production path
+      // dispatches cue:fire with source 'cue' (the engine fires cues via
+      // fireCue() directly, never through executeCommand). The dispatch
+      // guard makes that alignment explicit: a non-'gm' source cannot
+      // reach cue:fire, so fireCue is never called.
       const result = await executeCommand({
         action: 'cue:fire',
         payload: { cueId: 'chained' },
         source: 'cue'
       });
-      expect(result.success).toBe(true);
-      expect(cueEngineService.fireCue).toHaveBeenCalledWith('chained', undefined, undefined, 'cue');
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not permitted from a cue source \(auth floor\)/);
+      expect(cueEngineService.fireCue).not.toHaveBeenCalled();
     });
 
     it('should reject cue:fire without cueId', async () => {

@@ -327,6 +327,23 @@ describe('game pack schema contract (A1)', () => {
         fs.rmSync(tmp, { recursive: true, force: true });
       }
     });
+
+    it('the scoring-config.json tombstone stays excluded (S6 review — Node-side twin of the Python test)', () => {
+      // The Python builder pins this directly (test_excludes_schemas_
+      // legacy_and_tooling); the Node side asserted the exclusion only
+      // via the "byte-parity-pinned" comment, which binds only if a real
+      // pack still carries the retired file — none does. Plant it here so
+      // deleting the tombstone from the Node EXCLUDE fails a Node test.
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-tombstone-'));
+      try {
+        fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'game.json'), '{}');
+        fs.writeFileSync(path.join(tmp, 'scoring-config.json'), '{}');
+        expect(buildFiles(tmp).map(f => f.path)).toEqual(['game.json', 'tokens.json']);
+      } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+      }
+    });
   });
 
   describe('toy pack is genuinely a SECOND game (methodology guard)', () => {

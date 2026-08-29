@@ -202,6 +202,18 @@ describe('rule 1 — lighting roles must be declared', () => {
     });
     expect(out.join('\n')).toMatch(/scene\.video/);
   });
+
+  it('a NON-STRING sceneId is refused too — the executor bypasses role normalization on any defined sceneId (S6 review, F4-state)', () => {
+    // A string-only gate would pass {role, sceneId: 123}; the executor
+    // then skips normalization (sceneId defined) and fails at fire time
+    // with a misleading "sceneId is required". Refuse it at the gate.
+    expect(problemsAfter(c => {
+      c.cues[0].commands[1].payload = { role: 'gameplay', sceneId: 123 };
+    }).join('\n')).toMatch(/concrete scene id 123/);
+    expect(problemsAfter(c => {
+      c.cues[0].commands[1].payload = { role: 'gameplay', sceneId: null };
+    }).length).toBeGreaterThan(0);
+  });
 });
 
 describe('rule 2 — action vocabulary + payload shape', () => {
@@ -338,6 +350,18 @@ describe('rule 7 — shape rules (the gate cannot assume schema validation ran)'
     expect(problemsAfter(c => { c.cues[0].timeline = [{ at: 0, action: 'sound:play', payload: { file: 'x.wav' } }]; }).length).toBeGreaterThan(0);
     expect(problemsAfter(c => { delete c.cues[0].commands; }).length).toBeGreaterThan(0);
     expect(problemsAfter(c => { c.cues[0].commands = []; }).length).toBeGreaterThan(0);
+  });
+
+  it('7a: BOTH keys present where one is EMPTY is refused — the boot-crash shape the engine throws on (S6 review, F1/F3)', () => {
+    // The engine (loadCues) refuses both keys by TRUTHINESS ([] is
+    // truthy) and app.js loads the frozen snapshot with no try/catch, so
+    // a gate-passing both-keys cue crashes the boot. A non-empty-only
+    // gate let all three of these through; now they're refused, with the
+    // "mutually exclusive" wording naming the shape.
+    const bothCommandsEmptyTimeline = problemsAfter(c => { c.cues[0].timeline = []; }).join('\n');
+    expect(bothCommandsEmptyTimeline).toMatch(/mutually exclusive/);
+    expect(problemsAfter(c => { c.cues[0].commands = []; c.cues[0].timeline = [{ at: 0, action: 'sound:stop', payload: {} }]; }).join('\n')).toMatch(/mutually exclusive/);
+    expect(problemsAfter(c => { c.cues[0].commands = {}; c.cues[0].timeline = [{ at: 0, action: 'sound:stop', payload: {} }]; }).join('\n')).toMatch(/mutually exclusive/);
   });
 
   it('7b: an unknown trigger event is a drivability limitation; an unparseable clock is self-contradictory (it would throw per tick)', () => {

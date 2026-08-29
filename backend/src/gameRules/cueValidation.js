@@ -176,9 +176,16 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
     const payload = (entry.payload && typeof entry.payload === 'object') ? entry.payload : {};
     if (entry.action === 'lighting:scene:activate') {
       usesRoles = true;
-      if (typeof payload.sceneId === 'string') {
+      // `!== undefined`, not string-only (S6 review, F4-state): the
+      // executor skips role normalization whenever sceneId is defined at
+      // ALL, so a non-string sceneId ({role, sceneId: 123|null}) would
+      // pass a string-only gate and then fail at fire time with a
+      // misleading "sceneId is required" — the not-driveable-say-so-now
+      // class the rule exists to catch. The schema forbids sceneId
+      // entirely for lighting payloads, so no legal pack cue carries it.
+      if (payload.sceneId !== undefined) {
         problems.push(
-          `${where} — pack cues address lights by role; concrete scene id '${payload.sceneId}' ` +
+          `${where} — pack cues address lights by role; concrete scene id ${JSON.stringify(payload.sceneId)} ` +
           'belongs in the installation profile bindings (or lightingRoleFallbacks), never in pack content; self-contradictory'
         );
       }
@@ -264,6 +271,22 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
       }
       seenIds.add(cue.id);
 
+      // The engine (cueEngineService.loadCues) refuses BOTH keys present
+      // by TRUTHINESS ([] is truthy), then app.js loads the frozen
+      // snapshot with no try/catch — so a gate-passing both-keys cue
+      // crashes the boot (and half-resets on system:reset). The gate must
+      // refuse the same shape the engine throws on, not a laxer non-empty
+      // read (S6 review: both refuters, and the config-tool PUT path runs
+      // this same pure check). Key-presence first, matching the schema
+      // oneOf and the engine predicate; then exactly-one-non-empty.
+      const hasCommandsKey = Object.hasOwn(cue, 'commands');
+      const hasTimelineKey = Object.hasOwn(cue, 'timeline');
+      if (hasCommandsKey && hasTimelineKey) {
+        problems.push(
+          `cues['${cue.id}'] — a cue declares BOTH commands and timeline; they are mutually exclusive (the engine refuses this shape); self-contradictory`
+        );
+        return;
+      }
       const hasCommands = Array.isArray(cue.commands) && cue.commands.length > 0;
       const hasTimeline = Array.isArray(cue.timeline) && cue.timeline.length > 0;
       if (hasCommands === hasTimeline) {

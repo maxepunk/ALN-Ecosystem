@@ -149,6 +149,37 @@ describe('profileService', () => {
       // The frozen snapshot is still served
       expect(profileService.getProfile().label).not.toBe('edited');
     });
+
+    it('RE-ARMS the drift warn when disk returns to the boot snapshot, then edits again (S6 review, F2-state)', () => {
+      // The one-way latch let a second real edit after a revert go
+      // silent — the opposite of the packService parity the comment
+      // claimed. Restoring the boot mtime must re-arm the warn.
+      const p = writeProfile(minimalProfile());
+      const bootMtime = Math.floor(Date.now() / 1000);
+      fs.utimesSync(p, bootMtime, bootMtime);
+      process.env.PROFILE_PATH = p;
+      profileService.activateProfile();
+      jest.clearAllMocks();
+
+      const driftWarnCount = () => logger.warn.mock.calls.filter(([m]) =>
+        m.includes('changed on disk after activation')).length;
+
+      // First edit → one warn.
+      fs.writeFileSync(p, JSON.stringify(minimalProfile({ label: 'edit-1' })));
+      fs.utimesSync(p, bootMtime + 120, bootMtime + 120);
+      profileService.getProfile();
+      expect(driftWarnCount()).toBe(1);
+
+      // Revert to the boot mtime → re-arm (no new warn on this call).
+      fs.utimesSync(p, bootMtime, bootMtime);
+      profileService.getProfile();
+      expect(driftWarnCount()).toBe(1);
+
+      // Second real edit → warns AGAIN (would stay silent under the latch).
+      fs.utimesSync(p, bootMtime + 240, bootMtime + 240);
+      profileService.getProfile();
+      expect(driftWarnCount()).toBe(2);
+    });
   });
 
   describe('getLightingBinding', () => {

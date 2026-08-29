@@ -35,6 +35,7 @@ const {
   evaluateConditions,
   findMatchingEventCues,
   findMatchingClockCues,
+  resetClockWarnings,
   toPersistence: standingToPersistence,
   fromPersistence: standingFromPersistence,
 } = require('./cue/standingEvaluator');
@@ -51,6 +52,9 @@ class CueEngineService extends EventEmitter {
   }
 
   _reset() {
+    // A new/empty cue set: forget prior invalid-clock warn latches so a
+    // fixed pack re-warns (S6 review, F5-state).
+    resetClockWarnings();
     /** @type {Map<string, Object>} All loaded cues indexed by ID */
     this.cues = new Map();
     /** @type {Set<string>} IDs of disabled cues */

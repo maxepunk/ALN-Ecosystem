@@ -25,6 +25,7 @@ const scoreboardControlService = require('./scoreboardControlService');
 const registry = require('./serviceHealthRegistry');
 const profileService = require('./profileService');
 const packService = require('./packService');
+const { CUE_ACTIONS } = require('../gameRules/cueValidation');
 
 // Config-tool cue authoring serializes booleans as the strings 'true'/'false'
 // via a <select>; GM Scanner live controls send real booleans. `!!"false"` is
@@ -101,6 +102,27 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
   logger.info(`[executeCommand] action=${action} source=${source}${trigger ? ` trigger=${trigger}` : ''}`);
 
   try {
+    // Auth-floor enforcement at DISPATCH (S6 review, F2-sec — defense in
+    // depth). The pack activation gate restricts cue content to the
+    // cue-action vocabulary, but before this guard that gate was the ONLY
+    // line: nothing re-checked membership at execution, so any path that
+    // reached loadCues with un-gated cues (a mid-boot cues.json swap, a
+    // pre-activation read, an injected fixture) could drive operator-only
+    // functions. Cue-sourced commands (source !== 'gm') may invoke ONLY
+    // CUE_ACTIONS — the auth floor (session lifecycle, score
+    // intervention, transaction surgery, system:reset) stays operator-
+    // only even when the gate does not hold. Object.hasOwn, not
+    // truthy-index: an action named 'constructor' must not resolve off
+    // the prototype chain (C11 class).
+    if (source !== 'gm' && !Object.hasOwn(CUE_ACTIONS, action)) {
+      logger.warn(`[executeCommand] REFUSED off-vocabulary action '${action}' from source '${source}' (auth floor)`);
+      return {
+        success: false,
+        message: `action '${action}' is not permitted from a ${source} source (auth floor)`,
+        source,
+      };
+    }
+
     // Lighting role → sceneId normalization (A3 slice 4 S3, D-4.4).
     // MUST run before the REQUIRED_PAYLOAD_FIELDS loop: that loop maps
     // lighting:scene:activate → ['sceneId'] and would reject every

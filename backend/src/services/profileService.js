@@ -105,6 +105,7 @@ function _readProfile() {
 function activateProfile() {
   activeProfile = _readProfile();
   activated = true;
+  warnedProfileDrift = false; // re-arm the drift warn for the new snapshot (mirrors packService.activatePack)
   try {
     activeProfileMtime = fs.statSync(getProfilePath()).mtimeMs;
   } catch {
@@ -127,21 +128,25 @@ function activateProfile() {
  */
 function getProfile() {
   if (activated) {
-    // Drift parity with packService: an operator who edits the profile
-    // mid-run gets ONE loud warn that the running system keeps its boot
-    // snapshot — never a silent no-op.
-    if (!warnedProfileDrift) {
-      let currentMtime = null;
-      try {
-        currentMtime = fs.statSync(getProfilePath()).mtimeMs;
-      } catch { /* deleted counts as drift too */ }
-      if (currentMtime !== activeProfileMtime) {
-        warnedProfileDrift = true;
-        logger.warn(
-          `Installation profile at ${getProfilePath()} changed on disk after activation — ` +
-          'the running system keeps the boot snapshot; restart the orchestrator to adopt the edit'
-        );
-      }
+    // Drift parity with packService (S6 review, F2-state): an operator
+    // who edits the profile mid-run gets ONE loud warn that the running
+    // system keeps its boot snapshot — never a silent no-op. The warn
+    // must RE-ARM when disk returns to the boot snapshot, exactly as
+    // packService.getManifest re-arms warnedDriftHash; before this fix
+    // the latch was one-way, so a second real edit after a revert went
+    // silent — the opposite of what the "parity" comment claimed.
+    let currentMtime = null;
+    try {
+      currentMtime = fs.statSync(getProfilePath()).mtimeMs;
+    } catch { /* deleted counts as drift too */ }
+    if (currentMtime === activeProfileMtime) {
+      warnedProfileDrift = false; // disk matches the boot snapshot again — re-arm
+    } else if (!warnedProfileDrift) {
+      warnedProfileDrift = true;
+      logger.warn(
+        `Installation profile at ${getProfilePath()} changed on disk after activation — ` +
+        'the running system keeps the boot snapshot; restart the orchestrator to adopt the edit'
+      );
     }
     return activeProfile;
   }

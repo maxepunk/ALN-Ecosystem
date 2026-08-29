@@ -162,6 +162,15 @@ describe('routes (HTTP layer)', () => {
       await request(app).put('/api/config/cues').send({ hello: 'world' }).expect(400);
     });
 
+    it('PUT /api/config/cues rejects a present-but-wrong schemaVersion (S6 review, F4-sec)', async () => {
+      const body = {
+        kind: 'cues', schemaVersion: 99,
+        cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+      };
+      const res = await request(app).put('/api/config/cues').send(body).expect(400);
+      assert.ok(res.body.details.some(d => /schemaVersion 99/.test(d)));
+    });
+
     // A3 slice 4 (D-4.7c): flips the old documented-bug pin on purpose — a
     // bare array (and the old wrapper-only `{cues:[...]}` shape) was
     // backend-supported pre-migration; pack cues now REQUIRE the full
@@ -225,6 +234,28 @@ describe('routes (HTTP layer)', () => {
 
     it('PUT /api/config/env rejects object values', async () => {
       await request(app).put('/api/config/env').send({ PORT: { nested: true } }).expect(400);
+    });
+  });
+
+  describe('asset usage map — prototype-safe accumulation (S6 review, F7-sec)', () => {
+    it('GET /api/assets/sounds does not 500 on a cue naming a file "__proto__"', async () => {
+      // A pack-authored file name keys the usage map; before the null-
+      // prototype fix, usage['__proto__'] resolved to Object.prototype
+      // and .push threw a TypeError → 500. Write the cues raw (bypassing
+      // the writer) to simulate a pack already on disk.
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({
+        kind: 'cues', schemaVersion: 2,
+        cues: [{ id: 'p', label: 'P', quickFire: true, commands: [{ action: 'sound:play', payload: { file: '__proto__' } }] }],
+      }));
+      await request(app).get('/api/assets/sounds').expect(200);
+    });
+
+    it('GET /api/assets/videos does not 500 on a cue naming a file "constructor"', async () => {
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({
+        kind: 'cues', schemaVersion: 2,
+        cues: [{ id: 'p', label: 'P', quickFire: true, timeline: [{ at: 0, action: 'video:queue:add', payload: { videoFile: 'constructor' } }] }],
+      }));
+      await request(app).get('/api/assets/videos').expect(200);
     });
   });
 

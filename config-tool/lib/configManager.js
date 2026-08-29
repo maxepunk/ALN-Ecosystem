@@ -173,6 +173,18 @@ class ConfigManager {
         'cues config'
       );
     }
+    // schemaVersion parity with the activation gate (S6 review, F4-sec):
+    // packService refuses a present-but-wrong schemaVersion at boot, so a
+    // write that persists e.g. schemaVersion 99 leaves the pack
+    // unbootable — the opposite of "refuse cues the engine would refuse
+    // to activate". Mirror the gate's present-and-wrong check exactly
+    // (an absent schemaVersion is tolerated on both sides).
+    if (data.schemaVersion !== undefined && data.schemaVersion !== 2) {
+      assertValid(
+        [`cues schemaVersion ${data.schemaVersion} — the engine reads 2; the write would leave the pack unbootable`],
+        'cues config'
+      );
+    }
 
     // Pack-internal gate (A3 slice 4 S4, D-4.7c): validateCuesBlock is the
     // SAME dependency-free pure check packService runs at activation —
