@@ -24,6 +24,7 @@ occurs.
 | `diagnosing-bugs` | Use during on-device testing (Stages B and C) and for any production incident. |
 | `research` | Use for questions about external facts (for example, Cloudflare DNS-01 details for spike S2). The result is a Markdown file with cited sources, committed to the repo. |
 | `handoff` | Emergencies only: a stage must stop before it is finished. Change from the skill's default: commit the handoff file to the repo, then delete it when the next session has used it. (The skill saves to the OS temp directory; our containers erase that.) Rule 1 below is the normal continuity mechanism — not handoffs. |
+| `unslop` (repo skill, `.claude/skills/unslop/` — installed 2026-08-29 from poteto/plugins, MIT) | Applies to all NEW human-facing prose: docs, chat replies to the owner, commit messages, PR bodies. It removes AI writing tells and adds plain, direct voice. It pairs with the §4 plain-language standard (§4 governs structure and clarity; unslop governs voice and tells). Committed documents are not retrofitted; new text follows it from now on. |
 
 Not wired in (our PHASE3-STATUS + slice-train system already covers
 their jobs; available on request): `to-tickets`, `to-spec`, `triage`,
