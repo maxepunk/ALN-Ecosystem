@@ -422,6 +422,31 @@ S6.1 schema+gate (idleLoop channel + opt-out + the ruled scoreboard
 param); S6.3 profile resolver + opt-out state machine + scoreboard
 param; S6.4 close.
 
+**SLICE 6 CLOSED 2026-08-29** (full record: design doc §8; branches
+`claude/phase3-a3-slice6` both repos, parent tip after the close
+commits, TokenData `4f29720`). Built: the `surfaces` block (schema +
+gate + `surfaces.select` capability + unknown-key refusal), the
+idle-loop profile resolver (`bindings.surfaces`, ledger L12 fallback),
+both Q6-1 opt-outs (idle-loop null; scoreboard refusal), the Q6-3
+`evidenceCycleMs` parameter, and `packService.getSurfaces()`. Dual-pack
+Tier L on the FINAL tree: ALN 119/0/61 + Tier H 4/0/18; toy 120/0/60;
+0 flaky both legs. Coverage ratchet never lowered (the one dip was
+restored with a real test). Close review: Opus refuter ("essentially
+clean", one MINOR fixed), Fable doctrine ("faithful implementation";
+its MAJOR — the missing ruled E2E — fixed with the toy-pack-surfaces
+flow), Haiku sweep 8/8 clean, plus a retroactive STANDARDS-axis pass
+(5 findings fixed, 2 rejected on the rule of three). **Process note
+(honesty rules):** the build stages ran during a fallback-model window
+outside the §1 stage frame (no per-stage reviews; implementation-first
+in places). The owner caught it; remediation is recorded in the design
+doc §8 (standards pass, CONTEXT.md vocabulary capture + §4 rework,
+frame restored). **Merge-train disclosure:** the slice-6 opening-docs
+commit `16aed91` also sits on the slice-4 branch (an ordering slip
+before the slice-6 branch was cut); PR #28 therefore carries it —
+harmless content-wise (docs only), noted so the train walk is not
+surprised. **Queue: slice 7 is NEXT but NOT opened — the owner directed
+a pause after the slice-6 close (2026-08-29).**
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in

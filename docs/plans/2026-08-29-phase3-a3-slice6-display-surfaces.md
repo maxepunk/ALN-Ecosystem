@@ -436,5 +436,14 @@ what ships): unit+contract with coverage + ratchet (never lowered; the
 vlcMprisService functions floor dipped under the resolver refactor and
 was restored with a direct `_idleLoopFileExists` test, all 82 files
 green), sibling suites (config-tool 114, Python parity 75, PWA 165),
-and the dual-pack Tier L gate — numbers recorded below when the legs
-complete.
+and the dual-pack Tier L gate:
+
+- ALN default leg: Tier L 119 passed / 0 failed / 61 skipped, 0 flaky
+  (Tier H 4/0/18). Four more passes than the slice-4 close — the new
+  toy-pack-surfaces flow.
+- Toy leg (E2E_PACK_PATH=toy-heist): Tier L 120 passed / 0 failed /
+  60 skipped, 0 flaky.
+- Skips are capability-gated and loud (no VLC/MPD/audio/BT on this
+  runner), the same posture as every prior slice gate.
+
+SLICE 6 CLOSED 2026-08-29.
