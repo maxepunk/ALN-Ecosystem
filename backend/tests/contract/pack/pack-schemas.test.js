@@ -267,11 +267,13 @@ describe('game pack schema contract (A1)', () => {
   });
 
   describe('declared cues sidecars validate against cues.schema.json (slice 4 S1)', () => {
-    // Authoring-time twin of the S2 activation gate. No pack declares
-    // cues until the S4 cutover — the walk is forward-wired now; S4 adds
-    // the at-least-one-declarer assertion (strings-block precedent).
+    // Authoring-time twin of the S2 activation gate.
     const cuesSchema = readJson(TOKEN_DATA_DIR, 'cues.schema.json');
     const declaring = declaringPacks('cues');
+
+    it('at least one pack declares a cues sidecar (the contract has a consumer — S4 cutover)', () => {
+      expect(declaring.length).toBeGreaterThan(0);
+    });
 
     it('every pack declaring a cues pointer ships a schema-valid sidecar', () => {
       const validate = ajv.compile(cuesSchema);

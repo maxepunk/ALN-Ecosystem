@@ -1415,6 +1415,55 @@ describe('packService', () => {
     });
   });
 
+  describe('getCues (slice 4 S4 — the frozen pack cues the engine loads)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const declaringGame = () => ({
+      kind: 'game', schemaVersion: 2, id: 'cues-get',
+      cues: 'cues.json', requires: ['cues.standing'],
+    });
+    const cuesDoc = () => ({
+      kind: 'cues', schemaVersion: 2,
+      cues: [{
+        id: 'only', label: 'Only',
+        trigger: { event: 'session:created' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }],
+    });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), '{}');
+    });
+
+    it('returns the declared cues array, FROZEN at activation (disk edits ignored)', () => {
+      writeGame(tmpDir, declaringGame());
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(cuesDoc()));
+      packService.activatePack();
+      expect(packService.getCues()).toHaveLength(1);
+      expect(packService.getCues()[0].id).toBe('only');
+
+      const edited = cuesDoc();
+      edited.cues.push({ id: 'later', label: 'Later', commands: [{ action: 'sound:stop', payload: {} }] });
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(edited));
+      expect(packService.getCues()).toHaveLength(1);
+    });
+
+    it('returns null when the pack declares no cues (benign emptiness — the engine loads [])', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      packService.activatePack();
+      expect(packService.getCues()).toBeNull();
+    });
+
+    it('before activation, reads fall through to live disk (selective-init harnesses)', () => {
+      writeGame(tmpDir, declaringGame());
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(cuesDoc()));
+      expect(packService.getCues()).toHaveLength(1);
+    });
+  });
+
   describe('getLightingRoleFallback (slice 4 S3 — the normalized L7 accessor)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));

@@ -456,7 +456,7 @@ Automated show control: standing cues fire on game events, manual cues fired via
 
 Game clock and sound state delivered via `service:state` domains `gameclock` and `sound`.
 
-**Config Files:** `config/environment/cues.json` (cue definitions, wrapper format `{"cues": [...]}`), `config/environment/routing.json` (audio stream routes). `app.js` handles both wrapper and plain array formats.
+**Config Files:** cues are PACK content since A3 slice 4 (`ALN-TokenData/cues.json`, header form `{kind, schemaVersion, cues: [...]}`; the engine loads the frozen activation snapshot via `packService.getCues()` — the old `config/environment/cues.json` venue file is retired). `config/environment/routing.json` (audio stream routes) stays venue config.
 
 **Key Files:** `src/services/gameClockService.js`, `src/services/cueEngineService.js`, `src/services/soundService.js`, `src/services/commandExecutor.js`, `src/services/cueEngineWiring.js`
 

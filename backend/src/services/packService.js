@@ -87,6 +87,7 @@ let activated = false;
 let activeManifest = null;
 let activeGameConfig = null;
 let activeStrings = null;
+let activeCues = null;
 let warnedDriftHash = false;
 let warnedLegacyScoring = false;
 
@@ -836,6 +837,7 @@ function activatePack() {
   activeManifest = manifest;
   activeGameConfig = gameConfig;
   activeStrings = _loadDeclaredStrings(gameConfig).value;
+  activeCues = _loadDeclaredCues(gameConfig).value;
   activated = true;
   warnedDriftHash = false;
   _cachedScoringRules = null;
@@ -895,6 +897,21 @@ function getGameConfig() {
 function getStrings() {
   if (!activated) return _loadDeclaredStrings(_readDiskGameConfig()).value;
   return activeStrings;
+}
+
+/**
+ * The ACTIVE pack's show cues (A3 slice 4 S4): the parsed cues array,
+ * frozen at activation like every other pack read — a cues file edited
+ * on disk mid-run is ignored until restart. Null when the pack declares
+ * no cues (benign emptiness: the engine loads an empty cue set) or the
+ * declared file is broken (the gate refused activation in that case, so
+ * post-activation null means undeclared). Before activation, reads fall
+ * through to live disk for selective-init harnesses.
+ * @returns {Array<Object>|null}
+ */
+function getCues() {
+  if (activated) return activeCues;
+  return _loadDeclaredCues(getGameConfig()).value;
 }
 
 /**
@@ -1046,6 +1063,7 @@ function _resetForTesting() {
   activeManifest = null;
   activeGameConfig = null;
   activeStrings = null;
+  activeCues = null;
   warnedDriftHash = false;
   warnedLegacyScoring = false;
   warnedLegacyClock = false;
@@ -1053,4 +1071,4 @@ function _resetForTesting() {
   _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getScoringRules, getClockRules, getLightingRoleFallback, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getCues, getScoringRules, getClockRules, getLightingRoleFallback, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

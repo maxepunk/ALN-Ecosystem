@@ -1197,31 +1197,29 @@ attention.wav
 tension.wav
 ```
 
-**Verify cue definitions don't reference missing sound files:**
+**Verify cue definitions don't reference missing sound files** (cues are
+PACK content since A3 slice 4 — the ACTIVE pack's `cues.json`; if the
+orchestrator runs with `PACK_PATH`, point the path there instead):
 ```bash
 node -e "
   const fs = require('fs');
   try {
-    const cues = JSON.parse(fs.readFileSync('backend/config/environment/cues.json', 'utf8'));
-    const cueArray = Array.isArray(cues) ? cues : (cues.cues || []);
+    const doc = JSON.parse(fs.readFileSync('ALN-TokenData/cues.json', 'utf8'));
     const audioDir = 'backend/public/audio';
     let missing = 0;
-    for (const cue of cueArray) {
-      if (cue.actions) {
-        for (const action of cue.actions) {
-          if (action.action === 'sound:play' && action.payload && action.payload.file) {
-            const filePath = audioDir + '/' + action.payload.file;
-            if (!fs.existsSync(filePath)) {
-              console.log('MISSING: cue \"' + cue.name + '\" references ' + action.payload.file);
-              missing++;
-            }
+    for (const cue of (doc.cues || [])) {
+      for (const entry of (cue.commands || cue.timeline || [])) {
+        if (entry.action === 'sound:play' && entry.payload && entry.payload.file) {
+          if (!fs.existsSync(audioDir + '/' + entry.payload.file)) {
+            console.log('MISSING: cue \"' + cue.id + '\" references ' + entry.payload.file);
+            missing++;
           }
         }
       }
     }
     if (missing === 0) console.log('OK: All cue sound references resolve');
   } catch (e) {
-    console.log('SKIP: Could not load cues.json (' + e.message + ')');
+    console.log('SKIP: Could not load the pack cues.json (' + e.message + ')');
   }
 "
 ```
@@ -1429,25 +1427,25 @@ sudo systemctl start docker
 
 ## 13. Config Files
 
-The backend loads two JSON config files at startup for the cue engine and audio ducking. Both are optional — missing files log a warning and continue with empty defaults — but a malformed file will silently break the feature.
+The backend loads the pack's cue definitions (via the activation gate — a malformed pack cues file REFUSES boot, loudly) and the venue's `routing.json` for audio ducking at startup. A pack with no cues and a missing routing file both continue with empty defaults.
 
 ### 13.1 Cue Definitions [BOTH] — REQUIRED
 
-The cue engine fires timed actions during gameplay (sounds, lighting changes, video triggers). Cues are defined in a JSON file loaded at startup.
+The cue engine fires timed actions during gameplay (sounds, lighting changes, video triggers). Cues are PACK content (A3 slice 4): the engine loads the ACTIVE pack's `cues.json`, frozen at activation and validated by the activation gate. A pack that declares no cues runs with an empty cue set on purpose (benign emptiness).
 
-**Check:**
+**Check** (default pack; with `PACK_PATH` set, test that directory instead):
 ```bash
-test -f backend/config/environment/cues.json && echo "OK: cues.json exists" || echo "MISSING: cues.json (cue engine will start empty)"
+test -f ALN-TokenData/cues.json && echo "OK: pack cues.json exists" || echo "NOTE: pack declares no cues (cue engine starts empty — only wrong if this game has a show)"
 ```
 
-**Verify valid JSON and inspect contents:**
+**Verify valid JSON and inspect contents** (header form `{kind, schemaVersion, cues: [...]}`; lighting entries carry a `role`, bound by the installation profile):
 ```bash
 node -e "
   const fs = require('fs');
-  const data = JSON.parse(fs.readFileSync('backend/config/environment/cues.json', 'utf8'));
-  const cues = Array.isArray(data) ? data : (data.cues || []);
-  console.log('OK: cues.json valid, ' + cues.length + ' cues defined');
-  cues.forEach(c => console.log('  - ' + (c.name || c.id || 'unnamed') + ' (' + (c.actions ? c.actions.length : 0) + ' actions)'));
+  const doc = JSON.parse(fs.readFileSync('ALN-TokenData/cues.json', 'utf8'));
+  const cues = doc.cues || [];
+  console.log('OK: pack cues.json valid, ' + cues.length + ' cues defined');
+  cues.forEach(c => console.log('  - ' + c.id + ' (' + ((c.commands || c.timeline || []).length) + ' entries)'));
 "
 ```
 
