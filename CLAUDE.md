@@ -492,4 +492,8 @@ Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Multi-context: a root `CONTEXT-MAP.md` (created lazily) pointing at per-component `CONTEXT.md` files; root `docs/adr/` for system-wide decisions. See `docs/agents/domain.md`.
+Multi-context: root `CONTEXT.md` (the ubiquitous language — SEEDED 2026-08-29, read it before designing or naming anything) + per-component `CONTEXT.md` files created lazily via `CONTEXT-MAP.md`; root `docs/adr/` for system-wide decisions. See `docs/agents/domain.md`.
+
+### Process
+
+Skill wiring (mattpocock-skills by trigger), the five session/continuity rules (the stage is the unit; workflows carry bulk reads; write for the cold agent), and workflow-prompt standards. See `docs/agents/process.md`.
