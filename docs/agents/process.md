@@ -49,10 +49,20 @@ rules:
    work or unrecorded decisions while the conversation nears
    compaction. If a stage runs long, commit the smallest complete
    piece first.
-2. **Workflows carry the bulk reading and reviewing.** Subagents spend
-   the tokens, their outputs land in files, and the conclusions get
-   folded into committed documents in the same context window. Files
-   in `/tmp` do not survive a container restart. The repo does.
+2. **Workflows carry the bulk work: reading, reviewing, and
+   decision-free build sub-stages** (owner amendment, 2026-08-29).
+   Subagents spend the tokens, their outputs land in files, and the
+   conclusions get folded into committed documents in the same context
+   window. Files in `/tmp` do not survive a container restart. The
+   repo does. The orchestrating agent keeps every decision-carrying
+   piece of a build: schema design, seam choices, any code a design
+   doc's dispositions constrain. A build sub-stage may be delegated
+   when it is decision-free and has a checkable completion criterion
+   (§3b) — a multi-consumer re-point sweep, an E2E pin sweep, fixture
+   regeneration. Mid-build investigation delegates the same way: a
+   reader agent returns conclusions, so file dumps never land in the
+   orchestrator's window. Long test suites run in the background while
+   work continues.
 3. **Use `handoff` only for emergencies**, committed to the repo (see
    the table above).
 4. **"Work session" is the estimate unit** (program §12.3): one
