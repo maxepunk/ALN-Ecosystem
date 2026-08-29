@@ -318,7 +318,13 @@ cues.schema.json with engine-tripwired vocabularies, game.schema
 cues const-pin + lightingRoleFallbacks, builder `.schema.json` suffix
 rule, installation-profile.schema.json at the OQ6 home; two-axis review
 folded, incl. the duration reversal — execution record + adjudication:
-slice-4 design doc §9; **S2 gate next**) →
+slice-4 design doc §9; **S2 gate DONE 2026-08-29** — gameRules
+`validateCuesBlock` (rules 1-7, pure pack-internal; owns the row-2.22
+vocabulary incl. the 24-action cue table, five drift tripwires),
+ENGINE_CAPABILITIES + the ratified trio, strings-mirror cues loader,
+tick guard + loadCues dupe refusal; guard cues green at validator AND
+gate; **S3 resolver + profile next**, opening with the AsyncAPI role
+contract commit) →
 (iii) slice 6 (minimal reading ratified — program §13.2) → slice 7
 (ruled — §13.4) → theme unit (boundary ruled — §13.5) → B0. **ROADMAP.md
 RATIFIED 2026-08-29** — full-arc frame incl. the open-source north star,

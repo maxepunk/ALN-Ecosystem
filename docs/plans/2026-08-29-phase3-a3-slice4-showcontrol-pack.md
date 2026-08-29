@@ -641,3 +641,57 @@ nested pins ride the merge train — Final-cutover item 2b).
 
 Carried to S4: the L7 ledger row lands there per §5.4 (the code has
 carried the marker since S1); `duration` migrates verbatim.
+
+### S2 — gate (DONE 2026-08-29)
+
+Built test-first: validator unit suite red → module green → gate
+integration red → packService wiring green → hardening red → green.
+
+**Landed:**
+- `backend/src/gameRules/cueValidation.js` (NEW): `validateCuesBlock`
+  — rules 1-7 as pack-internal PURE reads (no services, no logger, no
+  I/O; the dep-free seam the config-tool imports at S4). The module
+  OWNS the row-2.22 vocabulary: `CUE_TRIGGER_EVENTS` (16),
+  `CONDITION_OP_NAMES` (7), `CLOCK_PATTERN`, and `CUE_ACTIONS` — the
+  cue-action vocabulary with required payload fields, pinned at build
+  time as the show-control subset of gm:command (24 actions: sound,
+  lighting-by-role, video transport + queue, music, display,
+  audio routing/volume). Deliberately excluded: session lifecycle,
+  score intervention, and transaction surgery (the auth floor — pack
+  data never drives operator-only functions), plus admin/maintenance
+  actions (system, bluetooth pairing, held-item management, per-client
+  scoreboard paging, health probes, direct cue:fire — chaining rides
+  standing triggers on `cue:completed`).
+- packService: `ENGINE_CAPABILITIES` grew the ratified trio
+  (`cues.standing`, `cues.timeline`, `lighting.roles`);
+  `_loadDeclaredCues` mirrors the strings loader (canonical filename,
+  header form, kind/schemaVersion checks); the gate block runs after
+  the strings block, file-less rules (5 and the rule-6 requires lint)
+  included. Refusals ride the existing CAPABILITY GATE throw with the
+  two-flavor language, wording-pinned in tests both ways.
+- Engine hardening: `loadCues` refuses duplicate cue ids (the Map
+  silently last-won); `findMatchingClockCues` skips-and-warns on an
+  unparseable clock string instead of throwing out of the tick
+  listener once per second (the restore path already guarded).
+- S1 consistency fix folded in: the cues sidecar `schemaVersion` is
+  the PACK-WIDE version (const 2, strings precedent) — S1 had minted a
+  per-sidecar series at 1.
+- Tests: `tests/unit/gameRules/cueValidation.test.js` (36: per-rule
+  refusal twins, both ALN guard cues green at the validator level, the
+  rule-3 exemption pinned, two-flavor language pins, and five
+  tripwires — validator↔standingEvaluator events + ops,
+  validator↔schema enums + clock pattern, every cue-action a real
+  executeCommand case via the root-CLAUDE-blessed source grep,
+  validator payload fields ⊇ engine REQUIRED_PAYLOAD_FIELDS with
+  lighting exempt by design). packService gate suite +11 (guard cues
+  green AT THE GATE, benign emptiness with zero cue warns, flavor
+  wording pins, file-less rule 5/6, canonical-filename and
+  declared-but-broken refusals). cueEngineService +2 (dupe refusal,
+  tick guard with a healthy cue still firing past a poisoned one).
+
+**Observed, not changed (for the record):** `fireCue` counts a command
+whose action `executeCommand` does not know as COMPLETED — the
+`default:` case returns `{success:false}` and `result.success` is
+never checked. Pre-existing behavior; the gate now makes it
+unreachable from pack content, and the venue file retires at S4. If it
+survives S6 review it belongs in the backlog, not this slice.

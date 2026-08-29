@@ -32,7 +32,7 @@ const readJson = (...p) => JSON.parse(fs.readFileSync(path.join(...p), 'utf8'));
 // sound target routing, once, cue-level routing.
 const validDoc = () => ({
   kind: 'cues',
-  schemaVersion: 1,
+  schemaVersion: 2, // the pack-wide schema version (strings sidecar precedent)
   cues: [
     {
       id: 'attention-before-video',
@@ -239,7 +239,7 @@ describe('pack show-cues schema contract (slice 4 S1)', () => {
     it('wrong kind, wrong schemaVersion, and a missing cues array are refused', () => {
       const base = validDoc();
       expect(validate({ ...base, kind: 'strings' })).toBe(false);
-      expect(validate({ ...base, schemaVersion: 2 })).toBe(false);
+      expect(validate({ ...base, schemaVersion: 1 })).toBe(false);
       const { cues, ...headless } = base;
       expect(validate(headless)).toBe(false);
     });

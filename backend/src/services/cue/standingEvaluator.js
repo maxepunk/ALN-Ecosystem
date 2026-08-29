@@ -173,7 +173,17 @@ function findMatchingClockCues(cues, disabledCues, firedClockCues, elapsedSecond
     if (disabledCues.has(cue.id)) continue;
     if (firedClockCues.has(cue.id)) continue;
 
-    const threshold = parseClockTime(cue.trigger.clock);
+    // Slice 4 S2 tick guard: a malformed clock string must never throw
+    // out of the once-per-second tick listener mid-show. The pack gate
+    // refuses these upstream; this defends venue files and fixtures
+    // (the restore path carries the same per-cue guard).
+    let threshold;
+    try {
+      threshold = parseClockTime(cue.trigger.clock);
+    } catch (err) {
+      logger.warn(`[StandingEvaluator] Skipping clock cue with invalid time: ${cue.id}`, err.message);
+      continue;
+    }
     if (elapsedSeconds >= threshold) {
       results.push(cue);
     }

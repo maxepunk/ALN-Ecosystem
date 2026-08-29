@@ -110,6 +110,12 @@ class CueEngineService extends EventEmitter {
       if (cue.commands && cue.timeline) {
         throw new Error(`Cue "${cue.id}": commands and timeline are mutually exclusive`);
       }
+      // Slice 4 S2 hardening: the Map used to silently last-win on a
+      // duplicate id, dropping a cue. The pack gate refuses duplicates
+      // upstream; this defends venue files and injected fixtures.
+      if (newCues.has(cue.id)) {
+        throw new Error(`Cue "${cue.id}": duplicate cue id (cue ids must be unique)`);
+      }
 
       newCues.set(cue.id, {
         ...cue,

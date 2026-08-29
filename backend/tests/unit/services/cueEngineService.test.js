@@ -128,6 +128,29 @@ describe('CueEngineService', () => {
       }).toThrow(/bad-cue.*mutually exclusive/i);
     });
 
+    it('refuses duplicate cue ids (slice 4 S2 hardening — silent last-wins dropped a cue)', () => {
+      expect(() => {
+        cueEngineService.loadCues([
+          { id: 'twin', label: 'A', commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }] },
+          { id: 'twin', label: 'B', commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }] },
+        ]);
+      }).toThrow(/twin.*duplicate|duplicate.*twin/i);
+    });
+
+    it('a malformed clock string never escapes handleClockTick, and healthy clock cues still fire (slice 4 S2 tick guard)', () => {
+      // The gate refuses pack cues with bad clock strings, but the gate
+      // cannot protect venue files or hand-injected cues — the live tick
+      // path must survive them (the restore path already does).
+      cueEngineService.loadCues([
+        { id: 'bad-clock', label: 'Bad', trigger: { clock: 'not-a-time' }, commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }] },
+        { id: 'good-clock', label: 'Good', trigger: { clock: '00:00:30' }, commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }] },
+      ]);
+      cueEngineService.activate();
+      expect(() => cueEngineService.handleClockTick(60)).not.toThrow();
+      expect(cueEngineService.firedClockCues.has('good-clock')).toBe(true);
+      expect(cueEngineService.firedClockCues.has('bad-clock')).toBe(false);
+    });
+
     it('should identify standing cues (have trigger)', () => {
       cueEngineService.loadCues([
         { id: 'standing', label: 'Standing', trigger: { event: 'transaction:accepted' }, commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }] },

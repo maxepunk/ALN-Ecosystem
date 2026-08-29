@@ -25,6 +25,7 @@ const path = require('path');
 const logger = require('../utils/logger');
 const { parseMoneyFormat } = require('../gameRules/formatting');
 const { normalizedClaimedLabel, normalizedIcon, normalizedEntityLabel } = require('../gameRules/modeSemantics');
+const { validateCuesBlock } = require('../gameRules/cueValidation');
 
 const DEFAULT_PACK_DIR = path.join(__dirname, '../../../ALN-TokenData');
 
@@ -52,6 +53,9 @@ const ENGINE_CAPABILITIES = new Set([
   'scoring.tabular',      // baseValues × typeMultipliers tables
   'groupRules.all',       // all-of-group completion
   'duplicatePolicy.once', // FCFS session-scoped claims
+  'cues.standing',        // event/clock-triggered standing cues (slice 4)
+  'cues.timeline',        // compound cue timelines, three-segment clock (slice 4)
+  'lighting.roles',       // role-addressed lighting, profile-bound (slice 4)
 ]);
 
 // Per-mode flag VALUES this engine can drive (A3 slice 1 — mode
@@ -213,6 +217,62 @@ function _readDiskGameConfig() {
  * @param {Object|null} gameConfig
  * @returns {{value: Object|null, problems: string[]}}
  */
+/**
+ * Load and shape-check the declared show-cues sidecar (A3 slice 4 S2).
+ * Mirrors _loadDeclaredStrings: declared means present, canonical, and
+ * the header form {kind: 'cues', schemaVersion, cues: [...]}. Returns
+ * the cues ARRAY on success; rule validation happens in
+ * gameRules/cueValidation (the dep-free seam the config-tool shares).
+ * @param {Object} gameConfig
+ * @returns {{value: Array<Object>|null, problems: string[]}}
+ */
+function _loadDeclaredCues(gameConfig) {
+  const declared = gameConfig && gameConfig.cues;
+  if (!declared) return { value: null, problems: [] };
+
+  // Canonical filename is the CONTRACT (game.schema.json const): the
+  // manifest role and the engine's pack-file resolution are keyed to
+  // 'cues.json'. Hand-authored PACK_PATH packs bypass the schema, so
+  // the gate enforces it too.
+  if (declared !== 'cues.json') {
+    return {
+      value: null,
+      problems: [`game.json declares cues '${declared}' — the sidecar must be named 'cues.json' (canonical filename contract; manifest role + engine loader are keyed to it)`],
+    };
+  }
+
+  const cuesPath = path.join(getPackDir(), declared);
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(cuesPath, 'utf8'));
+  } catch (err) {
+    return {
+      value: null,
+      problems: [`game.json declares cues '${declared}' but ${declared} is unreadable (${err.message})`],
+    };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      value: null,
+      problems: [`game.json declares cues '${declared}' but ${declared} is not the header form (a JSON object {kind, schemaVersion, cues: [...]})`],
+    };
+  }
+
+  const problems = [];
+  if (parsed.schemaVersion !== undefined && parsed.schemaVersion !== PACK_SCHEMA_VERSION) {
+    problems.push(`${declared} schemaVersion ${parsed.schemaVersion} (engine reads ${PACK_SCHEMA_VERSION})`);
+  }
+  if (parsed.kind !== undefined && parsed.kind !== 'cues') {
+    problems.push(`${declared} kind '${parsed.kind}' (expected 'cues')`);
+  }
+  if (!Array.isArray(parsed.cues)) {
+    problems.push(`${declared} — 'cues' must be an array`);
+    return { value: null, problems };
+  }
+  return { value: problems.length === 0 ? parsed.cues : null, problems };
+}
+
 function _loadDeclaredStrings(gameConfig) {
   const declared = gameConfig && gameConfig.strings;
   if (!declared) return { value: null, problems: [] };
@@ -544,6 +604,24 @@ function _gateCheck(manifest, gameConfig) {
     // Strings sidecar (A3 slice 3a): declared ⇒ must load + validate.
     for (const prob of _loadDeclaredStrings(gameConfig).problems) {
       problems.push(prob);
+    }
+    // Show-cues gate (A3 slice 4 S2 — D-4.3). Pack-internal PURE reads
+    // only: activation is the FIRST act of initializeServices, every
+    // service is health-seeded down, and referenced venue files may
+    // exist only on the venue machine — so nothing here touches a
+    // service or checks a venue resource (that stays at preflight,
+    // C1 §3 item 5). Rules 1-7 live in gameRules/cueValidation, the
+    // dep-free seam the config-tool imports directly at S4 (the
+    // writeScoring precedent). Runs even with NO cues file: rule 5
+    // (fallbacks ⊆ roles) and the rule-6 requires lint are file-less.
+    {
+      const cuesLoad = _loadDeclaredCues(gameConfig);
+      problems.push(...cuesLoad.problems);
+      let tokensObj = {};
+      try {
+        tokensObj = JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
+      } catch { /* no tokens.json — the loader refuses separately; rule 3 then has nothing to resolve against */ }
+      problems.push(...validateCuesBlock(cuesLoad.value, gameConfig, tokensObj));
     }
     // Mode drivability (slice 1): every declared mode's flag VALUES must
     // be in the engine's implemented sets — schema-open, gate-enforced.

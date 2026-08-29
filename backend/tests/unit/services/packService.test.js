@@ -1414,4 +1414,188 @@ describe('packService', () => {
         .toEqual(real.semantics);
     });
   });
+
+  describe('show-cues gate (A3 slice 4 S2 — D-4.3: pack-internal pure reads, zero services)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    function writeCues(dir, doc) {
+      fs.writeFileSync(path.join(dir, 'cues.json'), JSON.stringify(doc));
+    }
+    function writeTokens(dir, tokens) {
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify(tokens));
+    }
+    const base = () => ({
+      kind: 'game',
+      schemaVersion: 2,
+      id: 'cues-pack',
+      cues: 'cues.json',
+      requires: ['cues.standing', 'cues.timeline', 'lighting.roles'],
+      lightingRoles: ['gameplay', 'video-playback', 'police-arrival-1'],
+      lightingRoleFallbacks: { gameplay: 'scene.game' },
+    });
+    // The two REAL guard cues in migrated role-form: their condition
+    // tokenId ('policesequencewoverlay') is the engine's filename-derived
+    // namespace, NOT a pack token — gate rule 3 must never refuse them
+    // (red-team G2; these are the mandated green fixtures).
+    const guardCues = () => ([
+      {
+        id: 'attention-before-video',
+        label: 'Pre-Video Alert',
+        trigger: {
+          event: 'video:loading',
+          conditions: [{ field: 'tokenId', op: 'neq', value: 'policesequencewoverlay' }],
+        },
+        commands: [
+          { action: 'sound:play', payload: { file: 'attention.wav' } },
+          { action: 'lighting:scene:activate', payload: { role: 'video-playback' } },
+        ],
+      },
+      {
+        id: 'restore-after-video',
+        label: 'Post-Video Restore',
+        trigger: {
+          event: 'video:completed',
+          conditions: [{ field: 'tokenId', op: 'neq', value: 'policesequencewoverlay' }],
+        },
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'gameplay' } }],
+      },
+    ]);
+    const cuesDoc = (cues) => ({ kind: 'cues', schemaVersion: 2, cues });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeTokens(tmpDir, { kaa001: { SF_RFID: 'kaa001' } });
+    });
+
+    it('ACCEPTS a full migrated-form cue set — guard cues, clock cue, compound timeline (and proves the three capability ids exist)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, cuesDoc([
+        ...guardCues(),
+        {
+          id: 'halftime',
+          label: 'Halftime',
+          trigger: { clock: '01:00:00' },
+          commands: [{ action: 'sound:play', payload: { file: '60min.wav' } }],
+        },
+        {
+          id: 'endgame',
+          label: 'ENDGAME',
+          quickFire: true,
+          trigger: null,
+          timeline: [
+            { at: 1, action: 'video:queue:add', payload: { videoFile: 'police.mp4' } },
+            { at: 180, action: 'lighting:scene:activate', payload: { role: 'police-arrival-1' } },
+          ],
+        },
+      ]));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('benign emptiness: no cues pointer, no lighting declarations — nothing refused, nothing warned', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(() => packService.activatePack()).not.toThrow();
+      const cueWarns = logger.warn.mock.calls.filter(([msg]) => /cue/i.test(msg));
+      expect(cueWarns).toEqual([]);
+    });
+
+    it('refuses an undeclared lighting role as SELF-CONTRADICTORY (rule 1, flavor-i language pinned)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'disco-mode' } }],
+      }]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/CAPABILITY GATE.*disco-mode/);
+      expect(message).toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses an unknown action as a DRIVABILITY limitation naming the vocabulary (rule 2, flavor-ii language pinned)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: [] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        commands: [{ action: 'confetti:launch', payload: {} }],
+      }]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/confetti:launch/);
+      expect(message).toMatch(/not driveable by this engine yet/);
+      expect(message).toMatch(/sound:play/); // vocabulary embedded
+      expect(message).not.toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses a duplicate cue id and an unparseable clock string (rule 7a/7b)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: ['cues.standing'] });
+      writeCues(tmpDir, cuesDoc([
+        { id: 'twin', label: 'A', commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }] },
+        { id: 'twin', label: 'B', commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }] },
+        { id: 'clocky', label: 'C', trigger: { clock: '90 minutes' }, commands: [{ action: 'sound:stop', payload: {} }] },
+      ]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/duplicate cue id 'twin'/);
+      expect(message).toMatch(/90 minutes/);
+    });
+
+    it('refuses standing triggers without cues.standing in requires (rule 6 authoring lint)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: [] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        trigger: { event: 'transaction:accepted' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }]));
+      expect(() => packService.activatePack())
+        .toThrow(/cues\.standing/);
+    });
+
+    it('refuses a fallback for an undeclared role even with NO cues file (rule 5 runs file-less)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'x',
+        lightingRoles: ['gameplay'],
+        lightingRoleFallbacks: { 'disco-mode': 'scene.disco' },
+        requires: ['lighting.roles'],
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/disco-mode/);
+    });
+
+    it("refuses a non-canonical cues filename (declared means presence — 'cues.json' is the contract)", () => {
+      writeGame(tmpDir, { ...base(), cues: 'show.json' });
+      writeCues(tmpDir, cuesDoc([]));
+      expect(() => packService.activatePack())
+        .toThrow(/cues\.json/);
+    });
+
+    it('refuses a declared-but-missing or unparseable cues file (declared-but-broken must refuse loudly)', () => {
+      writeGame(tmpDir, base());
+      expect(() => packService.activatePack()).toThrow(/unreadable|missing/i);
+
+      packService._resetForTesting();
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), '{nope');
+      expect(() => packService.activatePack()).toThrow(/unreadable/i);
+    });
+
+    it('refuses a cues file that is not the header form (kind + schemaVersion + cues array)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, [{ id: 'bare', label: 'Bare', commands: [{ action: 'sound:stop', payload: {} }] }]);
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/cues/);
+      expect(message).toMatch(/kind|header|object/i);
+    });
+
+    it('refuses a wrong sidecar kind or schemaVersion (strings-loader precedent)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, { kind: 'strings', schemaVersion: 1, cues: [] });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/kind 'strings'/);
+      expect(message).toMatch(/schemaVersion 1/);
+    });
+  });
+
 });
