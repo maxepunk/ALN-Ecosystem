@@ -131,6 +131,7 @@ Most services export a module-level singleton via `module.exports = new ServiceC
 | `musicService` | MPD control over Unix socket (mpd2 client); spawns/supervises MPD via ProcessMonitor | `new MusicService()` |
 | `serviceHealthRegistry` | Centralized health for 8 services | `new ServiceHealthRegistry()` |
 | `scoreboardControlService` | Passthrough for GM scoreboard page-navigation commands (no server-side page state; emits `scoreboard:page:requested` → broadcast as `scoreboard:page`) | `new ScoreboardControlService()` |
+| `profileService` | Installation profile (the venue document): one profile frozen at boot via the `PROFILE_PATH` seam; `bindings.lighting` (role → HA scene) and `bindings.surfaces` (display-surface channel → media file, slice 6); a broken profile degrades loudly, never refuses boot | Function exports (no class) |
 | `commandExecutor` | Shared gm:command execution logic | Function export (`executeCommand`) |
 
 **System Reset:** `systemReset.js` exports `performSystemReset()` for coordinated reset (production `system:reset` command and test helper). Archives session, ends lifecycle, cleans up listeners, resets all services (tear-down only), then re-initializes infrastructure via centralized post-reset wiring: broadcast listeners, then `transactionService.registerSessionListener()`, `sessionService.setupScoreListeners()`, `sessionService.setupPersistenceListeners()`, `sessionService.setupGameClockListeners()`, then `cueEngineWiring.setupCueEngineForwarding()`.
@@ -166,7 +167,7 @@ Domain Event (Service) → Listener (broadcasts.js) → WebSocket Broadcast
 - `bluetoothService`: `device:connected/disconnected/paired/unpaired/discovered`, `scan:started/stopped`
 - `audioRoutingService`: `routing:changed`, `routing:applied`, `routing:fallback`, `routing:error`, `sink:added`, `sink:removed`, `ducking:changed`, `ducking:failed`
 - `lightingService`: `scene:activated`, `scenes:refreshed`
-- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`
+- `gameClockService`: `gameclock:started`, `gameclock:paused`, `gameclock:resumed`, `gameclock:stopped`, `gameclock:tick`, `gameclock:overtime`, `phase:changed` (A3 slice 5 — pack-declared phase boundary crossed; cue trigger + gameclock service:state push)
 - `cueEngineService`: `cue:fired`, `cue:completed`, `cue:error`, `cue:started`, `cue:status`, `cue:held`, `cue:released`, `cue:discarded`
 - `musicService`: `playback:changed`, `volume:changed`, `track:changed`, `position:changed`, `playlist:changed`, `playlists:reloaded`
 - `soundService`: `sound:started`, `sound:completed`, `sound:stopped`, `sound:error`
@@ -224,7 +225,7 @@ displayControlService (State Machine)
 
 **Key Implementation Details:**
 - Chromium is launched ONCE and persisted for the session. Display transitions use `xdotool windowminimize` (hide) and `xdotool windowactivate` + `wmctrl -b add,fullscreen` (show). No kill/spawn per video cycle.
-- `xdotool search --name "Case File"` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached.
+- `xdotool search --name <marker>` finds the content window by HTML `<title>` (not `--class` which returns all Chromium windows; not `--pid` — Chromium forks). Looked up fresh per show/hide — never cached. The marker is `config.display.scoreboardWindowMarker` (env `SCOREBOARD_WINDOW_MARKER`, default `ALN-SCOREBOARD`, slice 3a pre-fix 1): ONE shared value the served page's `<title>` also carries via `resourceRoutes.renderScoreboardHtml` `%%WINDOW_MARKER%%` injection — never rebrand either side independently (tripwire: `tests/unit/utils/scoreboardWindowMarker.test.js`).
 - `displayDriver.cleanup()` is the only kill path (called from server.js shutdown handler). Sends SIGTERM, waits 1s, escalates to SIGKILL via `process.kill(pid, 0)` alive-check.
 - `_doLaunch()` two-stage orphan recovery before spawning: (1) SIGKILL via PID file (`/tmp/aln-pm-scoreboard-chromium.pid`, verified against `/proc/pid/cmdline`), (2) `pkill -9 -f chromium.*--kiosk` fallback to catch children reparented to init. 2s wait after either kill for lock release. 1s alive-check after spawn detects early crashes (e.g., single-instance lock conflict).
 - System dependencies: `sudo apt-get install -y xdotool wmctrl`
@@ -250,19 +251,29 @@ GM Scanner VideoRenderer also shows "Playing" based on queue item state, not VLC
 
 ### Scoreboard Architecture
 
-The scoreboard (`public/scoreboard.html`) displays differently based on game mode:
+The scoreboard (`public/scoreboard.html`) renders one of two mode display
+surfaces (the per-mode `displayBehavior.surface`, pack-driven since slice 1/3c),
+toggled by a body CSS class on the SAME page — not two separate pages:
 
-**Detective Mode - "Classified Evidence Terminal":**
-- Dynamic evidence grid with responsive slot calculation
-- Cycling evidence cards showing ALL discoveries
-- Adaptive cycling intervals: 18s (few), 15s (moderate), 12s (many)
-- Hero evidence card highlighting latest discovery
+**Evidence mode display surface (`scoreboard-evidence`, ALN detective):**
+- Evidence cards paginated by estimated pixel height against the live viewport
+  (`calculatePages()`), grouped by owner.
+- Auto-cycling pages: a TWO-tier cadence — base interval at ≤3 pages, and
+  `round(base × 2/3)` at 4+ pages. The base is the ACTIVE pack's
+  `surfaces.scoreboard.evidenceCycleMs` (slice 6, Q6-3; default 18000 → 12000
+  at the dense tier). A GM manual page nav suspends cycling for `MANUAL_PAUSE_MS`.
 
-**Black Market Mode:**
-- Team rankings by score
-- Score updates via WebSocket broadcasts
+**Rankings mode display surface (`scoreboard-rankings`, ALN black market):**
+- Team rankings by score (rank / name / money), sorted descending; score
+  formatted via the pack's `scoring.display.format` (slice 3b).
+- Updates via WebSocket broadcasts.
 
-**Key Pattern:** Evidence cards filter to detective mode only - cards display when `mode === 'detective'`.
+**Key pattern:** the evidence pane is keyed off `evidenceModes` (the set of mode
+ids whose `displayBehavior.surface === 'scoreboard-evidence'`, read from
+`/api/pack/files/game.json`), NOT a hard-coded `'detective'` literal — so it
+works on any pack (ALN `detective`, toy `tipoff`). A pack may OPT OUT of the
+scoreboard DISPLAY surface entirely via `surfaces.scoreboard.enabled: false`
+(slice 6, Q6-1; `displayControlService` then refuses `display:scoreboard`).
 
 ### WebSocket Authentication Flow
 
@@ -333,7 +344,7 @@ WebSocket command interface for session management:
 | `bluetooth:unpair` | `{address}` | Unpair a BT device |
 | `bluetooth:connect` | `{address}` | Connect a paired BT device |
 | `bluetooth:disconnect` | `{address}` | Disconnect a BT device |
-| `lighting:scene:activate` | `{sceneId}` | Activate a Home Assistant lighting scene |
+| `lighting:scene:activate` | `{sceneId}` or `{role}` | Activate a Home Assistant scene. Concrete `sceneId` = the GM panel form, untouched. `role` = the pack cue form (slice 4): normalized to a sceneId at the top of executeCommand — profile binding, else pack `lightingRoleFallbacks` (loud L7 warn), else "unresolvable lighting role" |
 | `lighting:scenes:refresh` | `{}` | Reload the lighting scene list from HA |
 | `score:adjust` | `{teamId, delta, reason?}` | Manually adjust a team score by `delta` |
 | `score:reset` | `{}` | Reset all team scores |
@@ -350,7 +361,7 @@ This table covers all `gm:command` actions handled by `commandExecutor.js`. Full
 
 Sessions are created in `setup` state. Transactions are rejected until `session:start` transitions to `active`. Pausing cascades to game clock (paused), cue engine (suspended), and music (`pauseForGameClock()`). Resuming restores music only if it was paused by the game clock (preserves user-paused state).
 
-**Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, source}`. Has `SERVICE_DEPENDENCIES` map — commands are rejected pre-dispatch if their service dependency is down (gated execution). `validateCommand()` checks health AND resource existence for pre-show verification. Services emit their own domain events (EventEmitter) which `broadcasts.js` forwards as `service:state` to WebSocket clients.
+**Command Execution:** `commandExecutor.js` contains the shared `executeCommand()` function used by both WebSocket handler (`adminEvents.js`) and cue engine (`cueEngineService.js`). Returns `{success, message, source}`. **Auth-floor guard (slice 4 S6):** the FIRST check in `executeCommand` refuses any command from a cue source (`source !== 'gm'`) that is not in `CUE_ACTIONS` (imported from `gameRules/cueValidation.js`, `Object.hasOwn`) — so pack cue content can never drive session lifecycle / score intervention / transaction surgery / `system:reset`, even if the activation gate is bypassed (defense in depth; the pack gate is the first line, this is the second). Has `SERVICE_DEPENDENCIES` map — commands are rejected pre-dispatch if their service dependency is down (gated execution). `validateCommand()` checks health AND resource existence for pre-show verification. Services emit their own domain events (EventEmitter) which `broadcasts.js` forwards as `service:state` to WebSocket clients.
 
 **Circular Dependency:** `commandExecutor.js` ↔ `cueEngineService.js` — cueEngineService imports commandExecutor at module load, so commandExecutor MUST use lazy `require('./cueEngineService')` inside case blocks (not top-level). Other services like `soundService` can use top-level requires.
 
@@ -455,7 +466,7 @@ Automated show control: standing cues fire on game events, manual cues fired via
 
 Game clock and sound state delivered via `service:state` domains `gameclock` and `sound`.
 
-**Config Files:** `config/environment/cues.json` (cue definitions, wrapper format `{"cues": [...]}`), `config/environment/routing.json` (audio stream routes). `app.js` handles both wrapper and plain array formats.
+**Config Files:** cues are PACK content since A3 slice 4 (`ALN-TokenData/cues.json`, header form `{kind, schemaVersion, cues: [...]}`; the engine loads the frozen activation snapshot via `packService.getCues()` — the old `config/environment/cues.json` venue file is retired). `config/environment/routing.json` (audio stream routes) stays venue config.
 
 **Key Files:** `src/services/gameClockService.js`, `src/services/cueEngineService.js`, `src/services/soundService.js`, `src/services/commandExecutor.js`, `src/services/cueEngineWiring.js`
 
@@ -496,7 +507,7 @@ All service domain state (cue status, held items, health, music, video) is deliv
 
 **`sync:full` Phase 2 Additions:**
 - `music`: `{connected, state, volume, track, playlist, playlists, pausedByGameClock}` via `buildMusicState()`
-- `gameClock`: `{status, elapsed, expectedDuration}` via `buildGameClockState()`
+- `gameClock`: `{status, elapsed, expectedDuration, phase}` via `buildGameClockState()` (`phase` is required-nullable `{id, label}|null` since A3 slice 5 — the pack-declared current phase; null for degenerate/absent declarations)
 - `cueEngine`: `{cues, activeCues, standingCues}` via `buildCueEngineState()`
 
 **`sync:full` Phase 4 Additions:**
@@ -575,7 +586,7 @@ HTTP_REDIRECT_PORT=8000
 
 **Critical Gotchas:**
 - VLC controlled via D-Bus MPRIS (no HTTP interface needed)
-- `ADMIN_PASSWORD` must match hardcoded value in `public/scoreboard.html`
+- `ADMIN_PASSWORD` is injected into the served scoreboard page at serve time (`resourceRoutes.renderScoreboardHtml`, slice 3a pre-fix 2) — the old must-match-the-hardcoded-copy gotcha is dead; the page source carries only the `%%ADMIN_PASSWORD%%` placeholder
 
 ### HTTPS Architecture
 
@@ -776,25 +787,33 @@ npm run session:validate <name>            # Match by partial name (e.g., "1207"
 npm run session:validate latest > report.md  # Save report to file
 ```
 
-**15 Holistic Validators:**
+**9 Holistic Validators (wired by validate-session.js):**
 
 | Check | Detects |
 |-------|---------|
-| TransactionFlow | Missing/orphaned transactions, token lookup failures |
-| TransactionIntegrity | Transaction data consistency and correctness |
-| ScoringIntegrity | Score vs broadcast discrepancies (compares log broadcasts) |
-| ScoreParity | Networked vs standalone scoring parity |
-| DetectiveMode | Detective-specific validation issues |
+| TransactionFlow | Missing/orphaned transactions, token lookup failures, undeclared modes (pack-derived vocabulary) |
+| ScoringIntegrity | Score vs session discrepancies; every accepted transaction's points vs the seam-resolved expectation |
+| NonScoringModes | Non-scoring-mode transactions with points; evidence-surfaced transactions missing summary (was DetectiveMode — generalized D4s2) |
 | VideoPlayback | Queue failures, playback errors, missing videos |
 | DeviceConnectivity | Connection drops, reconnection patterns |
-| GroupCompletion | Bonus calculation errors, missed completions |
-| GroupBonus | Group bonus calculation correctness |
+| GroupCompletion | Bonus calculation errors, missed completions (§2f scored-only bonus base) |
 | DuplicateHandling | False positives, ghost scoring, rejection accuracy |
-| DuplicateConsistency | Cross-device duplicate detection consistency |
-| PlayerCorrelation | Player scan to transaction correlation |
-| EventTimeline | Event ordering and timing anomalies |
 | ErrorAnalysis | Error patterns, frequency, categorization |
 | SessionLifecycle | Deletions, resets, pause/resume anomalies |
+
+Six more validator modules exist in `scripts/lib/validators/` but are NOT
+wired into validate-session.js (TransactionIntegrity, ScoreParity,
+DuplicateConsistency, GroupBonus, PlayerCorrelation, EventTimeline) — the
+earlier "15 Holistic Validators" table overstated the wired set.
+
+**Pack-aware since A3 slice 2 (D4s2):** the validator resolves the
+SESSION'S STAMPED pack identity (`session.metadata.pack`, stamped at
+creation since A2) via `scripts/lib/packResolver.js` — the report opens
+with a Pack Resolution section (match / mismatch / unstamped verdict,
+loud notes). Tokens + scoring constants load from the resolved pack dir
+(`PACK_PATH` overrides, same seam as the engine); mode behavior resolves
+through `src/gameRules/modeSemantics.js` (never mode-id literals) and
+group math reuses `src/gameRules/scoring.js` (§2f).
 
 **Key Files:** `scripts/validate-session.js`, `scripts/lib/`
 

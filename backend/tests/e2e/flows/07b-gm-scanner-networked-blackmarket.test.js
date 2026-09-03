@@ -44,12 +44,18 @@ const { selectTestTokens } = require('../helpers/token-selection');
 const {
   calculateExpectedScore,
   calculateExpectedGroupBonus,
+  loadPackScoring,
+  loadPackGroups,
+  loadPackModes,
 } = require('../helpers/scoring');
 
 let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;  // Dynamically selected tokens
+let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
+let packGroups = null;  // ACTIVE pack groups block — sole multiplier source (v2 cutover)
+let packModes = null;   // ACTIVE pack modes — claim-wording oracle (closers R-Q2)
 
 test.describe('GM Scanner Networked Mode - Black Market', () => {
   let orchestrator;
@@ -92,6 +98,9 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     // Select test tokens dynamically from production database
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    packScoring = await loadPackScoring(orchestratorInfo.url);
+    packGroups = await loadPackGroups(orchestratorInfo.url);
+    packModes = await loadPackModes(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -209,7 +218,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const teamAlpha = `Team Alpha ${Date.now()}`;
 
     const token = testTokens.personalToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
 
     // Initialize scanner in networked mode
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
@@ -254,6 +263,28 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(score).toBe(expectedScore);
 
     console.log(`✓ Networked mode: Personal token scored $${expectedScore.toLocaleString()}`);
+
+    // Closers R-Q2 (dual-pack pin, PACK-DERIVED): the admin Game Activity
+    // card announces the claim with the scanned mode's declared
+    // claimedLabel template — {entity} = the claiming team. ALN:
+    // 'SOLD to {entity}' 💰; toy fence: 'FENCED by {entity}' 💼. The
+    // scanner is in the pack's SCORING mode here (scanner-init keeps the
+    // first/standard mode); packless falls back to the baked ALN table,
+    // mirroring the engine's L6 shim.
+    const scoringMode = (packModes || []).find(m => m.scoringPolicy === 'standard')
+      || { claimedLabel: 'SOLD to {entity}', icon: '💰' };
+    const expectedAnnouncement = (scoringMode.claimedLabel || 'CLAIMED by {entity}')
+      .replace('{entity}', teamAlpha);
+    await scanner.adminTab.click();
+    await page.waitForFunction(
+      (expected) => document.getElementById('admin-game-activity')?.textContent.includes(expected),
+      expectedAnnouncement,
+      { timeout: 10000 }
+    );
+    if (scoringMode.icon) {
+      expect(await page.locator('#admin-game-activity').textContent()).toContain(scoringMode.icon);
+    }
+    console.log(`✓ Game Activity announces the claim pack-worded: "${expectedAnnouncement}"`);
   });
 
   // ========================================
@@ -265,7 +296,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     const teamAlpha = `Team Alpha ${Date.now()}`;
 
     const token = testTokens.businessToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
 
     // Initialize scanner in networked mode
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
@@ -329,8 +360,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     }
 
     // Calculate expected scores using production logic
-    const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t), 0);
-    const bonus = calculateExpectedGroupBonus(groupTokens);
+    const baseScore = groupTokens.reduce((sum, t) => sum + calculateExpectedScore(t, packScoring), 0);
+    const bonus = calculateExpectedGroupBonus(groupTokens, packScoring, packGroups);
     const expectedTotal = baseScore + bonus;
 
     // Initialize scanner in networked mode
@@ -393,6 +424,21 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
     expect(finalScore).toBe(expectedTotal);
 
     console.log(`✓ Networked mode: Group completed, bonus applied, $${expectedTotal.toLocaleString()} total`);
+
+    // A3 slice 5 (dual-pack pin, pack-derived): a TRIGGER-started phase
+    // declared on group:completed must have LANDED — the toy declares
+    // the-getaway on exactly this event (and, being declared after the
+    // un-entered the-job@1800, this also exercises skip-forward live).
+    // ALN declares no trigger phases — the guard self-skips, keeping the
+    // assertion honest on both legs.
+    const { loadPackClock } = require('../helpers/scoring');
+    const packClock = await loadPackClock(orchestratorInfo.url);
+    const triggerPhase = (packClock?.phases || []).find(p => p.start?.trigger === 'group:completed');
+    if (triggerPhase) {
+      await scanner.adminTab.click();
+      await scanner.waitForGamePhaseLabel(triggerPhase.label, 10000);
+      console.log(`✓ Trigger-started phase landed on group:completed: ${triggerPhase.label}`);
+    }
   });
 
   // ========================================
@@ -405,8 +451,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     const token1 = testTokens.personalToken;
     const token2 = testTokens.businessToken;
-    const score1 = calculateExpectedScore(token1);
-    const score2 = calculateExpectedScore(token2);
+    const score1 = calculateExpectedScore(token1, packScoring);
+    const score2 = calculateExpectedScore(token2, packScoring);
     const expectedFinal = score1 + score2;
 
     // Initialize scanner in networked mode
@@ -514,8 +560,8 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
 
     const token1 = testTokens.personalToken;
     const token2 = testTokens.technicalToken;
-    const score1 = calculateExpectedScore(token1);
-    const score2 = calculateExpectedScore(token2);
+    const score1 = calculateExpectedScore(token1, packScoring);
+    const score2 = calculateExpectedScore(token2, packScoring);
 
     // Initialize scanner in networked mode
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
@@ -635,7 +681,7 @@ test.describe('GM Scanner Networked Mode - Black Market', () => {
   test('queues a scan during a transient connection drop and flushes it on auto-reconnect (durable queue)', async () => {
     const teamAlpha = `Team Alpha ${Date.now()}`;
     const token = testTokens.personalToken;
-    const expectedScore = calculateExpectedScore(token);
+    const expectedScore = calculateExpectedScore(token, packScoring);
 
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);

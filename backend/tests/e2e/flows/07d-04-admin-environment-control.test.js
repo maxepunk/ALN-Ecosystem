@@ -19,6 +19,7 @@ const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
 const { connectWithAuth, waitForEvent, disconnectSocket } = require('../../helpers/websocket-core');
+const { sendGMCommand } = require('../helpers/gm-command');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
@@ -73,31 +74,6 @@ const { getCapabilities, refreshCapabilities, requireCapabilities, formatManifes
 let caps = null;
 let testTokens = null;
 
-/**
- * Send a GM command via temporary WebSocket connection.
- * Follows the same pattern as GMScannerPage.startGame().
- *
- * @param {string} orchestratorUrl - Backend URL
- * @param {string} action - Command action (e.g., 'music:play')
- * @param {Object} payload - Command payload
- * @returns {Promise<Object>} Command acknowledgement
- */
-async function sendGMCommand(orchestratorUrl, action, payload = {}) {
-  const deviceId = `CMD_HELPER_${Date.now()}`;
-  const socket = await connectWithAuth(orchestratorUrl, ADMIN_PASSWORD, deviceId, 'gm');
-  try {
-    const ackPromise = waitForEvent(socket, 'gm:command:ack',
-      (ack) => ack?.data?.action === action, 10000);
-    socket.emit('gm:command', {
-      event: 'gm:command',
-      data: { action, payload },
-      timestamp: new Date().toISOString()
-    });
-    return await ackPromise;
-  } finally {
-    disconnectSocket(socket);
-  }
-}
 
 test.describe('GM Scanner - Environment Control', () => {
 

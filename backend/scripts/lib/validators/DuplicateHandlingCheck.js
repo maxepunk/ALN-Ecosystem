@@ -9,7 +9,7 @@
  * ENHANCED (Phase 5 - December 2025):
  * - FALSE POSITIVE detection: Fresh tokens incorrectly flagged as duplicate on FIRST scan
  * - GHOST SCORING detection: Duplicates broadcast to scoreboard BEFORE being marked duplicate
- * - Cross-mode context: Detective mode "exposes" content, blocking blackmarket claims (CORRECT)
+ * - Cross-mode context: consuming claims are FCFS across ALL transacting modes (CORRECT)
  */
 
 class DuplicateHandlingCheck {
@@ -175,7 +175,7 @@ class DuplicateHandlingCheck {
       const sameTeam = dup.teamId === original.teamId;
       const crossMode = dup.mode !== original.mode;
 
-      // Cross-mode blocking (detective → blackmarket) is CORRECT behavior
+      // Cross-mode blocking is CORRECT behavior (consuming claims are FCFS)
       if (crossMode) {
         crossModeBlocks++;
         findings.push({
@@ -187,9 +187,10 @@ class DuplicateHandlingCheck {
             duplicateMode: dup.mode,
             originalTeam: original.teamId,
             duplicateTeam: dup.teamId,
-            explanation: original.mode === 'detective'
-              ? 'Detective mode "exposed" this token publicly - correctly blocked from blackmarket claim'
-              : 'Token already claimed in blackmarket - correctly blocked from detective exposure'
+            explanation:
+              `Token first claimed in mode '${original.mode}' — the later '${dup.mode}' ` +
+              'attempt was correctly blocked (consuming claims are first-come-first-served ' +
+              'across ALL transacting modes)'
           }
         });
       } else {

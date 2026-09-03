@@ -9,7 +9,6 @@
  * Callers merge context-specific fields (e.g., deviceScannedTokens, reconnection).
  */
 
-const config = require('../config');
 const serviceHealthRegistry = require('../services/serviceHealthRegistry');
 const displayControlService = require('../services/displayControlService');
 const { DisplayMode } = displayControlService;
@@ -144,6 +143,11 @@ async function buildSyncFullPayload({
     heldItems,
     sound,
     displayStatus,
+    // A2 staleness visibility: the server's ACTIVE pack identity (null on
+    // pre-pack checkouts). Provided centrally here — never by callers — so
+    // every sync:full emit path carries it (see the completeness contract
+    // test). Singleton import, same pattern as displayControlService above.
+    pack: require('../services/packService').getActivePackInfo(),
   };
 }
 
@@ -155,20 +159,27 @@ async function buildSyncFullPayload({
  * @returns {Object} Game clock state
  */
 function buildGameClockState(gameClockService) {
-  const expectedDuration = config.session.sessionTimeout * 60;
+  // A3 slice 2: the ACTIVE pack's declared duration (seconds); packless
+  // checkouts fall back to SESSION_TIMEOUT inside getClockRules
+  const expectedDuration = require('../services/packService').getClockRules().durationSeconds;
   try {
     if (!gameClockService) {
-      return { status: 'stopped', elapsed: 0, expectedDuration };
+      return { status: 'stopped', elapsed: 0, expectedDuration, phase: null };
     }
     const state = gameClockService.getState();
     return {
       status: state.status,
       elapsed: state.elapsed,
-      expectedDuration
+      expectedDuration,
+      // A3 slice 5 (B11): current phase {id, label} | null — required-nullable
+      // on the wire; reconnecting clients restore it via store.replace, so it
+      // MUST ride the snapshot (the scanner's sync:full path is a wholesale
+      // replace that drops absent keys)
+      phase: state.phase ?? null
     };
   } catch (err) {
     logger.warn('Failed to gather game clock state for sync:full', { error: err.message });
-    return { status: 'stopped', elapsed: 0, expectedDuration };
+    return { status: 'stopped', elapsed: 0, expectedDuration, phase: null };
   }
 }
 

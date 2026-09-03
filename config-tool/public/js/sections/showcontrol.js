@@ -19,8 +19,12 @@ let assetContainer = null;
 
 export function render(container, config, context) {
   ctx = context;
-  cuesData = JSON.parse(JSON.stringify(config.cues));
-  if (!cuesData.cues) cuesData.cues = [];
+  // The pack header form is REQUIRED by the hardened writeCues (slice 4):
+  // a pack with no cues file yet yields {} from the bundle read, so the
+  // header is seeded here — without it the tool could never author a
+  // FIRST cues.json into a pack.
+  cuesData = { kind: 'cues', schemaVersion: 2, ...JSON.parse(JSON.stringify(config.cues || {})) };
+  if (!Array.isArray(cuesData.cues)) cuesData.cues = [];
   selectedIndex = -1;
 
   const panel = el('div', { className: 'split-panel' });

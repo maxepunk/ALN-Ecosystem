@@ -9,12 +9,32 @@ class ReportGenerator {
    * @param {Array} results - Validator results
    * @returns {string} Markdown report
    */
-  static generate(session, results) {
+  static generate(session, results, pack = null) {
     const lines = [];
 
     // Header
     lines.push('# ALN Session Validation Report');
     lines.push('');
+
+    // Pack resolution (D4s2): WHICH rules this validation ran against,
+    // and how confidently — stamped-pack verdict + any resolver notes.
+    if (pack) {
+      lines.push('## Pack Resolution');
+      lines.push('');
+      lines.push('| Property | Value |');
+      lines.push('|----------|-------|');
+      const stampLabel = pack.stamp
+        ? `${pack.stamp.packId} v${pack.stamp.version} (${String(pack.stamp.contentHash).slice(0, 18)}…)`
+        : 'none (pre-A2 session or packless boot)';
+      lines.push(`| Session stamp | ${stampLabel} |`);
+      lines.push(`| Validated against | ${pack.packDir} |`);
+      lines.push(`| Verdict | ${pack.verdict} |`);
+      lines.push('');
+      for (const note of pack.notes) {
+        lines.push(`> ⚠️ ${note}`);
+        lines.push('');
+      }
+    }
 
     // Session Summary
     lines.push('## Session Summary');
@@ -63,7 +83,7 @@ class ReportGenerator {
       lines.push('');
       lines.push('> Compares independently calculated scores (from transactions + scoring config) against session.scores (final persisted state).');
       lines.push('');
-      lines.push('| Team | Calculated | Adj | Total | Session | Base | Bonus | BM | Det | Status |');
+      lines.push('| Team | Calculated | Adj | Total | Session | Base | Bonus | Scored | Unscored | Status |');
       lines.push('|------|------------|-----|-------|---------|------|-------|----|----|--------|');
 
       for (const row of scoreCheck.summary) {
@@ -87,23 +107,28 @@ class ReportGenerator {
           : row.calculatedBonus;
         const statusEmoji = row.match === 'MATCH' ? '✅' : (row.match === 'MISMATCH' ? '❌' : '—');
 
-        lines.push(`| ${row.teamId} | ${calc} | ${adj} | ${total} | ${sessionScore} | ${base} | ${bonus} | ${row.blackmarketCount || 0} | ${row.detectiveCount || 0} | ${statusEmoji} |`);
+        lines.push(`| ${row.teamId} | ${calc} | ${adj} | ${total} | ${sessionScore} | ${base} | ${bonus} | ${row.scoredCount || 0} | ${row.unscoredCount || 0} | ${statusEmoji} |`);
       }
       lines.push('');
     }
 
-    // Detective Mode Summary
-    const detectiveCheck = results.find(r => r.name === 'Detective Mode');
-    if (detectiveCheck?.summary) {
-      const s = detectiveCheck.summary;
-      if (s.detectiveCount > 0) {
-        lines.push('## Detective Mode Summary');
+    // Non-Scoring Modes Summary (was Detective Mode Summary — D4s2)
+    const nonScoringCheck = results.find(r => r.name === 'Non-Scoring Modes');
+    if (nonScoringCheck?.summary) {
+      const s = nonScoringCheck.summary;
+      if (s.nonScoringCount > 0) {
+        lines.push('## Non-Scoring Modes Summary');
         lines.push('');
-        lines.push(`- **Detective scans**: ${s.detectiveCount}`);
-        lines.push(`- **Blackmarket scans**: ${s.blackmarketCount}`);
-        lines.push(`- **Valid detective transactions**: ${s.validDetective}`);
+        lines.push(`- **Non-scoring transactions**: ${s.nonScoringCount}`);
+        lines.push(`- **Scoring transactions**: ${s.scoringCount}`);
+        if (s.modeCounts) {
+          for (const [mode, count] of Object.entries(s.modeCounts)) {
+            lines.push(`  - ${mode}: ${count}`);
+          }
+        }
+        lines.push(`- **Valid non-scoring transactions**: ${s.validNonScoring}`);
         if (s.nonZeroPoints > 0) {
-          lines.push(`- **⚠️ Detective with points**: ${s.nonZeroPoints} (should be 0)`);
+          lines.push(`- **⚠️ Non-scoring with points**: ${s.nonZeroPoints} (should be 0)`);
         }
         if (s.missingSummary > 0) {
           lines.push(`- **Missing summary field**: ${s.missingSummary}`);

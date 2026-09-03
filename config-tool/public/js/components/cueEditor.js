@@ -7,7 +7,7 @@ import { renderConditionBuilder } from './conditionBuilder.js';
 import { renderCommandList } from './commandForm.js';
 import { renderTimelineView } from './timelineView.js';
 
-const TRIGGER_EVENTS = {
+export const TRIGGER_EVENTS = {
   'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'memoryType', 'valueRating', 'groupId', 'teamScore', 'hasGroupBonus'] },
   'group:completed': { label: 'Group Completed', fields: ['teamId', 'groupId', 'multiplier', 'bonus'] },
   'video:loading': { label: 'Video Loading', fields: ['tokenId'] },
@@ -23,6 +23,7 @@ const TRIGGER_EVENTS = {
   'music:playback:changed': { label: 'Music Playback Changed', fields: ['state'] },
   'music:playlist:changed': { label: 'Music Playlist Changed', fields: ['playlistId', 'playlistName', 'shuffle', 'loop'] },
   'gameclock:started': { label: 'Game Clock Started', fields: ['gameStartTime'] },
+  'phase:changed': { label: 'Game Phase Changed', fields: ['phaseId', 'previousPhaseId', 'label', 'elapsed', 'via'] },
 };
 
 const SINK_OPTIONS = ['(default)', 'hdmi', 'bluetooth'];
