@@ -263,6 +263,11 @@ describe('verbNoun (slice 7 — the report Type-cell noun)', () => {
     expect(normalizedVerbNoun(7)).toBeNull();
   });
 
+  it('counts CODE POINTS, not UTF-16 units (JSON Schema maxLength semantics — the schema cap and this twin must agree)', () => {
+    expect(normalizedVerbNoun('💰'.repeat(13))).toBe('💰'.repeat(13)); // 26 units, 13 code points — legal
+    expect(normalizedVerbNoun('💰'.repeat(25))).toBeNull(); // 25 code points — over the cap
+  });
+
   it('resolveMode carries a declared verbNoun and normalizes absence to null', () => {
     expect(resolveMode(gameWithVerbNoun, 'fence').verbNoun).toBe('Fence');
     expect(resolveMode(gameWithVerbNoun, 'plain').verbNoun).toBeNull();

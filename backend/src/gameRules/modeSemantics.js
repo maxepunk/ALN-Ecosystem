@@ -95,7 +95,9 @@ function normalizedClaimedLabel(value) {
 function normalizedVerbNoun(value) {
   if (typeof value !== 'string') return null;
   const cleaned = value.replace(CONTROL_AND_BIDI, '');
-  if (cleaned.length === 0 || cleaned.length > 24 || /[|{}]/.test(cleaned)) return null;
+  // Code points, not UTF-16 units — the schema's maxLength counts code
+  // points, and this twin must agree (same idiom as the icon cap below).
+  if (cleaned.length === 0 || [...cleaned].length > 24 || /[|{}]/.test(cleaned)) return null;
   return cleaned;
 }
 

@@ -260,13 +260,18 @@ construction.
 5. **Currency affixes re-point** (§4a lens-1 OBJ-2 — completes the
    slice-3b deferral this generator's row 1.25 records):
    `_formatCurrency`/`_formatSignedCurrency` re-point at
-   `formatCurrency`/`formatNumber` from `src/utils/formatCurrency.js`,
-   and the ★ cell's baseValue renders through `formatNumber` (the
-   helper 3b shipped naming this exact breakdown shape). Byte-neutral
-   for ALN by 3b's own byte-identity statement (`formatCurrency.js:9-11`,
-   including the `$-25,000` negative quirk in the golden). The toy
-   divergence fixture asserts `cr` amounts — a credits game stops
-   rendering dollars in its own report.
+   `formatCurrency` from `src/utils/formatCurrency.js`, and the ★
+   cell's baseValue ALSO renders through `formatCurrency` — WITH the
+   money affix, like every other money figure. [CORRECTED at the S7.2
+   two-axis review: this sentence originally said the baseValue renders
+   through `formatNumber` (affix-less). The BUILD was right and the
+   design text wrong — the ALN golden pins `$150,000` inside the ★
+   cell, so an affix-less base would be a contract break. The toy
+   fixture now pins the affixed form too: `25,000 cr × 0x`.]
+   Byte-neutral for ALN by 3b's own byte-identity statement
+   (`formatCurrency.js:9-11`, including the `$-25,000` negative quirk
+   in the golden). The toy divergence fixture asserts `cr` amounts — a
+   credits game stops rendering dollars in its own report.
 6. **The class-count parenthetical** generalizes by SEMANTIC CLASS
    with a residue term (§4a lens-2 OBJ-3 + OBJ-4):
    `report.classLabels.evidence` (baked `'detective'`) and
@@ -492,6 +497,36 @@ four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
   structure wording, post-Phase-3, retires at §8.10). Verified at the
   commits: scanner 1608 + ratchet (65 files, 100-floors held) +
   build; backend 2604 + ratchet + lint; Python 84.
+- 2026-09-03: **S7.2 two-axis review FOLDED** (parallel Sonnet
+  agents over the four-repo S7.2 diff). Standards axis, 3 findings
+  all folded: (1) DI violation — gameAdmin's provenance read was an
+  ad-hoc `await import(packLoader)` singleton reach around App
+  (scanner CLAUDE.md "sole injection point"); tokenManager now
+  RETAINS `packInfo`/`gameConfig` at loadDatabase and the domain
+  reads those; (2) divergent change — `GENERIC_VERB_NOUN` moved from
+  the generator into scanner modeSemantics.js as an exported const
+  beside its normalizer; (3) both mirrors' verbNoun cap now counts
+  CODE POINTS (`[...cleaned].length`, the icon idiom and the
+  schema's maxLength semantics) — astral acceptance/refusal tests
+  both sides. Accepted-as-is: the generator's local CONTROL_AND_BIDI
+  copy (different sink, justified in-code); mirror parity clean; no
+  scope creep. Spec axis, 3 findings: (4) ★-cell — the BUILD was
+  right and the DESIGN TEXT wrong (D-7.2 #5 said `formatNumber`,
+  affix-less; the ALN golden pins `$150,000` in-cell): sentence
+  corrected in place, toy fixture now pins `25,000 cr × 0x`;
+  (5) provenance warn gained its OR-branch — a pack that DECLARES a
+  strings sidecar none of which is applied exports in the baked
+  voice; `packStringsApplied()` introspection added to strings.js,
+  warn + red-first pins (provenance suite 2 → 4 tests); (6) the
+  class-count residue clamp (`Math.max(0, accepted − evidence −
+  scoring)`) replaced by a counted per-claim census — a schema-legal
+  BOTH-class mode (scoring policy + evidence surface) would have
+  cancelled a genuine neither-class claim out of the count line;
+  residue now exact, overlap loud (Debug warn), both-class fixture
+  red-first. ALN + toy + sparse/empty goldens byte-unchanged
+  throughout. Verified at the fold: scanner 1601 (npm test; +12
+  build-artifact tests separately gated) + ratchet 65 files + build;
+  backend full suite + ratchet 82 files + lint.
 - 2026-09-03: **S7.1 DONE.** `backend/contracts/session-bundle.schema.json`
   + `tests/contract/session-bundle.schema.test.js`, red-first (test
   written against the missing schema, then the schema to green).
