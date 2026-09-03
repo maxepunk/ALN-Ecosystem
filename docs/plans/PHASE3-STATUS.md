@@ -7,8 +7,8 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-09-03 · **Working branch:** `claude/phase3-a3-slice7`
-(parent; chained from the verified slice-6 tip `dbab5ad`, per the slice train).
+**Last updated:** 2026-09-03 · **Working branch:** `claude/phase3-theme-unit`
+(parent; chained from the verified slice-7 tip `4923575`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
 keeps a draft PR to main for CI, and the stacked PRs land in R14 order
@@ -531,6 +531,17 @@ AND both CI legs green. Merge-train vehicles: TokenData #5, ALNScanner
 #14, parent #30 (table below current). **Queue: theme unit (§13.5) is
 NEXT.**
 
+**THEME UNIT — 🔨 OPENED 2026-09-03** (branch `claude/phase3-theme-unit`
+chained from the slice-7 tip `4923575`; **draft PR #31 opened AT open**
+per the corrected discipline). Governed as a full A3 slice (program
+§13.5): design doc, honest estimate, red-team, dual-pack gate. Scope
+inputs: Q-3c-1(a) minimal theme.json (semantic mode colors, rating
+glyph/display, scoreboard accent), Q-3b-2 (glyphs are visual identity;
+star map confirmed), the ALN star-drop (§13.5 boundary: the THREE
+GM-scanner display sites only — config-tool previews + the report ★
+cell excluded), ledger L11 (scoreboard Google-Fonts CDN links retire in
+the styling-bearing slice). Census next.
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
@@ -706,7 +717,7 @@ adds its PRs to this block.
 | 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `46db231` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin (scanner CI runs 96–97 green) |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
-| 5–16 | ALN-Ecosystem (parent) | **#19 → #30 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7 (opened AT slice open per the corrected discipline). Train grows with remaining slices (theme, B0…) |
+| 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). Train grows with remaining slices (B0…) |
 
 Timing: owner-driven, post-run (§ Final cutover below); nothing merges
 before the owner walks this table.
