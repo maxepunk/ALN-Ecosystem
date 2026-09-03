@@ -566,3 +566,28 @@ than slice 7's.
   cut there; repaired by cutting the branch AT the commit and
   restoring slice-7 to its recorded tip 46db231 before any push, so
   origin never saw the slip.]
+- 2026-09-03: **ST.2 REVIEW FOLDED** (two-axis, parallel agents;
+  scanner `9a0c5b6`). STANDARDS — hard: site 1's show/hide used
+  `el.hidden`, breaking the codebase-wide `style.display` idiom
+  (used in the same function at summaryContainer and by every
+  renderer; zero `.hidden` in src/ before the diff) — switched, five
+  themed tests updated to the idiom form. Adjudication note: the
+  red-team's OBJ disposition had named `el.hidden` as the mechanism;
+  that was a mechanism-level detail the repo idiom overrides — the
+  RULING (whole-row hide) is unchanged. Judgement calls: padded-empty
+  `?? null` accepted (it IS D-T.5's ruled semantics); headers-required
+  divergence documented; applyThemeColorsToDom now mirrors the
+  `style?.setProperty` feature-detect precedent; Long-Function /
+  CONTROL_AND_BIDI-triplication smells noted, excused by policy.
+  SPEC — (1) the glyph escape pin was VACUOUS (empirically green
+  without escapeHtml — the DECLINE twin pre-filters markup); replaced
+  with a sink-alone pin that mocks theme.js to drive a markup-bearing
+  glyph at both innerHTML sinks (lesson: a defense-in-depth pin must
+  BYPASS the outer layer or it proves nothing). (2) REAL BUG:
+  showDuplicateError wrote #resultValue while the row could still
+  carry a prior themed-'none' hide — under ALN's ruled config a
+  duplicate rescan showed nothing; fixed red-first (row visibility
+  reset before the write). (3) the 'theme: declined' signal was
+  pinned only at the renderPackInfo format layer; added the real
+  loadTokenDatabase wiring test. Verified post-fold: scanner 1657
+  (5 new) + ratchet 65 files + lint 0 errors + build.
