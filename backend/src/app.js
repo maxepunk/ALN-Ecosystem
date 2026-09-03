@@ -261,6 +261,7 @@ async function initializeServices() {
     });
 
     // Load ducking rules from routing config
+    const fs = require('fs').promises;
     const routingPath = path.join(__dirname, '../config/environment/routing.json');
     try {
       const routingData = await fs.readFile(routingPath, 'utf8');
