@@ -467,6 +467,27 @@ its slice-6 branch (subsumes #3), train table re-pointed. **Slice 7
 OPENED by owner confirmation 2026-09-03** under the restored stage
 frame.
 
+**Regression found and fixed via PR #29's first CI run (2026-09-03).**
+PR #29/#30's first runs failed on backend LINT — and PR #28's tip run
+174 had already failed the same way on 2026-08-29, unnoticed. Root
+cause: the slice-4 S4 cutover (`726b552`) retired the venue cues.json
+block from `app.js initializeServices` and removed the function-scoped
+`fs` require with it, while the ducking-rules block below still called
+`fs.readFile`. The ReferenceError was swallowed by that block's own
+catch, so every boot of the post-S4 tree logged "Failed to load
+ducking rules" and ran with the DUCKING ENGINE INACTIVE — invisible to
+the unit suite, caught only by eslint `no-undef`. The slice-4/6 close
+gates omitted `npm run lint` (fallback-window drift; the close records
+made no lint claim, but the step was skipped). Fixed red-first:
+contract pin `backend/tests/contract/app/duckingConfig.test.js`
+(initializeServices must hand routing.json's ducking array to
+audioRoutingService) + the one-line require restore, committed at the
+point of introduction (`d68948f` on slice-4, backend 2598/2598 +
+ratchet + lint) and merged up the chain (slice-6 `11893cd` verified
+2598 green, then slice-7). Frozen production (`production-2026-07`)
+predates S4 and is unaffected. Standing correction: every close gate
+runs `npm run lint` alongside the suite from now on.
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
