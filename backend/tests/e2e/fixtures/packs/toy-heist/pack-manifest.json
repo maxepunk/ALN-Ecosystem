@@ -1,0 +1,60 @@
+{
+  "kind": "pack-manifest",
+  "schemaVersion": 2,
+  "packId": "midnight-heist",
+  "version": "0.1.0",
+  "contentHash": "sha256:bbbdf1d8f51783dab8273b08bd7584924b11be7acadce529a0c40a5d03553bd0",
+  "engine": {
+    "minVersion": "3.0.0"
+  },
+  "files": [
+    {
+      "path": "cues.json",
+      "role": "cues",
+      "sha1": "3d8200aa231b0cca9a35e5d1b91764d9624575aa",
+      "size": 616
+    },
+    {
+      "path": "game.json",
+      "role": "game",
+      "sha1": "f9210b5bb7319eea21b274e6fec8996906d53ae2",
+      "size": 3590
+    },
+    {
+      "path": "strings.json",
+      "role": "strings",
+      "sha1": "fdce73c08390c260b3f6fec31d85adff6567622b",
+      "size": 738
+    },
+    {
+      "path": "tokens.json",
+      "role": "tokens",
+      "sha1": "0e590053a8b68bbecf1631f2b55ed6ad01c485e5",
+      "size": 4194
+    }
+  ],
+  "hardware": {
+    "deviceClasses": [
+      {
+        "class": "staffed",
+        "min": 1,
+        "rationale": "all transacting is staffed in this toy"
+      }
+    ],
+    "tokens": {
+      "count": 14,
+      "tech": "nfc-ntag"
+    },
+    "stack": {
+      "sound": {
+        "usedBy": "cue sound effects",
+        "onAbsent": "degrade"
+      },
+      "lighting": {
+        "usedBy": "lighting cues (role-addressed)",
+        "onAbsent": "degrade"
+      }
+    },
+    "endpoints": {}
+  }
+}

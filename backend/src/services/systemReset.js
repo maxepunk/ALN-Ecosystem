@@ -222,13 +222,13 @@ async function performSystemReset(io, services) {
     }
   }
 
-  // Cue engine: reload definitions from config (also reports healthy when loaded)
+  // Cue engine: reload the pack's cues (A3 slice 4 S4 — the FROZEN
+  // activation snapshot; the pack does not re-activate on reset, so a
+  // reset never adopts mid-run pack edits). Also reports healthy.
   if (cueEngineService) {
     try {
-      const cuesPath = path.join(__dirname, '../../config/environment/cues.json');
-      const cuesData = JSON.parse(await fs.readFile(cuesPath, 'utf8'));
-      const cuesArray = Array.isArray(cuesData) ? cuesData : cuesData.cues || [];
-      cueEngineService.loadCues(cuesArray);
+      const packCues = require('./packService').getCues() || [];
+      cueEngineService.loadCues(packCues);
     } catch (err) {
       logger.warn('Failed to reload cues after system reset:', err.message);
     }

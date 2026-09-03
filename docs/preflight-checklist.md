@@ -6,6 +6,16 @@
 **Server Directory:** `backend/` (relative to above)
 **Platform:** Raspberry Pi 5, Linux ARM64
 
+> **⚠ REFRESH OWED (2026-07-18 — see PHASE3-STATUS "Doc-refresh
+> obligations").** Under the frozen-production model this checklist is the
+> instrument of the FINAL coordinated cutover. §4.4/§13.3 were rewritten
+> for the pack-rules architecture in A3 slice 2 (adversarial R2 satisfied).
+> Known-stale until the full refresh: the Spotify/spotifyd-era sections
+> predate the 2026-05-20 MPD cutover, and no pack-identity/pack-endpoint
+> runtime checks exist yet (the pack channel landed in Phase 3 A2). Full
+> refresh rides Track C2 preflight work — decide there whether this
+> hand-run doc is refreshed or absorbed into the C2 preflight mechanism.
+
 ## How to Use This Checklist
 
 1. Run each check in order within its section (later checks depend on earlier ones)
@@ -387,27 +397,45 @@ node -e "
 cd aln-memory-scanner/data && git fetch origin && git reset --hard origin/main && cd ../..
 ```
 
-### 4.4 Scoring Config [BOTH] — REQUIRED
+### 4.4 Game Pack Rules (game.json + manifest) [BOTH] — REQUIRED
 
-Shared scoring values loaded by both backend and GM Scanner at runtime. The backend falls back to hardcoded defaults if missing, but this means scoring may differ from the GM Scanner.
+The active pack's `game.json` `scoring` block is the SOLE shared scoring
+source (A3 slice 2 — the legacy `scoring-config.json` is retired). The
+backend reads it via `packService.getScoringRules()` at boot; the GM
+Scanner runtime-loads the same file through the pack channel. A missing or
+empty scoring block does NOT crash the boot — both sides fall back to
+their baked legacy ALN tables with LOUD warnings — but that means a pack
+publish will not reach scoring.
 
 **Check:**
 ```bash
-test -f ALN-TokenData/scoring-config.json && echo "OK" || echo "MISSING"
+test -f ALN-TokenData/game.json && test -f ALN-TokenData/pack-manifest.json && echo "OK" || echo "MISSING"
 ```
 
-**Verify structure:**
+**Verify scoring block:**
 ```bash
 node -e "
-  const s = require('./ALN-TokenData/scoring-config.json');
-  const ok = s.baseValues && s.typeMultipliers;
-  console.log(ok ? 'OK: scoring-config has baseValues + typeMultipliers' : 'INVALID: missing expected keys');
+  const g = require('./ALN-TokenData/game.json');
+  const ok = g.scoring && Object.keys(g.scoring.baseValues || {}).length > 0
+          && Object.keys(g.scoring.typeMultipliers || {}).length > 0;
+  console.log(ok ? 'OK: game.json has usable scoring tables' : 'INVALID: scoring block missing/empty — baked legacy shim would run');
 "
 ```
 
-**Expected:** `OK: scoring-config has baseValues + typeMultipliers`
+**Verify manifest freshness (a drifted pack file without a regenerated
+manifest fails the scanner's per-file sha1 verify):**
+```bash
+node backend/scripts/build-pack-manifest.js ALN-TokenData && git -C ALN-TokenData diff --quiet pack-manifest.json && echo "OK: manifest fresh" || echo "STALE: manifest was regenerated — commit it in ALN-TokenData"
+```
 
-**If missing:** Same submodule update as 4.2. If the file genuinely doesn't exist in the repo, the backend will use hardcoded defaults (non-fatal but a parity risk with the GM Scanner).
+**Expected:** `OK: game.json has usable scoring tables` and `OK: manifest fresh`
+
+**If missing:** Same submodule update as 4.2. If `game.json` genuinely
+lacks a scoring block, the backend logs `LEGACY SCORING TABLES ACTIVE`
+and runs the baked ALN values — fine for ALN itself, wrong for any other
+pack.
+
+**Rollback (bad pack publish):** see DEPLOYMENT_GUIDE "Game Pack Rollback".
 
 ---
 
@@ -1169,31 +1197,29 @@ attention.wav
 tension.wav
 ```
 
-**Verify cue definitions don't reference missing sound files:**
+**Verify cue definitions don't reference missing sound files** (cues are
+PACK content since A3 slice 4 — the ACTIVE pack's `cues.json`; if the
+orchestrator runs with `PACK_PATH`, point the path there instead):
 ```bash
 node -e "
   const fs = require('fs');
   try {
-    const cues = JSON.parse(fs.readFileSync('backend/config/environment/cues.json', 'utf8'));
-    const cueArray = Array.isArray(cues) ? cues : (cues.cues || []);
+    const doc = JSON.parse(fs.readFileSync('ALN-TokenData/cues.json', 'utf8'));
     const audioDir = 'backend/public/audio';
     let missing = 0;
-    for (const cue of cueArray) {
-      if (cue.actions) {
-        for (const action of cue.actions) {
-          if (action.action === 'sound:play' && action.payload && action.payload.file) {
-            const filePath = audioDir + '/' + action.payload.file;
-            if (!fs.existsSync(filePath)) {
-              console.log('MISSING: cue \"' + cue.name + '\" references ' + action.payload.file);
-              missing++;
-            }
+    for (const cue of (doc.cues || [])) {
+      for (const entry of (cue.commands || cue.timeline || [])) {
+        if (entry.action === 'sound:play' && entry.payload && entry.payload.file) {
+          if (!fs.existsSync(audioDir + '/' + entry.payload.file)) {
+            console.log('MISSING: cue \"' + cue.id + '\" references ' + entry.payload.file);
+            missing++;
           }
         }
       }
     }
     if (missing === 0) console.log('OK: All cue sound references resolve');
   } catch (e) {
-    console.log('SKIP: Could not load cues.json (' + e.message + ')');
+    console.log('SKIP: Could not load the pack cues.json (' + e.message + ')');
   }
 "
 ```
@@ -1401,33 +1427,33 @@ sudo systemctl start docker
 
 ## 13. Config Files
 
-The backend loads two JSON config files at startup for the cue engine and audio ducking. Both are optional — missing files log a warning and continue with empty defaults — but a malformed file will silently break the feature.
+The backend loads the pack's cue definitions (via the activation gate — a malformed pack cues file REFUSES boot, loudly) and the venue's `routing.json` for audio ducking at startup. A pack with no cues and a missing routing file both continue with empty defaults.
 
 ### 13.1 Cue Definitions [BOTH] — REQUIRED
 
-The cue engine fires timed actions during gameplay (sounds, lighting changes, video triggers). Cues are defined in a JSON file loaded at startup.
+The cue engine fires timed actions during gameplay (sounds, lighting changes, video triggers). Cues are PACK content (A3 slice 4): the engine loads the ACTIVE pack's `cues.json`, frozen at activation and validated by the activation gate. A pack that declares no cues runs with an empty cue set on purpose (benign emptiness).
 
-**Check:**
+**Check** (default pack; with `PACK_PATH` set, test that directory instead):
 ```bash
-test -f backend/config/environment/cues.json && echo "OK: cues.json exists" || echo "MISSING: cues.json (cue engine will start empty)"
+test -f ALN-TokenData/cues.json && echo "OK: pack cues.json exists" || echo "NOTE: pack declares no cues (cue engine starts empty — only wrong if this game has a show)"
 ```
 
-**Verify valid JSON and inspect contents:**
+**Verify valid JSON and inspect contents** (header form `{kind, schemaVersion, cues: [...]}`; lighting entries carry a `role`, bound by the installation profile):
 ```bash
 node -e "
   const fs = require('fs');
-  const data = JSON.parse(fs.readFileSync('backend/config/environment/cues.json', 'utf8'));
-  const cues = Array.isArray(data) ? data : (data.cues || []);
-  console.log('OK: cues.json valid, ' + cues.length + ' cues defined');
-  cues.forEach(c => console.log('  - ' + (c.name || c.id || 'unnamed') + ' (' + (c.actions ? c.actions.length : 0) + ' actions)'));
+  const doc = JSON.parse(fs.readFileSync('ALN-TokenData/cues.json', 'utf8'));
+  const cues = doc.cues || [];
+  console.log('OK: pack cues.json valid, ' + cues.length + ' cues defined');
+  cues.forEach(c => console.log('  - ' + c.id + ' (' + ((c.commands || c.timeline || []).length) + ' entries)'));
 "
 ```
 
-**Expected:** `OK: cues.json valid, N cues defined` followed by a list of cue names.
+**Expected:** `OK: pack cues.json valid, N cues defined` followed by a list of cue ids.
 
-**If parse error:** Fix the JSON syntax. Common issues: trailing commas, unescaped quotes in strings.
+**If parse error:** Fix the JSON syntax — and know that the activation gate REFUSES boot on a broken declared cues file, so this check failing means the orchestrator will not start on this pack.
 
-**If missing:** The cue engine starts with no cues loaded. This is non-fatal but means no timed game events will fire. The file supports both plain array `[{...}]` and wrapped `{"cues": [{...}]}` formats.
+**If missing:** The cue engine starts with no cues loaded (benign emptiness — only wrong if this game has a show). The pack format is the header form `{"kind": "cues", "schemaVersion": 2, "cues": [...]}` only; the old bare-array and wrapper-tolerant venue formats retired with slice 4.
 
 ### 13.2 Audio Routing / Ducking Rules [BOTH] — REQUIRED
 
@@ -1458,38 +1484,44 @@ node -e "
 
 **If missing or no ducking array:** Non-fatal. Spotify will play at full volume even during video/sound playback. This may be intentional for simple setups.
 
-### 13.3 Scoring Config Matches Across Components [BOTH] — REQUIRED
+### 13.3 Backend Reads the Pack's Scoring (not the shim) [BOTH] — REQUIRED
 
-Already verified in Section 4.4 that `scoring-config.json` exists and has the right keys. This check verifies the backend's loaded scoring values actually match the shared config (in case env var overrides or code defaults have diverged).
+Already verified in Section 4.4 that `game.json` has usable scoring
+tables. This check verifies the backend's rules read
+(`packService.getScoringRules()`) actually resolves to the pack's values
+— catching a stale `PACK_PATH` override in the environment or a
+silently-active baked legacy shim.
 
 **Check:**
 ```bash
 cd backend && node -e "
-  const shared = require('../ALN-TokenData/scoring-config.json');
-  const config = require('./src/config/index.js');
-  const bv = config.game.valueRatingMap;
-  const tm = config.game.typeMultipliers;
+  const pack = require('../ALN-TokenData/game.json').scoring;
+  const rules = require('./src/services/packService').getScoringRules();
   let issues = 0;
-  for (const [rating, value] of Object.entries(shared.baseValues)) {
-    if (bv[rating] !== value) {
-      console.log('MISMATCH: baseValues[' + rating + '] shared=' + value + ' backend=' + bv[rating]);
+  for (const [rating, value] of Object.entries(pack.baseValues)) {
+    if (rules.baseValues[rating] !== value) {
+      console.log('MISMATCH: baseValues[' + rating + '] pack=' + value + ' backend=' + rules.baseValues[rating]);
       issues++;
     }
   }
-  for (const [type, mult] of Object.entries(shared.typeMultipliers)) {
+  for (const [type, mult] of Object.entries(pack.typeMultipliers)) {
     const key = type.toLowerCase();
-    if (tm[key] !== mult) {
-      console.log('MISMATCH: typeMultipliers[' + type + '] shared=' + mult + ' backend=' + tm[key]);
+    if (rules.typeMultipliers[key] !== mult) {
+      console.log('MISMATCH: typeMultipliers[' + type + '] pack=' + mult + ' backend=' + rules.typeMultipliers[key]);
       issues++;
     }
   }
-  console.log(issues === 0 ? 'OK: Scoring config matches shared config' : issues + ' mismatches found');
+  console.log(issues === 0 ? 'OK: backend scoring rules match the active pack' : issues + ' mismatches found');
 " && cd ..
 ```
 
-**Expected:** `OK: Scoring config matches shared config`
+**Expected:** `OK: backend scoring rules match the active pack`
 
-**If mismatches:** Check `backend/.env` for scoring-related env var overrides. The backend's `config/index.js` loads from the shared config but env vars can override individual values. Remove any stale overrides unless they're intentional.
+**If mismatches:** Check the environment for a stale `PACK_PATH` override
+(`echo $PACK_PATH` — should be empty in production; it points the whole
+engine at an alternate pack directory). If the check output was preceded
+by a `LEGACY SCORING TABLES ACTIVE` warning, the game.json scoring block
+is unusable — fix the pack per 4.4.
 
 ---
 
@@ -1606,7 +1638,8 @@ echo "  8888 (UDP):    $(ss -ulnp | grep -q ':8888 ' && echo 'IN USE' || echo 'a
 echo ""
 echo "Data:"
 echo "  tokens.json:    $(test -f ALN-TokenData/tokens.json && echo 'OK' || echo 'MISSING')"
-echo "  scoring-config: $(test -f ALN-TokenData/scoring-config.json && echo 'OK' || echo 'MISSING')"
+echo "  game.json:      $(test -f ALN-TokenData/game.json && echo 'OK' || echo 'MISSING')"
+echo "  pack-manifest:  $(test -f ALN-TokenData/pack-manifest.json && echo 'OK' || echo 'MISSING')"
 echo "  SSL certs:      $(test -f backend/ssl/cert.pem && test -f backend/ssl/key.pem && echo 'OK' || echo 'MISSING')"
 echo "  .env:           $(test -f backend/.env && echo 'OK' || echo 'MISSING')"
 echo ""
