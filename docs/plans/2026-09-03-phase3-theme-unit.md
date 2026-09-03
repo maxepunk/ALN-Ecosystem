@@ -544,3 +544,25 @@ than slice 7's.
   freeze proof) and the precision note added to theme.schema.json and
   D-T.1 (the verbNoun-precedent wording). No scope creep found; the
   orphan warn, refusal twins, and freeze semantics verified clean.
+- 2026-09-03: **ST.2 DONE** (red-first at all five seams; 48 new
+  tests). Scanner `ae927ab` (branch cut from the slice-7 tip
+  `46db231`): core/theme.js (DECLINE mirror, headers required,
+  per-leaf validation, packThemeApplied, the D-T.5 glyph-form
+  mapping, applyThemeColorsToDom with sink-side hex re-check +
+  stale-injection clearing); packLoader theme role + _themePath +
+  staged twin + the T-3 fast-path/cache-read requireDeclaredTheme +
+  bundled best-effort + _activate theme field; the three rating
+  sites through the D-T.3 behavior table (site 1 whole-row hide with
+  show/hide-on-every-render + consecutive-scan pin; site 2 field
+  omission with N/A kept; site 3 element omission + the '—' unrated
+  mark under numeric) with glyph output ESCAPED at both innerHTML
+  sinks; the four mode-keyed admin.css rules re-keyed to the mode
+  tokens + the tokens-not-literals CSS tripwire; tokenManager
+  applies the sidecar, loadTokenDatabase injects colors, the pack
+  line carries 'theme: declined'. Packless byte-identity pinned at
+  all three sites. Verified: scanner 1652 + ratchet (65 files) +
+  lint + build. [Process note: the ST.2 commit initially landed on
+  the scanner's slice-7 branch — the theme-unit branch had not been
+  cut there; repaired by cutting the branch AT the commit and
+  restoring slice-7 to its recorded tip 46db231 before any push, so
+  origin never saw the slip.]
