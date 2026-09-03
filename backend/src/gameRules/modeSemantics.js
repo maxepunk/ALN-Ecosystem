@@ -37,6 +37,7 @@ const LEGACY_ALN_MODES = Object.freeze([
   Object.freeze({
     id: 'blackmarket',
     label: 'Black Market',
+    verbNoun: 'Sale',
     verb: 'Sell',
     scoringPolicy: 'standard',
     entityRole: 'ledger',
@@ -78,6 +79,23 @@ function normalizedClaimedLabel(value) {
   const cleaned = value.replace(CONTROL_AND_BIDI, '');
   const parts = cleaned.split('{entity}');
   if (parts.length !== 2 || parts.some((p) => /[{}]/.test(p))) return null;
+  return cleaned;
+}
+
+/**
+ * Normalize a declared verbNoun value (slice 7): the NOUN form of the
+ * mode's action ('Sale', 'Fence'), rendered as the session report's
+ * Scoring Timeline Type cell. Refuses table-breakers — a pipe or brace
+ * must never split a markdown table row (the generator sanitizes too;
+ * this is the value-level twin of the schema pattern). Returns the
+ * cleaned noun, or null when not usable. Silent (see above).
+ * @param {*} value
+ * @returns {string|null}
+ */
+function normalizedVerbNoun(value) {
+  if (typeof value !== 'string') return null;
+  const cleaned = value.replace(CONTROL_AND_BIDI, '');
+  if (cleaned.length === 0 || cleaned.length > 24 || /[|{}]/.test(cleaned)) return null;
   return cleaned;
 }
 
@@ -170,6 +188,7 @@ function resolveMode(gameConfig, modeId) {
     // normalize identically.
     claimedLabel: mode.claimedLabel === undefined ? null : normalizedClaimedLabel(mode.claimedLabel),
     icon: mode.icon === undefined ? null : normalizedIcon(mode.icon),
+    verbNoun: mode.verbNoun === undefined ? null : normalizedVerbNoun(mode.verbNoun),
     displayBehavior: {
       surface: db.surface || 'none',
       fields: Array.isArray(db.fields) ? [...db.fields] : [],
@@ -223,6 +242,7 @@ module.exports = {
   setLegacyWarnHook,
   normalizedClaimedLabel,
   normalizedIcon,
+  normalizedVerbNoun,
   normalizedEntityLabel,
   LEGACY_ALN_MODES,
   _resetForTesting,

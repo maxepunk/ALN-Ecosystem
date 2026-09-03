@@ -410,3 +410,51 @@ describe('game pack schema contract (A1)', () => {
     });
   });
 });
+
+describe('slice-7 S7.2: modes verbNoun + the report-template tombstone', () => {
+  const cloneJson = (o) => JSON.parse(JSON.stringify(o));
+  let validateGame7;
+  let gameSchema7;
+  let alnGame7;
+
+  beforeAll(() => {
+    const ajv7 = new Ajv2020({ allErrors: true, strict: true });
+    addFormats(ajv7);
+    gameSchema7 = readJson(TOKEN_DATA_DIR, 'game.schema.json');
+    validateGame7 = ajv7.compile(gameSchema7);
+    alnGame7 = readJson(TOKEN_DATA_DIR, 'game.json');
+  });
+
+  it('a mode may declare verbNoun — the report Type-cell noun (program §13.4)', () => {
+    const game = cloneJson(alnGame7);
+    game.modes[0].verbNoun = 'Sale';
+    const ok = validateGame7(game);
+    expect(validateGame7.errors).toBeNull();
+    expect(ok).toBe(true);
+  });
+
+  it.each([
+    ['a table-breaking pipe', 'Sa|le'],
+    ['a newline', 'Sa\nle'],
+    ['an empty string', ''],
+  ])('refuses a verbNoun carrying %s', (_label, bad) => {
+    const game = cloneJson(alnGame7);
+    game.modes[0].verbNoun = bad;
+    expect(validateGame7(game)).toBe(false);
+  });
+
+  it('TOMBSTONE: the report.template mechanism is gone from the schema (no template language, §13.4)', () => {
+    expect(gameSchema7.properties).not.toHaveProperty('report');
+  });
+});
+
+describe('slice-7 S7.2: the template role is retired (no template language, §13.4)', () => {
+  it("a templates/ path is inventoried as plain 'other' — the engine has no template mechanism", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-tmpl-'));
+    fs.mkdirSync(path.join(tmp, 'templates'));
+    fs.writeFileSync(path.join(tmp, 'templates', 'session-report.md.hbs'), 'dead mechanism');
+    fs.writeFileSync(path.join(tmp, 'tokens.json'), '{}');
+    const entry = buildFiles(tmp).find((f) => f.path === 'templates/session-report.md.hbs');
+    expect(entry.role).toBe('other');
+  });
+});

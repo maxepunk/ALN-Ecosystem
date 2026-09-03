@@ -42,7 +42,6 @@ function roleFor(relPath) {
   if (relPath === 'strings.json') return 'strings';
   if (relPath === 'theme.json') return 'theme';
   if (relPath === 'cues.json') return 'cues';
-  if (relPath.startsWith('templates/')) return 'template';
   if (/^assets\/images\//.test(relPath)) return 'asset-image';
   if (/^assets\/audio\//.test(relPath)) return 'asset-audio';
   if (/\.mp4$/.test(relPath)) return 'asset-video';

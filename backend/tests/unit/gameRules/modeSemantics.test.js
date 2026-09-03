@@ -72,7 +72,7 @@ describe('resolveMode — pack-declared flags', () => {
   it('resolves a standard/ledger/counting mode (ALN blackmarket)', () => {
     const record = resolveMode(ALN_CONFIG, 'blackmarket');
     expect(record).toEqual({
-      id: 'blackmarket', label: 'Black Market', verb: 'Sell',
+      id: 'blackmarket', label: 'Black Market', verb: 'Sell', verbNoun: null,
       scoringPolicy: 'standard', entityRole: 'ledger', defaultEntity: null,
       countsTowardGroups: true, claims: 'consuming',
       claimedLabel: 'SOLD to {entity}', icon: '💰',
@@ -240,5 +240,36 @@ describe('legacy ALN shim (debt ledger L6)', () => {
     const gamePath = path.join(__dirname, '../../../../ALN-TokenData/game.json');
     const realModes = JSON.parse(fs.readFileSync(gamePath, 'utf8')).modes;
     expect(JSON.parse(JSON.stringify(LEGACY_ALN_MODES))).toEqual(realModes);
+  });
+});
+
+describe('verbNoun (slice 7 — the report Type-cell noun)', () => {
+  const { normalizedVerbNoun } = modeSemantics;
+  const gameWithVerbNoun = {
+    modes: [
+      { id: 'fence', label: 'Fence', scoringPolicy: 'standard', entityRole: 'ledger', countsTowardGroups: true, verbNoun: 'Fence' },
+      { id: 'plain', label: 'Plain', scoringPolicy: 'none', entityRole: 'attribution', countsTowardGroups: false },
+    ],
+  };
+
+  it('normalizedVerbNoun accepts a short noun, strips control/bidi, refuses table-breakers (value-level, silent)', () => {
+    expect(normalizedVerbNoun('Sale')).toBe('Sale');
+    expect(normalizedVerbNoun('Hot Tip')).toBe('Hot Tip');
+    expect(normalizedVerbNoun('Sa‎le')).toBe('Sale');
+    expect(normalizedVerbNoun('Sa|le')).toBeNull();
+    expect(normalizedVerbNoun('Sa{le}')).toBeNull();
+    expect(normalizedVerbNoun('')).toBeNull();
+    expect(normalizedVerbNoun('x'.repeat(25))).toBeNull();
+    expect(normalizedVerbNoun(7)).toBeNull();
+  });
+
+  it('resolveMode carries a declared verbNoun and normalizes absence to null', () => {
+    expect(resolveMode(gameWithVerbNoun, 'fence').verbNoun).toBe('Fence');
+    expect(resolveMode(gameWithVerbNoun, 'plain').verbNoun).toBeNull();
+  });
+
+  it('the baked ALN table declares blackmarket verbNoun Sale (with the drift tripwire binding it)', () => {
+    expect(LEGACY_ALN_MODES.find((m) => m.id === 'blackmarket').verbNoun).toBe('Sale');
+    expect(LEGACY_ALN_MODES.find((m) => m.id === 'detective').verbNoun).toBeUndefined();
   });
 });

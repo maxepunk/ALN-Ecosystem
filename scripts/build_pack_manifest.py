@@ -53,8 +53,6 @@ def role_for(rel_path):
         return "theme"
     if rel_path == "cues.json":
         return "cues"
-    if rel_path.startswith("templates/"):
-        return "template"
     if re.match(r"^assets/images/", rel_path):
         return "asset-image"
     if re.match(r"^assets/audio/", rel_path):
