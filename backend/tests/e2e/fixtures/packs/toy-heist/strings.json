@@ -26,5 +26,17 @@
   },
   "terminology": {
     "tokenNoun": "Take"
+  },
+  "report": {
+    "classLabels": {
+      "evidence": "tipoffs",
+      "scoring": "fenced",
+      "other": "appraisals"
+    },
+    "empty": {
+      "evidence": "No tips phoned in.",
+      "scoring": "No goods moved.",
+      "playerScans": "No field scans logged."
+    }
   }
 }

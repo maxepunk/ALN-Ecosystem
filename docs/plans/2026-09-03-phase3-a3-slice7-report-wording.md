@@ -454,6 +454,44 @@ four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
 - 2026-09-03: pre-build design red-team `wf_0568e580-301` (2 Opus +
   1 Fable, 19 objections, 0 refuted) — design revised to r2, §4a
   adjudication table. Estimate re-priced 3.5–4 → 4–4.5.
+- 2026-09-03: **S7.2 DONE** (lockstep TokenData → backend → scanner →
+  toy pack, red-first at every seam). TokenData `7660375`: schema
+  `verbNoun` (R-Q2 idiom, pattern forbids pipes/newlines/controls) +
+  `report.template` stub REMOVED + ALN `blackmarket.verbNoun: "Sale"`
+  + manifest regen (game.json diff = one line). Backend `c7f04b3`
+  (pin bumped): baked-table verbNoun bound by the existing
+  both-directions drift tripwire, `normalizedVerbNoun` + resolver
+  field + gate refusal twin, BOTH manifest builders drop the template
+  role (Node tmp-pack pin + Python test flipped; byte-neutral for
+  every real pack). Scanner `9490a29` (nested data pin bumped):
+  scanner mirror (DECLINE-warn posture, five refusal arms covered —
+  the ratchet's 100-floor on modeSemantics caught the two missing
+  arms and they got real tests), `BAKED_STRINGS.report` (the bake IS
+  ALN's voice — ALN's strings.json deliberately declares NO report
+  section), `getPackString` for layered lookups, the generator
+  re-point (all 25 wording sites through the `_rt`/`_cell` boundary
+  sanitizer; verbNoun Type cell; currency affixes through the pack
+  money spec — 3b's recorded deferral completed; class-count residue
+  term + loud debug warn; layered unknownOwner), the export
+  provenance warn in gameAdmin (+ 2 pins). Proof landed with it:
+  sparse + empty byte-goldens as fixture files (the 11 zero-byte
+  defaults, generated from the pre-refactor tree and eyeballed),
+  `assertStructuralInvariants` run on FIVE renders (dense/sparse/
+  empty/toy-worded/adversarial — the adversarial pack carries pipes,
+  newlines, headings and bidi in every key and cannot move an
+  anchor; its hostile verbNoun declines to the engine-generic
+  'Claim'), the 25-key baked-voice snapshot pin, the three
+  ALN-literal contract assertions re-expressed against resolved
+  wording, and the DENSE GOLDEN MASTER passing UNTOUCHED throughout.
+  Toy pack declares its real voice (fence verbNoun 'Fence',
+  report classLabels tipoffs/fenced/appraisals + divergent
+  placeholders) — 218 gate/schema tests green on the real files.
+  Contract doc v2 (wording-block mechanism, escape-protected format
+  lines, provenance asymmetry); pack-schemas.md `:185` draft
+  back-annotated; ledger row L13 recorded (ALN-flavored engine-fixed
+  structure wording, post-Phase-3, retires at §8.10). Verified at the
+  commits: scanner 1608 + ratchet (65 files, 100-floors held) +
+  build; backend 2604 + ratchet + lint; Python 84.
 - 2026-09-03: **S7.1 DONE.** `backend/contracts/session-bundle.schema.json`
   + `tests/contract/session-bundle.schema.test.js`, red-first (test
   written against the missing schema, then the schema to green).

@@ -183,6 +183,12 @@ from this draft after review).
   // markdown (golden master) until the GenAI pipeline migrates.
   "report": {
     "template": "templates/session-report.md.hbs"
+    // ^ SUPERSEDED (A3 slice 7, 2026-09-03 — program §13.4 "no template
+    // language"): the report block never shipped to a real pack; the
+    // schema stub and both manifest builders' template role were REMOVED.
+    // Report wording is a structured strings block (strings.report.* +
+    // modes[].verbNoun); the B9 bundle schema landed at
+    // backend/contracts/session-bundle.schema.json.
   }
 }
 ```
