@@ -105,15 +105,16 @@ function loadPackEntities(orchestratorUrl) {
 }
 
 /**
- * Fetch the ACTIVE pack's display strings sidecar (A3 slice 3a): read
- * game.json's `strings` pointer, then fetch that pack file. Null when
- * the pack declares no sidecar — assertions fall back to the baked
- * wording, mirroring the page's own per-key fallbacks.
+ * Fetch a header-framed sidecar (strings/theme) named by a game.json
+ * pointer field and return its SECTIONS — kind/schemaVersion are
+ * transport framing, stripped the way every engine snapshot strips
+ * them. Null when undeclared or unfetchable (baked identity stands).
  * @param {string} orchestratorUrl
- * @returns {Promise<Object|null>} strings sections or null
+ * @param {string} field - game.json pointer key ('strings' | 'theme')
+ * @returns {Promise<Object|null>} sidecar sections or null
  */
-async function loadPackStrings(orchestratorUrl) {
-  const pointer = await _fetchGameJsonField(orchestratorUrl, 'strings');
+async function _fetchPackSidecar(orchestratorUrl, field) {
+  const pointer = await _fetchGameJsonField(orchestratorUrl, field);
   if (!pointer) return null;
   return new Promise((resolve) => {
     https.get(`${orchestratorUrl}/api/pack/files/${pointer}`, { rejectUnauthorized: false }, (res) => {
@@ -132,32 +133,16 @@ async function loadPackStrings(orchestratorUrl) {
   });
 }
 
-/**
- * ACTIVE pack theme sections (theme unit ST.3) — the loadPackStrings
- * twin: resolves game.json's `theme` pointer, fetches the sidecar,
- * strips the kind/schemaVersion transport framing. Null when the pack
- * declares no theme (the baked identity stands everywhere).
- * @param {string} orchestratorUrl
- * @returns {Promise<Object|null>} theme sections or null
- */
-async function loadPackTheme(orchestratorUrl) {
-  const pointer = await _fetchGameJsonField(orchestratorUrl, 'theme');
-  if (!pointer) return null;
-  return new Promise((resolve) => {
-    https.get(`${orchestratorUrl}/api/pack/files/${pointer}`, { rejectUnauthorized: false }, (res) => {
-      let data = '';
-      res.on('data', (chunk) => data += chunk);
-      res.on('end', () => {
-        if (res.statusCode !== 200) return resolve(null);
-        try {
-          const { kind, schemaVersion, ...sections } = JSON.parse(data);
-          resolve(sections);
-        } catch {
-          resolve(null);
-        }
-      });
-    }).on('error', () => resolve(null));
-  });
+/** Display strings sidecar (A3 slice 3a) — assertions fall back to
+ *  baked wording on null, mirroring the page's per-key fallbacks. */
+function loadPackStrings(orchestratorUrl) {
+  return _fetchPackSidecar(orchestratorUrl, 'strings');
+}
+
+/** Theme sidecar (theme unit ST.3) — null when the pack declares no
+ *  theme; the baked visual identity stands everywhere. */
+function loadPackTheme(orchestratorUrl) {
+  return _fetchPackSidecar(orchestratorUrl, 'theme');
 }
 
 /**

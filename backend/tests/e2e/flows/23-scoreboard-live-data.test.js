@@ -229,6 +229,21 @@ test.describe('Scoreboard Live Data', () => {
         }
       }
 
+      // Theme pin (D-T.4 "every declared leaf lands" doctrine): declared
+      // mode colors land on the SCANNER root as custom-property
+      // injections; undeclared leaves the stylesheet's baked values
+      // (ALN leg: baked orange/green; toy leg: gold/sky).
+      const [modeScoring, modeEvidence] = await gmPage.evaluate(() => {
+        const cs = getComputedStyle(document.documentElement);
+        return [
+          cs.getPropertyValue('--color-mode-scoring').trim(),
+          cs.getPropertyValue('--color-mode-evidence').trim(),
+        ];
+      });
+      expect(modeScoring).toBe(packTheme?.colors?.modeScoring || '#ff6b35');
+      expect(modeEvidence).toBe(packTheme?.colors?.modeEvidence || '#22c55e');
+      console.log(`Theme pin: scanner mode colors ${modeScoring}/${modeEvidence} (${packTheme?.colors ? 'pack-declared' : 'baked'})`);
+
       // Verify evidence appears on scoreboard (detective mode -> evidence card)
       // Hero evidence + feed cards count as total evidence
       await scoreboard.waitForTotalEvidence(1, 15000);

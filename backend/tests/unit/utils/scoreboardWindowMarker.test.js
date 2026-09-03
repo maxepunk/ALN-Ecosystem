@@ -130,6 +130,52 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(html).toMatch(/setProperty\('--evidence-red'/);
   });
 
+  describe('the sink guard is LOAD-BEARING — the page function executed with hostile values (ST.3 review fold)', () => {
+    // The source-text pin above proves PLACEMENT only — a stripped guard
+    // with the regex literal left behind stayed green (the ST.2
+    // vacuous-pin class, caught again here). This pin EXECUTES the
+    // page's own applyPackTheme: extract the THEME_HEX + function span
+    // from the served source and drive it against a recording document
+    // stub. Refactoring the page's theme block moves this span and
+    // fails the extraction LOUDLY — that is the pin working.
+    const extractApplyPackTheme = () => {
+      const html = fs.readFileSync(scoreboardPath, 'utf8');
+      const m = html.match(/const THEME_HEX[\s\S]*?\n {8}\}/);
+      if (!m) throw new Error('scoreboard.html theme block not found — the sink pin must move with it');
+      return m[0];
+    };
+    const drive = (themeValue) => {
+      const calls = [];
+      const doc = { documentElement: { style: { setProperty: (p, v) => calls.push([p, v]) } } };
+      // eslint-disable-next-line no-new-func -- executing the page's own inline script under test
+      new Function('document', 'PACK_THEME',
+        `${extractApplyPackTheme()}\napplyPackTheme(PACK_THEME);`)(doc, themeValue);
+      return calls;
+    };
+
+    it.each([
+      ['CSS breakout', 'red; background: url(//evil)'],
+      ['url() smuggle', 'url(javascript:alert(1))'],
+      ['var() indirection', 'var(--evil)'],
+      ['3-digit hex (schema-illegal shorthand)', '#f00'],
+      ['non-string', { toString: () => '#c41e3a' }],
+    ])('a hostile accent NEVER reaches setProperty: %s', (_label, evil) => {
+      expect(drive({ scoreboard: { accent: evil, accentDark: evil } })).toEqual([]);
+    });
+
+    it('a strict 6-digit hex pair lands on both tokens', () => {
+      expect(drive({ scoreboard: { accent: '#0e7490', accentDark: '#164e63' } })).toEqual([
+        ['--evidence-red', '#0e7490'],
+        ['--evidence-red-dark', '#164e63'],
+      ]);
+    });
+
+    it('an undeclared scoreboard section (ALN) and a null theme touch NOTHING', () => {
+      expect(drive({ rating: { display: 'none' } })).toEqual([]);
+      expect(drive(null)).toEqual([]);
+    });
+  });
+
   it('packless serve path: PACK_STRINGS renders as null and the page keeps its baked STR fallbacks', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const packService = require('../../../src/services/packService');
