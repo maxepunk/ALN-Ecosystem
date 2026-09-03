@@ -366,6 +366,7 @@ were ratified 2026-08-29 unless noted.
 | 8.13 | The B4 team/player-management questions; the B10 player-interaction brainstorm | The Phase-4 track-entry grill sessions (E5/BILL already absorbed part of B10). |
 | 8.14 | The ESP32 UDP discovery plan | Parked indefinitely (the kit-network decision made it a fallback). Revisit only if a kit ever runs on venue WiFi as primary. |
 | 8.15 | A second ALN-class game (the first consumer of full theming depth) | The operations era; deliberately unnamed today. |
+| 8.16 | GM-scan video cueing (ratified 2026-09-03, owner): the scan→video trigger is engine-keyed to player scanners — a baked ALN opinion (§2.6 residue); a GM-scanner-only game cannot declare scan→video directly | **Phase-4 E5** (interaction primitives), where scan→consequence mappings become pack-composable. Interim: standing cues (one per token→video pairing) work today as pure pack content — program §14.5. |
 
 ## 9. Sequencing, calendar, method
 

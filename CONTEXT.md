@@ -292,6 +292,18 @@ you intend.
   the pack (ROADMAP §2.3). A pack that declares a `surfaces` block
   must list the `surfaces.select` capability in `requires`, or the
   activation gate refuses it.
+- **Idle loop vs game-event video.** Two different kinds of video that
+  must never be conflated (owner, 2026-09-03). The *idle loop* is the
+  venue TV's ambient resting screen — mainly pre-show atmosphere — the
+  picture that plays whenever nothing else claims the display. It is
+  venue-bound media on a pack-named surface channel (see the entry
+  above). A *game-event video* is a designed dramatic beat: a token
+  names a video file, a player scan triggers it, the display interrupts
+  to play it, then returns to its prior mode. Game-event videos are
+  token content riding the video queue; the idle loop is display-mode
+  furniture. Note (ROADMAP §8.16): the scan→video trigger is currently
+  engine-keyed to player scanners only — a GM-scanner-only game reaches
+  video today via standing cues, one per token.
 - **Held item.** A cue or video that could not run because a needed
   service was down or a video was already playing. The engine parks it
   and tells the GM, who can release or discard it. Nothing is silently
@@ -390,6 +402,17 @@ you intend.
 
 ## 7. Process vocabulary
 
+- **Design workspace pages.** The five authoring pages of the
+  config-tool's Design workspace: pack manager, mechanics editor,
+  strings & theme editor, show designer, content view. Use this full
+  term — "the B pages" is track-letter shorthand from the program doc
+  that never became shared language (owner, 2026-09-03).
+- **Resolver presentation.** One user-facing form of the C2 answer
+  engine (pack needs × installed hardware → runs / degrades /
+  unavailable). Three exist: the planning view (post-Phase-3), the
+  preflight (the go/no-go checklist), and the test harness. Use
+  "presentation", not the program doc's earlier word "face" (owner,
+  2026-09-03).
 - **Slice.** One unit of the Phase-3 extraction work. Each slice moves
   one feature group from engine code into pack data. Every slice
   follows the same sequence: census → design → red-team → build →
