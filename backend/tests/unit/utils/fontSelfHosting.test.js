@@ -9,7 +9,7 @@
  *
  * This file is the backend half of the L11 retirement tripwire
  * (`grep -RE 'fonts\.(googleapis|gstatic)' backend/public config-tool`
- * = zero); config-tool/test/fontSelfHosting.test.js is the other half.
+ * = zero); config-tool/tests/fontSelfHosting.test.js is the other half.
  */
 
 const fs = require('fs');

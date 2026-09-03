@@ -1814,6 +1814,17 @@ describe('packService', () => {
       expect(refusalMessage()).toMatch(/theme/);
     });
 
+    it("REFUSES a prototype-chain section key CLEANLY — '__proto__' must land in the problem list, never a TypeError (close review SEC-2)", () => {
+      // JSON.parse makes __proto__ an OWN property; a bare table index
+      // (THEME_SECTIONS[section]) resolves it to Object.prototype —
+      // truthy — and the walk then dies with a TypeError instead of
+      // the designed refusal. Raw-string write: JSON.stringify of a JS
+      // literal would not carry the own key.
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, '{"kind":"theme","schemaVersion":1,"__proto__":{"x":1}}');
+      expect(refusalMessage()).toMatch(/unknown section '__proto__'/);
+    });
+
     it('REFUSES a bidi-only glyph — the value twin strips bidi controls then refuses the emptied glyph (schema-legal, twin-refused: the twins are the runtime authority, the verbNoun precedent)', () => {
       writeGame(tmpDir, withTheme());
       writeTheme(tmpDir, { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: String.fromCharCode(0x202e).repeat(2) } } });

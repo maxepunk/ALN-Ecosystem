@@ -562,7 +562,12 @@ function _loadDeclaredTheme(gameConfig) {
 
   for (const [section, body] of Object.entries(sections)) {
     if (section === 'rating') continue; // handled below
-    const allowed = THEME_SECTIONS[section];
+    // Object.hasOwn, not a bare index (close review SEC-2): JSON.parse
+    // makes '__proto__' an OWN property of the sidecar; a bare
+    // THEME_SECTIONS[section] resolves it to Object.prototype — truthy —
+    // and the walk dies with a TypeError instead of the designed
+    // refusal below.
+    const allowed = Object.hasOwn(THEME_SECTIONS, section) ? THEME_SECTIONS[section] : undefined;
     if (!allowed) {
       problems.push(`${declared} unknown section '${section}' (future theme sections arrive by schema evolution + engine consumption, never by tolerance)`);
       continue;

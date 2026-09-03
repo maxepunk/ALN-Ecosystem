@@ -159,26 +159,41 @@ function jsonForScript(value) {
 
 function renderScoreboardHtml() {
   const config = require('../config');
+  const packService = require('../services/packService');
   const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
-  // Every replacement is a FUNCTION: a string replacement would run
-  // GetSubstitution, where $$, $&, $' and $` are active patterns — a
-  // password like p@$$w0rd was served mangled and $' splices the rest
-  // of the file. Function replacements are inserted verbatim.
-  return html
-    .replaceAll('%%WINDOW_MARKER%%', () => config.display.scoreboardWindowMarker)
-    // Serve-time credential injection (slice 3a pre-fix 2, matrix 2.34):
-    // the placeholder is QUOTED in the page ('%%ADMIN_PASSWORD%%'), so the
-    // replacement includes the quotes via jsonForScript — quote-safe AND
-    // script-context-safe for any env value. Same delivery to the same
-    // LAN clients as the old baked literal; the source just moved out of
-    // git into env/config.
-    .replaceAll("'%%ADMIN_PASSWORD%%'", () => jsonForScript(config.security.adminPassword))
-    // Pack-declared display strings (A3 slice 3a): the activation
-    // snapshot (or null — page falls back to baked wording per key).
-    .replaceAll("'%%PACK_STRINGS%%'", () => jsonForScript(require('../services/packService').getStrings()))
-    // Pack-declared visual identity (theme unit ST.3): the activation
-    // snapshot (or null — the page's baked palette stands untouched).
-    .replaceAll("'%%PACK_THEME%%'", () => jsonForScript(require('../services/packService').getTheme()));
+  // ONE pass, FUNCTION replacements — both halves are load-bearing.
+  // Function form guards GetSubstitution ($$, $&, $' and $` are active
+  // patterns in string replacements — a password like p@$$w0rd was
+  // served mangled and $' splices the rest of the file). The single
+  // pass guards ORDERING (theme-unit close review SEC-1): replaced
+  // output is never rescanned, so pack-controlled text can never
+  // become a substitution pattern for a later placeholder — chained
+  // replaceAll passes let a gate-legal strings leaf carrying the
+  // literal '%%PACK_THEME%%' get theme JSON injected INSIDE it,
+  // breaking the page script's parse at serve time.
+  return html.replace(
+    /%%WINDOW_MARKER%%|'%%ADMIN_PASSWORD%%'|'%%PACK_STRINGS%%'|'%%PACK_THEME%%'/g,
+    (m) => {
+      switch (m) {
+        // Shared xdotool window marker (slice 3a pre-fix 1).
+        case '%%WINDOW_MARKER%%':
+          return config.display.scoreboardWindowMarker;
+        // Serve-time credential injection (slice 3a pre-fix 2, matrix
+        // 2.34): the placeholder is QUOTED in the page, so the
+        // replacement includes the quotes via jsonForScript —
+        // quote-safe AND script-context-safe for any env value.
+        case "'%%ADMIN_PASSWORD%%'":
+          return jsonForScript(config.security.adminPassword);
+        // Pack-declared display strings (A3 slice 3a): the activation
+        // snapshot (or null — page falls back to baked wording per key).
+        case "'%%PACK_STRINGS%%'":
+          return jsonForScript(packService.getStrings());
+        // Pack-declared visual identity (theme unit ST.3): the
+        // activation snapshot (or null — baked palette stands).
+        default:
+          return jsonForScript(packService.getTheme());
+      }
+    });
 }
 
 /**

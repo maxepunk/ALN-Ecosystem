@@ -106,6 +106,38 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(packService.getTheme()).toEqual({ rating: { display: 'none' } });
   });
 
+  it('pack-controlled text can NEVER become a substitution pattern — a strings leaf carrying the theme placeholder survives as DATA and the page still parses (close review SEC-1)', () => {
+    // The ordering attack: with chained replaceAll passes, a
+    // gate-legal strings leaf containing the literal '%%PACK_THEME%%'
+    // was rewritten by the LATER theme pass — theme JSON injected
+    // mid-string broke the inline script's parse and the venue TV
+    // went dead at serve time. A single-pass replacer never rescans
+    // replaced output.
+    const vm = require('vm');
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const hostileLeaf = "OWNED'%%PACK_THEME%%'END";
+    const sSpy = jest.spyOn(packService, 'getStrings')
+      .mockReturnValue({ scoreboard: { header: hostileLeaf } });
+    const tSpy = jest.spyOn(packService, 'getTheme')
+      .mockReturnValue({ scoreboard: { accent: '#ff0000', accentDark: '#00ff00' } });
+    try {
+      const html = renderScoreboardHtml();
+      // The hostile leaf survives VERBATIM as JSON data.
+      expect(html).toContain(JSON.stringify(hostileLeaf));
+      // And every inline script still PARSES — the page must never be
+      // served as a syntax error.
+      const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+      expect(scripts.length).toBeGreaterThan(0);
+      for (const s of scripts) new vm.Script(s);
+      // The real theme injection still landed at its own site.
+      expect(html).toContain(`const PACK_THEME = ${JSON.stringify(packService.getTheme())}`);
+    } finally {
+      sSpy.mockRestore();
+      tSpy.mockRestore();
+    }
+  });
+
   it('packless serve path: PACK_THEME renders as null (baked palette stands, no loud shim — D-T.2)', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const packService = require('../../../src/services/packService');
