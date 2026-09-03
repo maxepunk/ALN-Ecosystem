@@ -228,7 +228,8 @@ from this draft after review).
     { "path": "strings.json",     "role": "strings", "sha1": "…", "size": 2048 },
     { "path": "theme.json",       "role": "theme",   "sha1": "…", "size": 1024 },
     { "path": "cues.json",        "role": "cues",    "sha1": "…", "size": 8192 },
-    { "path": "templates/session-report.md.hbs", "role": "template", "sha1": "…", "size": 4096 },
+    { "path": "templates/session-report.md.hbs", "role": "template", "sha1": "…", "size": 4096 },  // SUPERSEDED (slice 7): the template role/design died — see the :185 note; builders emit no 'template' role
+
     { "path": "assets/images/jaw001.bmp", "role": "asset-image", "sha1": "…", "size": 230456 },
     { "path": "videos/jaw001.mp4", "role": "asset-video", "sha1": "…", "size": 10485760 }
     // …completeness validation: every token media ref, cue sound/video

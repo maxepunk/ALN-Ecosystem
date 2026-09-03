@@ -660,11 +660,11 @@ adds its PRs to this block.
 
 | Order | Repo | PR | Head | Close condition / note |
 |---|---|---|---|---|
-| 1 | ALN-TokenData | **#4** (opened 2026-09-03, re-pointing this entry as #3's note anticipated) | `claude/phase3-a3-slice6` @ `4f29720` | Subsumes #3 (closers-only; itself subsumed #2 foundations-only) — owner closes #3 and #2 as subsumed. Carries the slice-4 pack data (cues schema + ALN cues.json) and the slice-6 surfaces block |
-| 2 | ALNScanner | **#13** (closers) | `claude/phase3-a3-closers` @ `567dfa8` | Subsumes #12 (foundations/A2, source of the PR-review residue block) — owner closes #12 as subsumed |
+| 1 | ALN-TokenData | **#5** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `7660375` | Subsumes #4 (slice-6; which subsumes #3, which subsumes #2) — owner closes #4/#3/#2 as subsumed. Adds the slice-7 verbNoun field + report-stub removal on top of slice-4 cues + slice-6 surfaces |
+| 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `8451be7` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
-| 5–15 | ALN-Ecosystem (parent) | **#19 → #29 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. Train grows with remaining slices (7, theme, B0…) |
+| 5–16 | ALN-Ecosystem (parent) | **#19 → #30 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7 (opened AT slice open per the corrected discipline). Train grows with remaining slices (theme, B0…) |
 
 Timing: owner-driven, post-run (§ Final cutover below); nothing merges
 before the owner walks this table.

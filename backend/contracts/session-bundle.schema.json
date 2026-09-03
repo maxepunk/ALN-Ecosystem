@@ -9,7 +9,7 @@
   "$defs": {
     "timestamp": { "type": "string", "format": "date-time" },
     "nullableTimestamp": { "type": ["string", "null"], "format": "date-time" },
-    "id": { "type": "string", "minLength": 1 }
+    "id": { "type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[^\u0000-\u001f\u007f]*$" }
   },
   "properties": {
     "kind": { "const": "session-bundle" },

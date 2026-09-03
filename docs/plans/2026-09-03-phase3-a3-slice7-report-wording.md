@@ -496,7 +496,10 @@ four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
   back-annotated; ledger row L13 recorded (ALN-flavored engine-fixed
   structure wording, post-Phase-3, retires at §8.10). Verified at the
   commits: scanner 1608 + ratchet (65 files, 100-floors held) +
-  build; backend 2604 + ratchet + lint; Python 84.
+  build; backend 2604 + ratchet + lint; Python 75 [CORRECTED at the
+  S7.3 close gate: this entry originally recorded "Python 84" — the
+  scripts/tests tree collects 75 and no Python file changed after
+  this stage, so 84 was a recording error, not a lost suite].
 - 2026-09-03: **S7.2 two-axis review FOLDED** (parallel Sonnet
   agents over the four-repo S7.2 diff). Standards axis, 3 findings
   all folded: (1) DI violation — gameAdmin's provenance read was an

@@ -443,6 +443,21 @@ describe('slice-7 S7.2: modes verbNoun + the report-template tombstone', () => {
     expect(validateGame7(game)).toBe(false);
   });
 
+  // S7.3 close-gate pin: Ajv2020 compiles patterns with the `u` flag, so
+  // BOTH the pattern quantifier and maxLength count CODE POINTS — the
+  // schema agrees with the value twins ([...cleaned].length) on astral
+  // glyphs. This pin holds that agreement against an AJV upgrade
+  // changing default regex flags.
+  it('counts verbNoun length in CODE POINTS (13 astral glyphs legal, 25 refused)', () => {
+    const ok = cloneJson(alnGame7);
+    ok.modes[0].verbNoun = '💰'.repeat(13); // 26 UTF-16 units, 13 code points
+    expect(validateGame7(ok)).toBe(true);
+
+    const over = cloneJson(alnGame7);
+    over.modes[0].verbNoun = '💰'.repeat(25);
+    expect(validateGame7(over)).toBe(false);
+  });
+
   it('TOMBSTONE: the report.template mechanism is gone from the schema (no template language, §13.4)', () => {
     expect(gameSchema7.properties).not.toHaveProperty('report');
   });

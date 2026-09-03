@@ -276,5 +276,25 @@ describe('B9 session-bundle schema contract (slice 7 S7.1)', () => {
       bundle.transactions[0].tokenId = '';
       expect(validate(bundle)).toBe(false);
     });
+
+    // S7.3 close-gate hardening: ids are DATA-carried hostile surface
+    // (deviceId rides the unauthenticated /api/scan). When B9 becomes a
+    // render input, the schema must already refuse control-carrying and
+    // absurd-length ids rather than inherit the markdown sanitizer's job.
+    it('refuses an identifier carrying a control character', () => {
+      const bundle = clone(FULL_BUNDLE);
+      bundle.playerScans[0].deviceId = 'DEV\n## Injected';
+      expect(validate(bundle)).toBe(false);
+    });
+
+    it('caps identifier length at 200 code points (201 refused, 200 accepted)', () => {
+      const long = clone(FULL_BUNDLE);
+      long.transactions[0].tokenId = 'x'.repeat(201);
+      expect(validate(long)).toBe(false);
+
+      const atCap = clone(FULL_BUNDLE);
+      atCap.transactions[0].tokenId = 'x'.repeat(200);
+      expect(validate(atCap)).toBe(true);
+    });
   });
 });

@@ -1,6 +1,6 @@
 {
   "./src/app.js": {
-    "branches": 65,
+    "branches": 75,
     "functions": 50,
     "lines": 80
   },
