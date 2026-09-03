@@ -591,3 +591,28 @@ than slice 7's.
   pinned only at the renderPackInfo format layer; added the real
   loadTokenDatabase wiring test. Verified post-fold: scanner 1657
   (5 new) + ratchet 65 files + lint 0 errors + build.
+- 2026-09-03: **ST.3 DONE + REVIEW FOLDED** (red-first at the contract
+  seams; parent `42edba6` build + `65a281d` fold; TokenData `491c513`).
+  Build: ALN theme.json = the ruled star-drop only, pinned by ONE
+  deep-equal on the whole file (§4a OBJ-3); theme.identity in both
+  packs' requires; toy divergent theme (💎 stars, gold/sky mode colors,
+  teal scoreboard pair — T-5-harmonized); manifests regenerated; the
+  scoreboard's `%%PACK_THEME%%` via jsonForScript function replacement
+  (the strings mold, so the breakout/$-substitution pins cover the path
+  by construction) + inline applyPackTheme behind the sink-side
+  strict-hex re-check; Tier-L pins in flow 23 (loadPackTheme helper,
+  dual-pack valid), RUN LIVE on both legs: ALN — value row hidden
+  (star-drop end-to-end), palette baked byte-identical; toy — 💎 stars,
+  #0e7490/#164e63 accents. REVIEW (two-axis): SPEC caught the sink-pin
+  VACUOUS AGAIN (source-text match only — green with the guard
+  stripped; the ST.2 lesson generalizes: a guard pin must EXECUTE the
+  guard); replaced with an extract-and-drive pin (page span + recording
+  document stub + hostile-value rows), proven 4-red with the guard
+  stripped. SPEC partial: the every-declared-leaf doctrine lacked a
+  mode-color Tier-L pin — flow 23 now reads the scanner root's mode
+  tokens (toy gold/sky vs ALN baked, both legs re-run). STANDARDS
+  judgement calls folded: t→theme rename, the at-load timing constraint
+  stated, _fetchPackSidecar extraction (strings/theme loaders
+  delegate); the inline rating-pin placement accepted (it needs the
+  detective test's scanner bring-up). Verified post-fold: backend 2723
+  + ratchet 82 files + lint 0; config-tool 114.
