@@ -8,10 +8,12 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Case File: About Last Night — %%WINDOW_MARKER%%</title>
 
-    <!-- Google Fonts - Distinctive Typography Stack -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Playfair+Display:wght@600;700;800;900&family=Special+Elite&display=swap" rel="stylesheet">
+    <!-- Self-hosted typography (theme unit ST.F, ledger L11): the CDN
+         links silently failed at the offline-LAN venue, so the intended
+         faces never rendered where it matters. woff2 lives under
+         /fonts; the var() fallback stacks below still cover a failed
+         load. -->
+    <link href="/fonts/fonts.css" rel="stylesheet">
 
     <style>
         /* ============================================
@@ -32,7 +34,6 @@
             --redaction-black: #0d0d0d;
 
             /* Typography */
-            --font-display: 'Playfair Display', Georgia, serif;
             --font-typewriter: 'Special Elite', 'Courier New', monospace;
             --font-body: 'Libre Baskerville', Georgia, serif;
             --font-mono: 'IBM Plex Mono', 'Consolas', monospace;
