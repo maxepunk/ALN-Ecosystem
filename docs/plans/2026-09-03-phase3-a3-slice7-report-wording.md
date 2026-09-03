@@ -530,6 +530,60 @@ four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
   throughout. Verified at the fold: scanner 1601 (npm test; +12
   build-artifact tests separately gated) + ratchet 65 files + build;
   backend full suite + ratchet 82 files + lint.
+- 2026-09-03: **S7.3 mixed-model adversarial review of the WHOLE slice
+  FOLDED** (subagent policy: two Opus refuters — security +
+  state-machine — a Fable doctrine/parity leg, a Haiku sweep; deltas
+  parent `6828140..`, scanner `567dfa8..`, TokenData slice-7).
+  **Three MAJORs, all fixed red-first** (TokenData `c44a8ef`, scanner
+  `46db231`, parent `03080e2`): (1) SECURITY — 13 DATA-carried
+  interpolations (session.name → H1, team/token/device ids → rows and
+  list lines) bypassed `_cell` while its JSDoc claimed data coverage;
+  reproduced end-to-end (deviceId rides the UNAUTHENTICATED /api/scan
+  with no pattern; session.name passes Joi with newlines; teamId is
+  trim-only) — a LAN host could forge a section or displace the
+  metadata line in the GenAI pipeline's artifact. Every data
+  interpolation now cells at the sink; hostile-DATA invariant test
+  added. (2) STATE-MACHINE — `_cell` composed with itself
+  double-escaped a declared pipe into GFM-LIVE `\\|` (owner re-celled
+  inside _formatSaleDetail — a REGRESSION vs the pre-slice sale path —
+  and the adjustment label re-celled at the timeline row), and the
+  invariant helper's naive lookbehind mis-read `\\|` as escaped, so
+  the adversarial suite green-lit the exact break it exists to catch.
+  Fixed: cell-once discipline (helpers resolve RAW — _getTokenOwner,
+  _raw(); the renderer cells each sink exactly once), backslash
+  escaping in _cell (GFM tokenizes escape pairs left-to-right), a
+  GFM-tokenizing pipe counter in the helper, U+2028/2029 joining the
+  generator's control class. (3) DOCTRINE — the bake-is-ALN's-voice
+  premise was UNPINNED: nothing asserted data/strings.json declares no
+  report section (the LEGACY_ENTITY_LABEL precedent reads the real
+  pack file; slice 7 shipped only comments) — a future ALN declaration
+  would silently diverge shipped output from the pipeline-pinned
+  goldens. Inverted pin added beside the strings drift tripwire.
+  **Minors fixed:** bundle-schema `$defs/id` hardened (maxLength 200 +
+  C0/DEL pattern, 3 pins); pack-manifest role enum drops the retired
+  'template' (tombstone completed); game.schema verbNoun description
+  precision (it forbids C0, not "control chars" — DEL/bidi are the
+  value twins' job); contract doc title/version → v2 + the dead
+  pack-template migration step deleted; pack-schemas.md `:231` second
+  template example back-annotated. **Refuted/accepted:** the security
+  leg's schema/twin astral-divergence claim was REFUTED by the
+  doctrine leg empirically (Ajv2020 compiles patterns with `u` —
+  code points everywhere) and the agreement is now PINNED at the
+  schema level against AJV default changes; the control-class widening
+  on data bytes (raw \t/\r in summaries now render as spaces) is
+  ACCEPTED intended hardening — the byte-neutrality claim covers
+  wording, not hostile data. Survived attack (verified by the
+  refuters): manifest builder parity (executed on both real packs,
+  byte-identical, committed files match), currency byte-neutrality
+  incl. the negative quirk, the census/filter dual computation,
+  tokenManager retention lifecycles (single loadDatabase call site;
+  refusal path leaves packInfo null = truthful silence), prototype
+  traps (Object.hasOwn everywhere), intake/gameState reservations,
+  Haiku sweep clean. **The ratchet caught the fold's own coverage
+  dip** (three defensive `?? ''` arms; the masked-exit-code `| tail`
+  lesson re-struck and was caught by the pipefail re-run) — resolved
+  by consolidating into `_raw()` with an honestly-coverable contract,
+  floor held at 85 (never lowered; generator now 88+).
 - 2026-09-03: **S7.1 DONE.** `backend/contracts/session-bundle.schema.json`
   + `tests/contract/session-bundle.schema.test.js`, red-first (test
   written against the missing schema, then the schema to green).
