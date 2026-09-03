@@ -11,6 +11,23 @@ const uuid = Joi.string().uuid({ version: 'uuidv4' });
 // Team names: any non-empty string. GM types it, we store it.
 const teamId = Joi.string().trim();
 
+// Wire-ingress mode check (Phase 3 A3 slice 1): valid `mode` values are
+// the ACTIVE pack's declared mode ids (game.json modes[].id), resolved at
+// VALIDATION time — the closed two-value enum retired with slice 1 (open
+// mode vocabulary; contracts document the runtime rule). Emits the same
+// `any.only` error shape the enum produced, so rejections look identical
+// on the wire. Lazy requires: keeps utils→services acyclic at load time
+// (packService imports no validators) and picks up post-boot activation.
+const packDeclaredMode = Joi.string().custom((value, helpers) => {
+  const { wireModeIds } = require('../gameRules/modeSemantics');
+  const packService = require('../services/packService');
+  const valids = wireModeIds(packService.getGameConfig());
+  if (!valids.includes(value)) {
+    return helpers.error('any.only', { valids });
+  }
+  return value;
+}, 'pack-declared mode id');
+
 // Token validation schema
 const tokenSchema = Joi.object({
   id: Joi.string().required().min(1).max(100),  // Database lookup validates token existence
@@ -42,8 +59,14 @@ const transactionSchema = Joi.object({
   teamId: teamId.required(),
   deviceId: Joi.string().required().min(1).max(100),
   deviceType: Joi.string().valid('gm', 'player', 'esp32').required(),  // P0.1 Correction: Required for duplicate detection logic
-  mode: Joi.string().valid('detective', 'blackmarket').optional().default('blackmarket'),
-  summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for detective mode (per AsyncAPI contract)
+  // PERSISTED-HISTORY schema: mode is any string — history is data, not a
+  // command; a session restored under a different pack must never fail
+  // hydration on its recorded mode ids (restore already loud-warns on pack
+  // mismatch). Strict pack-derived enforcement lives at the wire ingress
+  // (gmTransactionSchema). The 'blackmarket' default is the STABLE
+  // legacy-history reading for pre-mode records, not a wire default.
+  mode: Joi.string().optional().default('blackmarket'),
+  summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for evidence-surface modes (per AsyncAPI contract)
   timestamp: isoDate.required(),
   sessionId: uuid.required(),
   status: Joi.string().valid('accepted', 'error', 'duplicate').required(),  // AsyncAPI contract values (Decision #4)
@@ -67,6 +90,13 @@ const sessionSchema = Joi.object({
     playerDevices: Joi.number().integer().min(0).required(),
     totalScans: Joi.number().integer().min(0).required(),
     uniqueTokensScanned: Joi.array().items(Joi.string()).required(),
+    // A2: the pack this session was created under ("rules frozen at
+    // start"); null for legacy sessions and pre-pack checkouts.
+    pack: Joi.object({
+      packId: Joi.string().required(),
+      version: Joi.string().required(),
+      contentHash: Joi.string().required(),
+    }).allow(null).optional(),
   }).required(),
 });
 
@@ -102,7 +132,12 @@ const deviceConnectionSchema = Joi.object({
 // TeamScore validation schema
 const teamScoreSchema = Joi.object({
   teamId: teamId.required(),
-  currentScore: Joi.number().integer().min(0).required(),
+  // Signed (A3 slice 2, D2s2): negative scores are legal when the pack
+  // declares scoring.semantics.allowNegative — the floor is enforced at
+  // ADJUSTMENT time per pack (transactionService), never at hydration.
+  // A construction-time min(0) here made session RESTORE throw on any
+  // persisted negative (the latent crash the census found).
+  currentScore: Joi.number().integer().required(),
   tokensScanned: Joi.number().integer().min(0).required(),
   bonusPoints: Joi.number().integer().min(0).required(),
   completedGroups: Joi.array().items(Joi.string()).required(),
@@ -134,8 +169,8 @@ const gmTransactionSchema = Joi.object({
   teamId: teamId.required(),  // REQUIRED for GM transactions
   deviceId: Joi.string().required().min(1).max(100),
   deviceType: Joi.string().valid('gm').required(),  // P0.1 Correction: Required, must be 'gm'
-  mode: Joi.string().valid('detective', 'blackmarket').required(),  // REQUIRED - no default
-  summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for detective mode (per AsyncAPI contract)
+  mode: packDeclaredMode.required(),  // REQUIRED, validated against the active pack's declared modes - no default
+  summary: Joi.string().max(350).optional().allow(null, ''),  // OPTIONAL - custom summary for evidence-surface modes (per AsyncAPI contract)
   clientTxId: Joi.string().max(100).optional(),  // OPTIONAL - client correlation id echoed on transaction:result (TQ-3); MUST be declared or validate()'s stripUnknown:true drops it
   timestamp: isoDate.optional(),
 });

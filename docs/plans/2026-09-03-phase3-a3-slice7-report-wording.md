@@ -1,0 +1,623 @@
+# A3 slice 7 — the B9 bundle schema + pack-declared report wording
+
+**Status: DESIGN r2 (census verified ×2; red-teamed, all 19 objections
+adjudicated ACCEPTED and folded — §4a) — 2026-09-03.**
+Ruling authority: program §13.4 (2026-08-29 amendment 4, both halves
+owner-ruled). Vocabulary: root `CONTEXT.md`. Branch:
+`claude/phase3-a3-slice7` (chained from the slice-6 tip `dbab5ad`,
+draft PR #30 as the CI vehicle, opened at slice open).
+
+The ruling, verbatim scope: (a) the B9 session-bundle schema lands as
+an engine contract artifact — versioned, reserved per-game namespaces,
+no Phase-3 consumer, unblocking the Phase-4 D gate; (b) report
+mechanism = structured WORDING block, no template language.
+Headings/structure stay engine-fixed as the external pipeline's parse
+anchors (the report ★ is a contracted delimiter,
+`ALNScanner/docs/session-report-contract.md:64`). Wording becomes
+pack-declared, including the missing `verbNoun`. ALN renders
+byte-identical under the golden master; the toy pack diverges. Scope =
+the scanner generator only.
+
+## 1. Extraction brake (R13)
+
+Rows moved, cited from `docs/reviews/2026-06-platform-review/capability-matrix.md`:
+
+| Row | Classification | What this slice does to it |
+|---|---|---|
+| 4.20 session report generator (:145) | game-flavored; section titles/columns an external contract | The wording half moves to pack data; the structure half stays engine-fixed, exactly as the row's action prescribes ("preserve ALN pipeline contract"). No reclassification. |
+| 8.1–8.4 report structure (:198-201) | external contract | Untouched as structure; 8.2's own constraint ("pack-themed titles must NOT alter the parsed structure, Q11") is satisfied by construction — only wording moves. No reclassification. |
+| 8.7 intake capture → session bundle (:204) | engine-fixed capture + game-configurable what | The row's named action "bundle format in report schema" is D-7.1. Capture itself stays Phase-4 D. No reclassification. |
+| 8.6 narrative slot (:203) | game-content (reserved) | Stays reserved as a CONCEPT; the shipped `report.template` schema stub is retired as a live lie (D-7.4 r2). |
+| 1.25 currency presentation (:58) | game-content (strings/format) | The row names `sessionReportGenerator._formatCurrency` explicitly; slice 3b moved every OTHER consumer and recorded this one as "Q4/slice-7 territory, NOT touched" (3b design doc :40). This slice completes the row's move (D-7.2 r2). No reclassification. |
+
+Matrix top-action #8 (":219 template registry + versioned contract
+test must land BEFORE strings extraction touches the report") is
+already satisfied: the contract test landed in Phase 2.6; this slice
+is the "pack-themable layer on top" it anticipated. No matrix row
+changes classification — the brake passes with citations only.
+
+## 2. Census record (workflow `wf_03423b14-aaf`, 2026-09-03; counts verified ×2)
+
+Full structured result: the workflow journal + the design record here.
+Reader legs: generator inventory (Sonnet), independent literal recount
+(Haiku), contract/golden/pipeline (Sonnet), B9 corpus (Sonnet),
+strings plumbing (Sonnet). The two counting legs agree: **118 raw
+quote-delimited spans** in `ALNScanner/src/core/sessionReportGenerator.js`
+(408 lines, clean at the scanner closers pin), of which 2 are JSDoc
+comment text, leaving **116 real literals: 12 heading-anchor, 6
+delimiter, 25 wording, 15 data, 58 code**. (One census-agent artifact
+resolved: a "file changed mid-read" flag was the documented stale-clone
+trap — the top-level `/home/user/ALNScanner` clone is a 404-line
+pre-slice-1 vintage; the real submodule file is stable and the
+inventory matches it.)
+
+Load-bearing census facts:
+
+- **The wording class (25 literals)** groups as: summary bullet labels
+  (`:85-88`), the class-count parenthetical "N detective, N black
+  market" (`:86`), breakdown words "transactions/adjustments" (`:76`)
+  and "sales/adjustments" (`:216`), three empty-section placeholders
+  (`:115/:173/:258`), the timeline Type labels `'Sale'` (`:146`) and
+  `'Adjustment'` (`:157`) — the named verbNoun gap — three Activity
+  Stats subsection labels (`:288/:302/:320`), the scan/scans plural
+  pair (`:290/:305`), and the fallback copy family: `'—'` ×3
+  (`:128/:243/:369`), `'Unknown'` ×2 (`:340/:401`), `'Unknown Date'`
+  (`:384`), duration units `'h'/'m'` (`:406`).
+- **The anchor classes (12+6)** are the contract's Change Rules #1–#5
+  territory: seven pinned headings, four table header rows, the H1 and
+  metadata line formats, three `---` separators, and the ★ Detail cell
+  (`:235`; contract `:64`). The contract test pins all of it:
+  `sessionReport.contract.test.js` GOLDEN_OUTPUT `:170-236` byte-exact
+  (`:282` `toBe`), plus structural assertions `:290-441` (exact heading
+  list, exact header strings, exactly 3 separators).
+- **The pipeline is external and singular.** The only consumer of the
+  markdown is `parseRawInput` in github.com/maxepunk/aboutlastnight
+  (contract `:11`); zero in-repo parsers (grep-proven). The two other
+  report mechanisms in-repo (`backend/scripts/validate-session.js`,
+  `.claude/commands/session-report.md`) are unrelated formats that
+  re-derive from raw backend data — out of scope per the ruling's
+  "scanner generator only" line.
+- **Generator inputs**: `generate({session, scores, transactions,
+  playerScans})` (`:39`) + constructor `tokenDatabase` (`:25`, only
+  `.owner` is read, `:339-340`) + two module imports: `SCORING_CONFIG`
+  (`:15`, read `:232-234` for the ★ cell's baseValue/multiplier) and
+  `isScoringMode/isEvidenceMode` (`:19`). CORRECTED by the red team
+  (§4a lens-1 OBJ-2): `applyPackScoring` does mutate `SCORING_CONFIG`
+  in place, so the ★ cell's NUMBERS are active-pack values — but the
+  AFFIXES are not: `_formatCurrency` (`:349`) hardcodes
+  `'$' + toLocaleString('en-US')`, while slice 3b made the money affix
+  pack-declared (`scoring.display.format`; the toy already declares
+  `"#,### cr"`) and every other scanner surface renders through
+  `src/utils/formatCurrency.js`. 3b's design doc `:40` records the
+  report generator as the ONE deliberately-untouched consumer,
+  deferred to slice 7. This slice completes that re-point (D-7.2 r2).
+- **The generator has no strings access today** (`strings.js` not
+  imported; its own `:16` comment records the wording move as planned
+  future work). The strings mechanism is ready to receive it:
+  `strings.schema.json` is open-vocabulary (a `report` section is
+  structurally legal with zero schema changes), the backend gate walks
+  any section (`packService.js:463`), the packLoader carries the
+  `strings` role through the staged refresh (`packLoader.js:63`), and
+  scanner `strings.js` `getString()` (`:84`) is the single consumption
+  API with `Object.hasOwn` walking. Neither real pack's `strings.json`
+  has a `report` section yet.
+- **B9 corpus** (24 `B9` hits + 17 related, all accounted): origin
+  decision 2026-06-09 (`tier-b2-showcontrol-content-pipeline.md:35-47`)
+  — engine emits a structured session bundle (versioned JSON) as the
+  canonical artifact; the report is a themed rendering; the pipeline
+  migration is owner-paced (ROADMAP §8.10) and gated on Phase-4 D
+  intake. The bundle's most concrete carriage statement
+  (`2026-06-09-platform-review-refactor-workflow.md:478`): report
+  content + photos + notes + accusation + roster, mapping onto the
+  pipeline's `rawSessionInput`. BILL requires reserved per-game state
+  namespaces AND that the schema not assume ALN's shapes
+  (`2026-07-17-bill-capability-scoping.md:71-73`). The Phase-4 D gate
+  reads "report intake writing B9 bundles" (ROADMAP §4).
+  **Superseded draft found — and it is LIVE surface, not just a plan
+  doc:** `2026-06-13-phase3-1-pack-schemas.md:184` drafts
+  `"report": {"template": …}`; the stub SHIPPED into
+  `ALN-TokenData/game.schema.json:493` and both manifest builders
+  still infer `role: "template"` for `templates/` paths. Dead under
+  the ruling's "no template language" (D-7.4 r2 retires the live
+  surfaces, not just the doc).
+
+## 3. Design (r2 — §4a fixes folded)
+
+### D-7.1 — The bundle schema is an engine contract artifact
+
+Home: `backend/contracts/session-bundle.schema.json`, beside the
+OpenAPI/AsyncAPI contracts — the bundle schema is engine-versioned,
+never pack data (origin decision, pack-schemas `:180`). JSON Schema
+draft matching the house style of the pack schemas.
+
+Shape (v1):
+
+- `kind` const `"session-bundle"` + `schemaVersion` — integer const
+  `1`, the HOUSE convention (game/strings/cues schemas all use a kind
+  discriminator and an integer const with exact-match enforcement).
+  Additive evolution = new OPTIONAL properties within the same
+  version; a breaking change bumps the const. (The r1 semver
+  `bundleVersion` is dropped — a const semver gives a validator
+  nothing the integer doesn't, and it mixed two conventions in one
+  repo. §4a lens-1 OBJ-9. The kind const was added at the S7.1
+  standards review, matching every sibling schema.)
+- `engine` — `{engineVersion, packId, packVersion, contentHash}`: the
+  provenance stamp, same identity fields every consumer already
+  reports (A2 staleness identity). REQUIRED. Field formats carry the
+  pack-manifest identity patterns verbatim (S7.1 review: a free-text
+  provenance stamp invites drift; recorded here so spec matches
+  build).
+- **Only `kind`, `schemaVersion` and `engine` are required.** The four
+  ALN-shaped data sections below are all OPTIONAL, so a non-ALN game
+  (BILL: graph + epidemic state) emits `engine` + `gameState` without
+  fabricating empty transaction lists — the exact shape-assumption
+  BILL:72 forbids. (§4a lens-1 OBJ-8.)
+- `session` — `{name, startTime, endTime, teams[]}`.
+- `scores[]` — `{teamId, score, adminAdjustments[]:
+  {delta, timestamp, reason, gmStation}}`.
+- `transactions[]` — `{status, mode, tokenId, teamId, timestamp,
+  points, summary, valueRating, memoryType}`.
+- `playerScans[]` — `{tokenId, deviceId, timestamp}`.
+- `tokens` — `{<tokenId>: {owner}}`: the projection of the token
+  database the report actually consumes (census: `.owner` only).
+- `rules` — the ACTIVE pack's resolved rule snapshots the report's
+  render depends on: `scoring` (`baseValues`, `typeMultipliers`,
+  `display.format` — the `getScoringRules()` normalized shape) and
+  `modes[]` (`id`, `label`, `verbNoun`, `scoringPolicy`,
+  `displayBehavior.surface` — the resolver record shape;
+  `scoringPolicy` and `displayBehavior.surface` are REQUIRED per
+  record, since they are the membership-driving fields the section
+  exists to carry — S7.1 spec review). Without
+  these a consumer cannot reproduce the ★ Detail cell or decide
+  SECTION MEMBERSHIP; the census named both module imports and the r1
+  shape dropped them (§4a lens-1 OBJ-3). No new derivation is
+  invented — both snapshots already exist.
+- `intake` — RESERVED: `{roster: true, directorNotes: true,
+  photos: true, accusation: true, whiteboard: true}` — names only,
+  every member schema `true` (any type). Reserving a name with a
+  pinned type is not reserving a name; Phase-4 D designs the shapes
+  (§4a lens-1 OBJ-8).
+- `gameState` — RESERVED: `patternProperties` keyed by the pack-id
+  pattern with `additionalProperties: false` (the r1
+  "additionalProperties keyed by a pattern" was not a JSON Schema
+  construct — §4a lens-1 OBJ-8). Engine never interprets the contents.
+
+**No emitter is built** ("no Phase-3 consumer"): enforcement is
+contract tests only — schema validity; a full fixture bundle SHAPED
+like the golden-master fixtures (same field shapes, invented but
+internally consistent values) validating green; a MINIMAL non-ALN
+fixture (`schemaVersion` + `engine` + `gameState` only) validating
+green — the test that proves BILL:71 is satisfied rather than cited;
+the version const; the reserved namespaces pinned present; and the
+input-coverage assertion naming all FOUR census input classes
+(payload, tokenDatabase projection, scoring rules, mode records).
+Test home: `backend/tests/contract/session-bundle.schema.test.js`.
+
+### D-7.2 — Wording moves to `strings.report` + per-mode `verbNoun`; structure stays literal
+
+**The boundary, stated honestly (§4a lens-3 O1):** engine-fixed = the
+contract's Change Rules #1–#5 (headings, table header rows, `---`,
+the H1 and metadata line FORMATS, the ★ cell format). Everything else
+that renders — including Rule #6's empty-section placeholders and the
+pipeline-read summary bullet labels (contract `:32`) — moves to
+pack-declared wording UNDER the byte-pin machinery below. Rule #6 and
+the `:32` dependency are re-recorded accordingly in the contract v2
+(D-7.3); the pipeline's view of ALN output is unchanged by
+construction.
+
+1. **The 12 heading-anchors and 6 delimiters stay engine-fixed
+   literals in the generator.** Recorded consequence, accepted under
+   the ruling: a divergent pack's report still carries the ALN-worded
+   structure strings — the "Exposed By" column header AND the
+   "Detective Evidence Log" heading (ALN's own mode name) over, say,
+   toy tipoffs. This is a deliberate ALN-flavored retention with a
+   named retirement, so it gets a LEDGER ROW at S7.2 (L13,
+   post-Phase-3 class: trigger = the §8.10 bundle migration; tripwire
+   = the golden master + the structural-invariant suite below), per
+   the L4/L8 precedent (§4a lens-3 O2).
+2. **The 25 wording literals route through `getString('report.…')`**
+   with baked defaults byte-identical to today's text. Scanner
+   `strings.js` `BAKED_STRINGS` gains a `report` section; the
+   generator imports `getString` (module import, the `modeSemantics`
+   precedent). **ALN declares NO report section** (r2 reversal, §4a
+   lens-2 OBJ-2): the bake IS ALN's report voice, exactly the shipped
+   `LEGACY_ENTITY_LABEL` pattern (`modeSemantics.js:60-68`, inverted
+   pin) — this makes the golden master a COMPLETE proof of the tier
+   that actually renders (the contract test runs with no pack
+   applied), instead of resting on a hand-enumerated tripwire whose
+   only precedent already under-covers. The toy pack declares the
+   section and proves openness. A structural pin asserts
+   `BAKED_STRINGS.report` deep-equals a literal snapshot so a
+   mis-keyed bake fails loudly rather than rendering null.
+3. **Sanitization happens at the wording boundary, not per site**
+   (§4a lens-1 OBJ-1 + lens-2 OBJ-6): every pack-declared report leaf
+   passes through ONE `reportText()` wrapper — `getString` + escape
+   `|`, map newlines to spaces, strip control/bidi characters (the
+   R-Q2 normalization class) — before it reaches ANY sink. This
+   retires the r1 two-bucket taxonomy and its uncovered third case
+   (`report.duration.*` and the date/duration fallbacks render inside
+   the Change-Rule-#5 metadata line, which is neither a table cell
+   nor a whole line). Byte-neutral under baked/ALN wording, so the
+   golden master is untouched. `_formatSaleDetail`'s existing
+   `|`-only escape is upgraded to the same helper for `tx.summary`
+   and owner-derived cell values.
+4. **`verbNoun` is a per-mode key — two tiers, as the R-Q2 machinery
+   actually behaves** (§4a lens-1 OBJ-7 + lens-2 OBJ-4): optional
+   string on `modes[]` (schema + both resolver mirrors carry the same
+   value-level normalization as `claimedLabel`, R-Q2; gate refusal
+   twins for empty/non-string). The Scoring Timeline Type cell
+   renders `resolveMode(tx.mode)?.verbNoun ?? GENERIC_VERB_NOUN`
+   (`'Claim'`) — where the ACTIVE table is the pack table when one is
+   applied, or the L6 baked ALN table otherwise. ALN's game.json
+   declares `blackmarket.verbNoun: "Sale"` and
+   `LEGACY_ALN_MODES` gains the same value in the same change — the
+   EXISTING both-directions modes drift tripwire
+   (`modeSemantics.test.js:367`) then enforces they never drift.
+   There is no baked third tier at render time; a divergent pack that
+   declares modes but omits verbNoun gets the engine-generic
+   `'Claim'`, never ALN's `'Sale'`. `'Adjustment'` (an engine event,
+   not a mode) is `report.adjustmentLabel`.
+5. **Currency affixes re-point** (§4a lens-1 OBJ-2 — completes the
+   slice-3b deferral this generator's row 1.25 records):
+   `_formatCurrency`/`_formatSignedCurrency` re-point at
+   `formatCurrency` from `src/utils/formatCurrency.js`, and the ★
+   cell's baseValue ALSO renders through `formatCurrency` — WITH the
+   money affix, like every other money figure. [CORRECTED at the S7.2
+   two-axis review: this sentence originally said the baseValue renders
+   through `formatNumber` (affix-less). The BUILD was right and the
+   design text wrong — the ALN golden pins `$150,000` inside the ★
+   cell, so an affix-less base would be a contract break. The toy
+   fixture now pins the affixed form too: `25,000 cr × 0x`.]
+   Byte-neutral for ALN by 3b's own byte-identity statement
+   (`formatCurrency.js:9-11`, including the `$-25,000` negative quirk
+   in the golden). The toy divergence fixture asserts `cr` amounts — a
+   credits game stops rendering dollars in its own report.
+6. **The class-count parenthetical** generalizes by SEMANTIC CLASS
+   with a residue term (§4a lens-2 OBJ-3 + OBJ-4):
+   `report.classLabels.evidence` (baked `'detective'`) and
+   `report.classLabels.scoring` (baked `'black market'`) keep ALN's
+   exact two-term shape; a third engine-generic term (baked
+   `'other'`) renders ONLY when accepted claims fall in neither class
+   — toy's `appraise` mode is the shipped counterexample — with a
+   loud debug warn, so claims never vanish silently from the summary
+   of a contract-bound artifact. ALN has exactly one mode per class,
+   so its residue count is structurally zero and the bytes are
+   untouched. Rejected alternative, recorded: deriving class labels
+   from `modes[].label.toLowerCase()` — order/casing-fragile and
+   coupled to R-Q1 rebranding.
+7. **Fallback keys reuse the pack's existing vocabulary** (§4a lens-1
+   OBJ-6 + lens-2 OBJ-7): the owner fallback is
+   `report.fallback.unknownOwner`, resolved declared-report-key →
+   declared `scoreboard.unknownOwner` → baked `'Unknown'` — so the
+   toy's existing `"Unattributed"` voice reaches its report without a
+   second declaration (the layered resolve is required: bare reuse
+   would render null, since `scoreboard.unknownOwner` has no baked
+   default). The duration and date fallbacks get their own keys
+   (`unknownDuration`, `unknownDate`) — one key per concept, never
+   one key for two. Standing key-plan rule: a new report key is
+   created only when no existing strings key names the concept.
+8. **No report string routes through `entities.label`** (unchanged
+   from r1, red-team-confirmed sound): ALN's declared label is
+   `Account` while the golden says `Teams:` — report labels are
+   report keys.
+
+**The test plan IS the acceptance argument (r2, §4a lens-2 OBJ-1 +
+lens-1 OBJ-5):**
+
+- The existing golden master passes UNTOUCHED (pins the dense render
+  of the baked tier — which is now provably ALN's tier by
+  construction).
+- A SECOND byte-exact golden fixture lands FIRST (tests-first): a
+  sparse session — zero evidence claims, an owner-less token, a
+  missing endTime, a reason-less adjustment, a single-scan device, a
+  scanned-never-turned-in token — pinning with `toBe()` the eleven
+  wording defaults that produce zero bytes in the dense golden
+  (placeholders, dashes, Unknowns, `Unknown Date`, the
+  never-turned-in label, the singular `scan`).
+- The structural assertions (heading list, header rows, separator
+  count, metadata regex, H1) extract into a reusable INVARIANT HELPER
+  run three times: ALN render, toy render, and an ADVERSARIAL fixture
+  whose every report key carries `|`, newlines, `##`, and bidi
+  controls — asserting the structure is byte-identical to ALN's. That
+  third run is the test of the slice's central safety property.
+- The wording-content assertions that currently hardcode ALN literals
+  (`| Sale |`, `2 detective`, `Adjustment`) re-express against the
+  resolved wording, so structure and wording fail independently.
+- A generation-time provenance warn (§4a lens-2 OBJ-5): when the
+  active pack's load source is not `network`, or a declared strings
+  sidecar failed to apply, the generator logs loudly — the markdown
+  itself carries no pack identity (recorded asymmetry, D-7.3), so the
+  warn is the only staleness signal at the point of export.
+
+**No new capability id (D-7.5, unchanged, red-team-confirmed):**
+report wording is benign-wording (3a doctrine); absent keys = today's
+text. The gate gains only the verbNoun refusal twins.
+
+### D-7.3 — The contract doc revs to v2
+
+`ALNScanner/docs/session-report-contract.md` records the r2
+mechanism: Change Rules #1–#5 unchanged as structure, with a note
+that the H1/metadata FORMAT lines are escape-protected at the wording
+boundary (their interpolations can carry pack wording, sanitized);
+Rule #6 rewritten — placeholder and label wording is pack-declared
+with the baked tier as ALN's voice, byte-pinned by the two golden
+fixtures; the `:32` "Total Transactions" pipeline dependency
+re-recorded under the same machinery; the provenance asymmetry named
+(the bundle carries an `engine` stamp, the markdown cannot without
+breaking bytes); the Phase 3 Migration Path section updated to record
+the slice-7 landing and point at ROADMAP §8.10.
+
+### D-7.4 — Tombstones (r2: the LIVE surfaces, not just the doc)
+
+The template mechanism is dead under the ruling, and it is shipped in
+three places (§4a lens-1 OBJ-4): (1) `ALN-TokenData/game.schema.json:493`
+`report.template` — REMOVED (a pack author reading the shipped schema
+must not be told templates are supported); (2) BOTH manifest builders'
+`templates/` → `role: "template"` inference
+(`backend/scripts/build-pack-manifest.js:45` + the Python byte-parity
+twin) — removed together, byte-neutral for every real pack (none
+ships a `templates/` dir; the parity suite proves it); (3) the
+pack-schemas.md `:184` draft — correction note (the slice-1
+back-annotation precedent). game.json gains NO `report` block; the
+narrative slot (matrix 8.6) stays a reserved CONCEPT with no shipped
+stub.
+
+## 4. Owner questions
+
+**None held.** Both halves were ruled 2026-08-29 (program §13.4); the
+remaining calls are derivations recorded above, and the doctrine
+red-team leg independently judged the no-questions claim sound (§4a).
+The tripwire stands: if build work surfaces a genuine taste call, it
+goes to a grill-with-docs batch before code.
+
+## 4a. Design red-team record (2026-09-03, pre-build — workflow `wf_0568e580-301`)
+
+Three lenses per the subagent policy: contract+injection (Opus),
+byte-identity+tiers (Opus), doctrine+parity+scope (Fable). Verdicts:
+lens 1 "not build-ready, no blocking" (5 MAJOR / 4 MINOR); lens 2
+"not sound as written — implementable, acceptance argument must be
+repaired" (3 MAJOR / 4 MINOR); lens 3 PASS (3 MINOR, ruling fidelity
+confirmed clause-by-clause, no scope creep, no gate). **All 19
+objections adjudicated ACCEPTED** (none refuted; several merged) and
+folded into §3 r2:
+
+| Objection | Fix landed in |
+|---|---|
+| L1-OBJ-1 + L2-OBJ-6 (uncovered metadata-line sinks; `\|`-only escape at ★) | D-7.2 #3: boundary-level `reportText()` sanitizer |
+| L1-OBJ-2 (report still renders `$`/en-US; 3b deferral) | D-7.2 #5 + §1 row 1.25 + §2 correction |
+| L1-OBJ-3 (bundle omits scoring rules + mode semantics) | D-7.1 `rules` section + 4-class coverage test |
+| L1-OBJ-4 (live `report.template` schema stub + builder role) | D-7.4 r2 |
+| L1-OBJ-5 (structural invariants never run against hostile wording) | D-7.2 test plan: invariant helper ×3 + adversarial fixture |
+| L1-OBJ-8 (gameState/intake reserve nothing; ALN-shaped spine) | D-7.1: patternProperties, `true` members, optional sections, minimal non-ALN fixture |
+| L1-OBJ-6 + L2-OBJ-7 (unknownOwner duplicate; conflated fallbacks) | D-7.2 #7 layered resolve + one-key-per-concept rule |
+| L1-OBJ-7 + L2-OBJ-4 (three-tier verbNoun misdescribes R-Q2; ALN 'Sale' leak) | D-7.2 #4 two-tier restatement |
+| L1-OBJ-9 (semver const contradicts house convention) | D-7.1 integer `schemaVersion` |
+| L2-OBJ-1 (11 wording sites produce zero golden bytes) | D-7.2 test plan: sparse-session golden, tests-first |
+| L2-OBJ-2 (golden pins baked tier; tripwire precedent under-covers) | D-7.2 #2 reversal: ALN declares no report section; bake = ALN voice |
+| L2-OBJ-3 (classes not a partition; toy `appraise`) | D-7.2 #6 residue term + warn + toy fixture appraise claim |
+| L2-OBJ-5 (Phase-1A staleness; markdown carries no pack identity) | D-7.2 provenance warn + D-7.3 asymmetry record |
+| L3-O1 (boundary ≠ census ≠ Change Rules at the edges) | D-7.2 preamble restated; D-7.3 records `:32` |
+| L3-O2 (ALN-flavored retention needs a ledger row) | D-7.2 #1: ledger row L13 at S7.2 |
+| L3-O3 (lockstep arrow contradicts body + precedent) | §5 S7.2 order corrected |
+
+## 5. Build order
+
+- **S7.1 — bundle schema** (backend only, pure additive):
+  `session-bundle.schema.json` (r2 shape) + the two fixtures (full
+  ALN-shaped, minimal non-ALN, both validating) + contract tests
+  (validity, integer version const, reserved namespaces genuinely
+  constrained, 4-class input coverage).
+- **S7.2 — wording block** (lockstep TokenData → backend → scanner →
+  toy pack): TokenData: `game.schema.json` modes `verbNoun` +
+  `report.template` stub REMOVED + ALN `game.json`
+  (`blackmarket.verbNoun: "Sale"`) + manifest regen (ALN strings.json
+  UNCHANGED — declares no report section by design). Backend: gate
+  refusal twins + resolver-mirror value normalization + BOTH manifest
+  builders drop the `template` role (byte-parity suite re-proven).
+  Scanner: sparse-session golden + invariant helper + adversarial
+  fixture FIRST (red), then `BAKED_STRINGS.report` + `reportText()`
+  boundary sanitizer + generator re-point (25 wording sites +
+  verbNoun + currency re-point + class-residue term + provenance
+  warn) to green with BOTH goldens untouched/passing; baked-snapshot
+  pin; `LEGACY_ALN_MODES.blackmarket.verbNoun`. Toy pack: divergent
+  report section + verbNoun + an `appraise` claim in the fixture +
+  manifest regen. Ledger row L13. Contract doc v2 + pack-schemas
+  correction note. Config-tool: OUT (strings editing is B-pages
+  territory).
+- **S7.3 — close**: dual-pack Tier L, fresh ratchet, `npm run lint`
+  both repos (the standing correction from the 2026-09-03 regression
+  record), mixed-model adversarial review per the subagent policy,
+  close record.
+
+Each stage runs under the implement/tdd/code-review frame: tests
+first at the seams named above, per-stage two-axis review, commit.
+
+## 6. Residue
+
+- The pipeline migration itself: ROADMAP §8.10, owner-paced, post
+  Phase-4 D — nothing here starts it.
+- Intake shapes inside the bundle: Phase-4 D designs them; this slice
+  reserves names only (`true` schemas).
+- Divergent-pack ALN-flavored structure wording: ledger row L13
+  (D-7.2 #1) — the row replaces r1's bare residue note.
+- Standalone report support (matrix 4.20 gap: networked-only) — out
+  of scope, unchanged.
+
+## 7. Estimate
+
+S7.1 ≈ 1 work session; S7.2 ≈ 2–2.5 (the r2 test plan grew it: two
+goldens, invariant ×3, adversarial fixture, currency re-point,
+four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
+
+## 8. Execution record
+
+(Filled as stages close.)
+
+- 2026-09-03: slice OPENED post task-#23 review (owner-confirmed);
+  branch + draft PR #30 at open; census workflow `wf_03423b14-aaf`
+  (5 agents, counts verified ×2); design r1 drafted.
+- 2026-09-03: pre-build design red-team `wf_0568e580-301` (2 Opus +
+  1 Fable, 19 objections, 0 refuted) — design revised to r2, §4a
+  adjudication table. Estimate re-priced 3.5–4 → 4–4.5.
+- 2026-09-03: **S7.2 DONE** (lockstep TokenData → backend → scanner →
+  toy pack, red-first at every seam). TokenData `7660375`: schema
+  `verbNoun` (R-Q2 idiom, pattern forbids pipes/newlines/controls) +
+  `report.template` stub REMOVED + ALN `blackmarket.verbNoun: "Sale"`
+  + manifest regen (game.json diff = one line). Backend `c7f04b3`
+  (pin bumped): baked-table verbNoun bound by the existing
+  both-directions drift tripwire, `normalizedVerbNoun` + resolver
+  field + gate refusal twin, BOTH manifest builders drop the template
+  role (Node tmp-pack pin + Python test flipped; byte-neutral for
+  every real pack). Scanner `9490a29` (nested data pin bumped):
+  scanner mirror (DECLINE-warn posture, five refusal arms covered —
+  the ratchet's 100-floor on modeSemantics caught the two missing
+  arms and they got real tests), `BAKED_STRINGS.report` (the bake IS
+  ALN's voice — ALN's strings.json deliberately declares NO report
+  section), `getPackString` for layered lookups, the generator
+  re-point (all 25 wording sites through the `_rt`/`_cell` boundary
+  sanitizer; verbNoun Type cell; currency affixes through the pack
+  money spec — 3b's recorded deferral completed; class-count residue
+  term + loud debug warn; layered unknownOwner), the export
+  provenance warn in gameAdmin (+ 2 pins). Proof landed with it:
+  sparse + empty byte-goldens as fixture files (the 11 zero-byte
+  defaults, generated from the pre-refactor tree and eyeballed),
+  `assertStructuralInvariants` run on FIVE renders (dense/sparse/
+  empty/toy-worded/adversarial — the adversarial pack carries pipes,
+  newlines, headings and bidi in every key and cannot move an
+  anchor; its hostile verbNoun declines to the engine-generic
+  'Claim'), the 25-key baked-voice snapshot pin, the three
+  ALN-literal contract assertions re-expressed against resolved
+  wording, and the DENSE GOLDEN MASTER passing UNTOUCHED throughout.
+  Toy pack declares its real voice (fence verbNoun 'Fence',
+  report classLabels tipoffs/fenced/appraisals + divergent
+  placeholders) — 218 gate/schema tests green on the real files.
+  Contract doc v2 (wording-block mechanism, escape-protected format
+  lines, provenance asymmetry); pack-schemas.md `:185` draft
+  back-annotated; ledger row L13 recorded (ALN-flavored engine-fixed
+  structure wording, post-Phase-3, retires at §8.10). Verified at the
+  commits: scanner 1608 + ratchet (65 files, 100-floors held) +
+  build; backend 2604 + ratchet + lint; Python 75 [CORRECTED at the
+  S7.3 close gate: this entry originally recorded "Python 84" — the
+  scripts/tests tree collects 75 and no Python file changed after
+  this stage, so 84 was a recording error, not a lost suite].
+- 2026-09-03: **S7.2 two-axis review FOLDED** (parallel Sonnet
+  agents over the four-repo S7.2 diff). Standards axis, 3 findings
+  all folded: (1) DI violation — gameAdmin's provenance read was an
+  ad-hoc `await import(packLoader)` singleton reach around App
+  (scanner CLAUDE.md "sole injection point"); tokenManager now
+  RETAINS `packInfo`/`gameConfig` at loadDatabase and the domain
+  reads those; (2) divergent change — `GENERIC_VERB_NOUN` moved from
+  the generator into scanner modeSemantics.js as an exported const
+  beside its normalizer; (3) both mirrors' verbNoun cap now counts
+  CODE POINTS (`[...cleaned].length`, the icon idiom and the
+  schema's maxLength semantics) — astral acceptance/refusal tests
+  both sides. Accepted-as-is: the generator's local CONTROL_AND_BIDI
+  copy (different sink, justified in-code); mirror parity clean; no
+  scope creep. Spec axis, 3 findings: (4) ★-cell — the BUILD was
+  right and the DESIGN TEXT wrong (D-7.2 #5 said `formatNumber`,
+  affix-less; the ALN golden pins `$150,000` in-cell): sentence
+  corrected in place, toy fixture now pins `25,000 cr × 0x`;
+  (5) provenance warn gained its OR-branch — a pack that DECLARES a
+  strings sidecar none of which is applied exports in the baked
+  voice; `packStringsApplied()` introspection added to strings.js,
+  warn + red-first pins (provenance suite 2 → 4 tests); (6) the
+  class-count residue clamp (`Math.max(0, accepted − evidence −
+  scoring)`) replaced by a counted per-claim census — a schema-legal
+  BOTH-class mode (scoring policy + evidence surface) would have
+  cancelled a genuine neither-class claim out of the count line;
+  residue now exact, overlap loud (Debug warn), both-class fixture
+  red-first. ALN + toy + sparse/empty goldens byte-unchanged
+  throughout. Verified at the fold: scanner 1601 (npm test; +12
+  build-artifact tests separately gated) + ratchet 65 files + build;
+  backend full suite + ratchet 82 files + lint.
+- 2026-09-03: **S7.3 CLOSE — SLICE 7 CLOSED & CI-CONFIRMED.** Final
+  heads: parent `9a16dcd`+this record / ALNScanner `46db231` /
+  ALN-TokenData `c44a8ef`. Close gate, all green on the FINAL tree
+  (post-review-fold): backend 2661 unit+contract + fresh ratchet
+  (82 files, raises only: app.js branches 65→75) + lint; scanner 1604
+  + fresh ratchet (65 files, raises only: gameAdmin 35/85/55,
+  generator branches 85, tokenManager branches 90) + build + lint;
+  pack contract 113; bundle contract 24; config-tool 114; PWA 165;
+  Python 75; ESP32 leg unrun (zero slice-7 changes, pio absent —
+  slice-4 posture). Dual-pack Tier L locally on the final tree: ALN
+  leg 119P/0F/61 capability-gated skips (+4 Tier-H), 0 flaky; toy leg
+  120P/0F/60S, 0 flaky. CI: parent runs 184–188 ALL GREEN (each
+  includes both Tier L matrix legs on CI runners), scanner runs 96–97
+  green. Merge train: TokenData #5 + ALNScanner #14 opened as the
+  slice-7 vehicles (subsuming #4/#13), parent #30 open since slice
+  open; PHASE3-STATUS train table + close record current. Residue
+  carried per §6: ledger L13 (ALN-flavored engine-fixed structure
+  wording, retires at ROADMAP §8.10); the B9 bundle stays
+  consumer-less by design until §8.10. Queue: theme unit (§13.5)
+  NEXT.
+- 2026-09-03: **S7.3 mixed-model adversarial review of the WHOLE slice
+  FOLDED** (subagent policy: two Opus refuters — security +
+  state-machine — a Fable doctrine/parity leg, a Haiku sweep; deltas
+  parent `6828140..`, scanner `567dfa8..`, TokenData slice-7).
+  **Three MAJORs, all fixed red-first** (TokenData `c44a8ef`, scanner
+  `46db231`, parent `03080e2`): (1) SECURITY — 13 DATA-carried
+  interpolations (session.name → H1, team/token/device ids → rows and
+  list lines) bypassed `_cell` while its JSDoc claimed data coverage;
+  reproduced end-to-end (deviceId rides the UNAUTHENTICATED /api/scan
+  with no pattern; session.name passes Joi with newlines; teamId is
+  trim-only) — a LAN host could forge a section or displace the
+  metadata line in the GenAI pipeline's artifact. Every data
+  interpolation now cells at the sink; hostile-DATA invariant test
+  added. (2) STATE-MACHINE — `_cell` composed with itself
+  double-escaped a declared pipe into GFM-LIVE `\\|` (owner re-celled
+  inside _formatSaleDetail — a REGRESSION vs the pre-slice sale path —
+  and the adjustment label re-celled at the timeline row), and the
+  invariant helper's naive lookbehind mis-read `\\|` as escaped, so
+  the adversarial suite green-lit the exact break it exists to catch.
+  Fixed: cell-once discipline (helpers resolve RAW — _getTokenOwner,
+  _raw(); the renderer cells each sink exactly once), backslash
+  escaping in _cell (GFM tokenizes escape pairs left-to-right), a
+  GFM-tokenizing pipe counter in the helper, U+2028/2029 joining the
+  generator's control class. (3) DOCTRINE — the bake-is-ALN's-voice
+  premise was UNPINNED: nothing asserted data/strings.json declares no
+  report section (the LEGACY_ENTITY_LABEL precedent reads the real
+  pack file; slice 7 shipped only comments) — a future ALN declaration
+  would silently diverge shipped output from the pipeline-pinned
+  goldens. Inverted pin added beside the strings drift tripwire.
+  **Minors fixed:** bundle-schema `$defs/id` hardened (maxLength 200 +
+  C0/DEL pattern, 3 pins); pack-manifest role enum drops the retired
+  'template' (tombstone completed); game.schema verbNoun description
+  precision (it forbids C0, not "control chars" — DEL/bidi are the
+  value twins' job); contract doc title/version → v2 + the dead
+  pack-template migration step deleted; pack-schemas.md `:231` second
+  template example back-annotated. **Refuted/accepted:** the security
+  leg's schema/twin astral-divergence claim was REFUTED by the
+  doctrine leg empirically (Ajv2020 compiles patterns with `u` —
+  code points everywhere) and the agreement is now PINNED at the
+  schema level against AJV default changes; the control-class widening
+  on data bytes (raw \t/\r in summaries now render as spaces) is
+  ACCEPTED intended hardening — the byte-neutrality claim covers
+  wording, not hostile data. Survived attack (verified by the
+  refuters): manifest builder parity (executed on both real packs,
+  byte-identical, committed files match), currency byte-neutrality
+  incl. the negative quirk, the census/filter dual computation,
+  tokenManager retention lifecycles (single loadDatabase call site;
+  refusal path leaves packInfo null = truthful silence), prototype
+  traps (Object.hasOwn everywhere), intake/gameState reservations,
+  Haiku sweep clean. **The ratchet caught the fold's own coverage
+  dip** (three defensive `?? ''` arms; the masked-exit-code `| tail`
+  lesson re-struck and was caught by the pipefail re-run) — resolved
+  by consolidating into `_raw()` with an honestly-coverable contract,
+  floor held at 85 (never lowered; generator now 88+).
+- 2026-09-03: **S7.1 DONE.** `backend/contracts/session-bundle.schema.json`
+  + `tests/contract/session-bundle.schema.test.js`, red-first (test
+  written against the missing schema, then the schema to green).
+  Two-axis review (parallel Sonnet agents, fixed point `6828140`):
+  standards axis — no hard violations; 5 idiom findings ALL folded
+  (`$id` on the house `aln.tokens` domain, bare consts, `kind`
+  discriminator added, `minLength: 1` on the id shape, `$defs` for
+  the repeated timestamp/id shapes); spec axis — 5 findings: the §5
+  "three fixtures" drafting slip corrected to two (this doc), the
+  intake reservation now exercised through `validate()` with a rogue
+  key, the engine-stamp format patterns KEPT and recorded above
+  (adjudicated: pack-manifest patterns verbatim), and the two real
+  catches fixed — `rules.modes[]` now REQUIRES
+  `scoringPolicy`/`displayBehavior.surface` (with refusal pins) and
+  the full fixture's ★-derivable math made internally consistent
+  (750000) with the "derived from" overclaim reworded. 22 contract
+  tests green; backend suite + ratchet + lint verified at commit.

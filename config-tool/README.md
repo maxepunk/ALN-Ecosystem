@@ -26,8 +26,8 @@ The config tool reads and writes four config sources:
 | Config Source | File Path | Description |
 |---------------|-----------|-------------|
 | Backend .env | `backend/.env` | Server settings, features, secrets |
-| Scoring Config | `ALN-TokenData/scoring-config.json` | Base values and type multipliers |
-| Cue Definitions | `backend/config/environment/cues.json` | Show control cues and timelines |
+| Scoring Config | `ALN-TokenData/game.json` (`scoring` block) | Base values and type multipliers (scoring-config.json retired — ledger L1) |
+| Cue Definitions | `ALN-TokenData/cues.json` (pack content, not venue config) | Show control cues and timelines — validated against the pack's lighting roles, trigger vocabulary, and token database on save |
 | Audio Routing | `backend/config/environment/routing.json` | Stream routing and ducking rules |
 
 It also manages:
@@ -40,7 +40,7 @@ It also manages:
 | Config Source | Takes Effect |
 |---------------|--------------|
 | Backend .env | Backend restart |
-| Scoring Config | Backend restart. The GM Scanner additionally requires an ALNScanner rebuild — it bakes scoring-config.json in at Vite build time |
+| Scoring Config | Backend restart. The GM Scanner picks the pack's scoring up at RUNTIME via its packLoader — no rebuild (the old baked scoring-config.json is a loud last-resort shim only) |
 | Cue Definitions | Backend restart or `system:reset` (GM Scanner admin panel) |
 | Audio Routing | Backend restart or `system:reset` (GM Scanner admin panel) |
 
@@ -148,7 +148,7 @@ Click a group heading to expand/collapse it. The Server group is expanded by def
 
 Save and restore named configuration snapshots.
 
-**Save Current** — Saves the four config sources (env, scoring, cues, routing) as a named preset file. Enter a name and optional description. Note: presets do NOT include sound/video asset files, token data, or music playlists — restoring a preset does not restore assets that its cues reference.
+**Save Current** — Saves three venue config sources (env, scoring, routing) as a named preset file. Enter a name and optional description. Cues are pack content, not venue state (A3 slice 4), so presets never capture or restore them. An older preset that still carries a `cues` section is accepted on import, but loading it never writes those cues to the pack. Presets also do NOT include sound/video asset files, token data, or music playlists.
 
 **Load** — Restores a preset, overwriting all config files. An automatic backup is created before loading so you can always recover. After loading, all sections refresh with the new data.
 
@@ -176,6 +176,8 @@ The Show Control section validates before saving:
 - No duplicate cue IDs
 - Clock trigger values must be valid HH:MM:SS
 - Warnings (non-blocking) if a referenced sound or video file doesn't exist on disk
+
+On save, the backend also runs the pack's own activation gate (`validateCuesBlock`, the same check `packService` runs at activation) against the full document. It refuses, with a 400 and itemized problems: unknown trigger events or condition operators, malformed conditions, a lighting role the pack's `lightingRoles` never declares, and any concrete `sceneId` in a lighting payload (pack cues address lights by `role` only). On refusal the file on disk is left untouched.
 
 ## Architecture
 
@@ -229,7 +231,7 @@ All endpoints are under `/api/`.
 | GET | `/api/config` | Read all config sources |
 | PUT | `/api/config/env` | Update .env values (partial — only sends changed keys) |
 | PUT | `/api/config/scoring` | Write scoring-config.json |
-| PUT | `/api/config/cues` | Write cues.json |
+| PUT | `/api/config/cues` | Write cues.json (pack header form only; validated against the pack's activation gate) |
 | PUT | `/api/config/routing` | Write routing.json |
 | GET | `/api/tokens` | Read token database (read-only) |
 | GET | `/api/music/tracks` | List MPD track database (proxied to orchestrator) |

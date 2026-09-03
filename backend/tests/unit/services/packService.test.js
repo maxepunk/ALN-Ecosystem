@@ -1,0 +1,1848 @@
+/**
+ * Unit tests: packService (Phase 3 A2 — the active game pack directory)
+ *
+ * Covers: PACK_PATH override + loud warn-once, manifest mtime cache,
+ * activation snapshot semantics (identity frozen at boot; disk drift
+ * loud-warned; pre-pack null stays null), and resolvePackFile whitelist
+ * + traversal containment.
+ */
+
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+jest.mock('../../../src/utils/logger', () => ({
+  info: jest.fn(),
+  warn: jest.fn(),
+  error: jest.fn(),
+  debug: jest.fn(),
+}));
+
+const logger = require('../../../src/utils/logger');
+const packService = require('../../../src/services/packService');
+
+const TOY_PACK = path.resolve(__dirname, '../../e2e/fixtures/packs/toy-heist');
+
+// Distinct 64-hex hashes for drift tests
+const HASH_A = `sha256:${'a'.repeat(64)}`;
+const HASH_B = `sha256:${'b'.repeat(64)}`;
+
+/** Write a minimal manifest and force a DISTINCT mtime (1s granularity on
+ * some filesystems would otherwise let the mtime cache serve stale data). */
+let mtimeBump = 0;
+function writeManifest(dir, manifest) {
+  const p = path.join(dir, 'pack-manifest.json');
+  fs.writeFileSync(p, JSON.stringify(manifest));
+  mtimeBump += 10;
+  const t = Math.floor(Date.now() / 1000) + mtimeBump;
+  fs.utimesSync(p, t, t);
+}
+
+function minimalManifest(overrides = {}) {
+  return {
+    kind: 'pack-manifest',
+    schemaVersion: 2,
+    packId: 'unit-pack',
+    version: '0.0.1',
+    contentHash: HASH_A,
+    engine: { minVersion: '3.0.0' },
+    files: [{ path: 'tokens.json', role: 'tokens', sha1: '0'.repeat(40), size: 2 }],
+    ...overrides,
+  };
+}
+
+describe('packService', () => {
+  let tmpDir;
+  const originalPackPath = process.env.PACK_PATH;
+
+  beforeEach(() => {
+    packService._resetForTesting();
+    jest.clearAllMocks();
+    delete process.env.PACK_PATH;
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-packsvc-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    if (originalPackPath === undefined) {
+      delete process.env.PACK_PATH;
+    } else {
+      process.env.PACK_PATH = originalPackPath;
+    }
+    packService._resetForTesting();
+  });
+
+  describe('getPackDir', () => {
+    it('defaults to the ALN-TokenData submodule', () => {
+      expect(packService.getPackDir()).toBe(
+        path.resolve(__dirname, '../../../../ALN-TokenData')
+      );
+    });
+
+    it('PACK_PATH overrides the default and warns LOUDLY exactly once', () => {
+      process.env.PACK_PATH = tmpDir;
+      expect(packService.getPackDir()).toBe(path.resolve(tmpDir));
+      expect(packService.getPackDir()).toBe(path.resolve(tmpDir));
+      const overrideWarns = logger.warn.mock.calls.filter(([msg]) =>
+        msg.includes('PACK_PATH override ACTIVE')
+      );
+      expect(overrideWarns).toHaveLength(1);
+    });
+  });
+
+  describe('getManifest (pre-activation: live disk reads)', () => {
+    it('parses the toy pack manifest', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getManifest().packId).toBe('midnight-heist');
+    });
+
+    it('returns null when the directory has no manifest', () => {
+      process.env.PACK_PATH = tmpDir;
+      expect(packService.getManifest()).toBeNull();
+    });
+
+    it('returns null and warns on unparseable JSON', () => {
+      process.env.PACK_PATH = tmpDir;
+      fs.writeFileSync(path.join(tmpDir, 'pack-manifest.json'), '{nope');
+      expect(packService.getManifest()).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Pack manifest unreadable')
+      );
+    });
+
+    it('serves the mtime cache on unchanged files and re-reads on change', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ version: '1.0.0' }));
+      const first = packService.getManifest();
+      expect(packService.getManifest()).toBe(first); // same object: cached
+
+      writeManifest(tmpDir, minimalManifest({ version: '2.0.0', contentHash: HASH_B }));
+      expect(packService.getManifest().version).toBe('2.0.0');
+    });
+  });
+
+  describe('activatePack (boot-time snapshot semantics)', () => {
+    it('freezes identity at activation; later disk edits are not advertised', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      const info = packService.activatePack();
+      expect(info).toEqual({ packId: 'unit-pack', version: '0.0.1', contentHash: HASH_A });
+
+      writeManifest(tmpDir, minimalManifest({ version: '9.9.9', contentHash: HASH_B }));
+      expect(packService.getActivePackInfo()).toEqual(info);
+      expect(packService.getManifest().contentHash).toBe(HASH_A);
+    });
+
+    it('loud-warns drift exactly once per distinct disk state', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      packService.activatePack();
+
+      writeManifest(tmpDir, minimalManifest({ contentHash: HASH_B }));
+      packService.getManifest();
+      packService.getManifest();
+      const driftWarns = logger.warn.mock.calls.filter(([msg]) =>
+        msg.includes('differs from the ACTIVE pack')
+      );
+      expect(driftWarns).toHaveLength(1);
+      expect(driftWarns[0][0]).toContain(HASH_B);
+      expect(driftWarns[0][0]).toContain(HASH_A);
+    });
+
+    it('a pre-pack checkout stays identity-null even if a manifest appears later', () => {
+      process.env.PACK_PATH = tmpDir;
+      expect(packService.activatePack()).toBeNull();
+      expect(logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('pack identity is null')
+      );
+
+      writeManifest(tmpDir, minimalManifest());
+      expect(packService.getActivePackInfo()).toBeNull();
+      const driftWarns = logger.warn.mock.calls.filter(([msg]) =>
+        msg.includes('differs from the ACTIVE pack')
+      );
+      expect(driftWarns).toHaveLength(1);
+    });
+  });
+
+  describe('getActivePackInfo', () => {
+    it('reports the toy pack identity fields', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const info = packService.getActivePackInfo();
+      expect(info.packId).toBe('midnight-heist');
+      expect(info.contentHash).toMatch(/^sha256:[0-9a-f]{64}$/);
+      expect(Object.keys(info).sort()).toEqual(['contentHash', 'packId', 'version']);
+    });
+
+    it('is null without a manifest', () => {
+      process.env.PACK_PATH = tmpDir;
+      expect(packService.getActivePackInfo()).toBeNull();
+    });
+  });
+
+  describe('resolvePackFile (whitelist + containment)', () => {
+    it('resolves inventoried paths to absolute paths inside the pack dir', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const abs = packService.resolvePackFile('tokens.json');
+      expect(abs).toBe(path.join(TOY_PACK, 'tokens.json'));
+      expect(packService.resolvePackFile('game.json')).toBe(path.join(TOY_PACK, 'game.json'));
+    });
+
+    it('returns null for non-inventoried paths and with no manifest', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.resolvePackFile('pack-manifest.json')).toBeNull();
+      expect(packService.resolvePackFile('nope.json')).toBeNull();
+
+      process.env.PACK_PATH = tmpDir;
+      packService._resetForTesting();
+      expect(packService.resolvePackFile('tokens.json')).toBeNull();
+    });
+
+    it('refuses traversal even when the manifest inventory itself is hostile', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({
+        files: [{ path: '../outside.txt', role: 'other', sha1: '0'.repeat(40), size: 1 }],
+      }));
+      // resolvePackFile never touches the target file — containment is
+      // decided purely on the resolved path prefix.
+      expect(packService.resolvePackFile('../outside.txt')).toBeNull();
+    });
+  });
+
+  describe('getGameConfig (A3 slice 0 — audit F4)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('reads the toy pack game.json pre-activation (live disk)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const game = packService.getGameConfig();
+      expect(game.id).toBe('midnight-heist');
+      expect(Array.isArray(game.modes)).toBe(true);
+    });
+
+    it('is null when the pack ships no game.json (parity fixtures, pre-pack checkouts)', () => {
+      process.env.PACK_PATH = tmpDir;
+      expect(packService.getGameConfig()).toBeNull();
+    });
+
+    it('activation SNAPSHOTS game.json — later disk edits are invisible (rules frozen)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'unit-game' });
+      packService.activatePack();
+
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'EDITED' });
+
+      expect(packService.getGameConfig().id).toBe('unit-game');
+    });
+
+    it('a pack activated without game.json stays null for the process lifetime', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      packService.activatePack();
+
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'late' });
+
+      expect(packService.getGameConfig()).toBeNull();
+    });
+  });
+
+  describe('capability gate (A3 slice 0 — audit F2 + adversarial R6)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('activates the REAL packs unchanged (ALN default dir + toy pack declare only what the engine has)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('refuses a pack requiring a NEWER engine (manifest engine.minVersion)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '99.0.0' } }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*engine >= 99\.0\.0/);
+    });
+
+    it('refuses a manifest authored against a future schemaVersion', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ schemaVersion: 3 }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*schemaVersion 3/);
+    });
+
+    it('refuses a game.json authored against a PAST schemaVersion (v1 suffixed tokens would read as verbatim names)', () => {
+      // EXACT match, both directions — the tokens-v2 cutover made this
+      // load-bearing: this engine has no suffix parser, so a v1 pack must
+      // refuse instead of silently reading "(xN)" names as pure names.
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 1, id: 'past' });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 1/);
+    });
+
+    it('refuses a game.json authored against a future schemaVersion', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 3, id: 'future' });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*game\.json schemaVersion 3/);
+    });
+
+    it('refuses unknown required capabilities — headroom is never silently absorbed', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'constellation',
+        requires: ['scoring.tabular', 'scoring.graph', 'contagion'],
+      });
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE.*scoring\.graph, contagion/);
+    });
+
+    it('accepts a requires array the engine fully implements', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'subset',
+        requires: ['scoring.tabular', 'groupRules.all'],
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getGameConfig().id).toBe('subset');
+    });
+
+    it('a pack that declares NOTHING gates nothing (pre-pack + v1 behavior preserved)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir: no manifest, no game.json
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getActivePackInfo()).toBeNull();
+    });
+
+    it('the refusal FAILS activation — nothing is snapshotted', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '99.0.0' } }));
+      expect(() => packService.activatePack()).toThrow(/CAPABILITY GATE/);
+      // Not activated: reads stay live-disk (pre-activation semantics).
+      writeManifest(tmpDir, minimalManifest({ engine: { minVersion: '1.0.0' }, contentHash: HASH_B }));
+      expect(packService.getManifest().contentHash).toBe(HASH_B);
+    });
+  });
+
+  describe('mode drivability (A3 slice 1 — flag values gated, schema stays open)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const mode = (overrides = {}) => ({
+      id: 'm1', label: 'M1', scoringPolicy: 'standard', entityRole: 'ledger',
+      countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' },
+      ...overrides,
+    });
+    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 2, id: 'drv', modes });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('refuses a scoringPolicy this engine does not implement, naming the mode', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'constellation', scoringPolicy: 'graph' })));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*mode 'constellation' is not driveable.*scoringPolicy 'graph'/);
+    });
+
+    it('refuses an unimplemented entityRole', () => {
+      writeGame(tmpDir, gameWith(mode({ entityRole: 'faction' })));
+      expect(() => packService.activatePack())
+        .toThrow(/not driveable.*entityRole 'faction'/);
+    });
+
+    it('refuses an unimplemented display surface', () => {
+      writeGame(tmpDir, gameWith(mode({ displayBehavior: { surface: 'constellation-map' } })));
+      expect(() => packService.activatePack())
+        .toThrow(/not driveable.*displayBehavior\.surface 'constellation-map'/);
+    });
+
+    it('accepts modes the engine has never heard of when every flag value is implemented (open vocabulary)', () => {
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'fence' }),
+        mode({ id: 'tipoff', scoringPolicy: 'none', entityRole: 'attribution', defaultEntity: 'D', countsTowardGroups: false, displayBehavior: { surface: 'scoreboard-evidence' } })
+      ));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('an absent displayBehavior is drivable (normalizes to surface none)', () => {
+      writeGame(tmpDir, gameWith(mode({ displayBehavior: undefined })));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('lists EVERY undrivable flag of every undrivable mode in one refusal', () => {
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'bad1', scoringPolicy: 'graph', entityRole: 'faction' }),
+        mode({ id: 'ok' }),
+        mode({ id: 'bad2', displayBehavior: { surface: 'holo' } })
+      ));
+      let err = null;
+      try { packService.activatePack(); } catch (e) { err = e; }
+      expect(err).not.toBeNull();
+      expect(err.message).toMatch(/bad1.*scoringPolicy 'graph', entityRole 'faction'/);
+      expect(err.message).toMatch(/bad2.*displayBehavior\.surface 'holo'/);
+      expect(err.message).not.toMatch(/mode 'ok'/);
+    });
+
+    it('refuses an unimplemented claims value; drives both implemented policies (D3s2)', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'weird', claims: 'per-actor' })));
+      expect(() => packService.activatePack())
+        .toThrow(/mode 'weird' is not driveable.*claims 'per-actor'/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, gameWith(
+        mode({ id: 'sell', claims: 'consuming' }),
+        mode({ id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false, claims: 'non-consuming' })
+      ));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    describe('presentation-field refusal twins (R-Q2 #5 + Q1 — declared-but-undrivable refuses; absent gates nothing)', () => {
+      it('accepts declared claimedLabel/icon/entities.label in good shape (the real toy declarations)', () => {
+        writeGame(tmpDir, {
+          ...gameWith(mode({ id: 'fence', claimedLabel: 'FENCED by {entity}', icon: '💼' })),
+          entities: { label: { singular: 'Crew', plural: 'Crews' } },
+        });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('refuses a claimedLabel without exactly one {entity} or with stray braces', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bad', claimedLabel: 'CLAIMED' })));
+        expect(() => packService.activatePack())
+          .toThrow(/mode 'bad' is not driveable.*claimedLabel "CLAIMED".*exactly one \{entity\}/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'bad2', claimedLabel: '{entity} beats {entity}' })));
+        expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*claimedLabel/);
+      });
+
+      it('refuses a markup-bearing or over-long icon (icons are TEXT glyphs, never class keys)', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bad', icon: '<b>' })));
+        expect(() => packService.activatePack())
+          .toThrow(/mode 'bad' is not driveable.*icon "<b>".*never as class keys/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'bad2', icon: '💰💰💰💰💰' })));
+        expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*icon/);
+      });
+
+      it('refuses a table-breaking or empty verbNoun; a DECLARED usable one activates (slice 7)', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bad', verbNoun: 'Sa|le' })));
+        expect(() => packService.activatePack())
+          .toThrow(/mode 'bad' is not driveable.*verbNoun "Sa\|le".*never split a table row/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'bad2', verbNoun: '' })));
+        expect(() => packService.activatePack()).toThrow(/mode 'bad2' is not driveable.*verbNoun/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'ok', verbNoun: 'Fence' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('refuses a declared-but-unusable entities.label; an ABSENT entities block gates nothing', () => {
+        writeGame(tmpDir, {
+          ...gameWith(mode({ id: 'ok' })),
+          entities: { label: { singular: '', plural: 'Crews' } },
+        });
+        expect(() => packService.activatePack())
+          .toThrow(/entities\.label.*is not usable.*singular AND plural/);
+
+        packService._resetForTesting();
+        writeGame(tmpDir, gameWith(mode({ id: 'ok' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('absent presentation fields gate nothing (engine-generic fallback is a safe landing)', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'plain' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+    });
+  });
+
+  describe('rules-block drivability (A3 slice 2 — §2i/§2j: the engine implements the declared table only)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const base = () => ({ kind: 'game', schemaVersion: 2, id: 'rules' });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it("refuses duplicatePolicy.claim other than 'once' (non-consuming claims arrive WITH their enforcement)", () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'unlimited', view: 'unlimited' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*duplicatePolicy\.claim 'unlimited'/);
+    });
+
+    it("refuses duplicatePolicy.view other than 'unlimited'", () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'once', view: 'once' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*duplicatePolicy\.view 'once'/);
+    });
+
+    it('accepts the declared table (once / unlimited) — the policy the engine implements', () => {
+      writeGame(tmpDir, { ...base(), duplicatePolicy: { claim: 'once', view: 'unlimited' } });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it("refuses groupRules.type other than 'all' with the named slice-2 message", () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'any', minSize: 2 } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*groupRules\.type 'any'.*declared table only/);
+    });
+
+    it('refuses groupRules.minSize other than 2', () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'all', minSize: 3 } });
+      expect(() => packService.activatePack())
+        .toThrow(/groupRules\.minSize 3/);
+    });
+
+    it("refuses an unimplemented completion.bonusFormula", () => {
+      writeGame(tmpDir, { ...base(), groupRules: { type: 'all', minSize: 2, completion: { bonusFormula: 'flat-thousand' } } });
+      expect(() => packService.activatePack())
+        .toThrow(/bonusFormula 'flat-thousand'/);
+    });
+
+    it('accepts the full declared ALN/toy table and an ABSENT block alike', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        groupRules: { type: 'all', minSize: 2, completion: { bonusFormula: 'multiplier-minus-one-times-base' } },
+        duplicatePolicy: { claim: 'once', view: 'unlimited' },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, base()); // nothing declared gates nothing
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('phases gate (A3 slice 5 — the D1s2 refusal retired on schedule; residual coherence/drivability rules)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const base = () => ({ kind: 'game', schemaVersion: 2, id: 'phases' });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('ACCEPTS a multi-phase time-started clock (the real toy shape — D1s2 retirement honored)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+            { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('ACCEPTS a single phase starting later than 0 (no phase until its boundary is legal)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { duration: 3600, phases: [{ id: 'late', label: 'Late', start: { at: 600 } }] },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('ACCEPTS a trigger-started phase whose event is in the engine trigger vocabulary', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+            { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('refuses a duplicate phase id as SELF-CONTRADICTORY (flavor-i language pinned)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'twin', label: 'A', start: { at: 0 } },
+            { id: 'twin', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      let message = '';
+      try {
+        packService.activatePack();
+      } catch (err) {
+        message = err.message;
+      }
+      expect(message).toMatch(/CAPABILITY GATE.*gameClock\.phases.*duplicate phase id 'twin'/);
+      expect(message).toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses a later-declared time phase starting no later than an earlier one (unreachable — flavor-i)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'a', label: 'A', start: { at: 1800 } },
+            { id: 'b', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\['b'\].*not after the previous time-started phase.*self-contradictory/);
+    });
+
+    it('refuses an unknown trigger event as a DRIVABILITY limitation naming the vocabulary (flavor-ii language pinned)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing', start: { at: 0 } },
+            { id: 'x', label: 'X', start: { trigger: 'aliens:landed' } },
+          ],
+        },
+      });
+      let message = '';
+      try {
+        packService.activatePack();
+      } catch (err) {
+        message = err.message;
+      }
+      expect(message).toMatch(/gameClock\.phases\['x'\].*start\.trigger 'aliens:landed'.*not an event this engine emits/);
+      expect(message).toMatch(/not driveable by this engine yet/);
+      expect(message).toMatch(/group:completed/); // the vocabulary is NAMED in the refusal
+      expect(message).not.toMatch(/incoherent/i);
+      expect(message).not.toMatch(/self-contradictory/);
+    });
+
+    it("refuses 'session:created' as a phase-start trigger — its only emission precedes the running clock (review B)", () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing', start: { at: 0 } },
+            { id: 'x', label: 'X', start: { trigger: 'session:created' } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/start\.trigger 'session:created'.*not an event this engine emits while the clock runs/);
+    });
+
+    it('refuses a phases table declared WITHOUT a usable duration — getClockRules would silently drop it (review C)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          phases: [
+            { id: 'a', label: 'A', start: { at: 0 } },
+            { id: 'b', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases declared without a usable gameClock\.duration/);
+    });
+
+    it('refuses EMPTY id/label — an id \'\' persists as a phaseId restore reads as absent (review E)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: '', label: 'Nameless', start: { at: 0 } },
+            { id: 'b', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\[0\].*non-empty id/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'a', label: '', start: { at: 0 } },
+            { id: 'b', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\[0\].*non-empty.*label/);
+    });
+
+    it('refuses non-finite / negative start.at from schema-bypassing packs (review F)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'early', label: 'Early', start: { at: -300 } },
+            { id: 'b', label: 'B', start: { at: 600 } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\['early'\].*not a finite non-negative number/);
+
+      packService._resetForTesting();
+      // JSON.parse reads a hand-authored 1e999 as Infinity — a phase the
+      // engine can never enter. JSON.stringify cannot PRODUCE that literal
+      // (it emits null), so write the raw file text.
+      fs.writeFileSync(path.join(tmpDir, 'game.json'),
+        '{"kind":"game","schemaVersion":2,"id":"phases","gameClock":{"duration":3600,"phases":['
+        + '{"id":"a","label":"A","start":{"at":0}},'
+        + '{"id":"never","label":"Never","start":{"at":1e999}}]}}');
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\['never'\].*not a finite non-negative number/);
+    });
+
+    it("refuses 'phase:changed' as a phase-start trigger (phase machinery cannot start on its own event)", () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 3600,
+          phases: [
+            { id: 'casing', label: 'Casing', start: { at: 0 } },
+            { id: 'x', label: 'X', start: { trigger: 'phase:changed' } },
+          ],
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/start\.trigger 'phase:changed'.*not an event this engine emits/);
+    });
+
+    it('a NULL/malformed phase entry refuses with a NAMED message, never a raw TypeError (review pin carried over)', () => {
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [null] } });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\[0\].*malformed phase entry/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { phases: [{ id: 'x', label: 'X', start: null }] } });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\[0\].*malformed phase entry/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: { phases: [{ id: 'x', label: 'X', start: { at: 0, trigger: 'group:completed' } }] },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/gameClock\.phases\['x'\].*exactly one of \{at: seconds\} or \{trigger: event\}/);
+    });
+
+    it('accepts the degenerate single-phase-at-0 (the ALN shape)', () => {
+      writeGame(tmpDir, {
+        ...base(),
+        gameClock: {
+          duration: 7200,
+          overtimeAt: 7200,
+          phases: [{ id: 'main', label: 'Game', start: { at: 0 } }],
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts absent gameClock, absent phases, and an empty phases array (nothing declared gates nothing)', () => {
+      writeGame(tmpDir, base());
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { duration: 3600 } });
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      writeGame(tmpDir, { ...base(), gameClock: { duration: 3600, phases: [] } });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('pack strings sidecar (A3 slice 3a — declared ⇒ must load; undeclared ⇒ baked defaults)', () => {
+    function writeStringsPack(dir, { game = {}, strings, stringsRaw } = {}) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'sp', ...game,
+      }));
+      if (stringsRaw !== undefined) {
+        fs.writeFileSync(path.join(dir, 'strings.json'), stringsRaw);
+      } else if (strings !== undefined) {
+        fs.writeFileSync(path.join(dir, 'strings.json'), JSON.stringify(strings));
+      }
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('an UNDECLARED strings file gates nothing: activates, getStrings() is null (benign wording class)', () => {
+      writeStringsPack(tmpDir, {});
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getStrings()).toBeNull();
+    });
+
+    it('declared + MISSING file refuses activation (declared ⇒ must load)', () => {
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' } });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*unreadable/);
+    });
+
+    it('declared + unparseable JSON refuses', () => {
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' }, stringsRaw: '{nope' });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*unreadable/);
+    });
+
+    it('declared + a non-string leaf refuses (sections nest; leaves are non-empty strings)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: {
+          kind: 'strings', schemaVersion: 2,
+          scoreboard: { header: 'OK', nested: { fine: 'yes' }, bad: 42 },
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*scoreboard\.bad/);
+    });
+
+    it('declared + an EMPTY-string leaf refuses (a blank label is an authoring error, not a value)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'strings', schemaVersion: 2, scanner: { appTitle: '' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*scanner\.appTitle/);
+    });
+
+    it("declared + wrong kind refuses (a mislabeled sidecar is an authoring error)", () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'theme', schemaVersion: 2, scanner: { appTitle: 'X' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json kind 'theme'/);
+    });
+
+    it.each([1, 3])('declared + schemaVersion %i refuses (EXACT match BOTH directions, same posture as the pack gate)', (v) => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'strings', schemaVersion: v, scanner: { appTitle: 'X' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(new RegExp(`CAPABILITY GATE.*strings\\.json schemaVersion ${v}`));
+    });
+
+    it('declared under a NON-CANONICAL filename refuses (review D — filename contract)', () => {
+      // Manifest role + scanner rules-set are keyed to 'strings.json'; a
+      // divergent pointer rebrands the backend while the scanner silently
+      // stays baked. Schema pins it (const) for authored packs; the gate
+      // covers hand-built PACK_PATH packs that bypass the schema.
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'sp', strings: 'wording.json',
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'wording.json'), JSON.stringify({
+        kind: 'strings', schemaVersion: 2, scanner: { appTitle: 'X' },
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*wording\.json.*must be named 'strings\.json'/);
+    });
+
+    it.each([
+      ['JSON null', 'null'],
+      ['a bare string', '"strings"'],
+      ['a number', '42'],
+      ['an array', '["a"]'],
+    ])('declared + top-level %s refuses cleanly (never crashes, never passes silently)', (_label, raw) => {
+      // Regression: JSON null crashed the gate (TypeError reading
+      // .schemaVersion); primitives/arrays destructured to an empty
+      // sections object and PASSED — a declared-but-broken sidecar
+      // slipping through as silent baked wording, the exact failure
+      // class the gate exists to refuse.
+      writeStringsPack(tmpDir, { game: { strings: 'strings.json' }, stringsRaw: raw });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*strings\.json.*not a JSON object/);
+    });
+
+    it('declared + valid: activates and getStrings() returns the ACTIVATION SNAPSHOT (frozen)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: {
+          kind: 'strings', schemaVersion: 2,
+          scoreboard: { header: 'CASE FILE', empty: 'Nothing yet' },
+          modes: { fence: { claimedLabel: 'FENCED by' } },
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+      const s = packService.getStrings();
+      expect(s.scoreboard.header).toBe('CASE FILE');
+      expect(s.modes.fence.claimedLabel).toBe('FENCED by');
+
+      // Disk edits after activation are NOT served (session rules freeze)
+      fs.writeFileSync(path.join(tmpDir, 'strings.json'), JSON.stringify({
+        kind: 'strings', schemaVersion: 2, scoreboard: { header: 'CHANGED' },
+      }));
+      expect(packService.getStrings().scoreboard.header).toBe('CASE FILE');
+    });
+
+    it('pre-activation reads fall through to live disk (same posture as getGameConfig)', () => {
+      writeStringsPack(tmpDir, {
+        game: { strings: 'strings.json' },
+        strings: { kind: 'strings', schemaVersion: 2, scanner: { appTitle: 'Live' } },
+      });
+      expect(packService.getStrings().scanner.appTitle).toBe('Live');
+    });
+  });
+
+  describe('groups coverage gate (A3 slice 2b — D1b: tokens must name declared groups)', () => {
+    function writePack(dir, { groups, tokens }) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'gc', ...(groups ? { groups } : {}),
+      }));
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify(tokens));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('refuses a declaring pack whose tokens name an UNDECLARED group', () => {
+      writePack(tmpDir, {
+        groups: { 'Server Logs': { multiplier: 5 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs' },
+          t2: { SF_RFID: 't2', SF_Group: 'Rogue Set' },
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'Rogue Set'.*not declared in game\.json groups/);
+    });
+
+    it('matches names VERBATIM (v2 cutover: a lingering "(xN)" suffix is a DIFFERENT name and is refused)', () => {
+      // The v1-compat strip died with the suffix parsers (D3b) — a
+      // suffixed SF_Group no longer resolves to its declared pure name.
+      writePack(tmpDir, {
+        groups: { 'Server Logs': { multiplier: 5 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs (x5)' }, // v1 leftover
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'Server Logs \(x5\)'.*not declared/);
+    });
+
+    it('accepts full coverage — pure names resolve; ungrouped tokens gate nothing', () => {
+      writePack(tmpDir, {
+        groups: { 'Server Logs': { multiplier: 5 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'Server Logs' },
+          t2: { SF_RFID: 't2', SF_Group: '' }, // ungrouped
+        },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('TYPE coverage (D2b): refuses a token whose memory type is not a typeMultipliers key, EXACT-CASE', () => {
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'tc',
+        scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'personal' }, // case mismatch
+        t2: { SF_RFID: 't2', SF_ValueRating: 1, SF_MemoryType: 'Personal' },
+        t3: { SF_RFID: 't3', SF_ValueRating: 1, SF_MemoryType: null },       // legal UNKNOWN bucket
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'personal'.*EXACT-CASE/);
+    });
+
+    it('TYPE coverage: full-coverage tokens (incl. null types) activate cleanly', () => {
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'tc',
+        scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'Personal' },
+        t2: { SF_RFID: 't2', SF_ValueRating: 1, SF_MemoryType: null },
+      }));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('a pack WITHOUT a groups block REFUSES grouped tokens (adversarial-review fix: the pre-cutover tolerance retired with v2)', () => {
+      // The gate is UNCONDITIONAL now: an absent block = empty declaration
+      // set, so any grouped token is undeclared. This is exactly how a
+      // lingering v1 pack (suffixed names, no groups block) refuses on the
+      // v2 engine instead of silently reading every multiplier as 1x.
+      writePack(tmpDir, {
+        groups: null,
+        tokens: { t1: { SF_RFID: 't1', SF_Group: 'Anything (x9)' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'Anything \(x9\)'.*not declared/);
+    });
+
+    it('a pack without a groups block and NO grouped tokens still activates (nothing named, nothing gated)', () => {
+      writePack(tmpDir, {
+        groups: null,
+        tokens: { t1: { SF_RFID: 't1', SF_Group: '' }, t2: { SF_RFID: 't2' } },
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it("prototype-chain names never satisfy the gate: a group named 'constructor' is undeclared (round-2 C11)", () => {
+      // A truthy-index or `in` check would resolve 'constructor' via
+      // Object.prototype, pass the gate, then flow NaN into every bonus.
+      writePack(tmpDir, {
+        groups: { 'Real Group': { multiplier: 2 } },
+        tokens: {
+          t1: { SF_RFID: 't1', SF_Group: 'constructor' },
+          t2: { SF_RFID: 't2', SF_Group: 'Real Group' },
+        },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'constructor'.*not declared/);
+    });
+
+    it('a declared group entry without a usable multiplier refuses (integer >= 1)', () => {
+      writePack(tmpDir, {
+        groups: { 'Broken': {}, 'AlsoBroken': { multiplier: 0 }, 'Fine': { multiplier: 3 } },
+        tokens: { t1: { SF_RFID: 't1', SF_Group: 'Fine' } },
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*groups\['Broken'\] has no usable multiplier/);
+    });
+
+    it("TYPE coverage: a type named 'constructor' is uncovered (Object.hasOwn, round-2 C10)", () => {
+      fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'proto',
+        scoring: { baseValues: { 1: 100 }, typeMultipliers: { Personal: 1, UNKNOWN: 0 } },
+      }));
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1', SF_ValueRating: 1, SF_MemoryType: 'constructor' },
+      }));
+      expect(() => packService.activatePack())
+        .toThrow(/CAPABILITY GATE.*'constructor'.*not a key of scoring\.typeMultipliers/);
+    });
+  });
+
+  describe('scoring.display drivability + normalization (A3 slice 3b, R-3b-1)', () => {
+    function writeDisplayPack(dir, display) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify({
+        kind: 'game', schemaVersion: 2, id: 'disp',
+        scoring: {
+          baseValues: { 1: 7 },
+          typeMultipliers: { Personal: 3 },
+          ...(display !== undefined ? { display } : {}),
+        },
+      }));
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify({
+        t1: { SF_RFID: 't1' },
+      }));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('getScoringRules() carries the declared display block (the normalizers no longer DROP it)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits', format: '#,### cr' });
+      const rules = packService.getScoringRules();
+      expect(rules.display).toEqual({ unit: 'credits', format: '#,### cr' });
+    });
+
+    it('no display block → display null (consumers use the baked ALN format)', () => {
+      writeDisplayPack(tmpDir, undefined);
+      expect(packService.getScoringRules().display).toBeNull();
+    });
+
+    it('the baked legacy shim serves the ALN display spec (drift-mirrored)', () => {
+      // Packless: the shim must format like ALN, same as its tables.
+      const rules = packService.getScoringRules(); // tmpDir empty → shim
+      expect(rules.display).toEqual({ unit: 'currency-usd', format: '$#,###' });
+    });
+
+    it.each(['dollars', '$#,###-#,###', '##,###', ''])(
+      'activation REFUSES an undrivable format %j (gate twin of the schema pattern)',
+      (format) => {
+        writeDisplayPack(tmpDir, { unit: 'x', format });
+        expect(() => packService.activatePack())
+          .toThrow(/CAPABILITY GATE.*display\.format/);
+      }
+    );
+
+    it('a drivable non-ALN format activates (the toy class)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits', format: '#,### cr' });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('display without a format key activates and normalizes to null (nothing to drive)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits' });
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getScoringRules().display).toBeNull();
+    });
+
+    it('display rides the ACTIVATION-FROZEN snapshot — later disk edits are invisible (review E)', () => {
+      writeDisplayPack(tmpDir, { unit: 'credits', format: '#,### cr' });
+      packService.activatePack();
+
+      writeDisplayPack(tmpDir, { unit: 'gold', format: '#,### gp' });
+
+      expect(packService.getScoringRules().display)
+        .toEqual({ unit: 'credits', format: '#,### cr' });
+    });
+  });
+
+  describe('activation-frozen rules memo + operator warns (review fixes)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('caches the LEGACY shim tables after activating a scoring-absent pack', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'memo' }); // absent scoring = legal
+      packService.activatePack();
+      const first = packService.getScoringRules();
+      expect(first.baseValues[5]).toBe(150000); // baked ALN shim
+      expect(packService.getScoringRules()).toBe(first); // memoized reference
+    });
+
+    it('caches the pack tables after activation (per-token loads reuse the snapshot)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'memo',
+        scoring: { baseValues: { 1: 5 }, typeMultipliers: { A: 2 } },
+      });
+      packService.activatePack();
+      const first = packService.getScoringRules();
+      expect(packService.getScoringRules()).toBe(first);
+    });
+
+    it('warns ONCE that SESSION_TIMEOUT is ignored when the pack clock differs (review finding)', () => {
+      const logger = require('../../../src/utils/logger');
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'clock',
+        gameClock: { duration: 3600, overtimeAt: 3300 },
+      });
+      logger.warn.mockClear();
+      packService.getClockRules();
+      packService.getClockRules();
+      const warns = logger.warn.mock.calls.filter(c => /SESSION_TIMEOUT.*IGNORED/.test(c[0]));
+      expect(warns).toHaveLength(1); // loud, once — config default 120min != 3600s
+    });
+  });
+
+  describe('coherence check (A3 slice 1 — R9, two flavors per the 2026-07-18 ratification)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const mode = (overrides = {}) => ({
+      id: 'm1', label: 'M1', scoringPolicy: 'standard', entityRole: 'ledger',
+      countsTowardGroups: true, displayBehavior: { surface: 'scoreboard-rankings' },
+      ...overrides,
+    });
+    const gameWith = (...modes) => ({ kind: 'game', schemaVersion: 2, id: 'coh', modes });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    describe('flavor (i) — timeless self-contradictions', () => {
+      it('refuses a DECLARED-but-unusable scoring block (empty tables must not ride the shim)', () => {
+        // Review finding: pre-fix, scoring:{baseValues:{},...} activated
+        // cleanly and silently ran the baked ALN economy behind one warn.
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh', scoring: { baseValues: {}, typeMultipliers: { A: 1 } } });
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*scoring block is DECLARED.*missing\/empty/);
+      });
+
+      it('tolerates an ABSENT scoring block (packless checkouts ride the loud shim by design)', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh' });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('refuses a DECLARED-but-empty modes array', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh', modes: [] });
+        expect(() => packService.activatePack())
+          .toThrow(/COHERENCE CHECK.*self-contradictory.*EMPTY/);
+      });
+
+      it('tolerates an ABSENT modes block (nothing declared gates nothing — L6 shim covers it)', () => {
+        writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'coh' });
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it('refuses duplicate mode ids', () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'dupe' }), mode({ id: 'dupe' })));
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*duplicate mode id 'dupe'/);
+      });
+
+      it("refuses defaultEntity on an entityRole 'ledger' mode (cross-wired semantics)", () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'wallet', defaultEntity: 'The House' })));
+        expect(() => packService.activatePack())
+          .toThrow(/self-contradictory.*'wallet'.*defaultEntity.*ledger/);
+      });
+    });
+
+    // The flavor-(ii) FOUNDING member (scoringPolicy 'none' ∧
+    // countsTowardGroups) was RETIRED ON SCHEDULE in slice 2: scored-only
+    // contribution semantics landed in gameRules/scoring (§2f — completion
+    // counts any counting claim, the bonus base sums only scored
+    // contributions), so unscored claims can no longer mint catalog-priced
+    // bonuses and the combination is legal. Its legality is pinned below.
+
+    describe('flavor (ii) — drivability limitations (named retirement, honest language)', () => {
+      it("refuses non-consuming ∧ countsTowardGroups (D3s2 v1 constraint) with the limitation wording", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'sample', scoringPolicy: 'none', countsTowardGroups: true, claims: 'non-consuming',
+        })));
+        expect(() => packService.activatePack())
+          .toThrow(/COHERENCE CHECK.*'sample'.*non-consuming.*not driveable by this engine yet.*contribution-semantics design/);
+      });
+
+      it('the limitation is NEVER called incoherent or self-contradictory (language rule pinned)', () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'sample', scoringPolicy: 'none', countsTowardGroups: true, claims: 'non-consuming',
+        })));
+        let message = '';
+        try { packService.activatePack(); } catch (err) { message = err.message; }
+        expect(message).toMatch(/not driveable by this engine yet/);
+        expect(message).not.toMatch(/incoherent/i);
+        expect(message).not.toMatch(/self-contradictory/i);
+      });
+    });
+
+    describe('deliberately LEGAL combinations (documented so nobody "fixes" them)', () => {
+      it("accepts none ∧ countsTowardGroups — event-only groups (§2f semantics landed, flavor-ii retired)", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'ritual', scoringPolicy: 'none', entityRole: 'attribution',
+          countsTowardGroups: true, displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts attribution ∧ standard (future scored-attributed modes)", () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'bounty', entityRole: 'attribution', defaultEntity: 'Nova' })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts surface 'none' with any scoringPolicy (silent modes are a design tool)", () => {
+        writeGame(tmpDir, gameWith(mode({ id: 'silent', displayBehavior: { surface: 'none' } })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts none ∧ ledger — D2 consuming-appraise (claims FCFS for $0)", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'appraise', scoringPolicy: 'none', countsTowardGroups: false,
+          displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+
+      it("accepts non-consuming with countsTowardGroups FALSE — the drivable half of D3s2", () => {
+        writeGame(tmpDir, gameWith(mode({
+          id: 'inspect', scoringPolicy: 'none', countsTowardGroups: false,
+          claims: 'non-consuming', displayBehavior: { surface: 'none' },
+        })));
+        expect(() => packService.activatePack()).not.toThrow();
+      });
+    });
+
+    it('a coherence refusal FAILS activation — nothing is snapshotted', () => {
+      writeGame(tmpDir, gameWith(mode({ id: 'dupe' }), mode({ id: 'dupe' })));
+      expect(() => packService.activatePack()).toThrow(/COHERENCE CHECK/);
+      writeManifest(tmpDir, minimalManifest({ contentHash: HASH_B }));
+      expect(packService.getManifest().contentHash).toBe(HASH_B);
+    });
+
+    it('BOTH real packs pass gate + coherence (ALN default dir and toy-heist)', () => {
+      delete process.env.PACK_PATH; // ALN submodule
+      expect(() => packService.activatePack()).not.toThrow();
+      packService._resetForTesting();
+      process.env.PACK_PATH = TOY_PACK;
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+  });
+
+  describe('getScoringRules (A3 slice 2 — the rules read that retires ledger L1)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    it('serves the TOY pack tables normalized (numeric ratings, lowercase types, unknown present)', () => {
+      process.env.PACK_PATH = TOY_PACK;
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[4]).toBe(1300);
+      expect(rules.typeMultipliers.Personal).toBe(2);
+      expect(rules.typeMultipliers.Technical).toBe(6);
+      expect(rules.typeMultipliers.UNKNOWN).toBe(0);
+    });
+
+    it('serves the ALN pack tables from the default dir', () => {
+      delete process.env.PACK_PATH;
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[5]).toBe(150000);
+      expect(rules.typeMultipliers.Party).toBe(5);
+    });
+
+    it('carries allowNegative (D2s2): ALN true, toy false, shim mirrors ALN (true)', () => {
+      delete process.env.PACK_PATH;
+      expect(packService.getScoringRules().allowNegative).toBe(true);
+
+      packService._resetForTesting();
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getScoringRules().allowNegative).toBe(false);
+
+      packService._resetForTesting();
+      process.env.PACK_PATH = tmpDir; // empty dir → baked legacy shim
+      expect(packService.getScoringRules().allowNegative).toBe(true);
+    });
+
+    it('declared scoring WITHOUT a semantics block gets the conservative floor (allowNegative false)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'nosem',
+        scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
+      });
+      expect(packService.getScoringRules().allowNegative).toBe(false);
+    });
+
+    it('snapshot semantics: activation freezes the tables; later disk edits are invisible', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'rules',
+        scoring: { baseValues: { 1: 7 }, typeMultipliers: { Personal: 3 } },
+      });
+      packService.activatePack();
+
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'rules',
+        scoring: { baseValues: { 1: 999 }, typeMultipliers: { Personal: 999 } },
+      });
+
+      expect(packService.getScoringRules().baseValues[1]).toBe(7);
+    });
+
+    it('a pack with NO usable scoring block rides the baked legacy shim with a LOUD warn (once)', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir: no game.json at all
+      const rules = packService.getScoringRules();
+      packService.getScoringRules();
+
+      expect(rules.baseValues[5]).toBe(150000);
+      expect(rules.typeMultipliers.Mention).toBe(3);
+      const shimWarns = logger.warn.mock.calls.filter(([m]) =>
+        m.includes('LEGACY SCORING TABLES ACTIVE')
+      );
+      expect(shimWarns).toHaveLength(1);
+    });
+
+    it('EMPTY-but-present tables ride the shim too (an empty table must never silently zero every token)', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'empty',
+        scoring: { baseValues: {}, typeMultipliers: { Personal: 1 } },
+      });
+      const rules = packService.getScoringRules();
+      expect(rules.baseValues[1]).toBe(10000); // legacy, not undefined
+      expect(logger.warn.mock.calls.some(([m]) => m.includes('LEGACY SCORING TABLES ACTIVE'))).toBe(true);
+    });
+
+    it('getClockRules serves the pack clock in seconds + the declared phases table BY VALUE (toy)', () => {
+      // Pinned by VALUE, trigger start included (review G): the only
+      // sub-E2E pin on the normalization path serving trigger-started
+      // phases to the clock — expect.any(Array) let a mutation silently
+      // destroy every trigger phase.
+      process.env.PACK_PATH = TOY_PACK;
+      expect(packService.getClockRules()).toEqual({
+        durationSeconds: 3600,
+        overtimeAtSeconds: 3300,
+        phases: [
+          { id: 'casing', label: 'Casing the Joint', start: { at: 0 } },
+          { id: 'the-job', label: 'The Job', start: { at: 1800 } },
+          { id: 'the-getaway', label: 'The Getaway', start: { trigger: 'group:completed' } },
+        ],
+      });
+    });
+
+    it('getClockRules: ALN declares overtime == duration (7200/7200) + its degenerate phase table', () => {
+      delete process.env.PACK_PATH;
+      expect(packService.getClockRules()).toEqual({
+        durationSeconds: 7200,
+        overtimeAtSeconds: 7200,
+        phases: [{ id: 'main', label: 'Game', start: { at: 0 } }],
+      });
+    });
+
+    it('getClockRules: absent overtimeAt defaults to the declared duration; absent phases serve null', () => {
+      process.env.PACK_PATH = tmpDir;
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'clk', gameClock: { duration: 500 } });
+      expect(packService.getClockRules()).toEqual({ durationSeconds: 500, overtimeAtSeconds: 500, phases: null });
+    });
+
+    it('getClockRules: a PACKLESS checkout falls back to SESSION_TIMEOUT with a LOUD warn (once); phases null', () => {
+      process.env.PACK_PATH = tmpDir; // empty dir
+      const rules = packService.getClockRules();
+      packService.getClockRules();
+      const config = require('../../../src/config');
+      expect(rules.durationSeconds).toBe(config.session.sessionTimeout * 60);
+      expect(rules.overtimeAtSeconds).toBe(rules.durationSeconds);
+      expect(rules.phases).toBeNull();
+      const warns = logger.warn.mock.calls.filter(([m]) => m.includes('LEGACY CLOCK CONFIG ACTIVE'));
+      expect(warns).toHaveLength(1);
+    });
+
+    it('getClockRules serves phases as a DEFENSIVE COPY (mutating the result cannot poison later reads)', () => {
+      delete process.env.PACK_PATH;
+      const first = packService.getClockRules();
+      first.phases[0].id = 'vandalized';
+      first.phases[0].start.at = 9999;
+      expect(packService.getClockRules().phases[0]).toEqual({ id: 'main', label: 'Game', start: { at: 0 } });
+    });
+
+    it('DRIFT TRIPWIRE: the baked legacy tables mirror the real ALN game.json scoring block', () => {
+      const gamePath = path.resolve(__dirname, '../../../../ALN-TokenData/game.json');
+      const real = JSON.parse(fs.readFileSync(gamePath, 'utf8')).scoring;
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.baseValues)))
+        .toEqual(Object.fromEntries(Object.entries(real.baseValues).map(([k, v]) => [k, v])));
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.typeMultipliers)))
+        .toEqual(real.typeMultipliers);
+      expect(JSON.parse(JSON.stringify(packService.LEGACY_ALN_SCORING.semantics)))
+        .toEqual(real.semantics);
+    });
+  });
+
+  describe('getCues (slice 4 S4 — the frozen pack cues the engine loads)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    const declaringGame = () => ({
+      kind: 'game', schemaVersion: 2, id: 'cues-get',
+      cues: 'cues.json', requires: ['cues.standing'],
+    });
+    const cuesDoc = () => ({
+      kind: 'cues', schemaVersion: 2,
+      cues: [{
+        id: 'only', label: 'Only',
+        trigger: { event: 'session:created' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }],
+    });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      fs.writeFileSync(path.join(tmpDir, 'tokens.json'), '{}');
+    });
+
+    it('returns the declared cues array, FROZEN at activation (disk edits ignored)', () => {
+      writeGame(tmpDir, declaringGame());
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(cuesDoc()));
+      packService.activatePack();
+      expect(packService.getCues()).toHaveLength(1);
+      expect(packService.getCues()[0].id).toBe('only');
+
+      const edited = cuesDoc();
+      edited.cues.push({ id: 'later', label: 'Later', commands: [{ action: 'sound:stop', payload: {} }] });
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(edited));
+      expect(packService.getCues()).toHaveLength(1);
+    });
+
+    it('returns null when the pack declares no cues (benign emptiness — the engine loads [])', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      packService.activatePack();
+      expect(packService.getCues()).toBeNull();
+    });
+
+    it('before activation, reads fall through to live disk (selective-init harnesses)', () => {
+      writeGame(tmpDir, declaringGame());
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify(cuesDoc()));
+      expect(packService.getCues()).toHaveLength(1);
+    });
+  });
+
+  describe('getLightingRoleFallback (slice 4 S3 — the normalized L7 accessor)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+    });
+
+    it('resolves a declared fallback; unknown, prototype-chain, and non-string entries resolve null', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'fb',
+        lightingRoleFallbacks: { gameplay: 'scene.game', broken: 7 },
+      });
+      expect(packService.getLightingRoleFallback('gameplay')).toBe('scene.game');
+      expect(packService.getLightingRoleFallback('disco-mode')).toBeNull();
+      expect(packService.getLightingRoleFallback('constructor')).toBeNull();
+      expect(packService.getLightingRoleFallback('broken')).toBeNull();
+    });
+
+    it('a pack with no fallbacks block (and a packless dir) resolves null', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(packService.getLightingRoleFallback('gameplay')).toBeNull();
+    });
+  });
+
+  describe('show-cues gate (A3 slice 4 S2 — D-4.3: pack-internal pure reads, zero services)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    function writeCues(dir, doc) {
+      fs.writeFileSync(path.join(dir, 'cues.json'), JSON.stringify(doc));
+    }
+    function writeTokens(dir, tokens) {
+      fs.writeFileSync(path.join(dir, 'tokens.json'), JSON.stringify(tokens));
+    }
+    const base = () => ({
+      kind: 'game',
+      schemaVersion: 2,
+      id: 'cues-pack',
+      cues: 'cues.json',
+      requires: ['cues.standing', 'cues.timeline', 'lighting.roles'],
+      lightingRoles: ['gameplay', 'video-playback', 'police-arrival-1'],
+      lightingRoleFallbacks: { gameplay: 'scene.game' },
+    });
+    // The two REAL guard cues in migrated role-form: their condition
+    // tokenId ('policesequencewoverlay') is the engine's filename-derived
+    // namespace, NOT a pack token — gate rule 3 must never refuse them
+    // (red-team G2; these are the mandated green fixtures).
+    const guardCues = () => ([
+      {
+        id: 'attention-before-video',
+        label: 'Pre-Video Alert',
+        trigger: {
+          event: 'video:loading',
+          conditions: [{ field: 'tokenId', op: 'neq', value: 'policesequencewoverlay' }],
+        },
+        commands: [
+          { action: 'sound:play', payload: { file: 'attention.wav' } },
+          { action: 'lighting:scene:activate', payload: { role: 'video-playback' } },
+        ],
+      },
+      {
+        id: 'restore-after-video',
+        label: 'Post-Video Restore',
+        trigger: {
+          event: 'video:completed',
+          conditions: [{ field: 'tokenId', op: 'neq', value: 'policesequencewoverlay' }],
+        },
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'gameplay' } }],
+      },
+    ]);
+    const cuesDoc = (cues) => ({ kind: 'cues', schemaVersion: 2, cues });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+      writeManifest(tmpDir, minimalManifest());
+      writeTokens(tmpDir, { kaa001: { SF_RFID: 'kaa001' } });
+    });
+
+    it('ACCEPTS a full migrated-form cue set — guard cues, clock cue, compound timeline (and proves the three capability ids exist)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, cuesDoc([
+        ...guardCues(),
+        {
+          id: 'halftime',
+          label: 'Halftime',
+          trigger: { clock: '01:00:00' },
+          commands: [{ action: 'sound:play', payload: { file: '60min.wav' } }],
+        },
+        {
+          id: 'endgame',
+          label: 'ENDGAME',
+          quickFire: true,
+          trigger: null,
+          timeline: [
+            { at: 1, action: 'video:queue:add', payload: { videoFile: 'police.mp4' } },
+            { at: 180, action: 'lighting:scene:activate', payload: { role: 'police-arrival-1' } },
+          ],
+        },
+      ]));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('benign emptiness: no cues pointer, no lighting declarations — nothing refused, nothing warned', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(() => packService.activatePack()).not.toThrow();
+      const cueWarns = logger.warn.mock.calls.filter(([msg]) => /cue/i.test(msg));
+      expect(cueWarns).toEqual([]);
+    });
+
+    it('refuses an undeclared lighting role as SELF-CONTRADICTORY (rule 1, flavor-i language pinned)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        commands: [{ action: 'lighting:scene:activate', payload: { role: 'disco-mode' } }],
+      }]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/CAPABILITY GATE.*disco-mode/);
+      expect(message).toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses an unknown action as a DRIVABILITY limitation naming the vocabulary (rule 2, flavor-ii language pinned)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: [] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        commands: [{ action: 'confetti:launch', payload: {} }],
+      }]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/confetti:launch/);
+      expect(message).toMatch(/not driveable by this engine yet/);
+      expect(message).toMatch(/sound:play/); // vocabulary embedded
+      expect(message).not.toMatch(/self-contradictory/);
+      expect(message).not.toMatch(/incoherent/i);
+    });
+
+    it('refuses a duplicate cue id and an unparseable clock string (rule 7a/7b)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: ['cues.standing'] });
+      writeCues(tmpDir, cuesDoc([
+        { id: 'twin', label: 'A', commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }] },
+        { id: 'twin', label: 'B', commands: [{ action: 'sound:play', payload: { file: 'b.wav' } }] },
+        { id: 'clocky', label: 'C', trigger: { clock: '90 minutes' }, commands: [{ action: 'sound:stop', payload: {} }] },
+      ]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/duplicate cue id 'twin'/);
+      expect(message).toMatch(/90 minutes/);
+    });
+
+    it('refuses standing triggers without cues.standing in requires (rule 6 authoring lint)', () => {
+      writeGame(tmpDir, { ...base(), lightingRoles: undefined, lightingRoleFallbacks: undefined, requires: [] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X',
+        trigger: { event: 'transaction:accepted' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }]));
+      expect(() => packService.activatePack())
+        .toThrow(/cues\.standing/);
+    });
+
+    it('refuses a fallback for an undeclared role even with NO cues file (rule 5 runs file-less)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'x',
+        lightingRoles: ['gameplay'],
+        lightingRoleFallbacks: { 'disco-mode': 'scene.disco' },
+        requires: ['lighting.roles'],
+      });
+      expect(() => packService.activatePack())
+        .toThrow(/disco-mode/);
+    });
+
+    it("refuses a non-canonical cues filename (declared means presence — 'cues.json' is the contract)", () => {
+      writeGame(tmpDir, { ...base(), cues: 'show.json' });
+      writeCues(tmpDir, cuesDoc([]));
+      expect(() => packService.activatePack())
+        .toThrow(/cues\.json/);
+    });
+
+    it('refuses a declared-but-missing or unparseable cues file (declared-but-broken must refuse loudly)', () => {
+      writeGame(tmpDir, base());
+      expect(() => packService.activatePack()).toThrow(/unreadable|missing/i);
+
+      packService._resetForTesting();
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), '{nope');
+      expect(() => packService.activatePack()).toThrow(/unreadable/i);
+    });
+
+    it('refuses a cues file that is not the header form (kind + schemaVersion + cues array)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, [{ id: 'bare', label: 'Bare', commands: [{ action: 'sound:stop', payload: {} }] }]);
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/cues/);
+      expect(message).toMatch(/kind|header|object/i);
+    });
+
+    it('refuses a wrong sidecar kind or schemaVersion (strings-loader precedent)', () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, { kind: 'strings', schemaVersion: 1, cues: [] });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/kind 'strings'/);
+      expect(message).toMatch(/schemaVersion 1/);
+    });
+
+    it("refuses a correct header whose 'cues' is not an array", () => {
+      writeGame(tmpDir, base());
+      writeCues(tmpDir, { kind: 'cues', schemaVersion: 2, cues: { oops: 'an object' } });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/'cues' must be an array/);
+    });
+
+    it('reads cues.json EXACTLY ONCE during activation — the gate validates the bytes it freezes (S6 review, F1-sec)', () => {
+      // Before the single-read hoist, activatePack read cues.json twice
+      // (gate + freeze); a swap between the two reads passed the gate but
+      // ran unvalidated. One read closes the TOCTOU.
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'unit-pack', cues: 'cues.json', requires: ['cues.standing'] });
+      writeCues(tmpDir, cuesDoc([{
+        id: 'x', label: 'X', trigger: { event: 'transaction:accepted' },
+        commands: [{ action: 'sound:play', payload: { file: 'a.wav' } }],
+      }]));
+      const cuesPath = path.join(tmpDir, 'cues.json');
+      const spy = jest.spyOn(fs, 'readFileSync');
+      try {
+        packService.activatePack();
+        const cuesReads = spy.mock.calls.filter(([p]) => String(p).endsWith('cues.json') && String(p) === cuesPath);
+        expect(cuesReads).toHaveLength(1);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+  });
+
+  describe('display-surfaces gate (A3 slice 6 — pure, gate-internal)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    // Minimal valid game.json that ALSO declares surfaces + the capability.
+    const withSurfaces = (surfaces, requires = ['surfaces.select']) => ({
+      kind: 'game', schemaVersion: 2, id: 'surf-pack', requires, surfaces,
+    });
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+    });
+
+    it('accepts a pack that names an idle-loop channel + a scoreboard param', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle', scoreboard: { evidenceCycleMs: 18000 } }));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts the opt-out shapes: idleLoop null and scoreboard.enabled false', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: null, scoreboard: { enabled: false } }));
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('accepts an absent surfaces block (nothing to gate)', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('REFUSES a declared surfaces block without surfaces.select in requires', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle' }, []));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.select.*missing from requires/);
+    });
+
+    it('REFUSES a path/filename-shaped idleLoop (a channel NAME, not a file)', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'idle-loop.mp4' }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.idleLoop must be a venue-channel NAME/);
+      // a slash-bearing path too
+      packService._resetForTesting();
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'videos/house.mp4' }));
+      message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.idleLoop must be a venue-channel NAME/);
+    });
+
+    it('REFUSES a non-integer or sub-1000ms evidenceCycleMs', () => {
+      writeGame(tmpDir, withSurfaces({ scoreboard: { evidenceCycleMs: 500 } }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/evidenceCycleMs must be an integer >= 1000/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, withSurfaces({ scoreboard: { evidenceCycleMs: 12.5 } }));
+      message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/evidenceCycleMs must be an integer/);
+    });
+
+    it('REFUSES a non-boolean scoreboard.enabled and a non-object scoreboard', () => {
+      writeGame(tmpDir, withSurfaces({ scoreboard: { enabled: 'yes' } }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/scoreboard\.enabled must be a boolean/);
+
+      packService._resetForTesting();
+      writeGame(tmpDir, withSurfaces({ scoreboard: [] }));
+      message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/scoreboard must be an object/);
+    });
+
+    it('REFUSES a non-object surfaces block', () => {
+      writeGame(tmpDir, withSurfaces([]));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces must be an object/);
+    });
+
+    it('REFUSES scoreboard opt-out while a mode renders to the scoreboard (Q6-1 coherence)', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'incoherent',
+        requires: ['surfaces.select'],
+        surfaces: { scoreboard: { enabled: false } },
+        modes: [{ id: 'blackmarket', scoringPolicy: 'standard', entityRole: 'ledger', displayBehavior: { surface: 'scoreboard-rankings' } }],
+      });
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/scoreboard\.enabled is false but mode\(s\) \[blackmarket\]/);
+    });
+
+    it('ACCEPTS scoreboard opt-out when no mode renders to the scoreboard', () => {
+      writeGame(tmpDir, {
+        kind: 'game', schemaVersion: 2, id: 'noboard',
+        requires: ['surfaces.select'],
+        surfaces: { scoreboard: { enabled: false } },
+        modes: [{ id: 'quiet', scoringPolicy: 'none', entityRole: 'ledger', displayBehavior: { surface: 'none' } }],
+      });
+      expect(() => packService.activatePack()).not.toThrow();
+    });
+
+    it('REFUSES an unknown surfaces key — a typo must not silently no-op (S6.4 review)', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle', scorebaord: {} }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces has an unknown key 'scorebaord'/);
+    });
+
+    it("REFUSES an unknown scoreboard key (e.g. a misspelled 'evidenceCyleMs')", () => {
+      writeGame(tmpDir, withSurfaces({ scoreboard: { evidenceCyleMs: 9000 } }));
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      expect(message).toMatch(/surfaces\.scoreboard has an unknown key 'evidenceCyleMs'/);
+    });
+
+    it('getSurfaces() returns the declared block, and {} when undeclared (the normalized accessor)', () => {
+      writeGame(tmpDir, withSurfaces({ idleLoop: 'house-idle', scoreboard: { evidenceCycleMs: 18000 } }));
+      packService.activatePack();
+      expect(packService.getSurfaces()).toEqual({ idleLoop: 'house-idle', scoreboard: { evidenceCycleMs: 18000 } });
+
+      packService._resetForTesting();
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      packService.activatePack();
+      expect(packService.getSurfaces()).toEqual({});
+    });
+  });
+
+});
