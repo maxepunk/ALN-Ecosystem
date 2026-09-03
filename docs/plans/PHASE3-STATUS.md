@@ -7,8 +7,8 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-07-18 · **Working branch:** `claude/phase3-a3-slice2`
-(parent; chained from the verified slice-1 tip `187c7a6`, draft PR #21).
+**Last updated:** 2026-09-03 · **Working branch:** `claude/phase3-a3-slice7`
+(parent; chained from the verified slice-6 tip `dbab5ad`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
 keeps a draft PR to main for CI, and the stacked PRs land in R14 order
@@ -447,6 +447,26 @@ harmless content-wise (docs only), noted so the train walk is not
 surprised. **Queue: slice 7 is NEXT but NOT opened — the owner directed
 a pause after the slice-6 close (2026-08-29).**
 
+**RE-ENGAGEMENT 2026-09-03 (task-#23 review, owner-confirmed).** The
+owner returned, reset the goal, and the progress/codebase review
+against ROADMAP.md ran first as directed. Verified: both slice-6
+branches clean at their recorded tips (parent `dbab5ad`, TokenData
+`4f29720`, in sync with origin); backend suite re-run live 2624/2624;
+remaining queue matches ROADMAP §3 exactly (slice 7 → theme unit → B0
+→ B pages → C2+C3 → C4 + DoD close-out); ledger classes all sound
+(in-queue rows L7→C4, L11→theme unit, L12→§8.1 all have named
+executors ahead). The review caught TWO merge-train gaps, both fixed
+with owner approval: (1) slice 6 had NO draft-PR CI vehicle — the
+standing draft-PR-per-slice step was skipped during the fallback
+window and missed by remediation, so the slice-6 tree had ZERO CI runs
+at close; **parent PR #29 opened 2026-09-03** (its first run is the
+tree's first CI pass — watch it). (2) The TokenData train entry still
+pointed at #3/closers, orphaning the slice-4 cues + slice-6 surfaces
+pack data from the train; **TokenData PR #4 opened 2026-09-03** from
+its slice-6 branch (subsumes #3), train table re-pointed. **Slice 7
+OPENED by owner confirmation 2026-09-03** under the restored stage
+frame.
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
@@ -618,11 +638,11 @@ adds its PRs to this block.
 
 | Order | Repo | PR | Head | Close condition / note |
 |---|---|---|---|---|
-| 1 | ALN-TokenData | **#3** (opened 2026-08-29, the previously-missing vehicle) | `claude/phase3-a3-closers` @ `1d323a7` | Subsumes #2 (foundations-only) — owner closes #2 as subsumed or merges it first; slice-4's TokenData work will chain and re-point this entry |
+| 1 | ALN-TokenData | **#4** (opened 2026-09-03, re-pointing this entry as #3's note anticipated) | `claude/phase3-a3-slice6` @ `4f29720` | Subsumes #3 (closers-only; itself subsumed #2 foundations-only) — owner closes #3 and #2 as subsumed. Carries the slice-4 pack data (cues schema + ALN cues.json) and the slice-6 surfaces block |
 | 2 | ALNScanner | **#13** (closers) | `claude/phase3-a3-closers` @ `567dfa8` | Subsumes #12 (foundations/A2, source of the PR-review residue block) — owner closes #12 as subsumed |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
-| 5–14 | ALN-Ecosystem (parent) | **#19 → #28 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #28 (slice 4) is OPEN — train grows with remaining slices (6, 7, theme, B0…) |
+| 5–15 | ALN-Ecosystem (parent) | **#19 → #29 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. Train grows with remaining slices (7, theme, B0…) |
 
 Timing: owner-driven, post-run (§ Final cutover below); nothing merges
 before the owner walks this table.
