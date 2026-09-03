@@ -530,6 +530,26 @@ four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
   throughout. Verified at the fold: scanner 1601 (npm test; +12
   build-artifact tests separately gated) + ratchet 65 files + build;
   backend full suite + ratchet 82 files + lint.
+- 2026-09-03: **S7.3 CLOSE — SLICE 7 CLOSED & CI-CONFIRMED.** Final
+  heads: parent `9a16dcd`+this record / ALNScanner `46db231` /
+  ALN-TokenData `c44a8ef`. Close gate, all green on the FINAL tree
+  (post-review-fold): backend 2661 unit+contract + fresh ratchet
+  (82 files, raises only: app.js branches 65→75) + lint; scanner 1604
+  + fresh ratchet (65 files, raises only: gameAdmin 35/85/55,
+  generator branches 85, tokenManager branches 90) + build + lint;
+  pack contract 113; bundle contract 24; config-tool 114; PWA 165;
+  Python 75; ESP32 leg unrun (zero slice-7 changes, pio absent —
+  slice-4 posture). Dual-pack Tier L locally on the final tree: ALN
+  leg 119P/0F/61 capability-gated skips (+4 Tier-H), 0 flaky; toy leg
+  120P/0F/60S, 0 flaky. CI: parent runs 184–188 ALL GREEN (each
+  includes both Tier L matrix legs on CI runners), scanner runs 96–97
+  green. Merge train: TokenData #5 + ALNScanner #14 opened as the
+  slice-7 vehicles (subsuming #4/#13), parent #30 open since slice
+  open; PHASE3-STATUS train table + close record current. Residue
+  carried per §6: ledger L13 (ALN-flavored engine-fixed structure
+  wording, retires at ROADMAP §8.10); the B9 bundle stays
+  consumer-less by design until §8.10. Queue: theme unit (§13.5)
+  NEXT.
 - 2026-09-03: **S7.3 mixed-model adversarial review of the WHOLE slice
   FOLDED** (subagent policy: two Opus refuters — security +
   state-machine — a Fable doctrine/parity leg, a Haiku sweep; deltas

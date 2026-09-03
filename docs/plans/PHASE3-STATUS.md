@@ -489,6 +489,48 @@ ratchet + lint) and merged up the chain (slice-6 `11893cd` verified
 predates S4 and is unaffected. Standing correction: every close gate
 runs `npm run lint` alongside the suite from now on.
 
+**SLICE 7 (report wording + B9 bundle schema) — ✅ CLOSED & CI-CONFIRMED
+2026-09-03.** Final heads: parent `9a16dcd`+close-record commit /
+ALNScanner `46db231` / ALN-TokenData `c44a8ef`; CI green on every head
+(parent runs 184–188 incl. both Tier L matrix legs; scanner runs 96–97).
+Design + full execution record (census ×2, r2 red-team 19/19, per-stage
+two-axis reviews, the whole-slice adversarial review, all adjudications):
+`2026-09-03-phase3-a3-slice7-report-wording.md` §8. **LANDED:** the
+program-§13.4 ruling executed both halves — (a) B9 session-bundle schema
+as a versioned engine contract artifact
+(`backend/contracts/session-bundle.schema.json`, kind/schemaVersion
+consts, engine stamp required, optional closed data sections, reserved
+`intake`/`gameState` namespaces, hardened id shape; 24 contract pins; NO
+Phase-3 consumer by design); (b) the report generator's wording/structure
+split — engine-fixed parse anchors (headings, table headers, `---`,
+H1/metadata formats, ★ cell) stay literal and contract-doc-v2-governed,
+ALL other rendered text pack-declared via `strings.report.*` + per-mode
+`verbNoun` (schema + both value twins + gate refusal twin + scanner
+DECLINE, code-point caps pinned at all three layers), bake-is-ALN's-voice
+(inverted pin holds ALN's strings.json silent on report wording; goldens
+pin the rendered tier byte-for-byte), ONE cell-once sanitizer for pack
+wording AND session data (backslash-then-pipe escaping, control/bidi/
+U+2028-9 stripped), currency affixes through the pack money spec (3b's
+deferral closed), counted class census (residue exact, both-class
+overlap loud), export provenance warn (non-network tier OR
+declared-but-unapplied sidecar, via tokenManager's retained load record),
+template mechanism tombstoned everywhere (schema stub, both manifest
+builders, role enum, doc drafts). **The whole-slice mixed-model review
+earned its keep: 3 MAJORs fixed red-first** (13 unsanitized data-carried
+sinks — deviceId rides the unauthenticated /api/scan; a double-escape
+regression producing GFM-LIVE pipes that the invariant helper's
+lookbehind then green-lit; the unpinned bake-voice premise) — record in
+the design doc §8. **CLOSE GATE (all green on final heads):** backend
+2661 unit+contract + fresh ratchet (82 files, raises only) + lint;
+scanner 1604 + fresh ratchet (65 files, raises only) + build + lint;
+pack contract 113; bundle contract 24; config-tool 114; PWA 165; Python
+75; ESP32 leg unrun (zero slice-7 changes, pio absent — slice-4
+posture); dual-pack Tier L locally on the FINAL tree (ALN 119P/0F/61
+capability-gated skips + 4 Tier-H, 0 flaky; toy 120P/0F/60S, 0 flaky)
+AND both CI legs green. Merge-train vehicles: TokenData #5, ALNScanner
+#14, parent #30 (table below current). **Queue: theme unit (§13.5) is
+NEXT.**
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in
@@ -660,8 +702,8 @@ adds its PRs to this block.
 
 | Order | Repo | PR | Head | Close condition / note |
 |---|---|---|---|---|
-| 1 | ALN-TokenData | **#5** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `7660375` | Subsumes #4 (slice-6; which subsumes #3, which subsumes #2) — owner closes #4/#3/#2 as subsumed. Adds the slice-7 verbNoun field + report-stub removal on top of slice-4 cues + slice-6 surfaces |
-| 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `8451be7` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin |
+| 1 | ALN-TokenData | **#5** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `c44a8ef` | Subsumes #4 (slice-6; which subsumes #3, which subsumes #2) — owner closes #4/#3/#2 as subsumed. Adds the slice-7 verbNoun field + report-stub removal (+ review-fold schema precision) on top of slice-4 cues + slice-6 surfaces |
+| 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `46db231` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin (scanner CI runs 96–97 green) |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
 | 5–16 | ALN-Ecosystem (parent) | **#19 → #30 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7 (opened AT slice open per the corrected discipline). Train grows with remaining slices (theme, B0…) |
