@@ -12,7 +12,7 @@
  * 2026-09-03-phase3-a3-slice7-report-wording.md D-7.1 + §4a):
  * - the schema compiles under the house Ajv2020 strict profile;
  * - integer schemaVersion const (house convention, not semver);
- * - ONLY schemaVersion + engine are required — the ALN-shaped data
+ * - only kind + schemaVersion + engine are required — the ALN-shaped data
  *   sections are optional so a non-ALN game (BILL: graph + epidemic
  *   state) emits engine + gameState without fabricating empty
  *   transaction lists (BILL scoping :71-73);
@@ -34,12 +34,15 @@ const SCHEMA_PATH = path.resolve(__dirname, '../../contracts/session-bundle.sche
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 
 /**
- * A full ALN-shaped bundle: every optional data section populated, shaped
- * exactly like the golden-master fixtures (one scoring-mode claim, one
+ * A full ALN-shaped bundle: every optional data section populated, SHAPED
+ * like the golden-master fixtures (one scoring-mode claim, one
  * evidence-mode claim, an adjustment with reason + station, player scans,
- * the owner projection, and the resolved rules snapshots).
+ * the owner projection, and the resolved rules snapshots). The values are
+ * invented but internally consistent: jaw001's points equal the
+ * star-cell-derivable baseValues[5] x Technical multiplier.
  */
 const FULL_BUNDLE = {
+  kind: 'session-bundle',
   schemaVersion: 1,
   engine: {
     engineVersion: '3.0.0',
@@ -66,7 +69,7 @@ const FULL_BUNDLE = {
   transactions: [
     {
       status: 'accepted', mode: 'blackmarket', tokenId: 'jaw001', teamId: '001',
-      timestamp: '2026-09-03T01:20:00.000Z', points: 150000, summary: null,
+      timestamp: '2026-09-03T01:20:00.000Z', points: 750000, summary: null,
       valueRating: 5, memoryType: 'Technical',
     },
     {
@@ -110,6 +113,7 @@ const FULL_BUNDLE = {
  * transaction list").
  */
 const MINIMAL_NON_ALN_BUNDLE = {
+  kind: 'session-bundle',
   schemaVersion: 1,
   engine: {
     engineVersion: '3.0.0',
@@ -139,12 +143,13 @@ describe('B9 session-bundle schema contract (slice 7 S7.1)', () => {
   });
 
   describe('versioning and required set', () => {
-    it('pins the house integer version convention: schemaVersion const 1', () => {
-      expect(schema.properties.schemaVersion).toEqual({ type: 'integer', const: 1 });
+    it('pins the house version + kind convention: bare consts, like every sibling schema', () => {
+      expect(schema.properties.schemaVersion).toEqual({ const: 1 });
+      expect(schema.properties.kind).toEqual({ const: 'session-bundle' });
     });
 
-    it('requires ONLY schemaVersion and engine — every data section is optional', () => {
-      expect([...schema.required].sort()).toEqual(['engine', 'schemaVersion']);
+    it('requires only the identity trio (kind/schemaVersion/engine) — every data section is optional', () => {
+      expect([...schema.required].sort()).toEqual(['engine', 'kind', 'schemaVersion']);
     });
 
     it('refuses a future schemaVersion (exact-match, both directions)', () => {
@@ -214,6 +219,12 @@ describe('B9 session-bundle schema contract (slice 7 S7.1)', () => {
       bundle.intake = { roster: 'three teams of five', photos: 42, accusation: { by: '001' } };
       expect(validate(bundle)).toBe(true);
     });
+
+    it('intake refuses a key outside the five reserved names (exercised through validate)', () => {
+      const bundle = clone(MINIMAL_NON_ALN_BUNDLE);
+      bundle.intake = { surprise: 'not reserved' };
+      expect(validate(bundle)).toBe(false);
+    });
   });
 
   describe('input coverage — the four census input classes (§4a lens-1 OBJ-3)', () => {
@@ -248,6 +259,22 @@ describe('B9 session-bundle schema contract (slice 7 S7.1)', () => {
       for (const key of ['id', 'label', 'verbNoun', 'scoringPolicy', 'displayBehavior']) {
         expect(modeProps).toHaveProperty(key);
       }
+    });
+
+    it('REQUIRES the two membership-driving fields on every mode record — the section exists to carry them', () => {
+      const bundle = clone(FULL_BUNDLE);
+      delete bundle.rules.modes[0].scoringPolicy;
+      expect(validate(bundle)).toBe(false);
+
+      const bundle2 = clone(FULL_BUNDLE);
+      delete bundle2.rules.modes[1].displayBehavior;
+      expect(validate(bundle2)).toBe(false);
+    });
+
+    it('refuses empty-string identifiers (minLength on the id shape)', () => {
+      const bundle = clone(FULL_BUNDLE);
+      bundle.transactions[0].tokenId = '';
+      expect(validate(bundle)).toBe(false);
     });
   });
 });

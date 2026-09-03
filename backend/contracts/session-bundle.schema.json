@@ -1,15 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://aln.example/contracts/session-bundle.schema.json",
+  "$id": "https://aln.tokens/session-bundle.schema.json",
   "title": "B9 session bundle",
-  "description": "The canonical structured record of one game session (decision B9, 2026-06-09): the engine emits this versioned JSON artifact and the markdown report is a themed rendering of it. The schema is ENGINE-versioned, never pack data. Versioning follows the house convention: an integer schemaVersion const, exact-match both directions; additive evolution adds OPTIONAL properties within the same version, a breaking change bumps the const. Only schemaVersion and engine are required: the ALN-shaped data sections (session/scores/transactions/playerScans/tokens/rules) are optional so a game whose state is not a transaction list (BILL: graph + epidemic state) emits engine + gameState without fabricating empty sections. No Phase-3 emitter exists; Phase-4 D intake is the first writer.",
+  "description": "The canonical structured record of one game session (decision B9, 2026-06-09): the engine emits this versioned JSON artifact and the markdown report is a themed rendering of it. The schema is ENGINE-versioned, never pack data. Versioning follows the house convention: an integer schemaVersion const, exact-match both directions; additive evolution adds OPTIONAL properties within the same version, a breaking change bumps the const. Only kind, schemaVersion and engine are required: the ALN-shaped data sections (session/scores/transactions/playerScans/tokens/rules) are optional so a game whose state is not a transaction list (BILL: graph + epidemic state) emits engine + gameState without fabricating empty sections. No Phase-3 emitter exists; Phase-4 D intake is the first writer.",
   "type": "object",
-  "required": ["schemaVersion", "engine"],
+  "required": ["kind", "schemaVersion", "engine"],
   "additionalProperties": false,
+  "$defs": {
+    "timestamp": { "type": "string", "format": "date-time" },
+    "nullableTimestamp": { "type": ["string", "null"], "format": "date-time" },
+    "id": { "type": "string", "minLength": 1 }
+  },
   "properties": {
-    "schemaVersion": { "type": "integer", "const": 1 },
+    "kind": { "const": "session-bundle" },
+    "schemaVersion": { "const": 1 },
     "engine": {
-      "description": "Provenance stamp: which engine and which activated pack produced this bundle (the A2 staleness-identity fields every consumer already reports).",
+      "description": "Provenance stamp: which engine and which activated pack produced this bundle (the A2 staleness-identity fields every consumer already reports). Field formats carry the pack-manifest identity patterns verbatim — a free-text provenance stamp invites drift.",
       "type": "object",
       "required": ["engineVersion", "packId", "packVersion", "contentHash"],
       "additionalProperties": false,
@@ -25,13 +31,13 @@
       "required": ["name", "startTime", "endTime", "teams"],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "startTime": { "type": ["string", "null"], "format": "date-time" },
-        "endTime": { "type": ["string", "null"], "format": "date-time" },
+        "name": { "$ref": "#/$defs/id" },
+        "startTime": { "$ref": "#/$defs/nullableTimestamp" },
+        "endTime": { "$ref": "#/$defs/nullableTimestamp" },
         "teams": {
           "description": "Entity ids (the wire field teamId is the entity-field alias — ledger row L4).",
           "type": "array",
-          "items": { "type": "string" }
+          "items": { "$ref": "#/$defs/id" }
         }
       }
     },
@@ -42,7 +48,7 @@
         "required": ["teamId", "score", "adminAdjustments"],
         "additionalProperties": false,
         "properties": {
-          "teamId": { "type": "string" },
+          "teamId": { "$ref": "#/$defs/id" },
           "score": { "type": "number" },
           "adminAdjustments": {
             "type": "array",
@@ -52,7 +58,7 @@
               "additionalProperties": false,
               "properties": {
                 "delta": { "type": "number" },
-                "timestamp": { "type": "string", "format": "date-time" },
+                "timestamp": { "$ref": "#/$defs/timestamp" },
                 "reason": { "type": ["string", "null"] },
                 "gmStation": { "type": ["string", "null"] }
               }
@@ -69,11 +75,11 @@
         "required": ["status", "mode", "tokenId", "teamId", "timestamp"],
         "additionalProperties": false,
         "properties": {
-          "status": { "type": "string" },
-          "mode": { "type": "string" },
-          "tokenId": { "type": "string" },
-          "teamId": { "type": "string" },
-          "timestamp": { "type": "string", "format": "date-time" },
+          "status": { "$ref": "#/$defs/id" },
+          "mode": { "$ref": "#/$defs/id" },
+          "tokenId": { "$ref": "#/$defs/id" },
+          "teamId": { "$ref": "#/$defs/id" },
+          "timestamp": { "$ref": "#/$defs/timestamp" },
           "points": { "type": "number" },
           "summary": { "type": ["string", "null"] },
           "valueRating": { "type": ["integer", "null"] },
@@ -88,9 +94,9 @@
         "required": ["tokenId", "deviceId", "timestamp"],
         "additionalProperties": false,
         "properties": {
-          "tokenId": { "type": "string" },
-          "deviceId": { "type": "string" },
-          "timestamp": { "type": "string", "format": "date-time" }
+          "tokenId": { "$ref": "#/$defs/id" },
+          "deviceId": { "$ref": "#/$defs/id" },
+          "timestamp": { "$ref": "#/$defs/timestamp" }
         }
       }
     },
@@ -107,7 +113,7 @@
       }
     },
     "rules": {
-      "description": "The ACTIVE pack's resolved rule snapshots the render depends on — the getScoringRules() normalized shape and the mode-resolver record shape. Without these a consumer cannot reproduce the ★ Detail cell or decide section membership.",
+      "description": "The ACTIVE pack's resolved rule snapshots the render depends on — the getScoringRules() normalized shape and the mode-resolver record shape. Without these a consumer cannot reproduce the ★ Detail cell or decide section membership, so each mode record REQUIRES the two membership-driving fields (scoringPolicy, displayBehavior.surface).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -137,18 +143,19 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id"],
+            "required": ["id", "scoringPolicy", "displayBehavior"],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string" },
+              "id": { "$ref": "#/$defs/id" },
               "label": { "type": "string" },
               "verbNoun": { "type": "string" },
-              "scoringPolicy": { "type": "string" },
+              "scoringPolicy": { "$ref": "#/$defs/id" },
               "displayBehavior": {
                 "type": "object",
+                "required": ["surface"],
                 "additionalProperties": false,
                 "properties": {
-                  "surface": { "type": "string" }
+                  "surface": { "$ref": "#/$defs/id" }
                 }
               }
             }

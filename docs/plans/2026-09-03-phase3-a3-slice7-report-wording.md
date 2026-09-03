@@ -132,17 +132,22 @@ draft matching the house style of the pack schemas.
 
 Shape (v1):
 
-- `schemaVersion` — integer const `1`, the HOUSE convention
-  (game/strings/cues schemas all use an integer const with exact-match
-  enforcement). Additive evolution = new OPTIONAL properties within
-  the same version; a breaking change bumps the const. (The r1 semver
+- `kind` const `"session-bundle"` + `schemaVersion` — integer const
+  `1`, the HOUSE convention (game/strings/cues schemas all use a kind
+  discriminator and an integer const with exact-match enforcement).
+  Additive evolution = new OPTIONAL properties within the same
+  version; a breaking change bumps the const. (The r1 semver
   `bundleVersion` is dropped — a const semver gives a validator
   nothing the integer doesn't, and it mixed two conventions in one
-  repo. §4a lens-1 OBJ-9.)
+  repo. §4a lens-1 OBJ-9. The kind const was added at the S7.1
+  standards review, matching every sibling schema.)
 - `engine` — `{engineVersion, packId, packVersion, contentHash}`: the
   provenance stamp, same identity fields every consumer already
-  reports (A2 staleness identity). REQUIRED.
-- **Only `schemaVersion` and `engine` are required.** The four
+  reports (A2 staleness identity). REQUIRED. Field formats carry the
+  pack-manifest identity patterns verbatim (S7.1 review: a free-text
+  provenance stamp invites drift; recorded here so spec matches
+  build).
+- **Only `kind`, `schemaVersion` and `engine` are required.** The four
   ALN-shaped data sections below are all OPTIONAL, so a non-ALN game
   (BILL: graph + epidemic state) emits `engine` + `gameState` without
   fabricating empty transaction lists — the exact shape-assumption
@@ -159,7 +164,10 @@ Shape (v1):
   render depends on: `scoring` (`baseValues`, `typeMultipliers`,
   `display.format` — the `getScoringRules()` normalized shape) and
   `modes[]` (`id`, `label`, `verbNoun`, `scoringPolicy`,
-  `displayBehavior.surface` — the resolver record shape). Without
+  `displayBehavior.surface` — the resolver record shape;
+  `scoringPolicy` and `displayBehavior.surface` are REQUIRED per
+  record, since they are the membership-driving fields the section
+  exists to carry — S7.1 spec review). Without
   these a consumer cannot reproduce the ★ Detail cell or decide
   SECTION MEMBERSHIP; the census named both module imports and the r1
   shape dropped them (§4a lens-1 OBJ-3). No new derivation is
@@ -175,8 +183,9 @@ Shape (v1):
   construct — §4a lens-1 OBJ-8). Engine never interprets the contents.
 
 **No emitter is built** ("no Phase-3 consumer"): enforcement is
-contract tests only — schema validity; a full fixture bundle derived
-from the golden-master fixtures validating green; a MINIMAL non-ALN
+contract tests only — schema validity; a full fixture bundle SHAPED
+like the golden-master fixtures (same field shapes, invented but
+internally consistent values) validating green; a MINIMAL non-ALN
 fixture (`schemaVersion` + `engine` + `gameState` only) validating
 green — the test that proves BILL:71 is satisfied rather than cited;
 the version const; the reserved namespaces pinned present; and the
@@ -389,7 +398,7 @@ folded into §3 r2:
 ## 5. Build order
 
 - **S7.1 — bundle schema** (backend only, pure additive):
-  `session-bundle.schema.json` (r2 shape) + the three fixtures (full
+  `session-bundle.schema.json` (r2 shape) + the two fixtures (full
   ALN-shaped, minimal non-ALN, both validating) + contract tests
   (validity, integer version const, reserved namespaces genuinely
   constrained, 4-class input coverage).
@@ -445,3 +454,20 @@ four-repo lockstep); S7.3 ≈ 1. Slice ≈ **4–4.5 work sessions**.
 - 2026-09-03: pre-build design red-team `wf_0568e580-301` (2 Opus +
   1 Fable, 19 objections, 0 refuted) — design revised to r2, §4a
   adjudication table. Estimate re-priced 3.5–4 → 4–4.5.
+- 2026-09-03: **S7.1 DONE.** `backend/contracts/session-bundle.schema.json`
+  + `tests/contract/session-bundle.schema.test.js`, red-first (test
+  written against the missing schema, then the schema to green).
+  Two-axis review (parallel Sonnet agents, fixed point `6828140`):
+  standards axis — no hard violations; 5 idiom findings ALL folded
+  (`$id` on the house `aln.tokens` domain, bare consts, `kind`
+  discriminator added, `minLength: 1` on the id shape, `$defs` for
+  the repeated timestamp/id shapes); spec axis — 5 findings: the §5
+  "three fixtures" drafting slip corrected to two (this doc), the
+  intake reservation now exercised through `validate()` with a rogue
+  key, the engine-stamp format patterns KEPT and recorded above
+  (adjudicated: pack-manifest patterns verbatim), and the two real
+  catches fixed — `rules.modes[]` now REQUIRES
+  `scoringPolicy`/`displayBehavior.surface` (with refusal pins) and
+  the full fixture's ★-derivable math made internally consistent
+  (750000) with the "derived from" overclaim reworded. 22 contract
+  tests green; backend suite + ratchet + lint verified at commit.
