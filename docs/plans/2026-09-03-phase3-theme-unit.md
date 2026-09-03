@@ -344,18 +344,25 @@ overrides the pair.
 
 ### D-T.6 — fonts (ledger L11)
 
-Self-host SIX families across TWO pages (§4a T-4 corrected r1's
-four-family/one-page scope): the scoreboard's four (IBM Plex Mono,
-Libre Baskerville, Playfair Display, Special Elite — scoreboard.html
-:35-38) and config-tool's two (DM Sans, JetBrains Mono —
+Self-host the families that RENDER, across TWO pages (§4a T-4
+corrected r1's four-family/one-page scope; the six-family count
+reconciled to FIVE at the ST.F review — Playfair Display was a
+declared-but-unconsumed token, see the `--font-display` clause below
+and §8): the scoreboard's three live families (IBM Plex Mono,
+Libre Baskerville, Special Elite — scoreboard.html
+:35-38, minus the dead Playfair) and config-tool's two (DM Sans, JetBrains Mono —
 config-tool/public/css/styles.css:56-57), as woff2 under each app's
 public tree + generated `@font-face` css with the existing fallback
 stacks. The CDN links replaced INCLUDE the gstatic preconnects
 (scoreboard.html:12-14 is googleapis-preconnect + gstatic-preconnect +
 stylesheet; config-tool index.html:7-9 the same trio — r1's "two
-links" miscounted). L11's tripwire becomes
-`grep -RE 'fonts\.(googleapis|gstatic)' backend/public config-tool`
-= zero. Rationale: the venue is OFFLINE-LAN — today the CDN fonts
+links" miscounted). L11's tripwire is
+`grep -rlE 'fonts\.(googleapis|gstatic)' backend/public config-tool/public`
+= zero (CORRECTED at the ST.F review from `-RE ... config-tool`: the
+capital `-R` followed the `gm-scanner`/`player-scanner` submodule
+symlinks into the NFC tools — a separate surface now tracked as
+ledger L14; the engine's own served chrome is what this unit retires;
+§8). Rationale: the venue is OFFLINE-LAN — today the CDN fonts
 silently fail at the venue and the pages render fallbacks, so
 self-hosting RESTORES the intended look where it matters; dropping
 the links would canonize the fallback look. Weight: woff2 subsets,
@@ -616,3 +623,51 @@ than slice 7's.
   delegate); the inline rating-pin placement accepted (it needs the
   detective test's scanner bring-up). Verified post-fold: backend 2723
   + ratchet 82 files + lint 0; config-tool 114.
+- 2026-09-03: **ST.F DONE + REVIEW FOLDED** (red-first at the tripwire
+  seam; parent `ada6fa3` build + this fold). Build: five families
+  self-hosted as latin+latin-ext woff2 (unicode-range preserved) —
+  scoreboard's IBM Plex Mono / Libre Baskerville / Special Elite (16
+  files) + config-tool's DM Sans / JetBrains Mono (12 files), generated
+  `@font-face` css, live fallback stacks kept; the CDN stylesheet links
+  AND both googleapis/gstatic preconnects removed from both pages; the
+  dead `--font-display` token + its unconsumed Playfair Display family
+  deleted rather than hosted (a font nothing renders is dead weight —
+  the honest read of D-T.6's own token-deletion clause). Both css2 API
+  and gstatic binaries fetched cleanly through the proxy, so the §6
+  conditional fallback remedy was NOT needed. L11-tripwire enforced as
+  tests in both repos. Verified: backend 2730 + config-tool 119; the
+  scoreboard page re-loaded live off the local stylesheet.
+  REVIEW (two-axis) — three findings, all REAL, all folded:
+  (1) SPEC, tripwire VACUOUS (the prior-rounds class a THIRD time):
+  the design's/status's literal `grep -RE ... backend/public config-tool`
+  returns matches, NOT zero — capital `-R` FOLLOWS the gm-scanner /
+  player-scanner submodule symlinks into the NFC tools (tag-writer /
+  token-checkin), which genuinely still carry CDN font links, and the
+  pattern self-matched the config-tool test file. The TEST correctly
+  scoped (skips symlinks, scans public/ only), so it stayed green while
+  the DOCUMENTED command lied. FIX: corrected the command in both docs
+  to `grep -rlE ... backend/public config-tool/public` = zero (matches
+  enforced scope), and recorded the NFC-tool CDN fonts as ledger L14
+  (a SEPARATE surface — NFC programming tools, not venue display
+  chrome; out of L11/D-T.6 scope, so a pre-named residue row per OBJ-4,
+  NOT ST.F scope creep). Lesson generalized: a tripwire's DOCUMENTED
+  command must match its TEST's scope byte-for-byte, symlink semantics
+  included. (2) SPEC, six-vs-five families: D-T.6 names Playfair among
+  the four to host as a clause separate from the token deletion — the
+  build hosted five. RATIFIED the narrowing (a zero-consumer font
+  renders nothing; hosting it is Speculative Generality); D-T.6 + the
+  L11 row reconciled to five. (3) MINOR, subset narrowing: latin +
+  latin-ext only (cyrillic/greek/vietnamese dropped) — recorded here as
+  a deliberate build choice (English-only content; non-latin degrades
+  to the fallback stack exactly as the CDN's own unicode-range would),
+  low-risk, no tripwire warranted. STANDARDS: clean — the twin-mold
+  test duplication and the hardcoded family lists both judged
+  acceptable (different packages/runners; generated-directory comment).
+  Verified post-fold: `grep -rlE ... backend/public config-tool/public`
+  = zero; backend 2730 + config-tool 119 green.
+- 2026-09-03: **MODEL FALLBACK NOTED** — mid-ST.F-review the session
+  fell back from `claude-fable-5` (configured) to `claude-opus-4-8`
+  (served); attribution switched to Opus 4.8 per the harness. Per the
+  goal's standing rule, flagged to the owner before opening ST.4's
+  fresh adversarial review. The ST.F fold above is in-flight build work
+  (acting on completed review findings), not new design/review.
