@@ -1814,6 +1814,19 @@ describe('packService', () => {
       expect(refusalMessage()).toMatch(/theme/);
     });
 
+    it('REFUSES a bidi-only glyph — the value twin strips bidi controls then refuses the emptied glyph (schema-legal, twin-refused: the twins are the runtime authority, the verbNoun precedent)', () => {
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: String.fromCharCode(0x202e).repeat(2) } } });
+      expect(refusalMessage()).toMatch(/rating\.glyph\.filled/);
+    });
+
+    it('freezes the CLEANED glyph — embedded bidi controls are stripped BEFORE the snapshot', () => {
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: '★' + String.fromCharCode(0x200e) } } });
+      packService.activatePack();
+      expect(packService.getTheme().rating.glyph.filled).toBe('★');
+    });
+
     it('accepts a 1-4 astral glyph pair (code points — the icon idiom, all three layers agree)', () => {
       writeGame(tmpDir, withTheme());
       writeTheme(tmpDir, { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: '💎'.repeat(4), empty: '·' } } });

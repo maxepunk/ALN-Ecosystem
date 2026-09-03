@@ -179,7 +179,10 @@ history), `additionalProperties: false`, all sections optional:
   economy.js:57's precedent); `none` suppresses the rating element
   (ALN's ruled choice). `glyph.filled`/`glyph.empty` are 1-4 code-point
   plain glyphs (the icon idiom: control/bidi stripped, no markup chars,
-  code-point cap — schema pattern + value-twin normalization).
+  code-point cap — schema pattern + value-twin normalization). The
+  schema pattern excludes C0/markup only; DEL/bidi pass it and are
+  stripped-then-checked by the VALUE twins, the runtime authority (the
+  verbNoun precedent — schema deliberately no stricter than the twins).
 - `scoreboard.accent`/`accentDark` re-point the page's
   `--evidence-red`/`--evidence-red-dark` tokens.
 - The section keys deliberately mirror the CONSUMING token names, not
@@ -431,9 +434,12 @@ safe.
 - **ST.1 — schema + gate (TokenData + backend, red-first):**
   theme.schema.json; game.schema theme-const tightening; capability id
   + requires-lint; `_loadDeclaredTheme`/themeCheck/activeTheme/
-  `getTheme()`; contract pins (legal theme on both real-pack clones;
-  refusal twins: bad kind/version, non-hex color, table of glyph
-  refusals; undeclared = null; declared-without-requires refused).
+  `getTheme()`; contract pins (refusal twins: bad kind/version,
+  non-hex color, table of glyph refusals incl. the bidi boundary;
+  undeclared = null; declared-without-requires refused; cleaned-glyph
+  freeze). [The r2 list also placed the legal-theme-on-both-real-pack
+  clones pin here — moved to ST.3 at the ST.1 review: the pin needs
+  the real files, which land there.]
 - **ST.2 — scanner (red-first):** packLoader theme role + staged
   checks; core/theme.js (DECLINE mirror + accessors); custom-prop
   injection; the three sites through `ratingDisplay()`; admin.css
@@ -441,7 +447,8 @@ safe.
   three sites; display:none/numeric/stars renders; hostile glyph
   DECLINE; inverted pin for ALN's undeclared colors).
 - **ST.3 — packs + scoreboard:** ALN theme.json (star-drop, deep-equal
-  pin) + requires + manifest regen; toy divergent theme + manifest;
+  pin) + requires + manifest regen + the legal-theme-on-both-real-pack
+  clones pin (moved from ST.1's list — needs the real files); toy divergent theme + manifest;
   scoreboard `%%PACK_THEME%%` + applyTheme + sink-side hex guard;
   Tier-L pins (toy leg sees its accent and/or glyph; ALN leg
   byte/visual-identical minus the ruled drop + the four-rule recolor).
@@ -520,3 +527,20 @@ than slice 7's.
   covered with real refusal rows + the selective-init read test,
   floor untouched. Verified: backend 2704 + ratchet (82 files) +
   lint.
+- 2026-09-03: **ST.1 two-axis review FOLDED** (parallel Sonnet agents).
+  Standards: 1 hard — the theme requires-lint was inlined in _gateCheck
+  against the per-block-validator mold; MOVED into _loadDeclaredTheme
+  (one home for the block's declaration problems, gate call stays one
+  line). The orphan-loop's redundant 2-tuple simplified to a role list.
+  Judgement calls accepted-as-documented: the header-required and
+  own-schemaVersion divergences from strings (both §4a-reasoned
+  in-comment); the triplicated loader skeleton is the repo's own mold.
+  Spec: (1) the §5 "legal theme on both real-pack clones" pin was a
+  drafting misplacement — it needs the real theme.json files, which
+  land at ST.3; §5 corrected. (2) The glyph schema-pattern/value-twin
+  bidi boundary was undocumented and untested: schema-legal bidi-only
+  glyphs are twin-refused (the SAFE direction — twins are the runtime
+  authority); pinned both ways (bidi-only refusal + cleaned-glyph
+  freeze proof) and the precision note added to theme.schema.json and
+  D-T.1 (the verbNoun-precedent wording). No scope creep found; the
+  orphan warn, refusal twins, and freeze semantics verified clean.

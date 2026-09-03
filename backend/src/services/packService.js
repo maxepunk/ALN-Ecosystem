@@ -512,6 +512,18 @@ function _loadDeclaredTheme(gameConfig) {
   const declared = gameConfig && gameConfig.theme;
   if (!declared) return { value: null, problems: [] };
 
+  // Declared ⇒ theme.identity in requires (the surfaces.select lint,
+  // housed WITH the block's other declaration problems per the
+  // per-block-validator mold — a capability-blind engine must refuse
+  // instead of silently ignoring the theme).
+  const requires = Array.isArray(gameConfig.requires) ? gameConfig.requires : [];
+  if (!requires.includes('theme.identity')) {
+    return {
+      value: null,
+      problems: ["pack declares a theme sidecar but 'theme.identity' is missing from requires (declare the capability so a capability-blind engine refuses instead of silently ignoring the theme)"],
+    };
+  }
+
   if (declared !== 'theme.json') {
     return {
       value: null,
@@ -654,9 +666,11 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad) {
     // pass silently either. Generic over the sidecar roles (the strings
     // twin of the hole closes in the same loop).
     if (Array.isArray(manifest.files)) {
-      for (const [role, pointerKey] of [['strings', 'strings'], ['theme', 'theme']]) {
+      // role === the game.json pointer key for both sidecars today; a
+      // future sidecar whose pointer key differs reintroduces the pair.
+      for (const role of ['strings', 'theme']) {
         const inventoried = manifest.files.find((f) => f && f.role === role);
-        if (inventoried && !(gameConfig && gameConfig[pointerKey])) {
+        if (inventoried && !(gameConfig && gameConfig[role])) {
           logger.warn(
             `pack-manifest inventories ${inventoried.path} (role '${role}') but game.json never declares it — ` +
             'the file is served yet applied by nothing (authoring debris? declare it in game.json or remove it)'
@@ -903,12 +917,6 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad) {
     const themeCheck = themeLoad || _loadDeclaredTheme(gameConfig);
     for (const prob of themeCheck.problems) {
       problems.push(prob);
-    }
-    if (gameConfig.theme) {
-      const requires = Array.isArray(gameConfig.requires) ? gameConfig.requires : [];
-      if (!requires.includes('theme.identity')) {
-        problems.push("pack declares a theme sidecar but 'theme.identity' is missing from requires (declare the capability so a capability-blind engine refuses instead of silently ignoring the theme)");
-      }
     }
     // Show-cues gate (A3 slice 4 S2 — D-4.3). Pack-internal PURE reads
     // only: activation is the FIRST act of initializeServices, every
