@@ -6,7 +6,8 @@
     "groupRules.all",
     "lighting.roles",
     "scoring.tabular",
-    "surfaces.select"
+    "surfaces.select",
+    "theme.identity"
   ],
   "id": "midnight-heist",
   "title": "Midnight Heist",
@@ -194,5 +195,6 @@
       "enabled": true,
       "evidenceCycleMs": 9000
     }
-  }
+  },
+  "theme": "theme.json"
 }

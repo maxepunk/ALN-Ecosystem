@@ -90,6 +90,46 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     expect(sb.unknownOwner).toBe('Unknown');
   });
 
+  it('renderScoreboardHtml injects the ACTIVE pack theme as JSON (theme unit ST.3 — D-T.2)', () => {
+    // The default pack dir is ALN-TokenData, whose theme.json is the
+    // ruled star-drop — the rendered page must carry it verbatim (the
+    // scoreboard ignores rating; it reads only t?.scoreboard?.*, absent
+    // for ALN, so the baked palette stands — benign emptiness).
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const html = renderScoreboardHtml();
+    expect(html).not.toContain('%%PACK_THEME%%');
+    expect(html).toContain(`const PACK_THEME = ${JSON.stringify(packService.getTheme())}`);
+    // The snapshot is SECTIONS-ONLY — kind/schemaVersion are transport
+    // framing, validated then stripped by _loadDeclaredTheme (the
+    // getStrings posture). ALN's ruled star-drop is the sole section.
+    expect(packService.getTheme()).toEqual({ rating: { display: 'none' } });
+  });
+
+  it('packless serve path: PACK_THEME renders as null (baked palette stands, no loud shim — D-T.2)', () => {
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const packService = require('../../../src/services/packService');
+    const spy = jest.spyOn(packService, 'getTheme').mockReturnValue(null);
+    try {
+      const html = renderScoreboardHtml();
+      expect(html).toContain('const PACK_THEME = null;');
+      expect(html).not.toContain('%%PACK_THEME%%');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('the on-disk page re-validates theme colors at the CSS sink (defense in depth — the closers\' posture)', () => {
+    // The gate already refused non-hex at activation; the page must not
+    // TRUST that — applyPackTheme applies a value to --evidence-red /
+    // --evidence-red-dark only after its own strict 6-digit hex test.
+    const html = fs.readFileSync(scoreboardPath, 'utf8');
+    expect(html).toContain("const PACK_THEME = '%%PACK_THEME%%'");
+    expect(html).toMatch(/#\[0-9a-fA-F\]\{6\}/); // the sink-side hex re-check
+    expect(html).toContain('--evidence-red-dark');
+    expect(html).toMatch(/setProperty\('--evidence-red'/);
+  });
+
   it('packless serve path: PACK_STRINGS renders as null and the page keeps its baked STR fallbacks', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const packService = require('../../../src/services/packService');

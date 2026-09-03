@@ -133,6 +133,34 @@ async function loadPackStrings(orchestratorUrl) {
 }
 
 /**
+ * ACTIVE pack theme sections (theme unit ST.3) — the loadPackStrings
+ * twin: resolves game.json's `theme` pointer, fetches the sidecar,
+ * strips the kind/schemaVersion transport framing. Null when the pack
+ * declares no theme (the baked identity stands everywhere).
+ * @param {string} orchestratorUrl
+ * @returns {Promise<Object|null>} theme sections or null
+ */
+async function loadPackTheme(orchestratorUrl) {
+  const pointer = await _fetchGameJsonField(orchestratorUrl, 'theme');
+  if (!pointer) return null;
+  return new Promise((resolve) => {
+    https.get(`${orchestratorUrl}/api/pack/files/${pointer}`, { rejectUnauthorized: false }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode !== 200) return resolve(null);
+        try {
+          const { kind, schemaVersion, ...sections } = JSON.parse(data);
+          resolve(sections);
+        } catch {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+/**
  * Money display spec from the pack oracle (A3 slice 3b, R-3b-1): the
  * scoring block's `display.format` parsed with the same minimal grammar
  * as the engine (one '#,###' token + literal affixes). Baked ALN spec
@@ -291,6 +319,7 @@ module.exports = {
   loadPackClock,
   loadPackGroups,
   loadPackStrings,
+  loadPackTheme,
   loadPackEntities,
   expectedModeLabels,
   calculateExpectedScore,

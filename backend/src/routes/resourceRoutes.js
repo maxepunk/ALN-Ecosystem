@@ -175,7 +175,10 @@ function renderScoreboardHtml() {
     .replaceAll("'%%ADMIN_PASSWORD%%'", () => jsonForScript(config.security.adminPassword))
     // Pack-declared display strings (A3 slice 3a): the activation
     // snapshot (or null — page falls back to baked wording per key).
-    .replaceAll("'%%PACK_STRINGS%%'", () => jsonForScript(require('../services/packService').getStrings()));
+    .replaceAll("'%%PACK_STRINGS%%'", () => jsonForScript(require('../services/packService').getStrings()))
+    // Pack-declared visual identity (theme unit ST.3): the activation
+    // snapshot (or null — the page's baked palette stands untouched).
+    .replaceAll("'%%PACK_THEME%%'", () => jsonForScript(require('../services/packService').getTheme()));
 }
 
 /**

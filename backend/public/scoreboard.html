@@ -783,6 +783,28 @@
         // when the pack declares no strings sidecar). Every key falls
         // back to the baked ALN wording — missing strings are benign.
         const PACK_STRINGS = '%%PACK_STRINGS%%';
+
+        // Pack-declared visual identity (theme unit ST.3 — D-T.2):
+        // injected at serve time from packService.getTheme() (or null).
+        // This page reads ONLY t?.scoreboard?.* — an undeclared section
+        // leaves the baked palette untouched (benign emptiness, no shim).
+        const PACK_THEME = '%%PACK_THEME%%';
+        // Sink-side hex re-check (defense in depth): the activation gate
+        // already refused non-hex values, but a CSS custom-property sink
+        // must not TRUST upstream — only a strict 6-digit hex ever lands.
+        const THEME_HEX = /^#[0-9a-fA-F]{6}$/;
+        function applyPackTheme(t) {
+            const root = document.documentElement;
+            const accent = t?.scoreboard?.accent;
+            if (typeof accent === 'string' && THEME_HEX.test(accent)) {
+                root.style.setProperty('--evidence-red', accent);
+            }
+            const accentDark = t?.scoreboard?.accentDark;
+            if (typeof accentDark === 'string' && THEME_HEX.test(accentDark)) {
+                root.style.setProperty('--evidence-red-dark', accentDark);
+            }
+        }
+        applyPackTheme(PACK_THEME);
         // Non-empty STRING leaves only — the same leaf rule every other
         // sidecar reader applies (gate, scanner mirror): a schema-drifted
         // nested value must fall back to baked wording, never render

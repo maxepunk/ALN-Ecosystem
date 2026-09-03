@@ -527,6 +527,58 @@ describe('theme unit ST.1: theme.schema.json — the visual-identity sidecar', (
   });
 });
 
+describe('theme unit ST.3: real pack theme sidecars (D-T.4)', () => {
+  // The authoring-time contract twin of the activation gate, on the two
+  // REAL packs — the same clone-legality discipline every other sidecar
+  // carries (strings/cues above).
+  let validateTheme;
+  beforeAll(() => {
+    const ajvT = new Ajv2020({ allErrors: true, strict: true });
+    validateTheme = ajvT.compile(readJson(TOKEN_DATA_DIR, 'theme.schema.json'));
+  });
+  const explain = (validate) => validate.errors
+    .map((e) => `${e.instancePath || '(root)'} ${e.message}`).join('\n  ');
+  const declaring = declaringPacks('theme');
+
+  it('BOTH real packs declare a theme sidecar (the contract has two live consumers)', () => {
+    expect(declaring.map((d) => d.name)).toEqual(
+      expect.arrayContaining(['about-last-night', 'toy-heist']));
+  });
+
+  it.each(declaring.map((d) => [d.name, d.dir]))('%s theme.json validates', (name, dir) => {
+    const theme = readJson(dir, readJson(dir, 'game.json').theme);
+    if (!validateTheme(theme)) {
+      throw new Error(`${name} theme violations:\n  ${explain(validateTheme)}`);
+    }
+  });
+
+  it("ALN's theme is EXACTLY the ruled star-drop — one deep-equal on the whole file (§4a OBJ-3)", () => {
+    // Colors, scoreboard, glyphs stay UNDECLARED: the baked values ARE
+    // ALN's identity (bake-is-the-voice). Any later addition to ALN's
+    // theme must touch this pin — that is the point of the deep equal.
+    expect(readJson(TOKEN_DATA_DIR, 'theme.json')).toEqual({
+      kind: 'theme',
+      schemaVersion: 1,
+      rating: { display: 'none' },
+    });
+  });
+
+  it.each(declaring.map((d) => [d.name, d.dir]))(
+    '%s lists theme.identity in requires (the gate lint twin — surfaces.select precedent)',
+    (name, dir) => {
+      expect(readJson(dir, 'game.json').requires).toContain('theme.identity');
+    });
+
+  it('the toy theme exercises every path the ALN drop turns off (second-consumer doctrine)', () => {
+    const toy = readJson(TOY_PACK_DIR, 'theme.json');
+    expect(toy.rating.display).toBe('stars');
+    expect(toy.rating.glyph.filled).toBe('💎');
+    expect(Object.keys(toy.colors ?? {}).length).toBeGreaterThan(0);
+    expect(toy.scoreboard?.accent).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(toy.scoreboard?.accentDark).toMatch(/^#[0-9a-fA-F]{6}$/);
+  });
+});
+
 describe('slice-7 S7.2: the template role is retired (no template language, §13.4)', () => {
   it("a templates/ path is inventoried as plain 'other' — the engine has no template mechanism", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-tmpl-'));
