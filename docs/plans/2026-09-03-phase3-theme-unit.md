@@ -1,4 +1,4 @@
-# Phase 3 — theme unit: minimal theme.json (design r1)
+# Phase 3 — theme unit: minimal theme.json (design r2 — §4a fixes folded)
 
 Date: 2026-09-03 · Branch: `claude/phase3-theme-unit` (from slice-7 tip
 `4923575`) · Draft PR #31 (opened at unit open).
@@ -191,18 +191,30 @@ history), `additionalProperties: false`, all sections optional:
 strings/cues. Schema-tightening on a never-used slot: no pack can
 break (census: zero declarations anywhere).
 
-Capability: new `theme.minimal` id in `ENGINE_CAPABILITIES` (append-only
-minor per slice-1 D1). A pack declaring `theme` in game.json must list
-`theme.minimal` in `requires` (the surfaces.select precedent:
-schema-description note + gate lint twin).
+Capability: new `theme.identity` id in `ENGINE_CAPABILITIES`
+(append-only minor per slice-1 D1; renamed from r1's `theme.minimal`
+per §4a OBJ-6 — variants name ABILITIES, and 'minimal' is the unit's
+scoping word, not an ability; `theme.fonts` etc. stay clean future
+siblings). A pack declaring `theme` in game.json must list
+`theme.identity` in `requires` (the surfaces.select precedent:
+schema-description note + gate lint twin). The gate ALSO warns loudly
+when the active manifest inventories a role-'theme' file that game.json
+does not declare (§4a O3 — inventoried+served+applied-by-nothing is a
+silent no-op; the warn is generic over the sidecar roles, covering the
+strings twin of the same hole in the same three lines).
 
 ### D-T.2 — backend: gate twin + snapshot + serve
 
 `packService` gains the strings-mirror set: `_loadDeclaredTheme()`
 (declared-must-load-or-refuse; undeclared = benign null),
 `themeCheck` in `_gateCheck` (schema validation against
-theme.schema.json + the requires-lint), `activeTheme` frozen at
-`activatePack()`, `getTheme()` accessor (null when undeclared — the
+theme.schema.json + the requires-lint + a GLYPH VALUE TWIN — §4a
+OBJ-1: the rating.glyph pair goes through the normalizedIcon-class
+normalization (control/bidi strip, markup-char refusal, 1-4 code-point
+cap counted as code points) as a gate REFUSAL twin, the three-layer
+mold the verbNoun fold ratified: schema + backend twin + scanner twin,
+astral acceptance/refusal pinned on all three), `activeTheme` frozen
+at `activatePack()`, `getTheme()` accessor (null when undeclared — the
 `getStrings()` posture). Serving needs NO route work (role-agnostic
 whitelist) — the manifest entry makes it servable.
 
@@ -218,15 +230,31 @@ colors cannot corrupt a game; NO loud shim).
 
 - `packLoader.js`: add `'theme'` to `RULES_ROLES`; the declared-theme
   staged check, cache read, bundled best-effort, and `_activate` return
-  field — each the strings twin at the cited lines (census hop 5).
-- NEW `src/core/theme.js` (strings.js mold): `THEME_SCHEMA_VERSION = 1`,
-  `applyPackTheme(sidecar)` (kind/schemaVersion exact-match DECLINE
-  with warn; per-leaf validation — hex pattern for colors, icon-idiom
-  normalization for glyphs, enum for display), plus read accessors:
-  `ratingDisplay()` (`'stars'` baked default — packless byte-identical),
-  `ratingGlyphs()` (baked `{filled:'⭐'}` for sites 1-2's filled-only
-  form and `{filled:'★', empty:'☆'}` for site 3 — see D-T.5),
-  `themeColors()` (null when undeclared).
+  field — each the strings twin at the cited lines (census hop 5) —
+  PLUS the network fast-path flag the census range-list missed (§4a
+  T-3, the red-team's sharpest catch): `requireDeclaredTheme: true` at
+  the `loadPack` pointer fast path (packLoader.js:153) and its
+  `_readPackFromCache` branch (twin of :319), with `_themePath()`.
+  Without it, a cache staged by pre-theme code passes the contentHash
+  check and silently serves theme-less content — ALN's ruled star-drop
+  would silently not happen. Pinned in ST.2.
+- NEW `src/core/theme.js` (strings.js mold with ONE deliberate
+  divergence, §4a O2): `THEME_SCHEMA_VERSION = 1`;
+  `applyPackTheme(sidecar)` DECLINEs when kind/schemaVersion are
+  ABSENT as well as when they contradict (strings' absence-tolerance
+  was backward-compat for pre-3a packs; theme is a NEW artifact with
+  zero legacy files, and tolerance would open a gate/DECLINE split —
+  headerless applied standalone, refused at the orchestrator);
+  per-leaf validation — hex pattern for colors, the icon-idiom glyph
+  twin, enum for display; `packThemeApplied()` introspection (§4a
+  OBJ-2 — the slice-7 packStringsApplied precedent) with the settings
+  pack line gaining the declared-but-unapplied signal (console warns
+  are not an operator surface; the design-iteration loop must not fail
+  silently); read accessors `ratingDisplay()` (`'stars'` baked default
+  — packless byte-identical), `ratingGlyphs()` (baked
+  `{filled:'⭐'}` for sites 1-2's filled-only form and
+  `{filled:'★', empty:'☆'}` for site 3 — see D-T.5), `themeColors()`
+  (null when undeclared).
 - Color injection: at `tokenManager.loadDatabase()` time (the
   applyPack* moment), declared colors set the scanner custom props via
   `documentElement.style.setProperty` (the :219 precedent):
@@ -234,36 +262,68 @@ colors cannot corrupt a game; NO loud shim).
   --color-mode-evidence`, `accentPrimary → --color-accent-primary`,
   `accentValue → --color-accent-value`. Undeclared: no setProperty
   call at all — the stylesheet values stand (benign class).
-- The three star sites re-point through the theme choice:
-  - `display:'none'` → the rating element is not rendered (site 1: the
-    non-scoring result branch shows no value line; site 2: the "Base
-    Rating" field omitted; site 3: no `.token-card__rating` span).
-  - `display:'numeric'` → the plain rating digit.
-  - `display:'stars'` (baked default) → `formatStars` with the
-    resolved glyphs — byte-identical packless output.
-- **Census-caught drift fix:** `admin.css:874,878,956,957` re-keyed to
-  `var(--color-mode-scoring)`/`var(--color-mode-evidence)`. This is a
-  VISUAL change at those four sites for ALN (from the drifted
-  `#f59e0b`/`#3b82f6` literals to the declared `#ff6b35`/`#22c55e`
-  tokens — the colors 3c ratified as the semantic pair). Recorded as a
-  deliberate correction: the drift means today's admin cards disagree
-  with the mode indicator colors on the SAME screen; the tokens are
-  the ruled source. Flagged for the red-team + close-record visibility.
+- The three star sites re-point through the theme choice. The DOM unit
+  and the edge cases are specified per site (§4a T-1/T-6/O4 — the
+  result screen's `#resultValue` is a static shared span with a
+  `Value Rating:` label and four writers; 'skip the assignment' would
+  leave the PREVIOUS scan's stars visible under ALN's ruled config):
+
+  | | `stars` (baked) | `numeric` | `none` |
+  |---|---|---|---|
+  | Site 1 result screen (non-scoring KNOWN-token branch only; scoring branch untouched) | today's ⭐ repeat | rating digit | the whole `.transaction-detail` row (label included) hidden via `el.hidden`, and the span CLEARED — show/hide discipline on EVERY render (the summaryContainer pattern), pinned by a consecutive-scan test |
+  | Site 2 Team Details "Base Rating" (isUnknown keeps 'N/A' under stars/numeric) | today's ⭐ repeat; unrated-known = blank | digit when rating ≥ 1; unrated-known stays blank | the whole Base Rating field omitted ('N/A' included) |
+  | Site 3 Game Activity card (rating may be 0/undefined for DB-absent tokens) | today's ★/☆ pad; rating 0 = ☆☆☆☆☆ (the deliberate unrated affordance) | digit when rating ≥ 1; else '—' (0 must not read as a score) | no `.token-card__rating` span |
+
+  Glyph output is ESCAPED AT THE SINK at sites 2/3 (§4a O1 — both sit
+  in innerHTML template literals; every neighboring pack-derived value
+  there already goes through `escapeHtml`, including `modes[].icon`;
+  the render pin proves a hostile glyph reaches the DOM as text, since
+  the standalone tiers have no gate and DECLINE is their only other
+  barrier). Site 1 is textContent (safe as-is).
+- **Mode-keyed rule fix (reframed by §4a T-2):** r1 called the
+  admin.css literals "drift"; the red-team showed `#f59e0b` IS
+  `--color-accent-warning`'s value and `#3b82f6` IS
+  `--color-accent-info`'s, and the same literals appear at FIVE more
+  non-mode-keyed sites (:762, :846, :888, :966, :988) — so "drift from
+  the tokens" was the wrong frame and a four-site recolor by count
+  would be arbitrary. The principled class: rules KEYED ON the
+  semantic mode classes must read the mode tokens — that is what 3c's
+  semantic classes are FOR. Exactly four rules are mode-keyed
+  (`.token-card__status.mode-scoring/.mode-evidence` at :874-879's
+  blocks — literals on :875/:879, r1's :874/:878 cites were the
+  selector lines — and `.token-card__timeline .event.claim.mode-*` at
+  :956/:957); those four re-key to
+  `var(--color-mode-scoring)`/`var(--color-mode-evidence)`. The
+  non-mode-keyed literal sites stay (rating/points text legitimately
+  reads warning-amber today) and are RECORDED beside the scoreboard
+  strays as theme-editor-era candidates (§6). This is an ALN-visible
+  change at four rules (amber→orange, blue→green on admin cards),
+  kept flagged as §4's owner-visibility item (a).
 
 ### D-T.4 — the packs
 
-- **ALN** declares `"theme": "theme.json"` + `theme.minimal` in
-  requires; its theme.json is exactly `{kind, schemaVersion, rating:
-  {display: "none"}}` — the ruled star-drop, nothing else (colors stay
-  undeclared: the baked values ARE ALN's identity — the
-  bake-is-the-voice doctrine, now WITH the slice-7 lesson applied: an
-  inverted pin asserts ALN declares no `colors`/`scoreboard` section,
-  so the baked tier stays the proven tier).
+- **ALN** declares `"theme": "theme.json"` + `theme.identity` in
+  requires; its theme.json is exactly `{kind: "theme", schemaVersion:
+  1, rating: {display: "none"}}` — the ruled star-drop, nothing else
+  (colors stay undeclared: the baked values ARE ALN's identity — the
+  bake-is-the-voice doctrine with the slice-7 lesson applied, and per
+  §4a OBJ-3 the pin is ONE DEEP-EQUAL contract assertion on the whole
+  file, not per-section absence checks — it covers colors, scoreboard,
+  glyph, and every future key at once; a later addition to ALN's theme
+  requires touching that pin, which is the point). Under the ruled
+  drop, an ALN detective result screen shows NO Value Rating row at
+  all — owner-visible, recorded here deliberately (§4 item (a) family).
 - **Toy** declares a genuinely divergent theme (the second-consumer
-  doctrine): heist colors (e.g. amber/teal), `rating: {display:
-  "stars", glyph: {filled: "💎"}}` (exercises the glyph path the ALN
-  drop turns off), and a scoreboard accent. Every declared leaf lands
-  in a Tier-L-visible or unit-pinned surface.
+  doctrine): `rating: {display: "stars", glyph: {filled: "💎"}}`
+  (exercises the glyph path the ALN drop turns off), divergent mode
+  colors, and a scoreboard accent — CHOSEN TO HARMONIZE with the
+  baked status palette (§4a T-5: the minimal 4-key colors block
+  recolors the mode pair but not the status/accent families it sits
+  beside — e.g. `--color-accent-success` stays baked green next to a
+  themed evidence color; a theme author in the minimal era picks mode
+  colors that read coherently against that; recorded as an authoring
+  constraint, retired when theme depth widens the palette). Every
+  declared leaf lands in a Tier-L-visible or unit-pinned surface.
 - Manifests regenerated (both builders, byte-parity as always).
 
 ### D-T.5 — glyph semantics (one choice, not three)
@@ -281,23 +341,28 @@ overrides the pair.
 
 ### D-T.6 — fonts (ledger L11)
 
-Self-host the four scoreboard families as woff2 under
-`backend/public/fonts/` + a generated `fonts.css` with `@font-face` +
-the existing fallback stacks; the three CDN `<link>`s (:12-14) are
-replaced by one local stylesheet link. Rationale: the venue is
-OFFLINE-LAN — today the CDN fonts silently fail at the venue and the
-page renders fallbacks, so self-hosting RESTORES the intended look
-where it matters; dropping the links would instead canonize the
-fallback look. Weight: woff2 subsets, expected well under ~400 KB
-total — engine page assets (not pack media; ROADMAP §2.3 governs game
-MEDIA, not the engine's own page chrome). `--font-display`
-(:35, unused) is DELETED (dead token). Config-tool's two CDN links
-(index.html:7,9) get the same treatment (its families TBD at build —
-whatever :7,9 request). If woff2 files cannot be fetched in this
-environment (proxy), the fallback remedy is: drop the CDN links +
-promote the fallback stacks, recorded as the L11 fix with the
-self-host step left as a named residue. L11 retires either way (no
-runtime CDN dependency).
+Self-host SIX families across TWO pages (§4a T-4 corrected r1's
+four-family/one-page scope): the scoreboard's four (IBM Plex Mono,
+Libre Baskerville, Playfair Display, Special Elite — scoreboard.html
+:35-38) and config-tool's two (DM Sans, JetBrains Mono —
+config-tool/public/css/styles.css:56-57), as woff2 under each app's
+public tree + generated `@font-face` css with the existing fallback
+stacks. The CDN links replaced INCLUDE the gstatic preconnects
+(scoreboard.html:12-14 is googleapis-preconnect + gstatic-preconnect +
+stylesheet; config-tool index.html:7-9 the same trio — r1's "two
+links" miscounted). L11's tripwire becomes
+`grep -RE 'fonts\.(googleapis|gstatic)' backend/public config-tool`
+= zero. Rationale: the venue is OFFLINE-LAN — today the CDN fonts
+silently fail at the venue and the pages render fallbacks, so
+self-hosting RESTORES the intended look where it matters; dropping
+the links would canonize the fallback look. Weight: woff2 subsets,
+engine page assets (not pack media; ROADMAP §2.3 governs game MEDIA,
+not the engine's own page chrome). `--font-display` (:35, unused) is
+DELETED (dead token). If woff2 files cannot be fetched in this
+environment (proxy), the bounded fallback remedy is: drop the CDN
+links + promote the fallback stacks — L11 still retires (no runtime
+CDN dependency), and the intended-look debt gets the PRE-NAMED
+conditional ledger row in §6 (§4a OBJ-4), never a bare residue note.
 
 Font FAMILIES stay engine-fixed this unit (no `fonts` section in
 theme.schema.json) — family theming is first-real-second-game depth
@@ -319,12 +384,47 @@ in the B-pages theme editor era).
 None held — every choice above traces to a ruled input (Q-3c-1a,
 Q-3b-2, §13.5, L11) or an established doctrine (sidecar mold, benign
 wording class, second-consumer, bake-is-the-voice + inverted pin).
-Two calls the red-team should specifically attack as potential
-owner-question material:
-(a) D-T.3's drift fix changes four admin-card colors ALN GMs currently
-see (defended as a correction to the ratified tokens);
-(b) D-T.6's self-host remedy (defended as restoring the intended venue
-look; bounded fallback recorded).
+The red-team examined the two flagged calls and CONFIRMED neither is a
+held question: the doctrine leg verified display:'none' is the only
+faithful reading of "ALN opts out" ('numeric' would be opting INTO a
+rating display), and the T-2 reframe grounds the four-rule recolor in
+what 3c's semantic classes are for. Both stay recorded as
+OWNER-VISIBLE changes for the close record: (a) four admin-card rules
+recolor (amber→orange, blue→green) + the ALN detective result screen
+loses its Value Rating row (the ruled drop itself); (b) the fonts
+self-host remedy.
+
+## 4a. Design red-team record (2026-09-03, pre-build — workflow `wf_77d60ad6-a89`, 2 Opus + 1 Fable, 16 objections: 6 BLOCKING / 10 ADVISORY, ALL ACCEPTED — two as amended)
+
+| ID | Sev | Finding (compressed) | Disposition folded |
+|---|---|---|---|
+| O1 | B | Themed glyphs reach innerHTML UNESCAPED at sites 2/3 (every neighboring pack value there escapes; standalone tiers have no gate) | escapeHtml at both sinks + hostile-glyph render pin (D-T.3) |
+| O2 | B | strings.js's kind/schemaVersion ABSENCE-tolerance imported into a NEW artifact = headerless sidecar applied standalone, refused at orchestrator | theme.js DECLINEs on absent headers; headerless refusal pin; divergence documented (D-T.3) |
+| O3 | A | theme.json present-but-undeclared: inventoried + served + applied by nothing, silently | generic gate warn over sidecar roles (covers the strings twin of the hole) (D-T.1) |
+| O4 | A | display:'none' as skip-the-assignment leaves the PREVIOUS scan's stars visible | merged into T-1's show/hide discipline + consecutive-scan pin |
+| T-1 | B | Site 1's DOM unit misidentified: `#resultValue` is a static shared span with a label and four writers | per-site behavior TABLE; hide the whole row via el.hidden; clear on every render; scoped to non-scoring known-token branch (D-T.3) |
+| T-2 | B | "Drift" was the wrong frame (#f59e0b/#3b82f6 ARE the warning/info token values; 5 more sites carry them; 4-site recolor = new in-card incoherence) + two line cites off by one | ACCEPTED AS AMENDED: recolor scoped to the principled class (the four MODE-KEYED rules only — that is what 3c's semantic classes are for); cites fixed (:875/:879); non-mode-keyed literals recorded as theme-editor-era candidates (D-T.3, §6) |
+| T-3 | B | packLoader's network FAST PATH (`requireDeclaredStrings` at :153) outside every census range — a pre-theme cache would silently cancel ALN's ruled star-drop | `requireDeclaredTheme` at the fast path + cache-read branch + `_themePath()`; pinned (D-T.3) |
+| T-4 | A | L11 tripwire blind to gstatic preconnects; config-tool families (DM Sans, JetBrains Mono) disjoint from the scoreboard's | six families / two pages; tripwire covers googleapis|gstatic (D-T.6) |
+| T-5 | A | 4-key colors block recolors half of each visual pair — a divergent toy reads as broken styling | harmonize-with-baked-status authoring constraint recorded; toy palette chosen accordingly (D-T.4) |
+| T-6 | A | rating 0/undefined/isUnknown unspecified under numeric/none (site 3's ☆☆☆☆☆ is a deliberate affordance; numeric '0' reads as a score) | the per-site case table (D-T.3), each row pinned in ST.2 |
+| OBJ-1 | B | Glyph validation lacked the BACKEND value twin (the three-layer verbNoun mold: schema + both twins + gate refusal) | themeCheck gains the glyph refusal twin (normalizedIcon-class), astral pins all three layers (D-T.2) |
+| OBJ-2 | A | Declared-but-DECLINEd theme is operator-invisible (console is not an operator surface; the design-iteration loop fails silently) | `packThemeApplied()` + settings pack-line signal, red-first pins (D-T.3) |
+| OBJ-3 | A | Inverted pin under-scoped (colors-only) — later ALN theme additions would rot the bake-is-the-voice proof silently | ONE deep-equal pin on ALN's whole theme.json (D-T.4) |
+| OBJ-4 | A | The fonts fallback remedy was a bare residue note — a ledger-row-less temporary construct (DoD violation class) | pre-named conditional-watch row in §6 (D-T.6) |
+| OBJ-5 | A | ST.3 overloaded (four jobs incl. the fonts wildcard); estimate repeats the pre-re-price optimism slice 7 was caught on | fonts split into stage ST.F (independent); estimate re-priced §7 |
+| OBJ-6 | A | 'theme.minimal' names a roadmap depth, not an ability — append-only makes the misnomer permanent | renamed `theme.identity` (D-T.1) |
+
+Survived attack (recorded): the hex-only inertness claim (every
+consumer of the target props verified color-position-only; the one
+content-var in the repo is a different property), jsonForScript's
+protections adequate for `%%PACK_THEME%%`, D-T.5's packless
+byte-identity verified against the exact glyph forms, SW-cache /
+settings pack line / WS handshake need no theme-specific work
+(refuted candidate objections), star-ruling fidelity ('none' is the
+only faithful reading), undeclared-theme = benign emptiness is
+doctrinally correct, R13 record adequate, schema-const tightening
+safe.
 
 ## 5. Build order
 
@@ -340,35 +440,53 @@ look; bounded fallback recorded).
   drift fix; unit + contract pins (packless byte-identity for all
   three sites; display:none/numeric/stars renders; hostile glyph
   DECLINE; inverted pin for ALN's undeclared colors).
-- **ST.3 — packs + scoreboard + fonts:** ALN theme.json (star-drop) +
-  requires + manifest regen; toy divergent theme + manifest; scoreboard
-  `%%PACK_THEME%%` + applyTheme + sink-side hex guard; L11 fonts
-  (scoreboard + config-tool); Tier-L pins (toy leg sees its accent
-  and/or glyph; ALN leg byte/visual-identical minus the ruled drop +
-  drift fix).
+- **ST.3 — packs + scoreboard:** ALN theme.json (star-drop, deep-equal
+  pin) + requires + manifest regen; toy divergent theme + manifest;
+  scoreboard `%%PACK_THEME%%` + applyTheme + sink-side hex guard;
+  Tier-L pins (toy leg sees its accent and/or glyph; ALN leg
+  byte/visual-identical minus the ruled drop + the four-rule recolor).
+- **ST.F — fonts (L11):** its own stage per §4a OBJ-5 (zero dependency
+  on ST.1-3; may run at any point): six families / two pages
+  self-hosted, preconnects removed, tripwire green — or the bounded
+  fallback remedy + the §6 conditional row.
 - **ST.4 — close:** dual-pack Tier L, fresh ratchets, lint both repos,
   mixed-model adversarial review, records, train re-point (TokenData
   #5 + Scanner #14 gain the theme commits — same branches), task #9.
 
 Per-stage two-axis reviews per the stage frame; the design red-team
-runs BEFORE ST.1.
+ran BEFORE ST.1 (§4a).
 
 ## 6. Residue / ledger
 
-- L11 RETIRES at ST.3 (tripwire: grep fonts.googleapis — must be zero
-  in backend/public + config-tool).
-- NEW candidate row (recorded at close if unfixed): the scoreboard's
-  non-accent hardcoded strays (`#dc3545` :342 et al) — retire in the
-  B-pages theme-editor era.
+- L11 RETIRES at ST.F (tripwire:
+  `grep -RE 'fonts\.(googleapis|gstatic)' backend/public config-tool`
+  must be zero).
+- PRE-NAMED conditional-watch row (§4a OBJ-4; ACTIVATES only if ST.F's
+  fallback remedy fires): debt = the two pages render fallback stacks
+  instead of the intended families at the venue; trigger = woff2
+  self-host lands; tripwire = `@font-face` rules present under each
+  app's public tree; class = conditional-watch.
+- NEW candidate row (recorded at close): the theme-editor-era color
+  strays — the scoreboard's non-accent hardcoded literals (`#dc3545`
+  :342, `#666` :404, `#000` :596) AND the scanner's non-mode-keyed
+  `#f59e0b`/`#3b82f6` literal sites (admin.css :762, :846, :888,
+  :966, :988) — retire when the B-pages theme editor widens the
+  palette.
+- The T-5 authoring constraint (mode colors harmonize with the baked
+  status palette) retires when theme depth widens the palette (same
+  trigger).
 - The B9/report surface, `mode-<slug>` CSS headroom, and font-family
   theming carry their existing homes (untouched).
 
 ## 7. Estimate
 
-2.5–3.5 work sessions: ST.1 ≈ 0.75, ST.2 ≈ 1, ST.3 ≈ 0.75–1 (fonts
-fetch uncertainty), ST.4 ≈ 0.5–0.75. Smaller than slice 7 (no external
-contract surface, no lockstep four-repo schema dance beyond the
-established sidecar mold).
+3–4.5 work sessions (re-priced at the red-team fold per §4a OBJ-5 and
+the slice-7 lesson): ST.1 ≈ 0.75–1, ST.2 ≈ 1–1.5 (the case table +
+fast-path + escape pins grew it), ST.3 ≈ 0.5–0.75, ST.F ≈ 0.5 (fonts
+fetch uncertainty bounded by the fallback remedy), ST.4 ≈ 0.5–0.75.
+r1's "no lockstep dance" line is WITHDRAWN — the TokenData→backend→
+scanner→packs ordering IS the established lockstep, just a smaller one
+than slice 7's.
 
 ## 8. Execution record
 
@@ -379,6 +497,10 @@ established sidecar mold).
   0 errors; the one count discrepancy — variables.css color-prop
   scalar — adjudicated by direct read as a counting-rule artifact;
   §13.5's "three GM-scanner sites" CONFIRMED from code). Census caught
-  two real defects folded into the design: the admin.css visual-role
-  color drift (D-T.3) and the config-tool extension of L11 (D-T.6).
-  Design r1 drafted; red-team next.
+  two real defects folded into the design: the admin.css mode-keyed
+  color literals (D-T.3, reframed at §4a T-2) and the config-tool
+  extension of L11 (D-T.6). Design r1 drafted.
+- 2026-09-03: pre-build design red-team `wf_77d60ad6-a89` (2 Opus +
+  1 Fable, 16 objections: 6 BLOCKING / 10 ADVISORY, all accepted —
+  T-2 and T-5 as amended) — design revised to r2, §4a adjudication
+  table. Estimate re-priced 2.5–3.5 → 3–4.5. ST.1 next.
