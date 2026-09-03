@@ -463,6 +463,70 @@ describe('slice-7 S7.2: modes verbNoun + the report-template tombstone', () => {
   });
 });
 
+describe('theme unit ST.1: theme.schema.json — the visual-identity sidecar', () => {
+  const cloneJson = (o) => JSON.parse(JSON.stringify(o));
+  let validateTheme;
+  let gameSchemaT;
+  const ALN_THEME = { kind: 'theme', schemaVersion: 1, rating: { display: 'none' } };
+  const FULL_THEME = {
+    kind: 'theme',
+    schemaVersion: 1,
+    colors: { modeScoring: '#f0a020', modeEvidence: '#20a0a0', accentPrimary: '#101820', accentValue: '#f0a020' },
+    rating: { display: 'stars', glyph: { filled: '💎', empty: '·' } },
+    scoreboard: { accent: '#8b6f2f', accentDark: '#4a3a18' },
+  };
+
+  beforeAll(() => {
+    const ajvT = new Ajv2020({ allErrors: true, strict: true });
+    addFormats(ajvT);
+    validateTheme = ajvT.compile(readJson(TOKEN_DATA_DIR, 'theme.schema.json'));
+    gameSchemaT = readJson(TOKEN_DATA_DIR, 'game.schema.json');
+  });
+
+  it('accepts the ALN shape — the ruled star-drop and nothing else', () => {
+    const ok = validateTheme(cloneJson(ALN_THEME));
+    expect(validateTheme.errors).toBeNull();
+    expect(ok).toBe(true);
+  });
+
+  it('accepts the full minimal-era shape (colors + rating glyphs + scoreboard accent)', () => {
+    const ok = validateTheme(cloneJson(FULL_THEME));
+    expect(validateTheme.errors).toBeNull();
+    expect(ok).toBe(true);
+  });
+
+  it.each([
+    ['a missing kind (headers REQUIRED — a NEW artifact carries no legacy tolerance, §4a O2)', (t) => { delete t.kind; }],
+    ['a missing schemaVersion', (t) => { delete t.schemaVersion; }],
+    ['a wrong kind', (t) => { t.kind = 'strings'; }],
+    ['a future schemaVersion', (t) => { t.schemaVersion = 2; }],
+    ['an unknown top-level key (future sections arrive by schema evolution)', (t) => { t.fonts = {}; }],
+    ['an unknown colors key', (t) => { t.colors = { modeScoring: '#ff6b35', brand: '#000000' }; }],
+    ['a named color (hex-only IS the CSS-sink injection-safety rule)', (t) => { t.colors = { modeScoring: 'red' }; }],
+    ['3-digit hex (strict 6)', (t) => { t.colors = { modeScoring: '#fff' }; }],
+    ['8-digit hex (no alpha channel in the minimal era)', (t) => { t.colors = { modeScoring: '#ff6b35aa' }; }],
+    ['a css-function value in the scoreboard accent', (t) => { t.scoreboard = { accent: 'url(x)' }; }],
+    ['an unknown rating.display value', (t) => { t.rating = { display: 'hidden' }; }],
+    ['an empty filled glyph', (t) => { t.rating = { display: 'stars', glyph: { filled: '' } }; }],
+    ['a markup-char glyph (the icon idiom forbids <>&"\'{})', (t) => { t.rating = { display: 'stars', glyph: { filled: '<b>' } }; }],
+    ['a five-glyph filled (over the 1-4 code-point cap)', (t) => { t.rating = { display: 'stars', glyph: { filled: '💎'.repeat(5) } }; }],
+  ])('refuses %s', (_label, mutate) => {
+    const theme = cloneJson(FULL_THEME);
+    mutate(theme);
+    expect(validateTheme(theme)).toBe(false);
+  });
+
+  it('counts glyph length in CODE POINTS — 4 astral glyphs legal (the icon idiom, u-flag patterns)', () => {
+    const theme = cloneJson(FULL_THEME);
+    theme.rating = { display: 'stars', glyph: { filled: '💎'.repeat(4) } };
+    expect(validateTheme(theme)).toBe(true);
+  });
+
+  it('game.schema pins the theme pointer to the canonical filename (const — the strings/cues pattern; r1 slot was a loose .json pattern nothing read)', () => {
+    expect(gameSchemaT.properties.theme.const).toBe('theme.json');
+  });
+});
+
 describe('slice-7 S7.2: the template role is retired (no template language, §13.4)', () => {
   it("a templates/ path is inventoried as plain 'other' — the engine has no template mechanism", () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-tmpl-'));

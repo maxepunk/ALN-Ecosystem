@@ -57,7 +57,15 @@ const ENGINE_CAPABILITIES = new Set([
   'cues.timeline',        // compound cue timelines, three-segment clock (slice 4)
   'lighting.roles',       // role-addressed lighting, profile-bound (slice 4)
   'surfaces.select',      // select/parameterize the built-in display surfaces (slice 6)
+  'theme.identity',       // the minimal visual-identity sidecar: semantic colors, rating display/glyphs, scoreboard accent (theme unit)
 ]);
+
+// The theme sidecar's own schemaVersion (independent of PACK_SCHEMA_VERSION
+// — a NEW artifact starting at 1). Exact-match on BOTH sides, and unlike
+// the strings sidecar there is NO absent-header tolerance: theme.json has
+// zero legacy files, so headerless refuses here and DECLINEs on the
+// scanner (theme-unit §4a O2 — tolerance would split gate and DECLINE).
+const THEME_SCHEMA_VERSION = 1;
 
 // Per-mode flag VALUES this engine can drive (A3 slice 1 — mode
 // drivability). The game.schema.json flag fields are OPEN strings
@@ -88,6 +96,7 @@ let activated = false;
 let activeManifest = null;
 let activeGameConfig = null;
 let activeStrings = null;
+let activeTheme = null;
 let activeCues = null;
 let warnedDriftHash = false;
 let warnedLegacyScoring = false;
@@ -475,6 +484,133 @@ function _loadDeclaredStrings(gameConfig) {
   return { value: problems.length === 0 ? sections : null, problems };
 }
 
+// Strict 6-digit hex — the theme's whole CSS-sink injection-safety story:
+// no functions, no var(), no url(), nothing that can escape a custom-
+// property value (theme-unit D-T.1; the red-team verified every consumer
+// of the target props sits in a color position).
+const THEME_HEX = /^#[0-9a-fA-F]{6}$/;
+const THEME_SECTIONS = Object.freeze({
+  colors: ['modeScoring', 'modeEvidence', 'accentPrimary', 'accentValue'],
+  scoreboard: ['accent', 'accentDark'],
+});
+const THEME_RATING_DISPLAYS = new Set(['stars', 'numeric', 'none']);
+
+/**
+ * Load the pack's DECLARED theme sidecar (theme unit). Posture mirrors
+ * strings: UNDECLARED gates nothing (benign emptiness — the engine's
+ * baked identity stands, no warn); a DECLARED file must load and
+ * validate or activation REFUSES. Divergence from strings (§4a O2):
+ * kind/schemaVersion are REQUIRED — headerless refuses. Glyphs go
+ * through the icon-idiom VALUE TWIN (normalizedIcon: control/bidi
+ * strip, markup refusal, 1-4 code points) and the frozen value is the
+ * CLEANED glyph (§4a OBJ-1 — the three-layer mold: schema + this twin
+ * + the scanner DECLINE twin).
+ * @param {Object|null} gameConfig
+ * @returns {{value: Object|null, problems: string[]}}
+ */
+function _loadDeclaredTheme(gameConfig) {
+  const declared = gameConfig && gameConfig.theme;
+  if (!declared) return { value: null, problems: [] };
+
+  if (declared !== 'theme.json') {
+    return {
+      value: null,
+      problems: [`game.json declares theme '${declared}' — the sidecar must be named 'theme.json' (canonical filename contract; manifest role + scanner loader are keyed to it)`],
+    };
+  }
+
+  const themePath = path.join(getPackDir(), declared);
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(themePath, 'utf8'));
+  } catch (err) {
+    return {
+      value: null,
+      problems: [`game.json declares theme '${declared}' but ${declared} is unreadable (${err.message})`],
+    };
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {
+      value: null,
+      problems: [`game.json declares theme '${declared}' but ${declared} is not a JSON object (sidecar must be {kind, schemaVersion, ...sections})`],
+    };
+  }
+
+  const problems = [];
+  if (parsed.kind !== 'theme') {
+    problems.push(`${declared} kind '${parsed.kind}' (expected 'theme'; the header is REQUIRED — a new artifact carries no legacy tolerance)`);
+  }
+  if (parsed.schemaVersion !== THEME_SCHEMA_VERSION) {
+    problems.push(`${declared} schemaVersion ${parsed.schemaVersion} (engine reads ${THEME_SCHEMA_VERSION}; the header is REQUIRED)`);
+  }
+
+  const { kind, schemaVersion, ...sections } = parsed;
+  const value = {};
+
+  for (const [section, body] of Object.entries(sections)) {
+    if (section === 'rating') continue; // handled below
+    const allowed = THEME_SECTIONS[section];
+    if (!allowed) {
+      problems.push(`${declared} unknown section '${section}' (future theme sections arrive by schema evolution + engine consumption, never by tolerance)`);
+      continue;
+    }
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      problems.push(`${declared} section '${section}' is not an object`);
+      continue;
+    }
+    const out = {};
+    for (const [key, val] of Object.entries(body)) {
+      if (!allowed.includes(key)) {
+        problems.push(`${declared} unknown ${section} key '${key}'`);
+      } else if (typeof val !== 'string' || !THEME_HEX.test(val)) {
+        problems.push(`${declared} ${section}.${key} '${val}' is not a strict 6-digit hex color (hex-only is the CSS-sink injection-safety rule)`);
+      } else {
+        out[key] = val;
+      }
+    }
+    if (Object.keys(out).length > 0) value[section] = out;
+  }
+
+  const rating = sections.rating;
+  if (rating !== undefined) {
+    if (!rating || typeof rating !== 'object' || Array.isArray(rating)) {
+      problems.push(`${declared} rating is not an object`);
+    } else {
+      for (const key of Object.keys(rating)) {
+        if (key !== 'display' && key !== 'glyph') problems.push(`${declared} unknown rating key '${key}'`);
+      }
+      if (!THEME_RATING_DISPLAYS.has(rating.display)) {
+        problems.push(`${declared} rating.display '${rating.display}' (this engine drives 'stars', 'numeric', 'none')`);
+      }
+      const out = { display: rating.display };
+      if (rating.glyph !== undefined) {
+        if (!rating.glyph || typeof rating.glyph !== 'object' || Array.isArray(rating.glyph)) {
+          problems.push(`${declared} rating.glyph is not an object`);
+        } else {
+          const glyphOut = {};
+          for (const [gKey, gVal] of Object.entries(rating.glyph)) {
+            if (gKey !== 'filled' && gKey !== 'empty') {
+              problems.push(`${declared} unknown rating.glyph key '${gKey}'`);
+              continue;
+            }
+            const cleaned = normalizedIcon(gVal);
+            if (cleaned === null) {
+              problems.push(`${declared} rating.glyph.${gKey} is not a usable glyph (1-4 plain code points, no markup characters — the modes[].icon idiom)`);
+            } else {
+              glyphOut[gKey] = cleaned;
+            }
+          }
+          if (Object.keys(glyphOut).length > 0) out.glyph = glyphOut;
+        }
+      }
+      value.rating = out;
+    }
+  }
+
+  return { value: problems.length === 0 ? value : null, problems };
+}
+
 /** Numeric 3-part semver compare: negative when a < b. Pre-release tags
  *  are out of scope for pack versioning (generator never emits them). */
 function _compareVersions(a, b) {
@@ -500,7 +636,7 @@ function _compareVersions(a, b) {
  * loud shims.
  * @throws {Error} when the pack requires what this engine lacks
  */
-function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
+function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad) {
   const problems = [];
 
   if (manifest) {
@@ -510,6 +646,23 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
     const minVersion = manifest.engine && manifest.engine.minVersion;
     if (minVersion && _compareVersions(ENGINE_VERSION, minVersion) < 0) {
       problems.push(`pack requires engine >= ${minVersion} (this engine is ${ENGINE_VERSION})`);
+    }
+    // Present-but-undeclared sidecars (theme-unit §4a O3): a role-bearing
+    // sidecar file the manifest inventories but game.json never declares
+    // is served yet applied by NOTHING — a silent no-op. Warn, never
+    // refuse: authoring debris must not brick a boot, but it must not
+    // pass silently either. Generic over the sidecar roles (the strings
+    // twin of the hole closes in the same loop).
+    if (Array.isArray(manifest.files)) {
+      for (const [role, pointerKey] of [['strings', 'strings'], ['theme', 'theme']]) {
+        const inventoried = manifest.files.find((f) => f && f.role === role);
+        if (inventoried && !(gameConfig && gameConfig[pointerKey])) {
+          logger.warn(
+            `pack-manifest inventories ${inventoried.path} (role '${role}') but game.json never declares it — ` +
+            'the file is served yet applied by nothing (authoring debris? declare it in game.json or remove it)'
+          );
+        }
+      }
     }
   }
 
@@ -743,6 +896,20 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad) {
     for (const prob of stringsCheck.problems) {
       problems.push(prob);
     }
+    // Theme sidecar (theme unit): declared ⇒ must load + validate, and
+    // declared ⇒ theme.identity in requires (the surfaces.select lint —
+    // a capability-blind engine would silently ignore the block and run
+    // the game's visual identity wrong).
+    const themeCheck = themeLoad || _loadDeclaredTheme(gameConfig);
+    for (const prob of themeCheck.problems) {
+      problems.push(prob);
+    }
+    if (gameConfig.theme) {
+      const requires = Array.isArray(gameConfig.requires) ? gameConfig.requires : [];
+      if (!requires.includes('theme.identity')) {
+        problems.push("pack declares a theme sidecar but 'theme.identity' is missing from requires (declare the capability so a capability-blind engine refuses instead of silently ignoring the theme)");
+      }
+    }
     // Show-cues gate (A3 slice 4 S2 — D-4.3). Pack-internal PURE reads
     // only: activation is the FIRST act of initializeServices, every
     // service is health-seeded down, and referenced venue files may
@@ -966,11 +1133,13 @@ function activatePack() {
   // landing mid-boot, would otherwise execute unvalidated cues).
   const cuesLoad = _loadDeclaredCues(gameConfig);
   const stringsLoad = _loadDeclaredStrings(gameConfig);
-  _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad); // throws = boot fails, by design
+  const themeLoad = _loadDeclaredTheme(gameConfig);
+  _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad); // throws = boot fails, by design
   _coherenceCheck(gameConfig);      // throws = boot fails, by design (D3)
   activeManifest = manifest;
   activeGameConfig = gameConfig;
   activeStrings = stringsLoad.value;
+  activeTheme = themeLoad.value;
   activeCues = cuesLoad.value;
   activated = true;
   warnedDriftHash = false;
@@ -1031,6 +1200,19 @@ function getGameConfig() {
 function getStrings() {
   if (!activated) return _loadDeclaredStrings(_readDiskGameConfig()).value;
   return activeStrings;
+}
+
+/**
+ * The ACTIVE pack's declared visual-identity theme (theme unit): the
+ * activation snapshot once activated, else a live disk read. NULL when
+ * the pack declares no theme file — the engine's baked identity stands
+ * (benign emptiness, no warn). Glyph values are the CLEANED forms (the
+ * icon-idiom twin normalized them at load).
+ * @returns {Object|null} sections object (kind/schemaVersion stripped)
+ */
+function getTheme() {
+  if (!activated) return _loadDeclaredTheme(_readDiskGameConfig()).value;
+  return activeTheme;
 }
 
 /**
@@ -1197,6 +1379,7 @@ function _resetForTesting() {
   activeManifest = null;
   activeGameConfig = null;
   activeStrings = null;
+  activeTheme = null;
   activeCues = null;
   warnedDriftHash = false;
   warnedLegacyScoring = false;
@@ -1205,4 +1388,4 @@ function _resetForTesting() {
   _cachedScoringRules = null;
 }
 
-module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getCues, getScoringRules, getClockRules, getLightingRoleFallback, getSurfaces, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };
+module.exports = { getPackDir, getManifest, getGameConfig, getStrings, getTheme, getCues, getScoringRules, getClockRules, getLightingRoleFallback, getSurfaces, getActivePackInfo, resolvePackFile, activatePack, ENGINE_VERSION, PACK_SCHEMA_VERSION, THEME_SCHEMA_VERSION, ENGINE_CAPABILITIES, ENGINE_MODE_CAPS, LEGACY_ALN_SCORING, _resetForTesting };

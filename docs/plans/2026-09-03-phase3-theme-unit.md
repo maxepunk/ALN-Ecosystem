@@ -504,3 +504,19 @@ than slice 7's.
   1 Fable, 16 objections: 6 BLOCKING / 10 ADVISORY, all accepted —
   T-2 and T-5 as amended) — design revised to r2, §4a adjudication
   table. Estimate re-priced 2.5–3.5 → 3–4.5. ST.1 next.
+- 2026-09-03: **ST.1 DONE** (red-first: 26 tests written against the
+  missing schema + absent gate twin, watched red, then built to
+  green). TokenData `c6d2403`: theme.schema.json (headers REQUIRED,
+  strict hex, glyph idiom, closed shape) + the game.schema theme
+  pointer tightened to const. Backend: `theme.identity` capability,
+  `_loadDeclaredTheme` (the strings mirror with the §4a O2 header
+  divergence + the OBJ-1 glyph value twin reusing normalizedIcon,
+  frozen values = CLEANED glyphs), themeCheck + the requires-lint in
+  _gateCheck, the §4a O3 present-but-undeclared sidecar warn (generic
+  over strings + theme), activeTheme freeze + getTheme() accessor
+  (live-disk pre-activation, the getStrings posture). The ratchet's
+  100-floor on packService caught two coverage gaps mid-stage (five
+  unexercised refusal arms, then getTheme's pre-activation branch) —
+  covered with real refusal rows + the selective-init read test,
+  floor untouched. Verified: backend 2704 + ratchet (82 files) +
+  lint.

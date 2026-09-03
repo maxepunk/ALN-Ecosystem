@@ -1716,6 +1716,129 @@ describe('packService', () => {
     });
   });
 
+  describe('theme gate (theme unit ST.1 — the visual-identity sidecar twin)', () => {
+    function writeGame(dir, game) {
+      fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
+    }
+    function writeTheme(dir, theme) {
+      fs.writeFileSync(path.join(dir, 'theme.json'), typeof theme === 'string' ? theme : JSON.stringify(theme));
+    }
+    const withTheme = (requires = ['theme.identity'], pointer = 'theme.json') => ({
+      kind: 'game', schemaVersion: 2, id: 'theme-pack', requires, theme: pointer,
+    });
+    const VALID_THEME = {
+      kind: 'theme', schemaVersion: 1,
+      colors: { modeScoring: '#f0a020' },
+      rating: { display: 'none' },
+    };
+
+    beforeEach(() => {
+      process.env.PACK_PATH = tmpDir;
+    });
+
+    const refusalMessage = () => {
+      let message = '';
+      try { packService.activatePack(); } catch (err) { message = err.message; }
+      return message;
+    };
+
+    it("exposes 'theme.identity' as an engine capability (append-only minor)", () => {
+      expect(packService.ENGINE_CAPABILITIES.has('theme.identity')).toBe(true);
+    });
+
+    it('getTheme() is null for a pack that declares no theme (benign emptiness)', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      packService.activatePack();
+      expect(packService.getTheme()).toBeNull();
+    });
+
+    it('getTheme() reads live disk BEFORE activation (selective-init harnesses — the getStrings posture)', () => {
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, VALID_THEME);
+      expect(packService.getTheme()).toEqual({
+        colors: { modeScoring: '#f0a020' },
+        rating: { display: 'none' },
+      });
+    });
+
+    it('declared + valid: activation FREEZES the sections (kind/schemaVersion stripped)', () => {
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, VALID_THEME);
+      packService.activatePack();
+      expect(packService.getTheme()).toEqual({
+        colors: { modeScoring: '#f0a020' },
+        rating: { display: 'none' },
+      });
+      // Frozen at activation: a later disk edit is invisible.
+      writeTheme(tmpDir, { ...VALID_THEME, rating: { display: 'stars' } });
+      expect(packService.getTheme().rating.display).toBe('none');
+    });
+
+    it('REFUSES a declared theme whose file is missing (declared ⇒ must load)', () => {
+      writeGame(tmpDir, withTheme());
+      expect(refusalMessage()).toMatch(/theme\.json.*unreadable|declares theme/);
+    });
+
+    it('REFUSES a non-canonical pointer (the canonical-filename contract)', () => {
+      writeGame(tmpDir, withTheme(['theme.identity'], 'custom.json'));
+      writeTheme(tmpDir, VALID_THEME);
+      expect(refusalMessage()).toMatch(/must be named 'theme\.json'/);
+    });
+
+    it('REFUSES a declared theme without theme.identity in requires (the surfaces.select lint)', () => {
+      writeGame(tmpDir, withTheme([]));
+      writeTheme(tmpDir, VALID_THEME);
+      expect(refusalMessage()).toMatch(/theme\.identity.*missing from requires/);
+    });
+
+    it.each([
+      ['a headerless sidecar (kind/schemaVersion REQUIRED — no legacy tolerance for a NEW artifact)', { colors: { modeScoring: '#f0a020' } }],
+      ['a wrong kind', { ...VALID_THEME, kind: 'strings' }],
+      ['a future schemaVersion', { ...VALID_THEME, schemaVersion: 2 }],
+      ['a non-object sidecar', '"just a string"'],
+      ['a named color (hex-only)', { kind: 'theme', schemaVersion: 1, colors: { modeScoring: 'red' } }],
+      ['an unknown colors key', { kind: 'theme', schemaVersion: 1, colors: { brand: '#000000' } }],
+      ['an unknown top-level section', { kind: 'theme', schemaVersion: 1, fonts: {} }],
+      ['an unknown rating.display', { kind: 'theme', schemaVersion: 1, rating: { display: 'hidden' } }],
+      ['a markup-char glyph', { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: '<b>' } } }],
+      ['a five-astral-glyph filled (code-point cap)', { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: '💎'.repeat(5) } } }],
+      ['a non-object colors section', { kind: 'theme', schemaVersion: 1, colors: 'red' }],
+      ['an array-shaped rating section', { kind: 'theme', schemaVersion: 1, rating: ['stars'] }],
+      ['an unknown rating key', { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', size: 'large' } }],
+      ['a non-object rating.glyph', { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: '★' } }],
+      ['an unknown rating.glyph key', { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { half: '◐' } } }],
+      ['a control-only glyph', { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: '' } } }],
+    ])('REFUSES %s', (_label, theme) => {
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, theme);
+      expect(refusalMessage()).toMatch(/theme/);
+    });
+
+    it('accepts a 1-4 astral glyph pair (code points — the icon idiom, all three layers agree)', () => {
+      writeGame(tmpDir, withTheme());
+      writeTheme(tmpDir, { kind: 'theme', schemaVersion: 1, rating: { display: 'stars', glyph: { filled: '💎'.repeat(4), empty: '·' } } });
+      expect(() => packService.activatePack()).not.toThrow();
+      expect(packService.getTheme().rating.glyph.filled).toBe('💎'.repeat(4));
+    });
+
+    it('WARNS (never refuses) when the manifest inventories a sidecar file game.json does not declare — generic over the sidecar roles (§4a O3)', () => {
+      writeGame(tmpDir, { kind: 'game', schemaVersion: 2, id: 'plain' });
+      writeManifest(tmpDir, minimalManifest({
+        files: [
+          { path: 'tokens.json', role: 'tokens', sha1: '0'.repeat(40), size: 2 },
+          { path: 'theme.json', role: 'theme', sha1: '0'.repeat(40), size: 2 },
+          { path: 'strings.json', role: 'strings', sha1: '0'.repeat(40), size: 2 },
+        ],
+      }));
+      expect(() => packService.activatePack()).not.toThrow();
+      const orphanWarns = logger.warn.mock.calls.filter(([msg]) =>
+        String(msg).includes('never declares'));
+      expect(orphanWarns.length).toBeGreaterThanOrEqual(2);
+      expect(orphanWarns.some(([msg]) => String(msg).includes('theme.json'))).toBe(true);
+      expect(orphanWarns.some(([msg]) => String(msg).includes('strings.json'))).toBe(true);
+    });
+  });
+
   describe('display-surfaces gate (A3 slice 6 — pure, gate-internal)', () => {
     function writeGame(dir, game) {
       fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(game));
