@@ -671,3 +671,52 @@ than slice 7's.
   goal's standing rule, flagged to the owner before opening ST.4's
   fresh adversarial review. The ST.F fold above is in-flight build work
   (acting on completed review findings), not new design/review.
+- 2026-09-04: **ST.4 CLOSE — UNIT CLOSED.** Whole-unit adversarial
+  panel (per the PHASE3-STATUS subagent policy: 2 Opus refuters —
+  security + state — a doctrine/parity leg, and a Haiku breadth
+  sweep; the doctrine leg ran while the session held the Fable model,
+  per the §8 fallback note): 8 findings, ALL folded red-first same
+  close. Security: (SEC-1 MAJOR, a regression THIS unit introduced)
+  the theme replaceAll appended after the strings pass let a
+  gate-legal strings leaf carrying the literal '%%PACK_THEME%%'
+  become a substitution pattern — theme JSON injected mid-string
+  broke the page script's parse (venue TV dead at serve time;
+  DoS-only, escalation refuted). Fixed with a ONE-pass dispatch
+  replacer (replaced output is never rescanned — kills the ordering
+  class, not the instance); (SEC-2 MINOR) __proto__ section key now
+  lands in the problem list via Object.hasOwn, never a TypeError.
+  State: (F1 MAJOR, CONVERGENT with doctrine F2) an
+  all-leaves-declined sidecar read as APPLIED ({} is truthy) — the
+  OBJ-2 'theme: declined' signal never fired while ALN's star-drop
+  silently reverted on the gate-less tier; fixed as
+  attempted-and-ALL-declined = whole DECLINE, with headers-only and
+  scoreboard-only sidecars pinned vacuously applied. (F2 MAJOR) the
+  scanner's bundled data/ submodule still pinned pre-theme TokenData
+  — re-pointed to 491c513 + a NEW bundled-theme drift tripwire (the
+  scoring/currency tripwire pattern; red against the stale pin proved
+  the gap). (MINOR) site-1 numeric renders blank for sub-1 ratings.
+  Doctrine: (F1 MAJOR — the vacuous-tripwire class, 4th instance)
+  config-tool's font test sat in stray test/ while npm test runs
+  tests/ — moved into the ENFORCED suite (119; the §8 ST.F
+  "config-tool 119" claim was obtainable only by non-standard
+  invocation — corrected); (F3 MINOR) unknown theme sections now warn
+  by name (scoreboard stays silent — known, TV-consumed); (F4 MINOR)
+  loadPackTheme's undeclared-vs-unfetchable blindness accepted as
+  documented (every reachable config goes red via other pins). Sweep:
+  all six categories clean. Panel debris (a leg's leftover probe
+  test file) deleted. The 2026-09-03 remaining-scope grill batch rode
+  this close (program §14 + ROADMAP §8.16 + CONTEXT.md, parent
+  c16f00a). CLOSE GATE (final heads, bare exit codes): backend
+  2732/128 suites + ratchet + lint 0; scanner 1666/86 + ratchet 65
+  files + lint 0 + dist rebuilt; config-tool 119 enforced; dual-pack
+  Tier L on the FINAL tree — ALN 120P/0F/62S + 4 Tier-H, 0 flaky,
+  exit 0 (34.3m); toy 120P/0F/61S, exit 0 (11.9m), 1 flaky
+  (24-restart-recovery ticker repopulation wait; passed on retry;
+  diagnosed: reconnect+sync:full window under back-to-back-leg CPU —
+  restart-timing class, theme-untouched, ALN leg clean). Owner-visible
+  ALN deltas (the §4 item-(a) family, all ruled): the detective
+  result screen hides the whole Value Rating row; four admin-card
+  rules recolor to the mode tokens; the scoreboard stays
+  byte-identical. Heads: parent 477cf60 (+ this record), scanner
+  deddaf9, TokenData 491c513. Train vehicles: TokenData #6 (subsumes
+  #5), ALNScanner #15 (subsumes #14), parent #31.

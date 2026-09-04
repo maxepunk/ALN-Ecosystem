@@ -7,7 +7,7 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-09-03 · **Working branch:** `claude/phase3-theme-unit`
+**Last updated:** 2026-09-04 (theme unit CLOSED) · **Working branch:** `claude/phase3-theme-unit` (B0 branch chains next)
 (parent; chained from the verified slice-7 tip `4923575`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
@@ -553,9 +553,30 @@ AND both CI legs green. Merge-train vehicles: TokenData #5, ALNScanner
 #14, parent #30 (table below current). **Queue: theme unit (§13.5) is
 NEXT.**
 
-**THEME UNIT — 🔨 OPENED 2026-09-03** (branch `claude/phase3-theme-unit`
-chained from the slice-7 tip `4923575`; **draft PR #31 opened AT open**
-per the corrected discipline). Governed as a full A3 slice (program
+**THEME UNIT — ✅ FULLY CLOSED 2026-09-04** (branch
+`claude/phase3-theme-unit` chained from the slice-7 tip `4923575`;
+draft PR #31 opened AT open per the corrected discipline). Full record:
+the unit design doc §8 (2026-09-03/04 entries). Landed: theme.schema.json
++ the gate twin + getTheme() snapshot; scanner theme DECLINE mirror +
+packLoader theme role + the three rating sites (ALN's ruled star-drop:
+the detective result screen hides the whole Value Rating row) + the
+four-rule mode-token recolor; ALN theme.json (one-deep-equal pin) + toy
+divergent theme (💎/gold/sky/teal); scoreboard %%PACK_THEME%% single-pass
+injection + sink-side hex guard; fonts self-hosted (L11 RETIRED, L14
+recorded). Whole-unit adversarial panel: 8 findings ALL folded red-first
+(top: the substitution-ordering DoS this unit introduced — one-pass
+replacer; the zero-survivors DECLINE hole — convergent 2 refuters; the
+stale bundled submodule — re-pointed + NEW drift tripwire; the enforced
+config-tool suite — the vacuous-tripwire class's 4th instance). The
+2026-09-03 remaining-scope grill batch rode the close (program §14,
+ROADMAP §8.16, CONTEXT.md terms). CLOSE GATE (final heads, bare exits):
+backend 2732 + ratchet + lint; scanner 1666 + ratchet + lint + dist;
+config-tool 119 ENFORCED; dual-pack Tier L — **ALN 120P/0F/62S+4H,
+0 flaky** + **toy 120P/0F/61S, 1 flaky (restart-timing class, passed on
+retry, diagnosed theme-untouched)**. Heads: parent close-record tip /
+ALNScanner `deddaf9` / TokenData `491c513`. Vehicles: TokenData **#6**
+(subsumes #5), ALNScanner **#15** (subsumes #14), parent #31. **Queue:
+B0 (tooling foundation) is NEXT.** Original scope inputs for the record: Governed as a full A3 slice (program
 §13.5): design doc, honest estimate, red-team, dual-pack gate. Scope
 inputs: Q-3c-1(a) minimal theme.json (semantic mode colors, rating
 glyph/display, scoreboard accent), Q-3b-2 (glyphs are visual identity;
@@ -735,8 +756,8 @@ adds its PRs to this block.
 
 | Order | Repo | PR | Head | Close condition / note |
 |---|---|---|---|---|
-| 1 | ALN-TokenData | **#5** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `c44a8ef` | Subsumes #4 (slice-6; which subsumes #3, which subsumes #2) — owner closes #4/#3/#2 as subsumed. Adds the slice-7 verbNoun field + report-stub removal (+ review-fold schema precision) on top of slice-4 cues + slice-6 surfaces |
-| 2 | ALNScanner | **#14** (opened 2026-09-03 at slice-7 close) | `claude/phase3-a3-slice7` @ `46db231` | Subsumes #13 (closers; which subsumes #12 foundations/A2, source of the PR-review residue block) — owner closes #13 and #12 as subsumed. Adds the slice-7 report-wording rewrite + nested data pin (scanner CI runs 96–97 green) |
+| 1 | ALN-TokenData | **#6** (opened 2026-09-04 at theme-unit close) | `claude/phase3-theme-unit` @ `491c513` | Subsumes #5 (slice-7; which subsumes #4/#3/#2) — owner closes #5 and earlier as subsumed. Adds theme.schema.json + the ALN star-drop theme.json + game.json theme pointer/requires on top of the slice-7 tree |
+| 2 | ALNScanner | **#15** (opened 2026-09-04 at theme-unit close) | `claude/phase3-theme-unit` @ `deddaf9` | Subsumes #14 (slice-7; which subsumes #13/#12) — owner closes #14 and earlier as subsumed. Adds the runtime pack theme (DECLINE mirror, three rating sites, bundled data re-point to themed TokenData + drift tripwire) |
 | 3 | ALNPlayerScan | **#6** | foundations | PWA is visibility-only (L3); no later train commits exist |
 | 4 | arduino-cyd-player-scanner | **#7** | foundations | ESP32 pack identity via asset manifest; no later train commits exist |
 | 5–17 | ALN-Ecosystem (parent) | **#19 → #31 in numeric order** (slice 0, 1, 2, 2b, 3a, 3b, 3c, 5, closers, slice 4, slice 6, slice 7, theme unit) | chained slice branches | Each is a stacked superset of its predecessor; merging in order keeps every intermediate state coherent. #29 (slice 6) opened 2026-09-03 — the slice closed without its draft-PR CI vehicle (a fallback-window process miss caught by the task-#23 review), so #29's first run is the slice-6 tree's first CI pass. #30 is slice 7, #31 the theme unit (both opened AT slice open per the corrected discipline). Train grows with remaining slices (B0…) |
