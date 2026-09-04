@@ -688,6 +688,41 @@ playtest cost stated (rec: refuse during active/paused); Q3 the L8
 retire-vs-re-ratify checkpoint (rec: retire); Q4 the §14.1 split +
 estimate sign-off. PS.1 does not open before Q1 + Q4.**
 
+**C2+C3 (resolution mechanism + dormant-vs-fault) — 🔨 OPENED
+2026-09-04, design r2 DONE, ⏸ BUILD GATE HELD ON OWNER** (full
+record: `docs/plans/2026-09-04-phase3-c2c3-resolution-dormancy.md`).
+Design opened while the pages build gate held — adjudicated: C2
+DECIDES the 8.5 warn→enforce question rather than waiting on it.
+Census (two legs) → design r1 → mixed-model red-team (two Opus legs,
+18 findings; the BLOCKINGs: sticky-dormant vs out-of-band `report()`
++ boot ordering; `system:reset` wiping dormancy AND disables; silent
+quick-fire success on a disabled cue; r1's endpoints interior
+CONTRADICTED the ratified C1 §1/§2 shape; role-unbound mis-folded
+into cue-level disables; plus census corrections — `setAutoDiscard`
+HAS a video_busy caller at cueEngineService.js:632, only the
+service_down cue holds + `videoQueueService._holdVideo` lack timers)
+→ design r2 (§6): ONE pure resolve() (`gameRules/packNeeds.js`
+collectPackNeeds + `gameRules/resolution.js` applying the RATIFIED
+C1 §2 table verbatim — pack-side `onAbsent` authored in
+pack-manifest.hardware, profile endpoints = C1 §1's physical keys);
+health enum `healthy|down|dormant` contract-first (3 sites +
+registry validator, `degraded` dropped pending Q-C3-2); STICKY
+dormant (report() ignored while latched; feed runs post-init, at
+session create/restore, inside system-reset re-wiring; profile
+boot-frozen); TWO disable sets (GM-persisted + dormancy-recomputed)
+with honest refusals; hold policy (video_busy 10s stays; fault holds
+get session-end expiry + recovery affordances; dormant never held);
+preflight covers all six C1 §3 groups, cert line WARN-ONLY (R8),
+unknown-never-fault inventory rule; honest estimate r2 ≈ 3.5–4.5
+sessions (carried, not squeezed). **Owner batch §7 JOINS the pages
+batch — one sitting: Q-C2-1 packHash warn-vs-refuse (rec:
+warn-only); Q-C2-2 the checklist partial-absorption split; Q-C3-1
+the unbound idle-loop taxonomy (rec: DORMANT — this decides C4's
+`_resolveIdleLoopFile` L12 flip); Q-C3-2 the enum (rec: drop
+`degraded`); Q-C3-4 estimate sign-off. CS.1 does not open before the
+batch; build sequences behind the pages build on the shared
+branch.**
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in

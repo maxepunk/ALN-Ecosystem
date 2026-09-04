@@ -1,9 +1,10 @@
 # Phase 3 — C2+C3: the resolution mechanism + dormant-vs-fault
 
-**Status:** census recorded; design r1 DRAFTED; red-team next; owner
-batch (§5) queued to JOIN the pages batch — one owner sitting covers
-both units. Build waits on that batch (and sequences behind the pages
-build on the shared branch).
+**Status:** census recorded; design red-team RUN (18 findings, §5);
+design r2 COMPLETE (§6); owner batch r2 (§7) OPEN — it JOINS the
+pages batch so one owner sitting covers both units. Build waits on
+that batch (and sequences behind the pages build on the shared
+branch).
 **Unit:** C2 (one resolution mechanism, preflight presentation only —
 program §13.7/§14.4) + C3 (dormant-vs-fault semantics — the health
 enum contract change, session-start disables, down-vs-not-installed
@@ -125,7 +126,7 @@ fault = should-run-but-isn't, "down" today conflates them.
   JSON later).
 - **8.5 lands here**: the two owed ALNScanner tests (packLoader
   behavioral timeout; staging-cache race) ride this unit's scanner
-  touch; the packHash warn→enforce decision is §5 Q-C2-1 — with the
+  touch; the packHash warn→enforce decision is §4 Q-C2-1 — with the
   pages' preview EXEMPTION honored under either answer (the preview
   orchestrator's own hash IS its served pack's hash — the mismatch
   warn keys on the LIVE orchestrator, so the exemption is structural;
@@ -134,7 +135,7 @@ fault = should-run-but-isn't, "down" today conflates them.
 ### D-C3.1 — the enum, contract-first
 
 Reconciled enum everywhere: **`healthy | down | dormant`** — drop the
-never-emitted `degraded` (the skew's third value; §5 Q-C3-2 confirms).
+never-emitted `degraded` (the skew's third value; §4 Q-C3-2 confirms).
 Registry: `markDormant(serviceId)` set by the preflight feed;
 `report()` accepts the three values; revalidation SKIPS dormant
 services (probing what isn't installed re-creates the always-red).
@@ -172,11 +173,11 @@ the toy fixture profile gains a contrasting one (a dormant service —
 e.g. lighting absent — so the dual-pack gate exercises DORMANT for
 real). The preflight-checklist doc: ABSORBED — the mechanism's
 certificate replaces the hand-run list, the doc becomes a short
-pointer (§5 Q-C2-2 confirms).
+pointer (§4 Q-C2-2 confirms).
 
 ### D-C4 boundary
 
-C3 CLASSIFIES the unbound idle-loop channel (§5 Q-C3-1); C4 later
+C3 CLASSIFIES the unbound idle-loop channel (§4 Q-C3-1); C4 later
 implements the L12 hard-refusal flip per that answer. Nothing in this
 unit touches `_resolveIdleLoopFile`.
 
@@ -194,9 +195,7 @@ Tier L with the toy profile exercising dormant, panel, records).
 → **≈ 3–4 sessions** vs the program's C2-C4 ≈1.5–3 (C4 excluded
 here; the growth is the contract coordination + the 8.5 debts).
 
-## 4. (reserved: red-team record + r2)
-
-## 5. Owner questions (queued to JOIN the pages batch)
+## 4. Owner questions r1 (SUPERSEDED by §7; kept for the record)
 
 **Q-C2-1 — packHash handshake: warn or refuse?** Today a GM scanner
 whose loaded pack mismatches the orchestrator's gets a LOUD WARN and
@@ -224,3 +223,106 @@ FAULT (pack demands it, profile fails it)?
 **Q-C3-3 — GM-side minimum**: Phase-3 C3 GM work = render-safe
 dormant handling only (grey "not installed tonight", collapse rule) —
 the full dormant-aware dashboard stays Track D/Phase 4. Confirm.
+
+## 5. Design red-team record + adjudications (2026-09-04)
+
+Two Opus legs over r1 (mechanism/state; scope/rulings/coordination).
+18 findings + one census correction; all survivors adjudicated.
+
+**Census corrections (folded into §2.1's reading):** `setAutoDiscard`
+IS called — cueEngineService registers the 10s timer for
+`video_busy` holds (unit-tested); only the `service_down` cue-hold
+path and videoQueueService's own `_holdVideo` lack timers, and
+backend/CLAUDE.md is accurate for the video_busy case. Contract enum
+sites are three (asyncapi:664, asyncapi:2597, openapi:1998) plus the
+registry's own report() validator; the scanner cross-check test lives
+in backend/tests/contract/scanner/client-contract-conformance.test.js.
+
+| # | Sev | Finding | Adjudication (r2 §6) |
+|---|-----|---------|----------------------|
+| M1 | BLOCKING | Out-of-band `report()` calls (HA socket close, D-Bus monitors, mpd timeout, pactl) stomp the dormant mark; boot ordering (services report AFTER the profile activates) erases a boot-time mark within seconds | STICKY DORMANT: a dormant-marked entry ignores report() (debug-logged) until `clearDormant()`; the preflight feed runs AFTER initializeServices |
+| M2 | BLOCKING | `system:reset` wipes dormancy (registry.reset re-reports all down; cueEngine reset clears disables; pack/profile deliberately not re-activated) | The reset's post-reset wiring RE-RUNS the preflight feed from the boot-frozen pack+profile (marks + disables re-populated). Profile changes still require a restart — the frozen-at-boot doctrine, recorded |
+| M3 | BLOCKING | Quick-firing a disabled cue is SILENT and acks success (fireCue returns void; the executor acks "Cue fired") | fireCue returns a refusal with reason; the ack carries it — dormancy-disabled fires say "not installed tonight" |
+| M4 | MAJOR | One GM-toggleable persisted Set gives dormancy-disables no provenance; restore re-resolve clobbers GM intent | TWO sets: the GM set stays as-is (persisted); dormancy-disables live in a separate NON-persisted set recomputed by the feed; both honored at match/fire; `cue:enable` on a dormancy-disabled cue is REFUSED with the dormant message |
+| M5 | MAJOR | 10s auto-discard is wrong for service_down (kills the video:recoverable / stillDown recovery affordances; VLC/MPD restarts exceed 10s) | Auto-discard stays the video_busy policy ONLY. Fault holds keep their recovery affordances and expire at SESSION END (never survive the session). Dormant never holds — refused outright |
+| M6+S1 | BLOCKING | r1's `endpoints: {serviceId: {onAbsent}}` contradicted ratified C1: §1 keys endpoints physically (display.main, audio.sinks, lighting.instruments, stations, personal) and §2 puts `onAbsent` on the PACK side; deviceClass-min had no input | RE-PINNED: profile endpoints = the C1 §1 interior formalized verbatim; pack-side `onAbsent` is authored in pack-manifest.hardware (optional `endpoints: {<family>: {onAbsent}}`, default degrade — the manifest is the design-statement block and already carries deviceClasses); resolve()'s pack input = collectPackNeeds + manifest.hardware; needs gain `{kind: 'device-class', id, min}` → NO-GO below min |
+| M7 | MAJOR | Inventory circularity: scene lists need lightingService up; sinks need pactl — a down/dormant service reads as a fault storm | RULE: the SERVICE verdict gates its resource verdicts; unqueryable inventory ⇒ verdict UNKNOWN (listed, never fault). Pinned in resolution.js |
+| M8 | MINOR | Enum blast radius list + old-session stamp restores | CS.3 enumerates and updates every `=== 'healthy'` / `'down'` consumer (incl. HealthRenderer counts, commandExecutor wording, e2e capabilities.js per S5); the session preflight stamp follows the A2 `undefined → null` restore precedent |
+| S2 | BLOCKING | The unbound-lighting-role row (C1 §2 row 5) was mis-folded into cue-LEVEL dormant-service disables — an unbound role is not a dormant service, and cue-level disable kills the cue's other commands | ROLE-UNBOUND is COMMAND-level: the resolver flags unbound roles; the executor's lighting normalization refuses a role with NO binding AND NO pack fallback ("role X unbound tonight"); a pack fallback still runs (degraded — L7's loud fallback stands). Cue-level disables remain the dormant-SERVICE mechanism only |
+| S3 | MAJOR | Preflight missed §3 group 2 (network — kit-network checks are v1 per C1 §4) and group 6 (devices) | Both IN: the network arm (kit-network: router reachable, local DNS answers orchestratorName with orchestratorIp) and the devices arm (staffed ≥ manifest min via connected GM stations; stations synced via asset-manifest freshness; named sinks present). Venue-wifi stays E2 headroom |
+| S4 | MAJOR | "Checklist ABSORBED" over-claimed — 1,682 lines are mostly host fundamentals resolve() cannot express | PARTIAL absorption: groups 4/5 + the cert line absorb into the mechanism; host fundamentals (§1-3, §6 of the checklist doc) remain hand-run, the doc restructured to point at the mechanism for what it covers. Q-C2-2 recast accordingly |
+| S5 | MAJOR | e2e capabilities.js computes from `status === 'healthy'` (silently reclassifies dormant); PROFILE_PATH has no E2E plumbing — the toy dormant profile cannot reach a spawned harness | CS.3 updates capabilities.js (dormant = deliberately absent tier, its own capability state); CS.5 adds E2E_PROFILE_PATH inheritance + an npm script, the E2E_PACK_PATH pattern |
+| S6 | MAJOR | CS.6 lacked named DoD pins | CS.6 pins ONE named flow on toy-pack + dormant-lighting profile: (a) lighting gm:command refused "not installed tonight" AND no hold; (b) the dependent cue in the dormancy-disabled set at create AND restore; (c) sync:full serviceHealth carries `dormant`; (d) HealthRenderer grey + collapsed (post dist rebuild) |
+| S7 | MAJOR | Player-scan video bypasses the executor: videoQueueService's OWN hold store would hold forever on dormant vlc | IN SCOPE minimally: dormant vlc ⇒ the player-scan video path REFUSES via the existing "video unavailable" wire (no hold); videoQueueService's service_down holds gain the session-end expiry. Full store unification stays backlog |
+| S8 | MINOR | Contract-site list imprecise | Fixed above (census corrections) |
+| S9 | none | 8.5's two scanner tests ride CS.3's real scanner touch per 8.5's own re-homing; CS.5 must not gate the unit on them | Recorded: they land with the unit but are 8.5's debts, not gate criteria |
+| S10 | MAJOR | Estimate never carried to a question; Q-C3-3 is doc-answerable | Estimate joins the batch (§7); Q-C3-3 dropped to a header note |
+
+## 6. Design r2 — superseding decisions
+
+r1's D-C2.1/D-C3.1/D-C3.2/D-C2.3 stand except as amended by the §5
+adjudication column, which is NORMATIVE. The consolidated deltas:
+
+- **resolve() inputs re-pinned** (M6+S1): pack side =
+  `collectPackNeeds(pack)` + `pack-manifest.hardware` (deviceClasses
+  min → no-go; optional per-family `onAbsent`, default degrade);
+  profile side = the C1 §1 endpoints interior FORMALIZED into the
+  schema (display.main / audio.sinks / lighting.instruments /
+  stations / personal), `orchestrator`, `network`, bindings.
+- **Sticky dormant lifecycle** (M1/M2): markDormant latches;
+  report() ignored while latched; feed runs post-init at boot, at
+  session create/restore, and inside the system-reset re-wiring.
+  Profile is boot-frozen; mid-evening equipment changes wait for a
+  restart (recorded posture).
+- **Two disable sets + honest refusals** (M3/M4/S2): GM set
+  (persisted) + dormancy set (recomputed); enable-on-dormant refused;
+  fireCue returns reasons; role-unbound is command-level refusal with
+  the pack-fallback degradation intact.
+- **Hold policy** (M5/S7): video_busy = 10s auto-discard (existing);
+  fault holds = recovery affordances + session-end expiry; dormant =
+  never held, refused on the existing player-facing wire.
+- **Preflight covers all six C1 §3 groups** (S3), with the
+  service-gates-resources + unknown-never-fault inventory rule (M7);
+  cert line WARN-ONLY (R8); checklist partially absorbed (S4).
+- **Coordination** (M8/S5): CS.3 carries the full enum-consumer
+  sweep incl. e2e capabilities.js + the scanner renderer + dist
+  rebuild; CS.5 adds E2E_PROFILE_PATH plumbing; CS.6 pins the S6
+  dormancy flow.
+
+**Stage plan r2:** unchanged in shape (CS.1–CS.6), scope per the
+folds. **Estimate r2 (honest): ≈ 3.5–4.5 sessions** — up from r1's
+3–4 (the videoQueueService touch, the network+devices arms, the
+role-refusal path, the E2E plumbing); the program priced C2–C4 at
+1.5–3 and C4 is still outstanding. Carried to the owner (§7), not
+squeezed.
+
+## 7. Owner questions r2 (JOINS the pages batch — one sitting)
+
+Header note: Q-C3-3 (GM-side minimum = render-safe dormant display
+only, dashboard to Track D) is doc-answerable from §13.7/§7 and is
+RECORDED as the design's position rather than asked.
+
+**Q-C2-1 — packHash handshake: warn or refuse?** (unchanged from r1)
+Recommendation: keep warn-only through the Sept–Oct run; the preview
+orchestrator is structurally exempt either way.
+
+**Q-C2-2 (recast) — the preflight checklist doc:** the mechanism
+absorbs what it can express (pack refs, bindings, cert line,
+services); the HOST fundamentals (node/disk/temps, orphan processes,
+ports, submodules, .env) stay a hand-run list. Approve that split —
+or name anything in the hand-run half you want mechanized this phase?
+
+**Q-C3-1 — taxonomy call (unchanged):** unbound idle-loop channel =
+DORMANT (my recommendation; matches the C1 absent-endpoint row; C4's
+flip then refuses only `onAbsent: require`) or FAULT?
+
+**Q-C3-2 — the enum (unchanged):** reconcile all sites to
+`healthy | down | dormant`, dropping the never-emitted `degraded`
+(my recommendation), or keep `degraded` reserved?
+
+**Q-C3-4 (new) — estimate sign-off:** ≈ 3.5–4.5 sessions for C2+C3
+(C4 additional), against the program's 1.5–3 for all of C2–C4. The
+growth: the dormancy lifecycle hardening the red-team demanded, the
+network+devices preflight arms C1 §3 always required, and the
+coordinated contract change. Approve alongside the pages estimate
+(its Q4)?
