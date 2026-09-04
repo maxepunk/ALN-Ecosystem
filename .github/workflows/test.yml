@@ -77,7 +77,10 @@ jobs:
   scanner-tests:
     name: Scanner Tests
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Serial job: three npm ci installs + ~1,666 ALNScanner tests with
+    # coverage + PWA + config-tool suites — honest worst observed ~14m
+    # on slow runners (10m axed run 222 mid-PWA, run 225 mid-config-tool).
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code

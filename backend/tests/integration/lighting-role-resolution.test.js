@@ -93,10 +93,14 @@ describe('lighting role resolution (integration: real profileService + real exec
   });
 
   it('the GM concrete-sceneId form is untouched by the whole mechanism', async () => {
+    // gm-sourced lighting commands cross the B0 operator floor
+    // (lighting: → show-control); real GM traffic carries these claims
+    // from its operator token, so the direct call supplies them too.
     const result = await executeCommand({
       action: 'lighting:scene:activate',
       payload: { sceneId: 'scene.direct' },
       source: 'gm',
+      actor: { tier: 'operator', functions: ['show-control'] },
     });
     expect(result.success).toBe(true);
     expect(lightingService.activateScene).toHaveBeenCalledWith('scene.direct');
