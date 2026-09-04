@@ -60,17 +60,22 @@ jobs:
 
       # sudo resets PATH (secure_path) which would hide setup-node's
       # toolcache binary from the scripts' `node` calls — preserve it.
+      # RUNG1_USER=runner: the job's own non-root user IS the harness
+      # user here (VLC's root-refusal doesn't apply to it, and a
+      # created user like rung1vlc cannot traverse /home/runner/work —
+      # run 2 failed with the engine script "not found" for exactly
+      # that reason).
       - name: "Bring up harness (root: docker/HA/users; services as harness user)"
-        run: sudo env "PATH=$PATH" bash backend/tests/rung1/up.sh
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" bash backend/tests/rung1/up.sh
 
       - name: Capability probe (runner manifest)
-        run: sudo env "PATH=$PATH" bash backend/tests/rung1/probe.sh
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" bash backend/tests/rung1/probe.sh
 
       - name: Boot engine non-root
-        run: sudo env "PATH=$PATH" bash backend/tests/rung1/engine.sh start
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" bash backend/tests/rung1/engine.sh start
 
       - name: Live-flow audit (13 assertions, zero mocks)
-        run: sudo env "PATH=$PATH" node backend/tests/rung1/audit-flows.js
+        run: sudo env "PATH=$PATH" "RUNG1_USER=runner" node backend/tests/rung1/audit-flows.js
 
       - name: Engine log + manifest on failure
         if: failure()
