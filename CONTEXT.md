@@ -466,6 +466,18 @@ the GM scanner, and a game's own post-show tooling)
 - **Director.** The Review-stage hat (usually the same human as GM
   or designer): the person who crafts the night's telling and
   harvests design learning back into Author.
+- **Tech rider.** The pack's declared hardware needs presented
+  human-readably for the venue technician — the design-first half of
+  both-ends-inward. Derived (collectPackNeeds), never a second
+  source of truth. The bindings work is "satisfying the rider."
+- **Capability catalog.** Everything the platform can drive,
+  browsable — the palette a designer composes a venue from. A
+  DESIGNED VENUE lives in the pack as its hardware/role vocabulary
+  (no third artifact); profiles realize it; the simulation profile
+  realizes it instantly for hardware-free rehearsal.
+- **Reference kit.** A published rider defining the basic hardware
+  set that showcases the system, fulfilled simulated (the demo) or
+  physically (the rung-2 test bed / open-source starter kit).
 - **First-run state.** Getting the platform is a threshold crossed
   once, not a stage or a room: a persistent checklist overlay,
   teaching empty states, and templates at the threshold. "Adopt" is

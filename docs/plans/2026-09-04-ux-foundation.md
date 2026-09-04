@@ -211,6 +211,27 @@ First-run (owns the open-source goal; finish line RE-RULED Q8=c):
 - **F-N2 first edit**: change a value in Author, rehearse it, see
   the show change — the Author ⇄ Rehearse loop experienced once.
 
+**Both-ends-inward (owner correction, 2026-09-04):** design works
+inward from both ends — the show and the venue — meeting at
+resolve(). Three entry points, one spiral:
+- **F-D00 design-the-venue (palette-first)**: compose the show's
+  hardware vocabulary (roles, endpoints, surfaces, device classes)
+  from the CAPABILITY CATALOG — everything the system can drive —
+  as a creative act, before or alongside content. The designed venue
+  lives IN the pack as its hardware/role layer (no third artifact);
+  profiles realize it; the simulation profile realizes it instantly
+  for hardware-free rehearsal.
+- **F-D0 choose-the-target (venue-first)**: author against a named
+  profile's constraints; badges evaluate against THAT profile.
+- **F-D5 define-the-rider (design-first)**: the pack's declared
+  needs presented as a TECH RIDER — theatre-native, human-readable —
+  handed to the venue technician, who works the bindings page down
+  the rider list until the rollup says go.
+A demo needs a defined REFERENCE KIT: a published rider showing what
+the system can do, fulfilled simulated today (the sim profile IS its
+hardware-free stand-in) and physically at rung 2 / the open-source
+starter kit.
+
 Designer (Author ⇄ Rehearse): F-D1 tweak-a-value (…→ rehearse →
 publish → apply); F-D2 author-a-show-moment (show designer →
 missing media loud → resolve → rehearse); F-D3 new-game (template,
@@ -335,6 +356,9 @@ Every element decided on the FINAL surface, landed by phase.
 | First-run state (checklist overlay + templates) | SEAM: shell reserves the slot; toy template ships | OSS milestone |
 | Native token authoring | reserved room only (owner ruling) | P5 charter (Notion → adapter) |
 | Packaged installer / hosted demo | none | OSS milestone (installer ruled 0a; hosted demo = OPEN, Q-UX4) |
+| Tech-rider view (needs → human-readable rider) | candidate: cheap presentation of shipped collectPackNeeds — owner call | else P4 |
+| Capability catalog (the palette) | SEAM: BS.1 vocabulary endpoint is the seed data | surface lands with the hardware/roles editor |
+| Reference kit (published rider + sim fulfillment) | defined alongside toy pack | physical kit at rung 2 / OSS starter list |
 | GM-scanner UX overhaul (same method) | none | ROADMAP item (round-1 ruling) |
 
 ## 5. IA proposal (r0 — SUPERSEDED by §5r below; kept for the record)
@@ -396,6 +420,15 @@ identity chip's profile half + the bindings surface (C4), reachable
 wherever verdicts point, never a top-level stage. The first-run
 state is an overlay (persistent checklist + teaching empty states +
 template-at-threshold), not a room.
+
+Both-ends-inward at L3: Author carries an explicit TARGET-PROFILE
+context (which venue am I designing against/for) and the
+hardware/roles editor presents the capability catalog as its
+palette; Rehearse is ALWAYS labeled with the profile it rehearses
+under, that profile's verdicts visible (rehearsing under the target
+= the show as it will actually run; under the sim profile = the
+show's full logic); the bindings page (C4) is framed as satisfying
+the rider.
 
 Open L3 decisions (the recomputed frontier):
 1. **Nav naming**: are the four stage words themselves the nav
