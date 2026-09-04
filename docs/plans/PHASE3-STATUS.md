@@ -629,10 +629,21 @@ fix (verified-tier, no GM registration/capacity). Two-axis review
 folded (restampBase atomicity, packFs extraction, PublishRefused
 type, 7 validator pins re-homed; PACK_PATH divergence adjudicated as
 the ruled D-4.7c posture). Gates: config-tool 144 + lint, backend
-2775/136 + ratchet + lint, all exit 0. BS.3 next: tool client (shell,
-shared store, login+HTTPS, editors re-wired to draft semantics +
-/api/vocabulary, jsdom harness + 2 Playwright smokes, enforcement
-flip).
+2775/136 + ratchet + lint, all exit 0. **BS.3 CLOSED 2026-09-04** (§9 execution record): tool
+login mints the aud pair (config-tool half self-minted from
+backend/.env, orchestrator half fetched from /api/admin/auth and held
+server-side); HTTPS; EVERY API route behind the gate (r2/S8 — the
+fold flipped the shipped loopback-reads-open posture; the SPA logs in
+at boot); shared store + draft-routed editors + Design/Venue split;
+served-vocabulary re-sourcing (killed bidirectional action-set drift
++ two typeOk authoring bugs) with a tool↔backend wire cross-pin;
+PUT /api/music/playlists show-control-gated with the proxied token;
+jsdom + Playwright harness (pinned 1.57.0) whose smokes caught the
+[hidden]-vs-class CSS bug twice. Gates: config-tool 176 + 2 smokes +
+lint, backend 2778/136 + ratchet + lint, all exit 0. BS.4 next: the
+unit close (one-auth §5 proofs incl. the PACK-SWITCH grant recompute,
+dual-pack Tier L, whole-unit adversarial review, records, train
+vehicles).
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

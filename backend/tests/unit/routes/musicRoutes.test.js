@@ -104,7 +104,9 @@ describe('musicRoutes — playlists', () => {
       const observe = generateObserveToken('SCOREBOARD_TEST');
       const res = await request(app).put('/api/music/playlists')
         .set('Authorization', `Bearer ${observe}`).send(body);
-      expect([401, 403]).toContain(res.status);
+      // 401 exactly: observe tokens live in their OWN store, so the
+      // HTTP verifyToken path never even decodes them (BS.1 slice 5).
+      expect(res.status).toBe(401);
     });
 
     it('accepts an operator token', async () => {

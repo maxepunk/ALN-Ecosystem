@@ -129,18 +129,31 @@ saveBtn.addEventListener('click', async () => {
       // Refresh config cache
       configCache = await api.getEffectiveConfig();
     } catch (err) {
-      if (err.status === 401) return showLogin();
+      if (handleAuthError(err)) return;
       toast(`Save failed: ${err.message}`, 'error');
     }
   }
 });
 
 // -- Login (B0 BS.3) --
+// EVERY API route requires the operator token (D-B0.2r2), so the tool
+// logs in FIRST: the overlay is the boot screen (no cancel), and any
+// later 401 (token expiry) re-raises it dismissibly.
 
-function showLogin() {
+let appInitialized = false;
+
+function showLogin({ dismissible = true } = {}) {
   loginError.hidden = true;
+  loginCancel.hidden = !dismissible;
   loginOverlay.hidden = false;
   loginPassword.focus();
+}
+
+/** Shared 401 handling: raise the login overlay, report handled. */
+function handleAuthError(err) {
+  if (err.status !== 401) return false;
+  showLogin({ dismissible: appInitialized });
+  return true;
 }
 
 loginForm.addEventListener('submit', async (e) => {
@@ -149,7 +162,12 @@ loginForm.addEventListener('submit', async (e) => {
     await api.login(loginPassword.value);
     loginPassword.value = '';
     loginOverlay.hidden = true;
-    toast('Logged in — retry your change', 'success');
+    if (!appInitialized) {
+      appInitialized = true;
+      await initApp();
+    } else {
+      toast('Logged in — retry your change', 'success');
+    }
   } catch (err) {
     loginError.textContent = err.message;
     loginError.hidden = false;
@@ -170,7 +188,7 @@ function updateDraftBar() {
         toast(`Pack published (${entry.contentHash.slice(0, 15)}…)`, 'success');
         await refreshConfig();
       } catch (err) {
-        if (err.status === 401) return showLogin();
+        if (handleAuthError(err)) return;
         // A 409 carries the pipeline's own refusal text (conflict, gate
         // problems) — show it verbatim, it names the recovery.
         toast(err.message, 'error');
@@ -183,7 +201,7 @@ function updateDraftBar() {
         toast('Draft discarded', 'info');
         await refreshConfig();
       } catch (err) {
-        if (err.status === 401) return showLogin();
+        if (handleAuthError(err)) return;
         toast(`Discard failed: ${err.message}`, 'error');
       }
     },
@@ -243,10 +261,11 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 // -- Init --
-// Adopt an existing unpublished draft BEFORE the first section renders
-// (its pack content overlays the live config); never create one just
+// Runs AFTER the boot login (every API route is behind the gate).
+// Adopts an existing unpublished draft BEFORE the first section renders
+// (its pack content overlays the live config); never creates one just
 // by opening the tool.
-(async () => {
+async function initApp() {
   // The engine's cue vocabulary (D1): the served sets decide what the
   // editors offer. On failure the baked tables stand in — loudly.
   try {
@@ -261,4 +280,6 @@ window.addEventListener('beforeunload', (e) => {
   }
   updateDraftBar();
   loadSection('economy');
-})();
+}
+
+showLogin({ dismissible: false });

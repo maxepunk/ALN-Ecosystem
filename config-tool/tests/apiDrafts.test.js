@@ -46,10 +46,10 @@ const STAMP = {
 };
 
 describe('api — auth attach + draft routing', () => {
+  // appStore is a LIVE ESM binding — resetAppStore() reassigns it and
+  // the api module follows; no injection seam needed.
   beforeEach(() => {
-    const store = resetAppStore();
-    appStore = store;
-    api.__setStoreForTest(store);
+    appStore = resetAppStore();
   });
 
   it('login stores the session token; later requests carry it as a Bearer header', async () => {

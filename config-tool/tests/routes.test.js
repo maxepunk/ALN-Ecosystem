@@ -298,8 +298,6 @@ describe('routes (HTTP layer)', () => {
       return { ok: true, status: 200, text: async () => '{"ok":true}' };
     };
     try {
-      const { ConfigManager } = require('../lib/configManager');
-      const { createRouter } = require('../lib/routes');
       const authedApp = express();
       authedApp.use(express.json());
       authedApp.use('/api', createRouter(
@@ -325,6 +323,19 @@ describe('routes (HTTP layer)', () => {
     assert.deepStrictEqual(res.body.actions, cueValidation.CUE_ACTIONS);
     assert.deepStrictEqual(res.body.tokenDerivedTriggerEvents,
       cueValidation.TOKEN_DERIVED_TRIGGER_EVENTS);
+  });
+
+  // Cross-pin (BS.3 spec review): the tool route and the BACKEND's own
+  // /api/vocabulary must be WIRE-identical, not merely built from the
+  // same module — this is the pin that catches either side reshaping
+  // its payload independently.
+  it('GET /api/vocabulary is wire-identical to the backend endpoint', async () => {
+    const backendResourceRouter = require('../../backend/src/routes/resourceRoutes');
+    const backendApp = express();
+    backendApp.use('/api', backendResourceRouter);
+    const beRes = await request(backendApp).get('/api/vocabulary').expect(200);
+    const toolRes = await request(app).get('/api/vocabulary').expect(200);
+    assert.deepStrictEqual(toolRes.body, beRes.body);
   });
 
   it('GET /api/tokens returns token data (read-only)', async () => {

@@ -937,9 +937,11 @@ details.config-group .config-group__body {
   gap: 8px;
 }
 
-/* The hidden attribute must WIN over the flex display above — without
-   this, the invisible overlay blankets the page and eats every click
-   (caught by smoke 1/2). */
-.login-overlay[hidden] {
-  display: none;
+/* The hidden attribute must ALWAYS win: any class that sets display
+   (flex, inline-flex, grid) otherwise out-specifies the UA's
+   [hidden]{display:none} — the invisible login overlay blanketed the
+   page and ate every click, then its Cancel button stayed visible
+   (both caught by the smokes). Global on purpose. */
+[hidden] {
+  display: none !important;
 }

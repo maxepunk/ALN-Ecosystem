@@ -124,13 +124,14 @@ describe('toolAuth', () => {
   });
 
   describe('enforcement wiring (server.js shape)', () => {
-    // Mirror the server wiring: login open, then the enforcement gate,
-    // then a stand-in API surface.
-    function buildApp({ requireAllRoutes = false } = {}) {
+    // Mirror the server wiring: login open, then the gate on EVERYTHING
+    // (D-B0.2r2 — reads included, loopback included; the accepted S8
+    // objection), then a stand-in API surface.
+    function buildApp() {
       const app = express();
       app.use(express.json());
       app.post('/api/auth/login', auth.loginHandler());
-      app.use('/api', auth.enforce({ requireAllRoutes }));
+      app.use('/api', auth.enforce());
       app.get('/api/config', (req, res) => res.json({ ok: true }));
       app.put('/api/config/env', (req, res) => res.json({ success: true }));
       return app;
@@ -145,25 +146,18 @@ describe('toolAuth', () => {
         .send({ password: 'nope' }).expect(401);
     });
 
-    it('mutating routes require auth even on loopback; reads stay open', async () => {
-      const app = buildApp({ requireAllRoutes: false });
-      await request(app).get('/api/config').expect(200);
+    it('EVERY route requires the token — reads and writes alike (r2)', async () => {
+      const app = buildApp();
+      await request(app).get('/api/config').expect(401);
       await request(app).put('/api/config/env').send({ PORT: '1' }).expect(401);
 
       const { body } = await request(app).post('/api/auth/login')
         .send({ password: 'venue-pass' }).expect(200);
+      await request(app).get('/api/config')
+        .set('Authorization', `Bearer ${body.token}`).expect(200);
       await request(app).put('/api/config/env')
         .set('Authorization', `Bearer ${body.token}`)
         .send({ PORT: '1' }).expect(200);
-    });
-
-    it('beyond loopback, ALL routes require auth', async () => {
-      const app = buildApp({ requireAllRoutes: true });
-      await request(app).get('/api/config').expect(401);
-      const { body } = await request(app).post('/api/auth/login')
-        .send({ password: 'venue-pass' }).expect(200);
-      await request(app).get('/api/config')
-        .set('Authorization', `Bearer ${body.token}`).expect(200);
     });
 
     it('an orchestrator-aud token never passes the tool gate (the pair is not interchangeable)', async () => {

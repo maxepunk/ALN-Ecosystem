@@ -464,3 +464,77 @@ lint all exit 0 at `dc23d60`.
 draft semantics (create/edit/publish), plus shell, shared store,
 login+HTTPS, vocabulary re-sourcing, jsdom harness + 2 Playwright
 smokes, enforcement flip on tool-consumed routes.
+
+## 9. BS.3 execution record (2026-09-04)
+
+**Built** red-first, commit `9507c1f`; the review fold lands with this
+record's own commit. Auth: `lib/toolAuth.js` — login mints the
+config-tool operator token (full O3 claims via the engine's pure
+grants algebra, verified against the SAME backend/.env the backend
+reads: one password both doors, orchestrator-down safe) and FETCHES
+the orchestrator half from `/api/admin/auth` (revocable there, held
+server-side for the music proxy, never sent to the browser); HTTPS
+from the backend's self-signed pair with the backend's own loud HTTP
+fallback. Client: `store.js` (the one observable — auth + draft +
+dirty), api layer draft-routing for the two pack writers with draft
+overlay reads and boot-time adoption, the toolbar draft bar
+(publish/discard), the Design/Venue workspace split. Vocabulary (D1):
+the tool serves `/api/vocabulary` from the gate's own module; the
+SERVED sets decide what the editors offer — this killed real
+bidirectional drift (cue:fire/enable/disable were offered but
+gate-REFUSED in pack cues; video:skip/seek, music:seek,
+display:return-to-video legal but missing) and two live authoring
+bugs (string booleans and string numbers the gate's typeOk refuses).
+Backend: `PUT /api/music/playlists` requires the show-control
+function; the proxy attaches the server-held token. Harness: jsdom +
+@playwright/test pinned to the backend's 1.57.0; the smokes run the
+REAL server on a fixture tree via the `CONFIG_TOOL_*` seams (named
+distinctly so D-4.7c stays exact) and immediately caught a real bug —
+`[hidden]` losing to class display rules (the invisible login overlay
+ate every click; its Cancel button re-hit it in the fold) → global
+`[hidden]{display:none !important}`.
+
+**Spec leg** (folded/adjudicated): (1) *loopback reads open — r2
+NON-COMPLIANT* (D-B0.2r2 "enforces auth on ALL routes"; the accepted
+S8 objection governs over r1's mutating-only wording) → FIXED:
+`enforce()` now gates every API request unconditionally, only login is
+open, and the SPA logs in FIRST (the overlay is the boot screen,
+Cancel hidden until the first login; later 401s re-raise it
+dismissibly). (2) *vocabulary re-sourcing letter-vs-substance* —
+tool-served from the same module adjudicated as satisfying the
+one-source intent (authoring must survive orchestrator-down, the
+pre-show posture), and the recommended CROSS-PIN added: the tool route
+and the backend route are asserted WIRE-identical. Scope-creep items
+(typed payload fixes, harness seams, draft overlay, fetched-not-minted
+orchestrator half) accepted — the last is stronger than the letter
+(revocable store).
+
+**Standards leg** (no hard violations; judgement calls folded): the
+duplicated ORCHESTRATOR_URL default → single exported const
+(login-token fetch and proxy can never target different hosts);
+`ensureDraft` now calls `resumeDraft` (newest-draft reduce deduped);
+the repeated 401 handling → `handleAuthError()`; the
+`__setStoreForTest` seam DELETED (appStore is a live ESM binding —
+`resetAppStore()` reassignment propagates); redundant test re-requires
+dropped; `_security()` → `_readCredentials()`; the beyond-loopback
+warning now states honestly that static SPA assets and the
+/audio + /video preview mounts are unauthenticated; smoke hygiene
+(stderr inherited, child exit awaited before fixture removal); the
+observe-token refusal pinned to exactly 401 (its own store — the HTTP
+path never decodes it). Accepted-as-is: plain password compare
+(deliberate parity with the backend door — a timing-safe upgrade is a
+BOTH-doors item, recorded for the .env MUST-FIX neighborhood); client
+`err.status` idiom (the lighter browser convention).
+
+**Gates post-fold:** config-tool 176 tests + 2/2 Playwright smokes +
+lint exit 0; backend musicRoutes 19/19 (full backend suite unchanged
+otherwise — 2778/136 + ratchet + lint exit 0 at `9507c1f`).
+
+**BS.4 checklist (the close):** one-auth §5 proofs — including
+(EMPHASIZED, §7 finding 2) proof (b) grants recomputed against the new
+active pack after a PACK SWITCH; floor-rejection proofs; dual-pack
+Tier L with the store invariant (publish of an unedited draft is a
+content no-op — pinned at unit level in BS.2, must hold at tier);
+coverage ratchets + lint everywhere; config-tool + scanner suites;
+whole-unit mixed-model adversarial review; close records + train
+vehicles.

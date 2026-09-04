@@ -10,6 +10,12 @@ const { publishDraft } = require('./publish');
 // configManager import precedent, D-4.7c).
 const cueValidation = require('../../backend/src/gameRules/cueValidation');
 
+// ONE source for the orchestrator address (BS.3 review fold): the music
+// proxy AND the login-time orchestrator-token fetch (server.js) must
+// talk to the SAME backend — a drifted second default would send the
+// proxy's token to one host and its requests to another.
+const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'http://localhost:3000';
+
 // Map errors to HTTP: schema violations are the client's fault (400 with
 // details, F-TOOL-04); everything else stays a 500.
 function sendError(res, err) {
@@ -387,7 +393,6 @@ function createRouter(configManager, { draftStore, runnerPath, getOrchestratorTo
   // The orchestrator owns the MPD socket and the canonical playlist file.
   // This proxy exists so the SPA can stay on its own origin (port 9000) and
   // not depend on CORS at the orchestrator.
-  const ORCHESTRATOR_URL = process.env.ORCHESTRATOR_URL || 'http://localhost:3000';
 
   router.get('/music/tracks', async (req, res) => {
     try {
@@ -459,4 +464,4 @@ function buildAssetUsageMap(cuesData, action, payloadKey) {
   return usage;
 }
 
-module.exports = { createRouter };
+module.exports = { createRouter, ORCHESTRATOR_URL };

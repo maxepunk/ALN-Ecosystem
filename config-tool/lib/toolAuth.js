@@ -73,7 +73,7 @@ class ToolAuth {
 
   // Fresh read per call: a password/secret edit (through this very
   // tool's env editor) applies without a restart.
-  _security() {
+  _readCredentials() {
     let values = {};
     try {
       values = readEnv(this.envPath).values;
@@ -91,7 +91,7 @@ class ToolAuth {
    * @throws {Error} status 401 on a wrong password
    */
   login(password) {
-    const { adminPassword, jwtSecret } = this._security();
+    const { adminPassword, jwtSecret } = this._readCredentials();
     if (!password || typeof password !== 'string' || password !== adminPassword) {
       const err = new Error('Authentication failed: wrong password');
       err.status = 401;
@@ -124,7 +124,7 @@ class ToolAuth {
    */
   verify(token) {
     try {
-      const decoded = jwt.verify(token, this._security().jwtSecret,
+      const decoded = jwt.verify(token, this._readCredentials().jwtSecret,
         { audience: 'config-tool' });
       if (decoded.tier !== 'operator') return null;
       return decoded;
@@ -148,15 +148,14 @@ class ToolAuth {
   }
 
   /**
-   * Enforcement middleware. Mutating requests always require a valid
-   * tool token; reads too when requireAllRoutes (bound beyond
-   * loopback).
-   * @param {{requireAllRoutes?: boolean}} [opts]
+   * Enforcement middleware: EVERY API request requires a valid tool
+   * token, header-borne (D-B0.2r2, the accepted S8 objection — reads
+   * included, loopback included; the BS.3 review fold flipped the
+   * shipped r1 mutating-only posture to this). The login route mounts
+   * BEFORE this gate.
    */
-  enforce({ requireAllRoutes = false } = {}) {
-    const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+  enforce() {
     return (req, res, next) => {
-      if (!requireAllRoutes && READ_METHODS.has(req.method)) return next();
       const header = req.headers.authorization || '';
       const token = header.startsWith('Bearer ') ? header.substring(7) : null;
       const decoded = token ? this.verify(token) : null;

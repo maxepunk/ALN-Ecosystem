@@ -6,7 +6,7 @@ const path = require('path');
 const { ConfigManager } = require('./lib/configManager');
 const { DraftStore } = require('./lib/draftStore');
 const { ToolAuth } = require('./lib/toolAuth');
-const { createRouter } = require('./lib/routes');
+const { createRouter, ORCHESTRATOR_URL } = require('./lib/routes');
 const { readEnv } = require('./lib/envParser');
 
 const app = express();
@@ -53,16 +53,18 @@ const runnerPath = path.resolve(__dirname, '../backend/scripts/validate-pack.js'
 const toolAuth = new ToolAuth({
   envPath: configManager.paths.envPath,
   // Login also obtains the ORCHESTRATOR-aud half of the pair (for the
-  // gated music-playlist proxy) — same URL source as the proxy itself.
-  orchestratorUrl: process.env.ORCHESTRATOR_URL || 'http://localhost:3000',
+  // gated music-playlist proxy) — the SAME address the proxy uses.
+  orchestratorUrl: ORCHESTRATOR_URL,
 });
 
 // Static file serving for asset preview
 app.use('/audio', express.static(configManager.paths.soundsDir));
 app.use('/video', express.static(configManager.paths.videosDir));
 
+// EVERY API route behind the gate (D-B0.2r2 — reads included, loopback
+// included); only login itself is open. The SPA logs in at boot.
 app.post('/api/auth/login', toolAuth.loginHandler());
-app.use('/api', toolAuth.enforce({ requireAllRoutes: boundBeyondLoopback }));
+app.use('/api', toolAuth.enforce());
 app.use('/api', createRouter(configManager, {
   draftStore,
   runnerPath,
@@ -112,7 +114,9 @@ server.listen(PORT, HOST, () => {
   }
   if (boundBeyondLoopback) {
     console.warn(
-      'Config tool is exposed beyond localhost — ALL routes require login.'
+      'Config tool is exposed beyond localhost — every API route requires ' +
+      'login; note the static SPA assets and the /audio + /video preview ' +
+      'mounts are served without authentication.'
     );
   }
 });

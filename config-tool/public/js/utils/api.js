@@ -9,19 +9,17 @@
  * explicit landing call.
  */
 
+// appStore is a LIVE ESM binding (`export let`) — resetAppStore()
+// reassigns it and every reference here follows; tests need no
+// injection seam.
 import { appStore } from '../store.js';
-
-// The store the api layer reads/writes. Indirection so tests can swap
-// in a fresh store (resetAppStore rebuilds the object).
-let store = appStore;
-export function __setStoreForTest(s) { store = s; }
 
 async function request(method, path, body) {
   const opts = {
     method,
     headers: {},
   };
-  const { token } = store.get();
+  const { token } = appStore.get();
   if (token) opts.headers.Authorization = `Bearer ${token}`;
   if (body && !(body instanceof FormData)) {
     opts.headers['Content-Type'] = 'application/json';
@@ -42,7 +40,7 @@ async function request(method, path, body) {
 // Auth
 export async function login(password) {
   const { token } = await request('POST', '/auth/login', { password });
-  store.update({ token });
+  appStore.update({ token });
   return token;
 }
 
@@ -59,17 +57,10 @@ export const putRouting = (data) => request('PUT', '/config/routing', data);
  * fresh one drafted from the live pack.
  */
 async function ensureDraft() {
-  const existing = store.get().draft;
-  if (existing) return existing;
-  const drafts = await request('GET', '/drafts');
-  let draft = null;
-  if (drafts.length > 0) {
-    draft = drafts.reduce((a, b) =>
-      Date.parse(a.lastEdited) >= Date.parse(b.lastEdited) ? a : b);
-  } else {
-    ({ draft } = await request('POST', '/drafts'));
-  }
-  store.update({ draft });
+  const resumed = await resumeDraft();
+  if (resumed) return resumed;
+  const { draft } = await request('POST', '/drafts');
+  appStore.update({ draft });
   return draft;
 }
 
@@ -79,12 +70,12 @@ async function ensureDraft() {
  * one just by opening the tool.
  */
 export async function resumeDraft() {
-  if (store.get().draft) return store.get().draft;
+  if (appStore.get().draft) return appStore.get().draft;
   const drafts = await request('GET', '/drafts');
   if (drafts.length === 0) return null;
   const draft = drafts.reduce((a, b) =>
     Date.parse(a.lastEdited) >= Date.parse(b.lastEdited) ? a : b);
-  store.update({ draft });
+  appStore.update({ draft });
   return draft;
 }
 
@@ -102,19 +93,19 @@ export async function putCues(data) {
 
 /** Publish the session's draft to the live pack; clears it from the store. */
 export async function publishCurrentDraft() {
-  const draft = store.get().draft;
+  const draft = appStore.get().draft;
   if (!draft) throw new Error('no draft to publish');
   const { publish } = await request('POST', `/drafts/${draft.draftId}/publish`);
-  store.update({ draft: null });
+  appStore.update({ draft: null });
   return publish;
 }
 
 /** Discard the session's draft (delete server-side, clear the store). */
 export async function discardCurrentDraft() {
-  const draft = store.get().draft;
+  const draft = appStore.get().draft;
   if (!draft) return;
   await request('DELETE', `/drafts/${draft.draftId}`);
-  store.update({ draft: null });
+  appStore.update({ draft: null });
 }
 
 /**
@@ -125,7 +116,7 @@ export async function discardCurrentDraft() {
  */
 export async function getEffectiveConfig() {
   const config = await request('GET', '/config');
-  const draft = store.get().draft;
+  const draft = appStore.get().draft;
   if (!draft) return config;
   const draftContent = await request('GET', `/drafts/${draft.draftId}/config`);
   return { ...config, ...draftContent };

@@ -2,10 +2,11 @@
 // (HTTPS, auth enforced) against a FIXTURE tree (toy-heist copy via the
 // CONFIG_TOOL_* harness seams — the checked-in pack is never touched).
 //
-// Smoke 1: the shell — two-workspace sidebar, section navigation.
-// Smoke 2: the whole design loop — edit scoring, hit the auth wall,
-// log in, save into a DRAFT, publish through the engine's gate, and
-// verify the edit LANDED in the fixture's live pack on disk.
+// Every API route is behind the gate (D-B0.2r2), so the login overlay
+// IS the boot screen — both smokes start by logging in.
+// Smoke 1: the shell — boot login, two-workspace sidebar, navigation.
+// Smoke 2: the whole design loop — edit scoring, save into a DRAFT,
+// publish through the engine's gate, verify the edit LANDED on disk.
 
 'use strict';
 const { test, expect } = require('@playwright/test');
@@ -44,7 +45,9 @@ test.beforeAll(async () => {
       CONFIG_TOOL_PACK_DIR: packDir,
       CONFIG_TOOL_DATA_DIR: path.join(tmpDir, 'data'),
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
+    // stderr inherits so server diagnostics surface in the test log
+    // (a piped-but-undrained stream loses them and risks backpressure).
+    stdio: ['ignore', 'pipe', 'inherit'],
   });
 
   await new Promise((resolve, reject) => {
@@ -60,12 +63,36 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  if (server) server.kill('SIGTERM');
+  if (server) {
+    // Await the exit before removing the fixture the server still reads.
+    const exited = new Promise((resolve) => {
+      server.on('exit', resolve);
+      setTimeout(resolve, 5000).unref();
+    });
+    server.kill('SIGTERM');
+    await exited;
+  }
   if (tmpDir) fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-test('smoke 1 — shell: two workspaces, section navigation, pack identity', async ({ page }) => {
+// The gate makes login the boot screen: complete it, then wait for the
+// shell to initialize.
+async function bootAndLogin(page) {
   await page.goto(BASE);
+  await page.fill('#loginPassword', PASSWORD);
+  await page.click('#loginForm button[type="submit"]');
+  await page.locator('#loginOverlay').waitFor({ state: 'hidden' });
+}
+
+test('smoke 1 — boot login, two workspaces, section navigation, pack identity', async ({ page }) => {
+  // The login overlay is the boot screen — and its Cancel is hidden
+  // (nothing to fall back to before the first login).
+  await page.goto(BASE);
+  await expect(page.locator('#loginOverlay')).toBeVisible();
+  await expect(page.locator('#loginCancel')).toBeHidden();
+  await page.fill('#loginPassword', PASSWORD);
+  await page.click('#loginForm button[type="submit"]');
+  await expect(page.locator('#loginOverlay')).toBeHidden();
 
   // Two-workspace sidebar (Design / Venue)
   const groups = page.locator('.sidebar__group');
@@ -84,12 +111,12 @@ test('smoke 1 — shell: two workspaces, section navigation, pack identity', asy
   await expect(page.locator('#section-economy.active')).toBeVisible();
 });
 
-test('smoke 2 — the design loop: edit → auth wall → login → draft save → publish → landed', async ({ page }) => {
+test('smoke 2 — the design loop: login → edit → draft save → publish → landed', async ({ page }) => {
   const packDir = path.join(tmpDir, 'live-pack');
   const before = JSON.parse(fs.readFileSync(path.join(packDir, 'game.json'), 'utf8'));
   const firstRating = Object.keys(before.scoring.baseValues)[0];
 
-  await page.goto(BASE);
+  await bootAndLogin(page);
   await expect(page.locator('#section-economy .data-table').first()).toBeVisible();
 
   // Edit the first base value
@@ -97,14 +124,7 @@ test('smoke 2 — the design loop: edit → auth wall → login → draft save �
   await input.fill('123456');
   await expect(page.locator('#saveBtn')).toBeVisible();
 
-  // Save → the auth wall (mutating routes require login even on loopback)
-  await page.click('#saveBtn');
-  await expect(page.locator('#loginOverlay')).toBeVisible();
-  await page.fill('#loginPassword', PASSWORD);
-  await page.click('#loginForm button[type="submit"]');
-  await expect(page.locator('#loginOverlay')).toBeHidden();
-
-  // Retry the save — it lands in a DRAFT (draft bar appears), not live
+  // Save — it lands in a DRAFT (draft bar appears), not live
   await page.click('#saveBtn');
   await expect(page.locator('.draft-bar__label')).toBeVisible();
   const liveAfterSave = JSON.parse(fs.readFileSync(path.join(packDir, 'game.json'), 'utf8'));
