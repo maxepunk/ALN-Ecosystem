@@ -63,16 +63,28 @@ Steps: `modprobe hci_vhci` → device check → `bluez-test-tools` install →
 `btvirt -l2` → adapter listing → power/scan. Every step tolerant; the log
 is the deliverable.
 
-**Result:** run 1 (33843990405) in flight at time of writing. Steps 2-4
-(modprobe verdict, /dev/vhci check, btvirt launch) completed and their
-logs carry the answer; step 5 HANGS — the backgrounded `bluetoothd`
-holds the step's descriptors open (workflow bug, fix queued: detach with
-`setsid`/`nohup` or run it foreground with a timeout). Verdict + fix
-folded here when the job's 10-minute timeout reaps it.
+**Result (run 33843990405, DEFINITIVE): virtual Bluetooth is
+IMPOSSIBLE on hosted GitHub runners.** Kernel `6.17.0-1022-azure`;
+`modprobe: FATAL: Module hci_vhci not found in directory
+/lib/modules/6.17.0-1022-azure` — the Azure runner kernel does not ship
+the module AT ALL, and `bluetoothctl` cannot open the management socket
+(the Bluetooth stack appears compiled out entirely). Nothing to load,
+nothing to emulate. So virtual BT is dormant at BOTH hosted-CI rungs,
+each with distinct recorded evidence: the dev container hits the
+no-module-control wall; the runner kernel simply omits the stack.
 
-**One more probe gotcha for the recipe file:** a step that backgrounds a
-daemon must fully detach it, or the Actions runner waits on the step
-until job timeout.
+**Consequence:** real-Bluetooth-in-CI has exactly one honest future
+path — a SELF-HOSTED runner on a Pi (onboard BT), which is the
+blue/green arrangement post-Phase-3. Until then the BT arm's automated
+coverage is the management-surface unit tests (mocked) + rung 2's real
+cheap speaker; the harness marks BT dormant on hosted CI with the probe
+evidence as the recorded reason.
+
+**Probe gotchas (run-1 lessons, fixed in the workflow):**
+`bluetoothctl` drops to an interactive prompt and hangs a step unless
+wrapped in `timeout`; an undetached backgrounded daemon holds a step
+open until job timeout. Every probe step is bounded now, so re-running
+the probe when runner images change kernels costs ~1 minute.
 
 ## Consequences for the CS.1 harness design
 

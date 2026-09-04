@@ -38,16 +38,19 @@ jobs:
           sleep 3
           echo "--- btvirt.log ---"; cat btvirt.log || true
 
+      # Run-1 lessons: (a) bluetoothctl drops to an interactive prompt and
+      # hangs a step without `timeout`; (b) an undetached backgrounded
+      # daemon holds the step until job timeout. Everything bounded now.
       - name: Start bluetoothd and list adapters
         run: |
-          sudo systemctl start bluetooth 2>/dev/null || sudo bluetoothd > bluetoothd.log 2>&1 &
-          sleep 3
+          sudo timeout 15 systemctl start bluetooth || true
+          sleep 2
           echo "--- bluetoothctl list ---"
-          sudo bluetoothctl list || true
+          sudo timeout 10 bluetoothctl list || true
           echo "--- btmgmt info ---"
-          sudo btmgmt info || true
+          sudo timeout 10 btmgmt info || true
 
       - name: Power on and scan between virtual controllers
         run: |
-          printf 'power on\nscan on\n' | sudo timeout 12 bluetoothctl || true
+          printf 'power on\nscan on\nquit\n' | sudo timeout 12 bluetoothctl || true
           echo "--- verdict material above: adapters listed + power/scan output ---"
