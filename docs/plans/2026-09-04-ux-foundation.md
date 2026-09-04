@@ -6,6 +6,38 @@ baseline; ground-up UX from industry best practice, improved for our
 flows; open-source learnability is first-class).
 Vocabulary: CONTEXT.md. Verdict semantics: C1 §2 / resolution.js.
 
+## 0d. Grill round 4 correction (owner, 2026-09-04): Review is a
+PLAYER-EXPERIENCE output, already shipped
+
+The owner stopped the round: "you're forgetting how Review is used
+DIRECTLY as part of the ALN player experience — re-load the
+fundamentals." Verified from primary sources, not summaries:
+
+- `ALNScanner/docs/session-report-contract.md`: the session report's
+  ONLY consumer is the GenAI pipeline in
+  github.com/maxepunk/aboutlastnight (the game's website), which
+  parses evidence/timeline/economics "for LLM interpretation" and
+  indexes evidence cards to DEDUPLICATE ACROSS SESSIONS — the
+  player-facing post-game reveal, with cross-session continuity, is
+  the report's reason for existing. The GM-readable markdown is the
+  transport, not the audience.
+- CONTEXT.md attribution model: "Exposed By" is a byline players can
+  claim credit on — player-facing narrative credit via the entity
+  system.
+- The arc already points here: slice 7 made report WORDING
+  pack-declared; B9's structured bundle is the canonical artifact the
+  pipeline migrates to (ROADMAP §8.10) — "how a game tells the story
+  of the night" is per-pack content on a contracted engine seam.
+
+Consequences: Q15 withdrawn as posed (it asked whether a player
+debrief should be "in scope" when it is the report's primary
+consumer). Q15r posed instead: Review = the home of the session
+bundle — generated, inspected, handed to THE GAME'S OWN post-game
+channel (pack-specific); the tool owns the record and the handoff,
+the pack owns the telling. Q13 stands with Review's weight raised
+(player-facing production output + design-learning loop). Q14
+unchanged. Awaiting rulings on Q13/Q14/Q15r.
+
 ## 0c. Grill round 3 rulings (owner, 2026-09-04)
 
 - **Q10 CORRECTED twice — the pipeline was the engineer's frame**:
