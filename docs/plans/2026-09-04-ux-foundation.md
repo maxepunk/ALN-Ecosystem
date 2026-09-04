@@ -6,8 +6,44 @@ baseline; ground-up UX from industry best practice, improved for our
 flows; open-source learnability is first-class).
 Vocabulary: CONTEXT.md. Verdict semantics: C1 §2 / resolution.js.
 
-## 0d. Grill round 4 correction (owner, 2026-09-04): Review is a
-PLAYER-EXPERIENCE output, already shipped
+## 0e. Review — the CONFIRMED picture (owner + primary sources,
+2026-09-04; supersedes 0d's first interpretation, which overreached)
+
+The owner rejected 0d's "automated website reveal" reading as
+fabrication. Verified by reading the actual consumer
+(github.com/maxepunk/aboutlastnight, cloned read-only) and the FULL
+ROADMAP (which had not been re-loaded this session — a recorded
+process failure):
+
+- The consumer is the **ALN Director Console**
+  (console.aboutlastnightgame.com): a LangGraph pipeline with TEN
+  human-in-the-loop checkpoints where the director curates paper
+  evidence, roster/photos, narrative arcs, outline, and final
+  article. It produces a **BESPOKE in-fiction investigative article
+  for EACH session's players**, built from their choices and actions
+  as recorded by the game system (player RFID actions + GM
+  observations), emailed to players as the post-show payoff. Review
+  is a CREATIVE PRODUCTION stage — as authored as Author — not
+  automated output and not log-reading.
+- The three-layer evidence model (exposed/buried/context) closes the
+  mode loop: Detective EXPOSES a memory into the story; Black Market
+  SELLS it into buried. The players' per-token choices during Run
+  directly shape what Review can tell.
+- ROADMAP Track D (Phase 4) is the platform half, verbatim gate:
+  "report intake writing B9 bundles. Intake means: the roster
+  captured before the game; one-tap, dictation-friendly director
+  notes and photo capture during the game; the accusation and
+  whiteboard captured at the end." Intake happens DURING Run, via
+  the GM scanner; its consumer is Review. Phase 5 makes the report
+  pipeline the content database's second consumer.
+- Boundary (Q15r, now roadmap-grounded): the platform owns the
+  RECORD (bundle), the INTAKE, and the HANDOFF; the game owns the
+  TELLING — which can be an entire per-game application. Cross-tool
+  vocabulary spans config tool, GM scanner, AND the Director
+  Console.
+
+## 0d. Grill round 4 first interpretation (SUPERSEDED by 0e —
+kept as the record of the overreach)
 
 The owner stopped the round: "you're forgetting how Review is used
 DIRECTLY as part of the ALN player experience — re-load the
