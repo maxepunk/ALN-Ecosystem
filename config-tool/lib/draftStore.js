@@ -24,54 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { build } = require('../../backend/scripts/build-pack-manifest');
-
-/**
- * Resolve a manifest-inventoried relative path against a pack dir,
- * refusing traversal. The builder never emits '..' or absolute paths,
- * but the manifest is a file on disk — treat it as input.
- */
-function resolveInventoryPath(packDir, relPath) {
-  const abs = path.resolve(packDir, relPath);
-  if (!abs.startsWith(path.resolve(packDir) + path.sep)) {
-    throw new Error(`manifest inventory path escapes the pack directory: ${relPath}`);
-  }
-  return abs;
-}
-
-/**
- * Copy one inventoried file, refusing symlinks at BOTH ends' source.
- * lstat (not stat): a symlink must be seen as itself, never followed.
- */
-function copyInventoryFile(srcDir, destDir, relPath) {
-  const src = resolveInventoryPath(srcDir, relPath);
-  const dest = resolveInventoryPath(destDir, relPath);
-  const st = fs.lstatSync(src);
-  if (!st.isFile()) {
-    throw new Error(
-      `refusing to copy ${relPath}: not a regular file (symlinks and specials never travel)`);
-  }
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(src, dest);
-}
-
-/** Read + parse a pack's manifest; null when absent. */
-function readManifest(packDir) {
-  const manifestPath = path.join(packDir, 'pack-manifest.json');
-  if (!fs.existsSync(manifestPath)) return null;
-  return JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-}
-
-/** Atomic JSON write (the configManager tmp+rename pattern). */
-function writeJsonAtomic(filePath, data) {
-  const tmp = `${filePath}.tmp`;
-  try {
-    fs.writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n', 'utf8');
-    fs.renameSync(tmp, filePath);
-  } catch (err) {
-    try { fs.unlinkSync(tmp); } catch { /* best-effort cleanup */ }
-    throw err;
-  }
-}
+const { copyRegular, readManifest, writeJsonAtomic } = require('./packFs');
 
 // The files whose FIRST writer is the store (no live writer exists by
 // design — D-B0.4). game/cues have dedicated validated writers; the
@@ -138,7 +91,7 @@ class DraftStore {
       const packCopy = path.join(draftDir, 'pack');
       fs.mkdirSync(packCopy);
       for (const f of manifest.files || []) {
-        copyInventoryFile(this.sourceDir, packCopy, f.path);
+        copyRegular(this.sourceDir, packCopy, f.path);
       }
       fs.copyFileSync(
         path.join(this.sourceDir, 'pack-manifest.json'),
@@ -189,9 +142,25 @@ class DraftStore {
     return stamp;
   }
 
+  /** Remove a draft and its working copy entirely. */
   deleteDraft(draftId) {
     if (!this.getDraft(draftId)) throw new Error(`unknown draft: ${draftId}`);
     fs.rmSync(this._draftDir(draftId), { recursive: true, force: true });
+  }
+
+  /**
+   * Re-stamp a draft's base identity after a successful publish: the
+   * draft is now based on what it just landed, so an unchanged draft
+   * can publish again without a false conflict. Atomic — the stamp is
+   * what conflict detection reads.
+   */
+  restampBase(draftId, contentHash, when) {
+    const stamp = this.getDraft(draftId);
+    if (!stamp) throw new Error(`unknown draft: ${draftId}`);
+    stamp.base = { contentHash };
+    stamp.lastEdited = when;
+    writeJsonAtomic(this._stampPath(draftId), stamp);
+    return stamp;
   }
 
   /**

@@ -618,9 +618,21 @@ claims, operator floor at the commandExecutor choke point + WS actor,
 observe token (scoreboard's injected ADMIN_PASSWORD DELETED),
 `/api/vocabulary` zero-drift endpoint. Two-axis review folded (4
 lazy-require hoists, `_resolvePackHash()` extraction); gates 2772/135
-+ ratchet + lint all exit 0. BS.2 next: store server-side + publish
-pipeline (Q11(a) refusal is the first red test; runner via
-execFile/argv only; gm:identify display-class fix rides along).
++ ratchet + lint all exit 0. **BS.2 CLOSED 2026-09-04** (§8 execution
+record): draft store (`config-tool/lib/draftStore.js` +
+`packFs.js`) + publish pipeline (`lib/publish.js` — Q11(a) refusal
+first red test, engine gate via execFile'd runner, ordered rename
+manifest-LAST, landed re-verify, publish log, mutex); the two pack
+writers re-pointed at draft-bound ConfigManagers; strings/theme first
+writer; live-pack write routes refuse 409; gm:identify display-class
+fix (verified-tier, no GM registration/capacity). Two-axis review
+folded (restampBase atomicity, packFs extraction, PublishRefused
+type, 7 validator pins re-homed; PACK_PATH divergence adjudicated as
+the ruled D-4.7c posture). Gates: config-tool 144 + lint, backend
+2775/136 + ratchet + lint, all exit 0. BS.3 next: tool client (shell,
+shared store, login+HTTPS, editors re-wired to draft semantics +
+/api/vocabulary, jsdom harness + 2 Playwright smokes, enforcement
+flip).
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

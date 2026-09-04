@@ -177,6 +177,71 @@ describe('draft routes (HTTP layer)', () => {
     });
   });
 
+  // The F-TOOL-04 validator pins that rode the retired live-write routes,
+  // re-homed at the draft surface (BS.2 review fold — no behavior loses
+  // its pin when a writer moves). The validators themselves are
+  // unchanged; these pin the refusals through the draft-bound writers.
+  describe('re-homed validator pins (F-TOOL-04)', () => {
+    it('scoring: rejects non-numeric base values', async () => {
+      const draft = await createDraft();
+      const res = await request(app).put(`/api/drafts/${draft.draftId}/scoring`).send({
+        baseValues: { 1: 'lots', 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
+        typeMultipliers: { Personal: 1 },
+      }).expect(400);
+      assert.ok(res.body.details.some((d) => /baseValues/.test(d)));
+    });
+
+    it('scoring: rejects missing rating keys', async () => {
+      const draft = await createDraft();
+      await request(app).put(`/api/drafts/${draft.draftId}/scoring`)
+        .send({ baseValues: { 1: 10000 }, typeMultipliers: { Personal: 1 } }).expect(400);
+    });
+
+    it('cues: rejects duplicate cue ids', async () => {
+      const draft = await createDraft();
+      const cue = { id: 'dup', label: 'A', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] };
+      await request(app).put(`/api/drafts/${draft.draftId}/cues`)
+        .send({ kind: 'cues', schemaVersion: 2, cues: [cue, { ...cue }] }).expect(400);
+    });
+
+    it('cues: rejects an empty commands array', async () => {
+      const draft = await createDraft();
+      const res = await request(app).put(`/api/drafts/${draft.draftId}/cues`)
+        .send({ kind: 'cues', schemaVersion: 2, cues: [{ id: 'orphan', label: 'Orphan', commands: [] }] })
+        .expect(400);
+      assert.ok(res.body.details.some((d) => /orphan/.test(d)));
+    });
+
+    it('cues: rejects a present-but-wrong schemaVersion (S6 review, F4-sec)', async () => {
+      const draft = await createDraft();
+      const res = await request(app).put(`/api/drafts/${draft.draftId}/cues`).send({
+        kind: 'cues', schemaVersion: 99,
+        cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+      }).expect(400);
+      assert.ok(res.body.details.some((d) => /schemaVersion 99/.test(d)));
+    });
+
+    it('cues: rejects a plain array (header form required — A3 slice 4, D-4.7c)', async () => {
+      const draft = await createDraft();
+      const res = await request(app).put(`/api/drafts/${draft.draftId}/cues`)
+        .send([{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }])
+        .expect(400);
+      assert.ok(res.body.details.some((d) => /header form/.test(d)));
+    });
+
+    it('cues: rejects a lighting action carrying a concrete sceneId (roles only)', async () => {
+      const draft = await createDraft();
+      const res = await request(app).put(`/api/drafts/${draft.draftId}/cues`).send({
+        kind: 'cues', schemaVersion: 2,
+        cues: [{
+          id: 'lights', label: 'Lights', quickFire: true,
+          commands: [{ action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } }],
+        }],
+      }).expect(400);
+      assert.ok(res.body.details.some((d) => /concrete scene id/.test(d)));
+    });
+  });
+
   describe('publish', () => {
     it('POST /api/drafts/:id/publish lands the draft and returns the log entry', async () => {
       const draft = await createDraft();

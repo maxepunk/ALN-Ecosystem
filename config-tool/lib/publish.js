@@ -30,8 +30,24 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { build, contentHash: hashOfFiles } = require('../../backend/scripts/build-pack-manifest');
+const { resolveInside, copyRegular, readManifest, writeJsonAtomic } = require('./packFs');
 
 let publishInProgress = false;
+
+/**
+ * A REFUSED publish: the pipeline declined to land (conflict, gate,
+ * mutex, identity) and the live pack is untouched. Carries
+ * `refused: true` so the HTTP layer maps it to 409 by TYPE, never by
+ * matching message prose. Errors past the landing point (the
+ * re-verify alarm) stay plain Errors — those are not refusals.
+ */
+class PublishRefused extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'PublishRefused';
+    this.refused = true;
+  }
+}
 
 /**
  * The rename order for landing: every inventoried file first (sorted,
@@ -42,33 +58,6 @@ let publishInProgress = false;
  */
 function landingPlan(files) {
   return files.map((f) => f.path).sort().concat('pack-manifest.json');
-}
-
-function readManifest(packDir) {
-  const p = path.join(packDir, 'pack-manifest.json');
-  if (!fs.existsSync(p)) return null;
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-
-function resolveInside(baseDir, relPath) {
-  const abs = path.resolve(baseDir, relPath);
-  if (!abs.startsWith(path.resolve(baseDir) + path.sep)) {
-    throw new Error(`inventory path escapes the pack directory: ${relPath}`);
-  }
-  return abs;
-}
-
-/** Copy one inventoried regular file; symlinks/specials refuse loudly. */
-function copyRegular(srcDir, destDir, relPath) {
-  const src = resolveInside(srcDir, relPath);
-  const dest = resolveInside(destDir, relPath);
-  const st = fs.lstatSync(src);
-  if (!st.isFile()) {
-    throw new Error(
-      `refusing to publish ${relPath}: not a regular file (symlinks and specials never travel)`);
-  }
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(src, dest);
 }
 
 /** Run the engine's activation gate against a directory (§7 pin: execFile/argv only). */
@@ -95,7 +84,7 @@ function runGate(runnerPath, packDir) {
  */
 async function publishDraft(store, draftId, { runnerPath }) {
   if (publishInProgress) {
-    throw new Error('publish refused: another publish is in progress — retry when it completes');
+    throw new PublishRefused('publish refused: another publish is in progress — retry when it completes');
   }
   publishInProgress = true;
   const stagingDir = path.join(store.storeDir, '.staging',
@@ -107,12 +96,12 @@ async function publishDraft(store, draftId, { runnerPath }) {
     const target = stamp.sourcePath;
     const liveManifest = readManifest(target);
     if (!liveManifest) {
-      throw new Error(`publish refused: ${target} has no pack-manifest.json — not a pack`);
+      throw new PublishRefused(`publish refused: ${target} has no pack-manifest.json — not a pack`);
     }
 
     // (1) Q11(a): conflict = REFUSE loudly; re-drafting is the recovery.
     if (liveManifest.contentHash !== stamp.base.contentHash) {
-      throw new Error(
+      throw new PublishRefused(
         'publish refused: the live pack has changed since this draft was taken ' +
         `(live contentHash ${liveManifest.contentHash}, draft base ${stamp.base.contentHash}). ` +
         'Create a fresh draft from the live pack and re-apply your edits.');
@@ -135,15 +124,15 @@ async function publishDraft(store, draftId, { runnerPath }) {
     // (4) The engine's own gate, in its own process.
     const verdict = await runGate(runnerPath, stagingDir);
     if (!verdict.ok) {
-      throw new Error(
+      throw new PublishRefused(
         `publish refused: the engine's activation gate refused the pack:\n${(verdict.problems || []).join('\n')}`);
     }
     if (!verdict.contentHash) {
-      throw new Error(
+      throw new PublishRefused(
         'publish refused: the gate passed with null pack identity (packless posture) — nothing to publish');
     }
     if (verdict.contentHash !== stagedManifest.contentHash) {
-      throw new Error(
+      throw new PublishRefused(
         `publish refused: gate saw contentHash ${verdict.contentHash} but staging holds ${stagedManifest.contentHash}`);
     }
 
@@ -151,7 +140,7 @@ async function publishDraft(store, draftId, { runnerPath }) {
     // the base right before landing (an external edit mid-pipeline).
     const liveNow = readManifest(target);
     if (!liveNow || liveNow.contentHash !== stamp.base.contentHash) {
-      throw new Error(
+      throw new PublishRefused(
         'publish refused: the live pack changed while publishing ' +
         `(live contentHash ${liveNow ? liveNow.contentHash : 'missing'}, draft base ${stamp.base.contentHash}). ` +
         'Create a fresh draft from the live pack and re-apply your edits.');
@@ -194,7 +183,7 @@ async function publishDraft(store, draftId, { runnerPath }) {
         'the live pack may be mid-edit by another writer; re-draft and re-publish');
     }
 
-    // (7) Publish log + base re-stamp.
+    // (7) Publish log + base re-stamp (through the store — atomic).
     const entry = {
       when: new Date().toISOString(),
       draftId,
@@ -204,10 +193,7 @@ async function publishDraft(store, draftId, { runnerPath }) {
     };
     fs.appendFileSync(path.join(store.storeDir, 'publish-log.jsonl'),
       JSON.stringify(entry) + '\n');
-    stamp.base = { contentHash: stagedManifest.contentHash };
-    stamp.lastEdited = entry.when;
-    fs.writeFileSync(path.join(store.storeDir, draftId, 'draft.json'),
-      JSON.stringify(stamp, null, 2) + '\n');
+    store.restampBase(draftId, stagedManifest.contentHash, entry.when);
 
     return entry;
   } finally {
@@ -216,4 +202,4 @@ async function publishDraft(store, draftId, { runnerPath }) {
   }
 }
 
-module.exports = { publishDraft, landingPlan };
+module.exports = { publishDraft, landingPlan, PublishRefused };

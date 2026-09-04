@@ -400,3 +400,67 @@ the publish pipeline's FIRST red test; (b) runner invocation
 execFile/argv-only; (c) the gm:identify display-class fix (finding 1);
 (d) staged ordered-rename with `pack-manifest.json` last, publish log,
 single mutex, per §5.
+
+## 8. BS.2 execution record (2026-09-04)
+
+**Built** red-first in four slices, commit `dc23d60`; the two-axis
+review fold lands with this record's own commit. All four §7
+carry-forward items landed: (a) the Q11(a) refusal WAS the first red
+test — names both hashes, re-draft is the recovery; (b) the gate runs
+via `execFile(process.execPath, [runnerPath, dir])`, argv-only; (c)
+gm:identify decides on the VERIFIED socket tier — display-class
+sockets join rooms and get sync:full but never register as GM stations
+nor consume `canAcceptGmStation()` capacity; (d) sibling-staged
+ordered rename with the manifest LAST, publish log, one tool-side
+mutex. The store: `config-tool/lib/draftStore.js`
+(`data/drafts/<store>/<draftId>/` — stamp BESIDE the `pack/` copy
+because the manifest builder globs), `lib/publish.js`,
+`lib/packFs.js` (fold), draft routes in `lib/routes.js`; the two pack
+writers re-pointed via draft-bound ConfigManager instances;
+strings/theme gained their first (draft-only, whitelisted) writer; the
+live-pack write routes refuse 409 with draft guidance. The stage plan's
+"mtime-cache fix" had already landed in BS.1 (`e66d392`) — verified,
+not re-done.
+
+**Standards leg** (folded): the non-atomic draft re-stamp in publish
+step 7 (raw writeFileSync bypassing the store — a crash there corrupts
+the stamp conflict detection reads) → `DraftStore.restampBase()`,
+atomic, which also cures the Feature-Envy reach into the store's
+layout; the triplicated copy-rule/atomic-write helpers
+(draftStore/publish/configManager) → extracted to `lib/packFs.js`,
+one implementation of `resolveInside`/`copyRegular`/`readManifest`/
+`writeJsonAtomic`; the regex-over-message HTTP mapping → the
+`PublishRefused` error type (`err.refused` → 409; the post-landing
+re-verify alarm stays a plain Error → 500); missing JSDoc added.
+The `<rootDir>/<store>/` parameterization judged NOT speculative
+(the C4 profile store is a named follow-on). Lazy-require rule: clean
+— no recurrence after the BS.1 enforcement.
+
+**Spec leg** (adjudicated): six-step pipeline order, copy rule,
+Q11(a) wording, claims-based identify all verified compliant.
+Findings: (1) *publish target vs PACK_PATH* — publish lands on the
+draft's recorded `sourcePath`; the tool's source is the checked-in
+submodule pack per the RULED D-4.7c posture ("a PACK_PATH-injected
+alternate pack directory is a runtime-only override this tool never
+sees"). Adjudicated NO CHANGE: the store resolves per-draft from the
+recorded source; which live dir the tool drafts from is that standing
+ruling, and multi-pack editing is the pack-manager page's design
+question (pages unit). (2) *validator-pin regression* — the ~10
+route-level F-TOOL-04 pins deleted with the live routes → RE-HOMED at
+the draft surface in the fold (7 pins; no behavior unpinned). (3)
+*mutex refuse-vs-serialize* — accepted as written: refusal with a
+clear retry message keeps the single-publish invariant with simpler
+semantics for an operator-paced action. Scope-creep items (base
+re-stamp, TOCTOU re-check, old-inventory deletion after the manifest
+lands, `readPackContent`) all accepted: coherence-required or
+BS.3-serving.
+
+**Gates post-fold:** config-tool 144 tests + lint, both exit 0;
+backend unchanged by the fold — 2775 tests / 136 suites + ratchet +
+lint all exit 0 at `dc23d60`.
+
+**BS.3 carry-forward:** the SPA still calls the now-refused
+`PUT /api/config/scoring|cues` — BS.3 re-wires the client sections to
+draft semantics (create/edit/publish), plus shell, shared store,
+login+HTTPS, vocabulary re-sourcing, jsdom harness + 2 Playwright
+smokes, enforcement flip on tool-consumed routes.

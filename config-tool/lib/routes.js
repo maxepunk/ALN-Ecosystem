@@ -179,9 +179,9 @@ function createRouter(configManager, { draftStore, runnerPath } = {}) {
           res.json({ success: true, publish: entry });
         } catch (err) {
           // Q11(a) conflicts, gate refusals, and the mutex all REFUSE —
-          // conflict semantics on the wire.
-          const status = /refused|in progress/i.test(err.message) ? 409 : 500;
-          res.status(status).json({ error: err.message });
+          // conflict semantics on the wire, mapped by TYPE (err.refused),
+          // never by matching message prose.
+          res.status(err.refused ? 409 : 500).json({ error: err.message });
         }
       });
     });
