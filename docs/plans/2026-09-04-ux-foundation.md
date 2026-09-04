@@ -6,6 +6,32 @@ baseline; ground-up UX from industry best practice, improved for our
 flows; open-source learnability is first-class).
 Vocabulary: CONTEXT.md. Verdict semantics: C1 §2 / resolution.js.
 
+## 0a. Grill round 1 rulings (owner, 2026-09-04)
+
+- **Adopter floor**: (c) now — README-courage, paste-able commands,
+  every failure state self-explains; packaged installer (b) anchored
+  to ROADMAP.
+- **Metrics**: all three adopted (P1 clone→scored scan <30min —
+  FINAL-surface metric; P2 edit→published-applied <2min and P3
+  preflight walk <10min — now-metrics).
+- **Personas**: hats now (one human switches workspaces, state
+  preserved); separate-humans hardening → ROADMAP.
+- **Scanner boundary**: absolute. PLUS two new directives: (1) the
+  rigor of this tool's IA/UX work MIRRORS what the GM scanner needs —
+  a GM-scanner UX overhaul under the same method is a ROADMAP item;
+  (2) CROSS-TOOL VOCABULARY: the two tools must share vocabulary so
+  users can shift between them — CONTEXT.md is the mechanism, and
+  every naming decision here must check against scanner usage.
+- **Workspace names**: all three candidates REJECTED ("none capture
+  the purpose of this tool and this stage of usage") — naming reopens
+  after the stage model settles (round 2).
+- **METHOD DEFECT (owner, on F-N1)**: the grill conflated the
+  now-surface with the FINAL design surface. Correction: every
+  element is designed against the FINAL surface, then mapped to where
+  it lands across Phase 3 and beyond (the PHASE-LANDING MAP). The
+  old piecemeal sequencing questions (Setup-in-Phase-3, Q-UX3/4)
+  dissolve into rows of that map.
+
 ## 0. Method — one layer at a time, correct hierarchy (owner
 direction, 2026-09-04)
 
