@@ -5,8 +5,14 @@
 # Every step tolerates failure; the log is the deliverable.
 name: Capability Probe
 
+# workflow_dispatch only registers once the file reaches the default
+# branch (merge-train-only), so until then the probe fires via a push
+# that touches THIS file — effectively manual, scoped to itself.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/capability-probe.yml'
 
 jobs:
   virtual-bluetooth:
