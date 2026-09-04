@@ -67,6 +67,33 @@ describe('displayDriver — window management', () => {
       );
     });
 
+    test('CHROMIUM_BIN env overrides the browser binary (rung-1 seam)', async () => {
+      // The rung-1 harness has Chromium at a non-default path
+      // (Playwright's build); the venue Pi has chromium-browser on
+      // PATH. Same seam class as PACK_PATH / PROFILE_PATH / DATA_DIR.
+      process.env.CHROMIUM_BIN = '/opt/pw-browsers/chromium';
+      try {
+        const { spawn, execFile } = require('child_process');
+        const mockProc = { pid: 1234, on: jest.fn(), killed: false };
+        spawn.mockReturnValue(mockProc);
+        execFile.mockImplementation((cmd, args, opts, cb) => {
+          if (typeof opts === 'function') { cb = opts; }
+          if (cmd === 'xdotool' && args[0] === 'search' && args[1] === '--name') cb(null, '12345678\n', '');
+          else cb(null, '', '');
+        });
+
+        await displayDriver.showScoreboard();
+
+        expect(spawn).toHaveBeenCalledWith(
+          '/opt/pw-browsers/chromium',
+          expect.any(Array),
+          expect.any(Object)
+        );
+      } finally {
+        delete process.env.CHROMIUM_BIN;
+      }
+    });
+
     test('searches xdotool with the CONFIG window marker — never a hardcoded literal (slice 3a pre-fix 1)', async () => {
       // The driver half of the "Case File" booby-trap coupling
       // (capability-matrix 2.5): before this pin, the mocks above match

@@ -461,7 +461,65 @@ self-inflicted run pileups tripped job timeouts on superseded heads
 were overlap cancellations/timeouts — Integration and Unit+Contract
 passed on every head where they completed).
 
-**Still open in CS.1:** audit continuation as non-root engine (VLC
-spawn green, then the flows), placeholder idle-loop media in
-generate-fixtures, system-wide dbusmock arm, CI job port of the
-harness, two-axis stage review.
+**Non-root audit + live-flow run (fifth increment).** The harness was
+reworked to the venue-faithful process model and the audit completed
+against it:
+
+- **Single-user model:** on the venue Pi everything runs as one
+  non-root user; the harness now mirrors that — session bus, pipewire,
+  Xvfb all run AS the harness user, root does only docker/HA/user
+  creation and the stale-artifact sweep. New `engine.sh start|stop|
+  status` boots the engine itself as that user.
+- **Engine-owned transports:** the harness no longer starts MPD or VLC
+  at all — the engine SELF-HOSTS both (musicService spawns mpd,
+  vlcMprisService spawns cvlc). A harness-owned instance CONTENDS with
+  the engine's child (socket steal on /tmp/aln-mpd.sock, MPRIS
+  bus-name collision — the child-identity confusion finding made
+  concrete). probe.sh's mpd/vlc rows are labeled engine-owned.
+- **down.sh drift finding:** the old teardown killed a pid file up.sh
+  never wrote, which is exactly how two whole process generations
+  accumulated across re-runs. Teardown now kills the EXACT pid files
+  up.sh writes, plus engine children via /tmp/aln-pm-*.pid.
+- **Non-root VLC spawn GREEN:** the engine's own VLC supervisor came
+  up first try as the harness user — D-Bus connected, MPRIS monitor
+  started, ZERO restarts (the root boot looped 13 times in 10 min).
+  7 of 8 services healthy at boot (bluetooth honestly absent).
+- **Two new physics gaps found by the first live-flow run, both now
+  harness arms:** (1) headless VLC accepts the play command but every
+  item lands `stopped` — no X display for the vout; fixed with an
+  Xvfb arm (real X server, virtual screen — exactly "fake physics").
+  (2) MPD's pulse mixer attaches only while the output is open:
+  `setvol` while stopped fails with MPD's obscure "All outputs are
+  disabled" — ALSO a venue-real GM-panel edge (volume slider while
+  music stopped); recorded, not papered over.
+- **One engine seam added (red-first, +1 test):** `CHROMIUM_BIN` env
+  override in displayDriver (the hardcoded `chromium-browser` spawn
+  got EACCES here; same seam class as PACK_PATH/DATA_DIR/LOGS_DIR).
+- **Media placeholders:** generate-fixtures now seeds the idle-loop
+  file and token-declared videos (kai001/rem001) from the committed
+  E2E fixture mp4s, creates public/music with a 30s silence track,
+  and loudly reports any missing cue-referenced sound file (real show
+  content is never fabricated).
+- **`tests/rung1/audit-flows.js` — 13/13 PASS, zero mocks:** admin
+  auth → sync:full (pack identity + 7 healthy services) → session
+  create/start → GM lighting role flips the REAL HA witness register
+  one-hot → player scan of kai001 → engine VLC actually plays it under
+  Xvfb → standing cue `attention-before-video` fires (sound + role
+  `video-playback`, witness flips) → video completes →
+  `restore-after-video` flips the register back to gameplay →
+  pw-play sound → engine-spawned MPD play + setVolume → session end.
+  The full "one truth" chain — pack cue to physical-stand-in light —
+  proven end to end on rung 1.
+- **dbusmock arm system-wide:** apt `python3-dbusmock` rides the
+  python3.12 dbus bindings; probe now reports it ok with no venv.
+- **packNeeds gap (for CS.2):** video FILES are not collected as needs
+  (sound files are, via cues) — the harness had to derive token videos
+  from tokens.json directly. A `video-file` need kind (token `video`
+  fields + cue `video:queue:add` payloads incl. timelines) belongs in
+  collectPackNeeds/resolve so preflight can live-check them.
+
+Backend suite 2815/2815 after the seam.
+
+**Still open in CS.1:** CI job port of the harness (recipe now
+includes apt xdotool/wmctrl/python3-dbusmock + Xvfb), two-axis stage
+review.

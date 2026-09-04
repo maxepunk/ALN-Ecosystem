@@ -19,12 +19,22 @@ PW_OK=false; PW_WHY="pactl cannot reach a pipewire session"
 XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-$RUNG1/xdg}" pactl info >/dev/null 2>&1 \
   && { PW_OK=true; PW_WHY="pactl info responds"; }
 
-MPD_OK=false; MPD_WHY="mpc cannot reach 127.0.0.1:6600"
-mpc -h 127.0.0.1 status >/dev/null 2>&1 && { MPD_OK=true; MPD_WHY="mpc status responds"; }
+# MPD and VLC are ENGINE-OWNED transports (the engine self-hosts both);
+# these report true only while the engine runs — false beforehand is
+# honest, not a harness failure.
+MPD_OK=false
+MPD_WHY="engine-owned: engine self-hosts mpd on /tmp/aln-mpd.sock (engine not running?)"
+MPD_HOST=/tmp/aln-mpd.sock mpc status >/dev/null 2>&1 \
+  && { MPD_OK=true; MPD_WHY="mpc status responds on the engine socket"; }
 
-VLC_OK=false; VLC_WHY="http interface not responding on :8090"
-curl -s -o /dev/null -u ":rung1" http://127.0.0.1:8090/requests/status.json \
-  && { VLC_OK=true; VLC_WHY="status.json responds"; }
+# Engine-faithful VLC check: the same MPRIS dbus-send the engine makes.
+VLC_OK=false
+VLC_WHY="engine-owned: engine self-hosts cvlc on the shared bus (engine not running?)"
+DBUS_SESSION_BUS_ADDRESS="unix:path=$RUNG1/dbus.sock" dbus-send --session \
+  --print-reply --dest=org.mpris.MediaPlayer2.vlc /org/mpris/MediaPlayer2 \
+  org.freedesktop.DBus.Properties.Get \
+  string:org.mpris.MediaPlayer2.Player string:PlaybackStatus \
+  >/dev/null 2>&1 && { VLC_OK=true; VLC_WHY="MPRIS PlaybackStatus responds"; }
 
 HA_OK=false; HA_WHY="no HTTP on :8123"
 c=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8123/auth/providers)
