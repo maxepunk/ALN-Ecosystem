@@ -430,17 +430,54 @@ under, that profile's verdicts visible (rehearsing under the target
 show's full logic); the bindings page (C4) is framed as satisfying
 the rider.
 
-Open L3 decisions (the recomputed frontier):
-1. **Nav naming**: are the four stage words themselves the nav
+Open L3 decisions (frontier RECOMPUTED after the both-ends-inward +
+palette-first rulings — the earlier three-question frontier was
+stale: those rulings reshape two of its questions and open three
+new ones the old round never posed):
+1. **Nav naming (Q16)**: are the four stage words themselves the nav
    labels (Author/Rehearse/Run/Review)? Q11's earlier candidates
    were rejected; these four derive from the ratified loop and must
    read correctly from the scanner and console too (cross-tool
-   vocabulary ruling).
-2. **Rehearse's shape**: a dwellable surface AND a one-keystroke
-   affordance from every editor (Resolve Cut/Edit lesson says both
-   tiers on one data)? Or affordance-only in Phase 3's seam?
-3. **Review v1 content**: what the baseline story-of-the-night
-   reading shows (bundle inspector + team reading + handoff status).
+   vocabulary ruling). Coherence check under palette-first: venue
+   DESIGNING lives inside Author (the designed venue is pack
+   content); venue REALIZING (profiles, bindings) stays
+   cross-cutting — neither becomes a fifth nav item.
+2. **Rehearse's shape (Q17, revised)**: a dwellable surface AND a
+   one-keystroke affordance from every editor (Resolve Cut/Edit
+   lesson says both tiers on one data)? Or affordance-only in Phase
+   3's seam? Now carries the both-ends ruling: Rehearse is ALWAYS
+   profile-labeled — and the affordance needs a default lens (the
+   current target profile, with one-gesture switch to the sim
+   profile: "the show as it will run there" vs "the show's full
+   logic").
+3. **Review v1 content (Q18)**: what the baseline
+   story-of-the-night reading shows (bundle inspector + team
+   reading + handoff status to the game's channel).
+4. **The palette surface (Q19, NEW)**: F-D00 (design-the-venue) has
+   NO landed surface — the ratified Phase-3 pages set (pack manager,
+   mechanics, strings+theme, show designer, content view) contains
+   no hardware/roles editor, yet the pack's hardware/role vocabulary
+   is where a designed venue lives. Does a hardware/roles editor
+   (capability catalog as its palette) join the Phase-3 pages set,
+   or land as a seam (raw-JSON escape hatch edits the block; the
+   surface arrives later)?
+5. **The new-pack threshold (Q20, NEW)**: with three entry points,
+   what does template-at-threshold ask? Proposed: a new pack opens
+   already-rehearsable — the toy template carries the reference
+   kit's designed venue, target lens defaults to the simulation
+   profile, and the threshold offers the three doors (start from
+   this venue / pick a real venue profile / design your own).
+6. **Target-profile mechanics (Q21, NEW)**: the target profile is a
+   LENS — tool/session state shown in the identity chip and used by
+   badges and Rehearse — never stored in the pack (the pack declares
+   NEEDS; profiles realize them; storing a target would create a
+   second source of truth). Confirm, or should a pack be able to
+   RECOMMEND a profile (e.g. the reference kit) non-bindingly?
+Also open at L2 (map rows for the owner): hosted demo (Q-UX4);
+tech-rider view phase (cheap P3 presentation of collectPackNeeds vs
+P4) — including whether the rider needs an EXPORT (a document the
+venue's technician can receive without running the tool) beyond the
+in-tool view; first-run landing precision.
 
 ## 6. Interaction-pattern language (per §3 touch point)
 
@@ -467,10 +504,19 @@ Open L3 decisions (the recomputed frontier):
 - **Leave & return**: workspaces restore last position; the draft
   bar/chip says what was in flight.
 
-## 7. Grill frontier (current)
+## 7. Grill frontier (current — recomputed 2026-09-04 after the
+transcript re-review the owner directed)
 
-Settled: L1 in full (personas r1, flows r1, metrics, boundaries,
-loop model Q13r, Rehearse Q14, Review boundary Q15f). L2 map drafted
-(§4b) — owner rules the rows, esp. hosted-demo (Q-UX4) and first-run
-landing. L3 opens next: §5r's three decisions. L4 stays closed until
-L3 ratifies; L5 approved.
+Settled: L1 in full (personas r1, flows r1 incl. the both-ends-inward
+block, metrics, boundaries, loop model Q13r, Rehearse Q14, Review
+boundary Q15f, three entry points + tech rider + capability catalog +
+reference kit — all owner-initiated, ratified by construction). L2
+map drafted (§4b) — owner rules the rows: hosted demo (Q-UX4),
+tech-rider view phase (+ export question), first-run landing. L3 is
+the live layer: §5r's SIX decisions (Q16 coherence-checked, Q17
+revised by both-ends, Q18, and NEW Q19 palette surface / Q20
+new-pack threshold / Q21 target-profile mechanics — the first
+frontier after both-ends-inward was stale; re-derived, not re-asked).
+L4 stays closed until L3 ratifies; when it opens, the Phase-3 pages
+set itself is re-cut under the ratified structure (the pre-foundation
+page list predates Q19/Q20 and the rehearse affordance). L5 approved.
