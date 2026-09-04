@@ -71,6 +71,11 @@ const FLOOR_ACTION_PREFIXES = Object.freeze([
   ['lighting:', 'show-control'],
   ['held:', 'show-control'],
   ['scoreboard:page', 'show-control'],
+  // Health probes drive the registry that gates operator commands and
+  // mints held items — show-ops tooling, never display-drivable (B0
+  // close review: this was the ONE gm:command family outside the map,
+  // reachable by an observe socket).
+  ['service:', 'show-control'],
   ['score:', 'score-intervention'],
   ['transaction:create', 'score-intervention'],
   ['transaction:delete', 'score-intervention'],

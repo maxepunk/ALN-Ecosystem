@@ -60,6 +60,21 @@ function landingPlan(files) {
   return files.map((f) => f.path).sort().concat('pack-manifest.json');
 }
 
+/**
+ * The sibling-tmp name a file lands through: DOT-prefixed on the
+ * basename, so a crash mid-landing leaves only dotfiles — which the
+ * manifest builder's walk() skips — never inventoriable debris that
+ * would fork the next rebuild's contentHash (B0 close review).
+ * @param {string} rel - inventory-relative path
+ * @param {string} nonce - per-publish nonce
+ * @returns {string} relative tmp path in the same directory
+ */
+function landingTmpName(rel, nonce) {
+  const dir = path.dirname(rel);
+  const base = `.pub-${nonce}-${path.basename(rel)}`;
+  return dir === '.' ? base : `${dir}/${base}`;
+}
+
 /** Run the engine's activation gate against a directory (§7 pin: execFile/argv only). */
 function runGate(runnerPath, packDir) {
   return new Promise((resolve, reject) => {
@@ -89,6 +104,7 @@ async function publishDraft(store, draftId, { runnerPath }) {
   publishInProgress = true;
   const stagingDir = path.join(store.storeDir, '.staging',
     `${draftId}-${crypto.randomBytes(3).toString('hex')}`);
+  let landingTmps = [];
   try {
     const stamp = store.getDraft(draftId);
     if (!stamp) throw new Error(`unknown draft: ${draftId}`);
@@ -146,19 +162,24 @@ async function publishDraft(store, draftId, { runnerPath }) {
         'Create a fresh draft from the live pack and re-apply your edits.');
     }
 
-    // (5) Land: sibling-stage every file, then ordered rename, manifest
+    // (5) Land: sibling-stage every file (dot-prefixed tmp names —
+    // invisible to the manifest builder's walk, so a crash here can
+    // never poison a later rebuild), then ordered rename, manifest
     // LAST. Renames are atomic per file on the same filesystem.
     const plan = landingPlan(stagedManifest.files);
-    const tmpSuffix = `.publish-${crypto.randomBytes(3).toString('hex')}`;
+    const nonce = crypto.randomBytes(3).toString('hex');
+    landingTmps = plan.map((rel) => resolveInside(target, landingTmpName(rel, nonce)));
     for (const rel of plan) {
-      const dest = resolveInside(target, rel);
-      fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.copyFileSync(path.join(stagingDir, rel), dest + tmpSuffix);
+      const tmp = resolveInside(target, landingTmpName(rel, nonce));
+      fs.mkdirSync(path.dirname(tmp), { recursive: true });
+      fs.copyFileSync(path.join(stagingDir, rel), tmp);
     }
     for (const rel of plan) {
-      const dest = resolveInside(target, rel);
-      fs.renameSync(dest + tmpSuffix, dest);
+      fs.renameSync(
+        resolveInside(target, landingTmpName(rel, nonce)),
+        resolveInside(target, rel));
     }
+    landingTmps = [];
 
     // Draft-deleted files: inventoried by the OLD live manifest, absent
     // from the new one — removed AFTER the manifest lands (the manifest
@@ -183,7 +204,12 @@ async function publishDraft(store, draftId, { runnerPath }) {
         'the live pack may be mid-edit by another writer; re-draft and re-publish');
     }
 
-    // (7) Publish log + base re-stamp (through the store — atomic).
+    // (7) Publish log + base re-stamp. The pack HAS LANDED at this
+    // point — a failure here (draft deleted mid-publish, disk error on
+    // the log) must never report the publish as failed (B0 close
+    // review: it returned 500 while the live pack WAS published, and a
+    // missed re-stamp turned every later publish into a false
+    // conflict). Report success with a loud warning instead.
     const entry = {
       when: new Date().toISOString(),
       draftId,
@@ -191,15 +217,27 @@ async function publishDraft(store, draftId, { runnerPath }) {
       contentHash: stagedManifest.contentHash,
       base: stamp.base.contentHash,
     };
-    fs.appendFileSync(path.join(store.storeDir, 'publish-log.jsonl'),
-      JSON.stringify(entry) + '\n');
-    store.restampBase(draftId, stagedManifest.contentHash, entry.when);
+    try {
+      fs.appendFileSync(path.join(store.storeDir, 'publish-log.jsonl'),
+        JSON.stringify(entry) + '\n');
+      store.restampBase(draftId, stagedManifest.contentHash, entry.when);
+    } catch (postErr) {
+      entry.warning =
+        `published, but post-landing bookkeeping failed: ${postErr.message} — ` +
+        'the live pack IS updated; if the draft still exists, re-draft before further edits';
+      console.warn(`[publish] ${entry.warning}`);
+    }
 
     return entry;
   } finally {
+    // Staging always dies; any landing tmps left by a mid-landing
+    // failure are dotfiles (builder-invisible) — sweep them best-effort.
     fs.rmSync(stagingDir, { recursive: true, force: true });
+    for (const tmp of landingTmps) {
+      try { fs.rmSync(tmp, { force: true }); } catch { /* best-effort */ }
+    }
     publishInProgress = false;
   }
 }
 
-module.exports = { publishDraft, landingPlan, PublishRefused };
+module.exports = { publishDraft, landingPlan, landingTmpName, PublishRefused };

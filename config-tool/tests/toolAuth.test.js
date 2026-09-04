@@ -88,6 +88,19 @@ describe('toolAuth', () => {
     });
   });
 
+  describe('exposure guard (B0 close review)', () => {
+    it('names each live default credential as a problem; a configured .env is exposable', () => {
+      assert.deepStrictEqual(auth.exposureProblems(), []);
+
+      fs.writeFileSync(envPath, 'PORT=3000\n');
+      const bare = new ToolAuth({ envPath });
+      const problems = bare.exposureProblems();
+      assert.strictEqual(problems.length, 2);
+      assert.ok(problems.some((p) => /JWT_SECRET/.test(p)));
+      assert.ok(problems.some((p) => /ADMIN_PASSWORD/.test(p)));
+    });
+  });
+
   describe('the orchestrator half of the aud pair (D-B0.3r2)', () => {
     // Obtained FROM the backend's /api/admin/auth at login (so it lives
     // in the backend's revocable store) and held SERVER-SIDE for the

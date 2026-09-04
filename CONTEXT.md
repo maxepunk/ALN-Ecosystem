@@ -381,21 +381,37 @@ you intend.
   standing constraint (ROADMAP §2.1).
 - **The floor.** Three functions are always operator-only: session
   lifecycle, show control, and score intervention. A pack may assign
-  any other function to lower tiers (owner-fixed, 2026-07-09). Today
-  the pack schema locks the floor structurally (`game.schema.json`
-  pins the floor functions to `["staffed"]`) and a contract test
-  checks it at authoring time. The activation gate does not read the
-  `functions` block, and no runtime check enforces the full
-  function-to-tier assignment yet. One narrow execution-time floor
-  guard exists as of slice 4 (its close review):
-  `commandExecutor.executeCommand` refuses any command from a cue
-  source (`source !== 'gm'`) that is not in the `CUE_ACTIONS`
-  vocabulary. Pack content is the lowest trust tier, so it cannot
-  drive session lifecycle, score intervention, or system reset, even
-  if the activation gate is bypassed. The general issuance-time and
-  execution-time enforcement (mapping every function to its tier)
-  still arrives with the auth work; Phase 3 builds only the
-  operator-tier subset (program §13.6).
+  any other function to lower tiers (owner-fixed, 2026-07-09). Since
+  B0 (one-auth v1) enforcement is REAL at both ends: grants are
+  computed at ISSUANCE (`gameRules/grants.js` —
+  `packAssignment(class) ∩ tierCeiling(tier) − floor-if-non-operator`,
+  minted into every token's `functions` claim alongside `tier`,
+  `class`, `deviceId`, `packHash`), and re-checked at EXECUTION — the
+  `commandExecutor` operator floor refuses any gm-boundary FLOOR
+  action whose actor lacks the mapped function (deny-by-default,
+  every transport incl. the GM WebSocket path), with the older cue
+  floor beside it (cue-sourced commands may invoke only `CUE_ACTIONS`
+  — pack content is the lowest trust tier). v1's grant TABLE is the
+  baked operator-degenerate case (operator = full floor, so live ALN
+  behavior is unchanged); pack-declared function assignments and the
+  finer non-floor taxonomy are Phase-4 E4. The pack schema still
+  locks the floor structurally (`game.schema.json` pins the floor
+  functions to `["staffed"]`).
+- **Draft / publish (the pack store).** Editing pack content never
+  touches the live pack: the config-tool copies it into a tool-private
+  DRAFT (stamped with the live `base` contentHash), edits land there,
+  and PUBLISH is the one landing step — engine's own activation gate
+  (via the child-process runner), refuse-on-base-mismatch (Q11(a):
+  conflict = re-draft), ordered rename with the manifest last, landed
+  re-verify, publish log. Publish of an unedited draft is a content
+  no-op (byte-identity, proven on the production pack).
+- **Observe token.** The scoreboard's credential class: device-tier,
+  display-class, functions exactly `["observe"]`, minted per page
+  serve into its own capped store (never beside operator tokens). A
+  read-only broadcast consumer — every HTTP gate and every
+  command/transaction path refuses it, and it never registers as a GM
+  station. Replaced the ADMIN_PASSWORD that used to ship in every
+  venue TV's page source.
 - **Pseudonymous default.** The engine's only built-in identity is the
   device or session id. Whether a person is ever named is each game's
   design choice, never an engine requirement.

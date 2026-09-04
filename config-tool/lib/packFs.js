@@ -30,7 +30,10 @@ function resolveInside(baseDir, relPath) {
 
 /**
  * Copy one inventoried file between pack dirs. lstat (not stat): a
- * symlink must be seen as itself, never followed.
+ * symlink must be seen as itself, never followed — and the PARENT
+ * directory is realpath-checked too (B0 close review: lstat on the
+ * final component alone lets a symlinked directory component resolve
+ * "inside" lexically while reading outside the pack).
  */
 function copyRegular(srcDir, destDir, relPath) {
   const src = resolveInside(srcDir, relPath);
@@ -39,6 +42,12 @@ function copyRegular(srcDir, destDir, relPath) {
   if (!st.isFile()) {
     throw new Error(
       `refusing to copy ${relPath}: not a regular file (symlinks and specials never travel)`);
+  }
+  const realParent = fs.realpathSync(path.dirname(src));
+  const realBase = fs.realpathSync(path.resolve(srcDir));
+  if (realParent !== realBase && !realParent.startsWith(realBase + path.sep)) {
+    throw new Error(
+      `refusing to copy ${relPath}: a directory component resolves outside the pack (symlink)`);
   }
   fs.mkdirSync(path.dirname(dest), { recursive: true });
   fs.copyFileSync(src, dest);

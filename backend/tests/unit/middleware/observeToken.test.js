@@ -79,4 +79,18 @@ describe('observe token — claims and store separation', () => {
     expect(auth.verifyObserveToken(observe)).toBeNull();
     expect(auth.verifyToken(admin)).not.toBeNull();
   });
+
+  it('the store is CAPPED: the mint rides an unauthenticated serve, so beyond the cap the oldest entry is evicted (B0 close review)', () => {
+    auth.invalidateObserveTokens();
+    const first = auth.generateObserveToken('TV_FIRST');
+    for (let i = 0; i < 500; i++) {
+      auth.generateObserveToken(`TV_${i}`);
+    }
+    // A LAN curl loop can churn tokens but never grow the heap: the
+    // earliest mint has been evicted, the newest still verifies.
+    expect(auth.verifyObserveToken(first)).toBeNull();
+    const latest = auth.generateObserveToken('TV_LATEST');
+    expect(auth.verifyObserveToken(latest)).not.toBeNull();
+    auth.invalidateObserveTokens();
+  });
 });

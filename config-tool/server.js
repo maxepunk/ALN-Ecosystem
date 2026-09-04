@@ -48,14 +48,29 @@ const runnerPath = path.resolve(__dirname, '../backend/scripts/validate-pack.js'
 
 // Tool auth (B0 BS.3, D-B0.3r2): password → operator token
 // (aud 'config-tool'), from the SAME backend/.env the backend reads.
-// Login stays open; mutating routes require the token ALWAYS, reads
-// too when bound beyond loopback.
+// Login stays open; EVERY other API route requires the token (reads
+// included, loopback included — D-B0.2r2, see the enforce mount below).
 const toolAuth = new ToolAuth({
   envPath: configManager.paths.envPath,
   // Login also obtains the ORCHESTRATOR-aud half of the pair (for the
   // gated music-playlist proxy) — the SAME address the proxy uses.
   orchestratorUrl: ORCHESTRATOR_URL,
 });
+
+// Default credentials are PUBLIC constants and tool tokens have no
+// issued-token store — exposing the tool beyond loopback with them live
+// means forgeable operator tokens (B0 close review). Refuse outright.
+const exposureProblems = toolAuth.exposureProblems();
+if (boundBeyondLoopback && exposureProblems.length > 0) {
+  console.error(
+    'REFUSING to bind beyond loopback with default credentials:\n  - ' +
+    exposureProblems.join('\n  - ') +
+    '\nSet real values in backend/.env or drop CONFIG_TOOL_HOST.');
+  process.exit(1);
+}
+if (exposureProblems.length > 0) {
+  console.warn('WARNING: default credentials are live:\n  - ' + exposureProblems.join('\n  - '));
+}
 
 // Static file serving for asset preview
 app.use('/audio', express.static(configManager.paths.soundsDir));

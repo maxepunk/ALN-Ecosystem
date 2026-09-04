@@ -64,7 +64,7 @@ function createSocketServer(httpServer) {
       // (tier/functions), never the client-asserted deviceType (S2):
       // an observe socket receives broadcasts but every command and
       // transaction path refuses it.
-      let decoded = verifyToken(token);
+      let decoded = verifyToken(token, { audience: 'orchestrator' });
       if (decoded && decoded.role !== 'admin') decoded = null;
       if (!decoded) decoded = verifyObserveToken(token);
       if (!decoded) {
@@ -111,7 +111,13 @@ function createSocketServer(httpServer) {
       // zero functions and fail the floor closed.
       socket.tier = decoded.tier || null;
       socket.functions = Array.isArray(decoded.functions) ? decoded.functions : [];
-      socket.deviceId = deviceId;
+      // Display-class identity comes from the VERIFIED token, never the
+      // client assertion (B0 close review: an observe socket asserting a
+      // real GM's deviceId would flap that station's tracking on its own
+      // disconnect — deviceTracking keys off socket.deviceId).
+      socket.deviceId = decoded.tier === 'device'
+        ? (decoded.deviceId || deviceId)
+        : deviceId;
       socket.deviceType = deviceType;
       socket.version = version || '1.0.0';
       socket.packHash = packHash || null;

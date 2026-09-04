@@ -22,6 +22,7 @@ const persistenceService = require('./persistenceService');
 const serviceHealthRegistry = require('./serviceHealthRegistry');
 const listenerRegistry = require('../websocket/listenerRegistry');
 const { cleanupBroadcastListeners, setupBroadcastListeners } = require('../websocket/broadcasts');
+const { invalidateObserveTokens } = require('../middleware/auth');
 
 /**
  * Perform complete system reset
@@ -121,6 +122,11 @@ async function performSystemReset(io, services) {
   if (musicService) {
     musicService.reset();
   }
+
+  // Rotate observe tokens (one-auth S8: display sessions die with the
+  // system reset; GM sessions live in the separate admin store and are
+  // untouched. Kiosk scoreboards re-serve and re-mint on relaunch.)
+  invalidateObserveTokens();
 
   // Reset health registry (clears stale health state from previous session)
   serviceHealthRegistry.reset();

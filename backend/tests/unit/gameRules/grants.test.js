@@ -62,6 +62,10 @@ describe('gameRules/grants — the one-auth v1 table', () => {
     expect(grants.requiredFloorFunction('music:play')).toBe('show-control');
     expect(grants.requiredFloorFunction('score:adjust')).toBe('score-intervention');
     expect(grants.requiredFloorFunction('transaction:delete')).toBe('score-intervention');
+    // B0 close review: health probes drive the registry that gates
+    // operator commands — the service: family joined the map (it was
+    // the ONE gm:command family an observe socket could fire).
+    expect(grants.requiredFloorFunction('service:check')).toBe('show-control');
     // Non-floor actions return null — v1 leaves them to the operator
     // all-or-nothing ceiling (finer taxonomy is E4).
     expect(grants.requiredFloorFunction('transaction:submit')).toBeNull();

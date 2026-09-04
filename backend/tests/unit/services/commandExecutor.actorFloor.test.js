@@ -51,8 +51,22 @@ describe('commandExecutor operator floor (S3/S7/D2)', () => {
     expect(String(result.message)).not.toMatch(/operator floor/);
   });
 
-  it('a NON-floor action with no actor is not floor-refused (v1 leaves it to the ceiling)', async () => {
-    const result = await executeCommand({ action: 'service:check', payload: {}, source: 'gm' });
+  // service:check WAS this test's non-floor example until the B0 close
+  // review found it was the ONE gm:command family outside the floor map
+  // (an observe socket could drive the health probes) — the service:
+  // family is show-control now, and the deliberately-null action is the
+  // only remaining non-floor one.
+  it('a NON-floor action with no actor is not floor-refused (transaction:submit is deliberately null)', async () => {
+    const result = await executeCommand({ action: 'transaction:submit', payload: {}, source: 'gm' });
     expect(String(result.message)).not.toMatch(/operator floor/);
+  });
+
+  it('service:check joined the floor: an actor without show-control is refused (B0 close review)', async () => {
+    const result = await executeCommand({
+      action: 'service:check', payload: {}, source: 'gm',
+      actor: { tier: 'device', functions: ['observe'] },
+    });
+    expect(result.success).toBe(false);
+    expect(String(result.message)).toMatch(/show-control.*operator floor|operator floor/);
   });
 });

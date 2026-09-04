@@ -183,6 +183,13 @@ loginCancel.addEventListener('click', () => {
 function updateDraftBar() {
   renderDraftBar(draftBarEl, appStore.get().draft, {
     onPublish: async () => {
+      // Publish lands what is ON DISK in the draft — unsaved on-screen
+      // edits would be silently wiped by the post-publish re-render (B0
+      // close review): make the operator choose.
+      if (appStore.isDirty() && !window.confirm(
+        'You have unsaved edits that are NOT in the draft — publishing will discard them. Continue?')) {
+        return;
+      }
       try {
         const entry = await api.publishCurrentDraft();
         toast(`Pack published (${entry.contentHash.slice(0, 15)}…)`, 'success');
@@ -195,7 +202,10 @@ function updateDraftBar() {
       }
     },
     onDiscard: async () => {
-      if (!window.confirm('Discard this draft? Unpublished pack edits are lost.')) return;
+      const warning = appStore.isDirty()
+        ? 'Discard this draft? Unpublished pack edits AND your unsaved on-screen edits are lost.'
+        : 'Discard this draft? Unpublished pack edits are lost.';
+      if (!window.confirm(warning)) return;
       try {
         await api.discardCurrentDraft();
         toast('Draft discarded', 'info');

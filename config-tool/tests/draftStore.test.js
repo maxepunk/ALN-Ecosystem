@@ -95,6 +95,17 @@ describe('draftStore', () => {
       assert.throws(() => store.createDraft(), /pack-manifest\.json/);
     });
 
+    it('REFUSES an inventoried path whose DIRECTORY component is a symlink (B0 close review)', () => {
+      fs.mkdirSync(path.join(tmpDir, 'outside-dir'));
+      fs.writeFileSync(path.join(tmpDir, 'outside-dir', 'leak.json'), '{}\n');
+      fs.symlinkSync(path.join(tmpDir, 'outside-dir'), path.join(sourceDir, 'assets'));
+      const manifestPath = path.join(sourceDir, 'pack-manifest.json');
+      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+      manifest.files.push({ path: 'assets/leak.json', role: 'other', sha1: '0'.repeat(40), size: 3 });
+      fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
+      assert.throws(() => store.createDraft(), /directory component.*symlink|symlink/i);
+    });
+
     it('REFUSES a manifest inventory path that escapes the pack dir', () => {
       const manifestPath = path.join(sourceDir, 'pack-manifest.json');
       const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));

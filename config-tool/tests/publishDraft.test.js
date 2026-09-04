@@ -189,4 +189,32 @@ describe('publishDraft', () => {
       plan.slice(0, -1).sort(),
       ['game.json', 'strings.json', 'tokens.json']);
   });
+
+  it('landing tmp names are DOT-prefixed in place — a crash leaves only builder-invisible dotfiles (B0 close review)', () => {
+    const { landingTmpName } = require('../lib/publish');
+    assert.strictEqual(landingTmpName('game.json', 'abc123'), '.pub-abc123-game.json');
+    assert.strictEqual(
+      landingTmpName('assets/images/x.bmp', 'abc123'),
+      'assets/images/.pub-abc123-x.bmp');
+    // The builder's walk() skips entries starting with '.' — so debris
+    // from a mid-landing crash can never be inventoried into a rebuilt
+    // manifest (the old `<file>.publish-XXXX` suffix names WERE).
+    assert.ok(landingTmpName('assets/images/x.bmp', 'n').split('/').pop().startsWith('.'));
+  });
+
+  it('a failure AFTER landing reports success with a warning — the pack IS published (B0 close review)', async () => {
+    const stamp = store.createDraft();
+    const originalRestamp = store.restampBase.bind(store);
+    store.restampBase = () => { throw new Error('draft vanished mid-publish'); };
+    try {
+      const entry = await publishDraft(store, stamp.draftId, opts);
+      assert.ok(entry.contentHash, 'publish must RESOLVE — the live pack landed');
+      assert.match(entry.warning, /post-landing bookkeeping failed/);
+      assert.strictEqual(
+        readJson(path.join(liveDir, 'pack-manifest.json')).contentHash,
+        entry.contentHash, 'the landed pack must match the reported publish');
+    } finally {
+      store.restampBase = originalRestamp;
+    }
+  });
 });

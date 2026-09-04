@@ -404,4 +404,36 @@ describe('Handshake packHash reporting (Phase 3 A2)', () => {
       }
     });
   });
+
+  describe('Display-class identity (B0 close review)', () => {
+    it('overrides the client-asserted deviceId with the observe token claim — a display socket can never wear a GM station identity', (done) => {
+      const { generateObserveToken } = require('../../../src/middleware/auth');
+      const observe = generateObserveToken('SCOREBOARD_CLAIMED');
+      const client = Client(`http://localhost:${port}`, {
+        auth: {
+          token: observe,
+          deviceId: 'GM_001', // a real station's id, asserted by the client
+          deviceType: 'gm',
+          version: '1.0.0',
+        },
+      });
+      client.on('connect', () => {
+        try {
+          const serverSocket = [...io.of('/').sockets.values()]
+            .find((s) => s.tier === 'device');
+          expect(serverSocket.deviceId).toBe('SCOREBOARD_CLAIMED');
+          expect(serverSocket.functions).toEqual(['observe']);
+          client.close();
+          done();
+        } catch (err) {
+          client.close();
+          done(err);
+        }
+      });
+      client.on('connect_error', (error) => {
+        client.close();
+        done(new Error(`observe token rejected at handshake: ${error.message}`));
+      });
+    });
+  });
 });

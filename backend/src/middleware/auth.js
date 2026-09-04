@@ -19,6 +19,12 @@ const tokenExpiry = new Map();
 // touches a live GM session.
 const observeTokens = new Map(); // token → expiry ms
 
+// The mint rides an UNAUTHENTICATED page serve (GET /scoreboard), so
+// the store is bounded (B0 close review): beyond the cap the oldest
+// entry is evicted on insert — a LAN curl loop can churn tokens but
+// never grow the heap. Far above any real venue's TV count.
+const MAX_OBSERVE_TOKENS = 500;
+
 /**
  * Resolve the ACTIVE pack's contentHash for token claims — records
  * which pack a token's grants were computed against (stale-grant
@@ -136,6 +142,10 @@ function generateObserveToken(deviceId = 'SCOREBOARD') {
       audience: 'orchestrator',
     }
   );
+  if (observeTokens.size >= MAX_OBSERVE_TOKENS) {
+    // Map preserves insertion order — the first key is the oldest mint.
+    observeTokens.delete(observeTokens.keys().next().value);
+  }
   observeTokens.set(token, Date.now() + (24 * 60 * 60 * 1000));
   return token;
 }
@@ -177,7 +187,8 @@ function invalidateObserveTokens() {
 }
 
 /**
- * Clean up expired tokens
+ * Clean up expired tokens — BOTH stores (the observe store was
+ * lazily-reaped only until the B0 close review).
  */
 function cleanupExpiredTokens() {
   const now = Date.now();
@@ -186,6 +197,9 @@ function cleanupExpiredTokens() {
       adminTokens.delete(token);
       tokenExpiry.delete(token);
     }
+  }
+  for (const [token, expiry] of observeTokens.entries()) {
+    if (now > expiry) observeTokens.delete(token);
   }
 }
 
@@ -196,6 +210,14 @@ function cleanupExpiredTokens() {
  * never passes (red-team S1: decode alone is not authorization; the
  * in-memory store empties on restart, so no live compat window exists).
  * @private
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} next - Express next
+ * @param {Object} opts
+ * @param {string} [opts.audience] - required aud claim (jwt-enforced)
+ * @param {string} [opts.requiredTier] - tier the token must carry
+ * @param {string} [opts.requiredFunction] - granted function required
+ * @returns {void} responds 401/403 or calls next
  */
 function _authenticate(req, res, next, { audience, requiredTier, requiredFunction }) {
   try {

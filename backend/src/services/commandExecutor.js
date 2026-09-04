@@ -97,6 +97,9 @@ const REQUIRED_PAYLOAD_FIELDS = {
  * @param {string} [params.trigger] - Provenance string when source is 'cue'
  * @param {string} [params.deviceId] - Device ID (for logging/transactions)
  * @param {string} [params.deviceType] - Device type (for transactions)
+ * @param {{tier?: string, functions?: string[]}} [params.actor] - The
+ *   caller's verified identity for the operator floor (gm-boundary
+ *   commands hitting a FLOOR action must present granted functions)
  * @returns {Promise<{success: boolean, message: string, data?: any, source: string}>}
  */
 async function executeCommand({ action, payload = {}, source = 'gm', trigger, deviceId, deviceType, actor }) {

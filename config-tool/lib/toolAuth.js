@@ -54,6 +54,30 @@ class ToolAuth {
     return this._orchestratorToken;
   }
 
+  /**
+   * Problems that make exposing the tool beyond loopback UNSAFE: the
+   * backend-default credentials are PUBLIC constants, and verify() has
+   * no issued-token store — with the default secret an attacker forges
+   * operator tokens without the password (B0 close review). server.js
+   * refuses to bind beyond loopback while any problem stands, and
+   * warns on loopback.
+   * @returns {string[]} problems (empty = exposable)
+   */
+  exposureProblems() {
+    let values = {};
+    try {
+      values = readEnv(this.envPath).values;
+    } catch { /* missing .env = both defaults live */ }
+    const problems = [];
+    if (!values.JWT_SECRET) {
+      problems.push('JWT_SECRET is unset in backend/.env — tool tokens are forgeable with the public default secret');
+    }
+    if (!values.ADMIN_PASSWORD) {
+      problems.push("ADMIN_PASSWORD is unset in backend/.env — the login password is the public default 'admin'");
+    }
+    return problems;
+  }
+
   // Best-effort: the same fetch posture as the music proxy (a 5s bound,
   // failure degrades — proxied writes then surface the backend's 401).
   async _fetchOrchestratorToken(password) {
