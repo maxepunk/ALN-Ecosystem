@@ -357,7 +357,8 @@ Every element decided on the FINAL surface, landed by phase.
 | Native token authoring | reserved room only (owner ruling) | P5 charter (Notion → adapter) |
 | Packaged installer / hosted demo | none | OSS milestone (installer ruled 0a; hosted demo = OPEN, Q-UX4) |
 | Tech-rider view (needs → human-readable rider) | candidate: cheap presentation of shipped collectPackNeeds — owner call | else P4 |
-| Capability catalog (the palette) | SEAM: BS.1 vocabulary endpoint is the seed data | surface lands with the hardware/roles editor |
+| Hardware/roles editor (the designed venue's surface) | **LANDS P3 (owner-RULED, answer 19: "joins the set. Critical for everything downstream")** — joins the pages re-cut | grows with Track D |
+| Capability catalog (the palette) | census FIRST (owner-ruled design exercise: enumerate every hardware surface the system allows; downstream IA/UX designed against it); BS.1 vocabulary endpoint is the seed data | surface grows with the editor |
 | Reference kit (published rider + sim fulfillment) | defined alongside toy pack | physical kit at rung 2 / OSS starter list |
 | GM-scanner UX overhaul (same method) | none | ROADMAP item (round-1 ruling) |
 
@@ -430,54 +431,74 @@ under, that profile's verdicts visible (rehearsing under the target
 show's full logic); the bindings page (C4) is framed as satisfying
 the rider.
 
-Open L3 decisions (frontier RECOMPUTED after the both-ends-inward +
-palette-first rulings — the earlier three-question frontier was
-stale: those rulings reshape two of its questions and open three
-new ones the old round never posed):
-1. **Nav naming (Q16)**: are the four stage words themselves the nav
-   labels (Author/Rehearse/Run/Review)? Q11's earlier candidates
-   were rejected; these four derive from the ratified loop and must
-   read correctly from the scanner and console too (cross-tool
-   vocabulary ruling). Coherence check under palette-first: venue
-   DESIGNING lives inside Author (the designed venue is pack
-   content); venue REALIZING (profiles, bindings) stays
-   cross-cutting — neither becomes a fifth nav item.
-2. **Rehearse's shape (Q17, revised)**: a dwellable surface AND a
-   one-keystroke affordance from every editor (Resolve Cut/Edit
-   lesson says both tiers on one data)? Or affordance-only in Phase
-   3's seam? Now carries the both-ends ruling: Rehearse is ALWAYS
-   profile-labeled — and the affordance needs a default lens (the
-   current target profile, with one-gesture switch to the sim
-   profile: "the show as it will run there" vs "the show's full
-   logic").
-3. **Review v1 content (Q18)**: what the baseline
-   story-of-the-night reading shows (bundle inspector + team
-   reading + handoff status to the game's channel).
-4. **The palette surface (Q19, NEW)**: F-D00 (design-the-venue) has
-   NO landed surface — the ratified Phase-3 pages set (pack manager,
-   mechanics, strings+theme, show designer, content view) contains
-   no hardware/roles editor, yet the pack's hardware/role vocabulary
-   is where a designed venue lives. Does a hardware/roles editor
-   (capability catalog as its palette) join the Phase-3 pages set,
-   or land as a seam (raw-JSON escape hatch edits the block; the
-   surface arrives later)?
-5. **The new-pack threshold (Q20, NEW)**: with three entry points,
-   what does template-at-threshold ask? Proposed: a new pack opens
-   already-rehearsable — the toy template carries the reference
-   kit's designed venue, target lens defaults to the simulation
-   profile, and the threshold offers the three doors (start from
-   this venue / pick a real venue profile / design your own).
-6. **Target-profile mechanics (Q21, NEW)**: the target profile is a
-   LENS — tool/session state shown in the identity chip and used by
-   badges and Rehearse — never stored in the pack (the pack declares
-   NEEDS; profiles realize them; storing a target would create a
-   second source of truth). Confirm, or should a pack be able to
-   RECOMMEND a profile (e.g. the reference kit) non-bindingly?
-Also open at L2 (map rows for the owner): hosted demo (Q-UX4);
-tech-rider view phase (cheap P3 presentation of collectPackNeeds vs
-P4) — including whether the rider needs an EXPORT (a document the
-venue's technician can receive without running the tool) beyond the
-in-tool view; first-run landing precision.
+**Owner corrections 2026-09-04 (answers 19–21, after a directed
+re-load of the §10-era transcript + the shipped mechanisms):**
+- **Q19 RULED: the hardware/roles editor JOINS the Phase-3 pages
+  set** ("critical for everything downstream"). And the CAPABILITY
+  CENSUS — enumerating every hardware surface the system can allow —
+  is itself a design exercise that the downstream IA/UX is designed
+  against intentionally. Census is pre-work for the pages re-cut.
+- **Q20 RULED (by question): there is NO difference between "a
+  simulation" and a show pack before it is deployed.** ALN today is
+  the proof: pre-cutover, the ALN pack's only realizations are
+  non-venue profiles (dev container, rung-1, CI). A pack is always
+  just the show; profiles are PLURAL and every environment is
+  partial (venue/home/preview/CI — ratified r3); "simulation" is
+  merely a profile whose bindings point at software stand-ins.
+  `generateSimulationProfile(needs)` derives such a profile FROM the
+  pack's own needs so everything is met in software. Deployment
+  never transforms the pack — it is the day a venue's profile
+  realizes the same pack with physical bindings.
+- **Q21 RULED: "target profile as a lens" was a distinction without
+  a difference — WITHDRAWN.** The architecture already has the
+  thing: the tool is always working against SOME orchestrator
+  (venue or preview), that orchestrator holds a real profile, and
+  verdicts already carry profile identity + depth (r3). "Authoring
+  for venue X" = handing X's profile document to your preview
+  orchestrator (absences realize as dormant — every environment
+  partial). Checking X without running anything = a pure paper
+  resolve() against its document, which IS the tech-rider/verdict
+  report. No new state, no lens, nothing stored in the pack. The
+  identity chip's profile half is already the display of "which
+  venue am I looking through."
+
+Open L3 decisions (frontier r3):
+1. **Nav words (Q16r)**: owner counter-proposal on the table —
+   Design / Author / Rehearse / Run — plus the sharper question: is
+   the tool's fourth item RUN or DEPLOY (the GM scanner holding
+   Run)? Analysis: the tool's verbs at that stage are deploy-shaped
+   (publish → apply/E10 → satisfy the rider → preflight → hand off);
+   the scanner owns show-time. Recommendation: tool nav ends in
+   DEPLOY (honest to its own verbs; the handoff teaching is
+   automatic), while Run stays the cross-tool STAGE word owned by
+   the scanner's surface. On Design-vs-Author as separate items: by
+   the ratified stage test both edit the pack, share one draft
+   lifecycle, one publish, one Rehearse — so venue-designing reads
+   as the first ROOM of Author (the Q19 hardware/roles editor), not
+   a peer stage; held for the owner (his counter-proposal implies
+   otherwise and Review's absence from it needs confirming).
+2. **Rehearse's shape (Q17r, restated plainly)**: both candidate
+   shapes are the SAME mechanism — the draft running on the preview
+   orchestrator under some profile — differing only in how much of
+   the player's night you perform: (a) a Rehearse BUTTON in every
+   editor (play the moment I'm editing, watch the replica panes /
+   witnesses react); (b) a Rehearse PAGE (perform the player's
+   actions and walk the whole night). D-P3r2 already ships (a)'s
+   engine; Track D charts the deep tooling. Question: does Phase 3
+   build only the button + seam, or also the walkable page?
+3. **Review v1 content (Q18)**: bundle inspector + story-of-the-
+   night team reading + handoff status. (Owner answered /wait-what —
+   re-pitched in-session; ruling still open.)
+4. **The new-pack threshold (Q22)**: with three entry points, the
+   toy template opens already-rehearsable (its needs met by a
+   generated simulation profile on the preview orchestrator) and the
+   threshold offers three doors: start from the reference kit /
+   hand a real venue's profile to the preview / design your own
+   venue first (the Q19 editor).
+Also open at L2 (map rows): hosted demo (Q-UX4); tech-rider view
+phase (cheap P3 presentation of collectPackNeeds vs P4) + whether
+the rider needs an EXPORT for a technician who never runs the tool;
+first-run landing precision.
 
 ## 6. Interaction-pattern language (per §3 touch point)
 

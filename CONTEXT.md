@@ -454,6 +454,15 @@ the GM scanner, and a game's own post-show tooling)
   try-my-change loop, Track D's simulation tooling, and engineering's
   rung-1 rig are all Rehearse. Input transports (NFC, QR, a button)
   are venue-bound physics, never the designer's frame.
+- **Simulation.** Not a mode and not a special artifact. A
+  simulation is an ordinary installation profile whose bindings
+  point at software stand-ins (witness scenes, placeholder files)
+  instead of physical fixtures. One can be generated from a pack's
+  own needs so every need is met. A show pack before deployment IS
+  a show realized only by such profiles; deployment never changes
+  the pack — it is the day a venue's profile realizes the same pack
+  with physical bindings. (Owner-ruled 2026-09-04: "a simulation"
+  and "an undeployed show pack" are not different things.)
 - **Review.** A CREATIVE PRODUCTION stage, not log-reading: telling
   the story of the night and learning from it. The platform owns the
   RECORD (the B9 session bundle), the INTAKE (Track D: roster,
