@@ -261,6 +261,18 @@ a DoD violation by definition.
 | L13 | **[post-Phase-3, recorded 2026-09-03 at slice-7 S7.2 — class inherited from its trigger, per the DoD-linkage rule]** ALN-flavored wording retained inside ENGINE-FIXED report structure: the `## Detective Evidence Log` heading (ALN's own mode name), the `Exposed By` column header, and the H1 `Session Report` family — every divergent pack's report inherits them, because the contract names headings/column text as structure (Change Rules #1–#2) and the external pipeline parses them | The ROADMAP §8.10 bundle migration (the pipeline stops parsing markdown; the anchors stop being load-bearing and can localize) | The golden masters + the structural-invariant suite in `ALNScanner/tests/contract/sessionReport.contract.test.js`; contract doc v2 records the retention |
 | L12 | **[in-queue, recorded 2026-08-29 at slice-6 S6.3]** The idle-loop config fallback: when a pack names an idle-loop channel (`surfaces.idleLoop`) that the installation profile has no binding for, `vlcMprisService._resolveIdleLoopFile()` falls back LOUDLY to `config.display.idleLoopFile` (the L7 lighting-role-fallback shape). A venue-media identity resolved from engine config instead of the profile | The pack-manager media page + venue-media binding UI (ROADMAP §8.1): every idle-loop channel gets a real profile binding, and the config fallback becomes a hard "no idle loop configured" refusal | LOUD warn per fallback fire ("no installation-profile binding — falling back … ledger L12"); `grep -n "ledger L12" backend/src/services/vlcMprisService.js` |
 
+## Owner rulings 2026-09-04 (B0 design ratification)
+
+B0 design r2 RATIFIED (full record: the B0 design doc §4-§6): Q10(a)
+one unit at the honest 3.5–5-session estimate (owner-signed divergence
+from the program's 1.5–2.5 — census: auth substrate entirely unbuilt;
+red-team restored the dropped served-vocabulary scope); Q11(a) publish
+refuses on base-hash conflict, re-draft is the recovery, merge waits
+for the Design-workspace pages. 18 red-team objections all folded
+(design §4 table): the observe-token requireAdmin bypass, the unnamed
+WS enforcement point, the gate-seam module-graph leak, silent-revert
+publish, and the GM-WS carve-out DELETED rather than ruled around.
+
 ## Owner rulings 2026-09-03 (batch — remaining-scope grill)
 
 Full text: program doc §14 (the authoritative amendment). Summary:

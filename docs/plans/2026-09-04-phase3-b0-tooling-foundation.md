@@ -316,4 +316,24 @@ records).
 restoration + the S/A hardening), and well above the program's
 1.5–2.5. Carried to the owner for sign-off, not squeezed.
 
-## 6. Owner questions (grill batch — pending)
+## 6. Owner ratification (2026-09-04)
+
+Grill batch settled (owner, in-session):
+
+- **Q10 → (a):** B0 proceeds as ONE unit at the honest r2 scope and
+  estimate (3.5–5 sessions; the divergence from the program's 1.5–2.5
+  re-pricing is owner-signed here and noted in PHASE3-STATUS — driven
+  by the census fact that the auth substrate was entirely unbuilt plus
+  the red-team's D1 restoration).
+- **Q11 → (a):** publish REFUSES on a base-contentHash mismatch and
+  the designer re-drafts from the fresh live state; merge/rebase/diff
+  conveniences are pack-manager-page features (the pages unit). The
+  refusal message must name both hashes and say exactly that.
+
+Build-stage adjudication recorded (BS.1 slice 2): the gate seam
+shipped as the CHILD-PROCESS runner (`scripts/validate-pack.js`), not
+the in-process packGate extraction — parity-by-construction on
+freshly-red-teamed gate code beat relocating ~800 lines of it; the A1
+module-graph leak is moot across a process boundary; the pure
+extraction stays open if in-process validation is ever needed. The
+BS.1 two-axis stage review is directed to challenge this call.
