@@ -11,6 +11,12 @@ const logger = require('../utils/logger');
 const adminTokens = new Set();
 const tokenExpiry = new Map();
 
+// INDEPENDENT observe-token store (B0 BS.1 slice 5, red-team S1/S8):
+// display-class tokens NEVER enter adminTokens — every HTTP gate
+// refuses them via set membership — and flushing this store never
+// touches a live GM session.
+const observeTokens = new Map(); // token → expiry ms
+
 /**
  * Generate an OPERATOR-tier JWT (one-auth §1 full claim shape — B0
  * BS.1). Grants are computed AT ISSUANCE via the pure gameRules
@@ -94,6 +100,74 @@ function verifyToken(token, { audience } = {}) {
     }
     return null;
   }
+}
+
+/**
+ * Mint a device-tier, display-class OBSERVE token (one-auth §3 —
+ * the scoreboard row; B0 BS.1 slice 5). Minted per page serve; NEVER
+ * role admin, never stored beside operator tokens. Read-only by
+ * grant: functions = exactly ['observe'].
+ * @param {string} deviceId
+ */
+function generateObserveToken(deviceId = 'SCOREBOARD') {
+  const grants = require('../gameRules/grants');
+  let packHash = null;
+  try {
+    const info = require('../services/packService').getActivePackInfo();
+    packHash = info ? info.contentHash : null;
+  } catch { /* packless: hash stays null */ }
+  const token = jwt.sign(
+    {
+      tier: 'device',
+      'class': 'display',
+      deviceId,
+      functions: grants.computeGrants({ tier: 'device', deviceClass: 'display' }),
+      packHash,
+    },
+    config.security.jwtSecret || 'test-jwt-secret',
+    {
+      expiresIn: config.security.jwtExpiry || '24h',
+      audience: 'orchestrator',
+    }
+  );
+  observeTokens.set(token, Date.now() + (24 * 60 * 60 * 1000));
+  return token;
+}
+
+/**
+ * Verify an OBSERVE token: its own store, signature+audience, and the
+ * device/display identity asserted — an operator token never passes
+ * here (the stores never cross).
+ * @param {string} token
+ * @returns {Object|null} claims or null
+ */
+function verifyObserveToken(token) {
+  try {
+    const expiry = observeTokens.get(token);
+    if (expiry === undefined) return null;
+    if (Date.now() > expiry) {
+      observeTokens.delete(token);
+      return null;
+    }
+    const decoded = jwt.verify(
+      token,
+      config.security.jwtSecret || 'test-jwt-secret',
+      { audience: 'orchestrator' }
+    );
+    if (decoded.tier !== 'device' || decoded['class'] !== 'display') return null;
+    return decoded;
+  } catch {
+    observeTokens.delete(token);
+    return null;
+  }
+}
+
+/**
+ * Flush every observe token (S8 rotation: kills display sessions only —
+ * GM sessions live in the separate admin store).
+ */
+function invalidateObserveTokens() {
+  observeTokens.clear();
 }
 
 /**
@@ -255,7 +329,10 @@ function stopTokenCleanup() {
 
 module.exports = {
   generateAdminToken,
+  generateObserveToken,
   verifyToken,
+  verifyObserveToken,
+  invalidateObserveTokens,
   requireAdmin,
   requireFunction,
   optionalAdmin,

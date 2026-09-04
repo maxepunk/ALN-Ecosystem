@@ -770,9 +770,10 @@
         // CONFIGURATION
         // ============================================
         const CONFIG = {
-            // Injected at serve time from config.security.adminPassword
-            // (slice 3a pre-fix 2) — never bake a credential here.
-            adminPassword: '%%ADMIN_PASSWORD%%',
+            // Per-serve OBSERVE token (B0 BS.1 slice 5): device/display
+            // class, read-only by grant — no password lives in this
+            // page. Expires in 24h; a page reload mints a fresh one.
+            observeToken: '%%OBSERVE_TOKEN%%',
             deviceId: generateDeviceId(),
             apiUrl: window.location.origin,
             reconnectDelay: 2000,
@@ -1511,28 +1512,13 @@
         // AUTHENTICATION
         // ============================================
         async function authenticate() {
-            try {
-                const response = await fetch(`${CONFIG.apiUrl}/api/admin/auth`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: CONFIG.adminPassword }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Authentication failed');
-                }
-
-                const data = await response.json();
-                state.token = data.token;
-
-                console.log('[Scoreboard] Authentication successful');
-                return true;
-            } catch (error) {
-                console.error('[Scoreboard] Authentication failed:', error);
-                updateConnectionStatus('offline', STR.statusAuthFailed);
-                setTimeout(authenticate, CONFIG.reconnectDelay);
-                return false;
-            }
+            // B0 BS.1 slice 5: the page holds a device/display OBSERVE
+            // token injected at serve time — no password, no auth round
+            // trip. If the token expires (24h), reconnects fail AUTH
+            // and a page reload mints a fresh one.
+            state.token = CONFIG.observeToken;
+            console.log('[Scoreboard] Using injected observe token');
+            return true;
         }
 
         // ============================================

@@ -58,9 +58,19 @@ function createSocketServer(httpServer) {
         return next(new Error('AUTH_REQUIRED: deviceId required'));
       }
 
-      // Verify JWT token
-      const decoded = verifyToken(token);
-      if (!decoded || decoded.role !== 'admin') {
+      // Verify: an OPERATOR token (role admin), else a display-class
+      // OBSERVE token (read-only — B0 BS.1 slice 5). Downstream
+      // authorization reads the socket's verified claims
+      // (tier/functions), never the client-asserted deviceType (S2):
+      // an observe socket receives broadcasts but every command and
+      // transaction path refuses it.
+      let decoded = verifyToken(token);
+      if (decoded && decoded.role !== 'admin') decoded = null;
+      if (!decoded) {
+        const { verifyObserveToken } = require('../middleware/auth');
+        decoded = verifyObserveToken(token);
+      }
+      if (!decoded) {
         logger.warn('GM connection rejected: invalid token', {
           socketId: socket.id,
           deviceId

@@ -61,17 +61,35 @@ describe('scoreboard window marker (shared engine config — slice 3a pre-fix 1)
   // spawn/fs harness the driver needs.
 });
 
-describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2.34)', () => {
-  // The page used to BAKE the live venue admin password into a file
-  // committed to git. Serve-time injection moves the source to env/config
-  // (same delivery to the same LAN clients — no new exposure; the deeper
-  // scoped display-token flow is future work, noted in the design doc).
+describe('scoreboard serve-time injection (3a pre-fix 2 lineage → B0 BS.1 observe token)', () => {
+  // History: the page once BAKED the live admin password (matrix 2.34);
+  // slice 3a moved it to serve-time env injection; B0 BS.1 slice 5
+  // retired the password from the page entirely — a per-serve
+  // device/display OBSERVE token rides instead (the one-auth §3 row).
   const scoreboardPath = path.resolve(__dirname, '../../../public/scoreboard.html');
 
-  it('the on-disk page carries the placeholder and NO baked password', () => {
+  it('the on-disk page carries the OBSERVE-token placeholder and NO password of any kind (BS.1 slice 5)', () => {
+    // The injected ADMIN_PASSWORD dies with B0 BS.1 (design r2
+    // D-B0.3r2): the page receives a device/display observe token
+    // instead — a live credential leaves every venue TV's page source.
     const html = fs.readFileSync(scoreboardPath, 'utf8');
-    expect(html).toContain("adminPassword: '%%ADMIN_PASSWORD%%'");
+    expect(html).toContain("observeToken: '%%OBSERVE_TOKEN%%'");
+    expect(html).not.toContain('%%ADMIN_PASSWORD%%');
+    expect(html).not.toMatch(/adminPassword/);
     expect(html).not.toContain('@LN-c0nn3ct');
+  });
+
+  it('renderScoreboardHtml injects a VERIFIABLE observe token (BS.1 slice 5)', () => {
+    const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
+    const auth = require('../../../src/middleware/auth');
+    const html = renderScoreboardHtml();
+    expect(html).not.toContain('%%OBSERVE_TOKEN%%');
+    const m = html.match(/observeToken: ("[^"]+")/);
+    expect(m).not.toBeNull();
+    const token = JSON.parse(m[1]);
+    const claims = auth.verifyObserveToken(token);
+    expect(claims).not.toBeNull();
+    expect(claims.functions).toEqual(['observe']);
   });
 
   it('renderScoreboardHtml injects the ACTIVE pack strings as JSON — all four scoreboard keys ride', () => {
@@ -286,34 +304,27 @@ describe('scoreboard admin credential injection (slice 3a pre-fix 2 — matrix 2
     // $` — a password like p@$$w0rd was served mangled (p@$w0rd) and a
     // pack string containing $' spliced the rest of the page into the
     // literal. Function replacements are verbatim; this pins that.
+    // The password no longer rides the page (BS.1 slice 5) — the
+    // $-hazard pin now lives on the PACK-STRINGS injection, the
+    // remaining externally-authored $-bearing value.
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
     const packService = require('../../../src/services/packService');
     const strings = { scoreboard: { header: `all the $$ and $& and $' and \`$\`` } };
     const spy = jest.spyOn(packService, 'getStrings').mockReturnValue(strings);
-    const original = config.security.adminPassword;
     try {
-      config.security.adminPassword = 'p@$$w0rd$&';
       const html = renderScoreboardHtml();
-      expect(html).toContain(`adminPassword: ${JSON.stringify('p@$$w0rd$&')}`);
       const m = html.match(/const PACK_STRINGS = (.*);/);
       expect(JSON.parse(m[1])).toEqual(strings);
     } finally {
-      config.security.adminPassword = original;
       spy.mockRestore();
     }
   });
 
-  it('renderScoreboardHtml injects the CONFIG password as a JSON string (quote-safe)', () => {
+  it('the served page carries NO admin password in any form (BS.1 slice 5)', () => {
     const { renderScoreboardHtml } = require('../../../src/routes/resourceRoutes');
-    const original = config.security.adminPassword;
-    try {
-      config.security.adminPassword = `qu"ote'n\\slash`;
-      const html = renderScoreboardHtml();
-      // Injected as JSON.stringify output — valid JS whatever the value
-      expect(html).toContain(`adminPassword: ${JSON.stringify(config.security.adminPassword)}`);
-      expect(html).not.toContain('%%ADMIN_PASSWORD%%');
-    } finally {
-      config.security.adminPassword = original;
-    }
+    const html = renderScoreboardHtml();
+    expect(html).not.toMatch(/adminPassword/);
+    expect(html).not.toContain(config.security.adminPassword);
+    expect(html).not.toContain('%%OBSERVE_TOKEN%%');
   });
 });

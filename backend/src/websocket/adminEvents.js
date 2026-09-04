@@ -158,6 +158,19 @@ async function handleTransactionSubmit(socket, data, _io) {
       return;
     }
 
+    // Transactions require the OPERATOR tier (B0 BS.1 slice 5): a
+    // display-class observe socket authenticates the same handshake
+    // but must never transact — the tier rides the verified token,
+    // never the client-asserted deviceType (red-team S2).
+    if (socket.tier !== 'operator') {
+      emitWrapped(socket, 'error', {
+        code: 'AUTH_REQUIRED',
+        message: 'Transactions require an operator token',
+        clientTxId: data.data?.clientTxId
+      });
+      return;
+    }
+
     // Unwrap envelope (data.data contains actual transaction data per AsyncAPI contract)
     // STRICT: Require wrapped envelope per AsyncAPI contract
     if (!data.data) {

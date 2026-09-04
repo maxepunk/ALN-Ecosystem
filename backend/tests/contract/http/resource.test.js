@@ -169,9 +169,14 @@ describe('GET /scoreboard (+ /scoreboard.html) — serve-time injection (slice 3
     const response = await request(app.app).get(url).expect(200);
     expect(response.headers['content-type']).toMatch(/html/);
     expect(response.text).not.toContain('%%WINDOW_MARKER%%');
-    expect(response.text).not.toContain('%%ADMIN_PASSWORD%%');
+    expect(response.text).not.toContain('%%OBSERVE_TOKEN%%');
     const config = require('../../../src/config');
     expect(response.text).toContain(config.display.scoreboardWindowMarker);
-    expect(response.text).toContain(`adminPassword: ${JSON.stringify(config.security.adminPassword)}`);
+    // BS.1 slice 5: NO password rides the page — an observe token does.
+    expect(response.text).not.toMatch(/adminPassword/);
+    const auth = require('../../../src/middleware/auth');
+    const m = response.text.match(/observeToken: ("[^"]+")/);
+    expect(m).not.toBeNull();
+    expect(auth.verifyObserveToken(JSON.parse(m[1]))).not.toBeNull();
   });
 });

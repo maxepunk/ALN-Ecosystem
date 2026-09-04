@@ -210,6 +210,23 @@ describe('adminEvents.js', () => {
       }));
     });
 
+    it('REFUSES a transaction from a non-operator socket — an observe token cannot transact even as deviceType gm (BS.1 slice 5)', async () => {
+      const observeSocket = {
+        deviceId: 'SCOREBOARD_1',
+        deviceType: 'gm',
+        tier: 'device',
+        functions: ['observe'],
+        emit: jest.fn()
+      };
+      await handleTransactionSubmit(observeSocket, {
+        data: { tokenId: 'tok1', teamId: 'Team1', mode: 'blackmarket' }
+      }, mockIo);
+      expect(transactionService.processScan).not.toHaveBeenCalled();
+      expect(emitWrapped).toHaveBeenCalledWith(observeSocket, 'error', expect.objectContaining({
+        code: 'AUTH_REQUIRED'
+      }));
+    });
+
     test('rejects when no session exists (SESSION_NOT_FOUND) and echoes clientTxId', async () => {
       sessionService.getCurrentSession.mockReturnValue(null);
 
