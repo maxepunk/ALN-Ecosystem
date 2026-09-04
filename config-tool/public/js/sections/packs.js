@@ -202,8 +202,95 @@ function variantC() {
   </div>`;
 }
 
-const VARIANTS = { A: variantA, B: variantB, C: variantC };
-const NAMES = { A: 'Mission control', B: 'Ledger', C: 'Preflight console' };
+// ── Variant D — "Flow-first synthesis" (§10 re-cut): the draft
+// lifecycle is the page's spine and its ONE dominant element; verdicts
+// lead rows in an edge column; every red thing is a door; identity is
+// an ambient chip strip (simulating the future toolbar slot).
+function variantD() {
+  const doorFor = {
+    'tension.wav': 'Content view',
+    "ENDGAME target:'bluetooth' (ledger L8)": 'Show designer',
+    'display.main': 'Bindings',
+  };
+  const loud = D.needs.filter((n) => n.verdict === 'fault');
+  const dormant = D.needs.filter((n) => n.verdict === 'dormant');
+  const runs = D.needs.filter((n) => n.verdict === 'runs');
+  const needRow = (n) => `
+    <div class="pk-edge-row">
+      <span class="pk-edge pk-edge--${n.verdict}"></span>
+      <span class="pk-badge pk-badge--${n.verdict}"><span class="pk-dot"></span><span>${n.verdict}</span></span>
+      <span class="pk-depth pk-depth--${n.depth}">${n.depth}</span>
+      <span class="pk-mono pk-edge-row__id">${n.id}</span>
+      <span class="pk-why">${n.why}</span>
+      ${doorFor[n.id] ? `<a class="pk-door" title="prototype — navigation stubbed">${doorFor[n.id]} →</a>` : ''}
+    </div>`;
+  return `
+  <div class="pk-chipstrip">
+    <span class="pk-chipstrip__note">toolbar slot (every page)</span>
+    <span class="pk-chip">◇ live <span class="pk-mono">${D.live.hash}</span></span>
+    <span class="pk-chip pk-chip--draft">✎ draft <span class="pk-mono">${D.draft.hash}</span></span>
+    <span class="pk-chip pk-chip--stale">▲ orch <span class="pk-mono">${D.orch.hash}</span> · behind</span>
+  </div>
+
+  <div class="pk-panel pk-workcard">
+    <div class="pk-workcard__top">
+      <div>
+        <div class="pk-workcard__title">Draft ${D.draft.id}</div>
+        <div class="pk-dim pk-small">base <span class="pk-mono">${D.draft.base}</span>
+          · editing <span class="pk-mono">${D.draft.dirty.join(', ')}</span>
+          · opened ${D.draft.opened}</div>
+      </div>
+      <div class="pk-verbs">
+        <button class="btn btn--primary pk-verb-continue pk-stub"
+          title="prototype — opens the mechanics editor on this draft">Continue editing</button>
+        <span class="pk-verbs__gap"></span>
+        <button class="btn pk-stub" title="prototype — publish pipeline">Publish…</button>
+        <button class="btn pk-quiet pk-stub" title="prototype">Discard</button>
+      </div>
+    </div>
+    <div class="pk-workcard__validate">
+      <div class="pk-edge-row">
+        <span class="pk-edge pk-edge--fault"></span>
+        <span class="pk-vline pk-vline--err pk-grow">cues.json endgame step 4: lighting role 'police-arrival-4' not declared in game.json lightingRoles</span>
+        <a class="pk-door" title="prototype — navigation stubbed">Show designer →</a>
+      </div>
+      <div class="pk-edge-row">
+        <span class="pk-edge pk-edge--warn"></span>
+        <span class="pk-vline pk-vline--warn pk-grow">tokens.json: 3 tokens have SF_MemoryType null (scores 0x as UNKNOWN)</span>
+        <a class="pk-door" title="prototype — navigation stubbed">Content view →</a>
+      </div>
+      <div class="pk-dim pk-small">1 error blocks Publish · Run validate re-checks without landing</div>
+    </div>
+  </div>
+
+  <div class="pk-cols">
+    <div class="pk-panel">
+      <header><b>Media &amp; needs</b><span>resolved against aln-full-kit · read-only inventory</span></header>
+      ${loud.map(needRow).join('')}
+      ${dormant.map(needRow).join('')}
+      <div class="pk-collapse pk-dim pk-small">▸ ${runs.length} more resolve runs</div>
+    </div>
+    <div class="pk-panel">
+      <header><b>Version trail</b><span>publish log</span></header>
+      ${D.trail.map((t) => `
+        <div class="pk-trailrow">
+          <span class="pk-mono pk-dim">${t.when}</span>
+          <span class="pk-mono">${t.base} → <b>${t.hash}</b></span>
+          <span class="pk-dim">${t.by}</span>
+        </div>`).join('')}
+      <div class="pk-packrow">
+        <select class="pk-select">${D.packs.map((p) => `<option>${p}</option>`).join('')}</select>
+        ${stub('New pack…')} ${stub('Export zip')} ${stub('Commit & push')}
+      </div>
+    </div>
+  </div>`;
+}
+
+const VARIANTS = { A: variantA, B: variantB, C: variantC, D: variantD };
+const NAMES = {
+  A: 'Mission control', B: 'Ledger', C: 'Preflight console',
+  D: 'Flow-first synthesis',
+};
 
 export function render(container) {
   injectStyles();
@@ -326,6 +413,45 @@ function injectStyles() {
     text-transform:uppercase; color:var(--amber-300); }
   .pk-vblock { margin-top:9px; border-top:1px dashed var(--border-subtle);
     padding-top:9px; }
+
+  /* D — flow-first synthesis */
+  .pk-chipstrip { display:flex; align-items:center; gap:8px;
+    margin-bottom:12px; }
+  .pk-chipstrip__note { font-size:10px; color:var(--text-muted);
+    border:1px dashed var(--border-medium); border-radius:4px;
+    padding:2px 7px; letter-spacing:.05em; }
+  .pk-workcard { border-color:var(--border-accent); margin-bottom:12px; }
+  .pk-workcard__top { display:flex; justify-content:space-between;
+    align-items:flex-start; gap:16px; flex-wrap:wrap; }
+  .pk-workcard__title { font-size:16px; font-weight:600;
+    color:var(--amber-300); }
+  .pk-verbs { display:flex; align-items:center; gap:8px; }
+  .pk-verbs__gap { width:22px; }
+  .pk-verb-continue { font-size:14px; padding:10px 22px; }
+  .pk-quiet { border-color:transparent; color:var(--text-muted);
+    background:none; }
+  .pk-workcard__validate { margin-top:12px; border-top:1px dashed
+    var(--border-subtle); padding-top:10px; display:flex;
+    flex-direction:column; gap:6px; }
+  .pk-edge-row { display:flex; align-items:center; gap:10px;
+    padding:6px 0; border-bottom:1px dashed var(--border-subtle); }
+  .pk-edge-row:last-of-type { border-bottom:none; }
+  .pk-edge { width:3px; align-self:stretch; border-radius:2px;
+    flex-shrink:0; }
+  .pk-edge--fault { background:var(--danger); }
+  .pk-edge--warn { background:var(--warning); }
+  .pk-edge--dormant { background:var(--text-muted); opacity:.5; }
+  .pk-edge--runs { background:var(--success); opacity:.55; }
+  .pk-edge-row__id { flex-shrink:0; }
+  .pk-grow { flex:1; margin-bottom:0; }
+  .pk-door { font-size:11px; color:var(--info); cursor:pointer;
+    white-space:nowrap; margin-left:auto; text-decoration:none; }
+  .pk-door:hover { text-decoration:underline; }
+  .pk-cols { display:grid; grid-template-columns:3fr 2fr; gap:12px; }
+  .pk-collapse { padding:8px 0 0; cursor:pointer; }
+  .pk-packrow { display:flex; align-items:center; gap:8px;
+    flex-wrap:wrap; margin-top:12px; border-top:1px dashed
+    var(--border-subtle); padding-top:10px; }
 
   /* C — preflight console */
   .pk-console__head { display:flex; align-items:center; gap:8px; flex-wrap:wrap;

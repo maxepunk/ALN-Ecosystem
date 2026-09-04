@@ -510,3 +510,144 @@ never build a screen without an approved design.
 profile plurality it lands). PS.1–PS.6 order otherwise stands.
 **Estimate ≈ 6–7.5 sessions** (badges + create-new-pack + preview
 profile priced in), under the ratified price principle.
+
+## 10. User types, flows, and layout mechanics (owner sitting 2026-09-04, second half — NORMATIVE for all PS mocks and builds)
+
+Origin: the owner reviewed the first PS.1 mocks (three variants) and
+ruled them read-only dashboards — "what's the intended user flow for
+this screen?" This section is the answer, grilled in the sitting and
+directed to loop-and-review: iterate each page's visual design until
+it is optimized for these user stories and flows.
+
+### 10.1 User types (two real, one excluded)
+
+- **Designer** — authors game content off-venue (mechanics, strings,
+  theme, cues) against a preview orchestrator + preview profile.
+  Loop: edit → verdict badges → validate → publish. May be
+  non-technical (Phase-5 persona; the pages exist for this arc).
+- **Operator / show tech** — prepares TONIGHT at the venue against
+  the live orchestrator: profile, bindings, media presence,
+  preflight. Question is never "what is this pack" — it is "is
+  tonight go, and what do I do about the red rows."
+- **GM during the show is NOT this tool's user** — that is the
+  scanner admin panel. The boundary stays hard (QLab edit-mode vs
+  show-mode lesson).
+
+The tool's existing Design/Venue sidebar split IS the seam: Design
+group = content that travels with the game (the five PS pages; pack
+manager is its hub). Venue group = this installation (C4 bindings
+page joins it; a preflight "Tonight" surface would be its hub). The
+two meet at the verdict badges — one truth, both loops quoting it.
+
+### 10.2 Flows the screens must serve
+
+Designer: **F-D1 tweak-a-value** (pack manager → continue draft →
+mechanics editor → badge stays green → validate → publish → E10
+apply, refused mid-session); **F-D2 author-a-show-moment** (draft →
+show designer → new media reference → content view flags missing
+loud → resolve → publish); **F-D3 new-game** (New pack → skeleton →
+editors); **F-D4 inspect-history** (version trail; diff deferred to
+multi-author).
+
+Operator: **F-O1 prepare-tonight** (bindings page → resolve
+dormant/fault rows → one-button preflight → go / go-degraded /
+no-go); **F-O2 venue-changed** (audio/bluetooth sections → re-route
+→ re-run preflight); **F-O3 box-is-stale** (staleness surface → E10
+apply or restart).
+
+The pack manager is the DESIGNER'S HUB and its spine is the draft
+lifecycle: arrive → see whether the three identities diverge → act
+(continue / validate / publish / discard / New pack / switch pack /
+push submodule after landing). Its Media & needs panel stays
+read-only inventory (Q1); therefore every panel must be a DOOR to
+the page where acting happens.
+
+### 10.3 Prior-art anchors (established patterns this design joins)
+
+- **Eos showfile vs patch** = pack vs profile (validates the split).
+- **QLab broken-cue red at the point of authoring** = Q1's badges;
+  QLab's workspace warnings panel = PS.2's standing problems panel.
+- **ArgoCD desired-vs-live drift** = the three identities; its Sync
+  = E10 apply. Adopted addition: an AMBIENT identity/sync chip in a
+  fixed toolbar slot on EVERY page (drift is never hunted for), with
+  the pack manager as its detail view.
+- **k8s spec vs status** = paper vs live depth; unknown is its own
+  state, never an error (matches "unknown never faults").
+- **CMS draft/publish**: adopted acceptance criterion — Continue
+  editing and Publish are visually unmistakable, never one
+  button-ish (the WordPress save/publish ambiguity is the named
+  failure).
+- **Unity loud placeholder / never fail silently into nothing** =
+  content-view loud rows, rung-1 placeholder media.
+- **Aviation checklists**: challenge-response + logged deviation =
+  R-C3-1's typed override; the completed checklist persists = the
+  session preflight stamp.
+
+### 10.4 Layout mechanics (the craft layer; binding for every PS page)
+
+1. **Verdict edge-column**: in any list of resolvable things, the
+   verdict leads the row in one fixed column (QLab row discipline) —
+   peripheral scanning, never mid-row badge hunting. Identical row
+   anatomy per list; tabular numbers in scan columns.
+2. **Master–detail over inline clutter**: rows say THAT; an
+   inspector or the owning page says WHY and the verbs.
+3. **Errors are doors**: every fault/validate line navigates to
+   where it is fixed. A red thing you can only read violates
+   "every fault carries its verbs" at the layout level.
+4. **Ambient identity chip**: fixed toolbar slot, identical anatomy
+   (icon + word + hash, never color alone), every page.
+5. **Color vocabulary is exclusive**: verdict colors (runs-green,
+   dormant-grey, fault-red) are reserved for verdicts across the
+   whole tool. No decorative red anywhere.
+6. **One dominant element per screen**; the primary verb pair big,
+   spatially stable, separated (Fitts + WordPress criterion).
+7. **Two densities, deliberate**: designer pages dense (desk tool);
+   operator/preflight surfaces pressure-legible (console lesson).
+8. **Empty states teach the flow** (no blank panels; the no-draft
+   state says what Continue/Start does).
+
+### 10.5 Loop-and-review directive (owner, 2026-09-04)
+
+"Loop and review until the visual design is optimized for the
+intended user stories and flows." Per page: re-cut flow-first →
+render → adversarial design review against §10.1–10.4 as the rubric
+→ refine → repeat; the owner sees the converged result at the
+per-page mock gate (which stands unchanged). PS.1 re-cut runs first,
+synthesizing the strongest elements of variants A/B/C around the
+draft-lifecycle spine.
+
+## 11. Owner reframe (2026-09-04, explicit pause + redirect — SUPERSEDES parts of §10)
+
+The owner paused the §10.5 loop after iteration 1 of the PS.1 re-cut
+with a course correction:
+
+1. **The existing config-tool is NOT the baseline.** Its overall
+   usability is poor; treating its shell/IA as given ("the existing
+   Design/Venue split IS the seam" in §10.1, and the prototype
+   skill's mount-inside-the-real-shell move) anchors the design loop
+   to the wrong frame. §10.1's seam claim is DEMOTED to a hypothesis;
+   sub-shape-A prototyping inside the current shell is suspended
+   until the foundation exists.
+2. **Ground-up UX from industry best practice**, improved for OUR
+   user stories and flows — the whole tool, every touch point.
+3. **Open-source learnability is a first-class requirement**: the
+   system's ultimate goal is an open-source tool picked up by user
+   types with varied backgrounds and technical knowledge; ease of
+   pickup/learning is critical. This adds the NEW ADOPTER user story
+   (clone → configured → first game running) which no prior section
+   carried.
+4. Research authorized. §10.2 flows, §10.3 anchors, and §10.4
+   mechanics survive as inputs; the approved seed (tokens + verdict
+   badges) survives as visual identity; IA, navigation, shell, and
+   interaction patterns all REOPEN.
+
+**Corrected process:** research phase (Blender-2.8-class overhauls;
+OBS-class live-tool onboarding; Home-Assistant-class config-flow UX +
+codified learnability patterns; three parallel cited researchers) →
+UX foundation doc (personas incl. new adopter, flow inventory incl.
+first-run, IA derived from flows, interaction-pattern language per
+touch point) → owner grill + ratification → per-screen loop-and-review
+against the ratified foundation. Open owner questions carried into
+the grill: how radical may the shell rebuild be (options will be
+presented); primary adopter persona (working assumption: creative
+professional, not developer).
