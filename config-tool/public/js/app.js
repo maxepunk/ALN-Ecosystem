@@ -23,7 +23,15 @@ const sectionNames = {
   audio: 'Audio & Environment',
   infra: 'Infrastructure',
   presets: 'Presets',
+  packs: 'Pack Manager · PROTOTYPE',
 };
+
+// PROTOTYPE gate (PS.1): the pack-manager prototype exists only when
+// the URL carries ?variant= — invisible in normal use. Throwaway.
+if (new URL(window.location).searchParams.has('variant')) {
+  const protoLink = document.getElementById('protoPacksLink');
+  if (protoLink) protoLink.hidden = false;
+}
 
 // App state (dirty/draft/auth live in the shared store)
 let currentSection = 'economy';
