@@ -55,3 +55,6 @@ __pycache__/
 backend/test_output.log
 backend/test_output.log
 .claude/worktrees/
+
+# Design-pane screenshots live in the DesignSync project, not git
+docs/design/pages/**/*.png
