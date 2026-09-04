@@ -26,6 +26,7 @@ const registry = require('./serviceHealthRegistry');
 const profileService = require('./profileService');
 const packService = require('./packService');
 const { CUE_ACTIONS } = require('../gameRules/cueValidation');
+const { requiredFloorFunction } = require('../gameRules/grants');
 
 // Config-tool cue authoring serializes booleans as the strings 'true'/'false'
 // via a <select>; GM Scanner live controls send real booleans. `!!"false"` is
@@ -131,8 +132,7 @@ async function executeCommand({ action, payload = {}, source = 'gm', trigger, de
     // non-gm sources; v1 operator tokens carry the full floor, so live
     // GM behavior is unchanged while enforcement is real.)
     if (source === 'gm') {
-      const grants = require('../gameRules/grants');
-      const floorFn = grants.requiredFloorFunction(action);
+      const floorFn = requiredFloorFunction(action);
       if (floorFn &&
           !(actor && Array.isArray(actor.functions) && actor.functions.includes(floorFn))) {
         logger.warn(`[executeCommand] REFUSED floor action '${action}' — actor lacks '${floorFn}' (operator floor)`);

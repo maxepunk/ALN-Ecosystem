@@ -16,6 +16,7 @@ const audioRoutingService = require('../services/audioRoutingService');
 const lightingService = require('../services/lightingService');
 const { emitWrapped } = require('./eventWrapper');
 const { executeCommand } = require('../services/commandExecutor');
+const { requiredFloorFunction } = require('../gameRules/grants');
 
 // Mutex flag to prevent concurrent system resets
 let resetInProgress = false;
@@ -50,7 +51,6 @@ async function handleGmCommand(socket, data, io) {
 
     // Handle system:reset separately (requires io and mutex)
     if (action === 'system:reset') {
-      const { requiredFloorFunction } = require('../gameRules/grants');
       const resetFn = requiredFloorFunction('system:reset');
       if (resetFn && !actor.functions.includes(resetFn)) {
         emitWrapped(socket, 'gm:command:ack', {

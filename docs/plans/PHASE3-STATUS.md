@@ -606,7 +606,21 @@ discipline + frontend test harness; operator-tier auth v1 per §7 R1 +
 §13.6 incl. the backend substrate and the scoreboard PLAIN read-scope
 token), the 2026-06-11 config-tool pre-read, and the 2026-09-03 §14
 rulings (E10 floor binds the PAGES unit, not B0 — but B0's store must
-not preclude it). Census next.
+not preclude it).
+
+Progress: census ×2-verified + design r1 + 18-objection red-team +
+design r2 + owner ratification Q10(a)/Q11(a) — full record in
+`docs/plans/2026-09-04-phase3-b0-tooling-foundation.md`. **BS.1
+CLOSED 2026-09-04** (§7 execution record): grants algebra
+(`gameRules/grants.js`), gate runner (`scripts/validate-pack.js`,
+accepted-with-pins over the in-process extraction), full O3 operator
+claims, operator floor at the commandExecutor choke point + WS actor,
+observe token (scoreboard's injected ADMIN_PASSWORD DELETED),
+`/api/vocabulary` zero-drift endpoint. Two-axis review folded (4
+lazy-require hoists, `_resolvePackHash()` extraction); gates 2772/135
++ ratchet + lint all exit 0. BS.2 next: store server-side + publish
+pipeline (Q11(a) refusal is the first red test; runner via
+execFile/argv only; gm:identify display-class fix rides along).
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

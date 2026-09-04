@@ -6,6 +6,8 @@
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { computeGrants } = require('../gameRules/grants');
+const packService = require('../services/packService');
 
 // Store admin tokens (in production, use Redis or database)
 const adminTokens = new Set();
@@ -18,6 +20,22 @@ const tokenExpiry = new Map();
 const observeTokens = new Map(); // token → expiry ms
 
 /**
+ * Resolve the ACTIVE pack's contentHash for token claims — records
+ * which pack a token's grants were computed against (stale-grant
+ * detection after a pack switch). Null when packless or before
+ * activation (boot order): grants still mint.
+ * @private
+ */
+function _resolvePackHash() {
+  try {
+    const info = packService.getActivePackInfo();
+    return info ? info.contentHash : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Generate an OPERATOR-tier JWT (one-auth §1 full claim shape — B0
  * BS.1). Grants are computed AT ISSUANCE via the pure gameRules
  * algebra; packHash records which active pack the grants were computed
@@ -27,22 +45,16 @@ const observeTokens = new Map(); // token → expiry ms
  * @param {{aud?: string}} [opts] audience — 'orchestrator' (default) or 'config-tool'
  */
 function generateAdminToken(adminId = 'admin', { aud = 'orchestrator' } = {}) {
-  const grants = require('../gameRules/grants');
-  let packHash = null;
-  try {
-    const info = require('../services/packService').getActivePackInfo();
-    packHash = info ? info.contentHash : null;
-  } catch { /* packless/boot-order: grants still mint; hash stays null */ }
   const token = jwt.sign(
     {
       id: adminId,
       role: 'admin',
       timestamp: Date.now(),
       tier: 'operator',
-      'class': 'staffed',
+      class: 'staffed',
       deviceId: adminId,
-      functions: grants.computeGrants({ tier: 'operator', deviceClass: 'staffed' }),
-      packHash,
+      functions: computeGrants({ tier: 'operator', deviceClass: 'staffed' }),
+      packHash: _resolvePackHash(),
     },
     config.security.jwtSecret || 'test-jwt-secret',
     {
@@ -110,19 +122,13 @@ function verifyToken(token, { audience } = {}) {
  * @param {string} deviceId
  */
 function generateObserveToken(deviceId = 'SCOREBOARD') {
-  const grants = require('../gameRules/grants');
-  let packHash = null;
-  try {
-    const info = require('../services/packService').getActivePackInfo();
-    packHash = info ? info.contentHash : null;
-  } catch { /* packless: hash stays null */ }
   const token = jwt.sign(
     {
       tier: 'device',
-      'class': 'display',
+      class: 'display',
       deviceId,
-      functions: grants.computeGrants({ tier: 'device', deviceClass: 'display' }),
-      packHash,
+      functions: computeGrants({ tier: 'device', deviceClass: 'display' }),
+      packHash: _resolvePackHash(),
     },
     config.security.jwtSecret || 'test-jwt-secret',
     {
@@ -154,7 +160,7 @@ function verifyObserveToken(token) {
       config.security.jwtSecret || 'test-jwt-secret',
       { audience: 'orchestrator' }
     );
-    if (decoded.tier !== 'device' || decoded['class'] !== 'display') return null;
+    if (decoded.tier !== 'device' || decoded.class !== 'display') return null;
     return decoded;
   } catch {
     observeTokens.delete(token);

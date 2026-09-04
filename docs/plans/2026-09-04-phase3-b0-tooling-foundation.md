@@ -337,3 +337,66 @@ freshly-red-teamed gate code beat relocating ~800 lines of it; the A1
 module-graph leak is moot across a process boundary; the pure
 extraction stays open if in-process validation is ever needed. The
 BS.1 two-axis stage review is directed to challenge this call.
+
+## 7. BS.1 execution record (2026-09-04)
+
+**Built** in six red-first slices, commits `280c58f` (s1 grants
+algebra) → `e66d392` (s2 runner + manifest cache-path fix) →
+`7e39924` (s3 operator claims) → `16a7b56` (Q10/Q11 ratification
+docs) → `fc705c1` (s4 operator floor + WS actor) → `8390742` (s5
+observe token — scoreboard's injected ADMIN_PASSWORD deleted) →
+`2cb9e9a` (s6 `/api/vocabulary`). The two-axis review fold lands with
+this record's own commit. Post-fold gates: 2772 tests / 135 suites
+exit 0, coverage ratchet exit 0, lint exit 0. Live ALN behavior is
+unchanged (operator tokens carry the full floor); enforcement is real
+(claim-less/observe actors fail every floor closed).
+
+**Spec leg** (accepted): BS.1 enumeration complete against stage plan
+r2; floor/observe/zero-drift pins verified non-vacuous; A7 staging
+holds (only `/api/admin/logs` gated; config-tool proxies untouched);
+scoreboard wire identity preserved. Findings and adjudications:
+
+1. **S1 residual → NAMED BS.2 item.** `server.js` auto-fires
+   `handleGmIdentify` on the client-asserted deviceType and
+   `gmAuth.js` hardcodes `'gm'` — so an observe socket registers as a
+   full GM device and consumes `canAcceptGmStation()` capacity. Not a
+   BS.1 regression (pre-existing shape), but BS.2 must make
+   `gm:identify` distinguish display-class sockets: never register
+   them as GM stations, never spend GM capacity on them.
+2. **Pack-switch grant proof → BS.4 checklist (emphasized).** One-auth
+   §5 proof (b) — grants recomputed against the new active pack after
+   a pack switch — is scheduled to BS.4 by this design's own text and
+   MUST NOT drop from the close.
+3. **Runner challenge (the §6 directed challenge) → call STANDS,
+   accepted with pins.** The runner is consumable (stdout-JSON + exit
+   codes are unit-pinned). Pins: BS.2's publish pipeline invokes it
+   via `execFile`/argv-array ONLY — never shell interpolation of any
+   path; `problems` is string-lossy (thrown message split on
+   newlines) — structured problem objects are a pages-era refinement;
+   per-publish spawn latency is unmeasured and accepted (publish is
+   operator-paced, not hot-path).
+
+**Standards leg** (folded): four hard violations — inline lazy
+`require()` with no real cycle behind them — fixed by hoisting to
+top-level imports (`socketServer.js` extends the existing auth
+destructure with `verifyObserveToken`; `commandExecutor.js` and
+`adminEvents.js` import `requiredFloorFunction` beside their existing
+imports; `auth.js` imports `computeGrants` + `packService`). Cycle
+check recorded: `grants.js` is pure with zero requires; `packService`
+requires only fs/path/logger + pure gameRules modules and never
+`middleware/auth` — the repo's lazy-require carve-out remains the
+commandExecutor↔cueEngineService cycle alone. The verbatim-duplicated
+packHash block in both minting functions is extracted to
+`_resolvePackHash()`. The quoted `'class'` keys are unquoted (legal
+since ES5 — the quoting falsely implied otherwise). Accepted as-is:
+the twice-computed floor (executor choke point + the `system:reset`
+bypass pre-check in adminEvents) is a justified judgement call whose
+comment carries the reason — extract a shared helper only if a third
+bypass appears; `resourceRoutes.js`'s serve-time inline requires are
+the pre-existing local idiom, left alone.
+
+**BS.2 carry-forward:** (a) Q11(a) refuse-on-base-hash-mismatch is
+the publish pipeline's FIRST red test; (b) runner invocation
+execFile/argv-only; (c) the gm:identify display-class fix (finding 1);
+(d) staged ordered-rename with `pack-manifest.json` last, publish log,
+single mutex, per §5.

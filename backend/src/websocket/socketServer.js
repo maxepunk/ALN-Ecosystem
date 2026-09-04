@@ -6,7 +6,7 @@
 const { Server } = require('socket.io');
 const config = require('../config');
 const logger = require('../utils/logger');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, verifyObserveToken } = require('../middleware/auth');
 
 /**
  * Create and configure Socket.io server
@@ -66,10 +66,7 @@ function createSocketServer(httpServer) {
       // transaction path refuses it.
       let decoded = verifyToken(token);
       if (decoded && decoded.role !== 'admin') decoded = null;
-      if (!decoded) {
-        const { verifyObserveToken } = require('../middleware/auth');
-        decoded = verifyObserveToken(token);
-      }
+      if (!decoded) decoded = verifyObserveToken(token);
       if (!decoded) {
         logger.warn('GM connection rejected: invalid token', {
           socketId: socket.id,
