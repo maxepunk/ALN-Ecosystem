@@ -538,3 +538,97 @@ content no-op — pinned at unit level in BS.2, must hold at tier);
 coverage ratchets + lint everywhere; config-tool + scanner suites;
 whole-unit mixed-model adversarial review; close records + train
 vehicles.
+
+## 10. BS.4 execution record — B0 CLOSE (2026-09-04)
+
+**§5 proofs** (`655fe17`, `tests/contract/http/oneAuthProofs.test.js`):
+(a) floor rejection proven at all THREE surfaces — every FLOOR
+function's requireFunction gate 401s observe and missing tokens; the
+executor floor refuses non-operator actors across the three floor
+families; the observe token verifies only as itself and the stores
+never cross. (b) in its honest v1 shape — grants and packHash resolve
+AT ISSUANCE, so a token minted after a pack switch carries the NEW
+active pack's contentHash (isolateModules PACK_PATH pattern over
+toy-heist + parity-pack); the v1 function set is the baked
+operator-degenerate case, pack-independent by design (E4 makes
+assignments pack-driven), and the test pins both facts.
+
+**Store tier proof** (scripted, exit 0): a no-op publish of the REAL
+ALN pack through the BS.2 store landed contentHash
+`caa6c7ca…` — identical to base — and left the ALN-TokenData
+submodule `git status --porcelain`-EMPTY. The D-B0.4 byte-identity
+invariant holds on production content.
+
+**Adversarial panel** (per the ratified mixed-model policy: two Opus
+refuters — security + state-machine — a Fable doctrine/parity leg, a
+Haiku sweep; whole-unit diff `8752d53..92dd386`). Verdict: "unit
+composes — close with fixes and residuals entered." ALL surviving
+findings folded in `f5af7c9`:
+
+- *Security:* the `service:` gm:command family joined the FLOOR map
+  (show-control) — it was the one family outside it, letting an
+  observe socket drive the 8 real health probes; the observe store
+  CAPPED at 500 oldest-evicted (the mint rides an unauthenticated
+  serve) and swept by cleanupExpiredTokens, with S8 rotation made
+  real (systemReset invalidates observe tokens); display-socket
+  identity comes from the TOKEN's deviceId claim (a client-asserted
+  GM id could flap the real station's tracking); the WS handshake
+  decode enforces aud; the tool REFUSES to bind beyond loopback with
+  default credentials live (public-constant secret + no issued-token
+  store = forgeable operator tokens); packFs realpath-checks
+  directory components (symlinked-dir escape).
+- *State machines:* the scoreboard renews by RELOADING — the mint IS
+  the serve; re-presenting the injected token forever meant a blank
+  TV at 24h or after a backend restart (this also RETIRES the
+  doctrine leg's parity residual: recovery is now strictly better
+  than the password era, for kiosk and hand-opened browsers alike);
+  publish failures AFTER landing report success-with-warning (was:
+  500 while the pack WAS published + a false-conflict stranded
+  draft); landing tmp files are dot-prefixed in place (a mid-landing
+  crash leaves only builder-invisible dotfiles — the old suffix
+  names were inventoriable debris that forked the next rebuild's
+  contentHash), swept best-effort; publish/discard confirm before
+  wiping unsaved on-screen edits.
+- *Doctrine/parity:* r2 walked item-by-item — all landed (the one
+  supersession, runner-for-extraction, is §6-recorded with pins
+  verified); the five design red-team CRITICALs confirmed closed in
+  code; asyncapi.yaml now documents the second handshake token class
+  (contract-first); CONTEXT.md's "The floor" entry corrected (it
+  described pre-B0 reality) + "Draft / publish" and "Observe token"
+  vocabulary added.
+- *Haiku:* two missing JSDoc blocks added; nothing else.
+
+**Accepted residuals (recorded, not fixed):** publish `problems` are
+string-lossy (pages-era refinement, §7 pin); plain password compare
+at both doors (deliberate parity; a timing-safe upgrade is a
+both-doors item beside the .env MUST-FIX); the tool's static SPA
+assets and /audio + /video preview mounts serve unauthenticated
+(stated honestly in the startup warning); a pathological
+instant-reject loop on the scoreboard would reload every ~2-3s
+(visible in kiosk logs; strictly better than the permanent blank it
+replaces).
+
+**Close gates (final tree, all exit 0):** backend 2785 tests / 137
+suites + coverage ratchet + lint; integration untouched by BS.4
+scope; config-tool 180 tests + 2/2 Playwright smokes (re-run
+post-fold) + lint; GM Scanner 1666; PWA 165; ESP32 native 125 (pio
+installed in-container); GM dist rebuilt before E2E. **Dual-pack
+Tier L (authoritative, uncontended):** ALN leg 120P/0F/62S, 0 flaky,
++ Tier H 4P/18S, 34.3m, exit 0; toy leg 121P/0F/61S, 0 flaky, exit 0
+(the theme close's one flaky — 24-scoreboard-restart-recovery —
+passed first-try here; same test set, identical 182 totals per leg).
+
+**Unit summary:** B0 delivered the pack/profile store foundation
+(draft → engine-gated publish, byte-identical no-op), the operator-
+tier one-auth v1 substrate (issuance-time grants, the executor floor
+over every transport, the observe token replacing the served
+ADMIN_PASSWORD), the tool's own auth + HTTPS + two-workspace shell
+with draft-routed editors and served-vocabulary re-sourcing (which
+killed real bidirectional action-set drift and two live authoring
+bugs), and the jsdom + Playwright harness. Live ALN behavior is
+unchanged where it must be (operator tokens carry the full floor; the
+pack tree byte-stable) and strictly better where it may be (scoreboard
+credential + recovery). Commit chain: `af7dcf8..` (open/census/design)
+→ BS.1 `280c58f..2cb9e9a` + fold `e1fec8b` → BS.2 `dc23d60` + fold
+`10d506f` → BS.3 `9507c1f` + fold `92dd386` → BS.4 `655fe17` +
+panel fold `f5af7c9` + this close record.

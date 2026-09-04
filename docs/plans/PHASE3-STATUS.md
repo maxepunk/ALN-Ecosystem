@@ -640,10 +640,31 @@ served-vocabulary re-sourcing (killed bidirectional action-set drift
 PUT /api/music/playlists show-control-gated with the proxied token;
 jsdom + Playwright harness (pinned 1.57.0) whose smokes caught the
 [hidden]-vs-class CSS bug twice. Gates: config-tool 176 + 2 smokes +
-lint, backend 2778/136 + ratchet + lint, all exit 0. BS.4 next: the
-unit close (one-auth §5 proofs incl. the PACK-SWITCH grant recompute,
-dual-pack Tier L, whole-unit adversarial review, records, train
-vehicles).
+lint, backend 2778/136 + ratchet + lint, all exit 0. **BS.4 CLOSED — B0 ✅ FULLY CLOSED 2026-09-04** (§10
+execution record in the B0 design doc). §5 proofs landed (`655fe17`:
+floor rejection ×3 surfaces; pack-switch identity at issuance) + the
+scripted store tier proof (no-op publish of the REAL ALN pack =
+identical contentHash, submodule git-clean). Whole-unit adversarial
+panel (2 Opus + Fable doctrine + Haiku sweep) — all surviving
+findings folded (`f5af7c9`): service: joined the floor map; observe
+store capped/swept/reset-rotated; display identity from the token
+claim; WS aud enforced; tool refuses beyond-loopback on default
+credentials; scoreboard renews by RELOAD (retires the 24h/restart
+blank-TV residual — recovery now beats the password era); publish
+post-landing tolerance + dot-prefixed landing tmps (debris can never
+be inventoried); dirty-confirm; asyncapi second-token-class doc;
+CONTEXT.md floor entry corrected + draft/publish + observe-token
+vocabulary. Close gates ALL exit 0: backend 2785/137 + ratchet +
+lint; config-tool 180 + 2/2 smokes + lint; GM 1666; PWA 165; ESP32
+125; **dual-pack Tier L on the final tree: ALN 120P/0F/62S 0-flaky
+(+ Tier H 4P) 34.3m; toy 121P/0F/61S 0-flaky** (the theme close's
+one flaky passed first-try; identical 182 totals per leg). Accepted
+residuals recorded in §10. Tip: the close-record commit on
+`claude/phase3-b0` (draft PR #32 — owner un-drafts when the train
+reaches it; parent-only unit, NO submodule bumps: ALN-TokenData /
+ALNScanner / PWA / ESP32 all untouched by B0). NEXT in queue:
+Design-workspace pages (#11, carries the §14 rulings incl. the E10
+floor + the surfaces-editor open question).
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
