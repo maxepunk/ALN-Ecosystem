@@ -1,10 +1,12 @@
 # Phase 3 — C2+C3: the resolution mechanism + dormant-vs-fault
 
-**Status:** census recorded; design red-team RUN (18 findings, §5);
-design r2 COMPLETE (§6); owner batch r2 (§7) OPEN — it JOINS the
-pages batch so one owner sitting covers both units. Build waits on
-that batch (and sequences behind the pages build on the shared
-branch).
+**Status: OWNER RATIFIED 2026-09-04 ("ratify all") — §8 is the
+NORMATIVE record** (architecture + rulings + r3 + re-sequenced
+stages + final estimate). Build OPEN: CS.1 (rung-1 harness + pure
+resolve core) runs FIRST, before the pages build — the badges consume
+the core, and the owner directed all environment rungs as early as
+possible. Prior sections are the design history (census → r1 →
+red-team §5 → r2 §6 → batch §7, superseded by §8 where they differ).
 **Unit:** C2 (one resolution mechanism, preflight presentation only —
 program §13.7/§14.4) + C3 (dormant-vs-fault semantics — the health
 enum contract change, session-start disables, down-vs-not-installed
@@ -326,3 +328,78 @@ growth: the dormancy lifecycle hardening the red-team demanded, the
 network+devices preflight arms C1 §3 always required, and the
 coordinated contract change. Approve alongside the pages estimate
 (its Q4)?
+
+## 8. Owner ratification + design r3 (2026-09-04 — "ratify all")
+
+The owner ratified, in one sitting after an extended grill: the
+governing architecture ("one truth, three loops" — recorded in
+CONTEXT.md §2, normative here), the five specific calls below, and the
+price principle ("the design we grilled into shape gets built as
+designed; the estimate follows the design"). This section supersedes
+§6/§7 where they differ.
+
+**Rulings (all ratified):**
+- **R-C2-1 (supersedes Q-C2-1's warn-vs-refuse):** a GM scanner whose
+  packHash mismatches SELF-HEALS — fetch the connected orchestrator's
+  current pack, apply, re-handshake, one toast ("Rules updated to
+  <version>"). Refusal survives only as the backstop when healing
+  fails: a blocking screen with a plain instruction, not a dismissible
+  banner. Each orchestrator (live or preview) is authoritative for its
+  own connected stations — no preview exemption needed.
+- **R-C2-2:** preflight machine-runs everything machine-observable,
+  INCLUDING a Host arm (disk, temperature, load, processes, ports).
+  The hand-run checklist shrinks to the physical room. Rows labeled
+  paper/live + profile identity (CONTEXT.md §5).
+- **R-C3-1:** unbound idle-loop channel = DORMANT. AND the require
+  gate: `session:start` refuses while any `onAbsent: require` need is
+  unresolved, with a typed, logged "start anyway" override. (This
+  also fixes C4's `_resolveIdleLoopFile` flip: refuse only
+  `onAbsent: require`.)
+- **R-C3-2:** enum reconciled to `healthy | down | dormant` at the 3
+  contract sites + registry validator; `degraded` deleted.
+- **R-C3-3 (from the sitting, new):** the SUPERVISOR — bounded
+  auto-restart with backoff for crashed software stack services,
+  restart strategies in host config; escalation to a red row with a
+  Restart verb only on exhaustion/flapping. Fault rows carry verbs
+  (Restart / Re-route / Run-without-it / Release-Discard). Manual
+  out-of-service = dormant's second door (GM-set, operator-gated),
+  reusing the same latched state machinery.
+
+**r3 additions (all ratified via the architecture):** profiles are
+plural (venue/home/preview/CI — every environment partial, absences
+dormant); paper/live verdict labeling with profile identity; the
+witness-light register GENERATED from the pack's lighting roles
+(one-hot; rung-1's lighting assertion); the rung-1 harness itself
+(real software stack, fake physics — recipes and measured verdicts in
+`2026-09-04-rung1-capability-research.md`, including the PROVEN
+dbusmock-BlueZ rung and the pending modules-extra btvirt verdict);
+per-runner capability manifests with probe-then-verdict honesty
+(tests skip LOUDLY with recorded reasons, never silently).
+
+**Re-sequenced stages (ratified order — rungs early; badges consume
+the core, so the core precedes the pages build):**
+- **CS.1 — rung-1 harness + the pure core.** Harness bring-up scripts
+  (VLC/MPD/pipewire/HA per the research-doc recipes), simulation
+  profile, witness-light generator, capability probe → runner
+  manifest; `gameRules/packNeeds.js` (collectPackNeeds) +
+  `gameRules/resolution.js` (the C1 §2 table verbatim), red-first ON
+  the harness, both packs. Includes the existing-engine audit (first
+  real-services run of current E2E flows) with findings triaged to
+  fixes before further stages.
+- *(Pages build PS.1–PS.6 runs next — see the pages doc §9.)*
+- **CS.2 — dormancy lifecycle + enum.** Contract-first enum change,
+  sticky dormant with both doors, session-start require gate + logged
+  override, session-create/restore/reset feed points.
+- **CS.3 — supervisor + verbs + self-heal.** Auto-restart engine
+  (host-config strategies), fault-row verbs end-to-end, scanner
+  pack self-heal + backstop screen, hold policy (fault holds expire
+  at session end; dormant never held).
+- **CS.4 — preflight presentation.** All six C1 §3 groups + Host arm,
+  paper/live labels, GM panel + CLI twin, cert row WARN-only (R8).
+- **CS.5 — close.** Dual-pack Tier L + rung-1 CI job green in both
+  runners, ratchet, whole-unit adversarial review, records.
+
+**Estimate (final, priced with the harness): ≈ 5.5–7 sessions** for
+C2+C3 including CS.1's harness (C4 additional ≈ 1.5–2). Owner
+ratified the price principle; this number is the fold's honest
+statement of it.

@@ -171,6 +171,23 @@ you intend.
 
 ## 2. The engine ↔ pack contract
 
+- **One truth, three loops.** The governing architecture for
+  readiness and failure (ratified 2026-09-04). The ONE TRUTH: the
+  pack declares what the show needs and how much each need matters
+  (`onAbsent: require` = "block the show" / `degrade` = "skip it");
+  a profile declares what an environment has; one pure
+  `resolve(needs, has)` produces per-need VERDICTS, and every
+  surface — editor badge, preflight row, session-start gate, cue-time
+  refusal, CLI — quotes those verdicts rather than forming its own
+  opinion. The THREE LOOPS, in order: the designer's (verdicts appear
+  at the moment of choice, so mistakes die at the desk), the
+  system's (self-heal: anything software can fix is fixed silently),
+  and the GM's (whatever escapes the first two arrives with verbs
+  attached). Any new design question is settled by asking which loop
+  owns it and whether it reads the answer sheet.
+- **Verdict.** resolve()'s per-need output. Always labeled with the
+  depth it reached (paper or live, §5) and the profile it was
+  computed against.
 - **Activation.** At startup, the backend adopts exactly one pack
   (`packService.activatePack()`). The choice is fixed for the life of
   the process. If someone edits the pack on disk while the process
@@ -315,10 +332,31 @@ you intend.
   *Dormant* means a service has no equipment configured tonight, on
   purpose. That is normal and must never show as an error, because
   "red that is always red trains GMs to ignore red". *Fault* means a
-  service that should be running is not. That is an error. ("Down" is
-  the health registry's status word; today it covers both cases, and
-  that is the gap.) The dormant/fault split is ratified doctrine; the
-  engine implements it in C2/C3.
+  service that should be running is not. That is an error. Ratified
+  2026-09-04: the health vocabulary is exactly three words —
+  `healthy | down | dormant` (the never-emitted `degraded` is deleted);
+  dormant is STICKY (health reports cannot un-latch it) and has TWO
+  doors — "not installed tonight" (set by resolution against the
+  profile) and "taken out of service" (set by the GM mid-show, e.g.
+  the TV died and the show goes on without it). Same state, same
+  quiet, two entrances.
+- **Alarm integrity.** The invariant behind dormant: red always means
+  "act now". Intentional absence shows grey, never red, so the one
+  night something really breaks, the red light still gets believed.
+- **Status with verbs.** A fault shown to the GM always carries its
+  actions — Restart, Re-route, Run-without-it, Release/Discard —
+  never bare bad news. Status without verbs is a dashboard; the GM
+  scanner is a control panel.
+- **Self-heal.** The system's default answer to a problem software
+  can fix: fix it, log it, stay quiet. A GM scanner with stale rules
+  re-fetches the pack and reconnects (one toast); a crashed stack
+  service gets supervised restarts before anyone is told. Humans see
+  only the residue.
+- **Supervisor.** The engine component (C3, ratified 2026-09-04) that
+  auto-restarts crashed software stack services — bounded attempts
+  with backoff, escalating to a red row with a Restart verb only when
+  exhausted. HOW each service restarts is host configuration, not
+  pack or profile content.
 - **Service domain / `service:state`.** How the backend tells GM
   clients about service status: one event type carrying
   `{domain, state}` for each of 10 domains (music, video, health, and
@@ -343,10 +381,41 @@ you intend.
   features *dormant* (definitions in §4).
 - **Preflight.** The pre-show check: one button produces a go/no-go
   list, and every line traces to a field in the profile or the pack
-  manifest. The preflight is the instrument that clears the cutover.
-  It is a ratified direction (C1, 2026-08-22), not yet built. Today
-  the engine offers per-service health probes (`service:check`) and
-  command-level resource validation only.
+  manifest. Ratified direction C1 (2026-08-22), design ratified
+  2026-09-04 (C2): the machine checks everything a machine can
+  observe — pack refs, bindings, services, media files, network,
+  staffing, and the HOST itself (disk, temperature, processes,
+  ports); the hand-run checklist shrinks to the physical room
+  (speakers placed, TV on the right input, tokens on set). Every row
+  is labeled *paper* or *live* (see below) and names the profile it
+  verified against. A required ("block the show") need left unmet
+  refuses `session:start`, with a typed, logged "start anyway"
+  override for genuine emergencies.
+- **Paper vs live checks.** The two verification depths. *Paper* =
+  pack needs vs the profile FILE (the declared inventory) — pure data,
+  runs anywhere. *Live* = the profile vs reality (the sink exists in
+  pactl right now, HA actually has that scene) — runs only where the
+  hardware is. Every verdict says which depth it reached and against
+  which profile, so a green at home is never mistaken for venue
+  readiness.
+- **Environment ladder / rung.** "The venue" is not special: a
+  profile describes ANY environment, and every environment is a
+  partial one (whatever a profile omits resolves dormant). The rungs:
+  0 = bare CI (everything dormant, logic only), 1 = CI/dev-container
+  with the real software stack and fake physics (dummy outputs, null
+  sinks, mocked BlueZ, witness lights), 2 = home test bed (real
+  substitute hardware), 3 = the venue. Same engine, same pack, same
+  checks on every rung; each runner is capability-probed and its gaps
+  recorded with reasons (see
+  docs/plans/2026-09-04-rung1-capability-research.md). Ratified
+  2026-09-04 with "all rungs as early as possible".
+- **Witness lights.** Rung-1's lighting assertion mechanism: the
+  simulation profile's HA config gets one virtual light per lighting
+  role the pack declares, one scene per role turning its own witness
+  on and the others off (one-hot). "Did the right look fire, and
+  what look is live now?" becomes a direct read. The fixture is
+  GENERATED from the pack's own needs list, so it cannot drift from
+  pack content.
 - **Planning view.** Answers "if I bring hardware X, what game
   features does that unlock?" for a hypothetical profile, before
   equipment is packed for an event. The UI for it is scheduled after

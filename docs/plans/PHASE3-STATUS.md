@@ -698,6 +698,17 @@ not squeezed). **Owner batch §8: Q1 surfaces home with wireframes
 playtest cost stated (rec: refuse during active/paused); Q3 the L8
 retire-vs-re-ratify checkpoint (rec: retire); Q4 the §14.1 split +
 estimate sign-off. PS.1 does not open before Q1 + Q4.**
+**→ RATIFIED 2026-09-04 ("ratify all", after an extended owner grill
+that materially improved the design — record in the doc's §9):** Q1
+= mechanics editor owns game.json entire WITH live verdict badges
+(dissolves the a/b choice); Q2 = refuse during active/paused; Q3 =
+retire the L8 literal; Q4 = build list approved PLUS minimal
+create-new-pack pulled IN; diff/merge → multi-author anchor,
+simulation → rehearsal anchor; preview orchestrator ships a PREVIEW
+PROFILE. Estimate ≈ 6–7.5 sessions under the ratified price
+principle. **Build OPEN, sequenced AFTER C2+C3's CS.1** (badges
+consume the resolve core; owner directed all environment rungs as
+early as possible).
 
 **C2+C3 (resolution mechanism + dormant-vs-fault) — 🔨 OPENED
 2026-09-04, design r2 DONE, ⏸ BUILD GATE HELD ON OWNER** (full
@@ -733,6 +744,28 @@ the unbound idle-loop taxonomy (rec: DORMANT — this decides C4's
 `degraded`); Q-C3-4 estimate sign-off. CS.1 does not open before the
 batch; build sequences behind the pages build on the shared
 branch.**
+**→ RATIFIED 2026-09-04 ("ratify all") — the doc's §8 is NORMATIVE,
+and the sitting's grill upgraded the design substantially:** the
+governing architecture "one truth, three loops" captured in
+CONTEXT.md §2 (verdicts, paper/live labels, alarm integrity, status
+with verbs, self-heal, supervisor, dormant's two doors, environment
+ladder, witness lights); Q-C2-1 superseded by scanner SELF-HEAL;
+Q-C2-2 = preflight gains a Host arm (humans check the room); Q-C3-1
+= DORMANT + a session-start require-gate with typed logged override;
+Q-C3-2 = drop `degraded`; NEW: the fault SUPERVISOR (auto-restart,
+verbs, manual out-of-service). **Build OPEN with re-sequenced order:
+CS.1 (rung-1 harness + pure resolve core, red-first on the harness,
+incl. the existing-engine first real-services audit) runs FIRST,
+then the pages build, then CS.2–CS.5, then C4.** Estimate ≈ 5.5–7
+sessions (C4 ≈ 1.5–2 additional). Rung-1 environment capabilities
+are MEASURED, not assumed — recipes and verdicts in
+`2026-09-04-rung1-capability-research.md` (dockerd/VLC/MPD/pipewire/
+HA all proven in the dev container incl. HA scene→light end-to-end;
+dbusmock-BlueZ workaround PROVEN; btvirt: container-impossible,
+hosted-CI pending the modules-extra probe; the GitHub GraphQL
+rate-limit mystery RESOLVED as the session's own CI storms
+exhausting the shared user×app pairing bucket — mitigations
+recorded).
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

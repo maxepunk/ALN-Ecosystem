@@ -1,9 +1,10 @@
 # Phase 3 — Design-workspace pages (+ E10 hot-apply)
 
-**Status:** census recorded (one correction, §2.1a); design r1
-red-teamed (two Opus legs, 21 findings — §6) and SUPERSEDED by r2
-(§7); owner batch (§8) OPEN — **build gate held** on the §14.1 split
-sign-off (Q4) and the surfaces home (Q1).
+**Status: OWNER RATIFIED 2026-09-04 ("ratify all") — §9 is the
+NORMATIVE record.** Build OPEN, sequenced AFTER C2+C3's CS.1 (the
+mechanics-editor badges and the preview profile consume the resolve
+core). Design history: census (§2, one correction §2.1a) → r1 →
+red-team (§6, 21 findings) → r2 (§7) → batch (§8, answered) → §9.
 **Unit:** the five Design-workspace pages (program Track B; §14
 rulings 2026-09-03) + E10 hot-apply, on the B0 store/auth/harness
 foundation. Branch: continues `claude/phase3-b0` chain (a new
@@ -464,3 +465,40 @@ divergent drafts; create a brand-new pack from nothing in the tool
 (they copy an existing pack on disk instead); simulate a cue timeline
 without running the preview orchestrator. Everything else in the
 five-page story is IN.
+
+## 9. Owner ratification (2026-09-04 — "ratify all")
+
+The consolidated sitting (this batch + the C2+C3 batch + the
+architecture) closed with "ratify all". Governing frame: "one truth,
+three loops" (CONTEXT.md §2). Rulings for this unit:
+
+- **Q1 → mechanics editor owns game.json entire**, including the
+  surfaces block, with LIVE VERDICT BADGES on every venue-resolvable
+  field (idle-loop channel, roles, media refs) — computed by running
+  the C2 pure resolve() against the DRAFT + the loaded profile, and
+  labeled paper/live + profile identity per CONTEXT.md. The pack
+  manager's Media panel stays read-only inventory. (Supersedes §8
+  Q1's a/b framing — the badge dissolves the choice.)
+- **Q2 → (a) ratified**: hot-apply REFUSES while a session is active
+  or paused. A per-session "playtest" opt-in flag is a recorded
+  later addition, not built now.
+- **Q3 → RETIRE the ENDGAME `target:"bluetooth"` literal** (ledger
+  L8): re-authored as an audio role; the ALN profile binds it; lands
+  during this build; reaches production only via the merge train.
+- **Q4 → build list APPROVED with one change: minimal
+  CREATE-NEW-PACK is IN** ("New pack" = name → skeleton copy →
+  opens as a draft; the editors are the authoring path). Deferred
+  with anchors to the ROADMAP registry: pack diff + draft merge →
+  the multi-author milestone; cue-timeline simulation without the
+  preview orchestrator → rehearsal tooling (Track D). Row 4 struck.
+- **Additions from the sitting**: the preview orchestrator ships
+  with a PREVIEW PROFILE (hardware-shaped needs resolve dormant on a
+  laptop — no red wall); E10's client re-load composes with the
+  C2-ratified scanner SELF-HEAL (each orchestrator authoritative for
+  its own stations — no preview exemption machinery).
+
+**Sequencing (re-ratified)**: the pages build runs AFTER C2+C3's CS.1
+(the badges and the preview profile consume the resolve core and the
+profile plurality it lands). PS.1–PS.6 order otherwise stands.
+**Estimate ≈ 6–7.5 sessions** (badges + create-new-pack + preview
+profile priced in), under the ratified price principle.
