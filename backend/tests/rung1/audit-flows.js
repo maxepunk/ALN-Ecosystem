@@ -100,7 +100,8 @@ async function main() {
         const d = env.data || env;
         if (d.action !== action) return;
         socket.off('gm:command:ack', onAck);
-        d.success ? resolve(d) : reject(new Error(`${action}: ${d.message}`));
+        if (d.success) resolve(d);
+        else reject(new Error(`${action}: ${d.message}`));
       };
       socket.on('gm:command:ack', onAck);
       socket.emit('gm:command', {
