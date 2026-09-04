@@ -497,6 +497,14 @@ three loops" (CONTEXT.md §2). Rulings for this unit:
   C2-ratified scanner SELF-HEAL (each orchestrator authoritative for
   its own stations — no preview exemption machinery).
 
+**Per-page mock gate (owner flag, 2026-09-04):** before each PS
+stage builds its page, the owner reviews and approves a RENDERED mock
+he actually sees — put in front of him in the conversation or as an
+openable design artifact, never ASCII buried in a doc (the §8
+wireframes were written but never actually shown; that does not count
+as review). This applies the `prototype` (UI branch) standing rule:
+never build a screen without an approved design.
+
 **Sequencing (re-ratified)**: the pages build runs AFTER C2+C3's CS.1
 (the badges and the preview profile consume the resolve core and the
 profile plurality it lands). PS.1–PS.6 order otherwise stands.
