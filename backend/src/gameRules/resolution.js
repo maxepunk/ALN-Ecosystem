@@ -30,7 +30,24 @@ function resolve(needs, profile, inventory = {}) {
   return { verdicts, rollup: rollUp(verdicts) };
 }
 
+/** Need kinds that live on the orchestrator; at tier zero
+ * (profile.orchestrator === false) they are unavailable BY DESIGN —
+ * dormant, never fault, even against live down-health (nothing was
+ * promised to run). Capabilities and device-class minimums are
+ * standalone-capable (scanner-side) and resolve normally. */
+const ORCHESTRATOR_KINDS = new Set([
+  'service', 'endpoint', 'lighting-role', 'lighting-role-ref',
+  'surface-channel', 'sound',
+]);
+
 function resolveOne(need, profile, bindings, inventory) {
+  if (profile && profile.orchestrator === false
+      && ORCHESTRATOR_KINDS.has(need.kind)) {
+    return verdict(
+      need, 'dormant', 'paper',
+      'tier zero: orchestrator features unavailable by design'
+    );
+  }
   switch (need.kind) {
     case 'lighting-role': {
       const bound = (bindings.lighting || {})[need.id];
@@ -45,10 +62,13 @@ function resolveOne(need, profile, bindings, inventory) {
           `unbound; runs via pack fallback ${need.fallback}`
         );
       }
-      // No binding, no fallback: this role's commands will refuse at
-      // runtime ("role unbound tonight") — surfaced pre-show here.
+      // No binding, no fallback: a configuration hole nobody chose
+      // (neither of dormant's two doors) — FAULT, surfaced pre-show,
+      // with its verbs (Loop 3: every fault says what to do).
       return verdict(
-        need, 'fault', 'paper', `role '${need.id}' unbound, no fallback`
+        need, 'fault', 'paper',
+        `role '${need.id}' unbound with no pack fallback — its cues `
+        + `will refuse; bind the role in the profile or author a fallback`
       );
     }
     case 'endpoint': {
@@ -151,14 +171,32 @@ function verdict(need, v, depth, reason) {
   return { need, verdict: v, depth, reason };
 }
 
+/**
+ * D-C2.1 rollup: status + dormantServices (ids of dormant service/
+ * endpoint needs — endpoint ids ARE service ids per the endpoints
+ * interior pin) + problems (every fault/no-go reason, act-now list).
+ * disabledCueIds is deliberately absent: its true producer is C3's
+ * session-start disable walk (CS.2) — a resolve-time guess here
+ * would duplicate that mechanism.
+ */
 function rollUp(verdicts) {
+  const dormantServices = verdicts
+    .filter((v) => v.verdict === 'dormant'
+      && (v.need.kind === 'service' || v.need.kind === 'endpoint'))
+    .map((v) => v.need.id);
+  const problems = verdicts
+    .filter((v) => v.verdict === 'fault' || v.verdict === 'no-go')
+    .map((v) => v.reason);
+
+  let status = 'go';
   if (verdicts.some((v) => v.verdict === 'no-go')) {
-    return { status: 'no-go' };
+    status = 'no-go';
+  } else if (
+    verdicts.some((v) => v.verdict === 'dormant' || v.verdict === 'fault')
+  ) {
+    status = 'go-degraded';
   }
-  const degraded = verdicts.some(
-    (v) => v.verdict === 'dormant' || v.verdict === 'fault'
-  );
-  return { status: degraded ? 'go-degraded' : 'go' };
+  return { status, dormantServices, problems };
 }
 
 module.exports = { resolve };

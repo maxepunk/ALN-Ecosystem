@@ -60,6 +60,15 @@ describe('resolve (pure, C1 §2 table)', () => {
   });
 
   it('an unbound role with NO fallback is a fault: its commands will refuse', () => {
+    // Spec-review adjudication (CS.1 close): NOT dormant — dormant's
+    // two doors (CONTEXT.md §4) both require someone to have CHOSEN
+    // the absence; a missing binding with no authored fallback is a
+    // configuration hole nobody chose, and its cues will refuse
+    // mid-show. Alarm integrity cuts both ways: hiding a
+    // will-fail-during-show condition behind grey is the
+    // miss-a-real-alarm failure. The C1 §2 row says "preflight flag",
+    // pointedly not the DORMANT label it uses for endpoints. Per
+    // Loop 3 the fault reason carries its verbs.
     const needs = [{
       kind: 'lighting-role', id: 'all-clear',
       fallback: null, sources: [],
@@ -67,7 +76,8 @@ describe('resolve (pure, C1 §2 table)', () => {
     const bareProfile = { orchestrator: true, bindings: {} };
     const { verdicts } = resolve(needs, bareProfile);
     expect(verdicts[0].verdict).toBe('fault');
-    expect(verdicts[0].reason).toMatch(/unbound/);
+    expect(verdicts[0].reason).toMatch(/will refuse/);
+    expect(verdicts[0].reason).toMatch(/bind .*or author a fallback/);
   });
 
   it('an endpoint the profile does not declare is DORMANT under onAbsent degrade', () => {
@@ -138,6 +148,73 @@ describe('resolve (pure, C1 §2 table)', () => {
       { orchestrator: true, bindings: {} }
     );
     expect(degraded.rollup.status).toBe('go-degraded');
+  });
+
+  it('rollup carries dormantServices and problems (D-C2.1 shape)', () => {
+    // The real ALN pack against the real full-kit profile: display.main
+    // is the honest dormant endpoint (no endpoints block yet), and a
+    // live inventory missing one cue-referenced sound produces a fault
+    // whose reason lands in problems. disabledCueIds is deliberately
+    // NOT produced here — its true producer is C3's session-start
+    // disable walk (CS.2), and a resolve-time guess would duplicate it.
+    const soundIds = alnNeeds
+      .filter((n) => n.kind === 'sound').map((n) => n.id);
+    const { rollup } = resolve(alnNeeds, ALN_PROFILE, {
+      soundFiles: soundIds.filter((id) => id !== 'tension.wav'),
+    });
+    expect(rollup.dormantServices).toContain('display.main');
+    expect(rollup.problems).toEqual(
+      expect.arrayContaining([expect.stringMatching(/tension\.wav.*missing/)])
+    );
+    expect(rollup.status).toBe('go-degraded');
+
+    const clean = resolve(alnNeeds, ALN_PROFILE, { soundFiles: soundIds });
+    expect(clean.rollup.problems).toEqual([]);
+  });
+
+  it('orchestrator:false is tier zero: orchestrator features dormant BY DESIGN, never fault', () => {
+    // C1 §2 row: "anything | orchestrator:false | tier zero:
+    // standalone-capable elements only; all orchestrator features
+    // unavailable (by design)". Even live down-health must not fault —
+    // nothing was promised to run. Capabilities and device-class
+    // minimums are standalone-capable (scanner-side) and unchanged.
+    const tierZero = { orchestrator: false, bindings: {} };
+    const { verdicts, rollup } = resolve(alnNeeds, tierZero, {
+      serviceHealth: { vlc: 'down', music: 'down' },
+    });
+    for (const v of verdicts) {
+      expect(v.verdict).not.toBe('fault');
+      expect(v.verdict).not.toBe('no-go');
+      if (!['capability', 'device-class'].includes(v.need.kind)) {
+        expect(v.verdict).toBe('dormant');
+        expect(v.reason).toMatch(/tier zero|by design/);
+      }
+    }
+    expect(rollup.status).toBe('go-degraded');
+  });
+
+  it('the toy pack resolves against its REAL test-rig profile (dual-pack)', () => {
+    // Second consumer, real content: toy-test-rig binds BOTH roles —
+    // including fallback-less all-clear — so the toy show rolls up go
+    // with no dormant services and no problems.
+    const TOY_DIR = path.join(
+      REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures', 'packs', 'toy-heist'
+    );
+    const TOY_PROFILE = JSON.parse(fs.readFileSync(
+      path.join(REPO_ROOT, 'backend', 'tests', 'e2e', 'fixtures',
+        'profiles', 'toy-test-rig.json'),
+      'utf8'
+    ));
+    const toyNeeds = collectPackNeeds(loadPack(TOY_DIR));
+    const { verdicts, rollup } = resolve(toyNeeds, TOY_PROFILE);
+    const allClear = verdicts.find(
+      (v) => v.need.kind === 'lighting-role' && v.need.id === 'all-clear'
+    );
+    expect(allClear.verdict).toBe('runs');
+    expect(allClear.reason).toBe('bound: scene.toy_all_clear');
+    expect(rollup).toEqual(
+      { status: 'go', dormantServices: [], problems: [] }
+    );
   });
 
   it('sound files resolve live against a supplied file listing, paper without one', () => {

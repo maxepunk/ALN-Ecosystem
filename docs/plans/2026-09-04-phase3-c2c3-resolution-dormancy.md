@@ -520,6 +520,64 @@ against it:
 
 Backend suite 2815/2815 after the seam.
 
-**Still open in CS.1:** CI job port of the harness (recipe now
-includes apt xdotool/wmctrl/python3-dbusmock + Xvfb), two-axis stage
-review.
+**CI job port (sixth increment):** `.github/workflows/rung1.yml` —
+the recurring automated rung-1 instance on hosted runners: apt the
+measured recipe (VLC/MPD for the engine's own children, pipewire +
+Xvfb + dbus arms, python3-dbusmock as the hosted-CI BT ceiling),
+sudo bring-up with runner PATH preserved (secure_path hides
+setup-node's toolcache node), probe, non-root engine boot, the
+13-assertion audit, teardown always; self-scoped push trigger +
+per-ref concurrency. Run 1 failed at parse (unquoted step name
+containing a colon — caught because the run's display name fell back
+to the file PATH); fixed with a local yaml.safe_load verification
+before re-push.
+
+**Two-axis stage review (fixed point c9b30c8, parallel subagents):**
+
+- *Standards axis:* clean — no hard violations; every changed file
+  accounted for. One judgement-call smell noted (the `resolveOne`
+  kind-dispatch switch = the ratified table design itself, matching
+  `scoring.js` idiom).
+- *Spec axis:* four findings, each verified against primary sources
+  then dispositioned:
+  1. **Rollup shape (CONFIRMED, fixed):** D-C2.1 names
+     `{status, dormantServices[], disabledCueIds[], problems[]}`;
+     only `status` was built. `dormantServices` (dormant
+     service/endpoint ids) and `problems` (every fault/no-go reason)
+     now produced, red-first. `disabledCueIds` is DEFERRED to CS.2
+     with its true producer — C3's session-start disable walk — a
+     resolve-time guess would duplicate that mechanism (recorded in
+     the rollUp doc comment).
+  2. **Tier zero (CONFIRMED, fixed):** the C1 §2 `orchestrator:
+     false` row was unimplemented. Now: orchestrator-hosted need
+     kinds (service, endpoint, lighting-role(+ref), surface-channel,
+     sound) resolve DORMANT "by design" — never fault, even against
+     live down-health (nothing was promised to run); capabilities and
+     device-class minimums are standalone-capable and resolve
+     normally.
+  3. **Dual-pack gap (CONFIRMED, fixed):** resolution.test.js never
+     ran the toy pack through resolve(). Added: real toy-heist needs
+     against the real toy-test-rig profile (which binds BOTH roles,
+     fallback-less `all-clear` included) → rollup `go`, empty
+     dormant/problems.
+  4. **Unbound-role fault-vs-dormant (ADJUDICATED: fault stands).**
+     The reviewer argued dormant per CONTEXT.md §4. Rejected on three
+     grounds: dormant's two doors both require someone to have CHOSEN
+     the absence (a missing binding with no authored fallback is a
+     configuration hole nobody chose); the C1 §2 row itself says
+     "preflight flag", pointedly not the DORMANT label it gives
+     endpoints; and alarm integrity cuts both ways — grey-hiding a
+     will-refuse-mid-show condition is the miss-a-real-alarm failure.
+     The reviewer's REAL catch was the reason string ("role unbound
+     tonight" read dormant-ish): it now carries consequence + verbs
+     ("its cues will refuse; bind the role in the profile or author a
+     fallback") per Loop 3, pinned by test.
+- Also batched: Test Summary now skips on cancelled runs
+  (`always() && !cancelled()`) — the concurrency guard's cancellations
+  were producing a red summary + failure notification on every push
+  (observed runs 238/240/241).
+
+Backend suite 2818/2818, ratchet clean. CS.1 exit state: harness +
+CI port + audited engine + reviewed core. Remaining before unit close
+(CS.5): none for this stage — CS.1 CLOSED pending the rung1.yml CI
+run's first green verdict (in flight at fold time).
