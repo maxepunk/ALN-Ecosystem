@@ -60,7 +60,7 @@ jobs:
 
       # sudo resets PATH (secure_path) which would hide setup-node's
       # toolcache binary from the scripts' `node` calls — preserve it.
-      - name: Bring up harness (root: docker/HA/users; services as harness user)
+      - name: "Bring up harness (root: docker/HA/users; services as harness user)"
         run: sudo env "PATH=$PATH" bash backend/tests/rung1/up.sh
 
       - name: Capability probe (runner manifest)
