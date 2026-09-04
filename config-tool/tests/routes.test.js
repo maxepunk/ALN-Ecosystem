@@ -31,10 +31,18 @@ describe('routes (HTTP layer)', () => {
       path.join(tmpDir, '.env'),
       'PORT=3000\nHOST=0.0.0.0\nADMIN_PASSWORD=super-secret\nJWT_SECRET=jwt-secret-value\nHOME_ASSISTANT_TOKEN=ha-token-value\nEMPTY_TOKEN=\nNOTION_API_KEY=notion-key-value\nMPD_PASS=mpd-pass-value\nSSL_KEY_PATH=/etc/ssl/server.key\n'
     );
-    fs.writeFileSync(path.join(tmpDir, 'scoring-config.json'), JSON.stringify({
-      version: '1.0',
-      baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
-      typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
+    fs.writeFileSync(path.join(tmpDir, 'game.json'), JSON.stringify({
+      kind: 'game', schemaVersion: 2, id: 'test-pack',
+      // A3 slice 4: declares the same capability ids real packs declare
+      // (ALN-TokenData/game.json) so cue-authoring tests exercising
+      // standing triggers / timelines / lighting roles don't trip the
+      // validateCuesBlock "requires" lint (rule 6).
+      requires: ['cues.standing', 'cues.timeline', 'lighting.roles'],
+      lightingRoles: ['gameplay', 'video-playback'],
+      scoring: {
+        baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
+        typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
+      },
     }));
     fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({ cues: [] }));
     fs.writeFileSync(path.join(tmpDir, 'routing.json'), JSON.stringify({
@@ -50,7 +58,7 @@ describe('routes (HTTP layer)', () => {
 
     const configManager = new ConfigManager({
       envPath: path.join(tmpDir, '.env'),
-      scoringPath: path.join(tmpDir, 'scoring-config.json'),
+      gamePath: path.join(tmpDir, 'game.json'),
       cuesPath: path.join(tmpDir, 'cues.json'),
       routingPath: path.join(tmpDir, 'routing.json'),
       tokensPath: path.join(tmpDir, 'tokens.json'),
@@ -69,15 +77,18 @@ describe('routes (HTTP layer)', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('GET /api/config returns env, scoring, cues, and routing', async () => {
+  it('GET /api/config returns env, scoring, cues, routing, and pack identity', async () => {
     const res = await request(app).get('/api/config').expect(200);
     assert.deepStrictEqual(
       Object.keys(res.body).sort(),
-      ['cues', 'env', 'routing', 'scoring']
+      ['cues', 'env', 'pack', 'routing', 'scoring']
     );
     assert.strictEqual(res.body.env.PORT, '3000');
     assert.strictEqual(res.body.scoring.baseValues['1'], 10000);
     assert.deepStrictEqual(res.body.cues, { cues: [] });
+    // Pack identity (slice 3a): the SPA derives its title + mode labels
+    // from here instead of baked ALN wording.
+    assert.strictEqual(res.body.pack.id, 'test-pack');
   });
 
   it('PUT /api/config/scoring with valid body writes the scoring file', async () => {
@@ -88,8 +99,8 @@ describe('routes (HTTP layer)', () => {
     };
     const res = await request(app).put('/api/config/scoring').send(body).expect(200);
     assert.deepStrictEqual(res.body, { success: true });
-    const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
-    assert.strictEqual(onDisk.baseValues['1'], 99999);
+    const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+    assert.strictEqual(onDisk.scoring.baseValues['1'], 99999);
   });
 
   describe('schema validation on writers (F-TOOL-04)', () => {
@@ -97,8 +108,8 @@ describe('routes (HTTP layer)', () => {
       const res = await request(app).put('/api/config/scoring').send({}).expect(400);
       assert.ok(Array.isArray(res.body.details) && res.body.details.length > 0);
       // file untouched
-      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'scoring-config.json'), 'utf8'));
-      assert.strictEqual(onDisk.baseValues['1'], 10000);
+      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
+      assert.strictEqual(onDisk.scoring.baseValues['1'], 10000);
     });
 
     it('PUT /api/config/scoring rejects non-numeric base values', async () => {
@@ -116,34 +127,86 @@ describe('routes (HTTP layer)', () => {
     });
 
     it('PUT /api/config/cues rejects a cue without an id', async () => {
-      const body = { cues: [{ label: 'No Id', quickFire: true, commands: [] }] };
+      const body = { kind: 'cues', schemaVersion: 2, cues: [{ label: 'No Id', quickFire: true, commands: [] }] };
       const res = await request(app).put('/api/config/cues').send(body).expect(400);
       assert.ok(res.body.details.some(d => /id/.test(d)));
     });
 
-    it('PUT /api/config/cues rejects a cue with neither quickFire nor trigger', async () => {
-      const body = { cues: [{ id: 'orphan', label: 'Orphan', commands: [] }] };
+    // A3 slice 4 (D-4.7c): the old "must have quickFire and/or a trigger"
+    // authoring-UX rule (validators.js validateCues) is retired along with
+    // that validator — writeCues now runs the pack-internal activation gate
+    // (validateCuesBlock) instead, which does not enforce reachability.
+    // An orphan cue (no trigger, no quickFire) is otherwise well-formed and
+    // is now ACCEPTED; what the gate still refuses is a malformed
+    // commands/timeline shape, exercised here instead.
+    it('PUT /api/config/cues accepts a cue with neither quickFire nor trigger (reachability is no longer gate-enforced)', async () => {
+      const body = {
+        kind: 'cues', schemaVersion: 2,
+        cues: [{ id: 'orphan', label: 'Orphan', commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+      };
+      await request(app).put('/api/config/cues').send(body).expect(200);
+    });
+
+    it('PUT /api/config/cues rejects a cue with an empty commands array (needs exactly one of commands/timeline, non-empty)', async () => {
+      const body = { kind: 'cues', schemaVersion: 2, cues: [{ id: 'orphan', label: 'Orphan', commands: [] }] };
       const res = await request(app).put('/api/config/cues').send(body).expect(400);
       assert.ok(res.body.details.some(d => /orphan/.test(d)));
     });
 
     it('PUT /api/config/cues rejects duplicate cue ids', async () => {
-      const cue = { id: 'dup', label: 'A', quickFire: true, commands: [] };
-      await request(app).put('/api/config/cues').send({ cues: [cue, { ...cue }] }).expect(400);
+      const cue = { id: 'dup', label: 'A', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] };
+      await request(app).put('/api/config/cues').send({ kind: 'cues', schemaVersion: 2, cues: [cue, { ...cue }] }).expect(400);
     });
 
     it('PUT /api/config/cues rejects a non-array non-wrapper body', async () => {
       await request(app).put('/api/config/cues').send({ hello: 'world' }).expect(400);
     });
 
-    it('PUT /api/config/cues accepts a plain array (backend-supported shape)', async () => {
-      const body = [{ id: 'c1', label: 'C1', quickFire: true, commands: [] }];
-      await request(app).put('/api/config/cues').send(body).expect(200);
+    it('PUT /api/config/cues rejects a present-but-wrong schemaVersion (S6 review, F4-sec)', async () => {
+      const body = {
+        kind: 'cues', schemaVersion: 99,
+        cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+      };
+      const res = await request(app).put('/api/config/cues').send(body).expect(400);
+      assert.ok(res.body.details.some(d => /schemaVersion 99/.test(d)));
     });
 
-    it('PUT /api/config/cues accepts a standing cue with trigger', async () => {
-      const body = { cues: [{ id: 's1', label: 'S1', trigger: { event: 'video:paused' }, commands: [] }] };
+    // A3 slice 4 (D-4.7c): flips the old documented-bug pin on purpose — a
+    // bare array (and the old wrapper-only `{cues:[...]}` shape) was
+    // backend-supported pre-migration; pack cues now REQUIRE the full
+    // header form {kind, schemaVersion, cues}, and anything else is refused.
+    it('PUT /api/config/cues rejects a plain array (header form is required, not the old backend-supported shape)', async () => {
+      const body = [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }];
+      const res = await request(app).put('/api/config/cues').send(body).expect(400);
+      assert.ok(res.body.details.some(d => /header form/.test(d)));
+    });
+
+    it('PUT /api/config/cues accepts a standing cue with trigger (header form + non-empty commands)', async () => {
+      const body = {
+        kind: 'cues', schemaVersion: 2,
+        cues: [{
+          id: 's1', label: 'S1', trigger: { event: 'video:paused' },
+          commands: [{ action: 'sound:play', payload: { file: 'test.wav' } }],
+        }],
+      };
       await request(app).put('/api/config/cues').send(body).expect(200);
+      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
+      assert.strictEqual(onDisk.cues[0].id, 's1');
+      // A pack-file write regenerates the manifest (same pairing as scoring).
+      const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pack-manifest.json'), 'utf8'));
+      assert.ok(manifest.files.some(f => f.path === 'cues.json'));
+    });
+
+    it('PUT /api/config/cues rejects a lighting action carrying a concrete sceneId (pack cues address lights by role only)', async () => {
+      const body = {
+        kind: 'cues', schemaVersion: 2,
+        cues: [{
+          id: 'lights', label: 'Lights', quickFire: true,
+          commands: [{ action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } }],
+        }],
+      };
+      const res = await request(app).put('/api/config/cues').send(body).expect(400);
+      assert.ok(res.body.details.some(d => /concrete scene id/.test(d)));
     });
 
     it('PUT /api/config/routing rejects routes as an array', async () => {
@@ -174,12 +237,33 @@ describe('routes (HTTP layer)', () => {
     });
   });
 
+  describe('asset usage map — prototype-safe accumulation (S6 review, F7-sec)', () => {
+    it('GET /api/assets/sounds does not 500 on a cue naming a file "__proto__"', async () => {
+      // A pack-authored file name keys the usage map; before the null-
+      // prototype fix, usage['__proto__'] resolved to Object.prototype
+      // and .push threw a TypeError → 500. Write the cues raw (bypassing
+      // the writer) to simulate a pack already on disk.
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({
+        kind: 'cues', schemaVersion: 2,
+        cues: [{ id: 'p', label: 'P', quickFire: true, commands: [{ action: 'sound:play', payload: { file: '__proto__' } }] }],
+      }));
+      await request(app).get('/api/assets/sounds').expect(200);
+    });
+
+    it('GET /api/assets/videos does not 500 on a cue naming a file "constructor"', async () => {
+      fs.writeFileSync(path.join(tmpDir, 'cues.json'), JSON.stringify({
+        kind: 'cues', schemaVersion: 2,
+        cues: [{ id: 'p', label: 'P', quickFire: true, timeline: [{ at: 0, action: 'video:queue:add', payload: { videoFile: 'constructor' } }] }],
+      }));
+      await request(app).get('/api/assets/videos').expect(200);
+    });
+  });
+
   describe('preset validation (F-TOOL-11/12)', () => {
     it('POST /api/presets/import rejects structurally invalid sections', async () => {
       const bad = {
         name: 'Bad', env: { PORT: '3000' },
         scoringConfig: { baseValues: { 1: 1 }, typeMultipliers: {} },
-        cues: 'hello',
         routing: { routes: {}, ducking: [] },
       };
       const res = await request(app)
@@ -189,8 +273,34 @@ describe('routes (HTTP layer)', () => {
       assert.ok(res.body.error);
     });
 
+    // A3 slice 4 (D-4.7c): cues are pack content, no longer a preset
+    // section — `data.cues` is no longer required by the import route, and
+    // presetSections validation no longer inspects it. An older export
+    // that still carries a `cues` key must still import successfully.
+    it('POST /api/presets/import accepts a preset with no cues key', async () => {
+      const noCues = {
+        name: 'No Cues Here', env: { PORT: '3000' },
+        scoringConfig: {
+          baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
+          typeMultipliers: { Personal: 1 },
+        },
+        routing: { routes: {}, ducking: [] },
+      };
+      const res = await request(app)
+        .post('/api/presets/import')
+        .attach('file', Buffer.from(JSON.stringify(noCues)), 'no-cues.json')
+        .expect(200);
+      assert.deepStrictEqual(res.body, { success: true, filename: 'no-cues-here.json' });
+      assert.ok(!('cues' in JSON.parse(
+        fs.readFileSync(path.join(tmpDir, 'presets', 'no-cues-here.json'), 'utf8')
+      )));
+    });
+
     it('PUT /api/presets/:filename/load with an invalid preset writes NOTHING (400)', async () => {
-      // hand-craft a preset with a broken cues section
+      // hand-craft a preset with a broken routing section (cues are no
+      // longer a validated preset section — A3 slice 4, D-4.7c — so the
+      // injected brokenness moves to routing to keep exercising the
+      // "validate everything before writing anything" guarantee).
       const preset = {
         name: 'Half Bad', created: 'now', description: '',
         env: { PORT: '7777' },
@@ -198,8 +308,7 @@ describe('routes (HTTP layer)', () => {
           baseValues: { 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 },
           typeMultipliers: { Personal: 1 },
         },
-        cues: { cues: [{ label: 'no id' }] },
-        routing: { routes: {}, ducking: [] },
+        routing: { routes: [], ducking: [] },
       };
       fs.writeFileSync(path.join(tmpDir, 'presets', 'half-bad.json'), JSON.stringify(preset));
       await request(app).put('/api/presets/half-bad.json/load').expect(400);
@@ -210,8 +319,11 @@ describe('routes (HTTP layer)', () => {
     });
 
     it('preset load succeeds even when an existing config file is corrupt (backup skipped)', async () => {
-      // corrupt cues.json — the very scenario preset restore exists for
-      fs.writeFileSync(path.join(tmpDir, 'cues.json'), '{"cues": [TRUNCATED');
+      // corrupt routing.json — the very scenario preset restore exists for.
+      // (Cues are no longer part of presets — D-4.7c/D-4.7d — so a corrupt
+      // cues.json can no longer be the trigger here; loadPreset never
+      // touches cues.json at all any more.)
+      fs.writeFileSync(path.join(tmpDir, 'routing.json'), '{"routes": {TRUNCATED');
       const preset = {
         name: 'Recovery', created: 'now', description: '',
         env: { PORT: '3000' },
@@ -219,13 +331,21 @@ describe('routes (HTTP layer)', () => {
           baseValues: { 1: 10000, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
           typeMultipliers: { Personal: 1 },
         },
-        cues: { cues: [] },
+        // An old-style, pre-migration `cues` section — kept here to prove
+        // it is NEVER written to the pack (D-4.7c: the operator's recovery
+        // tool must never write concrete-sceneId cues back into the pack).
+        cues: { cues: [{ id: 'ancient', label: 'Ancient', quickFire: true, commands: [] }] },
         routing: { routes: {}, ducking: [] },
       };
       fs.writeFileSync(path.join(tmpDir, 'presets', 'recovery.json'), JSON.stringify(preset));
+      const cuesBefore = fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8');
       await request(app).put('/api/presets/recovery.json/load').expect(200);
-      const cues = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
-      assert.deepStrictEqual(cues, { cues: [] });
+      // routing.json recovered from its corrupt state via the preset write
+      const routing = JSON.parse(fs.readFileSync(path.join(tmpDir, 'routing.json'), 'utf8'));
+      assert.deepStrictEqual(routing, { routes: {}, ducking: [] });
+      // cues.json is completely untouched — byte-identical to before load —
+      // proving the preset's `cues` section was never acted on
+      assert.strictEqual(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'), cuesBefore);
     });
   });
 

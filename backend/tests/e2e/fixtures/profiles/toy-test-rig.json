@@ -1,0 +1,15 @@
+{
+  "kind": "installation-profile",
+  "schemaVersion": 1,
+  "profileId": "toy-test-rig",
+  "label": "Toy heist — test rig",
+  "version": 1,
+  "forPack": "midnight-heist",
+  "orchestrator": true,
+  "bindings": {
+    "lighting": {
+      "vault-alarm": { "ha": "scene.toy_vault_alarm" },
+      "all-clear": { "ha": "scene.toy_all_clear" }
+    }
+  }
+}

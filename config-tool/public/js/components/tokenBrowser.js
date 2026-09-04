@@ -2,7 +2,7 @@
  * Token Browser Component — read-only table of tokens with filters.
  * Cross-references scoring config to show calculated values.
  */
-import { formatCurrency, el } from '../utils/formatting.js';
+import { formatCurrency, formatStars, el } from '../utils/formatting.js';
 
 export function renderTokenBrowser(container, tokens, scoring) {
   const tokenList = Object.values(tokens);
@@ -92,7 +92,7 @@ export function renderTokenBrowser(container, tokens, scoring) {
           return el('tr', {},
             el('td', { className: 'mono' }, t.SF_RFID),
             el('td', {}, t.SF_MemoryType),
-            el('td', {}, '★'.repeat(t.SF_ValueRating)),
+            el('td', {}, formatStars(t.SF_ValueRating, Object.keys(scoring?.baseValues || {}).length || 5)),
             el('td', {}, t.SF_Group || '—'),
             el('td', { className: 'mono' }, formatCurrency(value)),
             el('td', {}, media),
