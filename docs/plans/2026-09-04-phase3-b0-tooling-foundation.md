@@ -222,4 +222,98 @@ BS.4 ≈ 0.5. Total ≈ 3–4 sessions — ABOVE the program's 1.5–2.5
 re-pricing, driven by B0.3's backend substrate being entirely unbuilt
 (census §2). Recorded rather than squeezed.
 
-## 4. Design red-team (next: mixed-model panel per the subagent policy)
+## 4. Design red-team record + adjudications (2026-09-04)
+
+Panel per the subagent policy: 2 Opus refuters (security/auth,
+architecture/state) + a Fable doctrine/parity leg. 18 objections, ALL
+adjudicated ACCEPTED (several convergent). The r1 text stands as the
+record; §5 below carries the superseding r2 decisions.
+
+| # | Leg | Sev | Objection (condensed) | Disposition → r2 |
+|---|---|---|---|---|
+| S1 | sec | CRIT | Observe token passes requireAdmin (decode-only check) via the unauthenticated /scoreboard issuance oracle | D-B0.3r2: verification takes required tier+functions; requireAdmin retired into requireFunction; observe tokens in an independent short-TTL store, never adminTokens |
+| S2 | sec | CRIT | "WS accepts it read-only" names no enforcement point; deviceType is client-asserted | D-B0.3r2: handshake resolves token→socket.functions; gm:command gates on functions, never deviceType |
+| S3 | sec | MAJ | v1 near-vacuous; restricted operator token unrestricted over WS (the kept all-or-nothing carve-out) | CARVE-OUT DELETED (convergent with D2): the function check runs at the commandExecutor choke point for ALL operator-token actors incl. WS; v1 operator grants are full, so live behavior is unchanged while the plumbing is real |
+| S4 | sec | MAJ | aud decorative (jwt.verify lacks audience); the tool's proxy presents tokens cross-audience | D-B0.3r2: audience enforced per verify site; login mints a token PAIR (aud config-tool for the tool API; aud orchestrator for proxied calls) |
+| S5 | sec | MAJ | Publish TOCTOU; no per-file sha1 re-verify; symlink smuggling via tree copy | D-B0.1r2 publish pipeline (merged with A3): freeze→rebuild manifest→gate→copy ONLY manifest-inventoried REGULAR files→recompute contentHash at target, refuse mismatch→one publish mutex |
+| S6 | sec | MAJ | _readDiskManifest cache keyed mtime-only — "one authority" false under the seam | Fixed with A1's explicit-dir gate; the path-blind cache itself gets a red-first fix in BS.2 (pre-existing defect class) |
+| S7 | sec | MAJ | Operator floor inherits fail-open via defaulted source param | D-B0.3r2: explicit actor argument, deny-by-default — no defaulted identity |
+| S8 | sec | MIN | Reads open on loopback; rotation unowned | D-B0.3r2: enforce on ALL tool routes; header-only tokens; per-load short-TTL observe mint |
+| A1 | arch | CRIT | Gate-reuse unspecified; in-process packService import drags logger/dotenv/winston into the tool (violates configManager.js:15-17) and _gateCheck lives in a stateful module | D-B0.1r2: EXTRACT the gate into a dependency-free module (`backend/src/services/pack/packGate.js` — fs/path/crypto only, the cueValidation/build-pack-manifest precedent); packService.activatePack becomes its stateful caller; config-tool imports the pure module with an explicit dir. Child-process runner named as fallback if extraction entangles |
+| A1b | arch | CRIT | Path-blind manifest cache validates draft B against draft A's manifest | Folded into A1 (explicit dir; no shared cache in the pure gate) + the BS.2 cache fix |
+| A2 | arch | CRIT | No conflict behavior: whole-tree copy silently reverts a Notion sync / other draft | D-B0.1r2: publish REFUSES when live contentHash ≠ draft base.contentHash (conflict = refuse; rebase/diff is the pages' job). Residual external-writer window narrowed by the mutex + hash check; noted honestly |
+| A3 | arch | HIGH | Tree copy non-atomic; torn state = boot REFUSAL; drops writeScoring's rollback safeguard | D-B0.1r2: stage files as siblings, rename() in order with pack-manifest.json LAST — torn = stale-hash drift warn, never a refused boot |
+| A4 | arch | HIGH | "Single activatePack() re-entry" is a false E10 promise — token values bake at load (tokenService) | Seam note corrected: E10 = re-activation + token re-bake; recorded for the pages unit |
+| A5 | arch | MED | Hardcoded publish target vs ROADMAP §2.2 (engine resolves via PACK_PATH) | D-B0.1r2 (with D4): draft stamps {packId, sourcePath, contentHash}; publish targets the recorded source through the engine's resolver |
+| A6 | arch | MED | env/routing cut points at nothing (§14.1) | Named home added (with D7): program C1 assigns network/env to the installation profile — absorption lands with C1/§13.7's profile-manager page |
+| A7 | arch | MED | BS.1 enforcement 401s the tool's unauthenticated music proxy before BS.3's login exists | Stage plan r2: BS.1 builds substrate + gates tool-UNconsumed surfaces (admin routes, scoreboard token); the enforcement FLIP on tool-consumed routes lands WITH BS.3's login |
+| D1 | doc | CRIT | Backend-served trigger/action vocabulary is B0 scope by program text — silently dropped | RESTORED: a contracted vocabulary endpoint (BS.1, backend) + the tool's editors re-sourced (BS.3); estimate grows accordingly |
+| D2 | doc | MAJ | GM WS carve-out exceeds §13.6 without a ruling | Resolved by S3's fold — carve-out deleted, no ruling needed |
+| D3 | doc | MAJ | Claims shape missing deviceId + packHash; grant formula risked skipping the O3 algebra | D-B0.3r2: full O3 shape {tier, class, deviceId, functions, packHash, aud, exp}; grants via packAssignment(class) ∩ tierCeiling(tier) (operator/staffed degenerate table); packHash pins stale-grant detection |
+| D4 | doc | MAJ | §2.2 one-pack corner | Folded with A5 |
+| D5 | doc | MAJ | Playwright deferral is a vague-phrase cut | Two Playwright smokes IN BS.3 (the pre-read's own enumeration) — cut withdrawn |
+| D6 | doc | MAJ | HTTPS absent from the tool-auth design (decided Q2 posture) | D-B0.2r2: the tool serves HTTPS (self-signed, backend pattern) in BS.3 |
+| D7 | doc | MIN | env/routing forward home | Folded with A6 (C1) |
+| D8 | doc | MIN | Close gate under-enumerated | BS.4r2 enumerates: one-auth §5 proofs (suites-unchanged, floor-rejection + pack-switch contract tests), backend ratchet+lint, config-tool suite, scanner untouched-confirm, dual-pack Tier L |
+| D9 | doc | MIN | Estimate divergence needs owner visibility | Carried in the owner batch below + STATUS note at ratification |
+| D10 | doc | MIN | Unrecorded pre-read divergences (active-pack pointer; bundle export/import) | Recorded: the pointer died with A2 activation semantics; export/import = pack-manager page feature |
+
+## 5. Design r2 — superseding decisions
+
+**D-B0.1r2 (store/publish).** Draft stamp `{draftId, packId, sourcePath,
+base: {contentHash}, created, lastEdited}` — publish resolves its
+target from the recorded source through the engine's own path
+resolution, never a hardcoded submodule path (§2.2). Publish pipeline,
+under ONE tool-side mutex: (1) freeze the draft to a staging snapshot;
+(2) rebuild the manifest in staging; (3) run the EXTRACTED
+dependency-free gate (`packGate.validatePackDir(dir) → problems[]`)
+against staging — refuse on any problem; (4) copy ONLY
+manifest-inventoried regular files (symlinks and strays never travel)
+by staging-as-siblings + ordered rename with `pack-manifest.json`
+LAST; (5) re-read the landed tree and refuse/alarm on contentHash
+mismatch; (6) append the publish log. Publish REFUSES when the live
+target's contentHash no longer equals the draft's base (conflict =
+refuse loudly; rebasing a draft is a pages-era feature). E10 seam note
+(corrected per A4): a future hot-apply is re-activation PLUS token
+re-bake — two named steps, recorded for the pages unit.
+
+**D-B0.3r2 (auth).** Full O3 claim shape
+`{tier, class, deviceId, functions, packHash, aud, exp}`; grants
+computed at issuance via `packAssignment(class) ∩ tierCeiling(tier)`
+(v1 table: operator/staffed = full ceiling; device/display = observe).
+Verification REQUIRES tier + function + audience (jwt.verify with
+`{audience}` per site); `requireAdmin` is absorbed into
+`requireFunction` (legacy tokens without claims fail CLOSED). The
+commandExecutor floor takes an EXPLICIT actor argument, deny-by-default,
+and runs for ALL operator-token actors including the GM WS path (the
+handshake resolves token→`socket.functions`; `gm:command` authorizes on
+functions, never deviceType) — v1 operator grants are full-ceiling so
+live behavior is unchanged while enforcement is real. The scoreboard
+observe token: independent short-TTL store, minted per page load,
+usable ONLY for the read-only WS handshake class — it passes no
+requireFunction gate and never enters adminTokens. Tool login mints the
+aud pair (config-tool / orchestrator-proxy). The backend-served
+trigger/action VOCABULARY endpoint ships in BS.1 and the editors
+re-source from it in BS.3 (D1 restored).
+
+**D-B0.2r2 (shell/harness).** As r1 PLUS: the tool serves HTTPS
+(self-signed, the backend pattern) and enforces auth on ALL routes
+(header-borne tokens only); two Playwright smokes land in BS.3.
+
+**Stage plan r2.** BS.1 backend substrate (claims+issuance, the pure
+`packGate` extraction, requireFunction absorption, commandExecutor
+actor floor, WS functions resolution, scoreboard observe token,
+vocabulary endpoint) — gates only tool-unconsumed surfaces; BS.2 store
+server-side (drafts, the publish pipeline, publish log, the two pack
+writers re-pointed, the mtime-cache fix); BS.3 tool client (shell,
+shared store, login+HTTPS, editors re-sourced to the vocabulary
+endpoint, jsdom harness + 2 Playwright smokes, enforcement flip on
+tool-consumed routes); BS.4 close (one-auth §5 proofs, ratchets, lint,
+config-tool + scanner suites, dual-pack Tier L, adversarial review,
+records).
+
+**Estimate r2 (honest):** 3.5–5 sessions — above r1's 3–4 (D1
+restoration + the S/A hardening), and well above the program's
+1.5–2.5. Carried to the owner for sign-off, not squeezed.
+
+## 6. Owner questions (grill batch — pending)
