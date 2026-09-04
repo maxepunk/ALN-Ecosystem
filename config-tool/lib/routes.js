@@ -6,6 +6,9 @@ const { ValidationError } = require('./validators');
 const { maskSecrets } = require('./secrets');
 const { ConfigManager } = require('./configManager');
 const { publishDraft } = require('./publish');
+// The engine's cue vocabulary — dependency-free by design (the
+// configManager import precedent, D-4.7c).
+const cueValidation = require('../../backend/src/gameRules/cueValidation');
 
 // Map errors to HTTP: schema violations are the client's fault (400 with
 // details, F-TOOL-04); everything else stays a 500.
@@ -16,7 +19,7 @@ function sendError(res, err) {
   res.status(500).json({ error: err.message });
 }
 
-function createRouter(configManager, { draftStore, runnerPath } = {}) {
+function createRouter(configManager, { draftStore, runnerPath, getOrchestratorToken } = {}) {
   const router = express.Router();
 
   // -- Config CRUD --
@@ -186,6 +189,22 @@ function createRouter(configManager, { draftStore, runnerPath } = {}) {
       });
     });
   }
+
+  // -- Vocabulary (B0 BS.3, D1) --
+  // The engine's cue-authoring vocabulary, from the SAME dependency-free
+  // module the activation gate validates against (the cueValidation
+  // import precedent above) — one source, zero drift, and authoring
+  // works with the orchestrator down. The backend serves the identical
+  // payload at its own /api/vocabulary (BS.1).
+
+  router.get('/vocabulary', (req, res) => {
+    res.json({
+      triggerEvents: cueValidation.CUE_TRIGGER_EVENTS,
+      conditionOperators: cueValidation.CONDITION_OP_NAMES,
+      actions: cueValidation.CUE_ACTIONS,
+      tokenDerivedTriggerEvents: cueValidation.TOKEN_DERIVED_TRIGGER_EVENTS,
+    });
+  });
 
   // -- Tokens (read-only) --
 
@@ -396,9 +415,17 @@ function createRouter(configManager, { draftStore, runnerPath } = {}) {
 
   router.put('/music/playlists', async (req, res) => {
     try {
+      // The backend PUT is show-control gated (B0 BS.3 enforcement
+      // flip): attach the SERVER-HELD orchestrator token from login —
+      // the browser never carries it. Without one (orchestrator was
+      // down at login) the backend's 401 surfaces to the SPA.
+      const orchToken = getOrchestratorToken ? getOrchestratorToken() : null;
       const r = await fetch(`${ORCHESTRATOR_URL}/api/music/playlists`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(orchToken ? { Authorization: `Bearer ${orchToken}` } : {}),
+        },
         body: JSON.stringify(req.body),
         signal: AbortSignal.timeout(5000),
       });

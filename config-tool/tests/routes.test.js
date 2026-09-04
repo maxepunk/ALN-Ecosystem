@@ -287,6 +287,46 @@ describe('routes (HTTP layer)', () => {
     assert.deepStrictEqual(res.body, { error: 'name is required' });
   });
 
+  // B0 BS.3: the music-playlist proxy attaches the SERVER-HELD
+  // orchestrator operator token (the backend's PUT is show-control
+  // gated since the enforcement flip) — the browser never carries it.
+  it('PUT /api/music/playlists proxy forwards the orchestrator token', async () => {
+    let forwarded = null;
+    const realFetch = global.fetch;
+    global.fetch = async (url, opts) => {
+      forwarded = opts.headers.Authorization;
+      return { ok: true, status: 200, text: async () => '{"ok":true}' };
+    };
+    try {
+      const { ConfigManager } = require('../lib/configManager');
+      const { createRouter } = require('../lib/routes');
+      const authedApp = express();
+      authedApp.use(express.json());
+      authedApp.use('/api', createRouter(
+        new ConfigManager({ envPath: path.join(tmpDir, '.env') }),
+        { getOrchestratorToken: () => 'orch-tok' }));
+      await request(authedApp).put('/api/music/playlists')
+        .send({ playlists: [] }).expect(200);
+      assert.strictEqual(forwarded, 'Bearer orch-tok');
+    } finally {
+      global.fetch = realFetch;
+    }
+  });
+
+  // B0 BS.3 (D1): the tool serves the engine's cue vocabulary from the
+  // SAME dependency-free module the activation gate validates against —
+  // zero drift by construction; the backend serves the identical
+  // payload at its own /api/vocabulary (BS.1).
+  it('GET /api/vocabulary serves the gate\'s own tables verbatim', async () => {
+    const cueValidation = require('../../backend/src/gameRules/cueValidation');
+    const res = await request(app).get('/api/vocabulary').expect(200);
+    assert.deepStrictEqual(res.body.triggerEvents, cueValidation.CUE_TRIGGER_EVENTS);
+    assert.deepStrictEqual(res.body.conditionOperators, cueValidation.CONDITION_OP_NAMES);
+    assert.deepStrictEqual(res.body.actions, cueValidation.CUE_ACTIONS);
+    assert.deepStrictEqual(res.body.tokenDerivedTriggerEvents,
+      cueValidation.TOKEN_DERIVED_TRIGGER_EVENTS);
+  });
+
   it('GET /api/tokens returns token data (read-only)', async () => {
     const res = await request(app).get('/api/tokens').expect(200);
     assert.strictEqual(res.body.tok001.SF_ValueRating, 3);

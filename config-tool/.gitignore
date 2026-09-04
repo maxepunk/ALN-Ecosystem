@@ -1,3 +1,5 @@
 node_modules/
 presets/
 data/
+test-results/
+playwright-report/

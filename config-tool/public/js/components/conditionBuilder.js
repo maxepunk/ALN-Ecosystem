@@ -3,16 +3,24 @@
  * Dynamic rows for building trigger conditions.
  */
 import { el } from '../utils/formatting.js';
+import { getConditionOps } from '../utils/vocabulary.js';
 
-const OPERATORS = [
-  { value: 'eq', label: 'equals' },
-  { value: 'neq', label: 'not equals' },
-  { value: 'gt', label: 'greater than' },
-  { value: 'gte', label: 'at least' },
-  { value: 'lt', label: 'less than' },
-  { value: 'lte', label: 'at most' },
-  { value: 'in', label: 'is one of' },
-];
+// UI labels for the operators — the OFFERED set comes from the served
+// vocabulary (B0 BS.3, D1); an op the labels don't know renders by name.
+const OPERATOR_LABELS = {
+  eq: 'equals',
+  neq: 'not equals',
+  gt: 'greater than',
+  gte: 'at least',
+  lt: 'less than',
+  lte: 'at most',
+  in: 'is one of',
+};
+
+function operatorOptions() {
+  return getConditionOps(Object.keys(OPERATOR_LABELS))
+    .map((value) => ({ value, label: OPERATOR_LABELS[value] || value }));
+}
 
 // Number-typed trigger fields, per the backend's event normalizers
 // (backend/src/gameRules/cueVocabulary.js + services/cue/standingEvaluator.js
@@ -87,7 +95,7 @@ function buildConditionRow(index, conditions, availableFields, editorCtx, parent
       valueInput.placeholder = cond.op === 'in' ? 'comma-separated values' : 'value';
     },
   },
-    ...OPERATORS.map(op =>
+    ...operatorOptions().map(op =>
       el('option', { value: op.value, ...(op.value === cond.op ? { selected: true } : {}) }, op.label)
     ),
   );

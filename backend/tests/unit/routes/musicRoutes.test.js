@@ -5,6 +5,17 @@ const request = require('supertest');
 const express = require('express');
 const createRouter = require('../../../src/routes/musicRoutes');
 const { MusicService } = require('../../../src/services/musicService');
+const {
+  generateAdminToken, generateObserveToken, invalidateToken, invalidateObserveTokens,
+} = require('../../../src/middleware/auth');
+
+// B0 BS.3 (the A7 enforcement flip on tool-consumed routes): the PUT is
+// operator-gated (show-control function) — writes carry a real operator
+// token; reads stay open.
+let operatorToken;
+beforeAll(() => { operatorToken = generateAdminToken('music-routes-test'); });
+afterAll(() => { invalidateToken(operatorToken); invalidateObserveTokens(); });
+const asOperator = (req) => req.set('Authorization', `Bearer ${operatorToken}`);
 
 describe('musicRoutes — GET /tracks', () => {
   let app;
@@ -76,6 +87,32 @@ describe('musicRoutes — playlists', () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  // The enforcement flip (B0 BS.3, one-auth v1): the tool-consumed
+  // mutating route requires the show-control FUNCTION; the read-only
+  // GETs keep the open read posture (A7).
+  describe('PUT /playlists auth gate (B0 BS.3)', () => {
+    const body = {
+      playlists: [{ id: 'g', name: 'G', shuffle: false, loop: false, crossfadeMs: 0, tracks: [] }],
+    };
+
+    it('refuses an unauthenticated PUT with 401', async () => {
+      const res = await request(app).put('/api/music/playlists').send(body);
+      expect(res.status).toBe(401);
+    });
+
+    it('refuses an OBSERVE token (display class carries no show-control)', async () => {
+      const observe = generateObserveToken('SCOREBOARD_TEST');
+      const res = await request(app).put('/api/music/playlists')
+        .set('Authorization', `Bearer ${observe}`).send(body);
+      expect([401, 403]).toContain(res.status);
+    });
+
+    it('accepts an operator token', async () => {
+      const res = await asOperator(request(app).put('/api/music/playlists')).send(body);
+      expect(res.status).toBe(200);
+    });
+  });
+
   it('GET /playlists returns current file content', async () => {
     const res = await request(app).get('/api/music/playlists');
     expect(res.status).toBe(200);
@@ -103,7 +140,7 @@ describe('musicRoutes — playlists', () => {
         { id: 'two', name: 'Two', description: 'second one', shuffle: false, loop: true, crossfadeMs: 500, tracks: [] },
       ],
     };
-    const res = await request(app).put('/api/music/playlists').send(newPl);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(newPl);
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     const disk = JSON.parse(fs.readFileSync(plFile, 'utf8'));
@@ -113,7 +150,7 @@ describe('musicRoutes — playlists', () => {
   });
 
   it('PUT /playlists rejects when body is missing playlists array', async () => {
-    const res = await request(app).put('/api/music/playlists').send({ not: 'right' });
+    const res = await asOperator(request(app).put('/api/music/playlists')).send({ not: 'right' });
     expect(res.status).toBe(400);
   });
 
@@ -121,7 +158,7 @@ describe('musicRoutes — playlists', () => {
     const bad = {
       playlists: [{ id: 'x', name: 'X', shuffle: false, loop: false, crossfadeMs: 0, tracks: [42] }],
     };
-    const res = await request(app).put('/api/music/playlists').send(bad);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(bad);
     expect(res.status).toBe(400);
   });
 
@@ -129,7 +166,7 @@ describe('musicRoutes — playlists', () => {
     const bad = {
       playlists: [{ id: 'x', name: 'X' }],
     };
-    const res = await request(app).put('/api/music/playlists').send(bad);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(bad);
     expect(res.status).toBe(400);
   });
 
@@ -137,7 +174,7 @@ describe('musicRoutes — playlists', () => {
     const bad = {
       playlists: [{ id: 'x', name: 'X', shuffle: false, loop: false, crossfadeMs: 10000, tracks: [] }],
     };
-    const res = await request(app).put('/api/music/playlists').send(bad);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(bad);
     expect(res.status).toBe(400);
   });
 
@@ -148,7 +185,7 @@ describe('musicRoutes — playlists', () => {
         { id: 'dup', name: 'B', shuffle: false, loop: false, crossfadeMs: 0, tracks: [] },
       ],
     };
-    const res = await request(app).put('/api/music/playlists').send(bad);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(bad);
     expect(res.status).toBe(400);
   });
 
@@ -156,7 +193,7 @@ describe('musicRoutes — playlists', () => {
     const bad = {
       playlists: [{ id: 'x', name: 'X', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['/etc/passwd'] }],
     };
-    const res = await request(app).put('/api/music/playlists').send(bad);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(bad);
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/relative/i);
   });
@@ -165,14 +202,13 @@ describe('musicRoutes — playlists', () => {
     const bad = {
       playlists: [{ id: 'x', name: 'X', shuffle: false, loop: false, crossfadeMs: 0, tracks: ['../../etc/passwd'] }],
     };
-    const res = await request(app).put('/api/music/playlists').send(bad);
+    const res = await asOperator(request(app).put('/api/music/playlists')).send(bad);
     expect(res.status).toBe(400);
   });
 
   it('PUT /playlists returns 503 when no playlist file configured', async () => {
     musicService._playlistFile = null;
-    const res = await request(app)
-      .put('/api/music/playlists')
+    const res = await asOperator(request(app).put('/api/music/playlists'))
       .send({ playlists: [] });
     expect(res.status).toBe(503);
   });

@@ -17,7 +17,10 @@
         <div class="sidebar__logo">ALN</div>
         <span class="sidebar__title">Config Tool</span>
       </div>
+      <!-- Two-workspace split (B0 BS.3, D-B0.2): DESIGN edits the pack
+           (draft → publish); VENUE edits this installation. -->
       <ul class="sidebar__nav">
+        <li class="sidebar__group">Design</li>
         <li>
           <button class="sidebar__link active" data-section="economy">
             <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
@@ -30,6 +33,7 @@
             Show Control
           </button>
         </li>
+        <li class="sidebar__group">Venue</li>
         <li>
           <button class="sidebar__link" data-section="music">
             <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -69,6 +73,7 @@
       <header class="toolbar">
         <div class="toolbar__section-name" id="sectionTitle">Game Economy</div>
         <div class="toolbar__actions">
+          <div class="draft-bar" id="draftBar"></div>
           <div class="toolbar__dirty-indicator" id="dirtyIndicator" hidden>
             <span class="toolbar__dirty-dot"></span>
             Unsaved changes
@@ -102,6 +107,21 @@
         </section>
       </div>
     </main>
+  </div>
+
+  <!-- Login overlay (B0 BS.3): mutating routes require the operator
+       token — shown when a request comes back 401. -->
+  <div class="login-overlay" id="loginOverlay" hidden>
+    <form class="login-overlay__panel" id="loginForm">
+      <h2>Log in</h2>
+      <p>Enter the admin password to make changes.</p>
+      <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Admin password">
+      <div class="login-overlay__error" id="loginError" hidden></div>
+      <div class="login-overlay__actions">
+        <button type="button" class="btn" id="loginCancel">Cancel</button>
+        <button type="submit" class="btn btn--primary">Log in</button>
+      </div>
+    </form>
   </div>
 
   <!-- Toast container -->
