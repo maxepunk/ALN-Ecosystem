@@ -666,6 +666,28 @@ ALNScanner / PWA / ESP32 all untouched by B0). NEXT in queue:
 Design-workspace pages (#11, carries the §14 rulings incl. the E10
 floor + the surfaces-editor open question).
 
+**Design-workspace pages — 🔨 OPENED 2026-09-04, design r2 DONE,
+⏸ BUILD GATE HELD ON OWNER** (full record:
+`docs/plans/2026-09-04-phase3-design-workspace-pages.md`). Census
+(two legs: surface + 19-binding constraints; one correction — the GM
+scanner is NOT hot mid-session, packLoader loads at app start) →
+design r1 → mixed-model red-team (two Opus legs, 21 findings; the
+BLOCKINGs: E10 was missing the cue-engine reload AND the client
+re-load contract; the preview orchestrator would SIGTERM the live
+show's helpers via the singleton /tmp/aln-pm-* paths) → design r2
+(§7): E10 as FOUR named steps incl. the `pack:applied` client
+directive; the preview runtime-namespace seam designed in; per-block
+game.json writers with draft-wide referential checks; pack selection
+among on-disk roots (re-entering per the B0 §8 adjudication);
+commit&push with the sync.py credential posture + rendered
+parent-bump instructions; the three-identity staleness surface;
+honest estimate ≈ 5.25–7 sessions (above the program's 3–5; carried,
+not squeezed). **Owner batch §8: Q1 surfaces home with wireframes
+(rec: pack-manager media panel); Q2 hot-apply guard with the
+playtest cost stated (rec: refuse during active/paused); Q3 the L8
+retire-vs-re-ratify checkpoint (rec: retire); Q4 the §14.1 split +
+estimate sign-off. PS.1 does not open before Q1 + Q4.**
+
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
 - **Slice-2 closers RATIFIED**: D1s2 gate+trim (slice-5 anchor verified in

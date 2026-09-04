@@ -1,8 +1,9 @@
 # Phase 3 — Design-workspace pages (+ E10 hot-apply)
 
-**Status:** census recorded; design r1 DRAFTED; red-team next; owner
-batch (§5) OPEN — build does not start before the §14.1 split
-sign-off.
+**Status:** census recorded (one correction, §2.1a); design r1
+red-teamed (two Opus legs, 21 findings — §6) and SUPERSEDED by r2
+(§7); owner batch (§8) OPEN — **build gate held** on the §14.1 split
+sign-off (Q4) and the surfaces home (Q1).
 **Unit:** the five Design-workspace pages (program Track B; §14
 rulings 2026-09-03) + E10 hot-apply, on the B0 store/auth/harness
 foundation. Branch: continues `claude/phase3-b0` chain (a new
@@ -77,7 +78,17 @@ tokens.json / strings.json / theme.json / cues.json.
 re-bake — `tokenService.loadTokens()` bakes value/group-multiplier/
 tokenNoun from the frozen rules, then `persistenceService.saveTokens()`
 + `transactionService.init(tokens)`. No runtime path re-runs either
-today. The GM scanner side is ALREADY hot (runtime packLoader).
+today.
+
+**§2.1a census CORRECTION (red-team B1):** r1's "the GM scanner side
+is ALREADY hot" was FALSE — `packLoader.loadPack()` runs at APP START
+only (its own header says a mid-session publish is not picked up
+until reload). A connected scanner keeps the old pack until it
+reloads, and its handshake packHash goes stale. E10's design carries
+a THIRD named step for clients (§7 D-P2r2). Also missed in r1: the
+cue ENGINE holds a boot-time COPY of the cues
+(`cueEngineService.loadCues(getCues())` at app.js boot and
+systemReset only) — re-activation alone leaves the old cues firing.
 
 ### 2.2 Constraint census (leg B — 19 bindings, 4 named owner
 questions; sources cited in the leg record, spot-checked)
@@ -238,7 +249,7 @@ DEFERRED (each gets a NAMED ROADMAP §8 row at sign-off):
   rides the diff row (same consumers).
 - **Cue preview/simulation** — rides E5's Phase-4 renderer work.
 
-## 5. Owner questions (grill batch — build waits on Q1 + Q4)
+## 5. Owner questions — r1 draft (SUPERSEDED by §8; kept for the record)
 
 **Q1 — Where does the `surfaces` block get edited?** It is small:
 `idleLoop: "<channel>"` + `scoreboard: {enabled, evidenceCycleMs}`.
@@ -269,3 +280,187 @@ ruled luxury and heads the deferred list, per your prior.
 tag-writer/token-checkin (they are game-day tools, not design
 workspace). L14's font sweep stays "when next touched". Object if
 you want them pulled in.
+
+## 6. Design red-team record + adjudications (2026-09-04)
+
+Two Opus legs over r1 (architecture/state; scope/rulings/UX).
+21 findings; every survivor adjudicated below (r2 carries the folds).
+
+| # | Leg·Sev | Finding | Adjudication |
+|---|---------|---------|--------------|
+| A-F1 | arch·BLOCKING | E10's two steps never reload cues into the ENGINE (boot-time copy; only app.js boot + systemReset call loadCues) — the show designer's own output is what hot-apply would silently drop | FOLD: E10 step 3 = the systemReset re-init recipe reused (cue engine reload + re-activate), every boot-copy consumer named (§7 D-P2r2) |
+| A-F2 + S-B1 | both·BLOCKING/MAJOR | "then a sync:full push" is not a client contract — packLoader loads at app start ONLY (r1's census overclaimed "already hot", corrected §2.1a); scanners keep old scoring/strings and their handshake packHash goes stale; the setup session's pack stamp mismatches | FOLD: E10 step 4 = the `pack:applied` client directive (contract-first: asyncapi) — GM scanners reload their pack (SW-update pattern), kiosk pages reload; the setup session's stamp is re-stamped; reconciled with 8.5 (§7) |
+| A-F3 | arch·BLOCKING | The preview orchestrator is NOT isolated by PORT+PACK_PATH: ProcessMonitor's singleton PID files (/tmp/aln-pm-*) mean the preview KILLS the live orchestrator's helpers; it shares dataDir (writes into live persistence) and secrets (mints tokens the live server accepts) | FOLD: the RUNTIME NAMESPACE seam is designed INTO the unit (§7 D-P3r2): env-prefixed PID/socket/db/data paths, preview posture (loopback, hardware services disabled, its own secret), tool-owned lifecycle + orphan reaping. Priced in the estimate |
+| A-F4 | arch·MAJOR | Per-block PUTs pass per-block validation while orphaning cross-refs already in the draft (groups↔SF_Group, lightingRoles↔cue roles) — surfacing only at publish | FOLD: every block writer runs the DRAFT-WIDE referential checks and refuses on new orphans, message naming them; the validate route feeds a standing draft-problems panel (§7) |
+| A-F5 | arch·MAJOR | tokens.json cannot "join the whitelist read-only" — one constant gates BOTH read and write | FOLD: split READ/WRITE whitelists; tokens.json read-only (§7 D-P5r2) |
+| A-F6 | arch·MAJOR | commit&push has no credential story and no parent-pointer story — a pushed submodule commit the parent never references is the exact invisible-state failure the button claims to kill | FOLD: the tool shells git with the USER'S ambient credentials (the sync.py posture — it runs on the owner's box); the button does submodule commit+push ONLY, then RENDERS the exact parent-bump commands (parent bumps stay owner-driven per the merge train); refuses on detached/unexpected branch or mid-publish (§7 D-P1r2) |
+| A-F7 | arch·MINOR | validate route spawns the 60s gate unserialised | FOLD: validate shares the publish mutex (refuse-while-busy, same PublishRefused wire semantics) |
+| S-B2 | scope·BLOCKING | No estimate anywhere (program §12.3 + the B0 Q10 precedent make an owner-signed figure mandatory; the program priced 3–5 before E10 + the preview seam joined) | FOLD: per-stage estimate in §7; the sign-off joins Q4 |
+| S-M3 | scope·MAJOR | Deferring multi-pack re-punts what B0 §8 adjudicated INTO this unit; the tool must open toy-heist or the pages get no dual-pack exercise | FOLD: pack SELECTION among configured on-disk pack roots is IN (default roots: the submodule + the fixture packs); full import/create stays deferred (§7 D-P1r2) |
+| S-M4 | scope·MAJOR | No editor owns scoring.display/semantics, requires, id, title — the build-a-game walk stops | FOLD: display+semantics join the scoring tab; id/title/requires = the mechanics "Meta" tab (requires edited against the served engine-capability list) (§7 D-P2r2) |
+| S-M5 | scope·MAJOR | P5's "problems re-rendered per-token" is unbuildable over newline-split strings; the deferral row's "same consumers as diff" was false | FOLD: the per-token gate-problems claim is DROPPED from P5 (media-presence stays, computed tool-side); the structured-problems deferral row stands with corrected consumers |
+| S-M6 | scope·MAJOR | L12 over-claimed: a "loud row" retires nothing — L12 needs every channel bound AND the engine fallback flipped to hard refusal | FOLD: the pages deliver the visibility row only; the hard-refusal flip is NAMED C4 (venue-side) work — the C4 queue item text gains it (§7) |
+| S-M7 | scope·MAJOR | Theme previews miss the theme's actual consumers (the three GM-scanner star sites) | FOLD: replica panes for scoreboard AND the scanner star sites; the real-device preview covers BOTH surfaces because the preview orchestrator serves /gm-scanner and /scoreboard itself (§7 D-P3r2) |
+| S-M8 | scope·MAJOR | Q2 hides the playtest-loop cost of refusing hot-apply during ACTIVE | FOLD: Q2 rewritten with the cost stated and the recorded-rules-change alternative offered (§8) |
+| S-M9 | scope·MAJOR | §14.3 requires wireframes IN VIEW for the surfaces-home decision; r1 asked without them | FOLD: both wireframes attached (§8 Q1) |
+| S-M10/11 | scope·MINOR | Deferral rows must each be named with a slot; "ruled luxury" overstated a PRIOR | FOLD: four rows, each named + slotted (§7); wording fixed |
+| S-M12 | scope·MINOR | The pack manager should show THREE identities (live tree / draft / running orchestrator) — the staleness surface and E10's precondition | FOLD (§7 D-P1r2) |
+| S-M13 | scope·MINOR | Draft-edited lightingRoles invisible to the cue editor's role picker (reads live) | FOLD: pickers consume the draft-aware effective config (§7 D-P4r2) |
+| S-M14 | scope·MINOR | Q5 answerable from L14; Q4 should list plainly what a designer cannot do until later phases | FOLD: Q5 → record note; Q4 rewritten (§8) |
+
+Refuted by the legs themselves (not filed): activatePack re-entry
+safety (gate throws before assignment); gameClock self-heal;
+transactionService.init re-entrancy; publish-log GET leak; "teams
+block" coverage; token-write need; E10 stage placement; the
+vocabulary pinning (landed in B0).
+
+## 7. Design r2 — superseding decisions + stage plan + estimate
+
+**D-P1r2 (pack manager).** As r1 PLUS: THREE identities (live tree /
+draft / RUNNING orchestrator's activated hash — the staleness surface
+and E10's precondition); pack SELECTION among configured on-disk pack
+roots (default: the ALN-TokenData submodule + the E2E fixture packs;
+selection re-points the DraftStore source + pack paths at runtime —
+the D-4.7c posture becomes "one pack AT A TIME", never PACK_PATH);
+commit&push per A-F6 (user's ambient git creds, submodule-only, then
+renders the parent-bump instructions, refuses on detached branch or
+mid-publish); validate shares the publish mutex. Import/create stays
+deferred.
+
+**D-P2r2 (mechanics + E10).** As r1 PLUS: the scoring tab owns
+`scoring.display` + `scoring.semantics`; a "Meta" tab owns
+`id`/`title`/`requires` (edited against the served capability list);
+every block writer runs DRAFT-WIDE referential checks (refuse on new
+orphans, named) and the draft carries a standing problems panel.
+**E10 = FOUR named steps**: (1) `activatePack()` re-entry; (2) token
+re-bake (`tokenService.loadTokens()` + persistence save +
+`transactionService.init`); (3) engine re-init per the systemReset
+recipe — `cueEngineService.loadCues(getCues())` (+ re-activate),
+naming every boot-copy consumer; (4) the `pack:applied` client
+directive (contract-first asyncapi addition): GM scanners re-run
+their pack load (the SW-update reload pattern), kiosk pages reload,
+the setup session's pack stamp re-stamped — recorded as an 8.5
+touchpoint so the warn→enforce decision inherits it. Guard: §8 Q2.
+
+**D-P3r2 (strings+theme + preview).** As r1 PLUS: replica panes for
+the scoreboard AND the three GM-scanner star sites; the real-device
+preview reaches BOTH surfaces (the preview orchestrator serves
+/gm-scanner and /scoreboard itself). The preview REQUIRES the
+runtime-namespace seam (A-F3), designed here: an `ALN_RUNTIME_PREFIX`
+(or equivalent) env seam namespacing every /tmp/aln-* PID/socket/
+conf/db path AND the persistence dataDir; preview posture = loopback
+bind, video/music/bluetooth/audio/lighting services disabled, its own
+JWT secret, no discovery broadcast; the tool owns the child lifecycle
+(kill on stop/idle/tool-exit; stale-preview sweep at spawn). The
+preview handshake-mismatch EXEMPTION stands recorded.
+
+**D-P4r2 (show designer).** As r1 PLUS: role/asset pickers consume
+the DRAFT-AWARE effective config (S-M13).
+
+**D-P5r2 (content view).** As r1 MINUS the per-token gate-problems
+claim (S-M5); READ whitelist split from WRITE (tokens.json read-only
+by construction).
+
+**Deferral rows (each named, each slotted — replaces r1 §4's list):**
+1. "Pack diff & draft merge tooling" — Phase 4 (first multi-author
+   window) — diffing (the §14.1 prior's luxury), merge/rebase, and
+   STRUCTURED gate problems (its real consumer).
+2. "Pack onboarding: import/create" — Phase 5 (designer onboarding).
+3. "Cue preview/simulation" — Phase 4 E5 (rides the renderer).
+4. "Scanner real-device theme preview beyond the preview
+   orchestrator" — none needed: covered by D-P3r2; row exists only if
+   the owner wants device-lab tooling — otherwise struck at sign-off.
+
+**Stage plan r2:** PS.1 pack manager (identity ×3, selection, version
+trail, validate, media/needs incl. the L8 checkpoint surface,
+commit&push) → PS.2 mechanics + E10 (per-block writers +
+cross-checks, Meta tab, the four-step hot-apply + `pack:applied`
+contract) → PS.3 strings+theme (+ the runtime-namespace seam + the
+preview) → PS.4 show designer uplift (true-duration timeline,
+draft-aware pickers) → PS.5 content view → PS.6 unit close
+(dual-pack Tier L exercised THROUGH the pages via pack selection,
+panel, records). Each stage under the standard frame.
+
+**Estimate r2 (honest, per §12.3 + the B0 Q10 precedent):**
+PS.1 ≈ 1–1.25; PS.2 ≈ 1.5–2 (E10's four steps + cross-checks are the
+risk); PS.3 ≈ 1.25–1.75 (the namespace seam is real backend work);
+PS.4 ≈ 0.5–0.75; PS.5 ≈ 0.5; PS.6 ≈ 0.5–0.75. **Total ≈ 5.25–7
+sessions — ABOVE the program's 3–5 for B pages**, driven by E10
+joining the gate (§14.2), the preview isolation the red-team proved
+necessary, and multi-pack selection re-entering (S-M3). Carried to
+the owner (Q4), not squeezed.
+
+**L12 split (S-M6):** the pages deliver binding VISIBILITY; the
+`_resolveIdleLoopFile` fallback→hard-refusal flip is C4 venue-side
+work — the C4 queue item gains it by name.
+
+**NFC tools (r1 Q5 → record note):** NOT subsumed — they are game-day
+tools, not Design workspace; L14's font sweep stays "when next
+touched" per its own text. No owner question needed.
+
+## 8. Owner questions (grill batch r2 — build gate holds on Q1 + Q4)
+
+**Q1 — Where does the `surfaces` block live?** It is one small block:
+`idleLoop: "<channel-name>"` plus `scoreboard: {enabled,
+evidenceCycleMs}`. Two homes, wireframes below (§14.3):
+
+(a) **Pack manager → Media & needs panel** (recommended): the
+idle-loop line sits WITH its binding/needs row, so "this channel has
+no venue binding" and "change the channel" are one surface.
+
+```
+┌─ Pack: About Last Night ─ Media & needs ─────────────────┐
+│ Idle loop channel   [aln-idle        ▼]  ✓ bound: HDMI-1 │
+│ Scoreboard surface  [x] enabled   cycle [18000] ms       │
+│ ──────────────────────────────────────────────────────── │
+│ VIDEO REFS   jaw001.mp4 ✓   kaa001.mp4 ✓   miss.mp4 ✗    │
+│ SOUND REFS   alarm.wav ✓                                 │
+│ ⚠ channel "aln-idle-b" named by cue END has NO binding   │
+└──────────────────────────────────────────────────────────┘
+```
+
+(b) **Mechanics editor → its own tab**: surfaces is a game.json block
+like the others — one page owns the whole file.
+
+```
+┌─ Mechanics ─ [Scoring][Modes][Groups][Clock][Surfaces]…──┐
+│ Surfaces                                                 │
+│ Idle loop channel   [aln-idle        ▼]                  │
+│ Scoreboard          [x] enabled   cycle [18000] ms       │
+│ (binding status shown read-only; edit bindings on the    │
+│  Pack page's Media panel)                                │
+└──────────────────────────────────────────────────────────┘
+```
+
+My recommendation: **(a)** — the decisions a designer makes about
+surfaces are media/binding decisions, and splitting "pick the
+channel" from "is it bound" across pages serves nobody. (b) is purer
+file-ownership but makes the Media panel read-only about the very
+thing it warns on.
+
+**Q2 — When may hot-apply run?** My r1 proposal — refuse while a
+session is ACTIVE or PAUSED — protects score accountability, but be
+aware of the COST: your playtest loop becomes end-session → apply →
+new session each iteration, and E10 exists to speed exactly that
+loop. Options: (a) refuse during active/paused (safe, slower
+playtests — my recommendation); (b) allow anytime, with a
+rules-changed marker recorded into the session (the post-game
+validator would then read score history across the boundary honestly).
+Pick (a) or (b), or name a third rule.
+
+**Q3 — the L8 checkpoint** (due at the Media panel): the ALN pack's
+ENDGAME cue still routes audio with the literal `target:"bluetooth"`.
+Retire it (replace with an audio ROLE the venue profile binds — the
+8.2 re-authoring, my recommendation: it is the last venue-hardware
+literal in pack content) or re-ratify the literal as acceptable?
+
+**Q4 — the §14.1 sign-off.** Approve: (i) the §7 build list; (ii) the
+deferral rows 1–3 (row 4 struck unless you want it); (iii) the honest
+estimate ≈ 5.25–7 sessions, above the program's 3–5 — the growth is
+E10-in-the-gate, the preview isolation, and multi-pack selection.
+What a designer CANNOT do until later phases under this split, in
+plain terms: see a side-by-side diff of two pack versions; merge two
+divergent drafts; create a brand-new pack from nothing in the tool
+(they copy an existing pack on disk instead); simulate a cue timeline
+without running the preview orchestrator. Everything else in the
+five-page story is IN.
