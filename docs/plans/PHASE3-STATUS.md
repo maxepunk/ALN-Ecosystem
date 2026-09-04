@@ -766,6 +766,39 @@ hosted-CI pending the modules-extra probe; the GitHub GraphQL
 rate-limit mystery RESOLVED as the session's own CI storms
 exhausting the shared user×app pairing bucket — mitigations
 recorded).
+**→ CS.1 ✅ CLOSED 2026-09-04** (execution record: the c2c3 doc §9).
+LANDED: `gameRules/packNeeds.js` (collectPackNeeds) +
+`gameRules/resolution.js` (the C1 §2 table verbatim, paper/live
+depths, tier-zero, unbound-role=FAULT with verb-carrying reasons,
+rollUp `{status, dormantServices, problems}` — disabledCueIds
+deferred to CS.2 whose C3 disable walk is its producer);
+`scripts/lib/witnessConfig.js` (one-hot witness register from pack
+roles, live-proven in real HA) + `scripts/lib/simulationProfile.js`
+(profile generated from pack needs); the rung-1 harness
+(`backend/tests/rung1/`: up/engine/probe/down + generate-fixtures +
+onboard-ha + `audit-flows.js`) under the single-non-root-user model
+with the engine self-hosting MPD + VLC and Xvfb as display physics;
+`displayDriver` CHROMIUM_BIN seam. THE AUDIT: 13/13 zero-mock
+flagship chain (player scan kai001 → engine's own VLC plays under
+Xvfb → attention-before-video fires → real HA witness flips one-hot
+→ video completes → restore-after-video flips back → cue:fired both
+→ sound via pw-play → mpc + music:play + setVolume against the
+engine-spawned MPD) — the project's first full real-services
+show-chain proof. Two-axis review folded (`81768ae`; top catch: the
+unbound-role adjudication + reason wording, pinned). Engine-audit
+findings recorded for later stages: the VLC-as-root 13-restarts/40s
+loop (supervisor evidence → CS.3), MPD setvol-while-stopped "All
+outputs are disabled" (real GM-panel edge), dotenv-cwd, headless
+vout. VERDICTS: `rung1.yml` (new recurring CI workflow) GREEN runs
+4+5; main-suite Test run 259 GREEN on `5d41b9b` (first completed
+full-suite run since 239 — 243–258 were concurrency-guard
+cancellations from the design-push cadence, lesson recorded); local
+backend 2818/2818 + fresh ratchet. Deferred out with owners:
+disabledCueIds → CS.2; packNeeds video-file need kind → CS.2.
+*(NOTE: the pages build that sequences next is held by the owner's
+2026-09-04 UX pause — the ground-up foundation + grill in
+`2026-09-04-ux-foundation.md`; the pages set gets RE-CUT under the
+ratified foundation before building.)*
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 

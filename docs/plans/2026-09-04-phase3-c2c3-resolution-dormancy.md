@@ -581,3 +581,13 @@ Backend suite 2818/2818, ratchet clean. CS.1 exit state: harness +
 CI port + audited engine + reviewed core. Remaining before unit close
 (CS.5): none for this stage — CS.1 CLOSED pending the rung1.yml CI
 run's first green verdict (in flight at fold time).
+
+**CS.1 CLOSE CONFIRMED 2026-09-04.** Both held verdicts landed:
+rung1.yml runs 4 AND 5 GREEN on hosted runners (the recurring rung-1
+environment instance: non-root engine, 13/13 zero-mock audit), and
+the main-suite Test run 259 GREEN on `5d41b9b` (all jobs — the first
+COMPLETED full-suite run since 239; runs 243–258 were all cancelled
+by the per-ref concurrency guard under the session's design-push
+cadence, a process cost recorded above). Close record written to
+PHASE3-STATUS (C2+C3 section); task #32 marked complete. CS.2 next
+per the ratified order, sequenced behind the pages build.
