@@ -12,18 +12,36 @@ const adminTokens = new Set();
 const tokenExpiry = new Map();
 
 /**
- * Generate JWT token for admin authentication
+ * Generate an OPERATOR-tier JWT (one-auth §1 full claim shape — B0
+ * BS.1). Grants are computed AT ISSUANCE via the pure gameRules
+ * algebra; packHash records which active pack the grants were computed
+ * against (stale-grant detection after a pack switch). Back-compat
+ * fields (id/role/timestamp) stay for existing consumers.
+ * @param {string} adminId
+ * @param {{aud?: string}} [opts] audience — 'orchestrator' (default) or 'config-tool'
  */
-function generateAdminToken(adminId = 'admin') {
+function generateAdminToken(adminId = 'admin', { aud = 'orchestrator' } = {}) {
+  const grants = require('../gameRules/grants');
+  let packHash = null;
+  try {
+    const info = require('../services/packService').getActivePackInfo();
+    packHash = info ? info.contentHash : null;
+  } catch { /* packless/boot-order: grants still mint; hash stays null */ }
   const token = jwt.sign(
     {
       id: adminId,
       role: 'admin',
       timestamp: Date.now(),
+      tier: 'operator',
+      'class': 'staffed',
+      deviceId: adminId,
+      functions: grants.computeGrants({ tier: 'operator', deviceClass: 'staffed' }),
+      packHash,
     },
     config.security.jwtSecret || 'test-jwt-secret',
     {
       expiresIn: config.security.jwtExpiry || '24h',
+      audience: aud,
     }
   );
 
@@ -41,15 +59,18 @@ function generateAdminToken(adminId = 'admin') {
 }
 
 /**
- * Verify JWT token
+ * Verify JWT token. When opts.audience is given, jwt.verify enforces
+ * the aud claim (red-team S4 — without the option, aud is decorative).
+ * @param {string} token
+ * @param {{audience?: string}} [opts]
  */
-function verifyToken(token) {
+function verifyToken(token, { audience } = {}) {
   try {
     // Check if token is in our valid set
     if (!adminTokens.has(token)) {
       return null;
     }
-    
+
     // Check expiry
     const expiry = tokenExpiry.get(token);
     if (expiry && Date.now() > expiry) {
@@ -57,13 +78,14 @@ function verifyToken(token) {
       tokenExpiry.delete(token);
       return null;
     }
-    
-    // Verify JWT signature
+
+    // Verify JWT signature (and audience when required)
     const decoded = jwt.verify(
       token,
-      config.security.jwtSecret || 'test-jwt-secret'
+      config.security.jwtSecret || 'test-jwt-secret',
+      audience ? { audience } : {}
     );
-    
+
     return decoded;
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -88,43 +110,58 @@ function cleanupExpiredTokens() {
 }
 
 /**
- * Middleware to require admin authentication
+ * Shared authentication body (B0 BS.1): Bearer extraction, verified
+ * decode WITH audience, tier assertion, optional function assertion.
+ * FAIL-CLOSED throughout — a legacy-shape token (no tier/functions)
+ * never passes (red-team S1: decode alone is not authorization; the
+ * in-memory store empties on restart, so no live compat window exists).
+ * @private
  */
-function requireAdmin(req, res, next) {
+function _authenticate(req, res, next, { audience, requiredTier, requiredFunction }) {
   try {
-    // Extract token from Authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
         message: 'Authorization required',
       });
     }
-    
+
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Verify token
-    const decoded = verifyToken(token);
-    
+    const decoded = verifyToken(token, { audience });
+
     if (!decoded) {
       return res.status(401).json({
         error: 'AUTH_REQUIRED',
         message: 'Invalid or expired token',
       });
     }
-    
-    // Attach admin info to request
+
+    if (requiredTier && decoded.tier !== requiredTier) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: `This action requires the ${requiredTier} tier`,
+      });
+    }
+
+    if (requiredFunction &&
+        !(Array.isArray(decoded.functions) && decoded.functions.includes(requiredFunction))) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: `This action requires the '${requiredFunction}' function`,
+      });
+    }
+
     req.admin = decoded;
-    
-    // Log admin action
+
     logger.info('Admin action', {
       adminId: decoded.id,
       endpoint: req.path,
       method: req.method,
       ip: req.ip,
     });
-    
+
     next();
   } catch (error) {
     logger.error('Authentication middleware error', error);
@@ -133,6 +170,27 @@ function requireAdmin(req, res, next) {
       message: 'Authentication error',
     });
   }
+}
+
+/**
+ * Middleware factory: require a specific granted FUNCTION (and the
+ * matching audience). The one-auth enforcement primitive — routes name
+ * the function they need, never a role.
+ * @param {string} fn - required function id (e.g. 'session-lifecycle')
+ * @param {{audience?: string, tier?: string}} [opts]
+ */
+function requireFunction(fn, { audience = 'orchestrator', tier } = {}) {
+  return (req, res, next) =>
+    _authenticate(req, res, next, { audience, requiredTier: tier, requiredFunction: fn });
+}
+
+/**
+ * Middleware to require operator-tier authentication (absorbed into the
+ * shared body — decode alone no longer passes; the operator tier is
+ * asserted, so a device/display token in the store still fails).
+ */
+function requireAdmin(req, res, next) {
+  return _authenticate(req, res, next, { audience: 'orchestrator', requiredTier: 'operator' });
 }
 
 /**
@@ -199,6 +257,7 @@ module.exports = {
   generateAdminToken,
   verifyToken,
   requireAdmin,
+  requireFunction,
   optionalAdmin,
   isAdmin,
   invalidateToken,
