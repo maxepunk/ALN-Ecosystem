@@ -7,6 +7,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# One run per ref: a newer push supersedes and auto-cancels the
+# in-flight run. Ends the overlap class (concurrent runs contending
+# for runners/registry and tripping job timeouts on superseded heads
+# — observed 2026-09-04, runs 222-238).
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   backend-unit-contract:
     name: Backend Unit + Contract Tests

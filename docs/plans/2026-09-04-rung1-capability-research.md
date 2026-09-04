@@ -18,7 +18,7 @@ Ubuntu 24.04.4, root, apt + pip available, outbound via the agent proxy.
 |---|---|---|
 | Docker daemon | **WORKS** | `dockerd --iptables=false --bridge=none --storage-driver=vfs` boots in seconds; `docker info` exit 0; alpine pulled through the proxy and ran with `--network=host` |
 | MPD | **WORKS** | apt `mpd mpc`; minimal conf with `type "null"` audio_output; `mpc status` answers |
-| VLC headless | **WORKS** | apt `vlc-bin vlc-plugin-base`; **refuses to run as root** — run as a dedicated user; `cvlc -I http --vout dummy --aout dummy` serves `status.json` (the exact interface vlcService drives) |
+| VLC headless | **WORKS** | apt `vlc-bin vlc-plugin-base`; **refuses to run as root** — run as a dedicated user. CORRECTED by the CS.1 engine audit: the engine drives VLC over **MPRIS on a D-Bus session bus** (`vlcMprisService` shells out to `dbus-send`), NOT the HTTP interface this row first claimed. `cvlc -I dummy --control dbus` on a shared bus answers the engine's exact `PlaybackStatus` call (proven cross-uid with a permissive bus config) |
 | pipewire + pactl | **WORKS** | apt `pipewire pipewire-pulse wireplumber pulseaudio-utils`; no systemd user session, so boot under `dbus-run-session` with an explicit `XDG_RUNTIME_DIR`; `pactl load-module module-null-sink` succeeds, sink listed. (A benign `Failed to set fd limit` warning from dbus-daemon.) |
 | Home Assistant (container) | **WORKS, end-to-end** | Pinned `ghcr.io/home-assistant/home-assistant:stable`; `--network=host -v <config>:/config`; first HTTP response **21 s** after `docker run`. Full flow proven: programmatic onboarding → token → `scene.turn_on` → demo light `off → on` (**SCENE_DRIVES_LIGHT: PASS**) |
 | HA persistence | **WORKS** | Container restart: user + auth survive (login flow succeeds, states readable). Restart-to-ready time NOT cleanly measured (a wrong readiness probe burned ~120 s of the clock; ceiling 141 s) — re-measure in CI |
@@ -76,7 +76,22 @@ nothing to emulate. So virtual BT is dormant at BOTH hosted-CI rungs,
 each with distinct recorded evidence: the dev container hits the
 no-module-control wall; the runner kernel simply omits the stack.
 
-**Escalation path (probe amendment, verdict pending its next run):**
+**Escalation VERDICT (probe run 3, job 100942769424, 2026-09-04
+07:11Z) — exhausted, "unreachable" now EARNED:**
+`linux-modules-extra-6.17.0-1022-azure` EXISTS and installed cleanly
+(51 MB, `MODULES_EXTRA=INSTALLED`) — and still:
+`modprobe bluetooth` → `FATAL: Module bluetooth not found`
+(`BT_CORE=FAIL`); `modprobe hci_vhci` → same (`MODPROBE_RETRY=FAIL`,
+`VHCI_DEVICE=ABSENT`); btvirt "Failed to open Virtual HCI device";
+mgmt socket unopenable throughout. The Azure kernel compiles the
+Bluetooth stack out entirely — it is not in the default image AND not
+in modules-extra. Hosted-CI BT ceiling = the dbusmock rung; real
+BlueZ + virtual radio needs a self-hosted runner (the Pi, onboard BT,
+post-Phase-3 blue/green). Verdict is per-image (ubuntu-24.04
+20260831.293.1, kernel 6.17.0-1022-azure); re-probing a future image
+costs ~1 minute via the probe workflow.
+
+**Original escalation rationale (kept for the record):**
 Ubuntu cloud kernels keep optional drivers in
 `linux-modules-extra-<version>-azure` — a known Actions pattern for
 virtual CAN / loopback audio. The amended probe installs it, then

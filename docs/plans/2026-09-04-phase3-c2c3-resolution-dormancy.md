@@ -403,3 +403,65 @@ the core, so the core precedes the pages build):**
 C2+C3 including CS.1's harness (C4 additional ≈ 1.5–2). Owner
 ratified the price principle; this number is the fold's honest
 statement of it.
+
+## 9. CS.1 execution record (running — 2026-09-04)
+
+**Increments pushed (each red-first, full backend suite green):**
+1. `gameRules/packNeeds.js` — collectPackNeeds (`31bdca9`, 9 tests).
+2. `gameRules/resolution.js` — the C1 §2 table, paper/live depths,
+   graded rollup (`bf23ff0`, 14 tests).
+3. `scripts/lib/witnessConfig.js` — one-hot witness register
+   generated from pack roles; LIVE-PROVEN in real HA (`15b6afa`).
+4. Harness: `tests/rung1/{up,probe,down}.sh` + generate-fixtures +
+   onboard-ha + `scripts/lib/simulationProfile.js` (`993d85b` + the
+   transport rework in the next commit) — brought up and probed by
+   execution in the dev container.
+
+**Engine-audit findings so far (first real-services boot ever;
+each verified against code or by reproduction, none assumed):**
+- **Transports the harness first got WRONG, corrected from the
+  engine's code:** musicService connects to MPD via the Unix socket
+  `/tmp/aln-mpd.sock` (mpd2.connect({path})), not TCP;
+  vlcMprisService drives VLC over MPRIS on a D-Bus SESSION BUS by
+  shelling out to `dbus-send` — the harness now runs one shared
+  permissive bus (custom config; cross-uid proven) with
+  `cvlc --control dbus`.
+- **First boot connected three real services**: lighting → real HA
+  (sceneCount 7 — the generated witnesses), music → MPD over the
+  engine socket, vlc → D-Bus. The generated simulation profile
+  loaded and froze (7 bindings).
+- **VLC restarted 13 times in ~40s — root-caused by reproduction:**
+  the engine spawns its OWN VLC (`_buildVlcArgs`) and owns its
+  lifecycle; run as root, that exact command exits 1 ("VLC is not
+  supposed to be run as root"), and the engine's built-in restart
+  loop retried every 3s, unbounded, with no backoff growth, no flap
+  detection, and no escalation — while the one-line diagnosis sat in
+  the child's stderr. THREE consequences: (a) vlcMprisService already
+  contains a per-service supervisor — C3's supervisor generalizes
+  THIS prior art, it does not add a second mechanism; (b) the
+  bounded-attempts + escalate-with-verdict design is now
+  evidence-backed by our own engine's behavior; (c) the D-Bus monitor
+  keys on the generic org.mpris.MediaPlayer2.vlc name and confused a
+  stranger VLC for its child (health flapped healthy/down) — child
+  identity is a supervisor requirement. ALSO: the audit engine must
+  run NON-ROOT (the engine owns VLC's spawn), and "what user runs
+  the engine" is host config.
+- Engine honored the profile's surfaces binding (looked for the
+  bound idle-loop file — harness owes a placeholder mp4); engine
+  auto-start expects an HA container NAMED `homeassistant` (host
+  assumption, benign, note for host config); DisplayDriver spawns
+  `chromium-browser` (ENOENT in the container — shim to the
+  Playwright chromium or accept); WirePlumber restore-rule warning
+  (known deployment dependency).
+
+**CI stabilization (same day):** the Test workflow gained a
+per-ref concurrency group with cancel-in-progress after repeated
+self-inflicted run pileups tripped job timeouts on superseded heads
+(runs 222–238; the four red summaries on the post-ratification heads
+were overlap cancellations/timeouts — Integration and Unit+Contract
+passed on every head where they completed).
+
+**Still open in CS.1:** audit continuation as non-root engine (VLC
+spawn green, then the flows), placeholder idle-loop media in
+generate-fixtures, system-wide dbusmock arm, CI job port of the
+harness, two-axis stage review.
