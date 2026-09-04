@@ -1,10 +1,32 @@
-# UX foundation — the whole tool, ground up (2026-09-04, DRAFT r0)
+# UX foundation — the whole tool, ground up (2026-09-04, DRAFT r1)
 
-Status: DRAFT — research in flight; nothing here is ratified.
+Status: DRAFT — for the owner grill (/grill-with-docs).
 Origin: pages doc §11 (owner reframe: existing tool is not the
 baseline; ground-up UX from industry best practice, improved for our
 flows; open-source learnability is first-class).
 Vocabulary: CONTEXT.md. Verdict semantics: C1 §2 / resolution.js.
+
+## 0. Method — one layer at a time, correct hierarchy (owner
+direction, 2026-09-04)
+
+The design is optimized LAYER BY LAYER on Garrett's five planes; each
+layer is gated (grilled/ratified) against the layer above before the
+next opens, and the loop-and-review directive (§10.5 of the pages
+doc) applies WITHIN a layer, never across two at once.
+
+| Layer | Content here | Status |
+|---|---|---|
+| L1 Strategy | §1 personas, §2 flows, metrics, open-source goal | drafted — grill-ready |
+| L2 Scope | per-workspace capabilities, deferrals (Q4 list + Setup + token room) | half-ratified (Q4); Setup + token room UNSCOPED — the sequencing question lives here |
+| L3 Structure | §5 IA (workspaces), §6 interaction patterns, element model, draft lifecycle, identity chip, auth-at-write | proposed r0 — ungrilled |
+| L4 Skeleton | per-screen layout (§10.4 mechanics survive as its rubric); the per-screen loop-and-review | CLOSED until L3 ratifies |
+| L5 Surface | Control Room seed (tokens + verdict badges) | owner-APPROVED (out of order; acceptable as restyle of an existing identity — L4 must never be driven by L5) |
+
+Method note (the recorded failure this fixes): PS.1 variants A/B/C
+varied L4 while L1 was unsettled — unjudgeable; variant D optimized
+L4 inside an unratified L3. Both owner corrections in this sitting
+were layer corrections. Never again optimize a layer while one above
+it is open.
 
 ## 1. Personas (r0 — for the grill)
 
