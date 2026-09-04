@@ -1,0 +1,47 @@
+# Runner capability probe (rung-1 research, C2+C3 unit).
+# Dispatch-only: answers "what can a GitHub runner host?" with evidence,
+# starting with virtual Bluetooth (btvirt needs the kernel's hci_vhci —
+# possible on a full VM, proven impossible in the dev container).
+# Every step tolerates failure; the log is the deliverable.
+name: Capability Probe
+
+on:
+  workflow_dispatch:
+
+jobs:
+  virtual-bluetooth:
+    name: Virtual Bluetooth (btvirt) probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Kernel and vhci module
+        run: |
+          uname -r
+          sudo modprobe hci_vhci && echo "MODPROBE=OK" || echo "MODPROBE=FAIL"
+          ls -la /dev/vhci && echo "VHCI_DEVICE=PRESENT" || echo "VHCI_DEVICE=ABSENT"
+
+      - name: Install BlueZ + test tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q bluez bluez-test-tools
+          btvirt --version 2>&1 | head -1 || true
+
+      - name: Launch btvirt with two virtual controllers
+        run: |
+          sudo btvirt -l2 > btvirt.log 2>&1 &
+          sleep 3
+          echo "--- btvirt.log ---"; cat btvirt.log || true
+
+      - name: Start bluetoothd and list adapters
+        run: |
+          sudo systemctl start bluetooth 2>/dev/null || sudo bluetoothd > bluetoothd.log 2>&1 &
+          sleep 3
+          echo "--- bluetoothctl list ---"
+          sudo bluetoothctl list || true
+          echo "--- btmgmt info ---"
+          sudo btmgmt info || true
+
+      - name: Power on and scan between virtual controllers
+        run: |
+          printf 'power on\nscan on\n' | sudo timeout 12 bluetoothctl || true
+          echo "--- verdict material above: adapters listed + power/scan output ---"
