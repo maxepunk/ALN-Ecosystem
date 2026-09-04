@@ -91,123 +91,40 @@ describe('routes (HTTP layer)', () => {
     assert.strictEqual(res.body.pack.id, 'test-pack');
   });
 
-  it('PUT /api/config/scoring with valid body writes the scoring file', async () => {
+  // B0 BS.2 (D-B0.1r2): pack content is DRAFT-edited now — the live-pack
+  // write routes flip from writers to refusals ON PURPOSE. The validator
+  // behavior those routes used to pin moved with the writers: HTTP-layer
+  // mapping pins live in draftRoutes.test.js; the deep validator matrix
+  // stays in configManager.test.js (writeScoring/writeCues, unchanged).
+  it('PUT /api/config/scoring REFUSES with 409 + draft guidance, file untouched', async () => {
     const body = {
       version: '1.0',
       baseValues: { 1: 99999, 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
       typeMultipliers: { Personal: 1, Mention: 3, Business: 3, Party: 5, Technical: 5, UNKNOWN: 0 },
     };
-    const res = await request(app).put('/api/config/scoring').send(body).expect(200);
-    assert.deepStrictEqual(res.body, { success: true });
+    const res = await request(app).put('/api/config/scoring').send(body).expect(409);
+    assert.match(res.body.error, /draft/i);
     const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
-    assert.strictEqual(onDisk.scoring.baseValues['1'], 99999);
+    assert.strictEqual(onDisk.scoring.baseValues['1'], 10000);
+  });
+
+  it('PUT /api/config/cues REFUSES with 409 + draft guidance, file untouched', async () => {
+    const body = {
+      kind: 'cues', schemaVersion: 2,
+      cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
+    };
+    const res = await request(app).put('/api/config/cues').send(body).expect(409);
+    assert.match(res.body.error, /draft/i);
+    assert.deepStrictEqual(
+      JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8')), { cues: [] });
   });
 
   describe('schema validation on writers (F-TOOL-04)', () => {
-    it('PUT /api/config/scoring rejects an empty object with 400 + details', async () => {
-      const res = await request(app).put('/api/config/scoring').send({}).expect(400);
-      assert.ok(Array.isArray(res.body.details) && res.body.details.length > 0);
-      // file untouched
-      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'game.json'), 'utf8'));
-      assert.strictEqual(onDisk.scoring.baseValues['1'], 10000);
-    });
-
-    it('PUT /api/config/scoring rejects non-numeric base values', async () => {
-      const body = {
-        baseValues: { 1: 'lots', 2: 25000, 3: 50000, 4: 75000, 5: 150000 },
-        typeMultipliers: { Personal: 1 },
-      };
-      const res = await request(app).put('/api/config/scoring').send(body).expect(400);
-      assert.ok(res.body.details.some(d => /baseValues/.test(d)));
-    });
-
-    it('PUT /api/config/scoring rejects missing rating keys', async () => {
-      const body = { baseValues: { 1: 10000 }, typeMultipliers: { Personal: 1 } };
-      await request(app).put('/api/config/scoring').send(body).expect(400);
-    });
-
-    it('PUT /api/config/cues rejects a cue without an id', async () => {
-      const body = { kind: 'cues', schemaVersion: 2, cues: [{ label: 'No Id', quickFire: true, commands: [] }] };
-      const res = await request(app).put('/api/config/cues').send(body).expect(400);
-      assert.ok(res.body.details.some(d => /id/.test(d)));
-    });
-
-    // A3 slice 4 (D-4.7c): the old "must have quickFire and/or a trigger"
-    // authoring-UX rule (validators.js validateCues) is retired along with
-    // that validator — writeCues now runs the pack-internal activation gate
-    // (validateCuesBlock) instead, which does not enforce reachability.
-    // An orphan cue (no trigger, no quickFire) is otherwise well-formed and
-    // is now ACCEPTED; what the gate still refuses is a malformed
-    // commands/timeline shape, exercised here instead.
-    it('PUT /api/config/cues accepts a cue with neither quickFire nor trigger (reachability is no longer gate-enforced)', async () => {
-      const body = {
-        kind: 'cues', schemaVersion: 2,
-        cues: [{ id: 'orphan', label: 'Orphan', commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
-      };
-      await request(app).put('/api/config/cues').send(body).expect(200);
-    });
-
-    it('PUT /api/config/cues rejects a cue with an empty commands array (needs exactly one of commands/timeline, non-empty)', async () => {
-      const body = { kind: 'cues', schemaVersion: 2, cues: [{ id: 'orphan', label: 'Orphan', commands: [] }] };
-      const res = await request(app).put('/api/config/cues').send(body).expect(400);
-      assert.ok(res.body.details.some(d => /orphan/.test(d)));
-    });
-
-    it('PUT /api/config/cues rejects duplicate cue ids', async () => {
-      const cue = { id: 'dup', label: 'A', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] };
-      await request(app).put('/api/config/cues').send({ kind: 'cues', schemaVersion: 2, cues: [cue, { ...cue }] }).expect(400);
-    });
-
-    it('PUT /api/config/cues rejects a non-array non-wrapper body', async () => {
-      await request(app).put('/api/config/cues').send({ hello: 'world' }).expect(400);
-    });
-
-    it('PUT /api/config/cues rejects a present-but-wrong schemaVersion (S6 review, F4-sec)', async () => {
-      const body = {
-        kind: 'cues', schemaVersion: 99,
-        cues: [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }],
-      };
-      const res = await request(app).put('/api/config/cues').send(body).expect(400);
-      assert.ok(res.body.details.some(d => /schemaVersion 99/.test(d)));
-    });
-
-    // A3 slice 4 (D-4.7c): flips the old documented-bug pin on purpose — a
-    // bare array (and the old wrapper-only `{cues:[...]}` shape) was
-    // backend-supported pre-migration; pack cues now REQUIRE the full
-    // header form {kind, schemaVersion, cues}, and anything else is refused.
-    it('PUT /api/config/cues rejects a plain array (header form is required, not the old backend-supported shape)', async () => {
-      const body = [{ id: 'c1', label: 'C1', quickFire: true, commands: [{ action: 'sound:play', payload: { file: 'x.wav' } }] }];
-      const res = await request(app).put('/api/config/cues').send(body).expect(400);
-      assert.ok(res.body.details.some(d => /header form/.test(d)));
-    });
-
-    it('PUT /api/config/cues accepts a standing cue with trigger (header form + non-empty commands)', async () => {
-      const body = {
-        kind: 'cues', schemaVersion: 2,
-        cues: [{
-          id: 's1', label: 'S1', trigger: { event: 'video:paused' },
-          commands: [{ action: 'sound:play', payload: { file: 'test.wav' } }],
-        }],
-      };
-      await request(app).put('/api/config/cues').send(body).expect(200);
-      const onDisk = JSON.parse(fs.readFileSync(path.join(tmpDir, 'cues.json'), 'utf8'));
-      assert.strictEqual(onDisk.cues[0].id, 's1');
-      // A pack-file write regenerates the manifest (same pairing as scoring).
-      const manifest = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pack-manifest.json'), 'utf8'));
-      assert.ok(manifest.files.some(f => f.path === 'cues.json'));
-    });
-
-    it('PUT /api/config/cues rejects a lighting action carrying a concrete sceneId (pack cues address lights by role only)', async () => {
-      const body = {
-        kind: 'cues', schemaVersion: 2,
-        cues: [{
-          id: 'lights', label: 'Lights', quickFire: true,
-          commands: [{ action: 'lighting:scene:activate', payload: { sceneId: 'scene.game' } }],
-        }],
-      };
-      const res = await request(app).put('/api/config/cues').send(body).expect(400);
-      assert.ok(res.body.details.some(d => /concrete scene id/.test(d)));
-    });
+    // The scoring/cues validator cases that lived here moved with the
+    // writers to the draft surface (B0 BS.2, D-B0.1r2) — HTTP mapping
+    // pins in draftRoutes.test.js; the deep validator matrix stays in
+    // configManager.test.js (writeScoring/writeCues, unchanged). Only
+    // the venue writers (routing, env) remain live-routed.
 
     it('PUT /api/config/routing rejects routes as an array', async () => {
       await request(app).put('/api/config/routing').send({ routes: [], ducking: [] }).expect(400);

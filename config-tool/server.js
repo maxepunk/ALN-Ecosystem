@@ -2,6 +2,7 @@
 const express = require('express');
 const path = require('path');
 const { ConfigManager } = require('./lib/configManager');
+const { DraftStore } = require('./lib/draftStore');
 const { createRouter } = require('./lib/routes');
 
 const app = express();
@@ -16,11 +17,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const configManager = new ConfigManager();
 
+// Pack drafts (B0 BS.2, D-B0.1r2): tool-private working copies of the
+// live pack. Editing targets drafts; publish is the one landing step,
+// gated by the engine's own activation gate (the child-process runner).
+const draftStore = new DraftStore({
+  rootDir: path.join(__dirname, 'data', 'drafts'),
+  store: 'pack',
+  sourceDir: path.dirname(configManager.paths.gamePath),
+});
+const runnerPath = path.resolve(__dirname, '../backend/scripts/validate-pack.js');
+
 // Static file serving for asset preview
 app.use('/audio', express.static(configManager.paths.soundsDir));
 app.use('/video', express.static(configManager.paths.videosDir));
 
-app.use('/api', createRouter(configManager));
+app.use('/api', createRouter(configManager, { draftStore, runnerPath }));
 
 // SPA fallback — exclude API paths so mistyped API routes get proper 404s
 app.get('*', (req, res) => {

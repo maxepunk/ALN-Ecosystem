@@ -90,6 +90,19 @@ class ConfigManager {
     return this._readJson(this.paths.tokensPath);
   }
 
+  /**
+   * PACK content only (B0 BS.2): what a draft-bound instance can serve
+   * without touching venue config (env/routing live outside packs and
+   * outside drafts).
+   */
+  readPackContent() {
+    return {
+      scoring: this._readJson(this.paths.gamePath).scoring || {},
+      cues: this._readJson(this.paths.cuesPath),
+      pack: this._readPackIdentity(),
+    };
+  }
+
   _readJson(filePath) {
     try {
       return JSON.parse(fs.readFileSync(filePath, 'utf8'));
