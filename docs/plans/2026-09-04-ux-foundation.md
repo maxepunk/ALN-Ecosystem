@@ -6,6 +6,25 @@ baseline; ground-up UX from industry best practice, improved for our
 flows; open-source learnability is first-class).
 Vocabulary: CONTEXT.md. Verdict semantics: C1 §2 / resolution.js.
 
+## 0b. Grill round 2 rulings (owner, 2026-09-04)
+
+- **Q7 RATIFIED**: the two-dimensional method — every element decided
+  on the FINAL design surface, then placed on the PHASE-LANDING MAP.
+- **Q8 OVERRULED to (c)**: the first-success moment is the platform's
+  distinctive promise kept — SCAN → THE SHOW REACTS (video plays, a
+  cue fires, a light changes). A scored scan alone is the engineer's
+  minimal moment, not the user's motivating moment; the "second
+  beat" framing was incoherent and is withdrawn. Convergence pinned:
+  the rung-1 simulation machinery (real VLC, real cues, witness
+  lights) IS the hardware-free demo engine for this moment.
+- **Q9 CORRECTED — "Adopt" is not a stage**: it has no meaning to a
+  user who cannot yet Author; it is a threshold crossed once, not a
+  room. Stage model r2: **Author → Prepare → Run → Review**. The
+  tool owns Author, Prepare, Review; the GM scanner owns Run.
+  Getting-the-platform is the tool's FIRST-RUN STATE: a persistent
+  checklist overlay + teaching empty states + templates at the
+  threshold — patterns of Author, not a workspace.
+
 ## 0a. Grill round 1 rulings (owner, 2026-09-04)
 
 - **Adopter floor**: (c) now — README-courage, paste-able commands,
