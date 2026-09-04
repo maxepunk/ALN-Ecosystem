@@ -6,6 +6,32 @@ baseline; ground-up UX from industry best practice, improved for our
 flows; open-source learnability is first-class).
 Vocabulary: CONTEXT.md. Verdict semantics: C1 §2 / resolution.js.
 
+## 0c. Grill round 3 rulings (owner, 2026-09-04)
+
+- **Q10 CORRECTED twice — the pipeline was the engineer's frame**:
+  (1) Prepare is not a stage: trying-it-in-my-space is HOW authoring
+  works — the creator's practice is a LOOP, not a line. Venue
+  configuration (bindings/profile) is cross-cutting infrastructure
+  surfaced in context; the preflight is the OPENING RITUAL OF RUN,
+  not a stage. (2) Review is not log-review: it is (a) the STORY OF
+  THE NIGHT — what teams did, found, missed — feeding the debrief
+  (part of the show's emotional payoff), and (b) design learning
+  flowing back into Author. The lifecycle is a CYCLE.
+- **Q11**: workspace naming still open — follows the loop model.
+- **Q12 CORRECTED — input transports are physics**: QR is a leftover
+  fallback path, not a designed game path. The designer's frame is
+  "a player touches a memory → my show responds"; input primitives
+  (NFC, QR, simulate-button) are venue-bound details like lighting
+  fixtures. The demo is REHEARSAL: every player action performable
+  in its simulated form, framed as the player's action, not a
+  transport test. Unification surfaced: first-run demo = authoring
+  preview = Track D simulation anchor = ONE concept, Rehearse
+  (rung-1 is engineering's rehearsal rig).
+- Round 4 posed: Q13 loop-model ratification (Author⇄Rehearse → Run
+  → Review → Author), Q14 Rehearse as first-class named concept,
+  Q15 Review's audience (production-team story vs player-facing
+  debrief, phased).
+
 ## 0b. Grill round 2 rulings (owner, 2026-09-04)
 
 - **Q7 RATIFIED**: the two-dimensional method — every element decided
