@@ -42,6 +42,9 @@ case "${1:-}" in
     fi
     # shellcheck disable=SC1091
     . "$RUNG1/env.sh"
+    # cwd MUST be $BACKEND: dotenv loads backend/.env from process.cwd()
+    # — invoked from the repo root (CI), the engine otherwise boots with
+    # no ADMIN_PASSWORD and the audit's auth gets 401 (run 3's failure).
     runuser -u "$RUNG1_USER" -- env \
       DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
       XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
@@ -54,7 +57,8 @@ case "${1:-}" in
       LOGS_DIR="$LOGS_DIR" \
       DISPLAY="${DISPLAY:-:99}" CHROMIUM_BIN="${CHROMIUM_BIN:-}" \
       PORT="$PORT" ENABLE_HTTPS=false ENABLE_VIDEO_PLAYBACK=true \
-      node "$BACKEND/src/server.js" > "$RUNG1/engine.log" 2>&1 &
+      sh -c "cd '$BACKEND' && exec node src/server.js" \
+      > "$RUNG1/engine.log" 2>&1 &
     echo $! > "$RUNG1/engine.pid"
     for i in $(seq 1 20); do
       sleep 1
