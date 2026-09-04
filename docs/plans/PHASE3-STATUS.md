@@ -7,7 +7,7 @@
 > · `2026-07-09-phase3-1-standalone-pack-loading.md` · `2026-07-09-phase3-1-one-auth.md`.
 > Keep this file CURRENT — update it in every commit that changes execution state.
 
-**Last updated:** 2026-09-04 (theme unit CLOSED) · **Working branch:** `claude/phase3-theme-unit` (B0 branch chains next)
+**Last updated:** 2026-09-04 · **Working branch:** `claude/phase3-b0` (theme unit CLOSED; B0 OPENED, PR #32)
 (parent; chained from the verified slice-7 tip `4923575`, per the slice train).
 Under the frozen-production model (see the development-model row) slice
 branches CHAIN — slice N+1 branches from slice N's verified tip, each slice
@@ -584,6 +584,17 @@ star map confirmed), the ALN star-drop (§13.5 boundary: the THREE
 GM-scanner display sites only — config-tool previews + the report ★
 cell excluded), ledger L11 (scoreboard Google-Fonts CDN links retire in
 the styling-bearing slice). Census next.
+
+**B0 — 🔨 OPENED 2026-09-04** (branch `claude/phase3-b0` chained from
+the theme-unit tip `8752d53`; **draft PR #32 opened AT open**). Governed
+as a full unit (census → design → red-team → staged build). Scope
+inputs: program Track B (pack/profile store with draft→publish — the
+tool stops editing live files; app-shell shared store + model-module
+discipline + frontend test harness; operator-tier auth v1 per §7 R1 +
+§13.6 incl. the backend substrate and the scoreboard PLAIN read-scope
+token), the 2026-06-11 config-tool pre-read, and the 2026-09-03 §14
+rulings (E10 floor binds the PAGES unit, not B0 — but B0's store must
+not preclude it). Census next.
 
 ## Owner rulings 2026-07-18 (batch — plain-English queue session)
 
