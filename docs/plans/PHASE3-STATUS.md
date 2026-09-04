@@ -665,6 +665,17 @@ reaches it; parent-only unit, NO submodule bumps: ALN-TokenData /
 ALNScanner / PWA / ESP32 all untouched by B0). NEXT in queue:
 Design-workspace pages (#11, carries the §14 rulings incl. the E10
 floor + the surfaces-editor open question).
+**CI amendment (2026-09-04, post-close):** branch CI was RED from run
+212 (the BS.1 operator-floor commit) through run 226 — the close gates
+ran unit/contract/E2E but NOT the integration suite, where the one
+casualty hid (`lighting-role-resolution.test.js` gm-sourced call
+predating the floor, carrying no actor — floor-refused correctly), and
+the Scanner Tests job had outgrown its 10-minute timeout (axed at
+10m13s in runs 222/225 — workload, not a hang). Both fixed at
+`df5c711` (operator-actor fixture matching the actorFloor idiom;
+timeout 20m); **GREEN CONFIRMED run 227** (integration 348/348,
+all 8 jobs). Process lesson folded forward: unit-close gates MUST
+include the integration suite (BS.4's list omitted it).
 
 **Design-workspace pages — 🔨 OPENED 2026-09-04, design r2 DONE,
 ⏸ BUILD GATE HELD ON OWNER** (full record:
