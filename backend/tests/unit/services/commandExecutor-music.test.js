@@ -33,6 +33,10 @@ beforeEach(() => {
   musicService.seek.mockResolvedValue(undefined);
 });
 
+// B0 BS.1 operator floor: direct-call tests present the explicit actor
+// a real GM socket carries (resolved from its verified token).
+const TEST_OPERATOR = { tier: 'operator', functions: ['session-lifecycle', 'show-control', 'score-intervention', 'view-content', 'observe'] };
+
 describe('commandExecutor — music:*', () => {
   it.each([
     ['music:play', 'play'],
@@ -41,56 +45,56 @@ describe('commandExecutor — music:*', () => {
     ['music:next', 'next'],
     ['music:previous', 'previous'],
   ])('%s calls musicService.%s and reports success', async (action, method) => {
-    const res = await executeCommand({ action, payload: {}, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action, payload: {}, source: 'gm' });
     expect(musicService[method]).toHaveBeenCalled();
     expect(res.success).toBe(true);
     expect(res.message).toMatch(new RegExp(method, 'i'));
   });
 
   it('music:setVolume passes volume payload', async () => {
-    const res = await executeCommand({ action: 'music:setVolume', payload: { volume: 60 }, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:setVolume', payload: { volume: 60 }, source: 'gm' });
     expect(musicService.setVolume).toHaveBeenCalledWith(60);
     expect(res.success).toBe(true);
   });
 
   it('music:setVolume rejects when volume is missing', async () => {
-    const res = await executeCommand({ action: 'music:setVolume', payload: {}, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:setVolume', payload: {}, source: 'gm' });
     expect(res.success).toBe(false);
     expect(res.message).toMatch(/volume required/i);
   });
 
   it('music:setShuffle passes enabled flag', async () => {
-    await executeCommand({ action: 'music:setShuffle', payload: { enabled: true }, source: 'gm' });
+    await executeCommand({ actor: TEST_OPERATOR, action: 'music:setShuffle', payload: { enabled: true }, source: 'gm' });
     expect(musicService.setShuffle).toHaveBeenCalledWith(true);
   });
 
   it('music:setLoop passes enabled flag', async () => {
-    await executeCommand({ action: 'music:setLoop', payload: { enabled: false }, source: 'gm' });
+    await executeCommand({ actor: TEST_OPERATOR, action: 'music:setLoop', payload: { enabled: false }, source: 'gm' });
     expect(musicService.setLoop).toHaveBeenCalledWith(false);
   });
 
   it('music:loadPlaylist passes playlistId', async () => {
-    const res = await executeCommand({ action: 'music:loadPlaylist', payload: { playlistId: 'p1' }, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:loadPlaylist', payload: { playlistId: 'p1' }, source: 'gm' });
     expect(musicService.loadPlaylist).toHaveBeenCalledWith('p1');
     expect(res.success).toBe(true);
   });
 
   it('music:loadPlaylist rejects missing playlistId', async () => {
-    const res = await executeCommand({ action: 'music:loadPlaylist', payload: {}, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:loadPlaylist', payload: {}, source: 'gm' });
     expect(res.success).toBe(false);
     expect(res.message).toMatch(/playlistId required/i);
   });
 
   // C4: music:seek added contract-first; payload {position} in seconds
   it('music:seek passes position to musicService.seek', async () => {
-    const res = await executeCommand({ action: 'music:seek', payload: { position: 30 }, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:seek', payload: { position: 30 }, source: 'gm' });
     expect(musicService.seek).toHaveBeenCalledWith(30);
     expect(res.success).toBe(true);
   });
 
   it('music:seek rejects a missing or invalid position', async () => {
     for (const payload of [{}, { position: -1 }, { position: 'x' }]) {
-      const res = await executeCommand({ action: 'music:seek', payload, source: 'gm' });
+      const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:seek', payload, source: 'gm' });
       expect(res.success).toBe(false);
       expect(res.message).toMatch(/position/i);
     }
@@ -99,14 +103,14 @@ describe('commandExecutor — music:*', () => {
 
   it('music:seek reports an honest failure when MPD rejects (no track playing)', async () => {
     musicService.seek.mockRejectedValue(new Error('No track playing'));
-    const res = await executeCommand({ action: 'music:seek', payload: { position: 10 }, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:seek', payload: { position: 10 }, source: 'gm' });
     expect(res.success).toBe(false);
     expect(res.message).toMatch(/no track playing/i);
   });
 
   it('pre-dispatch rejects when music service is down', async () => {
     registry.isHealthy.mockImplementation(() => false);
-    const res = await executeCommand({ action: 'music:play', payload: {}, source: 'gm' });
+    const res = await executeCommand({ actor: TEST_OPERATOR, action: 'music:play', payload: {}, source: 'gm' });
     expect(res.success).toBe(false);
     expect(res.message).toMatch(/music/i);
     expect(musicService.play).not.toHaveBeenCalled();

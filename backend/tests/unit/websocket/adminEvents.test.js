@@ -43,6 +43,7 @@ describe('adminEvents.js', () => {
       id: 'socket-1',
       deviceId: 'gm-001',
       deviceType: 'gm',
+      tier: 'operator', functions: ['session-lifecycle', 'show-control', 'score-intervention', 'view-content', 'observe'],
     };
     mockIo = { to: jest.fn().mockReturnThis(), emit: jest.fn() };
     executeCommand.mockResolvedValue({ success: true, message: 'OK' });

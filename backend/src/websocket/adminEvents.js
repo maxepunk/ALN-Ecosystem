@@ -41,8 +41,25 @@ async function handleGmCommand(socket, data, io) {
     const action = commandData.action;
     const payload = commandData.payload || {};
 
+    // The caller's ACTOR, resolved at the handshake from the verified
+    // token (B0 BS.1 — authorization reads granted functions, never the
+    // client-asserted deviceType). The executor's operator floor is the
+    // choke point for ordinary actions; system:reset bypasses the
+    // executor below, so its floor check runs here explicitly.
+    const actor = { tier: socket.tier || null, functions: socket.functions || [] };
+
     // Handle system:reset separately (requires io and mutex)
     if (action === 'system:reset') {
+      const { requiredFloorFunction } = require('../gameRules/grants');
+      const resetFn = requiredFloorFunction('system:reset');
+      if (resetFn && !actor.functions.includes(resetFn)) {
+        emitWrapped(socket, 'gm:command:ack', {
+          action,
+          success: false,
+          message: `action 'system:reset' requires the '${resetFn}' function (operator floor)`,
+        });
+        return;
+      }
       // MUTEX PROTECTION: Prevent concurrent resets from causing race conditions
       if (resetInProgress) {
         throw new Error('System reset already in progress. Please wait.');
@@ -93,7 +110,8 @@ async function handleGmCommand(socket, data, io) {
       payload,
       source: 'gm',
       deviceId: socket.deviceId,
-      deviceType: socket.deviceType
+      deviceType: socket.deviceType,
+      actor
     });
 
     // Send AsyncAPI-compliant ack (action + success/message only; state comes via service:state)

@@ -121,6 +121,7 @@ function createMockSocket() {
     id: 'socket-test-123',
     deviceId: 'gm-test-01',
     deviceType: 'gm',
+    tier: 'operator', functions: ['session-lifecycle', 'show-control', 'score-intervention', 'view-content', 'observe'],
     emit: jest.fn(),
     broadcast: { emit: jest.fn() },
   };

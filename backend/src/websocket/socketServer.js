@@ -98,6 +98,12 @@ function createSocketServer(httpServer) {
       socket.isAuthenticated = true;
       socket.authRole = decoded.role;
       socket.authUserId = decoded.id;
+      // Granted functions ride the SOCKET, resolved from the verified
+      // token (B0 BS.1, red-team S2 — authorization reads these, never
+      // the client-asserted deviceType). Legacy claim-less tokens carry
+      // zero functions and fail the floor closed.
+      socket.tier = decoded.tier || null;
+      socket.functions = Array.isArray(decoded.functions) ? decoded.functions : [];
       socket.deviceId = deviceId;
       socket.deviceType = deviceType;
       socket.version = version || '1.0.0';

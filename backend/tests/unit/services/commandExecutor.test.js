@@ -147,6 +147,10 @@ jest.mock('../../../src/services/scoreboardControlService', () => ({
   jumpToOwner: jest.fn(),
 }));
 
+// B0 BS.1 operator floor: direct-call tests present the explicit actor
+// a real GM socket carries (resolved from its verified token).
+const TEST_OPERATOR = { tier: 'operator', functions: ['session-lifecycle', 'show-control', 'score-intervention', 'view-content', 'observe'] };
+
 describe('commandExecutor', () => {
   const sessionService = require('../../../src/services/sessionService');
   const transactionService = require('../../../src/services/transactionService');
@@ -230,7 +234,7 @@ describe('commandExecutor', () => {
 
   describe('session commands', () => {
     it('should execute session:create with source gm', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:create',
         payload: { name: 'Test Game' },
         source: 'gm'
@@ -246,7 +250,7 @@ describe('commandExecutor', () => {
       // demonstrated exactly this as the pack-drives-operator-functions
       // vulnerability. session:create is not in CUE_ACTIONS, so a
       // non-'gm' source now fails closed regardless of the gate.
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:create',
         payload: { name: 'Auto Game' },
         source: 'cue',
@@ -261,7 +265,7 @@ describe('commandExecutor', () => {
       // 'constructor' resolves off Object.prototype under a truthy-index
       // guard; Object.hasOwn(CUE_ACTIONS, 'constructor') is false, so it
       // fails closed like any other off-vocabulary action.
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'constructor',
         payload: {},
         source: 'cue'
@@ -273,7 +277,7 @@ describe('commandExecutor', () => {
     it('ALLOWS an in-vocabulary action from a cue source (the floor does not block cue content)', async () => {
       // sound:stop IS in CUE_ACTIONS, so the auth-floor guard lets a
       // cue-sourced dispatch through to the normal execution path.
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'sound:stop',
         payload: {},
         source: 'cue'
@@ -284,7 +288,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute session:pause', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:pause',
         payload: {},
         source: 'gm'
@@ -294,7 +298,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute session:resume', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:resume',
         payload: {},
         source: 'gm'
@@ -304,7 +308,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute session:end', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:end',
         payload: {},
         source: 'gm'
@@ -314,7 +318,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute session:addTeam', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:addTeam',
         payload: { teamId: 'Team Alpha' },
         source: 'gm'
@@ -324,7 +328,7 @@ describe('commandExecutor', () => {
     });
 
     it('should reject session:addTeam without teamId', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:addTeam',
         payload: {},
         source: 'gm'
@@ -336,7 +340,7 @@ describe('commandExecutor', () => {
 
   describe('video commands', () => {
     it('should route video:play through videoQueueService.resumeCurrent()', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'video:play',
         payload: {},
         source: 'gm'
@@ -348,7 +352,7 @@ describe('commandExecutor', () => {
     });
 
     it('should route video:pause through videoQueueService.pauseCurrent()', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'video:pause',
         payload: {},
         source: 'gm'
@@ -364,7 +368,7 @@ describe('commandExecutor', () => {
       videoQueueService.skipCurrent.mockImplementation(() => { callOrder.push('skip'); return Promise.resolve(true); });
       videoQueueService.clearQueue.mockImplementation(() => { callOrder.push('clear'); return false; });
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'video:stop',
         payload: {},
         source: 'gm'
@@ -378,7 +382,7 @@ describe('commandExecutor', () => {
     });
 
     it('should await video:skip', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'video:skip',
         payload: {},
         source: 'gm'
@@ -388,7 +392,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute video:queue:add', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'video:queue:add',
         payload: { videoFile: 'test.mp4' },
         source: 'gm'
@@ -402,21 +406,21 @@ describe('commandExecutor', () => {
     describe('honest no-op acks (F-GMCMD-08)', () => {
       it('video:play fails when nothing is paused/playing', async () => {
         videoQueueService.resumeCurrent.mockResolvedValue(false);
-        const result = await executeCommand({ action: 'video:play', payload: {}, source: 'gm' });
+        const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:play', payload: {}, source: 'gm' });
         expect(result.success).toBe(false);
         expect(result.message).toMatch(/no video playing/i);
       });
 
       it('video:pause fails when nothing is playing', async () => {
         videoQueueService.pauseCurrent.mockResolvedValue(false);
-        const result = await executeCommand({ action: 'video:pause', payload: {}, source: 'gm' });
+        const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:pause', payload: {}, source: 'gm' });
         expect(result.success).toBe(false);
         expect(result.message).toMatch(/no video playing/i);
       });
 
       it('video:skip fails when nothing is playing', async () => {
         videoQueueService.skipCurrent.mockResolvedValue(false);
-        const result = await executeCommand({ action: 'video:skip', payload: {}, source: 'gm' });
+        const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:skip', payload: {}, source: 'gm' });
         expect(result.success).toBe(false);
         expect(result.message).toMatch(/no video playing/i);
       });
@@ -424,7 +428,7 @@ describe('commandExecutor', () => {
       it('video:stop fails when nothing was playing AND the queue was empty', async () => {
         videoQueueService.skipCurrent.mockResolvedValue(false);
         videoQueueService.clearQueue.mockReturnValue(false);
-        const result = await executeCommand({ action: 'video:stop', payload: {}, source: 'gm' });
+        const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:stop', payload: {}, source: 'gm' });
         expect(result.success).toBe(false);
         expect(result.message).toMatch(/no video playing/i);
       });
@@ -432,7 +436,7 @@ describe('commandExecutor', () => {
       it('video:stop succeeds when only pending items were cleared', async () => {
         videoQueueService.skipCurrent.mockResolvedValue(false);
         videoQueueService.clearQueue.mockReturnValue(true);
-        const result = await executeCommand({ action: 'video:stop', payload: {}, source: 'gm' });
+        const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:stop', payload: {}, source: 'gm' });
         expect(result.success).toBe(true);
       });
     });
@@ -440,7 +444,7 @@ describe('commandExecutor', () => {
     // C4: video:seek added contract-first; payload {position} in seconds
     describe('video:seek (C4, F-GMCMD-21)', () => {
       it('routes through videoQueueService.seekCurrent with position', async () => {
-        const result = await executeCommand({
+        const result = await executeCommand({ actor: TEST_OPERATOR,
           action: 'video:seek',
           payload: { position: 42 },
           source: 'gm'
@@ -452,7 +456,7 @@ describe('commandExecutor', () => {
 
       it('fails honestly when nothing is playing', async () => {
         videoQueueService.seekCurrent.mockResolvedValue(false);
-        const result = await executeCommand({
+        const result = await executeCommand({ actor: TEST_OPERATOR,
           action: 'video:seek',
           payload: { position: 10 },
           source: 'gm'
@@ -463,7 +467,7 @@ describe('commandExecutor', () => {
 
       it('rejects a missing or invalid position', async () => {
         for (const payload of [{}, { position: -5 }, { position: 'abc' }]) {
-          const result = await executeCommand({ action: 'video:seek', payload, source: 'gm' });
+          const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:seek', payload, source: 'gm' });
           expect(result.success).toBe(false);
           expect(result.message).toMatch(/position/i);
         }
@@ -479,7 +483,7 @@ describe('commandExecutor', () => {
 
   describe('display commands', () => {
     it('should execute display:idle-loop', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'display:idle-loop',
         payload: {},
         source: 'gm'
@@ -491,7 +495,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute display:scoreboard', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'display:scoreboard',
         payload: {},
         source: 'gm'
@@ -501,7 +505,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute display:status', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'display:status',
         payload: {},
         source: 'gm'
@@ -512,7 +516,7 @@ describe('commandExecutor', () => {
 
     it('should execute display:return-to-video', async () => {
       displayControlService.returnToVideo.mockResolvedValue({ success: true, mode: 'VIDEO' });
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'display:return-to-video',
         payload: {},
         source: 'gm'
@@ -523,7 +527,7 @@ describe('commandExecutor', () => {
 
     it('should handle display:return-to-video failure', async () => {
       displayControlService.returnToVideo.mockResolvedValue({ success: false, error: 'No video playing' });
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'display:return-to-video',
         payload: {},
         source: 'gm'
@@ -536,7 +540,7 @@ describe('commandExecutor', () => {
     const scoreboardControlService = require('../../../src/services/scoreboardControlService');
 
     it('should execute scoreboard:page:next', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'scoreboard:page:next',
         payload: {},
         source: 'gm',
@@ -549,7 +553,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute scoreboard:page:prev', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'scoreboard:page:prev',
         payload: {},
         source: 'gm'
@@ -560,7 +564,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute scoreboard:page:owner with owner payload', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'scoreboard:page:owner',
         payload: { owner: '  Alex Reeves  ' },
         source: 'gm'
@@ -571,7 +575,7 @@ describe('commandExecutor', () => {
     });
 
     it('should reject scoreboard:page:owner without owner', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'scoreboard:page:owner',
         payload: {},
         source: 'gm'
@@ -582,7 +586,7 @@ describe('commandExecutor', () => {
     });
 
     it('should reject scoreboard:page:owner with whitespace-only owner', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'scoreboard:page:owner',
         payload: { owner: '   ' },
         source: 'gm'
@@ -600,7 +604,7 @@ describe('commandExecutor', () => {
 
   describe('scoring commands', () => {
     it('should execute score:adjust', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'score:adjust',
         payload: { teamId: 'team1', delta: 100, reason: 'bonus' },
         source: 'gm',
@@ -611,7 +615,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute score:reset', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'score:reset',
         payload: {},
         source: 'gm'
@@ -623,7 +627,7 @@ describe('commandExecutor', () => {
 
   describe('transaction commands', () => {
     it('should execute transaction:delete', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'transaction:delete',
         payload: { transactionId: 'tx-123' },
         source: 'gm'
@@ -633,7 +637,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute transaction:create', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'transaction:create',
         payload: {
           tokenId: 'token-1',
@@ -651,7 +655,7 @@ describe('commandExecutor', () => {
 
   describe('bluetooth commands', () => {
     it('should execute bluetooth:scan:start', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'bluetooth:scan:start',
         payload: {},
         source: 'gm'
@@ -661,7 +665,7 @@ describe('commandExecutor', () => {
     });
 
     it('should execute bluetooth:pair', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'bluetooth:pair',
         payload: { address: 'AA:BB:CC:DD:EE:FF' },
         source: 'gm'
@@ -673,7 +677,7 @@ describe('commandExecutor', () => {
 
   describe('audio commands', () => {
     it('should execute audio:route:set', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:route:set',
         payload: { stream: 'video', sink: 'bluetooth' },
         source: 'gm'
@@ -688,7 +692,7 @@ describe('commandExecutor', () => {
       audioRoutingService.setStreamRoute.mockResolvedValue();
       audioRoutingService.applyRouting.mockRejectedValue(new Error('No available sink'));
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:route:set',
         payload: { stream: 'video', sink: 'nonexistent' },
         source: 'gm',
@@ -704,7 +708,7 @@ describe('commandExecutor', () => {
       audioRoutingService.setStreamRoute.mockResolvedValue();
       audioRoutingService.applyRouting.mockResolvedValue();
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:route:set',
         payload: { stream: 'video', sink: 'hdmi' },
         source: 'gm',
@@ -721,7 +725,7 @@ describe('commandExecutor', () => {
 
   describe('lighting commands', () => {
     it('should execute lighting:scene:activate', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'lighting:scene:activate',
         payload: { sceneId: 'scene1' },
         source: 'gm'
@@ -733,7 +737,7 @@ describe('commandExecutor', () => {
 
   describe('unknown actions', () => {
     it('should return error for unknown action', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'nonexistent:action',
         payload: {},
         source: 'gm'
@@ -743,7 +747,7 @@ describe('commandExecutor', () => {
     });
 
     it('should include source in error result', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'invalid:command',
         payload: {},
         source: 'cue',
@@ -759,7 +763,7 @@ describe('commandExecutor', () => {
       const sessionService = require('../../../src/services/sessionService');
       sessionService.createSession.mockRejectedValueOnce(new Error('Service error'));
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:create',
         payload: { name: 'Test' },
         source: 'gm'
@@ -776,7 +780,7 @@ describe('commandExecutor', () => {
       const logger = require('../../../src/utils/logger');
 
       // Act
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:route:set',
         payload: { stream: 'video', sink: 'nonexistent' },
         source: 'gm',
@@ -795,7 +799,7 @@ describe('commandExecutor', () => {
 
   describe('audio:volume:set', () => {
     it('should set per-stream volume', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:volume:set',
         payload: { stream: 'music', volume: 60 },
         source: 'gm'
@@ -805,7 +809,7 @@ describe('commandExecutor', () => {
     });
 
     it('should reject without stream', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:volume:set',
         payload: { volume: 60 },
         source: 'gm'
@@ -815,7 +819,7 @@ describe('commandExecutor', () => {
     });
 
     it('should reject without volume', async () => {
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'audio:volume:set',
         payload: { stream: 'music' },
         source: 'gm'
@@ -846,7 +850,7 @@ describe('commandExecutor', () => {
       const vlcService = require('../../../src/services/vlcMprisService');
       vlcService.checkConnection.mockResolvedValue(true);
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'service:check',
         payload: { serviceId: 'vlc' },
         source: 'gm'
@@ -872,7 +876,7 @@ describe('commandExecutor', () => {
       audioRoutingService.checkHealth.mockResolvedValue(true);
       soundService.checkHealth.mockResolvedValue(true);
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'service:check',
         payload: {},
         source: 'gm'
@@ -890,7 +894,7 @@ describe('commandExecutor', () => {
     it('should return error for unknown serviceId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'service:check',
         payload: { serviceId: 'nonexistent' },
         source: 'gm'
@@ -905,7 +909,7 @@ describe('commandExecutor', () => {
       const vlcService = require('../../../src/services/vlcMprisService');
       vlcService.checkConnection.mockRejectedValue(new Error('connection refused'));
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'service:check',
         payload: { serviceId: 'vlc' },
         source: 'gm'
@@ -948,7 +952,7 @@ describe('commandExecutor', () => {
     it('should execute cue:fire', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:fire',
         payload: { cueId: 'opening' },
         source: 'gm'
@@ -968,7 +972,7 @@ describe('commandExecutor', () => {
       // fireCue() directly, never through executeCommand). The dispatch
       // guard makes that alignment explicit: a non-'gm' source cannot
       // reach cue:fire, so fireCue is never called.
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:fire',
         payload: { cueId: 'chained' },
         source: 'cue'
@@ -981,7 +985,7 @@ describe('commandExecutor', () => {
     it('should reject cue:fire without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:fire',
         payload: {},
         source: 'gm'
@@ -993,7 +997,7 @@ describe('commandExecutor', () => {
     it('should execute cue:enable', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:enable',
         payload: { cueId: 'standing-1' },
         source: 'gm'
@@ -1005,7 +1009,7 @@ describe('commandExecutor', () => {
     it('should reject cue:enable without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:enable',
         payload: {},
         source: 'gm'
@@ -1017,7 +1021,7 @@ describe('commandExecutor', () => {
     it('should execute cue:disable', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:disable',
         payload: { cueId: 'standing-1' },
         source: 'gm'
@@ -1029,7 +1033,7 @@ describe('commandExecutor', () => {
     it('should reject cue:disable without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:disable',
         payload: {},
         source: 'gm'
@@ -1042,7 +1046,7 @@ describe('commandExecutor', () => {
       // Need to require executeCommand fresh after mocking
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:stop',
         payload: { cueId: 'opening' },
         source: 'gm'
@@ -1054,7 +1058,7 @@ describe('commandExecutor', () => {
     it('should reject cue:stop without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:stop',
         payload: {},
         source: 'gm'
@@ -1066,7 +1070,7 @@ describe('commandExecutor', () => {
     it('should execute cue:pause', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:pause',
         payload: { cueId: 'opening' },
         source: 'gm'
@@ -1078,7 +1082,7 @@ describe('commandExecutor', () => {
     it('should reject cue:pause without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:pause',
         payload: {},
         source: 'gm'
@@ -1090,7 +1094,7 @@ describe('commandExecutor', () => {
     it('should execute cue:resume', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:resume',
         payload: { cueId: 'opening' },
         source: 'gm'
@@ -1102,7 +1106,7 @@ describe('commandExecutor', () => {
     it('should reject cue:resume without cueId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'cue:resume',
         payload: {},
         source: 'gm'
@@ -1143,7 +1147,7 @@ describe('commandExecutor', () => {
 
     it('should route held:release to cueEngineService for held-cue-* IDs', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:release',
         payload: { heldId: 'held-cue-1' },
         source: 'gm'
@@ -1155,7 +1159,7 @@ describe('commandExecutor', () => {
 
     it('should route held:release to videoQueueService for held-video-* IDs', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:release',
         payload: { heldId: 'held-video-1' },
         source: 'gm'
@@ -1167,7 +1171,7 @@ describe('commandExecutor', () => {
 
     it('should route held:discard to cueEngineService for held-cue-* IDs', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:discard',
         payload: { heldId: 'held-cue-2' },
         source: 'gm'
@@ -1179,7 +1183,7 @@ describe('commandExecutor', () => {
 
     it('should route held:discard to videoQueueService for held-video-* IDs', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:discard',
         payload: { heldId: 'held-video-1' },
         source: 'gm'
@@ -1191,7 +1195,7 @@ describe('commandExecutor', () => {
 
     it('should reject held:release without heldId', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:release',
         payload: {},
         source: 'gm'
@@ -1202,7 +1206,7 @@ describe('commandExecutor', () => {
 
     it('should reject held:release with unknown prefix', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:release',
         payload: { heldId: 'held-unknown-1' },
         source: 'gm'
@@ -1213,7 +1217,7 @@ describe('commandExecutor', () => {
 
     it('should release all held items via held:release-all', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:release-all',
         payload: {},
         source: 'gm'
@@ -1226,7 +1230,7 @@ describe('commandExecutor', () => {
 
     it('should discard all held items via held:discard-all', async () => {
       const { executeCommand } = require('../../../src/services/commandExecutor');
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'held:discard-all',
         payload: {},
         source: 'gm'
@@ -1246,7 +1250,7 @@ describe('commandExecutor', () => {
     });
 
     it('session:create defaults name/teams on empty payload; source defaults to gm', async () => {
-      const result = await executeCommand({ action: 'session:create', payload: {} });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'session:create', payload: {} });
       expect(result.success).toBe(true);
       expect(sessionService.createSession).toHaveBeenCalledWith({ name: 'New Session', teams: [] });
       expect(result.source).toBe('gm');
@@ -1261,12 +1265,12 @@ describe('commandExecutor', () => {
       ['audio:route:set', 'sink'],
       ['lighting:scene:activate', 'sceneId'],
     ])('%s rejects with "%s is required" when the field is missing', async (action, field) => {
-      const emptyPayload = await executeCommand({ action, payload: {}, source: 'gm' });
+      const emptyPayload = await executeCommand({ actor: TEST_OPERATOR, action, payload: {}, source: 'gm' });
       expect(emptyPayload.success).toBe(false);
       expect(emptyPayload.message).toBe(`${field} is required`);
 
       // No payload at all takes the optional-chaining arm
-      const noPayload = await executeCommand({ action, payload: undefined, source: 'gm' });
+      const noPayload = await executeCommand({ actor: TEST_OPERATOR, action, payload: undefined, source: 'gm' });
       expect(noPayload.success).toBe(false);
       expect(noPayload.message).toBe(`${field} is required`);
     });
@@ -1279,7 +1283,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'lighting');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'WebSocket disconnected' });
 
-      const result = await executeCommand({ action: 'lighting:scene:activate', payload: {}, source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'lighting:scene:activate', payload: {}, source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('sceneId is required');
@@ -1290,7 +1294,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'vlc');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'Connection lost' });
 
-      const result = await executeCommand({ action: 'video:play', source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:play', source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('vlc');
@@ -1303,7 +1307,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'music');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'MPD unavailable' });
 
-      const result = await executeCommand({ action: 'music:play', source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'music:play', source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('music');
@@ -1314,7 +1318,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'sound');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'pw-play not found' });
 
-      const result = await executeCommand({ action: 'sound:play', payload: { file: 'test.wav' }, source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'sound:play', payload: { file: 'test.wav' }, source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('sound');
@@ -1330,7 +1334,7 @@ describe('commandExecutor', () => {
 
       soundService.play.mockReturnValue({ pid: 1234, file: 'test.wav' });
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'sound:play',
         payload: { file: 'test.wav' },
         source: 'gm',
@@ -1351,7 +1355,7 @@ describe('commandExecutor', () => {
       ]);
       soundService.play.mockReturnValue({ pid: 1234, file: 'test.wav' });
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'sound:play',
         payload: { file: 'test.wav' },
         source: 'gm',
@@ -1370,7 +1374,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'lighting');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'HA container not running' });
 
-      const result = await executeCommand({ action: 'lighting:scene:activate', payload: { sceneId: 'scene1' }, source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'lighting:scene:activate', payload: { sceneId: 'scene1' }, source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('lighting');
@@ -1381,7 +1385,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'bluetooth');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'No adapter found' });
 
-      const result = await executeCommand({ action: 'bluetooth:pair', payload: { address: 'AA:BB:CC:DD:EE:FF' }, source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'bluetooth:pair', payload: { address: 'AA:BB:CC:DD:EE:FF' }, source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('bluetooth');
@@ -1392,7 +1396,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'audio');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'PipeWire unavailable' });
 
-      const result = await executeCommand({ action: 'audio:route:set', payload: { stream: 'video', sink: 'hdmi' }, source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'audio:route:set', payload: { stream: 'video', sink: 'hdmi' }, source: 'gm' });
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('audio');
@@ -1401,7 +1405,7 @@ describe('commandExecutor', () => {
 
     it('should allow commands with no service dependency regardless of health', async () => {
       // session:create has no service dependency
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'session:create',
         payload: { name: 'Test', teams: ['Alpha'] },
         source: 'gm'
@@ -1413,7 +1417,7 @@ describe('commandExecutor', () => {
     it('should allow video:queue:clear even when VLC is down', async () => {
       registry.isHealthy.mockImplementation((id) => id !== 'vlc');
 
-      const result = await executeCommand({ action: 'video:queue:clear', source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:queue:clear', source: 'gm' });
 
       expect(result.success).toBe(true);
       expect(videoQueueService.clearQueue).toHaveBeenCalled();
@@ -1422,7 +1426,7 @@ describe('commandExecutor', () => {
     it('should allow video:queue:reorder even when VLC is down', async () => {
       registry.isHealthy.mockImplementation((id) => id !== 'vlc');
 
-      const result = await executeCommand({
+      const result = await executeCommand({ actor: TEST_OPERATOR,
         action: 'video:queue:reorder',
         payload: { fromIndex: 0, toIndex: 1 },
         source: 'gm'
@@ -1433,7 +1437,7 @@ describe('commandExecutor', () => {
     });
 
     it('should allow video:play when VLC is healthy', async () => {
-      const result = await executeCommand({ action: 'video:play', source: 'gm' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:play', source: 'gm' });
 
       expect(result.success).toBe(true);
       expect(videoQueueService.resumeCurrent).toHaveBeenCalled();
@@ -1443,7 +1447,7 @@ describe('commandExecutor', () => {
       registry.isHealthy.mockImplementation((id) => id !== 'vlc');
       registry.getStatus.mockReturnValue({ status: 'down', message: 'Connection lost' });
 
-      const result = await executeCommand({ action: 'video:play', source: 'cue' });
+      const result = await executeCommand({ actor: TEST_OPERATOR, action: 'video:play', source: 'cue' });
 
       expect(result.success).toBe(false);
       expect(result.source).toBe('cue');
@@ -1619,7 +1623,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
 
   it('a bound role normalizes to its profile sceneId BEFORE the required-fields guard (red-team R1 kill case)', async () => {
     profileService.getLightingBinding.mockReturnValue('scene.police_1');
-    const result = await executeCommand({
+    const result = await executeCommand({ actor: TEST_OPERATOR,
       action: 'lighting:scene:activate',
       payload: { role: 'police-arrival-1' },
       source: 'cue',
@@ -1632,7 +1636,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
 
   it('an unbound role falls to the pack lightingRoleFallbacks with a LOUD warn per fire (ledger L7)', async () => {
     packService.getLightingRoleFallback.mockReturnValue('scene.police_1');
-    const result = await executeCommand({
+    const result = await executeCommand({ actor: TEST_OPERATOR,
       action: 'lighting:scene:activate',
       payload: { role: 'police-arrival-1' },
       source: 'cue',
@@ -1644,7 +1648,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
   });
 
   it('an unresolvable role fails with the contracted message and never touches the service', async () => {
-    const result = await executeCommand({
+    const result = await executeCommand({ actor: TEST_OPERATOR,
       action: 'lighting:scene:activate',
       payload: { role: 'disco-mode' },
       source: 'cue',
@@ -1657,7 +1661,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
   it('a prototype-chain role name is unresolvable, never a TypeError (C11 class)', async () => {
     // The real accessor's Object.hasOwn guard is pinned in the
     // packService suite; here the mock returns null like any unknown.
-    const result = await executeCommand({
+    const result = await executeCommand({ actor: TEST_OPERATOR,
       action: 'lighting:scene:activate',
       payload: { role: 'constructor' },
       source: 'cue',
@@ -1667,7 +1671,7 @@ describe('lighting role normalization (slice 4 S3 — D-4.4)', () => {
   });
 
   it('a concrete GM sceneId payload bypasses normalization entirely (panel unchanged)', async () => {
-    const result = await executeCommand({
+    const result = await executeCommand({ actor: TEST_OPERATOR,
       action: 'lighting:scene:activate',
       payload: { sceneId: 'scene.interrogation_red' },
       source: 'gm',
