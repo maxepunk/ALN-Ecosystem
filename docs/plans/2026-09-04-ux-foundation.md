@@ -167,42 +167,69 @@ L4 inside an unratified L3. Both owner corrections in this sitting
 were layer corrections. Never again optimize a layer while one above
 it is open.
 
-## 1. Personas (r0 — for the grill)
+## 1. Personas (r1 — loop-model propagation, rulings 0a-0e applied)
 
 - **P1 New adopter** (open-source arc, PRIMARY for learnability;
-  OWNER-CONFIRMED 2026-09-04): a game designer/creator who wants to
-  run their OWN immersive game on this platform. Creative
-  professional, not developer. Success metric: time-to-first-running
-  -toy-game on a laptop, no hardware.
-- **P2 Designer**: authors game content (mechanics, strings, theme,
-  cues, tokens) off-venue against a preview orchestrator + preview
-  profile. May be non-technical. Lives in the edit → verdict →
-  validate → publish loop.
-- **P3 Operator / show tech**: prepares TONIGHT at the venue against
-  the live orchestrator: profile, bindings, media, preflight. Reads
-  verdicts under time pressure; every red thing must carry verbs.
-- **(Excluded) GM during show**: scanner admin panel, never this
-  tool. Boundary stays hard.
+  OWNER-CONFIRMED): a game designer/creator who wants to run their
+  OWN immersive game. Creative professional, not developer. Their
+  arc through the ratified loop: first-run state → Author (from
+  template, never blank) → **Rehearse (the first-success moment:
+  their show REACTS — Q8=c)** → eventually Run and Review. Success
+  metric: clone → rehearsed toy show (video + cue + light respond)
+  < 30 min, zero hardware.
+- **P2 Designer**: lives in the Author ⇄ Rehearse creative loop —
+  edit → verdict badges → rehearse the change → validate → publish.
+- **P3 Operator / show tech**: Run's supporting human — the opening
+  ritual (preflight), venue config when verdicts point at it,
+  re-route/re-run when the venue changes. Pressure-legible surfaces,
+  verbs on every red thing.
+- **P4 Director (a HAT, usually the same human as GM/designer)**:
+  Review's user — crafts the night's telling from the record (for
+  ALN: the Director Console's ten-checkpoint production of the
+  bespoke per-session article) and harvests design learning back
+  into Author. Named because Review is a CREATIVE PRODUCTION stage
+  (0e), and its UX serves this hat, not a log-reader.
+- **(Excluded) GM during show**: the scanner is Run's surface, never
+  this tool. Hard boundary; the nav teaches it (L3).
 
-Note: P1 becomes P2 or P3 within their first sessions — the
-learnability design is the RAMP between personas, not a fourth
-destination.
+Hats, not humans (round-1 ruling): one person switches freely,
+state preserved; separate-humans hardening → ROADMAP. P1 becomes
+P2/P3/P4 within their first sessions — learnability is the RAMP.
+
+Baseline principle (from 0e): the platform's built-in Review must
+stand ALONE — an adopter has no Director Console; ALN's console is
+an advanced per-game instance of the telling, never the baseline.
 
 ## 2. Flow inventory (r0)
 
-First-run (NEW — owns the open-source goal):
-- **F-N1 clone → first game running**: get the platform running with
-  the toy pack, zero hardware, and SEE a scan score points. Every
-  step currently lives in READMEs; the foundation decides what moves
-  into the tool (wizard? guided empty states? doctor command?).
-- **F-N2 first edit**: from running toy game to "I changed a value
-  and saw it change" — the adopter's first authoring success.
+First-run (owns the open-source goal; finish line RE-RULED Q8=c):
+- **F-N1 clone → rehearsed toy show**: platform up, toy pack active,
+  and the adopter REHEARSES it — performs a player action (its
+  simulated input primitive, framed as the player's act) and the
+  show reacts: video plays, a cue fires, a witness light changes.
+  The rung-1 machinery IS this demo's engine. < 30 min.
+- **F-N2 first edit**: change a value in Author, rehearse it, see
+  the show change — the Author ⇄ Rehearse loop experienced once.
 
-Designer (from pages doc §10.2, surviving): F-D1 tweak-a-value;
-F-D2 author-a-show-moment; F-D3 new-game; F-D4 inspect-history.
+Designer (Author ⇄ Rehearse): F-D1 tweak-a-value (…→ rehearse →
+publish → apply); F-D2 author-a-show-moment (show designer →
+missing media loud → resolve → rehearse); F-D3 new-game (template,
+never blank); F-D4 inspect-history.
 
-Operator (surviving): F-O1 prepare-tonight; F-O2 venue-changed;
+Operator (Run support): F-O1 prepare-tonight (bindings → preflight
+= Run's opening ritual → go/go-degraded/no-go); F-O2 venue-changed;
 F-O3 box-is-stale.
+
+Review (NEW family, from 0e + Track D):
+- **F-R1 tell the night**: session ends → the record (B9 bundle) is
+  generated and inspected → handed to the game's own telling (ALN:
+  Director Console → bespoke article to players; baseline: the
+  platform's own story-of-the-night reading).
+- **F-R2 learn the night**: what the session taught (never-found
+  tokens, pacing, buried-vs-exposed balance) flows back into Author.
+- **F-R3 intake during Run** (Phase-4 Track D, scanner-side): roster
+  before; one-tap dictation notes + photos during; accusation +
+  whiteboard at the end — captured in Run, consumed by Review.
 
 ## 3. Touch-point inventory (r0 — "optimal interaction patterns at
 every touch point" is the owner's bar)
@@ -291,7 +318,26 @@ H#=Home-Assistant/config-flows.)
   single-command demo path (rung-1-style, toy pack, no hardware) is
   an adoption feature, not just a test harness.
 
-## 5. IA proposal (r0 — for the grill)
+## 4b. Phase-landing map (L2 — the Q7 method applied; owner rules
+the rows)
+
+Every element decided on the FINAL surface, landed by phase.
+"Seam" = Phase 3 builds only the not-precluding contract.
+
+| Element (final surface) | Phase 3 | Later landing |
+|---|---|---|
+| Author workspace (pack manager hub + editors) | LANDS (the ratified pages build, re-cut under this foundation) | grows w/ token designer (P5) |
+| Rehearse surface | SEAM: preview orchestrator + simulation profile (pages §9) + editor rehearse-affordance | full surface = Track D simulation anchor (P4); first-run demo = OSS milestone |
+| Verdict badges everywhere | LANDS (Q1 ratified; resolve core shipped CS.1) | — |
+| Venue config as cross-cutting (bindings page) | LANDS (C4, committed) | — |
+| Run handoff in nav + preflight ritual | preflight LANDS (CS.4); nav handoff LANDS with shell | intake = P4 Track D (charted) |
+| Review workspace (record + handoff + team reading) | SEAM: B9 bundle (landed, slice 7); scanner report download stays | workspace lands P4 with intake; bundle→console migration ROADMAP §8.10 |
+| First-run state (checklist overlay + templates) | SEAM: shell reserves the slot; toy template ships | OSS milestone |
+| Native token authoring | reserved room only (owner ruling) | P5 charter (Notion → adapter) |
+| Packaged installer / hosted demo | none | OSS milestone (installer ruled 0a; hosted demo = OPEN, Q-UX4) |
+| GM-scanner UX overhaul (same method) | none | ROADMAP item (round-1 ruling) |
+
+## 5. IA proposal (r0 — SUPERSEDED by §5r below; kept for the record)
 
 **Three top-level workspaces, one underlying truth** (B2+B6+O8; the
 §10.1 sidebar-split hypothesis survives but PROMOTED to workspaces,
@@ -341,6 +387,28 @@ into it); (c) near-term, the toy template ships tokens editable via
 the raw-JSON escape hatch (H12) and the ALN production keeps Notion
 sync; (d) the deferral is anchored in the ROADMAP registry.
 
+## 5r. Structure (L3 r1 — derived from the ratified loop; NEXT GRILL)
+
+The nav IS the lifecycle: **Author · Rehearse · Run · Review** — with
+Run rendered as a visibly labeled HANDOFF to the GM scanner (the
+boundary taught, not hidden). Venue config is cross-cutting: the
+identity chip's profile half + the bindings surface (C4), reachable
+wherever verdicts point, never a top-level stage. The first-run
+state is an overlay (persistent checklist + teaching empty states +
+template-at-threshold), not a room.
+
+Open L3 decisions (the recomputed frontier):
+1. **Nav naming**: are the four stage words themselves the nav
+   labels (Author/Rehearse/Run/Review)? Q11's earlier candidates
+   were rejected; these four derive from the ratified loop and must
+   read correctly from the scanner and console too (cross-tool
+   vocabulary ruling).
+2. **Rehearse's shape**: a dwellable surface AND a one-keystroke
+   affordance from every editor (Resolve Cut/Edit lesson says both
+   tiers on one data)? Or affordance-only in Phase 3's seam?
+3. **Review v1 content**: what the baseline story-of-the-night
+   reading shows (bundle inspector + team reading + handoff status).
+
 ## 6. Interaction-pattern language (per §3 touch point)
 
 - **Navigate**: three workspaces; within Design, hub-and-spoke from
@@ -366,15 +434,10 @@ sync; (d) the deferral is anchored in the ROADMAP registry.
 - **Leave & return**: workspaces restore last position; the draft
   bar/chip says what was in flight.
 
-## 7. Open questions for the owner grill
+## 7. Grill frontier (current)
 
-- Q-UX1: RESOLVED (owner 2026-09-04) — shell rebuild in scope;
-  three-workspace shell designed ground-up, plumbing reuse is an
-  implementation choice.
-- Q-UX2: RESOLVED (owner 2026-09-04) — primary adopter is a game
-  designer/creator running their own immersive game on this platform.
-- Q-UX3: F-N1 home — recommendation: in-tool persistent Setup
-  checklist (H6) + a single-command demo path documented in README
-  (H5); the checklist links the docs. Confirm.
-- Q-UX4 (new, from H5): is a hosted/demo instance (beyond the local
-  single command) in the open-source arc's scope, and when?
+Settled: L1 in full (personas r1, flows r1, metrics, boundaries,
+loop model Q13r, Rehearse Q14, Review boundary Q15f). L2 map drafted
+(§4b) — owner rules the rows, esp. hosted-demo (Q-UX4) and first-run
+landing. L3 opens next: §5r's three decisions. L4 stays closed until
+L3 ratifies; L5 approved.

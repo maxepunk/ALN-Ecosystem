@@ -435,6 +435,42 @@ you intend.
   cutover is: unplug blue, plug in green; green takes the reserved IP.
   Rolling back means swapping the plugs back.
 
+## 5b. The production lifecycle (ratified 2026-09-04; cross-tool
+vocabulary — these words must read identically from the config tool,
+the GM scanner, and a game's own post-show tooling)
+
+- **Author / Rehearse / Run / Review.** The four stages of a
+  production's life, and the platform's organizing vocabulary. The
+  creator's practice is a LOOP, not a line: Author ⇄ Rehearse is one
+  creative cycle; Run is show night (the GM scanner's stage; the
+  preflight is its opening ritual, not a stage); Review closes the
+  loop back into Author. Venue configuration is cross-cutting
+  infrastructure surfaced in context — "Prepare" is NOT a stage.
+- **Rehearse.** Performing the show's moments without the venue:
+  every player action available in its simulated form, framed as the
+  player's act ("Team X scans the vault token"), the show reacting
+  for real (video, cues, witness lights). One concept with many
+  depths: the adopter's first-run demo, the designer's
+  try-my-change loop, Track D's simulation tooling, and engineering's
+  rung-1 rig are all Rehearse. Input transports (NFC, QR, a button)
+  are venue-bound physics, never the designer's frame.
+- **Review.** A CREATIVE PRODUCTION stage, not log-reading: telling
+  the story of the night and learning from it. The platform owns the
+  RECORD (the B9 session bundle), the INTAKE (Track D: roster,
+  director notes, photos, accusation — captured during Run), and the
+  HANDOFF; the GAME owns the TELLING — for ALN, the Director Console
+  crafting each session's bespoke in-fiction article for its players.
+  The platform's built-in story-of-the-night reading must stand
+  alone; a per-game console is an advanced instance, never the
+  baseline.
+- **Director.** The Review-stage hat (usually the same human as GM
+  or designer): the person who crafts the night's telling and
+  harvests design learning back into Author.
+- **First-run state.** Getting the platform is a threshold crossed
+  once, not a stage or a room: a persistent checklist overlay,
+  teaching empty states, and templates at the threshold. "Adopt" is
+  not a stage — it has no meaning to a user who cannot yet Author.
+
 ## 6. Identity and attribution
 
 - **Actor vs device.** A *device* is hardware; its id names the
