@@ -26,6 +26,19 @@ jobs:
           sudo modprobe hci_vhci && echo "MODPROBE=OK" || echo "MODPROBE=FAIL"
           ls -la /dev/vhci && echo "VHCI_DEVICE=PRESENT" || echo "VHCI_DEVICE=ABSENT"
 
+      # Run-1 proved the module absent from the DEFAULT image; this step
+      # tests the known escalation path — Ubuntu cloud kernels keep
+      # optional drivers (bluetooth core + hci_vhci among candidates) in
+      # linux-modules-extra. If this works, real-BlueZ btvirt testing is
+      # viable on hosted CI after all.
+      - name: Install linux-modules-extra and retry
+        run: |
+          sudo apt-get install -y -q "linux-modules-extra-$(uname -r)" \
+            && echo "MODULES_EXTRA=INSTALLED" || echo "MODULES_EXTRA=UNAVAILABLE"
+          sudo modprobe bluetooth && echo "BT_CORE=OK" || echo "BT_CORE=FAIL"
+          sudo modprobe hci_vhci && echo "MODPROBE_RETRY=OK" || echo "MODPROBE_RETRY=FAIL"
+          ls -la /dev/vhci && echo "VHCI_DEVICE=PRESENT" || echo "VHCI_DEVICE=ABSENT"
+
       - name: Install BlueZ + test tools
         run: |
           sudo apt-get update -q

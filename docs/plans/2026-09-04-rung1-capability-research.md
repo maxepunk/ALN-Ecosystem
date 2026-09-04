@@ -63,8 +63,11 @@ Steps: `modprobe hci_vhci` → device check → `bluez-test-tools` install →
 `btvirt -l2` → adapter listing → power/scan. Every step tolerant; the log
 is the deliverable.
 
-**Result (run 33843990405, DEFINITIVE): virtual Bluetooth is
-IMPOSSIBLE on hosted GitHub runners.** Kernel `6.17.0-1022-azure`;
+**Result (run 33843990405) — CORRECTED CLAIM: hci_vhci is absent from
+the DEFAULT runner image.** ("Definitive/impossible" was an overclaim —
+it proved only the out-of-the-box state; the `linux-modules-extra`
+escalation path was untested. The amended probe below tests it.)
+Kernel `6.17.0-1022-azure`;
 `modprobe: FATAL: Module hci_vhci not found in directory
 /lib/modules/6.17.0-1022-azure` — the Azure runner kernel does not ship
 the module AT ALL, and `bluetoothctl` cannot open the management socket
@@ -73,12 +76,74 @@ nothing to emulate. So virtual BT is dormant at BOTH hosted-CI rungs,
 each with distinct recorded evidence: the dev container hits the
 no-module-control wall; the runner kernel simply omits the stack.
 
-**Consequence:** real-Bluetooth-in-CI has exactly one honest future
-path — a SELF-HOSTED runner on a Pi (onboard BT), which is the
-blue/green arrangement post-Phase-3. Until then the BT arm's automated
-coverage is the management-surface unit tests (mocked) + rung 2's real
-cheap speaker; the harness marks BT dormant on hosted CI with the probe
-evidence as the recorded reason.
+**Escalation path (probe amendment, verdict pending its next run):**
+Ubuntu cloud kernels keep optional drivers in
+`linux-modules-extra-<version>-azure` — a known Actions pattern for
+virtual CAN / loopback audio. The amended probe installs it, then
+retries `modprobe bluetooth` and `modprobe hci_vhci` separately so the
+log says which layer unlocks. If it passes, real-BlueZ btvirt testing
+IS viable on hosted CI; if it fails, "unreachable on hosted CI" becomes
+earned, and a self-hosted Pi runner (onboard BT; the post-Phase-3
+blue/green arrangement) is the real-BT-in-CI path.
+
+## Bluetooth workaround PROVEN in the dev container: dbusmock-BlueZ
+
+The decisive code fact: `bluetoothService` drives the `bluetoothctl`
+CLI and parses output — no kernel or radio dependency in our code. So
+the substitutable layer is the BlueZ DAEMON (software), not the radio
+(physics). `python-dbusmock` ships a maintained bluez5 template;
+spiked here: mocked `org.bluez` on a private system bus, mock adapter
+added, and the real unmodified `bluetoothctl list` returned
+`Controller 00:01:02:03:04:05 rung1-mock-adapter [default]`. (Recipe
+notes: needs a python matching apt's `python3-dbus` bindings — a
+`python3.12 -m venv --system-site-packages` + pip `python-dbusmock`;
+the `mgmt_socket` stderr warning is expected kernel-less noise and does
+not affect the D-Bus path.)
+
+**The BT coverage ladder as measured:** unit mocks (exists) →
+dbusmock-BlueZ (PROVEN here; portable to any runner; covers our whole
+management surface against a controllable fake daemon) → btvirt
+(real BlueZ, virtual radio: container impossible, hosted CI pending
+the modules-extra probe) → real adapter (rung 2 / the Pi). CS.1 must
+verify per-subcommand that everything our service uses rides D-Bus
+against the mock (show, scan, info, pair, connect, disconnect,
+remove) — checklist, not assumption.
+
+## The GitHub rate-limit investigation — RESOLVED (mechanism confirmed)
+
+Symptom: from 04:26Z, every review-thread read (the one GraphQL-backed
+method) failed with "rate limit exceeded for user ID 105341611" while
+~40 REST calls as the same identity succeeded all morning.
+
+Findings, each evidence-backed:
+1. The owner's PAT read of `/rate_limit` showed **graphql used: 0** —
+   the user-global GraphQL bucket was NEVER touched. No third-party
+   consumer exists on the account.
+2. The exhausted bucket is therefore the **user × GitHub-App pairing
+   bucket** (user-to-server tokens carry their own 5,000/hr GraphQL
+   budget, invisible to a PAT, but attributed to the user in error
+   text).
+3. The consumer: this session's own CI cadence. Four near-simultaneous
+   pushes fired four concurrent 8-job Test runs; each run emits dozens
+   of check events; the PR-subscription relay's per-event work under
+   the same app pairing drained the shared bucket; the session's own
+   thread reads then found it empty. Self-inflicted, invisible from
+   the owner's side.
+4. Controlled confirmation: with ALL workflow activity stopped
+   (06:47Z), a single pre-registered probe at ~07:07Z SUCCEEDED —
+   the pairing bucket refills in event-quiet. (An earlier "quiet"
+   experiment was invalidated by its own author pushing during the
+   window; the control condition must be VERIFIED from the runs list,
+   never assumed.)
+
+Standing mitigations: batch pushes (one per logical milestone); REST
+thread-reads (reviews + comments both empty ⇒ no threads — an inline
+review comment always has a parent review) whenever CI is or was
+recently active; treat active-CI windows as GraphQL-dark. Upstream
+report for Anthropic: (a) relay enrichment sharing the session's
+user-to-server budget is a footgun; (b) the GitHub MCP exposes no
+`/rate_limit` reader and surfaces no rate-limit headers — one trivial
+tool would have collapsed this investigation into a single call.
 
 **Probe gotchas (run-1 lessons, fixed in the workflow):**
 `bluetoothctl` drops to an interactive prompt and hangs a step unless
