@@ -148,6 +148,57 @@ paths:
                 error: "VALIDATION_ERROR"
                 message: "Password is required"
 
+  /api/vocabulary:
+    get:
+      tags:
+        - Static Resources
+      summary: Get the engine's cue-authoring vocabulary
+      description: |
+        The trigger/action vocabulary the cue engine enforces, served
+        from the SAME exported tables the activation gate validates
+        against (gameRules/cueValidation.js) — one source, zero drift
+        (B0 BS.1; program Track B "backend-served trigger/action
+        vocabulary"). The config-tool's cue editors consume this
+        instead of hand-mirroring the lists.
+      operationId: getVocabulary
+      responses:
+        '200':
+          description: Engine cue-authoring vocabulary
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - triggerEvents
+                  - conditionOperators
+                  - actions
+                  - tokenDerivedTriggerEvents
+                properties:
+                  triggerEvents:
+                    type: array
+                    description: Event names a standing cue may trigger on
+                    items:
+                      type: string
+                  conditionOperators:
+                    type: array
+                    description: Operators legal in cue conditions
+                    items:
+                      type: string
+                  actions:
+                    type: object
+                    description: >
+                      Cue-legal actions mapped to their required payload
+                      field types (field name → 'string'|'number'|'boolean')
+                    additionalProperties:
+                      type: object
+                      additionalProperties:
+                        type: string
+                  tokenDerivedTriggerEvents:
+                    type: array
+                    description: Trigger events carrying token-derived fields
+                    items:
+                      type: string
+
   /api/tokens:
     get:
       tags:

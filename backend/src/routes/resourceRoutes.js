@@ -157,6 +157,24 @@ function jsonForScript(value) {
     .replaceAll('\u2029', '\\u2029');
 }
 
+/**
+ * GET /api/vocabulary — the engine's cue-authoring vocabulary
+ * (B0 BS.1; program Track B "backend-served trigger/action
+ * vocabulary"). Served from the SAME exported tables the activation
+ * gate validates cues against — one source, zero drift; the
+ * config-tool's editors re-source from here instead of hand-mirroring.
+ * Read-only engine metadata, no auth (the /api/tokens posture).
+ */
+router.get('/vocabulary', (req, res) => {
+  const cueValidation = require('../gameRules/cueValidation');
+  res.json({
+    triggerEvents: cueValidation.CUE_TRIGGER_EVENTS,
+    conditionOperators: cueValidation.CONDITION_OP_NAMES,
+    actions: cueValidation.CUE_ACTIONS,
+    tokenDerivedTriggerEvents: cueValidation.TOKEN_DERIVED_TRIGGER_EVENTS,
+  });
+});
+
 function renderScoreboardHtml() {
   const config = require('../config');
   const packService = require('../services/packService');
