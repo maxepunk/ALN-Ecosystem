@@ -159,6 +159,61 @@ describe('GET /health', () => {
     expect(typeof response.body.uptime).toBe('number');
     expect(typeof response.body.timestamp).toBe('string');
   });
+
+  describe('device registration hardening (train-review MAJOR 2 / LC-2)', () => {
+    // The lockout this pins: /health is unauthenticated and mounted
+    // OUTSIDE the /api rate limiter; a gm-typed registration counts
+    // against maxGmStations and is NEVER reaped (the heartbeat monitor
+    // skips gm devices — GM liveness is socket ping/pong). Five GETs
+    // used to lock every real GM scanner out of the running session
+    // with no in-band recovery. GM stations register ONLY through the
+    // authenticated WebSocket handshake.
+    beforeEach(async () => {
+      await resetAllServices();
+    });
+
+    it('refuses type=gm with 400 and registers nothing', async () => {
+      await sessionService.createSession({ name: 'Health Test', teams: [] });
+
+      const response = await request(app.app)
+        .get('/health?deviceId=FAKE_GM_1&type=gm')
+        .expect(400);
+      expect(response.body.error).toBe('VALIDATION_ERROR');
+
+      const devices = sessionService.getCurrentSession().connectedDevices || [];
+      expect(devices.filter((d) => d.id === 'FAKE_GM_1')).toHaveLength(0);
+    });
+
+    it('five gm-typed GETs cannot exhaust GM-station capacity (the lockout pin)', async () => {
+      await sessionService.createSession({ name: 'Health Test', teams: [] });
+      expect(sessionService.canAcceptGmStation()).toBe(true);
+
+      for (let i = 1; i <= 5; i++) {
+        await request(app.app).get(`/health?deviceId=FAKE_GM_${i}&type=gm`);
+      }
+
+      expect(sessionService.canAcceptGmStation()).toBe(true);
+      const devices = sessionService.getCurrentSession().connectedDevices || [];
+      expect(devices.filter((d) => d.id.startsWith('FAKE_GM_'))).toHaveLength(0);
+    });
+
+    it('player heartbeats still register (the legitimate path is untouched)', async () => {
+      await sessionService.createSession({ name: 'Health Test', teams: [] });
+
+      await request(app.app)
+        .get('/health?deviceId=PLAYER_01&type=player')
+        .expect(200);
+      // type omitted defaults to player (ESP32 posture)
+      await request(app.app)
+        .get('/health?deviceId=ESP_01')
+        .expect(200);
+
+      const devices = sessionService.getCurrentSession().connectedDevices || [];
+      expect(devices.filter((d) => d.id === 'PLAYER_01')).toHaveLength(1);
+      expect(devices.filter((d) => d.id === 'ESP_01')).toHaveLength(1);
+      expect(sessionService.canAcceptGmStation()).toBe(true);
+    });
+  });
 });
 
 describe('GET /scoreboard (+ /scoreboard.html) — serve-time injection (slice 3a pre-fixes 1+2)', () => {

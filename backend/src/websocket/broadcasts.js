@@ -639,21 +639,30 @@ async function initializeSessionDevices(io, session) {
   // where device:connected broadcasts fire before all devices are added
   for (const socket of sockets) {
     if (socket.isAuthenticated && socket.deviceId) {
-      // Create device data from socket information
-      const deviceData = {
-        id: socket.deviceId,
-        type: socket.deviceType || 'gm',
-        name: `${socket.deviceType === 'gm' ? 'GM Station' : 'Admin'} v${socket.version || '1.0.0'}`,
-        ipAddress: socket.handshake.address,
-        connectionTime: new Date().toISOString(),
-        lastHeartbeat: new Date().toISOString(),
-        connectionStatus: 'connected'
-      };
+      // Display-class sockets (verified tier 'device' — the scoreboard's
+      // observe token) are broadcast consumers, never session devices:
+      // they join the room below but are NOT registered and never spend
+      // GM-station identity/capacity (train-review LA-2 — this loop
+      // previously undid the gmAuth carve-out at session creation).
+      const isDisplay = socket.tier === 'device';
 
-      // Add to session.connectedDevices (updates existing or creates new)
-      // AWAIT to ensure device is fully added before processing next device
-      // This prevents race condition where broadcasts fire with incomplete device list
-      await sessionService.updateDevice(deviceData);
+      if (!isDisplay) {
+        // Create device data from socket information
+        const deviceData = {
+          id: socket.deviceId,
+          type: socket.deviceType || 'gm',
+          name: `${socket.deviceType === 'gm' ? 'GM Station' : 'Admin'} v${socket.version || '1.0.0'}`,
+          ipAddress: socket.handshake.address,
+          connectionTime: new Date().toISOString(),
+          lastHeartbeat: new Date().toISOString(),
+          connectionStatus: 'connected'
+        };
+
+        // Add to session.connectedDevices (updates existing or creates new)
+        // AWAIT to ensure device is fully added before processing next device
+        // This prevents race condition where broadcasts fire with incomplete device list
+        await sessionService.updateDevice(deviceData);
+      }
 
       // CRITICAL: Leave old session room before joining new one
       // This prevents cross-session event contamination in tests and production
@@ -669,9 +678,12 @@ async function initializeSessionDevices(io, session) {
       }
 
       // Join Socket.IO room for session-specific broadcasts (transaction:new, etc)
+      // — displays included: the room is delivery, not registration
       socket.join(`session:${session.id}`);
 
-      devicesAdded++;
+      if (!isDisplay) {
+        devicesAdded++;
+      }
     }
   }
 
