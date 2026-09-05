@@ -256,12 +256,20 @@ uncovers scope beyond this triage, it stops and re-prices.
 
 **Build inline; orchestrate the verification, not the edits.**
 
-1. **Single-context TDD build, no parallel build agents.** The
-   review did the discovery; what remains is surgical work in shared
-   hot files with interacting fixes (M1+LA-2 one carve-out;
-   M8+LB-5+the networked clear one reset story), and the parity
-   fixes are only safe because one head holds both the backend and
-   scanner sides. Per finding cluster: re-run the review's
+1. **Single-context TDD build, no parallel build agents — and the
+   single context is the MAIN SESSION (Fable), not a delegated
+   build agent** (owner-clarified 2026-09-05). The fixes compose
+   with ratified semantics (the D2s2 rebuild floor, the ruled reset,
+   the gate's refusal wording, the established icon-slugify
+   convention); a delegate works from a handoff that approximates
+   that context and drifts at exactly the seams where these bugs got
+   in. If continuity breaks mid-build, the fallback is the standing
+   rule — resume from the green-stage record in a fresh session —
+   never a mid-build handoff to a different context. The review did
+   the discovery; what remains is surgical work in shared hot files
+   with interacting fixes (M1+LA-2 one carve-out; M8+LB-5+the
+   networked clear one reset story), and the parity fixes are only
+   safe because one head holds both the backend and scanner sides. Per finding cluster: re-run the review's
    reproduction on this branch (prove red) → turn it into the
    regression pin → fix to green → commit.
 2. **Subagents carry the bulk reads** (process rule): "every
