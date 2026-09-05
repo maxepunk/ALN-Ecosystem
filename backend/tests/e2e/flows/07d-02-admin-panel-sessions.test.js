@@ -34,7 +34,7 @@ const {
 
 const { selectTestTokens } = require('../helpers/token-selection');
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
-const { calculateExpectedScore } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring, loadPackEntities } = require('../helpers/scoring');
 
 /**
  * Helper to add console capture to a page
@@ -53,6 +53,7 @@ let browser = null;
 let orchestratorInfo = null;
 let vlcInfo = null;
 let testTokens = null;
+let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
 
 test.describe('GM Scanner Admin Panel - Session State', () => {
   // Skip on chromium to prevent parallel execution conflicts - session tests only on mobile-chrome
@@ -68,6 +69,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
     });
 
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    packScoring = await loadPackScoring(orchestratorInfo.url);
 
     browser = await chromium.launch({
       headless: true,
@@ -261,7 +263,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.navigateToAdminPanel();
 
       // Verify admin panel sections are rendered
-      const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
+      const scoresSection = page.locator('#adminScoreboardTitle');
       await expect(scoresSection).toBeVisible();
 
       // Verify teams with scores appear in scoreboard
@@ -282,9 +284,17 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
         5000
       );
 
+      // Q1 LOCKSTEP (dual-pack, pack-derived): the reset confirm's entity
+      // noun follows game.json entities.label — ALN declares Account, the
+      // toy Crew; packless falls back to the baked 'team'.
+      const packEntities = await loadPackEntities(orchestratorInfo.url);
+      const entityNoun = (typeof packEntities?.label?.singular === 'string' && packEntities.label.singular.length > 0)
+        ? packEntities.label.singular.toLowerCase()
+        : 'team';
+
       // Setup dialog handler BEFORE clicking
       page.once('dialog', async dialog => {
-        expect(dialog.message()).toContain('Reset all team scores to zero');
+        expect(dialog.message()).toContain(`Reset all ${entityNoun} scores to zero`);
         await dialog.accept();
       });
 
@@ -351,7 +361,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
       // Calculate expected score using production scoring logic (DRY)
-      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken);
+      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken, packScoring);
       const adjustmentAmount = 500;
 
       // Wait for score to update from transaction
@@ -433,7 +443,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner.manualScan(testTokens.personalToken.SF_RFID);
 
       // Calculate expected score using production scoring logic (DRY)
-      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken);
+      const expectedTokenScore = calculateExpectedScore(testTokens.personalToken, packScoring);
       const adjustmentAmount = 250;
       const expectedTotal = expectedTokenScore + adjustmentAmount;
 
@@ -485,7 +495,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       await gmScanner2.navigateToAdminPanel();
 
       // Verify admin panel sections are rendered after reload
-      const scoresSection = page.locator('.admin-section h3:has-text("Team Scores")');
+      const scoresSection = page.locator('#adminScoreboardTitle');
       await expect(scoresSection).toBeVisible();
 
       // Verify score persisted (use same formatted total from before reload)
@@ -612,7 +622,7 @@ test.describe('GM Scanner Admin Panel - Session State', () => {
       expect(resultTitle).not.toContain('Error');
       expect(resultTitle).not.toContain('Cannot scan');
 
-      const expectedScore = calculateExpectedScore(token);
+      const expectedScore = calculateExpectedScore(token, packScoring);
       await gmScanner.waitForBackendState(
         orchestratorInfo.url,
         (state) => {

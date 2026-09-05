@@ -29,11 +29,17 @@ describe('GM Scanner - Inbound Event Handling (AsyncAPI Contract)', () => {
     heldItems: [],
     playerScans: [],
     environment: { bluetooth: {}, audio: {}, lighting: {} },
-    gameClock: { status: 'stopped', elapsed: 0, expectedDuration: 7200 },
+    gameClock: { status: 'stopped', elapsed: 0, expectedDuration: 7200, phase: null },
     cueEngine: { loaded: false, cues: [], activeCues: [], disabledCues: [] },
     music: { connected: false, state: 'stopped', volume: 50, playlists: [] },
     sound: { playing: [] },
     displayStatus: { currentMode: 'idle', previousMode: 'idle', pendingVideo: null },
+    // A2: server's active pack identity (null on pre-pack checkouts)
+    pack: {
+      packId: 'about-last-night',
+      version: '1.0.0',
+      contentHash: `sha256:${'0'.repeat(64)}`,
+    },
   };
 
   describe('device:connected - Device Connection Broadcast', () => {

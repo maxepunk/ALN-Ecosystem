@@ -44,6 +44,7 @@ const { selectTestTokens, fetchTokenDatabase } = require('../helpers/token-selec
 const { GMScannerPage } = require('../helpers/page-objects/GMScannerPage');
 const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
+const { loadPackModes, expectedModeLabels, loadPackScoring, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
 
 let browser = null;
 let orchestratorInfo = null;
@@ -102,10 +103,15 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       }
     }
 
+    // ALN-pack-PINNED (slice 4 S4, D-4.7e — the 07c precedent): this flow
+    // asserts on ALN cue ids/behavior, which live in the ALN pack since the
+    // cutover. An explicit pin wins over E2E_PACK_PATH by design, so the
+    // flow tests identical ALN cue behavior on BOTH Tier L legs.
     orchestratorInfo = await startOrchestrator({
       https: true,
       // Dynamic port assignment (port=0) prevents conflicts when running parallel workers
-      timeout: 30000
+      timeout: 30000,
+      packPath: require('path').resolve(__dirname, '../../../../ALN-TokenData'),
     });
 
     // Select test tokens dynamically from production database
@@ -224,8 +230,11 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // 5. Verify GM1 is in blackmarket mode, GM2 is in detective mode
     const gm1Mode = await gmScanner1.getModeText();
     const gm2Mode = await gmScanner2.getModeText();
-    expect(gm1Mode.toLowerCase()).toContain('black market');
-    expect(gm2Mode.toLowerCase()).toContain('detective');
+    // Slice 1: mode labels are pack-declared — assert against the ACTIVE
+    // pack's scoring/evidence mode labels, not ALN literals (dual-pack gate)
+    const modeLabels = expectedModeLabels(await loadPackModes(orchestratorInfo.url));
+    expect(gm1Mode.toLowerCase()).toContain(modeLabels.scoring);
+    expect(gm2Mode.toLowerCase()).toContain(modeLabels.evidence);
     console.log(`✓ Mode verification: GM1=${gm1Mode}, GM2=${gm2Mode}`);
 
     // ============================================
@@ -707,6 +716,14 @@ test.describe('Full Game Session Multi-Device Flow', () => {
     // CONDITION-BASED WAITING: Wait for scoreboard DOM to show expected score
     await gmScanner1.waitForTeamScoreInScoreboard(teamBeta, expectedScore, 10000);
 
+    // Rendered-AFFIX pin (3b review C): the SCANNER's scoreboard text
+    // must carry the PACK's money spec verbatim — the Tier-L tripwire
+    // for the scanner's formatCurrency wiring (the numeric waits above
+    // are deliberately affix-blind). Dual-pack: dollar-prefixed / 'X cr'.
+    const renderedAfter = await gmScanner1.getTeamScoreFromScoreboard(teamBeta);
+    const spec = moneySpec(await loadPackScoring(orchestratorInfo.url));
+    expect(renderedAfter.trim()).toBe(formatMoneyExpected(expectedScore, spec));
+
     // Get Team Beta's score AFTER adjustment (now guaranteed to be updated)
     const teamBetaScoreAfter = await gmScanner1.getTeamScoreNumericFromScoreboard(teamBeta);
     console.log(`Team Beta score after adjustment: $${teamBetaScoreAfter}`);
@@ -734,7 +751,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
 
     // Verify still in blackmarket mode
     const gm1CurrentMode = await gmScanner1.getModeText();
-    expect(gm1CurrentMode.toLowerCase()).toContain('black market');
+    expect(gm1CurrentMode.toLowerCase()).toContain(modeLabels.scoring);
     console.log('✓ GM1 still in blackmarket mode');
 
     // selectTeamFromList auto-confirms
@@ -778,7 +795,7 @@ test.describe('Full Game Session Multi-Device Flow', () => {
       await gmScanner1.finishTeam();
       await gmScanner1.toggleMode(); // Switch to detective
       const gm1FinalMode = await gmScanner1.getModeText();
-      expect(gm1FinalMode.toLowerCase()).toContain('detective');
+      expect(gm1FinalMode.toLowerCase()).toContain(modeLabels.evidence);
       console.log('✓ GM1 switched to detective mode for rescan');
 
       // selectTeamFromList auto-confirms

@@ -3,11 +3,18 @@
  * Renders identity, trigger, commands/timeline, and routing override sections.
  */
 import { el } from '../utils/formatting.js';
+import { getTriggerEventNames, decorateTriggerEvent } from '../utils/vocabulary.js';
 import { renderConditionBuilder } from './conditionBuilder.js';
 import { renderCommandList } from './commandForm.js';
 import { renderTimelineView } from './timelineView.js';
 
-const TRIGGER_EVENTS = {
+// UI DECORATION ONLY since B0 BS.3 (D1): the SERVED vocabulary
+// (GET /api/vocabulary — the gate's own trigger-event set) decides
+// which events are OFFERED; this table supplies labels and
+// condition-field lists for the ones it knows, and doubles as the loud
+// fallback when the vocabulary fetch fails. The cueTriggerEvents
+// tripwire test still pins it equal to the backend's EVENT_NORMALIZERS.
+export const TRIGGER_EVENTS = {
   'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'memoryType', 'valueRating', 'groupId', 'teamScore', 'hasGroupBonus'] },
   'group:completed': { label: 'Group Completed', fields: ['teamId', 'groupId', 'multiplier', 'bonus'] },
   'video:loading': { label: 'Video Loading', fields: ['tokenId'] },
@@ -23,6 +30,7 @@ const TRIGGER_EVENTS = {
   'music:playback:changed': { label: 'Music Playback Changed', fields: ['state'] },
   'music:playlist:changed': { label: 'Music Playlist Changed', fields: ['playlistId', 'playlistName', 'shuffle', 'loop'] },
   'gameclock:started': { label: 'Game Clock Started', fields: ['gameStartTime'] },
+  'phase:changed': { label: 'Game Phase Changed', fields: ['phaseId', 'previousPhaseId', 'label', 'elapsed', 'via'] },
 };
 
 const SINK_OPTIONS = ['(default)', 'hdmi', 'bluetooth'];
@@ -184,11 +192,11 @@ function renderTriggerConfig(container, cue, editorCtx) {
       renderTriggerConfig(container, cue, editorCtx);
     },
   },
-    ...Object.entries(TRIGGER_EVENTS).map(([ev, def]) =>
+    ...getTriggerEventNames(TRIGGER_EVENTS).map((ev) =>
       el('option', {
         value: ev,
         ...((!isClockTrigger && cue.trigger.event === ev) ? { selected: true } : {}),
-      }, def.label)
+      }, decorateTriggerEvent(ev, TRIGGER_EVENTS).label)
     ),
     el('option', {
       value: 'clock',
@@ -240,8 +248,8 @@ function renderClockTrigger(container, cue, editorCtx) {
 }
 
 function renderEventConditions(container, cue, editorCtx) {
-  const eventDef = TRIGGER_EVENTS[cue.trigger.event];
-  if (!eventDef) return;
+  if (!cue.trigger.event) return;
+  const eventDef = decorateTriggerEvent(cue.trigger.event, TRIGGER_EVENTS);
 
   if (!cue.trigger.conditions) cue.trigger.conditions = [];
 

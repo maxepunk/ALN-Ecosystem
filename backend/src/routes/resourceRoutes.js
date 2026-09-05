@@ -138,11 +138,93 @@ router.get('/assets/audio/:file', (req, res) => {
 });
 
 /**
+ * Render scoreboard.html with the window marker injected (A3 slice 3a
+ * pre-fix 1): the %%WINDOW_MARKER%% placeholder in the page <title>
+ * becomes config.display.scoreboardWindowMarker — the SAME value
+ * displayDriver's xdotool search uses to find the kiosk window. Served
+ * fresh per request (page loads are rare; no cache needed).
+ * @returns {string} rendered HTML
+ */
+// JSON.stringify does NOT escape '<' — a value containing '</script>'
+// would close the served page's inline script block and inject markup
+// (the pack strings are semi-trusted pack data; doctrine treats them
+// defensively). < (and the JS-line-separator pair) are equivalent
+// inside a JSON string literal, so the parsed content is unchanged.
+function jsonForScript(value) {
+  return JSON.stringify(value)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029');
+}
+
+/**
+ * GET /api/vocabulary — the engine's cue-authoring vocabulary
+ * (B0 BS.1; program Track B "backend-served trigger/action
+ * vocabulary"). Served from the SAME exported tables the activation
+ * gate validates cues against — one source, zero drift; the
+ * config-tool's editors re-source from here instead of hand-mirroring.
+ * Read-only engine metadata, no auth (the /api/tokens posture).
+ */
+router.get('/vocabulary', (req, res) => {
+  const cueValidation = require('../gameRules/cueValidation');
+  res.json({
+    triggerEvents: cueValidation.CUE_TRIGGER_EVENTS,
+    conditionOperators: cueValidation.CONDITION_OP_NAMES,
+    actions: cueValidation.CUE_ACTIONS,
+    tokenDerivedTriggerEvents: cueValidation.TOKEN_DERIVED_TRIGGER_EVENTS,
+  });
+});
+
+function renderScoreboardHtml() {
+  const config = require('../config');
+  const packService = require('../services/packService');
+  const html = fs.readFileSync(path.join(__dirname, '../../public/scoreboard.html'), 'utf8');
+  // ONE pass, FUNCTION replacements — both halves are load-bearing.
+  // Function form guards GetSubstitution ($$, $&, $' and $` are active
+  // patterns in string replacements — a password like p@$$w0rd was
+  // served mangled and $' splices the rest of the file). The single
+  // pass guards ORDERING (theme-unit close review SEC-1): replaced
+  // output is never rescanned, so pack-controlled text can never
+  // become a substitution pattern for a later placeholder — chained
+  // replaceAll passes let a gate-legal strings leaf carrying the
+  // literal '%%PACK_THEME%%' get theme JSON injected INSIDE it,
+  // breaking the page script's parse at serve time.
+  return html.replace(
+    /%%WINDOW_MARKER%%|'%%OBSERVE_TOKEN%%'|'%%PACK_STRINGS%%'|'%%PACK_THEME%%'/g,
+    (m) => {
+      switch (m) {
+        // Shared xdotool window marker (slice 3a pre-fix 1).
+        case '%%WINDOW_MARKER%%':
+          return config.display.scoreboardWindowMarker;
+        // Per-serve OBSERVE token (B0 BS.1 slice 5 — replaces the
+        // injected ADMIN_PASSWORD): device/display class, functions
+        // exactly ['observe'], its own store — every HTTP gate refuses
+        // it and the WS accepts it read-only. A live credential leaves
+        // every venue TV's page source.
+        case "'%%OBSERVE_TOKEN%%'":
+          return jsonForScript(require('../middleware/auth').generateObserveToken('SCOREBOARD'));
+        // Pack-declared display strings (A3 slice 3a): the activation
+        // snapshot (or null — page falls back to baked wording per key).
+        case "'%%PACK_STRINGS%%'":
+          return jsonForScript(packService.getStrings());
+        // Pack-declared visual identity (theme unit ST.3): the
+        // activation snapshot (or null — baked palette stands).
+        default:
+          return jsonForScript(packService.getTheme());
+      }
+    });
+}
+
+/**
  * GET /scoreboard - Scoreboard display
  * TV-optimized scoreboard display for Black Market mode
  */
-router.get('/scoreboard', (req, res) => {
-  res.sendFile('scoreboard.html', { root: './public' });
+// BOTH paths: the express.static('public') mount would otherwise serve
+// the RAW file (placeholders unreplaced — no credential, no window
+// marker) at /scoreboard.html. Routes mount before static in app.js.
+router.get(['/scoreboard', '/scoreboard.html'], (req, res) => {
+  res.type('html').send(renderScoreboardHtml());
 });
 
 module.exports = router;
+module.exports.renderScoreboardHtml = renderScoreboardHtml;

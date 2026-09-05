@@ -1,0 +1,46 @@
+<!-- @dsCard group="PS.1 Pack manager — candidates" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PS.1 candidates</title>
+<style>
+  :root { --bg:#111114; --surface:#1a1a1f; --amber:#ffd54f; --muted:#5e5d58;
+    --text:#e8e6e1; --sec:#9a9890; --border:rgba(255,255,255,.08); }
+  body { margin:0; background:var(--bg); color:var(--text);
+    font-family:'DM Sans',system-ui,sans-serif; padding:22px; }
+  h1 { font-size:14px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--amber); margin:0 0 4px; }
+  .sub { color:var(--sec); font-size:12px; margin-bottom:18px; max-width:640px; }
+  .cand { margin-bottom:26px; }
+  .cand h2 { font-size:12px; margin:0 0 2px; color:var(--text); }
+  .cand .thesis { font-size:12px; color:var(--sec); margin:0 0 8px; }
+  .cand img { width:100%; max-width:1100px; border:1px solid var(--border);
+    border-radius:8px; display:block; }
+</style>
+</head>
+<body>
+  <h1>PS.1 pack manager — three candidates</h1>
+  <div class="sub">Shot live from the tool shell (?variant= prototype,
+    branch claude/phase3-b0). The real judgment click-through runs in the
+    tool; these are for side-by-side comparison. Winner gets rebuilt
+    properly in the PS.1 build stage.</div>
+
+  <div class="cand">
+    <h2>A — Mission control</h2>
+    <p class="thesis">Staleness first: three identity cards, then a panel grid. Everything visible, nothing dominant.</p>
+    <img src="ps1-variant-A.png" alt="Variant A — Mission control">
+  </div>
+  <div class="cand">
+    <h2>B — Ledger</h2>
+    <p class="thesis">The pack IS its history: publish trail as the spine, draft at its head, rail for identity + actions.</p>
+    <img src="ps1-variant-B.png" alt="Variant B — Ledger">
+  </div>
+  <div class="cand">
+    <h2>C — Preflight console</h2>
+    <p class="thesis">The page IS the needs table: every reference wearing its verdict badge, faults loud, trail demoted.</p>
+    <img src="ps1-variant-C.png" alt="Variant C — Preflight console">
+  </div>
+</body>
+</html>

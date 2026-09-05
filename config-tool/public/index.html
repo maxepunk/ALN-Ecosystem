@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ALN Config Tool</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Self-hosted fonts (theme unit ST.F, ledger L11) — the CDN links
+       silently failed at the offline-LAN venue. -->
+  <link href="/fonts/fonts.css" rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
@@ -17,11 +17,20 @@
         <div class="sidebar__logo">ALN</div>
         <span class="sidebar__title">Config Tool</span>
       </div>
+      <!-- Two-workspace split (B0 BS.3, D-B0.2): DESIGN edits the pack
+           (draft → publish); VENUE edits this installation. -->
       <ul class="sidebar__nav">
+        <li class="sidebar__group">Design</li>
         <li>
           <button class="sidebar__link active" data-section="economy">
             <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
             Game Economy
+          </button>
+        </li>
+        <li>
+          <button class="sidebar__link" data-section="packs" id="protoPacksLink" hidden>
+            <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span>Packs · PROTOTYPE</span>
           </button>
         </li>
         <li>
@@ -30,6 +39,7 @@
             Show Control
           </button>
         </li>
+        <li class="sidebar__group">Venue</li>
         <li>
           <button class="sidebar__link" data-section="music">
             <svg class="sidebar__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13M9 18a3 3 0 11-6 0 3 3 0 016 0zm12-2a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -69,6 +79,7 @@
       <header class="toolbar">
         <div class="toolbar__section-name" id="sectionTitle">Game Economy</div>
         <div class="toolbar__actions">
+          <div class="draft-bar" id="draftBar"></div>
           <div class="toolbar__dirty-indicator" id="dirtyIndicator" hidden>
             <span class="toolbar__dirty-dot"></span>
             Unsaved changes
@@ -100,8 +111,27 @@
         <section class="section" id="section-presets">
           <div class="section__loading">Loading presets...</div>
         </section>
+        <!-- PROTOTYPE (PS.1): URL-gated, see js/sections/packs.js -->
+        <section class="section" id="section-packs">
+          <div class="section__loading">Loading pack manager prototype…</div>
+        </section>
       </div>
     </main>
+  </div>
+
+  <!-- Login overlay (B0 BS.3): mutating routes require the operator
+       token — shown when a request comes back 401. -->
+  <div class="login-overlay" id="loginOverlay" hidden>
+    <form class="login-overlay__panel" id="loginForm">
+      <h2>Log in</h2>
+      <p>Enter the admin password to make changes.</p>
+      <input type="password" id="loginPassword" autocomplete="current-password" placeholder="Admin password">
+      <div class="login-overlay__error" id="loginError" hidden></div>
+      <div class="login-overlay__actions">
+        <button type="button" class="btn" id="loginCancel">Cancel</button>
+        <button type="submit" class="btn btn--primary">Log in</button>
+      </div>
+    </form>
   </div>
 
   <!-- Toast container -->

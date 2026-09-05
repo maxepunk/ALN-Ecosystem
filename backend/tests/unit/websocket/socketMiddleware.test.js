@@ -308,3 +308,132 @@ describe('Socket.io Middleware Authentication (Phase 2.1 P1.3)', () => {
     });
   });
 });
+
+describe('Handshake packHash reporting (Phase 3 A2)', () => {
+  let httpServer, io, port, validToken;
+  const logger = require('../../../src/utils/logger');
+  const packService = require('../../../src/services/packService');
+  const MISMATCH_HASH = `sha256:${'e'.repeat(64)}`;
+
+  beforeAll(() => {
+    validToken = generateAdminToken('test-admin');
+  });
+
+  beforeEach((done) => {
+    packService._resetForTesting();
+    const app = express();
+    httpServer = http.createServer(app);
+    httpServer.listen(() => {
+      port = httpServer.address().port;
+      io = createSocketServer(httpServer);
+      done();
+    });
+  });
+
+  afterEach((done) => {
+    jest.restoreAllMocks();
+    io.close();
+    httpServer.close(done);
+  });
+
+  function connect(extraAuth) {
+    return Client(`http://localhost:${port}`, {
+      auth: {
+        token: validToken,
+        deviceId: 'gm-pack-01',
+        deviceType: 'gm',
+        version: '1.0.0',
+        ...extraAuth,
+      },
+    });
+  }
+
+  function mismatchWarns(spy) {
+    return spy.mock.calls.filter(([m]) => typeof m === 'string' && m.includes('pack MISMATCH'));
+  }
+
+  it('records the client packHash on the socket and loud-warns on mismatch', (done) => {
+    const warnSpy = jest.spyOn(logger, 'warn');
+    const client = connect({ packHash: MISMATCH_HASH });
+    client.on('connect', () => {
+      try {
+        const serverSocket = [...io.of('/').sockets.values()]
+          .find((s) => s.deviceId === 'gm-pack-01');
+        expect(serverSocket.packHash).toBe(MISMATCH_HASH);
+        expect(mismatchWarns(warnSpy)).toHaveLength(1);
+        client.close();
+        done();
+      } catch (err) {
+        client.close();
+        done(err);
+      }
+    });
+  });
+
+  it('does not warn when the client hash matches the active pack', (done) => {
+    const warnSpy = jest.spyOn(logger, 'warn');
+    const active = packService.getActivePackInfo(); // real ALN pack in test env
+    expect(active).not.toBeNull();
+    const client = connect({ packHash: active.contentHash });
+    client.on('connect', () => {
+      try {
+        expect(mismatchWarns(warnSpy)).toHaveLength(0);
+        client.close();
+        done();
+      } catch (err) {
+        client.close();
+        done(err);
+      }
+    });
+  });
+
+  it('tolerates legacy clients that send no packHash (null, no warn)', (done) => {
+    const warnSpy = jest.spyOn(logger, 'warn');
+    const client = connect({});
+    client.on('connect', () => {
+      try {
+        const serverSocket = [...io.of('/').sockets.values()]
+          .find((s) => s.deviceId === 'gm-pack-01');
+        expect(serverSocket.packHash).toBeNull();
+        expect(mismatchWarns(warnSpy)).toHaveLength(0);
+        client.close();
+        done();
+      } catch (err) {
+        client.close();
+        done(err);
+      }
+    });
+  });
+
+  describe('Display-class identity (B0 close review)', () => {
+    it('overrides the client-asserted deviceId with the observe token claim — a display socket can never wear a GM station identity', (done) => {
+      const { generateObserveToken } = require('../../../src/middleware/auth');
+      const observe = generateObserveToken('SCOREBOARD_CLAIMED');
+      const client = Client(`http://localhost:${port}`, {
+        auth: {
+          token: observe,
+          deviceId: 'GM_001', // a real station's id, asserted by the client
+          deviceType: 'gm',
+          version: '1.0.0',
+        },
+      });
+      client.on('connect', () => {
+        try {
+          const serverSocket = [...io.of('/').sockets.values()]
+            .find((s) => s.tier === 'device');
+          expect(serverSocket.deviceId).toBe('SCOREBOARD_CLAIMED');
+          expect(serverSocket.functions).toEqual(['observe']);
+          client.close();
+          done();
+        } catch (err) {
+          client.close();
+          done(err);
+        }
+      });
+      client.on('connect_error', (error) => {
+        client.close();
+        done(new Error(`observe token rejected at handshake: ${error.message}`));
+      });
+    });
+  });
+});

@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const { requireFunction } = require('../middleware/auth');
 
 function createMusicRouter({ musicService }) {
   const router = express.Router();
@@ -32,7 +33,11 @@ function createMusicRouter({ musicService }) {
     }
   });
 
-  router.put('/playlists', (req, res) => {
+  // B0 BS.3 — the enforcement flip on tool-consumed routes (one-auth
+  // v1, A7 staging complete): the mutating playlist write requires the
+  // show-control FUNCTION (an operator token carries it; the scoreboard
+  // observe token does not). The read-only GETs keep the open posture.
+  router.put('/playlists', requireFunction('show-control'), (req, res) => {
     if (!musicService.hasPlaylistFile()) {
       return res.status(503).json({ error: 'Playlist file not configured' });
     }

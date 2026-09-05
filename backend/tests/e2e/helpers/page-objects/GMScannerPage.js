@@ -12,6 +12,8 @@
  * - L2 tests focus on standalone mode (scanner-view only, no backend)
  */
 
+const { parseMoneyText } = require('../scoring');
+
 class GMScannerPage {
   constructor(page) {
     this.page = page;
@@ -1490,9 +1492,9 @@ class GMScannerPage {
    */
   async getTeamScoreNumericFromScoreboard(teamId) {
     const scoreText = await this.getTeamScoreFromScoreboard(teamId);
-    if (!scoreText) return null;
-    // Parse "$1,500" -> 1500
-    return parseInt(scoreText.replace(/[$,]/g, ''), 10);
+    // Format-agnostic (slice 3b): parse digits/sign only, whatever the
+    // pack's money spec renders.
+    return parseMoneyText(scoreText);
   }
 
   /**
@@ -1528,18 +1530,19 @@ class GMScannerPage {
    * @param {number} timeout - Timeout in milliseconds
    */
   async waitForTeamScoreInScoreboard(teamId, expectedScore, timeout = 10000) {
-    // Format expected score as it appears in DOM (e.g., "$52,500")
-    const formattedScore = `$${expectedScore.toLocaleString()}`;
-
-    // CONDITION-BASED WAITING: Wait for DOM element to contain expected score
-    // page.waitForFunction() is Playwright's built-in condition waiter
+    // Format-AGNOSTIC (slice 3b): the scanner renders the PACK's money
+    // spec ('$52,500' or '52,500 cr') — compare numerically instead of
+    // constructing a '$'-format expectation that breaks on the toy leg.
     // Scope to #scoreboardScreen to avoid conflict with admin panel scoreboard
     await this.page.waitForFunction(
-      ({ teamId, formattedScore }) => {
+      ({ teamId, expected }) => {
         const scoreEl = document.querySelector(`#scoreboardScreen .scoreboard-entry[data-arg="${teamId}"] .scoreboard-score`);
-        return scoreEl && scoreEl.textContent.includes(formattedScore);
+        if (!scoreEl) return false;
+        // In-browser twin of parseMoneyText (serialized body — no imports)
+        const n = parseInt(scoreEl.textContent.replace(/[^\d-]/g, ''), 10);
+        return !Number.isNaN(n) && n === expected;
       },
-      { teamId, formattedScore },
+      { teamId, expected: expectedScore },
       { timeout }
     );
   }
@@ -1675,6 +1678,29 @@ class GMScannerPage {
    */
   async getGameClockText() {
     return await this.gameClockDisplay.textContent();
+  }
+
+  /**
+   * Current phase label beside the clock (A3 slice 5 — #game-clock-phase,
+   * a SEPARATE element so #game-clock-display keeps its MM:SS contract).
+   * Returns null when the label is absent or hidden (degenerate/absent
+   * phase declarations render NO label — the ALN leg asserts null).
+   * @returns {Promise<string|null>}
+   */
+  async getGamePhaseLabel() {
+    const el = this.page.locator('#game-clock-phase');
+    if (await el.count() === 0) return null;
+    if (!(await el.isVisible())) return null;
+    const text = await el.textContent();
+    return text && text.length > 0 ? text : null;
+  }
+
+  /**
+   * Wait until the phase label shows the given text (A3 slice 5).
+   * @param {string} label - expected pack-declared phase label
+   */
+  async waitForGamePhaseLabel(label, timeout = 5000) {
+    await this.page.locator('#game-clock-phase', { hasText: label }).waitFor({ state: 'visible', timeout });
   }
 
   /**

@@ -30,7 +30,7 @@ const { createBrowserContext, createPage, closeAllContexts } = require('../setup
 const { initializeGMScannerWithMode } = require('../helpers/scanner-init');
 const { ADMIN_PASSWORD } = require('../helpers/test-config');
 const { selectTestTokens } = require('../helpers/token-selection');
-const { calculateExpectedScore } = require('../helpers/scoring');
+const { calculateExpectedScore, loadPackScoring, loadPackModes, loadPackStrings, loadPackTheme, moneySpec, formatMoneyExpected } = require('../helpers/scoring');
 const { ScoreboardPage } = require('../helpers/page-objects/ScoreboardPage');
 
 // Tests are serial — they share one orchestrator instance and must not race each other
@@ -42,6 +42,8 @@ test.skip(({ isMobile }) => !isMobile, 'Scoreboard live-data tests only run on m
 let browser = null;
 let orchestratorInfo = null;
 let testTokens = null;
+let packScoring = null; // ACTIVE pack scoring block — the single score oracle (L5 retired)
+let expectedLive = 'LIVE'; // Q5 pack chrome — pack-derived in beforeAll
 
 test.describe('Scoreboard Live Data', () => {
 
@@ -58,6 +60,13 @@ test.describe('Scoreboard Live Data', () => {
       ]
     });
     testTokens = await selectTestTokens(orchestratorInfo.url);
+    packScoring = await loadPackScoring(orchestratorInfo.url);
+    // Q5: connection-status wording is pack chrome — derive the expected
+    // text (baked ALN 'LIVE' when undeclared, the toy declares its own)
+    const packStrings = await loadPackStrings(orchestratorInfo.url);
+    expectedLive = (typeof packStrings?.scoreboard?.statusLive === 'string' && packStrings.scoreboard.statusLive.length > 0)
+      ? packStrings.scoreboard.statusLive
+      : 'LIVE';
   });
 
   test.afterAll(async () => {
@@ -87,8 +96,71 @@ test.describe('Scoreboard Live Data', () => {
       await scoreboard.goto(orchestratorInfo.url);
       await scoreboard.waitForConnection(10000);
       expect(await scoreboard.isConnected()).toBe(true);
-      expect(await scoreboard.getStatusText()).toBe('LIVE');
-      console.log('Scoreboard connected, status: LIVE');
+      expect(await scoreboard.getStatusText()).toBe(expectedLive);
+      console.log(`Scoreboard connected, status: ${expectedLive}`);
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  // ====================================================
+  // TEST 1b: Evidence view is surface-keyed (slice 3c)
+  // ====================================================
+
+  test('?mode= evidence view hides the ticker for ANY declared evidence-surface id', async () => {
+    // 3c pin: the branch keys off displayBehavior.surface, not the baked
+    // 'detective' literal — dual-pack valid ('detective' on ALN, 'tipoff'
+    // on toy-heist). Without the param the ticker stays visible.
+    const modes = await loadPackModes(orchestratorInfo.url);
+    const evidenceId = (modes || []).find(
+      (m) => m.displayBehavior && m.displayBehavior.surface === 'scoreboard-evidence'
+    )?.id || 'detective';
+
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+
+    try {
+      await page.goto(`${orchestratorInfo.url}/scoreboard?mode=${evidenceId}`, { waitUntil: 'networkidle' });
+      await expect(page.locator('body')).toHaveClass(/mode-evidence/);
+      await expect(page.locator('#scoreTicker')).toBeHidden();
+
+      await page.goto(`${orchestratorInfo.url}/scoreboard`, { waitUntil: 'networkidle' });
+      await expect(page.locator('body')).not.toHaveClass(/mode-evidence/);
+      await expect(page.locator('#scoreTicker')).toBeVisible();
+    } finally {
+      await page.close();
+      await context.close();
+    }
+  });
+
+  // ====================================================
+  // TEST 1c: Scoreboard palette follows the pack theme (theme unit ST.3)
+  // ====================================================
+
+  test('scoreboard accent palette follows the ACTIVE pack theme', async () => {
+    // D-T.2 Tier-L pin, dual-pack valid: a declared scoreboard accent
+    // re-points --evidence-red/--evidence-red-dark (toy's teal pair);
+    // an undeclared section leaves the BAKED palette byte-identical
+    // (ALN's ruled theme declares rating only — benign emptiness).
+    const packTheme = await loadPackTheme(orchestratorInfo.url);
+    const expected = packTheme?.scoreboard?.accent || '#c41e3a';
+    const expectedDark = packTheme?.scoreboard?.accentDark || '#8b0000';
+
+    const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
+    const page = await createPage(context);
+    try {
+      await page.goto(`${orchestratorInfo.url}/scoreboard`, { waitUntil: 'networkidle' });
+      const [accent, accentDark] = await page.evaluate(() => {
+        const cs = getComputedStyle(document.documentElement);
+        return [
+          cs.getPropertyValue('--evidence-red').trim(),
+          cs.getPropertyValue('--evidence-red-dark').trim(),
+        ];
+      });
+      expect(accent).toBe(expected);
+      expect(accentDark).toBe(expectedDark);
+      console.log(`Theme pin: scoreboard accent ${accent}/${accentDark} (${packTheme?.scoreboard ? 'pack-declared' : 'baked'})`);
     } finally {
       await page.close();
       await context.close();
@@ -136,6 +208,41 @@ test.describe('Scoreboard Live Data', () => {
       console.log(`Scan result title: ${resultTitle}`);
       // In detective mode the result should not be an error or duplicate
       expect(resultTitle).not.toContain('Error');
+
+      // Theme unit ST.3 Tier-L pin: the result screen's Value Rating row
+      // obeys the ACTIVE pack theme end-to-end. ALN's ruled star-drop
+      // hides the WHOLE row; a stars theme renders the declared glyph
+      // (toy 💎); packless/undeclared keeps the baked ⭐ form.
+      const packTheme = await loadPackTheme(orchestratorInfo.url);
+      const ratingDisplay = packTheme?.rating?.display || 'stars';
+      const valueRow = gmPage.locator('.transaction-detail')
+        .filter({ has: gmPage.locator('#resultValue') });
+      if (ratingDisplay === 'none') {
+        await expect(valueRow).toBeHidden();
+        console.log('Theme pin: value row hidden (ruled star-drop)');
+      } else {
+        await expect(valueRow).toBeVisible();
+        if (ratingDisplay === 'stars') {
+          const glyph = packTheme?.rating?.glyph?.filled || '⭐';
+          await expect(gmPage.locator('#resultValue')).toContainText(glyph);
+          console.log(`Theme pin: value row shows '${glyph}' stars`);
+        }
+      }
+
+      // Theme pin (D-T.4 "every declared leaf lands" doctrine): declared
+      // mode colors land on the SCANNER root as custom-property
+      // injections; undeclared leaves the stylesheet's baked values
+      // (ALN leg: baked orange/green; toy leg: gold/sky).
+      const [modeScoring, modeEvidence] = await gmPage.evaluate(() => {
+        const cs = getComputedStyle(document.documentElement);
+        return [
+          cs.getPropertyValue('--color-mode-scoring').trim(),
+          cs.getPropertyValue('--color-mode-evidence').trim(),
+        ];
+      });
+      expect(modeScoring).toBe(packTheme?.colors?.modeScoring || '#ff6b35');
+      expect(modeEvidence).toBe(packTheme?.colors?.modeEvidence || '#22c55e');
+      console.log(`Theme pin: scanner mode colors ${modeScoring}/${modeEvidence} (${packTheme?.colors ? 'pack-declared' : 'baked'})`);
 
       // Verify evidence appears on scoreboard (detective mode -> evidence card)
       // Hero evidence + feed cards count as total evidence
@@ -194,8 +301,16 @@ test.describe('Scoreboard Live Data', () => {
       const score = await scoreboard.getTeamScoreNumeric('Scoring Team');
       expect(score).toBeGreaterThan(0);
 
-      const expectedScore = calculateExpectedScore(token);
+      const expectedScore = calculateExpectedScore(token, packScoring);
       expect(score).toBe(expectedScore);
+
+      // Rendered-AFFIX pin (3b review C): the ticker's text must carry
+      // the PACK's money spec verbatim — this is the Tier-L tripwire for
+      // scoreboard.html's vendored MONEY grammar (numeric parses above
+      // are deliberately affix-blind). Dual-pack: '$X' on ALN,
+      // 'X cr' on toy-heist.
+      const renderedScore = await scoreboard.getTeamScore('Scoring Team');
+      expect(renderedScore.trim()).toBe(formatMoneyExpected(expectedScore, moneySpec(packScoring)));
 
       console.log(`Black market transaction updated ticker: $${score} (expected $${expectedScore})`);
 

@@ -1,8 +1,18 @@
 /**
  * ALN Config Tool — SPA Controller
  * Handles navigation, dirty state, toast notifications, and section lifecycle.
+ *
+ * B0 BS.3: state lives in the shared store (auth session, draft
+ * identity, per-section dirty) — sections keep the same ctx API
+ * (markDirty/toast/refreshConfig). Pack edits ride a DRAFT (surfaced in
+ * the toolbar draft bar; publish is the explicit landing step); a 401
+ * from any call raises the login overlay.
  */
 import * as api from './utils/api.js';
+import { appStore } from './store.js';
+import { setVocabulary } from './utils/vocabulary.js';
+import { renderDraftBar } from './components/draftBar.js';
+import { applyPackMoneyFormat } from './utils/formatting.js';
 
 // Section modules loaded lazily
 const sectionModules = {};
@@ -13,18 +23,31 @@ const sectionNames = {
   audio: 'Audio & Environment',
   infra: 'Infrastructure',
   presets: 'Presets',
+  packs: 'Pack Manager · PROTOTYPE',
 };
 
-// App state
+// PROTOTYPE gate (PS.1): the pack-manager prototype exists only when
+// the URL carries ?variant= — invisible in normal use. Throwaway.
+if (new URL(window.location).searchParams.has('variant')) {
+  const protoLink = document.getElementById('protoPacksLink');
+  if (protoLink) protoLink.hidden = false;
+}
+
+// App state (dirty/draft/auth live in the shared store)
 let currentSection = 'economy';
 let configCache = null;
-const dirtyState = {};
 
 // DOM refs
 const sectionTitle = document.getElementById('sectionTitle');
 const dirtyIndicator = document.getElementById('dirtyIndicator');
 const saveBtn = document.getElementById('saveBtn');
 const toastContainer = document.getElementById('toastContainer');
+const draftBarEl = document.getElementById('draftBar');
+const loginOverlay = document.getElementById('loginOverlay');
+const loginForm = document.getElementById('loginForm');
+const loginPassword = document.getElementById('loginPassword');
+const loginError = document.getElementById('loginError');
+const loginCancel = document.getElementById('loginCancel');
 
 // -- Navigation --
 
@@ -66,9 +89,11 @@ async function loadSection(section) {
   }
 
   try {
-    // Ensure config is loaded
+    // Ensure config is loaded (draft pack content overlaid when a
+    // draft exists — you see what you are editing)
     if (!configCache) {
-      configCache = await api.getConfig();
+      configCache = await api.getEffectiveConfig();
+      applyPackIdentity(configCache);
     }
 
     const mod = await import(`./sections/${section}.js`);
@@ -87,15 +112,15 @@ async function loadSection(section) {
   }
 }
 
-// -- Dirty State --
+// -- Dirty State (shared store) --
 
 export function markDirty(section = currentSection, dirty = true) {
-  dirtyState[section] = dirty;
+  appStore.setDirty(section, dirty);
   updateDirtyUI();
 }
 
 function updateDirtyUI() {
-  const isDirty = dirtyState[currentSection];
+  const isDirty = appStore.get().dirty[currentSection];
   dirtyIndicator.hidden = !isDirty;
   saveBtn.hidden = !isDirty;
 }
@@ -110,17 +135,116 @@ saveBtn.addEventListener('click', async () => {
       markDirty(currentSection, false);
       toast('Changes saved', 'success');
       // Refresh config cache
-      configCache = await api.getConfig();
+      configCache = await api.getEffectiveConfig();
     } catch (err) {
+      if (handleAuthError(err)) return;
       toast(`Save failed: ${err.message}`, 'error');
     }
   }
 });
 
+// -- Login (B0 BS.3) --
+// EVERY API route requires the operator token (D-B0.2r2), so the tool
+// logs in FIRST: the overlay is the boot screen (no cancel), and any
+// later 401 (token expiry) re-raises it dismissibly.
+
+let appInitialized = false;
+
+function showLogin({ dismissible = true } = {}) {
+  loginError.hidden = true;
+  loginCancel.hidden = !dismissible;
+  loginOverlay.hidden = false;
+  loginPassword.focus();
+}
+
+/** Shared 401 handling: raise the login overlay, report handled. */
+function handleAuthError(err) {
+  if (err.status !== 401) return false;
+  showLogin({ dismissible: appInitialized });
+  return true;
+}
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    await api.login(loginPassword.value);
+    loginPassword.value = '';
+    loginOverlay.hidden = true;
+    if (!appInitialized) {
+      appInitialized = true;
+      await initApp();
+    } else {
+      toast('Logged in — retry your change', 'success');
+    }
+  } catch (err) {
+    loginError.textContent = err.message;
+    loginError.hidden = false;
+  }
+});
+
+loginCancel.addEventListener('click', () => {
+  loginOverlay.hidden = true;
+});
+
+// -- Draft bar (B0 BS.3): which draft this session edits + publish --
+
+function updateDraftBar() {
+  renderDraftBar(draftBarEl, appStore.get().draft, {
+    onPublish: async () => {
+      // Publish lands what is ON DISK in the draft — unsaved on-screen
+      // edits would be silently wiped by the post-publish re-render (B0
+      // close review): make the operator choose.
+      if (appStore.isDirty() && !window.confirm(
+        'You have unsaved edits that are NOT in the draft — publishing will discard them. Continue?')) {
+        return;
+      }
+      try {
+        const entry = await api.publishCurrentDraft();
+        toast(`Pack published (${entry.contentHash.slice(0, 15)}…)`, 'success');
+        await refreshConfig();
+      } catch (err) {
+        if (handleAuthError(err)) return;
+        // A 409 carries the pipeline's own refusal text (conflict, gate
+        // problems) — show it verbatim, it names the recovery.
+        toast(err.message, 'error');
+      }
+    },
+    onDiscard: async () => {
+      const warning = appStore.isDirty()
+        ? 'Discard this draft? Unpublished pack edits AND your unsaved on-screen edits are lost.'
+        : 'Discard this draft? Unpublished pack edits are lost.';
+      if (!window.confirm(warning)) return;
+      try {
+        await api.discardCurrentDraft();
+        toast('Draft discarded', 'info');
+        await refreshConfig();
+      } catch (err) {
+        if (handleAuthError(err)) return;
+        toast(`Discard failed: ${err.message}`, 'error');
+      }
+    },
+  });
+}
+
+appStore.subscribe(updateDraftBar);
+
+// -- Pack Identity (slice 3a) --
+
+// The tool edits ONE pack; its chrome says which. Derived from
+// GET /api/config `pack` (game.json title) — baked wording only for a
+// packless/partial dir.
+function applyPackIdentity(config) {
+  const title = config?.pack?.title;
+  if (title) document.title = `${title} — Config Tool`;
+  // Slice 3b: the money formatter follows the edited pack's declared spec
+  applyPackMoneyFormat(config?.scoring?.display?.format);
+}
+
 // -- Config Refresh --
 
 async function refreshConfig() {
-  configCache = await api.getConfig();
+  configCache = await api.getEffectiveConfig();
+  applyPackIdentity(configCache);
   // Re-render all loaded sections with fresh data
   for (const [section, mod] of Object.entries(sectionModules)) {
     if (mod && mod.render) {
@@ -128,7 +252,7 @@ async function refreshConfig() {
       container.innerHTML = '';
       mod.render(container, configCache, { markDirty, toast, refreshConfig });
     }
-    dirtyState[section] = false;
+    appStore.setDirty(section, false);
   }
   updateDirtyUI();
 }
@@ -149,11 +273,31 @@ export function toast(message, type = 'info') {
 // -- Unsaved changes guard --
 
 window.addEventListener('beforeunload', (e) => {
-  if (Object.values(dirtyState).some(Boolean)) {
+  if (appStore.isDirty()) {
     e.preventDefault();
   }
 });
 
 // -- Init --
+// Runs AFTER the boot login (every API route is behind the gate).
+// Adopts an existing unpublished draft BEFORE the first section renders
+// (its pack content overlays the live config); never creates one just
+// by opening the tool.
+async function initApp() {
+  // The engine's cue vocabulary (D1): the served sets decide what the
+  // editors offer. On failure the baked tables stand in — loudly.
+  try {
+    setVocabulary(await api.getVocabulary());
+  } catch (err) {
+    console.warn('[vocabulary] fetch failed — editors run on the BAKED fallback tables:', err.message);
+  }
+  try {
+    await api.resumeDraft();
+  } catch (err) {
+    console.warn('Draft resume failed (continuing with live config):', err.message);
+  }
+  updateDraftBar();
+  loadSection('economy');
+}
 
-loadSection('economy');
+showLogin({ dismissible: false });
