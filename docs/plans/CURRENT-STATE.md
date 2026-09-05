@@ -30,8 +30,9 @@ executed; deployment-docs repair — agent half — DONE the same day).
 
 | Item | Who | State |
 |---|---|---|
-| Whole-train review (full combined diff, fresh-context session) | agent (a NEW session) | not started — next agent unit after the docs repair, or in parallel at the owner's word |
-| Walk the merge train (18 vehicles, in order) | owner | waits on the review |
+| Whole-train review (full combined diff, fresh-context session) | agent (separate session) | **DONE 2026-09-05** — verdict: walk-with-fixes. Report: `2026-09-05-whole-train-review.md` (branch `claude/whole-train-review`). 8 MAJORs survive; Appendix-B item 5 CLEARED; the "watch it" vehicle confirmed green |
+| **Train fix vehicle** (all 8 MAJORs + ruled fix-now set; owner directive: no deferred MAJORs, every MINOR/NOTE intentionally dispositioned) | agent | design + full triage DONE (`2026-09-05-train-fix-vehicle.md`); **build gate held on the owner's estimate signature (≈2.5–3.5 sessions)**. Deferrals documented with named homes: Block 2 (+its close sweep), Block 5 re-cut, Block 6 triage, registry 8.10, cutover list item 6, Q12 rotation, the Stage-B task list; new ledger rows L15/L16 |
+| Walk the merge train (20 vehicles, in order — fix vehicle last) | owner | waits on the fix vehicle; walk notes now beside the train table |
 | **Deployment-docs repair** (Appendix C scope; includes boot-to-running posture) | agent | **AGENT HALF DONE 2026-09-05** (branch `claude/phase3-docs-repair`): env reference rebuilt from source (+2 template defects fixed), HA install procedure, installation-profile section, media-transfer procedure with runnable verification, machine prep + Pi-5 video settings, boot-to-running posture, cert-spike home, 4 wrong sections fixed (scoreboard auth ×3, spotifyd), Bluetooth contradiction removed |
 | Capture the 7 lighting-scene definitions off the live machine (~20 min, read-only, borrow/restore rules) | owner | scheduled at the owner's pace — the guide's HA §3 carries the marked slot the captured YAML fills |
 | Screen baselines from the pinned production release (Q8) | agent (priced at approval — no capture infra exists yet) | not started |
