@@ -6,15 +6,20 @@
 **Server Directory:** `backend/` (relative to above)
 **Platform:** Raspberry Pi 5, Linux ARM64
 
-> **⚠ REFRESH OWED (2026-07-18 — see PHASE3-STATUS "Doc-refresh
-> obligations").** Under the frozen-production model this checklist is the
-> instrument of the FINAL coordinated cutover. §4.4/§13.3 were rewritten
-> for the pack-rules architecture in A3 slice 2 (adversarial R2 satisfied).
-> Known-stale until the full refresh: the Spotify/spotifyd-era sections
-> predate the 2026-05-20 MPD cutover, and no pack-identity/pack-endpoint
-> runtime checks exist yet (the pack channel landed in Phase 3 A2). Full
-> refresh rides Track C2 preflight work — decide there whether this
-> hand-run doc is refreshed or absorbed into the C2 preflight mechanism.
+> **⚠ REFRESH OWED (2026-07-18; narrowed 2026-09-05 — see PHASE3-STATUS
+> "Doc-refresh obligations").** This hand-run checklist is the
+> hardware-proven gate's instrument (ROADMAP §3) until the in-panel
+> preflight lands with the hardening block. §4.4/§13.3 were rewritten
+> for the pack-rules architecture in A3 slice 2; §12.3 was rewritten
+> 2026-09-05 (the spotifyd-era requirement was wrong — the system is
+> MPD, orchestrator-spawned). Still known-stale until the full refresh:
+> no pack-identity/pack-endpoint runtime checks exist yet (the pack
+> channel landed in A2). The full refresh rides the hardening block's
+> preflight work, which decides what this doc absorbs vs hands over —
+> and the ratified honesty rule applies: this checklist owns what
+> machines cannot see (physically tapping a real token on a hardware
+> scanner and watching the venue TV react is HERE, not in software
+> checks).
 
 ## How to Use This Checklist
 
@@ -1376,34 +1381,37 @@ fi
 
 **If `SKIP`:** No token configured — lighting service will disable itself gracefully.
 
-### 12.3 spotifyd Running [BOTH] — REQUIRED
+### 12.3 MPD Posture [BOTH] — REQUIRED
 
-Spotify playback is managed by `spotifyd`, a Spotify Connect daemon. The backend does NOT start spotifyd — it must be running independently (typically as a systemd user service).
+*(Rewritten 2026-09-05 — this section previously required `spotifyd`,
+a daemon the system has not used since the 2026-05-20 MPD cutover.)*
+
+Music is played by MPD, which the backend SPAWNS AND SUPERVISES
+ITSELF (ProcessMonitor; Unix socket `/tmp/aln-mpd.sock`). The
+preflight therefore checks the opposite of "service running": the
+SYSTEM MPD must be disabled so it cannot fight the orchestrator's
+instance, and the binary must exist for the orchestrator to spawn.
 
 **Check:**
 ```bash
-pgrep -a spotifyd && echo "OK: spotifyd running" || echo "NOT RUNNING: spotifyd not found"
+which mpd >/dev/null && echo "OK: mpd binary installed" || echo "MISSING: mpd not installed"
+systemctl is-enabled mpd 2>/dev/null | grep -q enabled && echo "WRONG: system mpd enabled — disable it" || echo "OK: system mpd not enabled"
 ```
 
-**Expected:** `OK: spotifyd running`
+**Expected:** both `OK` lines.
 
-**If not running:**
+**If the system mpd is enabled:**
 ```bash
-systemctl --user start spotifyd
+sudo systemctl stop mpd && sudo systemctl disable mpd
+sudo systemctl stop mpd.socket 2>/dev/null && sudo systemctl disable mpd.socket 2>/dev/null
 ```
 
-**If systemd service not configured:**
-- spotifyd may be installed but not set up as a service
-- Check if binary exists: `which spotifyd`
-- If installed, start manually: `spotifyd --no-daemon &`
-- If not installed: the Spotify service will report `down` in the health registry but the server will start and run without Spotify
-
-**Verify D-Bus registration:**
-```bash
-dbus-send --session --dest=org.freedesktop.DBus --type=method_call --print-reply /org/freedesktop/DBus org.freedesktop.DBus.ListNames 2>/dev/null | grep -i spotifyd && echo "OK: spotifyd on D-Bus" || echo "NOT REGISTERED: spotifyd not on session bus (may appear after first playback)"
-```
-
-**Note:** spotifyd may not register its D-Bus MPRIS name until it starts playing audio. The backend handles this gracefully — it will discover the D-Bus destination dynamically when playback begins.
+**Notes:**
+- `ENABLE_MUSIC_PLAYBACK=false` in `.env` skips the spawn entirely
+  (music reports down; the show runs without it).
+- The MPD database is wiped on reboot and rebuilt on the next clean
+  boot — a brief "music unavailable" window right after boot is
+  expected.
 
 ### 12.4 Docker Service Running [BOTH] — REQUIRED
 
