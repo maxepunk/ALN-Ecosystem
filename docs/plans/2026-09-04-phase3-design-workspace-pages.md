@@ -3,7 +3,15 @@
 **Status: OWNER RATIFIED 2026-09-04 ("ratify all") — §9 is the
 NORMATIVE record.** Build OPEN, sequenced AFTER C2+C3's CS.1 (the
 mechanics-editor badges and the preview profile consume the resolve
-core). Design history: census (§2, one correction §2.1a) → r1 →
+core). *(Sequencing + cut SUPERSEDED 2026-09-05, roadmap r4
+supersession 7: the hardening stages [CS.2–CS.5] and the truth
+sweep run BEFORE this unit, and the pages are RE-CUT so the preview
+slice — pack manager, mechanics editor + hot-apply, rehearse
+affordance, first-run threshold — ships first [ROADMAP §4 Blocks
+2–5]; the estimate is re-priced for the owner's signature before
+the first page builds. The page designs, rulings, and the per-page
+rendered-mock gate below all stand.)* Design history: census (§2,
+one correction §2.1a) → r1 →
 red-team (§6, 21 findings) → r2 (§7) → batch (§8, answered) → §9.
 **Unit:** the five Design-workspace pages (program Track B; §14
 rulings 2026-09-03) + E10 hot-apply, on the B0 store/auth/harness
@@ -510,6 +518,10 @@ never build a screen without an approved design.
 profile plurality it lands). PS.1–PS.6 order otherwise stands.
 **Estimate ≈ 6–7.5 sessions** (badges + create-new-pack + preview
 profile priced in), under the ratified price principle.
+*(SUPERSEDED 2026-09-05, roadmap r4 supersession 7: the build now
+runs after the hardening stages and the truth sweep, re-cut with the
+preview slice first; the PS.1–PS.6 order and this estimate are
+re-shaped and re-priced at that re-cut — ROADMAP §4 Block 5.)*
 
 ## 10. User types, flows, and layout mechanics (owner sitting 2026-09-04, second half — NORMATIVE for all PS mocks and builds)
 

@@ -1,10 +1,15 @@
-# ROADMAP r4 — DRAFT for the owner grill (revision r4.2)
+# ROADMAP r4 — the grill record (draft ratified 2026-09-05)
 
-**Status: DRAFT (r4.2, 2026-09-05) — mid-grill. Two grill rounds
-complete; every question is ratified except Q4 (restated in plain
-words in §9). `ROADMAP.md` (r3) stays authoritative until the owner
-ratifies this document; on ratification this text replaces
-`ROADMAP.md` in place and the r3 text survives in git history.**
+**Status: RATIFIED 2026-09-05 (owner — "ratified", closing Q4 as the
+last open question after two grill rounds). This file is now the
+GRILL RECORD: the questions with their rulings (§9), the authorized
+supersessions (§8), the conflict adjudications (§5), and the
+re-homing list (§6). The ratified roadmap text lives in `ROADMAP.md`
+(r4), which restructures this draft's §2–§7 into its final form; on
+any divergence between the two, `ROADMAP.md` wins. The ratification
+edits — the nine supersessions, the sixteen re-homings plus row
+8.17, the CONTEXT.md updates, and the living current-state page —
+were executed the same day.**
 
 Inputs: the owner's four 2026-09-04 directives (plain domain language;
 a readiness ladder instead of phase walls; work re-sequenced by what

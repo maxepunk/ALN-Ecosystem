@@ -331,6 +331,13 @@ coordinated contract change. Approve alongside the pages estimate
 
 ## 8. Owner ratification + design r3 (2026-09-04 — "ratify all")
 
+> **Sequencing note (2026-09-05, roadmap r4 supersession 7):** the
+> stage order ratified below ("CS.1 → the pages build → CS.2–CS.5 →
+> C4") is superseded — CS.2–CS.5 (the hardening block) now run
+> BEFORE the pages, followed by the truth sweep; C4 rides Block 6.
+> The designs and rulings themselves stand unchanged. See ROADMAP §4
+> Blocks 2–6.
+
 The owner ratified, in one sitting after an extended grill: the
 governing architecture ("one truth, three loops" — recorded in
 CONTEXT.md §2, normative here), the five specific calls below, and the

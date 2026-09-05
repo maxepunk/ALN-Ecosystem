@@ -463,20 +463,19 @@ re-load of the §10-era transcript + the shipped mechanisms):**
   venue am I looking through."
 
 Open L3 decisions (frontier r3):
-1. **Nav words (Q16r)**: owner counter-proposal on the table —
-   Design / Author / Rehearse / Run — plus the sharper question: is
-   the tool's fourth item RUN or DEPLOY (the GM scanner holding
-   Run)? Analysis: the tool's verbs at that stage are deploy-shaped
-   (publish → apply/E10 → satisfy the rider → preflight → hand off);
-   the scanner owns show-time. Recommendation: tool nav ends in
-   DEPLOY (honest to its own verbs; the handoff teaching is
-   automatic), while Run stays the cross-tool STAGE word owned by
-   the scanner's surface. On Design-vs-Author as separate items: by
-   the ratified stage test both edit the pack, share one draft
-   lifecycle, one publish, one Rehearse — so venue-designing reads
-   as the first ROOM of Author (the Q19 hardware/roles editor), not
-   a peer stage; held for the owner (his counter-proposal implies
-   otherwise and Review's absence from it needs confirming).
+1. **Nav words (Q16r) — HALF RULED (2026-09-05, roadmap-r4 grill):
+   the tool's fourth navigation item is DEPLOY; Run stays the
+   cross-tool lifecycle word owned by the GM scanner's surface.**
+   CONTEXT.md §5b carries the entry, including the requirement the
+   owner attached: the designer → venue tech → GM handoff chain must
+   be articulated across the two surfaces. STILL OPEN, the other
+   half: whether Design and Author are separate nav items. Analysis
+   stands: by the ratified stage test both edit the pack, share one
+   draft lifecycle, one publish, one Rehearse — so venue-designing
+   reads as the first ROOM of Author (the Q19 hardware/roles
+   editor), not a peer stage; held for the owner (his
+   counter-proposal implies otherwise and Review's absence from it
+   needs confirming).
 2. **Rehearse's shape (Q17r, restated plainly)**: both candidate
    shapes are the SAME mechanism — the draft running on the preview
    orchestrator under some profile — differing only in how much of

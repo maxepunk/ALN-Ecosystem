@@ -559,7 +559,8 @@ the GM scanner, and a game's own post-show tooling)
   that never became shared language (owner, 2026-09-03).
 - **Resolver presentation.** One user-facing form of the C2 answer
   engine (pack needs × installed hardware → runs / degrades /
-  unavailable). Three exist: the planning view (post-Phase-3), the
+  unavailable). Three exist: the planning view (a later block —
+  ROADMAP §8.4), the
   preflight (the go/no-go checklist), and the test harness. Use
   "presentation", not the program doc's earlier word "face" (owner,
   2026-09-03).
@@ -587,11 +588,15 @@ the GM scanner, and a game's own post-show tooling)
   held pull requests merge: submodule repos first, then the parent
   stack (PHASE3-STATUS, "Merge train").
 - **Frozen production.** No deployments to the live system until the
-  coordinated cutover. Live shows run on the `production-2026-07`
-  pinned versions.
-- **Cutover.** The one coordinated deployment that ends frozen
-  production. Its method is the blue/green Pi swap (§5). Its checklist
-  lives in PHASE3-STATUS, "Final cutover".
+  owner's SHOW-READY decision (restated 2026-09-05, roadmap r4 —
+  formerly "until the coordinated cutover"). Live shows run on the
+  `production-2026-07` pinned versions. After any cutover, the
+  steady-state rule takes over: engine updates only between events,
+  pack updates any time (ROADMAP §7.4).
+- **Cutover.** The coordinated deployment that ends frozen
+  production, timed by the owner's show-ready decision (ROADMAP §3).
+  Its method is the blue/green Pi swap (§5). Its checklist lives in
+  PHASE3-STATUS, "Final cutover".
 - **Ledger row.** The record of one deliberate temporary construct: a
   description of the debt, the trigger that retires it, a tripwire
   that detects it, and a class (retired, in-queue, post-Phase-3, or
@@ -625,13 +630,17 @@ the GM scanner, and a game's own post-show tooling)
   citation keys that look like these codes but are not).
 - **Close record / DoD.** The close record is a slice's final
   execution and verification summary in PHASE3-STATUS. The **DoD**
-  (definition of done) is Phase 3's ratified completion checklist
-  (program §7): Tracks A, B, and C are finished and the dual-pack
-  Tier L run passes. The tier-ladder proof belongs to Phase-4
-  acceptance, not Phase 3. In addition, Phase 3 is not done while any
-  ledger row, doc obligation, or residue item lacks a named executor
-  (PHASE3-STATUS, "DoD linkage"; the deferral registry in ROADMAP §8
-  is the index).
+  (definition of done) was restructured 2026-09-05 (roadmap r4, Q4):
+  the old single "Phase 3 complete" wall distributed into three
+  homes — the engine merge-and-pass proof (main green, dual-pack run
+  green) at the COHERENT-ON-MAIN readiness state; the authoring-tool
+  completeness bar (all five pages at the ruled-in depth, the toy
+  pack proving the path) at Block 6's close; and the standing rule
+  that no work is done while any ledger row, doc obligation, or
+  residue item lacks a named executor — in force everywhere at all
+  times, with one final sweep at Block 6's close (PHASE3-STATUS,
+  "DoD linkage"; the deferral registry in ROADMAP §8 is the index).
+  "Phase 3" is the era's historical name in the records.
 
 ## 8. ALN vocabulary (pack content, not engine language)
 
