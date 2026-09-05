@@ -446,6 +446,14 @@ the GM scanner, and a game's own post-show tooling)
   preflight is its opening ritual, not a stage); Review closes the
   loop back into Author. Venue configuration is cross-cutting
   infrastructure surfaced in context — "Prepare" is NOT a stage.
+- **Deploy.** The config tool's FOURTH NAVIGATION ITEM (owner-ruled
+  2026-09-05), NOT a fifth lifecycle stage — the four stages above
+  stand. Deploy is where an authored show meets a venue, and it is
+  the handoff chain made visible across the two surfaces: the
+  designer hands over the pack; the venue technician satisfies its
+  tech rider and binds the installation profile (in the config
+  tool); the GM receives a system ready to Run (in the GM scanner).
+  The lifecycle word for show night remains Run.
 - **Rehearse.** Performing the show's moments without the venue:
   every player action available in its simulated form, framed as the
   player's act ("Team X scans the vault token"), the show reacting
@@ -596,6 +604,25 @@ the GM scanner, and a game's own post-show tooling)
   decision in the slice's design document (row 1.23 was the first).
   The slice document records the reclassification; in practice the
   matrix file itself stays untouched.
+- **Readiness states.** The roadmap's organizing axis (names
+  owner-ratified 2026-09-05): five named points at which the system
+  is ready for something, replacing phase walls. **Coherent on
+  main** — everything built on branches has merged to `main` and
+  passes. **Hardware-proven** — a second machine built from the
+  deployment docs passes the home hardware pass. **Show-ready** —
+  deploying for a live show night is a defensible choice.
+  **Previewable** — an outside designer can author and rehearse a
+  toy pack. **Adoptable** — a stranger can stand the platform up and
+  learn it. The gates live in the roadmap; deployment and sharing
+  decisions are made AT states, not at phase boundaries.
+- **Retired code names.** Track letters (Track A–E), stage codes
+  (BS/CS/PS numbers, B0–B12, C1–C4, E-numbers, O-numbers), and slice
+  numbers are historical (owner-ruled 2026-09-04). Forward-looking
+  documents use plain domain names; the translation table is the
+  roadmap's Appendix A (the alias table). Archive documents keep
+  their original wording — read them with that table beside you, and
+  beware the alias table's noted false friends (outside-research
+  citation keys that look like these codes but are not).
 - **Close record / DoD.** The close record is a slice's final
   execution and verification summary in PHASE3-STATUS. The **DoD**
   (definition of done) is Phase 3's ratified completion checklist

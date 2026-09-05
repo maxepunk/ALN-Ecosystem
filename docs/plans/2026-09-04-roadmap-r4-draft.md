@@ -1,9 +1,10 @@
-# ROADMAP r4 — DRAFT for the owner grill (revision r4.1)
+# ROADMAP r4 — DRAFT for the owner grill (revision r4.2)
 
-**Status: DRAFT (r4.1, 2026-09-05). Not ratified. `ROADMAP.md` (r3)
-stays authoritative until the owner grills this document and ratifies
-it; on ratification this text replaces `ROADMAP.md` in place and the
-r3 text survives in git history.**
+**Status: DRAFT (r4.2, 2026-09-05) — mid-grill. Two grill rounds
+complete; every question is ratified except Q4 (restated in plain
+words in §9). `ROADMAP.md` (r3) stays authoritative until the owner
+ratifies this document; on ratification this text replaces
+`ROADMAP.md` in place and the r3 text survives in git history.**
 
 Inputs: the owner's four 2026-09-04 directives (plain domain language;
 a readiness ladder instead of phase walls; work re-sequenced by what
@@ -41,7 +42,8 @@ Three problems, all owner-diagnosed 2026-09-04:
    orders work by dependency history. Re-examined against what
    improves running the game, the order changes substantially (§3).
 
-The owner's four show-night pains drive the value ordering. They are
+The owner's five show-night pains drive the value ordering (the
+fifth — the boot pain — surfaced during the grill itself). They are
 listed at the top of §3, where the ordering uses them.
 
 ---
@@ -59,9 +61,12 @@ deploys to the live venue machine; the merge train changes only
 (engine updates only between events; pack updates any time).
 
 **Coherent on main.** The merge train (the ordered PR table in
-PHASE3-STATUS) extended with the newer vehicles and walked in order;
-`main` green on the full suites; the dual-pack end-to-end run green
-on `main`. Today `main` is still identical to the July production
+PHASE3-STATUS) extended with the newer vehicles, **reviewed as one
+whole** (ratified at the grill, Q1r: a dedicated review of the full
+train's combined diff, run by a separate session with fresh context,
+before any vehicle merges), and walked in order; `main` green on the
+full suites; the dual-pack end-to-end run green on `main`. Today
+`main` is still identical to the July production
 release; everything this program built lives on chained branches.
 Two honesty notes: the recorded train table ends at the theme unit —
 the current branch (the tooling foundation through this draft) must
@@ -96,7 +101,9 @@ the swap back); (4) the owner has reviewed the visible-change list
 Fridays–Sundays 2026-09-18 → 10-18; Mondays–Thursdays are the only
 candidate swap windows, with the old machine as the physical
 rollback. Whether a mid-run swap is allowed is an explicit owner
-decision (Q5); the r3 rule it replaces is recorded in §8.
+decision (Q5 — ratified: this gate is the standard a swap must meet;
+the call itself stays the owner's); the r3 rule it replaces is
+recorded in §8.
 
 Why the gate is strict: tests lock the engine's outputs byte-for-byte
 at eleven comparison points, but nothing captures what a GM screen or
@@ -110,10 +117,10 @@ the toy pack, change something, and rehearse it. Contents of the
 slice that reaches this state: Q7 (it is constrained by the UX
 foundation's still-open structure decisions — see Block 5). This
 milestone does not exist in r3 at all; it is the earliest
-external-feedback point. An open safety question rides it: the
-committed env file with a live Home Assistant token is a MUST-FIX
-currently anchored to open-sourcing — should rotation happen before
-the first outside person touches the system? (Q12.)
+external-feedback point. A safety rule rides it (Q12 — ratified):
+the committed env file's live Home Assistant token and admin
+password rotate BEFORE this state — before the first outside person
+touches the system — not at open-sourcing.
 
 **Adoptable.** A stranger can stand the platform up and learn it:
 the guided setup path, the first-run experience, human-facing
@@ -125,7 +132,8 @@ this draft charters them as a block of work with an owner.
 
 ## 3. The work, re-sequenced by value
 
-**The four pains** (owner, 2026-09-04), with the handles used below:
+**The five pains** (owner, 2026-09-04 and -05), with the handles
+used below:
 - **the panel-drift pain** — the GM scanner's admin panel drifting
   out of sync with real state (audio routing is the named example);
 - **the is-it-working pain** — verifying every component works (the
@@ -133,7 +141,12 @@ this draft charters them as a block of work with an owner.
 - **the reconstruction pain** — juggling photos and notes while
   operating, then reconstructing the night afterward;
 - **the scanner-UX pain** — the GM scanner's information
-  architecture being unhelpful mid-game.
+  architecture being unhelpful mid-game;
+- **the boot pain** — getting from power-on to a running show takes
+  a technician: bring the Pi up on the venue TV, open a terminal to
+  launch the orchestrator, then hand-walk a pre-show check from the
+  scanner. The owner's ask: make the next iteration "a bit more
+  plug and play."
 
 **The clock:** the run opens 2026-09-18 and closes 10-18;
 Mondays–Thursdays are the only swap windows.
@@ -164,10 +177,17 @@ from documents.
   as owner time, not agent sessions.
 - The home hardware pass itself (owner hardware time,
   agent-supported), including the certificate spike.
+- **Boot-to-running posture** (the boot pain's first half, ratified
+  Q13): the engine already documents a supervised auto-start (PM2 on
+  boot) — making the green machine power on straight into a running
+  system is configuration plus the guide writing it down. It lands
+  inside the deployment-docs repair (Appendix C), not as new engine
+  code, and rides within that unit's existing estimate.
 
 **Block 2 — the hardening block.** → feeds show-ready. Serves the
-is-it-working pain and part of the panel-drift pain. (Historical
-name: CS.2–CS.5.) This block delivers:
+is-it-working pain, part of the panel-drift pain, and the boot
+pain's second half (the pre-show check becomes guided instead of
+hand-walked). (Historical name: CS.2–CS.5.) This block delivers:
 - The health-state change: the third health word (dormant) joins
   healthy/down at 42 places in 14 engine files, 3 contract sites, 3
   scanner sites, and 1 test helper.
@@ -181,6 +201,15 @@ name: CS.2–CS.5.) This block delivers:
 - The preflight, shown in the GM scanner's admin panel and runnable
   from the command line, plus the short human checklist for what
   machines cannot see. The command-line half does not exist today.
+  **Ratified honesty rule (owner, 2026-09-05, Q13):** the preflight
+  is not one instrument and must state its own limits on its face.
+  It verifies the software chain — services up, files present, the
+  cue wired to its video. It cannot verify that tapping a real game
+  token on a hardware scanner in the game space actually fires that
+  video on the venue TV; that physical tap-through belongs to the
+  human checklist and the venue rehearsal. Every reported check
+  carries its verdict-depth label (paper vs live) so a GM can see
+  which kind of assurance they actually hold.
 - A plain host-config file for restart strategies (a tool editor for
   it is later, optional work).
 - The block close: the dual-pack end-to-end run and the rig CI both
@@ -323,6 +352,7 @@ Against the pinned production system:
 | Is it working | preflight in the panel + human checklist; the supervisor; health verbs; scoreboard liveness as a first-class check | Block 2 |
 | Reconstruction | capture + bundle emitter + photo store | Block 4 |
 | Mid-game scanner UX | the GM-scanner redesign | design in Block 5, build after its grill |
+| Boot | auto-start posture (in the docs repair); the guided preflight + human checklist | Blocks 1–2 |
 
 The honest asymmetry (audit, claim 3): deploying even before the
 hardening block buys three production-failure fixes that are already
@@ -357,10 +387,10 @@ resolutions, each an edit this ratification authorizes:
 5. **"Deploy".** The owner ruled the word for the config tool's
    show-night stage. It is the tool's fourth navigation item, not a
    fifth production-lifecycle stage — CONTEXT.md §5b's four ratified
-   stages stand. At the grill, CONTEXT.md gains the Deploy entry
-   (Q10) and the UX foundation's navigation question closes to
-   match; that document's other open questions stay in its own
-   grill.
+   stages stand. Ratified (Q10r); CONTEXT.md carries the Deploy
+   entry as of 2026-09-05, and the UX foundation's navigation
+   question closes to match; that document's other open questions
+   stay in its own grill.
 6. **Ledger row L8** (the bluetooth cue literal): decision RETIRE is
    recorded; the debt itself stays open with its tripwire until the
    pack-manager stage executes it (Block 5). The two documents
@@ -441,81 +471,103 @@ authorizes the listed edits; the agent executes them at ratification.
 
 ---
 
-## 9. Questions for the owner grill
+## 9. Questions for the owner grill — with the grill record
 
-**Q1 — The ladder.** Ratify the five readiness states — coherent on
-main, hardware-proven, show-ready, previewable, adoptable — by those
-names, with the gates as stated in §2?
+Two rounds run 2026-09-05. Every question below carries its status.
+One remains open: Q4.
 
-**Q2 — The big re-order.** Ratify supersession 7: the hardening
-block runs before the pages re-cut (reversing the order ratified on
-2026-09-04), with the truth sweep after the health-state change
-(recommendation; the reverse is arguable)? This is the largest
-single change this draft makes to ratified sequence.
+**Q1 — The ladder. RATIFIED with amendment.** The five readiness
+states by their names, with the §2 gates — plus the owner's added
+step: before the merge train is walked, the full train's combined
+diff gets one whole-train review, run by a separate session with
+fresh context (Q1r, option a). Folded into coherent-on-main in §2.
 
-**Q3 — The capture block's position.** The audit's decisive point:
-its second and third deliverables (the bundle emitter, the photo
-store) are unpriced, so ordering it against the preview block now
-would be guessing. Recommendation: wireframe and price the capture
-block first (cheap, already-permitted work), then decide its slot.
-Or: commit its position now and accept the pricing risk.
+**Q2 — The big re-order. RATIFIED.** Supersession 7 stands: the
+hardening block runs before the pages re-cut, with the truth sweep
+after the health-state change.
 
-**Q4 — The completion gate.** Proposal: "Phase 3" remains the era
-name for the record; its substantive gates distribute — engine
-coherence and the dual-pack proof at coherent-on-main; the authoring
-quality bar (all five pages, the ruled-in depth) and the toy-pack
-proof close Block 6; and the ledger rule — no work is done while any
-ledger row lacks a named executor — gates Block 6's era-close record
-specifically, while remaining doctrine everywhere. Ratify or
-reshape.
+**Q3 — The capture block's position. RATIFIED (option a).**
+Wireframe and price the capture block first; decide its slot against
+the preview block only once its second and third deliverables (the
+bundle emitter, the photo store) carry real prices.
 
-**Q5 — Mid-run deployment.** Ratify show-ready's gate (§2, quoted
-criteria) as the standard a Monday–Thursday swap must meet, with the
-decision itself remaining yours at that state? Otherwise the swap
-waits for the run's end.
+**Q4 — Where "done" lives once the wall is gone. OPEN.** The old
+plan had a single finish line called "Phase 3 complete," and three
+different promises all hung on that one wall. This draft removes the
+wall, so each promise needs a new home:
 
-**Q6 — Capture sub-scope.** Land roster + notes + accusation first
-(fast value, no new storage), photos second (they carry the new
-binary store)? Or all four together?
+1. *"Everything we built actually merges and passes."* Two months of
+   branch work must land on `main` with every test green, proven by
+   the full two-game end-to-end run. Proposed home: the first
+   readiness state (coherent on main) — you get this proof early
+   instead of at the end.
+2. *"The authoring tool is genuinely complete."* All five design
+   pages exist at the depth you ruled in, and building the small
+   practice game with them proves the whole path works. Proposed
+   home: the close of Block 6, the last authoring block.
+3. *"No orphaned shortcuts."* The standing rule that we are never
+   finished while any recorded temporary shortcut lacks a named
+   person or unit responsible for removing it. Proposal: this stays
+   a rule that applies everywhere at all times, and gets one final
+   sweep when Block 6 closes. That closing sweep is also the moment
+   "Phase 3" retires into the records as a historical name.
 
-**Q7 — The preview slice.** Ratify Block 5's candidate contents —
-the pack manager; the mechanics editor with verdict badges and
-hot-apply (one deliverable, per the ratified floor); the rehearse
-affordance on the preview engine; the first-run threshold with the
-toy pack — as the previewable milestone's slice, with final shape
-following the UX foundation's grill and the re-priced estimate
-returning for your signature before the first page builds?
+Ratify these three homes, or move any of them.
 
-**Q8 — Screen baselines.** No test captures what the GM scanner's
-screens or the scoreboard draw — exactly where all sixteen visible
-changes live. Proposal: capture baseline screen images from the
-pinned production release NOW, before further change, then add
-screen-capture tests as an add-on to the truth sweep (which already
-touches every screen path). No capture infrastructure exists today,
-so this gets priced at approval, not assumed cheap.
+**Q5 — Mid-run deployment. RATIFIED.** Show-ready's gate (§2) is
+the standard a Monday–Thursday swap must meet; the decision itself
+remains the owner's at that state.
 
-**Q9 — First unit.** Approve the deployment-docs repair as the first
-agent unit (agent half, Appendix C scope, ≈1–1.5 work sessions) —
-with its owner half (capturing the seven lighting-scene definitions
-from the live machine, under the borrow/restore protocol) scheduled
-at your pace? Note: the repaired guide describes the NEW system,
-which only becomes deployable once the train is walked — intended,
-since the guide's consumer is the green machine.
+**Q6 — Capture sub-scope. RATIFIED (split).** Roster + notes +
+accusation first (fast value, no new storage); photos second (they
+carry the new binary store). The owner's same answer surfaced the
+boot pain, now Q13.
 
-**Q10 — Vocabulary.** Ratify: the five readiness-state names; the
-alias retirement (Appendix A); and the CONTEXT.md additions —
+**Q7 — The preview slice. RATIFIED (as candidate).** Block 5's
+candidate contents stand; final shape follows the UX foundation's
+grill; the re-priced estimate returns for the owner's signature
+before the first page builds.
+
+**Q8 — Screen baselines. RATIFIED.** Capture baseline screen images
+from the pinned production release NOW, before further change; the
+screen-capture tests join the truth sweep and get priced at
+approval, not assumed cheap.
+
+**Q9 — First unit. RATIFIED.** The deployment-docs repair is the
+first agent unit (agent half ≈1–1.5 work sessions, Appendix C
+scope — now including the boot-to-running posture from Q13); the
+owner half (capturing the seven lighting-scene definitions from the
+live machine, under the borrow/restore protocol, ~20 minutes
+read-only) is scheduled at the owner's pace.
+
+**Q10 — Vocabulary. RATIFIED (Q10r).** The five readiness-state
+names; the alias retirement (Appendix A); the CONTEXT.md additions —
 "Deploy" as the config tool's fourth navigation item (not a fifth
-lifecycle stage), the readiness-state names, and the alias note?
+lifecycle stage), the readiness-state names, and the alias note.
+Captures executed in CONTEXT.md the same session (§5b and §7).
 
-**Q11 — The documentation system.** Ratify §7, including creating
-the living current-state page for the remaining work at
-ratification?
+**Q11 — The documentation system. RATIFIED (Q11r).** §7 stands,
+including creating the living current-state page for the remaining
+work at ratification.
 
-**Q12 — Secrets before outside eyes.** The committed env file with a
-live Home Assistant token is a MUST-FIX currently anchored to
-open-sourcing. Previewable is the first milestone that puts an
-outside person in front of the system. Rotate before previewable?
-(Recommended.)
+**Q12 — Secrets before outside eyes. RATIFIED.** Rotate the
+committed Home Assistant token and admin password BEFORE previewable
+— the first milestone that puts an outside person in front of the
+system — not at open-sourcing.
+
+**Q13 — The boot pain (raised by the owner in round 1). RATIFIED
+with the honesty caveat.** The boot pain joins the pains list; its
+first half (power-on straight into a running system) is auto-start
+posture inside the docs repair (Block 1); its second half (the
+guided pre-show check) is the preflight work (Block 2). The caveat,
+quoted in substance: the preflight is not one instrument and must be
+honest about its limitations — it cannot, for example, emulate
+physically tapping a real game token on a hardware scanner in the
+game space to confirm the associated video cue fires. Folded as the
+honesty rule in Block 2: the preflight verifies the software chain
+and says so; the physical tap-through belongs to the human checklist
+and the venue rehearsal; every check carries its paper/live depth
+label.
 
 ---
 
@@ -623,5 +675,8 @@ required-service check in the preflight checklist (a music daemon
 the system does not use). Remove: the disable-Bluetooth instruction
 that contradicts the system's own speaker support. Add: the
 certificate spike's procedure home (the spike itself runs during the
-home hardware pass). Full list with citations: the dependency audit,
-claim 5.
+home hardware pass). Add (Q13): the boot-to-running posture — the
+already-documented supervised auto-start written into the guide so
+the machine powers on straight into a running system; configuration,
+not new code, riding within this unit's existing estimate. Full list
+with citations: the dependency audit, claim 5.
