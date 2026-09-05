@@ -251,3 +251,35 @@ records + ledger rows + walk notes, then the full close gate (§1.6).
 
 **≈ 2.5–3.5 work sessions.** Deviation rule per §12.3: if the build
 uncovers scope beyond this triage, it stops and re-prices.
+
+## 6. Build method — subagent/workflow policy (owner-set 2026-09-05)
+
+**Build inline; orchestrate the verification, not the edits.**
+
+1. **Single-context TDD build, no parallel build agents.** The
+   review did the discovery; what remains is surgical work in shared
+   hot files with interacting fixes (M1+LA-2 one carve-out;
+   M8+LB-5+the networked clear one reset story), and the parity
+   fixes are only safe because one head holds both the backend and
+   scanner sides. Per finding cluster: re-run the review's
+   reproduction on this branch (prove red) → turn it into the
+   regression pin → fix to green → commit.
+2. **Subagents carry the bulk reads** (process rule): "every
+   consumer of X" sweeps go to cheap reader agents (Explore/Sonnet,
+   low effort); long suite runs go to background processes.
+3. **The close runs the house mixed-model adversarial review as a
+   workflow** (~12–18 agents): finders per fix cluster (Opus
+   medium); an injection lens on the M7 fix (Fable) and a parity
+   lens re-executing reset/scoring on both sides (Opus high);
+   per-finding refuters, Fable high effort for MAJORs.
+4. **Stage discipline** (the stage is the unit; each stage commits +
+   pushes green): S1 parent MAJORs + engine smalls (§1.1 items
+   1–6 + §1.2–1.3 backend) → S2 the scanner PR (M7, M8, parity
+   trio, LA-9, dist rebuild) → S3 docs + records + pin bump
+   (§1.4–1.5) → S4 close (§1.6 + the review workflow). Draft PRs
+   open at build start as CI vehicles. The §5 scope brake stands.
+
+Rationale: orchestration earned its keep in the finding phase, where
+work was independent and read-only; in the fix phase the work is
+coupled and write-heavy, so parallelism moves back to where
+independence returns — verification and adversarial review.
