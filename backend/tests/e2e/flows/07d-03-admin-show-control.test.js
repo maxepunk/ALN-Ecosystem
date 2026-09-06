@@ -450,10 +450,16 @@ test.describe('GM Scanner - Show Control', () => {
   });
 
   test('Held item appears when cue dependency is down, GM discards it', async () => {
-    // Designed-degradation test: only runs where a cue dependency is down
-    // (attention-before-video needs both sound and lighting)
-    requireDegraded(test, caps, ['sound', 'lighting']);
-    const soundDown = !caps.sound;
+    // Designed-degradation test. The body fires `tension-hit`, whose only
+    // dependency is SOUND — so the run-gate must be sound alone.
+    //
+    // Fix-vehicle close: the gate used to accept sound-OR-lighting down
+    // while the body fired only under `soundDown`. On a machine with sound
+    // UP and lighting DOWN (this container once pw-play was installed) the
+    // test therefore RAN, fired nothing, and then waited 10s for a held
+    // item that could never appear. Run-gate now matches the fire-gate, so
+    // the cue below fires unconditionally.
+    requireDegraded(test, caps, ['sound']);
 
     const context = await createBrowserContext(browser, 'desktop', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -466,13 +472,11 @@ test.describe('GM Scanner - Show Control', () => {
 
       await gmScanner.createSessionWithTeams('Held Item Test', ['Team Alpha']);
 
-      // Fire a cue that has a dependency on a down service
-      // tension-hit depends on sound; if sound is down, it should be held
-      if (soundDown) {
-        const fireBtn = page.locator('#quick-fire-grid button[data-cue-id="tension-hit"]');
-        await expect(fireBtn).toBeVisible({ timeout: 10000 });
-        await fireBtn.click({ force: true });
-      }
+      // Fire a cue whose dependency is down: tension-hit depends on sound,
+      // and the gate above guarantees sound is down here, so it must be held.
+      const fireBtn = page.locator('#quick-fire-grid button[data-cue-id="tension-hit"]');
+      await expect(fireBtn).toBeVisible({ timeout: 10000 });
+      await fireBtn.click({ force: true });
 
       // Wait for held item to appear
       const heldItemsContainer = page.locator('#held-items-container');

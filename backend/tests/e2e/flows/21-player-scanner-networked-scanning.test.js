@@ -49,6 +49,8 @@ const {
 
 const { createSessionViaWebSocket } = require('../setup/session-helpers');
 
+const { getCapabilities, requireCapabilities, formatManifest } = require('../helpers/capabilities');
+
 // Page objects
 const PlayerScannerPage = require('../helpers/page-objects/PlayerScannerPage');
 
@@ -62,6 +64,7 @@ let orchestratorInfo = null;
 let vlcInfo = null;
 let httpClient = null;
 let testTokens = null;  // Dynamically selected tokens
+let caps = null;        // Environment capability manifest
 
 // ========================================
 // SETUP & TEARDOWN
@@ -89,6 +92,9 @@ test.describe('Player Scanner Networked Scanning', () => {
       timeout: 30000
     });
     console.log(`Orchestrator started: ${orchestratorInfo.url}`);
+
+    caps = await getCapabilities(orchestratorInfo.url);
+    console.log(`Capability manifest: ${formatManifest(caps)}`);
 
     // 4. Launch browser
     browser = await chromium.launch({
@@ -295,11 +301,19 @@ test.describe('Player Scanner Networked Scanning', () => {
   // ========================================
 
   test('video token triggers video alert with NeurAI branding', async () => {
-    // Skip if no video token available
-    if (!testTokens.videoToken) {
-      console.log('⚠️ Skipping video alert test - no video token in database');
-      return;
-    }
+    // The alert is shown ONLY when the orchestrator actually queues the
+    // video: videoQueueService.canAcceptVideo() refuses with reason
+    // 'vlc_down' when VLC is unhealthy, /api/scan then answers
+    // status:'rejected', and the PWA shows the "video unavailable" toast
+    // instead (scannerCore.classifyScanResponse). So this is a
+    // VLC-primary-path test and must gate on it — LOUDLY, per the
+    // capabilities.js rules — not fail on a VLC-less machine.
+    requireCapabilities(test, caps, ['vlc']);
+    // Missing fixture is also a LOUD skip: the old silent early-return
+    // made this test PASS while asserting nothing whenever the generated
+    // video file was absent (which is how it "passed" every prior close).
+    test.skip(!testTokens.videoToken,
+      'no video token with a present video file in this pack/environment');
 
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
@@ -330,11 +344,10 @@ test.describe('Player Scanner Networked Scanning', () => {
   });
 
   test('video alert displays for minimum 5 seconds', async () => {
-    // Skip if no video token available
-    if (!testTokens.videoToken) {
-      console.log('⚠️ Skipping video alert duration test - no video token in database');
-      return;
-    }
+    // Same VLC primary-path dependency + loud fixture skip as above.
+    requireCapabilities(test, caps, ['vlc']);
+    test.skip(!testTokens.videoToken,
+      'no video token with a present video file in this pack/environment');
 
     const context = await createBrowserContext(browser, 'mobile', { baseURL: orchestratorInfo.url });
     const page = await createPage(context);
