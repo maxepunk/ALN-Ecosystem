@@ -25,8 +25,12 @@ function createSocketServer(httpServer) {
           return callback(null, true);
         }
 
-        // Allow all local network ranges (RFC1918)
-        const localNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+        // Allow all local network ranges (RFC1918) and .local mDNS
+        // hostnames — MIRRORS app.js's HTTP CORS regex (train-review
+        // P4-1: the two diverged, so a page loaded from https://<name>.local
+        // got a working HTTP surface and a silently rejected WebSocket
+        // handshake; .env.example documents .local as auto-allowed)
+        const localNetwork = /^https?:\/\/(localhost|127\.0\.0\.1|[\w-]+\.local|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(:\d+)?$/;
         if (localNetwork.test(origin)) {
           return callback(null, true);
         }

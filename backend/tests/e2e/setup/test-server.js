@@ -69,6 +69,8 @@ async function findAvailablePort(preferredPort) {
 let orchestratorProcess = null;
 let serverPort = null;
 let serverProtocol = 'http';
+let serverPackPath = null;
+let serverProfilePath = null;
 let cleanupRegistered = false;
 
 // Test environment configuration
@@ -207,6 +209,12 @@ async function startOrchestrator(options = {}) {
   // Set protocol BEFORE logging
   serverPort = port;
   serverProtocol = enableHttps ? 'https' : 'http';
+  // Captured for restartOrchestrator (train-review P9b-1): a restart
+  // used to silently DROP an explicitly pinned packPath/profilePath,
+  // so a restart-flow test that pinned a fixture pack came back up on
+  // the default pack and asserted against the wrong rules.
+  serverPackPath = packPath;
+  serverProfilePath = profilePath;
 
   logger.info('Starting orchestrator for E2E tests', {
     protocol: serverProtocol,
@@ -373,13 +381,16 @@ async function restartOrchestrator(options = {}) {
   // Wait a moment for port to be released
   await new Promise(resolve => setTimeout(resolve, 1000));
 
-  // Start new instance
+  // Start new instance — carrying the pinned pack/profile through
+  // (P9b-1: dropping them restarted onto the default pack)
   return await startOrchestrator({
     https: currentProtocol === 'https',
     port: currentPort,
     timeout,
     preserveSession,
-    storageType  // Pass through storage type
+    storageType,  // Pass through storage type
+    ...(serverPackPath ? { packPath: serverPackPath } : {}),
+    ...(serverProfilePath ? { profilePath: serverProfilePath } : {})
   });
 }
 

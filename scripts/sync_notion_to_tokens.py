@@ -859,6 +859,10 @@ def write_tokens_json(path, tokens):
     try:
         with tmp.open("w") as f:
             json.dump(tokens, f, indent=2)
+            # Trailing newline matches the committed file (train-review
+            # F-P6-1): without it every sync churned tokens.json's last
+            # byte — and the pack contentHash — with zero content change.
+            f.write("\n")
             f.flush()
             os.fsync(f.fileno())
         tmp.replace(path)

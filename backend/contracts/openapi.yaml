@@ -1550,7 +1550,14 @@ paths:
         Body MUST be `{playlists: [...]}`. Each playlist requires id, name,
         shuffle, loop, crossfadeMs (0-5000), tracks (string array). Duplicate
         ids are rejected.
+
+        **Security**: requires an operator token carrying the
+        `show-control` function (the route is gated by
+        `requireFunction('show-control')` — train-review P4-3 documented
+        the gate the implementation already enforced).
       operationId: replaceMusicPlaylists
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:

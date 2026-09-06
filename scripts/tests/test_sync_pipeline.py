@@ -204,6 +204,15 @@ class TestWriteTokensJson:
         assert json.loads(path.read_text()) == {"original": True}
         assert list(tmp_path.glob("*.tmp")) == []
 
+    def test_trailing_newline_matches_committed_file(self, tmp_path):
+        # Train-review F-P6-1: the committed tokens.json ends with a
+        # newline; a write without one churned the file's last byte —
+        # and the pack contentHash — on every sync with zero content
+        # change.
+        path = tmp_path / "tokens.json"
+        sync.write_tokens_json(path, {"a": 1})
+        assert path.read_bytes().endswith(b"}\n")
+
 
 # ── main() abort posture (F-TOOL-01/07 + E8) ───────────────────────────
 

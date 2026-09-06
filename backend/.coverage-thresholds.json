@@ -29,10 +29,25 @@
     "functions": 100,
     "lines": 100
   },
+  "./src/gameRules/grants.js": {
+    "branches": 80,
+    "functions": 100,
+    "lines": 90
+  },
   "./src/gameRules/modeSemantics.js": {
     "branches": 100,
     "functions": 100,
     "lines": 100
+  },
+  "./src/gameRules/packNeeds.js": {
+    "branches": 70,
+    "functions": 100,
+    "lines": 100
+  },
+  "./src/gameRules/resolution.js": {
+    "branches": 95,
+    "functions": 100,
+    "lines": 95
   },
   "./src/gameRules/scoring.js": {
     "branches": 90,
@@ -289,11 +304,6 @@
     "functions": 40,
     "lines": 30
   },
-  "./src/storage/index.js": {
-    "branches": 10,
-    "functions": 100,
-    "lines": 50
-  },
   "./src/storage/MemoryStorage.js": {
     "branches": 50,
     "functions": 90,
@@ -303,6 +313,11 @@
     "branches": 0,
     "functions": 0,
     "lines": 5
+  },
+  "./src/storage/index.js": {
+    "branches": 10,
+    "functions": 100,
+    "lines": 50
   },
   "./src/utils/dbusSignalParser.js": {
     "branches": 90,

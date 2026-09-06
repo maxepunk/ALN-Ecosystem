@@ -107,9 +107,24 @@ async function initializeGMScannerWithMode(page, sessionMode, gameMode = 'blackm
     await gmScanner.selectStandaloneMode();
   }
 
-  // Set game mode (detective vs blackmarket)
+  // Set game mode — PACK-DERIVED (train-review P9b-5): the old
+  // `.includes('detective')` literal only matched ALN's label, so the
+  // dual-pack matrix's toy leg silently ran the wrong mode selection.
+  // Map the on-screen label to its declared mode id; the ALN literal
+  // survives only as the packless fallback (the L6 shim posture).
   const currentModeText = await gmScanner.getModeText();
-  const currentMode = currentModeText.toLowerCase().includes('detective') ? 'detective' : 'blackmarket';
+  let currentMode;
+  const packModes = options.orchestratorUrl
+    ? await require('./scoring').loadPackModes(options.orchestratorUrl).catch(() => null)
+    : null;
+  if (Array.isArray(packModes) && packModes.length > 0) {
+    const match = packModes.find(
+      (m) => m && m.label && currentModeText.toLowerCase().includes(String(m.label).toLowerCase())
+    );
+    currentMode = match ? match.id : packModes[0].id;
+  } else {
+    currentMode = currentModeText.toLowerCase().includes('detective') ? 'detective' : 'blackmarket';
+  }
   if (currentMode !== gameMode) {
     await gmScanner.toggleMode();
   }

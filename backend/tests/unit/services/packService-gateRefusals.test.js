@@ -98,6 +98,30 @@ describe('activation gate — unreadable pack files REFUSE (MAJOR 3 + riders)', 
     expect(() => packService.activatePack()).toThrow(/tokens\.json.*valid JSON/i);
   });
 
+  it('F-P2-2: a non-object tokens.json (array) REFUSES', () => {
+    stagePack();
+    fs.writeFileSync(path.join(tmpDir, 'tokens.json'), '[1,2]');
+
+    expect(() => packService.activatePack()).toThrow(/tokens\.json.*object/i);
+  });
+
+  it('a non-ENOENT read error on either file REFUSES as unreadable (never the shims)', () => {
+    // A directory where the file should be → EISDIR on read: exists
+    // but unreadable — the refusal class, not the packless posture.
+    stagePack();
+    fs.rmSync(path.join(tmpDir, 'game.json'));
+    fs.mkdirSync(path.join(tmpDir, 'game.json'));
+    expect(() => packService.activatePack()).toThrow(/game\.json unreadable/i);
+
+    packService._resetForTesting();
+    process.env.PACK_PATH = tmpDir;
+    fs.rmSync(path.join(tmpDir, 'game.json'), { recursive: true });
+    fs.copyFileSync(path.join(TOY_PACK, 'game.json'), path.join(tmpDir, 'game.json'));
+    fs.rmSync(path.join(tmpDir, 'tokens.json'));
+    fs.mkdirSync(path.join(tmpDir, 'tokens.json'));
+    expect(() => packService.activatePack()).toThrow(/tokens\.json unreadable/i);
+  });
+
   it('F-P2-4: a null entry in modes[] is a named refusal, not a crash', () => {
     stagePack();
     const game = readGame();

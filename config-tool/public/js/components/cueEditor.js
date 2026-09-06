@@ -15,7 +15,7 @@ import { renderTimelineView } from './timelineView.js';
 // fallback when the vocabulary fetch fails. The cueTriggerEvents
 // tripwire test still pins it equal to the backend's EVENT_NORMALIZERS.
 export const TRIGGER_EVENTS = {
-  'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'memoryType', 'valueRating', 'groupId', 'teamScore', 'hasGroupBonus'] },
+  'transaction:accepted': { label: 'Token Processed', fields: ['tokenId', 'teamId', 'deviceType', 'points', 'teamScore', 'hasGroupBonus'] },
   'group:completed': { label: 'Group Completed', fields: ['teamId', 'groupId', 'multiplier', 'bonus'] },
   'video:loading': { label: 'Video Loading', fields: ['tokenId'] },
   'video:started': { label: 'Video Started', fields: ['tokenId', 'duration'] },
