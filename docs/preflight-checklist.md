@@ -1512,10 +1512,12 @@ cd backend && node -e "
       issues++;
     }
   }
+  // Keys are EXACT-CASE since tokens v2 (D2b) — lower-casing here made
+  // this REQUIRED check fail on every healthy machine (train-review
+  // MAJOR 4; the checklist kept the pre-2b lowercase read).
   for (const [type, mult] of Object.entries(pack.typeMultipliers)) {
-    const key = type.toLowerCase();
-    if (rules.typeMultipliers[key] !== mult) {
-      console.log('MISMATCH: typeMultipliers[' + type + '] pack=' + mult + ' backend=' + rules.typeMultipliers[key]);
+    if (rules.typeMultipliers[type] !== mult) {
+      console.log('MISMATCH: typeMultipliers[' + type + '] pack=' + mult + ' backend=' + rules.typeMultipliers[type]);
       issues++;
     }
   }

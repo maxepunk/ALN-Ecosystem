@@ -1924,6 +1924,82 @@ describe('TransactionService - Business Logic (Layer 1 Unit Tests)', () => {
       }
     });
 
+    it('reset clears admin adjustments — a later delete-rebuild must NOT resurrect them (train-review MAJOR 6 / P1-1)', async () => {
+      // The show-night failure this pins: adjust Team Alpha +50,000 →
+      // Reset All Scores → 0 → new game, Alpha scans a token → GM
+      // deletes it (wrong team) → the rebuild replayed the PRE-RESET
+      // adjustment and the score came back 50,000 instead of 0 — and
+      // returned after every future delete. A reset's own output
+      // declared those adjustments void; the rebuild replays only
+      // adjustments made AFTER the reset (the F-BCORE-03 behavior for
+      // deletes WITHOUT a reset stays pinned above).
+      const session = await sessionService.createSession({
+        name: 'Reset Adjustment Session',
+        teams: ['Team Alpha']
+      });
+      await sessionService.startGame();
+
+      const getScore = (teamId) =>
+        sessionService.getCurrentSession()?.scores.find(s => s.teamId === teamId);
+      const wait = (ms = 25) => new Promise(resolve => setTimeout(resolve, ms));
+
+      const Token = require('../../../src/models/token');
+      transactionService.tokens.set('reset_tok', new Token({
+        id: 'reset_tok',
+        name: 'Reset Token',
+        value: 150000,
+        memoryType: 'Technical',
+        mediaAssets: { image: null, audio: null, video: null, processingImage: null },
+        metadata: { rating: 5 }
+      }));
+
+      // 1. Pre-reset adjustment
+      transactionService.adjustTeamScore('Team Alpha', 50000, 'pre-reset bonus', 'GM_R');
+      await wait();
+      expect(getScore('Team Alpha').currentScore).toBe(50000);
+
+      // 2. Reset — scores to zero, pre-reset adjustments void
+      transactionService.resetScores();
+      await wait();
+      expect(getScore('Team Alpha').currentScore).toBe(0);
+      expect(getScore('Team Alpha').adminAdjustments).toHaveLength(0);
+
+      // 3. New game: scan, then delete the (wrong-team) transaction
+      const scan = await transactionService.processScan({
+        tokenId: 'reset_tok',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_R',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+      expect(getScore('Team Alpha').currentScore).toBe(150000);
+
+      transactionService.deleteTransaction(scan.transaction.id, session);
+      await wait();
+
+      // 4. Zero — the pre-reset 50,000 stays gone
+      expect(getScore('Team Alpha').currentScore).toBe(0);
+
+      // Post-reset adjustments still survive rebuilds (the ruled D2s2
+      // behavior, scoped to the current reset epoch)
+      transactionService.adjustTeamScore('Team Alpha', 7000, 'post-reset bonus', 'GM_R');
+      await wait();
+      const scan2 = await transactionService.processScan({
+        tokenId: 'reset_tok',
+        teamId: 'Team Alpha',
+        deviceId: 'GM_R',
+        deviceType: 'gm',
+        mode: 'blackmarket',
+        timestamp: new Date().toISOString()
+      });
+      await wait();
+      transactionService.deleteTransaction(scan2.transaction.id, session);
+      await wait();
+      expect(getScore('Team Alpha').currentScore).toBe(7000);
+    });
+
     it('should recalculate team scores after deletion', async () => {
       // Setup: Create session with multiple transactions
       const session = await sessionService.createSession({
