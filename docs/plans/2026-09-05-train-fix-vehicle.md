@@ -291,3 +291,51 @@ Rationale: orchestration earned its keep in the finding phase, where
 work was independent and read-only; in the fix phase the work is
 coupled and write-heavy, so parallelism moves back to where
 independence returns — verification and adversarial review.
+
+## 7. Execution record (S1–S3, updated at each stage close)
+
+**S1 — parent MAJORs + engine smalls (closed 2026-09-05, commits
+`a6d9354`…`da741ea` on parent `claude/phase3-train-fixes`, PR #34).**
+All six parent MAJORs landed reproduce-red-first: M1 display
+session-room join (gmAuth + broadcasts, connect-before-AND-after-
+session pins), M2 /health gm-registration lockout (400 + capacity
+pin), M3 pack-gate parse refusals (read-problem plumbing + minVersion
+shape + null-mode entry; EISDIR + array-tokens coverage), M4
+preflight §13.3 exact-case (attribution corrected: the toLowerCase
+predates the train — dabba87 — and broke at slice 2b's D2b flip,
+not vehicle #33), M5 preset engine gate (staged writeScoring +
+validate-pack subprocess; refusal surfaces `details`), M6 reset
+voids adminAdjustments (rebuild replay stays current-epoch). Riders:
+gameClock expectedDuration, session hydration mode default, cue
+normalizer phantom-field removal (+cueEditor list), CORS `.local`,
+sync trailing newline, test-server PACK_PATH restart plumbing,
+scanner-init pack-derived modes, oneAuthProofs floor tripwire,
+config-tool lint promoted to error (owner ruling: "pre-existing" is
+an attribution, not a verdict). Backend 2845/2845 (144 suites),
+ratchet 85/85 (grants/packNeeds/resolution enrolled), config-tool
+182/182, scripts 28/28.
+
+**S2 — scanner half (closed 2026-09-06, commit `d8b9483` on
+ALNScanner `claude/phase3-train-fixes`, PR #16 draft stacked on
+#15).** M7 CueRenderer icon slugified at the sink (hostile-icon XSS
+pin); M8 standalone resetScores full restart + networked claim-Set
+clear (in-place, TQ-7) + truthful dialog (07d-02 first sentence
+preserved); LB-2 floor, LB-3 Object.hasOwn type lookup, LB-4
+standalone unknown-token refusal (each red-first; two old-truth pins
+in app.test.js rewritten to the new truth); LA-9 guide selector
+(`.token-card`). Fresh ratchet enrolls theme.js 90/100/90 (S2-1);
+GameOpsRenderer + uiManager floors rose; nothing lowered (66 files).
+Scanner 1680/1680 (87 suites), vite build green.
+
+**S3 — backend M7 half + pin bump + records (this commit).**
+`validateCuesBlock` enforces the icon class-key pattern
+(`ICON_PATTERN`, exported + drift-tripwired against
+cues.schema.json `$defs/cue/properties/icon`) — closes F-P5b-2
+end-to-end (gate refuses at activation; scanner sink slugifies as
+defense in depth). Both packs (ALN + toy-heist) re-validated ok.
+Parent ALNScanner submodule pin → `d8b9483`. Train table row 20
+updated with PR numbers (#34 + #16).
+
+S4 (close) remaining: full suites both repos, fresh ratchets,
+dual-pack end-to-end run, the §6 mixed-model adversarial review
+workflow, survivors fixed, final records + push.

@@ -73,6 +73,15 @@ const TOKEN_DERIVED_TRIGGER_EVENTS = ['player:scan', 'transaction:accepted'];
 const CLOCK_PATTERN = /^[0-9]{1,2}:[0-5][0-9]:[0-5][0-9]$/;
 
 /**
+ * cue.icon is a CSS CLASS KEY the GM quick-fire grid interpolates into a
+ * class attribute (NOT a text glyph — contrast game.json modes[].icon).
+ * Same pattern as the schema; enforced here too because the gate cannot
+ * assume schema validation ran (MAJOR-7 backend half, F-P5b-2 — the
+ * scanner sink additionally slugifies, defense in depth).
+ */
+const ICON_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
  * The cue-action vocabulary: action → {field: type} for its required
  * payload fields. Types: 'string' means a non-empty string, 'number' a
  * finite number, 'boolean' a boolean — checked at the gate because the
@@ -271,6 +280,15 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
       }
       seenIds.add(cue.id);
 
+      if (cue.icon !== undefined
+          && (typeof cue.icon !== 'string' || !ICON_PATTERN.test(cue.icon))) {
+        problems.push(
+          `cues['${cue.id}'] — icon ${JSON.stringify(cue.icon)} is not a CSS class key ` +
+          '(lowercase letters/digits/hyphens, starting with a letter or digit); the GM ' +
+          'quick-fire grid interpolates icon into a class attribute; self-contradictory'
+        );
+      }
+
       // The engine (cueEngineService.loadCues) refuses BOTH keys present
       // by TRUTHINESS ([] is truthy), then app.js loads the frozen
       // snapshot with no try/catch — so a gate-passing both-keys cue
@@ -395,4 +413,5 @@ module.exports = {
   CUE_ACTIONS,
   TOKEN_DERIVED_TRIGGER_EVENTS,
   CLOCK_PATTERN,
+  ICON_PATTERN,
 };

@@ -25,6 +25,7 @@ const {
   CUE_ACTIONS,
   TOKEN_DERIVED_TRIGGER_EVENTS,
   CLOCK_PATTERN,
+  ICON_PATTERN,
 } = require('../../../src/gameRules/cueValidation');
 const {
   EVENT_NORMALIZERS,
@@ -128,6 +129,7 @@ describe('cue vocabulary tripwires (row 2.22 — grow every side together)', () 
     expect(schema.$defs.trigger.oneOf
       .find(b => b.properties && b.properties.clock).properties.clock.pattern)
       .toBe(CLOCK_PATTERN.source);
+    expect(schema.$defs.cue.properties.icon.pattern).toBe(ICON_PATTERN.source);
   });
 
   it('TRIPWIRE: every cue-action is a real executeCommand case (CLAUDE.md ground-truth grep)', () => {
@@ -397,6 +399,32 @@ describe('rule 7 — shape rules (the gate cannot assume schema validation ran)'
     });
     expect(out.join('\n')).toMatch(/video/);
     expect(out.length).toBeGreaterThan(0);
+  });
+});
+
+describe('icon class-key rule (MAJOR-7 backend half — F-P5b-2 end-to-end)', () => {
+  // cues.schema.json pins icon to ^[a-z0-9][a-z0-9-]*$ (a CSS class key
+  // the GM quick-fire grid interpolates into a class attribute), but the
+  // gate cannot assume schema validation ran. The scanner sink is
+  // slugified (defense in depth); the gate refuses the pack at
+  // activation so a hostile icon never ships at all.
+  it('a legal icon passes; an absent icon passes (green fixture)', () => {
+    expect(problemsAfter(c => { c.cues[0].icon = 'alert-red-2'; })).toHaveLength(0);
+  });
+
+  it('an attribute-breaking icon is refused as self-contradictory', () => {
+    const out = problemsAfter(c => {
+      c.cues[0].icon = 'x" onmouseover="window.__pwned=1" data-y="';
+    }).join('\n');
+    expect(out).toMatch(/icon/);
+    expect(out).toMatch(/self-contradictory/);
+  });
+
+  it('uppercase, leading-hyphen, and non-string icons are all refused (the schema pattern, enforced)', () => {
+    expect(problemsAfter(c => { c.cues[0].icon = 'Alert'; }).join('\n')).toMatch(/icon/);
+    expect(problemsAfter(c => { c.cues[0].icon = '-alert'; }).join('\n')).toMatch(/icon/);
+    expect(problemsAfter(c => { c.cues[0].icon = ''; }).join('\n')).toMatch(/icon/);
+    expect(problemsAfter(c => { c.cues[0].icon = 7; }).join('\n')).toMatch(/icon/);
   });
 });
 
