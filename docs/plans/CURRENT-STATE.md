@@ -5,8 +5,10 @@ in place, updated whenever execution state changes: what's done,
 what's next, and who each open item waits on. The full frame is
 `ROADMAP.md` (r4); the deep archive is `PHASE3-STATUS.md`.
 
-**Last updated: 2026-09-06** (fix-vehicle build S1–S3 landed: all 8
-MAJORs fixed both repos; S4 close in progress).
+**Last updated: 2026-09-06** (fix vehicle: S1–S4 closed — all 8
+MAJORs fixed and adversarially reviewed; S5 in build, owner-ruled in
+as a bug fix: the E2E suite learns the rung-1 environment through
+one shared, profile-gated provisioning module).
 
 ## Where we stand
 
@@ -31,7 +33,7 @@ MAJORs fixed both repos; S4 close in progress).
 | Item | Who | State |
 |---|---|---|
 | Whole-train review (full combined diff, fresh-context session) | agent (separate session) | **DONE 2026-09-05** — verdict: walk-with-fixes. Report: `2026-09-05-whole-train-review.md` (branch `claude/whole-train-review`). 8 MAJORs survive; Appendix-B item 5 CLEARED; the "watch it" vehicle confirmed green |
-| **Train fix vehicle** (all 8 MAJORs + ruled fix-now set; owner directive: no deferred MAJORs, every MINOR/NOTE intentionally dispositioned) | agent | estimate signed 2026-09-05; **S1–S4 BUILT + reviewed** (execution record: `2026-09-05-train-fix-vehicle.md` §7): all 8 MAJORs fixed red-first; §6 adversarial review ran (15 agents) — 6 survivors, 5 fixed, 1 deferred (B5); dual-pack E2E diagnosed to root cause — the video-alert tests had NEVER actually run (vacuous pass on a missing fixture) and VLC-down here is an E2E bring-up FAULT (this container is a rung-1 host); harness fixed (loud gates), and a hand-run rung-1 validation put real VLC under the video tests for the first time: they PASS. PRs: parent #34 + scanner #16 + TokenData #7. **Awaiting owner ruling:** E2E×rung-1 unification scope (fold in / dedicated unit / C-track close) |
+| **Train fix vehicle** (all 8 MAJORs + ruled fix-now set; owner directive: no deferred MAJORs, every MINOR/NOTE intentionally dispositioned) | agent | estimate signed 2026-09-05; **S1–S4 BUILT + reviewed** (execution record: `2026-09-05-train-fix-vehicle.md` §7): all 8 MAJORs fixed red-first; §6 adversarial review ran (15 agents) — 6 survivors, 5 fixed, 1 deferred (B5); dual-pack E2E diagnosed to root cause — the video-alert tests had NEVER actually run (vacuous pass on a missing fixture) and VLC-down here is an E2E bring-up FAULT (this container is a rung-1 host); harness fixed (loud gates), and a hand-run rung-1 validation put real VLC under the video tests for the first time: they PASS. PRs: parent #34 + scanner #16 + TokenData #7. **S5 in build (owner-ruled 2026-09-06, "a faulty E2E suite IS a bug"):** the suite provisions the rung-1 software stack itself via ONE shared module with the rig (profile-gated — a real venue profile provisions nothing), Bluetooth mock in scope, E2E legs boot generated simulation profiles; close evidence = rig re-run + flow-30 active path + full dual-pack legs, plus the re-run of the killed model-window audit. Design revision record: `2026-09-05-train-fix-vehicle.md` §8.1 |
 | Walk the merge train (20 vehicles, in order — fix vehicle last) | owner | waits on the fix vehicle; walk notes now beside the train table |
 | **Deployment-docs repair** (Appendix C scope; includes boot-to-running posture) | agent | **AGENT HALF DONE 2026-09-05** (branch `claude/phase3-docs-repair`): env reference rebuilt from source (+2 template defects fixed), HA install procedure, installation-profile section, media-transfer procedure with runnable verification, machine prep + Pi-5 video settings, boot-to-running posture, cert-spike home, 4 wrong sections fixed (scoreboard auth ×3, spotifyd), Bluetooth contradiction removed |
 | Capture the 7 lighting-scene definitions off the live machine (~20 min, read-only, borrow/restore rules) | owner | scheduled at the owner's pace — the guide's HA §3 carries the marked slot the captured YAML fills |

@@ -485,3 +485,69 @@ Ruled into this vehicle as a bug, not follow-on work. Design:
 - **Close evidence**: both full legs (production pack + toy pack)
   re-run with video genuinely live; the shaky "minimum 5 seconds"
   assertion examined in the same pass.
+
+### 8.1 S5 revision (owner-ruled 2026-09-06, mid-build — supersedes
+the shape above where they differ)
+
+The first S5 build (commits `98960d8`…`7374b17`) landed the
+self-provisioning inside the E2E suite's own helper and COPIED the
+rig's recipes (bus config, dockerd flags, pipewire launch) with
+drift-note comments. Four owner rulings during the build review
+revise the design:
+
+1. **The Bluetooth mock is IN SCOPE now.** Deferring it as "proven
+   but not built" was refused ("the SAME lazy posture as earlier").
+   The rig has no Bluetooth block either (verified: up.sh contains
+   none) — so the arm is built once, in the shared module, and both
+   consumers gain it.
+2. **The copied recipes are extracted BEFORE close, not ledgered.**
+   One shared module under `backend/tests/rung1/`, consumed by
+   `up.sh` through a small CLI (the script already delegates to node
+   for fixtures and onboarding) and by
+   `tests/e2e/setup/session-env.js` as a thin wrapper (per-worker
+   bus naming and env export stay E2E-side; the rig keeps its
+   single bus, null sinks, and engine boot). Rationale, recorded:
+   this code is the floor of every future unit's close gate the
+   moment the train merges; drift between the rig and the suite
+   manufactures FALSE TEST VERDICTS — the exact failure class this
+   stage exists to kill — and the pending HA lifecycle fix would
+   have forked the two copies behaviorally on day one. The
+   discriminator adopted for future calls: defer a DECISION to the
+   block that owns it; never defer mechanical convergence whose cost
+   compounds under everything built on top. (The rung-1 SECURITY
+   posture items — world-writable bus, HA token in /tmp, placeholder
+   media in tree — stay legitimately deferred to Block 2: those need
+   hardening decisions, and waiting does not raise their price.)
+3. **Provisioning is gated by the run's PROFILE, not a flag.** The
+   harness provisions exactly the stand-ins the profile assigns to
+   it (provider fields / witness bindings — the generated
+   simulation profile already carries `provider: "rung1-harness"`);
+   a real profile provisions nothing, so a venue machine cannot be
+   polluted by construction (CONTEXT.md §5b: a simulation IS an
+   ordinary profile whose bindings point at stand-ins — no
+   simulation type-flag, no second source of environment truth).
+   Checking this against the code exposed a live defect the flag
+   design would have hidden: the E2E test-server's profile default
+   falls through to `aln-full-kit.json` — the REAL venue profile,
+   whose lighting bindings name real scene ids the witness HA does
+   not serve — so the flow-30 active path could not have passed
+   even with HA healthy. E2E legs now boot per-pack GENERATED
+   simulation profiles; the witness HA config carries the UNION of
+   both in-repo packs' lighting roles so one HA serves both legs.
+4. **Media seeding rides the same gate**, because on a machine with
+   real media a missing video must surface as the fault it is, never
+   be masked by a 10-second test clip. The HA arm additionally
+   identity-checks an already-running HA before adopting it (adopt
+   only the witness instance; anything else is a loud skip).
+   Remaining line to the resolution work (C track): deriving the
+   provision set per-need from `resolve()` instead of the fixed
+   arms — that, and only that, is future work.
+
+Also in this window: continuity rule 6 (reload required context in
+full after any compaction; `docs/agents/process.md` §2, trigger in
+root CLAUDE.md) — owner-directed after a post-compaction status
+walkthrough restated stale verdicts (`c5c141e`). The S4 audit
+workflow over the model-instability window (`wf_4c63182f-1fa`) was
+KILLED by a container restart before any agent finished — zero
+findings produced; it is re-run as part of this stage's close, and
+no prior claim of its results exists to preserve.
