@@ -215,15 +215,43 @@ function _readDiskManifest() {
  * @returns {Object|null}
  */
 function _readDiskGameConfig() {
+  return _readDiskGameConfigChecked().value;
+}
+
+/**
+ * The distinction-preserving read behind _readDiskGameConfig
+ * (train-review MAJOR 3 / F-P2-1): only ENOENT is the packless
+ * posture. A pack that SHIPS game.json must ship a readable JSON
+ * OBJECT — a parse error, a permission error, or a non-object result
+ * is a `problem` the activation gate REFUSES on, never a silent fall
+ * to the baked legacy shims (which would erase every cue, string,
+ * surface and — on a non-ALN pack — mis-score every token while
+ * /health kept advertising a healthy identity).
+ * @returns {{value: Object|null, problem: string|null}}
+ */
+function _readDiskGameConfigChecked() {
   const gamePath = path.join(getPackDir(), 'game.json');
+  let raw;
   try {
-    return JSON.parse(fs.readFileSync(gamePath, 'utf8'));
+    raw = fs.readFileSync(gamePath, 'utf8');
   } catch (err) {
-    if (err.code !== 'ENOENT') {
-      logger.warn(`game.json unreadable at ${gamePath}: ${err.message}`);
-    }
-    return null;
+    if (err.code === 'ENOENT') return { value: null, problem: null };
+    return { value: null, problem: `game.json unreadable at ${gamePath}: ${err.message}` };
   }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    return {
+      value: null,
+      problem: `game.json is not valid JSON (${err.message}) — fix the file (or delete it to run the packless legacy posture)`,
+    };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    const shape = Array.isArray(parsed) ? 'an array' : parsed === null ? 'null' : `a ${typeof parsed}`;
+    return { value: null, problem: `game.json parses to ${shape} — the rules file must be a JSON object` };
+  }
+  return { value: parsed, problem: null };
 }
 
 /**
@@ -265,10 +293,37 @@ function getSurfaces() {
  * @returns {Object|null}
  */
 function _readPackTokens() {
+  return _readPackTokensChecked().value;
+}
+
+/**
+ * Distinction-preserving tokens.json read (train-review F-P2-2):
+ * absent is legal here (the token loader refuses separately), but a
+ * PRESENT-yet-unparseable tokens.json must be a gate refusal — a null
+ * read silently disables the type- and groups-coverage gates that the
+ * 2b cutover made unconditional.
+ * @returns {{value: Object|null, problem: string|null}}
+ */
+function _readPackTokensChecked() {
+  const tokensPath = path.join(getPackDir(), 'tokens.json');
+  let raw;
   try {
-    return JSON.parse(fs.readFileSync(path.join(getPackDir(), 'tokens.json'), 'utf8'));
-  } catch {
-    return null;
+    raw = fs.readFileSync(tokensPath, 'utf8');
+  } catch (err) {
+    if (err.code === 'ENOENT') return { value: null, problem: null };
+    return { value: null, problem: `tokens.json unreadable at ${tokensPath}: ${err.message}` };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return { value: null, problem: 'tokens.json must parse to a JSON object (tokenId → token)' };
+    }
+    return { value: parsed, problem: null };
+  } catch (err) {
+    return {
+      value: null,
+      problem: `tokens.json is not valid JSON (${err.message}) — the coverage gates cannot run against an unreadable token database`,
+    };
   }
 }
 
@@ -660,15 +715,23 @@ function _compareVersions(a, b) {
  * loud shims.
  * @throws {Error} when the pack requires what this engine lacks
  */
-function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad) {
-  const problems = [];
+function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad, readProblems = []) {
+  // Unreadable-file problems from the activation reads come FIRST
+  // (train-review MAJOR 3 / F-P2-1/2): a pack file that exists but
+  // cannot be read is a refusal, never a silent fall to the shims.
+  const problems = [...readProblems];
 
   if (manifest) {
     if (manifest.schemaVersion !== undefined && manifest.schemaVersion !== PACK_SCHEMA_VERSION) {
       problems.push(`pack-manifest schemaVersion ${manifest.schemaVersion} (engine reads ${PACK_SCHEMA_VERSION})`);
     }
     const minVersion = manifest.engine && manifest.engine.minVersion;
-    if (minVersion && _compareVersions(ENGINE_VERSION, minVersion) < 0) {
+    // Shape first (F-P2-6): _compareVersions reads exactly three numeric
+    // parts — 'abc' compared equal and a 4th part was ignored, so a
+    // malformed constraint silently PASSED the very gate it exists for.
+    if (minVersion !== undefined && minVersion !== null && !/^\d+\.\d+\.\d+$/.test(String(minVersion))) {
+      problems.push(`engine.minVersion '${minVersion}' is not a 3-part semver (major.minor.patch) — the version gate cannot evaluate it`);
+    } else if (minVersion && _compareVersions(ENGINE_VERSION, minVersion) < 0) {
       problems.push(`pack requires engine >= ${minVersion} (this engine is ${ENGINE_VERSION})`);
     }
     // Present-but-undeclared sidecars (theme-unit §4a O3): a role-bearing
@@ -960,6 +1023,12 @@ function _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad) {
     // be in the engine's implemented sets — schema-open, gate-enforced.
     if (Array.isArray(gameConfig.modes)) {
       for (const mode of gameConfig.modes) {
+        // Entry shape first (F-P2-4): a null/non-object entry used to
+        // crash the loop with a raw TypeError instead of a named refusal.
+        if (!mode || typeof mode !== 'object' || Array.isArray(mode)) {
+          problems.push('modes[] contains a non-object entry — every declared mode must be a JSON object');
+          continue;
+        }
         const undrivable = [];
         if (!ENGINE_MODE_CAPS.scoringPolicy.has(mode.scoringPolicy)) {
           undrivable.push(`scoringPolicy '${mode.scoringPolicy}'`);
@@ -1145,7 +1214,10 @@ function _coherenceCheck(gameConfig) {
  */
 function activatePack() {
   const manifest = _readDiskManifest();
-  const gameConfig = _readDiskGameConfig();
+  const gameConfigRead = _readDiskGameConfigChecked();
+  const tokensRead = _readPackTokensChecked();
+  const gameConfig = gameConfigRead.value;
+  const readProblems = [gameConfigRead.problem, tokensRead.problem].filter(Boolean);
   // Read the declared sidecars ONCE (S6 review, F1-sec) and reuse the
   // SAME parsed objects for both the gate and the freeze — the gate's
   // guarantee is meaningless if it validates a different read than the
@@ -1154,7 +1226,7 @@ function activatePack() {
   const cuesLoad = _loadDeclaredCues(gameConfig);
   const stringsLoad = _loadDeclaredStrings(gameConfig);
   const themeLoad = _loadDeclaredTheme(gameConfig);
-  _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad); // throws = boot fails, by design
+  _gateCheck(manifest, gameConfig, cuesLoad, stringsLoad, themeLoad, readProblems); // throws = boot fails, by design
   _coherenceCheck(gameConfig);      // throws = boot fails, by design (D3)
   activeManifest = manifest;
   activeGameConfig = gameConfig;
