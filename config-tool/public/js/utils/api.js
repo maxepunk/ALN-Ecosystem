@@ -30,8 +30,14 @@ async function request(method, path, body) {
   const res = await fetch(`/api${path}`, opts);
   const json = await res.json();
   if (!res.ok) {
-    const err = new Error(json.error || `HTTP ${res.status}`);
+    // Surface the server's details array (train-review F-P5b-4): gate
+    // refusals carry their reasons there — dropping them reduced every
+    // refusal to an unactionable one-liner like "Invalid cues config".
+    const details = Array.isArray(json.details) ? json.details : [];
+    const suffix = details.length ? `: ${details.slice(0, 5).join('; ')}` : '';
+    const err = new Error((json.error || `HTTP ${res.status}`) + suffix);
     err.status = res.status;
+    err.details = details;
     throw err;
   }
   return json;
@@ -155,12 +161,25 @@ export const savePreset = (name, description) => request('POST', '/presets', { n
 export const loadPreset = (filename) => request('PUT', `/presets/${encodeURIComponent(filename)}/load`);
 export const deletePreset = (filename) => request('DELETE', `/presets/${encodeURIComponent(filename)}`);
 
-export function exportPreset(filename) {
-  // Trigger file download
+export async function exportPreset(filename) {
+  // Authorized fetch → blob download (train-review F-P5a-2/F-P5b-1):
+  // a bare <a href> navigation carries no Authorization header, so the
+  // browser downloaded a 401 error body under the preset's name.
+  const res = await fetch(`/api/presets/${encodeURIComponent(filename)}/export`, {
+    headers: (() => {
+      const { token } = appStore.get();
+      return token ? { Authorization: `Bearer ${token}` } : {};
+    })(),
+  });
+  if (!res.ok) {
+    throw new Error(`Preset export failed: HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
   const a = document.createElement('a');
-  a.href = `/api/presets/${encodeURIComponent(filename)}/export`;
+  a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
+  URL.revokeObjectURL(a.href);
 }
 
 export async function importPreset(file) {

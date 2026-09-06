@@ -9,7 +9,10 @@ const {
   validateEnvUpdates,
   validatePresetSections,
   assertValid,
+  ValidationError,
 } = require('./validators');
+const os = require('os');
+const { execFileSync } = require('child_process');
 const { MASK_SENTINEL } = require('./secrets');
 const { writeJsonAtomic } = require('./packFs');
 // A3 slice 4 (D-4.7c): the same pack-internal cue gate packService runs at
@@ -160,6 +163,61 @@ class ConfigManager {
         `Scoring write rolled back: pack-manifest rebuild failed (${err.message}). ` +
         'game.json was restored to its previous state; fix the pack directory and retry.'
       );
+    }
+  }
+
+  /**
+   * Stage the live pack's JSON files, apply the preset's scoring through
+   * the SAME writeScoring merge the live write would use, and run the
+   * engine's activation gate (backend/scripts/validate-pack.js) on the
+   * staged result. Throws ValidationError carrying the gate's verdict
+   * problems when the engine would refuse the post-write pack.
+   * @param {Object} scoringConfig - the preset's scoring section
+   * @param {string} label - preset filename, for the error message
+   */
+  _gatePresetScoring(scoringConfig, label) {
+    const packDir = path.dirname(this.paths.gamePath);
+    const runner = this.paths.gateRunner
+      || path.resolve(__dirname, '../../backend/scripts/validate-pack.js');
+    const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'aln-preset-gate-'));
+    try {
+      for (const entry of fs.readdirSync(packDir, { withFileTypes: true })) {
+        if (entry.isFile() && entry.name.endsWith('.json')) {
+          fs.copyFileSync(path.join(packDir, entry.name), path.join(staging, entry.name));
+        }
+      }
+      // The exact live merge, aimed at staging (same class, same code path)
+      const staged = new this.constructor({
+        ...this.paths,
+        gamePath: path.join(staging, 'game.json'),
+      });
+      staged.writeScoring(scoringConfig);
+
+      let stdout;
+      try {
+        stdout = execFileSync(process.execPath, [runner, staging],
+          { timeout: 60000, maxBuffer: 4 * 1024 * 1024, encoding: 'utf8' });
+      } catch (err) {
+        // Exit 1 = gate refused; the verdict still rides stdout
+        stdout = err.stdout;
+        if (!stdout) {
+          throw new Error(`preset gate runner failed: ${err.message}`);
+        }
+      }
+      let verdict;
+      try {
+        verdict = JSON.parse(String(stdout).trim());
+      } catch {
+        throw new Error('preset gate runner produced no verdict');
+      }
+      if (!verdict.ok) {
+        throw new ValidationError(
+          `Preset "${label}" refused: the engine's activation gate would refuse the pack this load writes`,
+          verdict.problems || []
+        );
+      }
+    } finally {
+      fs.rmSync(staging, { recursive: true, force: true });
     }
   }
 
@@ -363,6 +421,17 @@ class ConfigManager {
     // are pack content, not a preset section (A3 slice 4) — see the write
     // sequence below.
     assertValid(validatePresetSections(preset), `preset "${filename}"`);
+
+    // ENGINE GATE before any write (train-review MAJOR 5 / F-P5a-1):
+    // preset load was the sole remaining un-gated live-pack scoring
+    // writer. Shape validation above cannot see the PACK — a foreign or
+    // stale preset whose type table doesn't cover the pack's tokens
+    // writes a pack the engine refuses to boot, behind a success toast.
+    // Apply the EXACT live merge to a staged copy and run the engine's
+    // own activation gate on it; refuse the load with the gate's own
+    // wording. (Shares the publish pipeline's principle: the engine is
+    // the sole authority on what activates — no rule duplication here.)
+    this._gatePresetScoring(preset.scoringConfig, filename);
 
     // Auto-backup current config before overwriting. Tolerate a corrupt
     // existing config file (skip-with-warning) — preset load is exactly the
