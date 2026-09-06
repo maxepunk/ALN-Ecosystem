@@ -147,22 +147,26 @@ function writePid(pidFile, pid) {
 /**
  * Union of several packs' needs lists, deduplicated by kind + id —
  * one witness Home Assistant serves every pack the machine tests.
+ * SORTED so the union is ORDER-INDEPENDENT: it feeds the witness
+ * register whose content hash decides an HA restart, and the dual-pack
+ * legs pass the packs in opposite order — an insertion-ordered union
+ * made the hash flip per leg and restarted the shared HA mid-run
+ * (measured: the toy lighting flow read an empty scene list during
+ * the restart window on both packs).
  * @param {Array<Array<object>>} needsLists
  * @returns {Array<object>}
  */
 function unionNeeds(needsLists) {
-  const seen = new Set();
-  const union = [];
+  const byKey = new Map();
   for (const list of needsLists) {
     for (const need of list) {
       const key = `${need.kind}:${need.id}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        union.push(need);
-      }
+      if (!byKey.has(key)) byKey.set(key, need);
     }
   }
-  return union;
+  return [...byKey.entries()]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([, need]) => need);
 }
 
 // --------------------------------------------------------------------

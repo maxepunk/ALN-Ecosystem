@@ -145,9 +145,19 @@ describe('unionNeeds (one witness HA for both dual-pack legs)', () => {
     const union = unionNeeds([aln, toy]);
     const roles = union.filter(n => n.kind === 'lighting-role')
       .map(n => n.id);
-    expect(roles).toEqual(['gameplay', 'blackout', 'heist-alarm']);
+    expect(roles).toEqual(['blackout', 'gameplay', 'heist-alarm']);
     expect(union.filter(n => n.kind === 'surface-channel'))
       .toHaveLength(1);
+  });
+
+  it('is ORDER-INDEPENDENT: same packs in any order, identical output ' +
+     '(the union feeds the witness register whose content hash decides ' +
+     'an HA RESTART — the two legs pass packs in opposite order, and an ' +
+     'order-sensitive union restarted the shared HA mid-leg, failing ' +
+     'the toy lighting flow on both packs)', () => {
+    const a = [{ kind: 'lighting-role', id: 'x' }, { kind: 'sound', id: 's.wav' }];
+    const b = [{ kind: 'lighting-role', id: 'y' }];
+    expect(unionNeeds([a, b])).toEqual(unionNeeds([b, a]));
   });
 
   it('keeps kinds apart — same id under different kinds is two needs', () => {
