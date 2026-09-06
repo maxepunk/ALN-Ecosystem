@@ -300,6 +300,25 @@ test.describe('Player Scanner Networked Scanning', () => {
   // TEST: Video Alert Feature (NeurAI Branding)
   // ========================================
 
+  /**
+   * Wait until the orchestrator's video queue is clear to accept a new
+   * video. The two video-alert tests scan the SAME token against ONE
+   * long-lived orchestrator; with real VLC the first test starts a ~10s
+   * playback, and a scan during it is answered status:'rejected'
+   * (video_busy) — the toast, not the alert. That coupling made the
+   * second test fail first-attempt and pass only on the Playwright
+   * retry (a fresh worker where test 1 never ran) — booked at the S4
+   * close as a timing flake; the model-window audit proved it was this
+   * deterministic ordering defect (fix-vehicle S5 §8.1 fold).
+   */
+  async function waitForOrchestratorVideoIdle(timeoutMs = 20000) {
+    await expect(async () => {
+      const res = await httpClient.get('/api/state', { timeout: 3000 });
+      const status = res.data?.videoStatus?.status;
+      expect(status !== 'playing' && status !== 'loading').toBe(true);
+    }).toPass({ timeout: timeoutMs });
+  }
+
   test('video token triggers video alert with NeurAI branding', async () => {
     // The alert is shown ONLY when the orchestrator actually queues the
     // video: videoQueueService.canAcceptVideo() refuses with reason
@@ -323,6 +342,9 @@ test.describe('Player Scanner Networked Scanning', () => {
 
     const videoTokenId = testTokens.videoToken.SF_RFID;
     console.log(`Testing video token (${videoTokenId})...`);
+
+    // Decouple from any still-playing video (see helper above)
+    await waitForOrchestratorVideoIdle();
 
     // Scan video token
     await scanner.simulateScan(videoTokenId);
@@ -356,6 +378,9 @@ test.describe('Player Scanner Networked Scanning', () => {
     await scanner.gotoNetworked(orchestratorInfo.url);
 
     const videoTokenId = testTokens.videoToken.SF_RFID;
+
+    // Decouple from any still-playing video (see helper above)
+    await waitForOrchestratorVideoIdle();
 
     // Scan video token
     await scanner.simulateScan(videoTokenId);

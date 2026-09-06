@@ -81,6 +81,15 @@ async function startVLCIfNeeded() {
     if (asRoot) {
       // Root host: VLC refuses root. Ensure the dedicated user exists,
       // make the bus socket reachable cross-user, spawn through runuser.
+      // A missing cvlc must fast-fail HERE: runuser itself always
+      // spawns fine, so the ENOENT 'error' handler below never fires
+      // on this branch and a cvlc-less host would otherwise pay the
+      // full 10s readiness timeout in every flow file (audit fold).
+      try { execFileSync('which', ['cvlc'], { stdio: 'pipe' }); }
+      catch {
+        logger.warn('VLC spawn skipped: cvlc not installed on this host');
+        return false;
+      }
       try { execFileSync('id', [VLC_USER], { stdio: 'pipe' }); }
       catch { try { execFileSync('useradd', ['-m', VLC_USER], { stdio: 'pipe' }); } catch { /* exists or uncreatable — spawn will tell */ } }
       vlcProcess = spawn('runuser', ['-u', VLC_USER, '--', 'cvlc', ...vlcArgs], {

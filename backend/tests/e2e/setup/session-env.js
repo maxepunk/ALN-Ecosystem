@@ -55,14 +55,24 @@ const E2E_DISPLAY = ':99'; // converged with the rig — X is multi-client
 function ensureSessionEnv() {
   const result = { bus: false, display: false };
 
+  // Ambient-first holds ONLY for worker 0: on a host with a live
+  // session bus, letting every parallel worker adopt it recreates the
+  // shared-VLC-singleton contention the per-worker buses exist to
+  // prevent (model-window audit: the bypass was silent and total on
+  // any bus-having host). Worker 0 keeps the ambient bus — the
+  // single-worker hardware/dev posture unchanged; workers 1+ always
+  // get their own socket. Each branch logs itself.
   const existing = process.env.DBUS_SESSION_BUS_ADDRESS;
-  if (existing && provision.busAlive(existing)) {
+  const isParallelWorker = Number(WORKER_SLOT) > 0;
+  if (!isParallelWorker && existing && provision.busAlive(existing)) {
+    logger.info('[e2e-env] worker 0 using the ambient session bus', { existing });
     result.bus = true;
   } else {
     const address = provision.ensureBus({ socketPath: WORKER_BUS_SOCKET });
     if (address) {
       process.env.DBUS_SESSION_BUS_ADDRESS = address;
       result.bus = true;
+      logger.info('[e2e-env] worker bus active', { worker: WORKER_SLOT, address });
     } else {
       logger.warn('[e2e-env] no session bus — video tests will skip loudly');
     }

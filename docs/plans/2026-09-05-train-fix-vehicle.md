@@ -383,7 +383,10 @@ pre-existing, not fix-caused). Dispositions:
 **Lint-backlog extension of the owner's ruling (2026-09-06,
 "pre-existing is not a verdict", second application):** the scanner's
 48-warning backlog was cleaned in the same window (scanner `bc81541`):
-35 unused-vars fixed (two were latent test smells now made honest —
+39 unused-vars fixed (count corrected 2026-09-06 by the model-window
+audit against the captured baseline: 39, not the 35 first recorded;
+the tally 39+3+3+2+1 = 48 now reconciles; two were latent test
+smells now made honest —
 an unasserted listener flag and MusicRenderer's never-checked
 same-node claim), 3 deliberate control-regex strips kept behind
 line-level disables with reasons, 3 environment globals declared
@@ -418,7 +421,10 @@ challenge corrected two wrong verdicts I had recorded on the way
   the CURRENT USER (root — VLC refuses, silently) against a session
   bus that does not exist. Every E2E run in this container has had
   VLC down for that reason alone.
-- The 07d-03 held-item failures (2): run-gate accepted
+- The 07d-03 held-item failures (4 of the 8 — 2 per pack leg, both
+  browsers; count corrected 2026-09-06 by the model-window audit: the
+  first record said "(2)", leaving 2 of the 8 unaccounted and hiding
+  that the defect reproduced identically on both packs): run-gate accepted
   sound-OR-lighting down while the body fires only a SOUND-dependent
   cue; when pw-play's install flipped sound healthy, the test ran,
   fired nothing, and timed out. Its file was byte-identical to base.
@@ -439,8 +445,16 @@ started: real mode` for the first time: 39 passed / 0 failed /
 4 loud skips / 1 flaky. The video-alert flow EXECUTED and PASSED on
 both browsers (first genuine coverage of that user flow in E2E);
 the held-item test skipped loudly (sound healthy — correct).
-Flaky note (do not ignore): 21:346 "minimum 5 seconds" needed a
-retry on chromium — a timing-sensitive visibility assertion.
+Flaky note — SUPERSEDED 2026-09-06 (the "do not ignore" was right,
+the diagnosis wrong): 21:346 "minimum 5 seconds" needed a retry on
+chromium, first booked as a timing-sensitive visibility assertion.
+The model-window audit proved a DETERMINISTIC ordering defect: both
+video-alert tests scan the same token against one orchestrator, the
+first starts a ~10s playback, the second's scan lands video_busy →
+status:'rejected' → the toast, not the alert; only the Playwright
+retry (a fresh worker where test 1 never ran) passed. Fixed in the
+S5 fold: both tests wait for the orchestrator's video to go idle
+before scanning.
 
 **Open item needing an owner scope ruling:** E2E × rung-1
 unification — teaching the E2E suite (or its CI job) to bring up /
