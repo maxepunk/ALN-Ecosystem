@@ -27,7 +27,18 @@ const path = require('path');
 const logger = require('../../../src/utils/logger');
 
 const ENV_DIR = '/tmp/aln-e2e-env';
-const BUS_SOCKET = path.join(ENV_DIR, 'dbus.sock');
+// One bus PER PLAYWRIGHT WORKER, not one shared bus. VLC's MPRIS name
+// (org.mpris.MediaPlayer2.vlc) is a singleton per bus, so a shared bus
+// makes every concurrently-running test file share ONE real VLC — the
+// first full dual-pack run under workers=3 showed 25 files adopting one
+// player and stomping each other's playback (now-showing stuck on
+// "Idle Loop", compound cues never turning active). Keying the socket
+// by the worker slot gives each worker its own bus + its own VLC; the
+// orchestrators that worker spawns inherit the address. The slot index
+// is stable and bounded (0..workers-1), so daemons are reused across
+// runs instead of accumulating. Xvfb stays shared — X is multi-client.
+const WORKER_SLOT = process.env.TEST_PARALLEL_INDEX || '0';
+const BUS_SOCKET = path.join(ENV_DIR, `dbus-w${WORKER_SLOT}.sock`);
 const E2E_DISPLAY = ':97';
 
 /** Is a session bus at `address` alive? */
@@ -85,7 +96,7 @@ function ensureSessionEnv() {
     } else {
       try {
         fs.mkdirSync(ENV_DIR, { recursive: true });
-        const confPath = path.join(ENV_DIR, 'dbus-e2e.conf');
+        const confPath = path.join(ENV_DIR, `dbus-e2e-w${WORKER_SLOT}.conf`);
         // The rung-1 permissive session-bus config (up.sh): any user may
         // own names and talk — that is what lets a root orchestrator
         // drive a non-root user's VLC over one bus.
