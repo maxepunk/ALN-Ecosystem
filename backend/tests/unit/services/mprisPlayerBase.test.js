@@ -403,6 +403,49 @@ describe('MprisPlayerBase', () => {
       expect(playbackSpy).toHaveBeenCalledWith({ state: 'playing' });
       expect(volumeSpy).toHaveBeenCalledWith({ volume: 75 });
     });
+
+    it('must NEVER merge across a PlaybackStatus transition — a short ' +
+       "video's whole lifecycle can arrive clumped (fix-vehicle S5 " +
+       '§8.1: Playing+Stopped merged last-write-wins, so the engine ' +
+       'never saw "playing" for a 2-second file and every load-wait ' +
+       'timed out)', () => {
+      const player = createTestPlayer();
+      const playbackSpy = jest.fn();
+      player.on('playback:changed', playbackSpy);
+
+      player.startPlaybackMonitor();
+      const proc = spawn.mock.results[0].value;
+
+      const statusSignal = (serial, status) => [
+        `signal time=1234 sender=:1.42 -> destination=(null destination) serial=${serial} path=/org/mpris/MediaPlayer2; interface=org.freedesktop.DBus.Properties; member=PropertiesChanged`,
+        '   string "org.mpris.MediaPlayer2.Player"',
+        '   array [',
+        '      dict entry(',
+        '         string "PlaybackStatus"',
+        `         variant             string "${status}"`,
+        '      )',
+        '   ]',
+      ];
+
+      // Playing and Stopped arrive within ONE debounce window (clumped
+      // delivery — buffered dbus-monitor stdout).
+      for (const line of statusSignal(100, 'Playing')) {
+        proc.stdout.emit('data', line + '\n');
+      }
+      for (const line of statusSignal(101, 'Stopped')) {
+        proc.stdout.emit('data', line + '\n');
+      }
+      proc.stdout.emit('data', 'signal time=9999 sender=:1.42 -> destination=(null destination) serial=102 path=/other; interface=other; member=Other\n');
+
+      // The transition flushes 'playing' IMMEDIATELY (no timer needed)…
+      expect(playbackSpy).toHaveBeenCalledWith({ state: 'playing' });
+
+      // …and the debounce then delivers 'stopped' as its own change.
+      jest.advanceTimersByTime(60);
+      expect(playbackSpy).toHaveBeenCalledWith({ state: 'stopped' });
+      const states = playbackSpy.mock.calls.map(c => c[0].state);
+      expect(states).toEqual(['playing', 'stopped']);
+    });
   });
 
   describe('checkConnection()', () => {

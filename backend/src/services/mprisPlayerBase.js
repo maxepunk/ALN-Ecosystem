@@ -264,6 +264,27 @@ class MprisPlayerBase extends EventEmitter {
       return;
     }
 
+    // A PlaybackStatus TRANSITION must never be merged away: the merge
+    // below is last-write-wins, so when a short video's whole lifecycle
+    // arrives clumped (buffered dbus-monitor delivery), Playing+Stopped
+    // collapsed into one "stopped" change and the engine never saw
+    // "playing" — every load-wait timed out (fix-vehicle S5 §8.1,
+    // reproduced with a 2-second file). Flush the pending window NOW,
+    // then let this signal open a fresh one.
+    if (this._pendingSignal &&
+        signal.properties &&
+        'PlaybackStatus' in signal.properties &&
+        'PlaybackStatus' in this._pendingSignal.properties &&
+        this._pendingSignal.properties.PlaybackStatus !== signal.properties.PlaybackStatus) {
+      if (this._signalDebounceTimer) {
+        clearTimeout(this._signalDebounceTimer);
+        this._signalDebounceTimer = null;
+      }
+      const flushed = this._pendingSignal;
+      this._pendingSignal = null;
+      this._processStateChange(flushed);
+    }
+
     if (!this._pendingSignal) {
       this._pendingSignal = { properties: {}, raw: '' };
     }

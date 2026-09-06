@@ -105,11 +105,27 @@ for (const { pack, tokens, needs } of loaded) {
       console.log(`idle-loop placeholder: ${path.basename(dst)}`);
     }
   }
-  // Token-declared videos (player-scan trigger path): real filenames the
-  // pack expects, placeholder pixels — fake physics, real resolution.
-  const tokenVideos = [...new Set(
-    Object.values(tokens).map(t => t.video).filter(Boolean)
-  )];
+  // Token-declared videos (player-scan trigger path) AND cue-referenced
+  // videos (video:queue:add payloads — the compound-cue path and the
+  // pre-show resource check both need the file to exist): real
+  // filenames the pack expects, placeholder pixels — fake physics,
+  // real resolution. Cue videos are walked structurally so both cue
+  // shapes (timeline entries and flat commands) are covered. NOTE: the
+  // needs collector has no video kind yet — when the resolution work
+  // adds one, derive this from collectPackNeeds instead.
+  const cueVideos = [];
+  JSON.stringify(pack.cues, (key, value) => {
+    if (value && typeof value === 'object'
+        && value.action === 'video:queue:add'
+        && value.payload && value.payload.videoFile) {
+      cueVideos.push(value.payload.videoFile);
+    }
+    return value;
+  });
+  const tokenVideos = [...new Set([
+    ...Object.values(tokens).map(t => t.video).filter(Boolean),
+    ...cueVideos,
+  ])];
   const seeded = [];
   for (const v of tokenVideos) {
     const dst = path.join(BACKEND, 'public/videos', v);
