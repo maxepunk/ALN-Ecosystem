@@ -87,14 +87,56 @@ async function main() {
     }
   }
 
+  // Long-lived token (the engine's expected credential shape — backend
+  // CLAUDE.md: HOME_ASSISTANT_TOKEN is a "Long-lived HA access token").
+  // The login-flow access token above expires in ~30 minutes, which is
+  // shorter than a full Tier-L E2E leg; HA mints long-lived tokens only
+  // over its websocket API. Best-effort: on failure the short token is
+  // still written and short consumers (the rig audit) keep working.
+  let longLived = null;
+  try {
+    longLived = await mintLongLived(tokens.access_token);
+    console.log('long-lived token minted');
+  } catch (e) {
+    console.error(`long-lived token mint failed (continuing): ${e.message}`);
+  }
+
   fs.writeFileSync(
     path.join(rung1Dir, 'ha-auth.json'),
     JSON.stringify({
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
+      ...(longLived ? { long_lived_token: longLived } : {}),
     }, null, 2) + '\n'
   );
   console.log('ha-auth.json written');
+}
+
+function mintLongLived(accessToken) {
+  // eslint-disable-next-line global-require
+  const WebSocket = require('ws'); // backend dependency (lightingService uses it)
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(BASE.replace('http', 'ws') + '/api/websocket');
+    const timer = setTimeout(() => { ws.close(); reject(new Error('ws timeout')); }, 15000);
+    const msgId = 1;
+    ws.on('message', (d) => {
+      let m;
+      try { m = JSON.parse(d); } catch { return; }
+      if (m.type === 'auth_required') {
+        ws.send(JSON.stringify({ type: 'auth', access_token: accessToken }));
+      } else if (m.type === 'auth_ok') {
+        ws.send(JSON.stringify({
+          id: msgId, type: 'auth/long_lived_access_token',
+          client_name: 'rung1-harness', lifespan: 3650,
+        }));
+      } else if (m.type === 'result' && m.id === msgId) {
+        clearTimeout(timer); ws.close();
+        if (m.success) resolve(m.result);
+        else reject(new Error(JSON.stringify(m.error)));
+      }
+    });
+    ws.on('error', (e) => { clearTimeout(timer); reject(e); });
+  });
 }
 
 main().catch((e) => { console.error(e.message); process.exit(1); });

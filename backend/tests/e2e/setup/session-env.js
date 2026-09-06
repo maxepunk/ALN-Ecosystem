@@ -27,6 +27,13 @@ const path = require('path');
 const logger = require('../../../src/utils/logger');
 
 const ENV_DIR = '/tmp/aln-e2e-env';
+// The HA/pipewire arms share /tmp/rung1 with the rung-1 rig ON PURPOSE:
+// one Home Assistant and one pipewire per machine (the rig's up.sh is
+// idempotent against the same paths, so neither system fights the other,
+// and HA's onboarded state persists across runs in rung1/ha-config).
+const RUNG1_DIR = '/tmp/rung1';
+const HA_URL = 'http://127.0.0.1:8123';
+const VLC_USER = 'rung1vlc';
 // One bus PER PLAYWRIGHT WORKER, not one shared bus. VLC's MPRIS name
 // (org.mpris.MediaPlayer2.vlc) is a singleton per bus, so a shared bus
 // makes every concurrently-running test file share ONE real VLC — the
@@ -212,4 +219,151 @@ function seedVideoFixtures(packDir) {
   return seeded;
 }
 
-module.exports = { ensureSessionEnv, seedVideoFixtures };
+/**
+ * Ensure pipewire (with pipewire-pulse) is serving, so the engine's
+ * audio routing (pactl) is REAL — the rung-1 posture. Runs the daemons
+ * as the dedicated non-root user when the suite is root (up.sh recipe,
+ * shared XDG_RUNTIME_DIR under /tmp/rung1 so the rig and the suite use
+ * ONE pipewire); exports PULSE_SERVER so root-run orchestrators reach
+ * the user-owned socket. Never throws — a host without pipewire keeps
+ * today's behavior (audio reports down, gates skip loudly).
+ */
+function ensurePipewire() {
+  const xdg = path.join(RUNG1_DIR, 'xdg');
+  const pulseSock = path.join(xdg, 'pulse', 'native');
+  const asRoot = typeof process.getuid === 'function' && process.getuid() === 0;
+  const probeEnv = { ...process.env, PULSE_SERVER: `unix:${pulseSock}`, XDG_RUNTIME_DIR: xdg };
+  const alive = () => {
+    try { execFileSync('pactl', ['info'], { timeout: 3000, stdio: 'pipe', env: probeEnv }); return true; }
+    catch { return false; }
+  };
+  try {
+    if (!alive()) {
+      fs.mkdirSync(xdg, { recursive: true });
+      if (asRoot) {
+        try { execFileSync('id', [VLC_USER], { stdio: 'pipe' }); }
+        catch { try { execFileSync('useradd', ['-m', VLC_USER], { stdio: 'pipe' }); } catch { /* spawn will tell */ } }
+        execFileSync('chown', ['-R', VLC_USER, xdg], { stdio: 'pipe' });
+      }
+      const daemonEnv = {
+        ...process.env, XDG_RUNTIME_DIR: xdg,
+        DBUS_SESSION_BUS_ADDRESS: process.env.DBUS_SESSION_BUS_ADDRESS || '',
+      };
+      const launch = (cmd) => {
+        const argv = asRoot
+          ? ['runuser', ['-u', VLC_USER, '--', 'env', `XDG_RUNTIME_DIR=${xdg}`, cmd]]
+          : [cmd, []];
+        const proc = spawn(argv[0], argv[1], { detached: true, stdio: 'ignore', env: daemonEnv });
+        proc.on('error', (e) => logger.warn(`[e2e-env] ${cmd} spawn failed`, { error: e.message }));
+        proc.unref();
+      };
+      launch('pipewire');
+      launch('wireplumber');
+      launch('pipewire-pulse');
+      const deadline = Date.now() + 8000;
+      while (Date.now() < deadline && !alive()) execFileSync('sleep', ['0.3']);
+    }
+    if (alive()) {
+      process.env.PULSE_SERVER = `unix:${pulseSock}`;
+      logger.info('[e2e-env] pipewire OK', { socket: pulseSock });
+      return true;
+    }
+    logger.warn('[e2e-env] pipewire did not come up — audio stays down (loud skips)');
+  } catch (err) {
+    logger.warn('[e2e-env] pipewire setup failed', { error: err.message });
+  }
+  return false;
+}
+
+let _haMemo; // per-process: probe once, reuse for every orchestrator start
+
+/**
+ * Ensure Home Assistant is up and return its credentials — the rung-1
+ * lighting arm (measured working in this container:
+ * docs/plans/2026-09-04-rung1-capability-research.md). Reuses the rig's
+ * own pieces end to end: the persisted /tmp/rung1/ha-config (witness
+ * scenes generated from the pack), the rung1-ha container, and
+ * tests/rung1/onboard-ha.js (now minting a long-lived token — the
+ * engine's expected credential shape). Never throws: a host that cannot
+ * run docker/HA returns null and lighting stays down with loud skips.
+ *
+ * @param {string} packDir - pack whose witness fixtures seed a FIRST
+ *   bring-up (ignored when ha-config already exists)
+ * @returns {Promise<{url: string, token: string}|null>}
+ */
+async function ensureHA(packDir) {
+  if (_haMemo !== undefined) return _haMemo;
+  const backend = path.resolve(__dirname, '../../..');
+  const authPath = path.join(RUNG1_DIR, 'ha-auth.json');
+  const ready = async () => {
+    try { const r = await fetch(`${HA_URL}/auth/providers`, { signal: AbortSignal.timeout(3000) }); return r.ok; }
+    catch { return false; }
+  };
+  const tokenValid = async (tok) => {
+    try {
+      const r = await fetch(`${HA_URL}/api/`, {
+        headers: { Authorization: `Bearer ${tok}` }, signal: AbortSignal.timeout(3000),
+      });
+      return r.ok;
+    } catch { return false; }
+  };
+  try {
+    if (!(await ready())) {
+      // dockerd (the measured container flags)
+      try { execFileSync('docker', ['info'], { stdio: 'pipe', timeout: 5000 }); }
+      catch {
+        fs.mkdirSync(ENV_DIR, { recursive: true });
+        const d = spawn('dockerd', ['--iptables=false', '--bridge=none', '--storage-driver=vfs'], {
+          detached: true, stdio: ['ignore',
+            fs.openSync(path.join(ENV_DIR, 'dockerd.log'), 'a'),
+            fs.openSync(path.join(ENV_DIR, 'dockerd.log'), 'a')],
+        });
+        d.on('error', (e) => logger.warn('[e2e-env] dockerd spawn failed', { error: e.message }));
+        d.unref();
+        const dl = Date.now() + 30000;
+        for (;;) {
+          try { execFileSync('docker', ['info'], { stdio: 'pipe', timeout: 5000 }); break; }
+          catch { if (Date.now() > dl) throw new Error('dockerd did not come up'); execFileSync('sleep', ['2']); }
+        }
+      }
+      // first bring-up on a fresh machine: the rig's own fixture generator
+      if (!fs.existsSync(path.join(RUNG1_DIR, 'ha-config', 'configuration.yaml'))) {
+        execFileSync(process.execPath,
+          [path.join(backend, 'tests/rung1/generate-fixtures.js'), packDir, RUNG1_DIR],
+          { stdio: 'pipe', timeout: 60000 });
+      }
+      const names = execFileSync('docker', ['ps', '--format', '{{.Names}}'], { timeout: 10000 }).toString();
+      if (!names.split('\n').includes('rung1-ha')) {
+        try { execFileSync('docker', ['rm', '-f', 'rung1-ha'], { stdio: 'pipe', timeout: 20000 }); } catch { /* absent */ }
+        execFileSync('docker', ['run', '-d', '--name', 'rung1-ha', '--network=host',
+          '-v', `${path.join(RUNG1_DIR, 'ha-config')}:/config`,
+          'ghcr.io/home-assistant/home-assistant:stable'], { stdio: 'pipe', timeout: 300000 });
+      }
+      const dl = Date.now() + 180000;
+      while (!(await ready())) {
+        if (Date.now() > dl) throw new Error('HA did not become ready');
+        await new Promise((r) => setTimeout(r, 3000));
+      }
+    }
+    // credentials: reuse a still-valid long-lived token, else (re)onboard
+    let token = null;
+    if (fs.existsSync(authPath)) {
+      const auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+      if (auth.long_lived_token && await tokenValid(auth.long_lived_token)) token = auth.long_lived_token;
+    }
+    if (!token) {
+      execFileSync(process.execPath, [path.join(backend, 'tests/rung1/onboard-ha.js'), RUNG1_DIR],
+        { stdio: 'pipe', timeout: 90000 });
+      const auth = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+      token = auth.long_lived_token || auth.access_token;
+    }
+    _haMemo = { url: HA_URL, token };
+    logger.info('[e2e-env] Home Assistant OK (lighting arm live)');
+  } catch (err) {
+    logger.warn('[e2e-env] HA arm unavailable — lighting stays down (loud skips)', { error: err.message });
+    _haMemo = null;
+  }
+  return _haMemo;
+}
+
+module.exports = { ensureSessionEnv, ensurePipewire, ensureHA, seedVideoFixtures };

@@ -191,6 +191,22 @@ async function startOrchestrator(options = {}) {
     await clearSessionData();
   }
 
+  // The rung-1 stack (fix-vehicle S5, extended on the owner's ruling that
+  // the E2E suite must run the real software this environment can run):
+  // session bus + display + pipewire self-provision synchronously and
+  // export into process.env (inherited by the spawn below); Home
+  // Assistant comes up once per machine and hands back the engine's
+  // long-lived token so LIGHTING is a real, healthy stack service in
+  // every flow — not a permanently-down one. Each arm degrades to loud
+  // skips on hosts that genuinely cannot run it.
+  const { ensureSessionEnv, ensurePipewire, ensureHA } = require('./session-env');
+  ensureSessionEnv();
+  ensurePipewire();
+  const packDirAbs = packPath
+    ? path.resolve(__dirname, '../../..', packPath)
+    : path.resolve(__dirname, '../../../../ALN-TokenData');
+  const ha = await ensureHA(packDirAbs);
+
   // Update test environment
   const env = {
     ...process.env,
@@ -200,7 +216,15 @@ async function startOrchestrator(options = {}) {
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
     ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD,  // Explicitly override to prevent .env contamination
     ...(packPath ? { PACK_PATH: packPath } : {}),
-    ...(profilePath ? { PROFILE_PATH: profilePath } : {})
+    ...(profilePath ? { PROFILE_PATH: profilePath } : {}),
+    ...(ha ? {
+      HOME_ASSISTANT_URL: ha.url,
+      HOME_ASSISTANT_TOKEN: ha.token,
+      LIGHTING_ENABLED: 'true',
+      // 25+ per-flow orchestrators share ONE machine-level HA container;
+      // none of them may manage its docker lifecycle.
+      HA_DOCKER_MANAGE: 'false',
+    } : {})
   };
 
   // Path to server entry point
