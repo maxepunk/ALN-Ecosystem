@@ -30,7 +30,7 @@ Not wired in, because the PHASE3-STATUS and slice-train system already
 covers their jobs (available on request): `to-tickets`, `to-spec`,
 `triage`, `wayfinder`, `ask-matt`, `teach`, `grill-me`.
 
-## 2. Sessions, compaction, and continuity (five rules)
+## 2. Sessions, compaction, and continuity (six rules)
 
 The working reality: this is one long-running remote session. When the
 conversation grows too large, the harness replaces the history with a
@@ -40,7 +40,7 @@ erases `/tmp`.
 
 What survives all of this is the paper trail: design documents with
 execution records, PHASE3-STATUS rows, and pushed commits. The paper
-trail, not the compaction summary, is the continuity system. The five
+trail, not the compaction summary, is the continuity system. The six
 rules:
 
 1. **The stage is the unit.** A stage ends with all tests green, the
@@ -71,6 +71,18 @@ rules:
 5. **Write for the cold agent.** The test for every execution record:
    a fresh agent, given only this record and the repo, could continue
    the work.
+6. **Reload before resuming (owner-directed 2026-09-06).** The
+   compaction summary is a pointer to the paper trail, not a working
+   context. After any compaction or container restart, and before the
+   first change to any file: read this file, the root `CONTEXT.md`,
+   `docs/plans/CURRENT-STATE.md`, and the active unit's design
+   document with its execution record, in full. Read the component
+   `CLAUDE.md` for each area the work will touch. Then check the
+   summary's claims against the repository (`git status`, `git log`,
+   the records) before acting on them. This rule exists because
+   resuming from the summary alone has caused real errors: stale
+   verdicts restated as current, and invented vocabulary in place of
+   the project's own terms.
 
 ## 3. Workflow-prompt standards
 
