@@ -451,3 +451,37 @@ flight); candidate homes: the C-track close, a dedicated unit after
 this vehicle, or fold into this vehicle. Until ruled, the vehicle's
 E2E posture equals every prior close's (capability-gated legs), now
 with loud skips instead of silent vacuous passes.
+
+## 8. S5 — the E2E suite learns the rung-1 environment (owner-ruled 2026-09-06: "a faulty E2E suite IS a bug")
+
+The end-to-end suite's video support predates the environment ladder
+and cannot start VLC where the suite runs as root or where no D-Bus
+session bus exists — which silently disabled every video test in this
+container and (via a missing fixture file) let them pass vacuously.
+Ruled into this vehicle as a bug, not follow-on work. Design:
+
+- **One new helper, `tests/e2e/setup/session-env.js`** —
+  `ensureSessionEnv()`, idempotent: (a) if no live session bus,
+  start a private dbus-daemon with the permissive cross-user config
+  (verbatim from the measured recipe in
+  `2026-09-04-rung1-capability-research.md` / `tests/rung1/up.sh`)
+  and export its address; (b) if no live X display, start Xvfb (the
+  rig's finding: without a real X server every VLC item lands
+  `stopped` and completion events never fire).
+- **`vlc-service.js` spawns VLC as a dedicated non-root user when
+  the suite runs as root** (VLC refuses root — the research doc's
+  measured fact), same user convention as the rig (`rung1vlc`), and
+  adds `--control dbus` (the proven MPRIS flag). Non-root callers
+  keep the current direct spawn.
+- **Video fixtures become self-seeding**: before a run, every video
+  file the pack's tokens name is seeded from the committed
+  `test_10sec.mp4` sample when missing — mirroring the rig's
+  `generate-fixtures.js` token-video block (cited; drift note).
+  This kills the vacuous-pass mechanism at its root: the fixture
+  can no longer be silently absent.
+- **CI**: the end-to-end workflow gets the same packages the rig's
+  workflow installs where missing; where the environment still
+  can't run VLC, the S4 capability gates skip loudly.
+- **Close evidence**: both full legs (production pack + toy pack)
+  re-run with video genuinely live; the shaky "minimum 5 seconds"
+  assertion examined in the same pass.
