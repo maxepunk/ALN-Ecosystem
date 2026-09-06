@@ -89,6 +89,13 @@ const config = {
   // Feature Flags
   features: {
     videoPlayback: process.env.ENABLE_VIDEO_PLAYBACK !== 'false', // default true
+    // HOW the VLC process is supervised is HOST configuration
+    // (CONTEXT.md §4, Supervisor). Default: the engine self-hosts VLC
+    // via ProcessMonitor (the production posture). 'false' = an
+    // external supervisor owns the VLC process (the rung-1 E2E
+    // harness): the engine adopts whatever owns the MPRIS name and
+    // never spawns its own.
+    vlcSelfSpawn: process.env.VLC_SELF_SPAWN !== 'false', // default true
     adminPanel: process.env.ENABLE_ADMIN_PANEL !== 'false', // default true
     debugging: process.env.ENABLE_DEBUGGING === 'true',
   },

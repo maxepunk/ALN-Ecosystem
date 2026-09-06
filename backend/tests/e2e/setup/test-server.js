@@ -79,6 +79,12 @@ const TEST_ENV = {
   PORT: process.env.TEST_PORT || '3000',
   HOST: '0.0.0.0',
   ENABLE_VIDEO_PLAYBACK: 'true',
+  // The HARNESS supervises VLC (vlc-service.js spawns it as the
+  // dedicated non-root user — root orchestrators cannot host VLC).
+  // Without this, every orchestrator's own VLC dies-and-respawns on a
+  // 3s loop and each exit resets the engine's MPRIS state — wiping
+  // "playing" while the harness's player is healthy (S5 §8.1).
+  VLC_SELF_SPAWN: 'false',
   ADMIN_PASSWORD: process.env.TEST_ADMIN_PASSWORD || '@LN-c0nn3ct',
   LOG_LEVEL: 'warn', // Reduce noise in test output
   ENABLE_HTTPS: process.env.TEST_HTTPS || 'false',

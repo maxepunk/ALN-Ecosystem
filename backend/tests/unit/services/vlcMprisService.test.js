@@ -125,6 +125,63 @@ describe('VlcMprisService', () => {
     });
   });
 
+  // ── Init: externally supervised VLC (VLC_SELF_SPAWN=false) ──
+  //
+  // Supervisor doctrine (CONTEXT.md §4): HOW a service restarts is HOST
+  // configuration. The rung-1 E2E harness owns the VLC process (root
+  // orchestrators cannot host VLC — it refuses root), so the engine
+  // must ADOPT the external player instead of spawning its own. The
+  // regression this pins (fix-vehicle S5 §8.1): the engine's own
+  // root-spawned VLC died every 3s and each death reset _ownerBusName
+  // and connected state — wiping the reactive state machine while the
+  // HARNESS's healthy VLC was playing, so the engine never saw
+  // "playing" and every compound-cue video timed out.
+  describe('init with externally supervised VLC (VLC_SELF_SPAWN=false)', () => {
+    let externalSvc;
+
+    beforeEach(() => {
+      process.env.VLC_SELF_SPAWN = 'false';
+      jest.resetModules();
+      const cp = require('child_process');
+      spawn = cp.spawn;
+      spawn.mockImplementation(() => createMockSpawnProc());
+      externalSvc = require('../../../src/services/vlcMprisService');
+      externalSvc.reset();
+      externalSvc._waitForVlcReady = jest.fn().mockResolvedValue(true);
+      externalSvc._resolveOwner = jest.fn().mockResolvedValue(undefined);
+      externalSvc._getHwAccelArgs = jest.fn().mockReturnValue([]);
+    });
+
+    afterEach(() => {
+      delete process.env.VLC_SELF_SPAWN;
+      externalSvc.cleanup();
+      jest.resetModules();
+    });
+
+    it('adopts the external player: no cvlc spawn, no process monitor', async () => {
+      await externalSvc.init();
+      expect(spawn).not.toHaveBeenCalledWith(
+        'cvlc', expect.any(Array), expect.any(Object)
+      );
+      expect(externalSvc._vlcProcessMonitor).toBeNull();
+    });
+
+    it('still starts the D-Bus playback monitor and waits for readiness', async () => {
+      await externalSvc.init();
+      expect(spawn).toHaveBeenCalledWith(
+        'dbus-monitor',
+        expect.arrayContaining(['--session', '--monitor']),
+        expect.any(Object)
+      );
+      expect(externalSvc._waitForVlcReady).toHaveBeenCalled();
+    });
+
+    it('cleanup tolerates the absent process monitor', async () => {
+      await externalSvc.init();
+      expect(() => externalSvc.cleanup()).not.toThrow();
+    });
+  });
+
   // ── playVideo ──
 
   describe('playVideo', () => {

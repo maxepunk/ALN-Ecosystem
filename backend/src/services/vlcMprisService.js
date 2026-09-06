@@ -99,36 +99,49 @@ class VlcMprisService extends MprisPlayerBase {
       }
     } catch { /* none running — clean state */ }
 
-    // Create VLC ProcessMonitor
-    this._vlcProcessMonitor = new ProcessMonitor({
-      command: 'cvlc',
-      args: this._buildVlcArgs(),
-      label: 'VLC',
-      pidFile: '/tmp/aln-pm-vlc.pid',
-      stdio: ['ignore', 'ignore', 'pipe'],
-      env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' },
-      restartDelay: 3000,
-      backoffMultiplier: 1,   // Fixed 3s delay (no exponential backoff)
-    });
+    // HOW VLC is supervised is HOST configuration (config comment).
+    // Self-spawn OFF = an external supervisor owns the player; the
+    // engine adopts the MPRIS name owner and never spawns. This exists
+    // because an engine that CANNOT host VLC (a root process — VLC
+    // refuses root) otherwise enters a 3s crash-restart loop whose
+    // every exit resets _ownerBusName and connected state, wiping the
+    // reactive state machine while the EXTERNAL player is healthy and
+    // playing (fix-vehicle S5 §8.1: the engine never saw "playing",
+    // every compound-cue video timed out).
+    if (config.features.vlcSelfSpawn) {
+      // Create VLC ProcessMonitor
+      this._vlcProcessMonitor = new ProcessMonitor({
+        command: 'cvlc',
+        args: this._buildVlcArgs(),
+        label: 'VLC',
+        pidFile: '/tmp/aln-pm-vlc.pid',
+        stdio: ['ignore', 'ignore', 'pipe'],
+        env: { ...process.env, DISPLAY: process.env.DISPLAY || ':0' },
+        restartDelay: 3000,
+        backoffMultiplier: 1,   // Fixed 3s delay (no exponential backoff)
+      });
 
-    // State cleanup on VLC exit (crash or intentional stop)
-    this._vlcProcessMonitor.on('exited', ({ code, signal }) => {
-      logger.warn('[VLC] Process exited', { code, signal });
-      this._ownerBusName = null;
-      this._setConnected(false);
-    });
+      // State cleanup on VLC exit (crash or intentional stop)
+      this._vlcProcessMonitor.on('exited', ({ code, signal }) => {
+        logger.warn('[VLC] Process exited', { code, signal });
+        this._ownerBusName = null;
+        this._setConnected(false);
+      });
 
-    // Post-restart: wait for D-Bus registration, re-resolve owner
-    this._vlcProcessMonitor.on('restarted', async () => {
-      const ready = await this._waitForVlcReady();
-      if (ready) {
-        this._resolveOwner().catch(err => {
-          logger.debug('[VLC] Owner re-resolution failed after crash restart:', err.message);
-        });
-      }
-    });
+      // Post-restart: wait for D-Bus registration, re-resolve owner
+      this._vlcProcessMonitor.on('restarted', async () => {
+        const ready = await this._waitForVlcReady();
+        if (ready) {
+          this._resolveOwner().catch(err => {
+            logger.debug('[VLC] Owner re-resolution failed after crash restart:', err.message);
+          });
+        }
+      });
 
-    this._vlcProcessMonitor.start();
+      this._vlcProcessMonitor.start();
+    } else {
+      logger.info('[VLC] Self-spawn disabled (VLC_SELF_SPAWN=false) — adopting the externally supervised player');
+    }
 
     // Wait for VLC to register on D-Bus
     const ready = await this._waitForVlcReady();
