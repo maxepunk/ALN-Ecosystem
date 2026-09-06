@@ -391,7 +391,63 @@ line-level disables with reasons, 3 environment globals declared
 and the `noisyDowngrades` warn block DELETED: eslint:recommended now
 runs at error so the backlog cannot regrow.
 
-**Close gate:** backend 2848/2848 → re-run after the fold; scanner
-1681/1681, lint 0, ratchet 66/66, dist rebuilt; config-tool 182/182;
-dual-pack E2E both legs (ALN + toy-heist) run against the folded
-tree — results recorded below at completion.
+**Close gate:** backend 2849/2849 (144 suites) after the fold, ratchet
+85/85, lint clean; scanner 1681/1681, lint 0 problems, ratchet 66/66,
+dist rebuilt; config-tool 182/182.
+
+**Dual-pack E2E + the environment-fault finding (2026-09-06).** The
+folded-tree legs: ALN 116 passed / 6 failed / 60 skipped; toy 120
+passed / 2 failed / 59 skipped (every toy scoring flow green — the
+S4 MAJOR fix confirmed live: `tipoff game mode (asked: detective)`).
+The 8 failures were then diagnosed to root cause — and the owner's
+challenge corrected two wrong verdicts I had recorded on the way
+("load flake", then "environmental"):
+
+- The 21-player-scanner video-alert tests (4 of the 8) had NEVER
+  actually executed: their `if (!videoToken) return` early-exit made
+  them PASS VACUOUSLY at every prior close (the generated video
+  fixture didn't exist). Once `kai001.mp4` appeared locally
+  (2026-09-04) they ran for the first time and failed honestly —
+  because the alert requires the orchestrator to actually queue the
+  video (`canAcceptVideo()` → vlc_down → `status:'rejected'` →
+  "video unavailable" toast), i.e. they are VLC primary-path tests.
+- VLC being down here is a FAULT, not an environment trait
+  (CONTEXT.md §5 endpoints-vs-stack; this container is a measured
+  rung-1 host — `2026-09-04-rung1-capability-research.md`). The E2E
+  suite's own `vlc-service.js` predates rung 1: it spawns cvlc as
+  the CURRENT USER (root — VLC refuses, silently) against a session
+  bus that does not exist. Every E2E run in this container has had
+  VLC down for that reason alone.
+- The 07d-03 held-item failures (2): run-gate accepted
+  sound-OR-lighting down while the body fires only a SOUND-dependent
+  cue; when pw-play's install flipped sound healthy, the test ran,
+  fired nothing, and timed out. Its file was byte-identical to base.
+
+Fixes (commit c7d11d3): capability wiring + `requireCapabilities
+(['vlc'])` + loud `test.skip` replacing both silent early-returns
+(the harness's own rule: never silently skip); held-item run-gate
+now matches its fire-gate (`requireDegraded(['sound'])`).
+
+**Rung-1 validation (the proper one, after an improper first
+attempt that only re-confirmed the skips in the faulted env):** the
+CS.1 harness arms (session bus + pipewire + Xvfb, verbatim
+`tests/rung1/up.sh` blocks) + the research doc's proven cvlc
+invocation came up first-try in this container — root pinging the
+harness user's VLC over the shared bus (cross-uid proof reproduced).
+With that environment exported, the two spec files ran with `VLC
+started: real mode` for the first time: 39 passed / 0 failed /
+4 loud skips / 1 flaky. The video-alert flow EXECUTED and PASSED on
+both browsers (first genuine coverage of that user flow in E2E);
+the held-item test skipped loudly (sound healthy — correct).
+Flaky note (do not ignore): 21:346 "minimum 5 seconds" needed a
+retry on chromium — a timing-sensitive visibility assertion.
+
+**Open item needing an owner scope ruling:** E2E × rung-1
+unification — teaching the E2E suite (or its CI job) to bring up /
+reuse the rung-1 arms so real-VLC coverage is automatic instead of
+hand-run, and re-baselining the dual-pack legs on that posture.
+C-track-shaped work (the resolution/dormancy unification already in
+flight); candidate homes: the C-track close, a dedicated unit after
+this vehicle, or fold into this vehicle. Until ruled, the vehicle's
+E2E posture equals every prior close's (capability-gated legs), now
+with loud skips instead of silent vacuous passes.
