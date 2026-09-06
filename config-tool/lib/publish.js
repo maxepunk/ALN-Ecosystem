@@ -30,7 +30,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFile } = require('child_process');
 const { build, contentHash: hashOfFiles } = require('../../backend/scripts/build-pack-manifest');
-const { resolveInside, copyRegular, readManifest, writeJsonAtomic } = require('./packFs');
+const { resolveInside, copyRegular, readManifest } = require('./packFs');
 
 let publishInProgress = false;
 
