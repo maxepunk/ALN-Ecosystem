@@ -102,7 +102,14 @@ function renderIdentity(container, cue, editorCtx) {
   );
   const iconInput = el('input', {
     type: 'text', value: cue.icon || '',
-    onInput: () => { cue.icon = iconInput.value || null; editorCtx.markDirty(); },
+    onInput: () => {
+      // A cleared field means "no icon": delete the key rather than write
+      // null — absent is the canonical authored form (the gate and engine
+      // also tolerate null for packs authored before this change).
+      if (iconInput.value) cue.icon = iconInput.value;
+      else delete cue.icon;
+      editorCtx.markDirty();
+    },
   });
   iconGroup.appendChild(iconInput);
   grid.appendChild(iconGroup);

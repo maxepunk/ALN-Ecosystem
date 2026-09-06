@@ -2358,7 +2358,7 @@ components:
                   - **audio**: `{routes, defaultSink, ducking, availableSinks, volumes}`
                   - **lighting**: `{connected, activeScene, scenes[]}`
                   - **sound**: `{playing[]}`
-                  - **gameclock**: `{status, elapsed, startTime, totalPausedMs, phase}`
+                  - **gameclock**: `{status, elapsed, startTime, totalPausedMs, phase, expectedDuration}`
                   - **cueengine**: `{cues[], activeCues[], disabledCues[]}`
                   - **held**: `{items[]}`
           timestamp:
@@ -2628,12 +2628,17 @@ components:
         playing: { type: array }
     DomainStateGameclock:
       type: object
-      required: [status, elapsed, startTime, totalPausedMs, phase]
+      required: [status, elapsed, startTime, totalPausedMs, phase, expectedDuration]
       properties:
         status: { type: string, enum: [stopped, running, paused] }
         elapsed: { type: number, minimum: 0 }
         startTime: { type: [number, string, "null"] }
         totalPausedMs: { type: number, minimum: 0 }
+        # Fix-vehicle P3-1: the pack's gameClock.durationSeconds, so the wall
+        # scoreboard's countdown total tracks the ACTIVE pack instead of its
+        # baked 7200 seed. Required — same posture as sync:full's gameClock
+        # block, which has always declared it.
+        expectedDuration: { type: number, minimum: 0 }
         # A3 slice 5 (B11): current phase {id, label} from the pack's declared
         # gameClock.phases table. null when the pack declares no phase structure
         # (absent or the degenerate single phase) or before the clock starts.

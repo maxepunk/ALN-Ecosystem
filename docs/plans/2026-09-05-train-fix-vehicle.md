@@ -336,6 +336,62 @@ defense in depth). Both packs (ALN + toy-heist) re-validated ok.
 Parent ALNScanner submodule pin → `d8b9483`. Train table row 20
 updated with PR numbers (#34 + #16).
 
-S4 (close) remaining: full suites both repos, fresh ratchets,
-dual-pack end-to-end run, the §6 mixed-model adversarial review
-workflow, survivors fixed, final records + push.
+**S4 — close (2026-09-06).** The §6 mixed-model adversarial review ran
+as a workflow (15 agents: 6 Opus finders + Fable injection lens +
+Opus-high parity lens; per-finding refuters, Fable-high for MAJORs;
+~2.2M tokens). 7 findings, 6 survived refutation, 1 refuted (the
+`__proto__` spread-vs-assign scoring divergence — real mechanism,
+pre-existing, not fix-caused). Dispositions:
+
+1. **MAJOR (fixed)** — the S1 scanner-init.js fix itself regressed the
+   toy E2E leg: current mode became pack-derived while the callers'
+   TARGET stayed the ALN literals, so the inequality was permanently
+   true and the single blind toggle parked the scanner one mode PAST
+   the pack default (fence → tipoff, non-scoring, while logging
+   "blackmarket"). Fixed: the caller's literal resolves as a ROLE
+   against declared modes (declared-id match wins; blackmarket → first
+   standard-scoring mode, detective → the scoreboard-evidence surface
+   mode), toggling cycles until the pill shows the target and THROWS
+   if unreachable; the log reports the resolved id. The toy E2E leg is
+   the red/green vehicle (refuter re-executed the failure end-to-end).
+2. **MINOR ×2, same defect (fixed)** — the M8 standalone full restart
+   deleted transactions but announced only scores:cleared, leaving the
+   history badge / scan stats / admin Game Activity rendering deleted
+   rows. resetScores now also emits data:cleared (pinned), and the
+   main.js data:cleared handler refreshes stats/history/team-details.
+3. **MINOR (fixed)** — P3-1 added expectedDuration to the gameclock
+   service:state wire without updating asyncapi.yaml. Schema + summary
+   line updated, field REQUIRED (sync:full parity); mutation-checked:
+   deleting the producer line now fails the contract test.
+4. **MINOR (fixed)** — the new icon gate refused `icon: null`, the
+   config-tool editor's own "no icon" value (and the engine's
+   normalized form). Three-layer agreement: gate treats null as absent
+   (pinned), cueEditor deletes the key for a cleared field, and
+   cues.schema.json is nullable (TokenData `a9a482f`, PR #7 stacked
+   on #6 — the vehicle's TokenData leg).
+5. **NOTE (deferred, documented)** — the M5 preset gate refuses the
+   whole load when the live pack is gate-invalid for reasons the
+   preset neither causes nor can fix, blocking the env/routing restore
+   the preset does own (plus a temp-dir name leaking into the refusal
+   for manifest-less packs). No fix invariant is broken and the pack
+   is unbootable in that state regardless. HOME: the Block 5
+   config-tool re-cut (§2's B5 row), as a differential gate — compare
+   the staged verdict against a pre-write verdict of the untouched
+   pack and refuse only NEWLY-introduced problems; preserve packId by
+   seeding the staged manifest. WHEN: when B5 opens.
+
+**Lint-backlog extension of the owner's ruling (2026-09-06,
+"pre-existing is not a verdict", second application):** the scanner's
+48-warning backlog was cleaned in the same window (scanner `bc81541`):
+35 unused-vars fixed (two were latent test smells now made honest —
+an unasserted listener flag and MusicRenderer's never-checked
+same-node claim), 3 deliberate control-regex strips kept behind
+line-level disables with reasons, 3 environment globals declared
+(io/NDEFReader/Buffer), 2 dead initializers, 1 error-cause attach —
+and the `noisyDowngrades` warn block DELETED: eslint:recommended now
+runs at error so the backlog cannot regrow.
+
+**Close gate:** backend 2848/2848 → re-run after the fold; scanner
+1681/1681, lint 0, ratchet 66/66, dist rebuilt; config-tool 182/182;
+dual-pack E2E both legs (ALN + toy-heist) run against the folded
+tree — results recorded below at completion.

@@ -280,7 +280,11 @@ function validateCuesBlock(cuesArray, gameConfig, tokens) {
       }
       seenIds.add(cue.id);
 
-      if (cue.icon !== undefined
+      // null counts as ABSENT (fix-vehicle review): cueEditor writes
+      // `icon: value || null` for a cleared field and the engine
+      // normalizes `cue.icon || null` — null is the ecosystem's own
+      // "no icon" value, drivable everywhere (scanner renders 'default').
+      if (cue.icon !== undefined && cue.icon !== null
           && (typeof cue.icon !== 'string' || !ICON_PATTERN.test(cue.icon))) {
         problems.push(
           `cues['${cue.id}'] — icon ${JSON.stringify(cue.icon)} is not a CSS class key ` +

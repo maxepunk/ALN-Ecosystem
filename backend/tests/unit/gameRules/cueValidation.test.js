@@ -420,6 +420,15 @@ describe('icon class-key rule (MAJOR-7 backend half — F-P5b-2 end-to-end)', ()
     expect(out).toMatch(/self-contradictory/);
   });
 
+  it('icon:null is treated as ABSENT, not refused — it is the ecosystem\'s own "no icon" value (fix-vehicle review)', () => {
+    // config-tool cueEditor writes `icon: iconInput.value || null` when the
+    // operator clears the field, and the engine normalizes `cue.icon || null`
+    // (scanner renders slugifyId(null) || 'default'). Refusing null would
+    // (a) make icon-removal impossible through the UI and (b) refuse at boot
+    // any pack authored that way before the icon rule existed.
+    expect(problemsAfter(c => { c.cues[0].icon = null; })).toHaveLength(0);
+  });
+
   it('uppercase, leading-hyphen, and non-string icons are all refused (the schema pattern, enforced)', () => {
     expect(problemsAfter(c => { c.cues[0].icon = 'Alert'; }).join('\n')).toMatch(/icon/);
     expect(problemsAfter(c => { c.cues[0].icon = '-alert'; }).join('\n')).toMatch(/icon/);
