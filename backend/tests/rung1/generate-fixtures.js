@@ -11,9 +11,11 @@
  * the machine tests (the dual-pack E2E legs share it), so
  * configuration.yaml is generated from the UNION of all packs' needs.
  * Each pack gets its own simulation profile,
- * simulation-profile-<packId>.json; the FIRST pack's profile is also
- * written to simulation-profile.json (the rig's engine env pins that
- * name). Media placeholders are seeded for every pack.
+ * simulation-profile-<packId>.json. The UNSUFFIXED compat copy the
+ * rig's engine env pins is maintained by the provision CLI only —
+ * writing it here for whichever pack came first let a toy E2E leg
+ * silently repoint the rig's engine (close review). Media
+ * placeholders are seeded for every pack.
  */
 const fs = require('fs');
 const path = require('path');
@@ -77,16 +79,12 @@ fs.writeFileSync(
 );
 
 // --- per-pack simulation profiles ----------------------------------
-for (const [i, { pack, needs }] of loaded.entries()) {
+for (const { pack, needs } of loaded) {
   const profile = generateSimulationProfile(needs, pack.manifest.packId);
-  const body = `${JSON.stringify(profile, null, 2)}\n`;
   fs.writeFileSync(
     path.join(rung1Dir, `simulation-profile-${pack.manifest.packId}.json`),
-    body
+    `${JSON.stringify(profile, null, 2)}\n`
   );
-  if (i === 0) {
-    fs.writeFileSync(path.join(rung1Dir, 'simulation-profile.json'), body);
-  }
 }
 
 // --- media placeholders (fake physics: pixels/samples are simulated,

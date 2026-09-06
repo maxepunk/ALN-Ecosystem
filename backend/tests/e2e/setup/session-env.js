@@ -75,7 +75,13 @@ function ensureSessionEnv() {
     result.bus = true;
     logger.info('[e2e-env] worker bus active', { worker: WORKER_SLOT, address });
   } else {
-    logger.warn('[e2e-env] no session bus — video tests will skip loudly');
+    // The worker bus failing must NOT silently fall back to whatever
+    // ambient bus the host exported (close review MAJOR: that re-opens
+    // the exact real-player hazard the private bus exists to prevent).
+    // No bus at all = VLC reports unavailable = loud capability skips.
+    delete process.env.DBUS_SESSION_BUS_ADDRESS;
+    logger.warn('[e2e-env] worker bus failed — running BUS-LESS on '
+      + 'purpose (no ambient fallback); video tests will skip loudly');
   }
 
   const curDisplay = process.env.DISPLAY;
@@ -96,8 +102,14 @@ function ensureSessionEnv() {
 
 // Per-process memo: one provisioning pass per (pack, pinned-profile)
 // pair — every orchestrator start in a worker reuses it (the arms are
-// idempotent anyway; this saves the repeated probing).
+// idempotent anyway; this saves the repeated probing). SUCCESSES are
+// cached for the process; FAILURES only briefly (close review MAJOR:
+// one transient fixture-generation timeout used to be cached forever,
+// silently reverting every later flow in the run to the engine's
+// default venue profile with no arm provisioned and one warn line).
 const _runMemo = new Map();
+const FAILURE_RETRY_MS = 60000;
+const isFailureResult = (r) => (!r.profilePath && !r.explicitPin) || (r.provisioned && !r.ha);
 
 /**
  * Provision the environment for ONE run posture and resolve the
@@ -116,7 +128,15 @@ async function provisionForRun({ packPath = null, profilePath = null } = {}) {
     : KNOWN_PACK_DIRS[0];
   const explicit = profilePath || process.env.E2E_PROFILE_PATH || null;
   const memoKey = `${packDirAbs}|${explicit || 'auto'}`;
-  if (_runMemo.has(memoKey)) return _runMemo.get(memoKey);
+  const cached = _runMemo.get(memoKey);
+  if (cached) {
+    if (!isFailureResult(cached.result)
+        || Date.now() - cached.at < FAILURE_RETRY_MS) {
+      return cached.result;
+    }
+    _runMemo.delete(memoKey);
+    logger.warn('[e2e-env] cached provisioning FAILURE aged out — retrying', { memoKey });
+  }
 
   ensureSessionEnv();
 
@@ -177,15 +197,25 @@ async function provisionForRun({ packPath = null, profilePath = null } = {}) {
       rung1Dir: RUNG1_DIR, restartIfRunning: haConfigChanged,
     });
   } else {
+    // Real posture means REAL env too: stand-in exports from an
+    // earlier provisioned flow in this same worker process must not
+    // leak into this run's orchestrator (close review — a pinned
+    // real-profile flow was still pointed at the mock system bus and
+    // the rig's pulse socket).
+    delete process.env.PULSE_SERVER;
+    delete process.env.DBUS_SYSTEM_BUS_ADDRESS;
     logger.info(
       '[e2e-env] profile assigns nothing to the harness — '
-      + 'provisioning nothing (real environment posture)',
+      + 'provisioning nothing, stand-in env cleared (real posture)',
       { profile: resolvedProfilePath || '(engine default)' }
     );
   }
 
-  const result = { profilePath: resolvedProfilePath, ha, provisioned: gate };
-  _runMemo.set(memoKey, result);
+  const result = {
+    profilePath: resolvedProfilePath, ha,
+    provisioned: gate, explicitPin: !!explicit,
+  };
+  _runMemo.set(memoKey, { result, at: Date.now() });
   return result;
 }
 

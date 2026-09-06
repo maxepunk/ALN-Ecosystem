@@ -211,7 +211,10 @@ describe('resolve (pure, C1 §2 table)', () => {
       (v) => v.need.kind === 'lighting-role' && v.need.id === 'all-clear'
     );
     expect(allClear.verdict).toBe('runs');
-    expect(allClear.reason).toBe('bound: scene.toy_all_clear');
+    // The fixture binds witness scenes since the S5 close fold (the
+    // invented scene.toy_* names predated the witness register and no
+    // HA served them, leaving the flow's live half file-order-dependent).
+    expect(allClear.reason).toBe('bound: scene.witness_all_clear');
     expect(rollup).toEqual(
       { status: 'go', dormantServices: [], problems: [] }
     );

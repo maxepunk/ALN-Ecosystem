@@ -120,6 +120,31 @@ function decideHaContainerAction(psAllText) {
 }
 
 /**
+ * The FULL Home Assistant decision, port ownership included. If
+ * something answers on 8123 and OUR container is not the running
+ * thing, it is by definition somebody else's installation — refuse.
+ * (Close-review MAJOR: the first build refused foreign HAs only on
+ * the create branch, so an exited rung1-ha sitting beside a real HA
+ * was `docker start`ed — which cannot bind the taken port — and the
+ * REAL installation was then adopted, onboarded, and driven.)
+ * @param {boolean} httpUp - does anything answer on 8123?
+ * @param {string} psAllText - docker ps -a output
+ * @returns {'adopt'|'start'|'create'|'refuse-foreign'}
+ */
+function decideHaAction(httpUp, psAllText) {
+  const action = decideHaContainerAction(psAllText);
+  if (httpUp && action !== 'adopt') return 'refuse-foreign';
+  return action;
+}
+
+/** Best-effort pid file (the exact names down.sh kills by — its own
+ * header records a process-generation leak from a name mismatch). */
+function writePid(pidFile, pid) {
+  if (!pidFile || !pid) return;
+  try { fs.writeFileSync(pidFile, `${pid}\n`); } catch { /* teardown loses this one */ }
+}
+
+/**
  * Union of several packs' needs lists, deduplicated by kind + id —
  * one witness Home Assistant serves every pack the machine tests.
  * @param {Array<Array<object>>} needsLists
@@ -201,7 +226,7 @@ function pipewireAlive(pulseServer) {
  * ambient-first policy; this manages only its own socket.
  * @returns {string|null} bus address
  */
-function ensureBus({ socketPath, type = 'session' }) {
+function ensureBus({ socketPath, type = 'session', pidFile = null }) {
   const address = `unix:path=${socketPath}`;
   if (busAlive(address)) return address;
   try {
@@ -216,8 +241,20 @@ function ensureBus({ socketPath, type = 'session' }) {
     }
     // A dead socket FILE (daemon killed by a container restart) blocks
     // the new daemon's bind — measured: ensureBus silently failed on
-    // the stale worker socket. Not-alive + present = safe to remove.
-    if (fs.existsSync(socketPath)) fs.rmSync(socketPath, { force: true });
+    // the stale worker socket. But the first busAlive probe times out
+    // at 2s, which a merely LOADED machine can exceed (close review:
+    // unlinking a live socket orphans everything connected to it) — so
+    // a present socket gets one generous second opinion before removal.
+    if (fs.existsSync(socketPath)) {
+      try {
+        execFileSync('dbus-send', [
+          `--bus=${address}`, '--dest=org.freedesktop.DBus',
+          '--type=method_call', '--print-reply',
+          '/', 'org.freedesktop.DBus.ListNames',
+        ], { timeout: 8000, stdio: 'pipe' });
+        return address; // alive after all — the 2s probe was just slow
+      } catch { fs.rmSync(socketPath, { force: true }); }
+    }
     const confPath = `${socketPath}.conf`;
     fs.writeFileSync(confPath, `<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN"
  "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
@@ -241,6 +278,7 @@ function ensureBus({ socketPath, type = 'session' }) {
     const daemon = spawn(cmd, args, { detached: true, stdio: 'ignore' });
     daemon.on('error', e => note(`dbus-daemon spawn failed: ${e.message}`));
     daemon.unref();
+    writePid(pidFile, daemon.pid);
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline && !busAlive(address)) sleepSync(0.2);
     if (busAlive(address)) {
@@ -259,7 +297,7 @@ function ensureBus({ socketPath, type = 'session' }) {
  * A virtual X display (shared machine-wide — X is multi-client).
  * @returns {string|null} the display
  */
-function ensureXvfb({ display = ':99' } = {}) {
+function ensureXvfb({ display = ':99', pidFile = null } = {}) {
   if (displayAlive(display)) return display;
   try {
     ensureUser();
@@ -267,6 +305,7 @@ function ensureXvfb({ display = ':99' } = {}) {
     const xvfb = spawn(cmd, args, { detached: true, stdio: 'ignore' });
     xvfb.on('error', e => note(`Xvfb spawn failed: ${e.message}`));
     xvfb.unref();
+    writePid(pidFile, xvfb.pid);
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline && !displayAlive(display)) sleepSync(0.2);
     if (displayAlive(display)) { note(`xvfb up: ${display}`); return display; }
@@ -284,7 +323,7 @@ function ensureXvfb({ display = ':99' } = {}) {
  * the sinks.
  * @returns {string|null} PULSE_SERVER value
  */
-function ensurePipewire({ xdgDir, busAddress }) {
+function ensurePipewire({ xdgDir, busAddress, pidDir = null }) {
   const pulseServer = `unix:${path.join(xdgDir, 'pulse', 'native')}`;
   const daemonEnv = {
     XDG_RUNTIME_DIR: xdgDir,
@@ -302,11 +341,15 @@ function ensurePipewire({ xdgDir, busAddress }) {
         execFileSync('chown', ['-R', RUNG1_USER, xdgDir], { stdio: 'pipe' });
         fs.chmodSync(xdgDir, 0o700);
       }
+      // Pid-file names are down.sh's exact vocabulary (pwpulse, not
+      // pipewire-pulse).
+      const pidNames = { pipewire: 'pipewire', wireplumber: 'wireplumber', 'pipewire-pulse': 'pwpulse' };
       for (const cmd of ['pipewire', 'wireplumber', 'pipewire-pulse']) {
         const [c, a] = asUserArgv(cmd, [], daemonEnv);
         const proc = spawn(c, a, { detached: true, stdio: 'ignore' });
         proc.on('error', e => note(`${cmd} spawn failed: ${e.message}`));
         proc.unref();
+        if (pidDir) writePid(path.join(pidDir, `${pidNames[cmd]}.pid`), proc.pid);
       }
       const deadline = Date.now() + 8000;
       while (Date.now() < deadline && !pipewireAlive(pulseServer)) sleepSync(0.3);
@@ -349,6 +392,7 @@ function ensureDockerd({ logDir }) {
     );
     d.on('error', e => note(`dockerd spawn failed: ${e.message}`));
     d.unref();
+    writePid(path.join(logDir, 'dockerd.pid'), d.pid);
     const deadline = Date.now() + 30000;
     while (Date.now() < deadline && !dockerOk()) sleepSync(2);
   } catch (e) {
@@ -398,10 +442,11 @@ async function ensureHA({ rung1Dir, restartIfRunning = false }) {
       ['ps', '-a', '--format', '{{.Names}}\t{{.State}}'],
       { timeout: 10000 }
     ).toString();
-    const action = decideHaContainerAction(psAll);
-    if (httpUp && action === 'create') {
-      note('HA answers on 8123 but no rung1-ha container exists — not '
-        + 'ours. Refusing to adopt; lighting arm unavailable.');
+    const action = decideHaAction(httpUp, psAll);
+    if (action === 'refuse-foreign') {
+      note('HA answers on 8123 but our container is not the running '
+        + 'thing — somebody else\'s installation. Refusing to touch it; '
+        + 'lighting arm unavailable.');
       return null;
     }
     if (action === 'create') {
@@ -490,7 +535,10 @@ function ensureBluetoothMock({ rung1Dir }) {
     } catch { /* no ambient system bus — the mock's home ground */ }
 
     const socketPath = path.join(rung1Dir, 'system-bus.sock');
-    const address = ensureBus({ socketPath, type: 'system' });
+    const address = ensureBus({
+      socketPath, type: 'system',
+      pidFile: path.join(rung1Dir, 'system-bus.pid'),
+    });
     if (!address) return null;
 
     if (!busNames(address).includes('org.bluez')) {
@@ -507,6 +555,7 @@ function ensureBluetoothMock({ rung1Dir }) {
       });
       mock.on('error', e => note(`dbusmock spawn failed: ${e.message}`));
       mock.unref();
+      writePid(path.join(rung1Dir, 'btmock.pid'), mock.pid);
       const deadline = Date.now() + 10000;
       while (Date.now() < deadline && !busNames(address).includes('org.bluez')) {
         sleepSync(0.3);
@@ -539,7 +588,11 @@ function ensureBluetoothMock({ rung1Dir }) {
           ], { timeout: 5000, stdio: 'pipe' });
           break;
         } catch (e) {
-          if (Date.now() > deadline) throw e;
+          // On deadline, fall through to the hasController() verdict
+          // below instead of rethrowing: a racing worker's AddAdapter
+          // may have landed (its second call errors "already exists"),
+          // and the CLIENT check is the truth anyway (close review).
+          if (Date.now() > deadline) { note(`AddAdapter gave up: ${e.message.split('\n')[0]}`); break; }
           sleepSync(0.3);
         }
       }
@@ -584,6 +637,32 @@ function resolveDbusmockPython(rung1Dir) {
   const venvDir = path.join(rung1Dir, 'btmock-venv');
   const venvPython = path.join(venvDir, 'bin', 'python');
   if (fs.existsSync(venvPython) && canImport(venvPython)) return venvPython;
+  // Build lock: at workers=3 the rebuild path rm-rf'd the SHARED venv
+  // out from under a sibling mid-pip (close review). mkdir is atomic —
+  // exactly one worker builds; the others wait on the finished venv.
+  const lockDir = path.join(rung1Dir, 'btmock-venv.lock');
+  try {
+    fs.mkdirSync(lockDir);
+  } catch {
+    // A builder is (or was) at work. Stale locks (a killed builder)
+    // age out; otherwise poll for the sibling's finished venv.
+    try {
+      const age = Date.now() - fs.statSync(lockDir).mtimeMs;
+      if (age < 5 * 60 * 1000) {
+        const deadline = Date.now() + 180000;
+        while (Date.now() < deadline) {
+          if (!fs.existsSync(lockDir)) break;
+          sleepSync(2);
+        }
+        if (fs.existsSync(venvPython) && canImport(venvPython)) return venvPython;
+        note('sibling venv build did not deliver — bluetooth arm skips here');
+        return null;
+      }
+      fs.rmSync(lockDir, { recursive: true, force: true });
+      fs.mkdirSync(lockDir);
+    } catch { return null; }
+  }
+  try {
   for (const bin of candidates) {
     try { execFileSync(bin, ['--version'], { timeout: 5000, stdio: 'pipe' }); } catch { continue; }
     try {
@@ -608,6 +687,9 @@ function resolveDbusmockPython(rung1Dir) {
     }
   }
   return null;
+  } finally {
+    try { fs.rmSync(lockDir, { recursive: true, force: true }); } catch { /* gone */ }
+  }
 }
 
 /**
@@ -642,6 +724,7 @@ module.exports = {
   HA_CONTAINER,
   harnessProvides,
   decideHaContainerAction,
+  decideHaAction,
   unionNeeds,
   busAlive,
   displayAlive,
@@ -681,10 +764,30 @@ if (require.main === module) {
     const fixtures = packs.length
       ? generateFixtures({ rung1Dir, packDirs: packs })
       : { ok: true, haConfigChanged: false };
-    const bus = ensureBus({ socketPath: busSocket });
-    const xvfb = ensureXvfb({ display });
+    // The RIG's engine env pins the unsuffixed simulation-profile.json,
+    // so ONLY this CLI (the rig's entry) maintains that compat copy —
+    // the generator writing it for whichever pack came first let a toy
+    // E2E leg silently repoint the rig's engine (close review, MINOR).
+    if (fixtures.ok && packs.length) {
+      try {
+        const { packId } = JSON.parse(fs.readFileSync(
+          path.join(packs[0], 'pack-manifest.json'), 'utf8'
+        ));
+        fs.copyFileSync(
+          path.join(rung1Dir, `simulation-profile-${packId}.json`),
+          path.join(rung1Dir, 'simulation-profile.json')
+        );
+      } catch (e) { note(`compat profile copy failed: ${e.message}`); }
+    }
+    const bus = ensureBus({
+      socketPath: busSocket,
+      pidFile: path.join(rung1Dir, 'dbus.pid'),
+    });
+    const xvfb = ensureXvfb({
+      display, pidFile: path.join(rung1Dir, 'xvfb.pid'),
+    });
     const pulse = ensurePipewire({
-      xdgDir: path.join(rung1Dir, 'xdg'), busAddress: bus,
+      xdgDir: path.join(rung1Dir, 'xdg'), busAddress: bus, pidDir: rung1Dir,
     });
     const ha = await ensureHA({
       rung1Dir, restartIfRunning: fixtures.haConfigChanged,

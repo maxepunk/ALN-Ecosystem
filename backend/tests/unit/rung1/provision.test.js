@@ -23,6 +23,7 @@ const path = require('path');
 const {
   harnessProvides,
   decideHaContainerAction,
+  decideHaAction,
   unionNeeds,
 } = require('../../rung1/provision');
 
@@ -101,6 +102,32 @@ describe('decideHaContainerAction (container lifecycle, all states)', () => {
   it('matches the exact name only — a prefix cousin is not ours', () => {
     expect(decideHaContainerAction(ps([['rung1-ha-old', 'exited']])))
       .toBe('create');
+  });
+});
+
+describe('decideHaAction (the FULL decision, foreign-HA refusal included)', () => {
+  const ps = (rows) => rows.map((r) => r.join('\t')).join('\n') + '\n';
+
+  it('adopts when 8123 answers AND our container is the running thing', () => {
+    expect(decideHaAction(true, ps([['rung1-ha', 'running']]))).toBe('adopt');
+  });
+
+  it('REFUSES whenever 8123 answers and our container is NOT running — ' +
+     'close-review MAJOR: the old refusal guarded only the create ' +
+     'branch, so an exited rung1-ha beside a REAL Home Assistant was ' +
+     'started, and the real installation was adopted, onboarded, and ' +
+     'driven', () => {
+    expect(decideHaAction(true, '')).toBe('refuse-foreign');
+    expect(decideHaAction(true, ps([['rung1-ha', 'exited']])))
+      .toBe('refuse-foreign');
+    expect(decideHaAction(true, ps([['rung1-ha', 'created']])))
+      .toBe('refuse-foreign');
+  });
+
+  it('starts or creates normally when nothing answers on 8123', () => {
+    expect(decideHaAction(false, ps([['rung1-ha', 'exited']]))).toBe('start');
+    expect(decideHaAction(false, '')).toBe('create');
+    expect(decideHaAction(false, ps([['rung1-ha', 'running']]))).toBe('adopt');
   });
 });
 
