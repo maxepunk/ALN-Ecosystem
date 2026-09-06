@@ -548,11 +548,16 @@ revise the design:
    even with HA healthy. E2E legs now boot per-pack GENERATED
    simulation profiles; the witness HA config carries the UNION of
    both in-repo packs' lighting roles so one HA serves both legs.
-4. **Media seeding rides the same gate**, because on a machine with
-   real media a missing video must surface as the fault it is, never
-   be masked by a 10-second test clip. The HA arm additionally
-   identity-checks an already-running HA before adopting it (adopt
-   only the witness instance; anything else is a loud skip).
+4. **Media seeding is confined to simulation runs** (wording fixed
+   2026-09-06, close-review finding F17: the earlier "rides the same
+   gate" misstated the mechanism). Seeding lives inside fixture
+   generation, which runs only for an UNPINNED run on its generated
+   simulation profile; a run pinned to a real profile never generates
+   fixtures and therefore never seeds — so on a machine with real
+   media a missing video surfaces as the fault it is, never masked by
+   a 10-second test clip. The HA arm additionally identity-checks an
+   already-running HA before adopting it (adopt only the witness
+   instance; anything else is a loud skip).
    Remaining line to the resolution work (C track): deriving the
    provision set per-need from `resolve()` instead of the fixed
    arms — that, and only that, is future work.
@@ -565,3 +570,142 @@ workflow over the model-instability window (`wf_4c63182f-1fa`) was
 KILLED by a container restart before any agent finished — zero
 findings produced; it is re-run as part of this stage's close, and
 no prior claim of its results exists to preserve.
+
+### 8.2 S5b execution record (stage closed 2026-09-06)
+
+**What was built.** One shared provisioning module,
+`backend/tests/rung1/provision.js` (~700 lines), consumed by the rig
+(`up.sh`/`down.sh` through its CLI) and by the E2E suite
+(`tests/e2e/setup/session-env.js` as the thin policy layer). Pure
+decision seams, all red-first TDD'd in
+`tests/unit/rung1/provision.test.js` (15 pins): `harnessProvides`
+(the profile gate — provider `rung1-harness`, witness lighting
+bindings, or `-sim.` surface files; safe default false),
+`decideHaContainerAction` (all container states),
+`decideHaAction` (foreign-HA refusal whenever 8123 answers and our
+container is not the running thing), `unionNeeds` (kind+id dedupe,
+sorted so the witness register's content hash is order-independent).
+Arms: per-socket session bus, Xvfb, pipewire with null sinks,
+dockerd, the witness Home Assistant (adopt/start/create + token
+reuse/onboard), the Bluetooth mock (python-dbusmock bluez5 template
+on a private system bus; venv built `--system-site-packages` on the
+interpreter that owns the distro D-Bus bindings, `pip --no-deps`,
+mkdir-locked against concurrent workers), and multi-pack fixture
+generation (per-pack simulation profiles + union witness register +
+cue-video seeding). E2E policy: every Playwright worker gets a
+PRIVATE session bus (worker 0 included — the bus is plumbing, not
+physics; adopting an ambient bus risks driving a real player);
+physics and the display stay ambient-first; provisioning failures
+memoized for only 60s. `test-server.js` boots each orchestrator with
+the RESOLVED profile (`PROFILE_PATH`), the witness HA credentials
+when provisioned, and `VLC_SELF_SPAWN=false` so the harness-
+supervised VLC is adopted instead of spawning a doomed root VLC.
+
+**Engine defects found by first-ever-executing tests, all fixed
+red-first:** (1) supervisor doctrine gap — the engine's self-spawned
+VLC died every 3s as root and each exit wiped MPRIS state while the
+harness's player was healthy; `VLC_SELF_SPAWN` (config
+`features.vlcSelfSpawn`) now lets a host declare external
+supervision, unit-pinned. (2) `mprisPlayerBase` debounce merged a
+short file's Playing+Stopped into one "stopped" (VLC emits no
+Playing broadcast a 2-second file survives); a PlaybackStatus
+TRANSITION now flushes the pending window immediately, unit-pinned.
+(3) `unionNeeds` was order-sensitive, so the two legs (opposite pack
+order) flipped the witness register's sha1 and restarted the shared
+HA mid-leg; sorted union, order-independence pinned. With all three
+in, flow-30's compound-cue ACTIVE path passed for the first time
+ever, on both packs. The Bluetooth arm was proven live
+(`bluetoothctl` lists `Controller 00:01:02:03:04:05 rung1-host`).
+
+**Commits:** parent `98960d8`…`7374b17` (first build), `2f6064a`
+(transition flush + cue-video seed), `387fffd` (model-window audit
+fold), `28702a2` (private bus per worker), `c9b96da` (close-review
+fold), `c50441e` (sorted union); scanner `6ef4361` (data pin),
+ALN-TokenData `5e71c86` (compound-cue video → `test_10sec.mp4`).
+
+**Workflow provenance (all runs verified complete):** the S4 audit
+workflow killed by the container restart (`wf_4c63182f-1fa`, zero
+agents finished) was re-run fresh as `wf_161cb459-22e` — 11/11
+agents completed (its 4 code fixes + 2 record corrections folded in
+`387fffd`). The S5b adversarial close review ran as
+`wf_56710c54-368` — 15 agents, 14 completed, the one errored
+refuter re-run to completion. It produced 17 findings; every one is
+dispositioned below.
+
+**Close-review disposition (all 17):**
+
+| # | Sev | Finding (file) | Disposition |
+|---|---|---|---|
+| F1 | MAJOR | provisionForRun memoized failure permanently (session-env.js) | FIXED `c9b96da`: failures age out after 60s |
+| F2 | MAJOR | Stand-in env exports leak past the gate into real-profile runs (session-env.js) | FIXED: gate=false deletes `PULSE_SERVER`/`DBUS_SYSTEM_BUS_ADDRESS` |
+| F3 | MAJOR | ensureBus failure fell back to the AMBIENT bus — the exact hazard `28702a2` prevents (session-env.js) | FIXED: bus-less on purpose, address deleted, loud skip |
+| F4 | MINOR | The one real-profile-pinned flow lost its witness HA (toy-test-rig fixture) | FIXED: fixture bindings repointed to `scene.witness_*` (gates true); resolution.test.js pin updated |
+| F5 | MAJOR | Foreign HA on 8123 adopted when a non-running rung1-ha exists (provision.js) | FIXED: `decideHaAction` returns `refuse-foreign` for every not-ours-running case, unit-pinned |
+| F6 | MINOR | Shared venv rebuilt concurrently by 3 workers (provision.js) | FIXED: mkdir lock + 5-min stale age-out + sibling wait |
+| F7 | MINOR | AddAdapter retry rethrew past the hasController post-check (provision.js) | FIXED: falls through to the bluetoothctl verdict |
+| F8 | MINOR | Live bus socket unlinked on a mere probe timeout (provision.js) | FIXED: 8s second-opinion probe before removal |
+| F9 | NOTE | harnessProvides is a content heuristic, not an identity check | ACCEPTED as the v1 gate (safe default false); identity-based gating belongs to the C-track resolution work (the deferral discriminator: that is a decision C owns) |
+| F10 | NOTE | A stack-services-only pack's simulation profile gates false | ACCEPTED: stack services (VLC, MPD) are E2E bring-up, not profile-gated stand-ins; per-need provisioning via `resolve()` is the recorded C-track line |
+| F11 | NOTE | `paused`/`dead` container states map to `start`, which docker can't satisfy | ACCEPTED: rare states, loud failure either way; remedy wording is Block-2 hardening territory |
+| F12 | NOTE | Transition flush can emit a transient state pairing old status with new filename | ACCEPTED: momentary by construction; consumers diff on the next signal in the same clump |
+| F13 | NOTE | Adopt mode leaves sender filtering permanently off when the player is absent at init | REFUTED: `mprisPlayerBase._handleMprisSignal` processes signals under a null owner (safe fallback) and triggers `_refreshOwner()` on any sender mismatch — the re-resolution hook exists independent of spawn mode |
+| F14 | MAJOR | up.sh rewrite silently disarmed down.sh (pid files unwritten) | FIXED: the CLI writes the rig's pid names; down.sh also kills `btmock`/`system-bus` |
+| F15 | MINOR | Both consumers wrote the unsuffixed compat profile — a toy E2E leg clobbered the rig's pin | FIXED: the compat copy is written by the CLI (rig) only |
+| F16 | NOTE | ALN-TokenData `5e71c86`'s commit message claims `test_2sec.mp4` is gitignored | CORRECT — the record here supersedes the message: `test_2sec.mp4` IS tracked in the parent repo (`git ls-files public/videos/` proves it); the commit's OTHER rationale (a 2-second file emits no Playing signal VLC broadcasts) stands and is the real reason for the change |
+| F17 | NOTE | §8.1 item 4's "seeding rides the same gate" misstated the mechanism | FIXED in place (dated note in §8.1): seeding is confined to fixture generation, which only unpinned simulation runs perform |
+
+**Full dual-pack legs (tip `c50441e`):** ALN 126 passed / 2 failed /
+53 skipped / 1 flaky; toy 122 / 2 / 55 / 3 — against the pre-S5b
+baselines of ALN 116/6/60 and toy 120/2/59. Video tests run against
+real VLC in every leg now; the skips that remain are loud
+capability gates. The only failures in BOTH legs were the two
+browser instances of `toy-pack-lighting-roles.test.js`.
+
+**The last deterministic failure, root-caused (2026-09-06):** the
+test's own read path. `/api/state` mirrors `sync:full`, which nests
+lighting under `environment.lighting` (`buildSyncFullPayload`); the
+test read top-level `state.lighting` — a key the payload has never
+carried — so it saw zero scenes while the refresh ack succeeded and
+the service held 9. Why it was never caught: `caps.lighting` is the
+orchestrator's own `serviceHealth.lighting`, and before S5b no
+per-flow orchestrator ever had a witness HA token, so
+`requireCapabilities` skipped this test at every prior close. S5b's
+provisioning made lighting healthy for the first time, the test
+EXECUTED for the first time, and its wrong path finally ran — the
+same class as flow-30 and the vacuous video-alert tests: the suite's
+first genuine execution of a path exposes the path's own defect.
+Diagnosis evidence: a direct `provisionForRun` probe with the flow's
+exact pins returned a live witness HA with a valid token; a faithful
+orchestrator spawn with that env logged `Lighting service
+initialized — connected to Home Assistant, sceneCount: 9` while
+`/api/state` had no top-level `lighting` key. Fix: read
+`environment.lighting.scenes`, matching every other consumer and
+the contract shape. Isolated re-run: **4 passed / 0 failed / 0
+flaky** — and the test's second half executed for the FIRST time
+ever, proving D-4.8 live end-to-end: a real scene discovered from
+the running HA (`scene.witness_gameplay`), the toy role bound in a
+runtime profile, the restart seam re-pinned it, the cue fired
+through the resolver with zero failed commands.
+
+**Close-evidence composition (judgment recorded):** the legs stand
+on `c50441e`; the only change after them is this one test file, so
+the flow's own 4/4 isolated run on the tip completes the evidence —
+a third full leg pair would re-prove an unchanged suite.
+
+**Flaky disposition on the clean legs:** the 07d-03 clock-restart
+flaky that haunted earlier runs did NOT recur — corroborating the
+mid-leg-HA-restart diagnosis the sorted union fixed. Four
+single-instance retry-passes remain, all mobile-chrome, all green on
+retry 1: `07d-01` admin-panel init (ALN leg); `21-diagnostic`,
+`23-scoreboard-live-data`, `24-scoreboard-restart-recovery` (toy
+leg). Recorded honestly: their traces were overwritten by later
+isolated runs before examination (a process miss — capture traces
+before re-using the results directory); none recurred across both
+legs; each is named here so recurrence is trackable.
+
+**Container note:** the legs grew `backend/logs/combined.log` +
+`error.log` to 4.4 GB and exhausted the session disk allowance; both
+were truncated after diagnosis completed. Log volume under repeated
+E2E legs is a real operational cost — a candidate line for Block 2's
+host-config work (the archival script exists but nothing rotates
+during a run).
