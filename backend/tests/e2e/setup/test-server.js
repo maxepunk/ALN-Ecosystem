@@ -191,21 +191,16 @@ async function startOrchestrator(options = {}) {
     await clearSessionData();
   }
 
-  // The rung-1 stack (fix-vehicle S5, extended on the owner's ruling that
-  // the E2E suite must run the real software this environment can run):
-  // session bus + display + pipewire self-provision synchronously and
-  // export into process.env (inherited by the spawn below); Home
-  // Assistant comes up once per machine and hands back the engine's
-  // long-lived token so LIGHTING is a real, healthy stack service in
-  // every flow — not a permanently-down one. Each arm degrades to loud
-  // skips on hosts that genuinely cannot run it.
-  const { ensureSessionEnv, ensurePipewire, ensureHA } = require('./session-env');
-  ensureSessionEnv();
-  ensurePipewire();
-  const packDirAbs = packPath
-    ? path.resolve(__dirname, '../../..', packPath)
-    : path.resolve(__dirname, '../../../../ALN-TokenData');
-  const ha = await ensureHA(packDirAbs);
+  // The rung-1 environment (fix-vehicle S5 §8.1): ONE shared
+  // provisioning module with the rig, gated by the run's PROFILE — a
+  // run pinned to a real profile provisions nothing; an unpinned run
+  // boots the generated per-pack SIMULATION profile and gets the full
+  // stand-in stack (bus, display, pipewire, witness Home Assistant,
+  // mocked Bluetooth), exported into process.env for the spawn below.
+  // Each arm degrades to loud skips on hosts that cannot run it.
+  const { provisionForRun } = require('./session-env');
+  const prov = await provisionForRun({ packPath, profilePath });
+  const ha = prov.ha;
 
   // Update test environment
   const env = {
@@ -216,7 +211,11 @@ async function startOrchestrator(options = {}) {
     STORAGE_TYPE: storageType,  // Use parameter instead of TEST_ENV default
     ADMIN_PASSWORD: TEST_ENV.ADMIN_PASSWORD,  // Explicitly override to prevent .env contamination
     ...(packPath ? { PACK_PATH: packPath } : {}),
-    ...(profilePath ? { PROFILE_PATH: profilePath } : {}),
+    // The engine boots with the SAME profile the harness provisioned
+    // against (an explicit caller pin passes through unchanged; an
+    // unpinned run gets the simulation profile — never the full-kit
+    // default, whose venue scene bindings the witness HA cannot serve).
+    ...(prov.profilePath ? { PROFILE_PATH: prov.profilePath } : {}),
     ...(ha ? {
       HOME_ASSISTANT_URL: ha.url,
       HOME_ASSISTANT_TOKEN: ha.token,
@@ -238,7 +237,10 @@ async function startOrchestrator(options = {}) {
   // so a restart-flow test that pinned a fixture pack came back up on
   // the default pack and asserted against the wrong rules.
   serverPackPath = packPath;
-  serverProfilePath = profilePath;
+  // The RESOLVED profile (explicit pin passed through, or the generated
+  // simulation profile) — so a restart re-pins exactly what this run
+  // booted with, not the pre-resolution null.
+  serverProfilePath = prov.profilePath;
 
   logger.info('Starting orchestrator for E2E tests', {
     protocol: serverProtocol,

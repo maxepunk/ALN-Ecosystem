@@ -17,7 +17,7 @@
 
 const { execFileSync, spawn } = require('child_process');
 const logger = require('../../../src/utils/logger');
-const { ensureSessionEnv, seedVideoFixtures } = require('./session-env');
+const { ensureSessionEnv } = require('./session-env');
 
 // VLC refuses to run as root (measured:
 // docs/plans/2026-09-04-rung1-capability-research.md). When this suite
@@ -193,17 +193,12 @@ async function setupVLC() {
   logger.info('Setting up VLC for E2E tests (D-Bus MPRIS)...');
 
   // Rung-1 conditions first (fix-vehicle S5): a session bus and an X
-  // display, self-provisioned when the host lacks them; and the video
-  // files the active pack's tokens name, seeded from the committed
-  // sample so a missing fixture can never silently disable the video
-  // tests again (the vacuous-pass mechanism this vehicle closed).
+  // display, self-provisioned when the host lacks them. Video-file
+  // seeding lives in the shared fixture generator (one truth), which
+  // provisionForRun runs when the orchestrator starts — the
+  // vacuous-pass mechanism this vehicle closed stays closed there.
   const env = ensureSessionEnv();
   logger.info('E2E session env', { bus: env.bus, display: env.display });
-  const path = require('path');
-  const packDir = process.env.E2E_PACK_PATH
-    ? path.resolve(__dirname, '../../..', process.env.E2E_PACK_PATH)
-    : path.resolve(__dirname, '../../../../ALN-TokenData');
-  seedVideoFixtures(packDir);
 
   // Strategy 1: Check if VLC is already running
   if (await isVLCAvailable()) {
