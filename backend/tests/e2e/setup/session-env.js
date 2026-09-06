@@ -7,13 +7,17 @@
  * Assistant, Bluetooth mock, fixture generation). This file owns the
  * E2E POLICY:
  *
- * - Ambient-first: a live environment is used, never replaced. Only
- *   what is genuinely absent is provisioned.
- * - One bus PER PLAYWRIGHT WORKER: VLC's MPRIS name is a singleton
- *   per bus, so a shared bus made every concurrently-running test
- *   file share ONE real VLC (measured: 25 files adopting one player).
- *   The socket is keyed by the worker slot; Xvfb stays shared — X is
- *   multi-client.
+ * - Ambient-first for PHYSICS and the DISPLAY: live pipewire, real
+ *   BlueZ, and a live X display are used, never replaced; only what
+ *   is genuinely absent is provisioned. The message BUS is exempt —
+ *   it is plumbing, not physics (below).
+ * - One PRIVATE bus PER PLAYWRIGHT WORKER, worker 0 included: VLC's
+ *   MPRIS name is a singleton per bus, so a shared bus made every
+ *   concurrently-running test file share ONE real VLC (measured: 25
+ *   files adopting one player) — and adopting a machine's AMBIENT bus
+ *   risks driving a real player that owns the name there (a dev
+ *   laptop's own VLC, a Pi's production one). The socket is keyed by
+ *   the worker slot; Xvfb stays shared — X is multi-client.
  * - THE GATE: fake physics are manufactured only for a run whose
  *   profile assigns stand-ins to the harness. A run pinned to a real
  *   profile provisions nothing, so a venue machine cannot be polluted
@@ -55,27 +59,23 @@ const E2E_DISPLAY = ':99'; // converged with the rig — X is multi-client
 function ensureSessionEnv() {
   const result = { bus: false, display: false };
 
-  // Ambient-first holds ONLY for worker 0: on a host with a live
-  // session bus, letting every parallel worker adopt it recreates the
-  // shared-VLC-singleton contention the per-worker buses exist to
-  // prevent (model-window audit: the bypass was silent and total on
-  // any bus-having host). Worker 0 keeps the ambient bus — the
-  // single-worker hardware/dev posture unchanged; workers 1+ always
-  // get their own socket. Each branch logs itself.
-  const existing = process.env.DBUS_SESSION_BUS_ADDRESS;
-  const isParallelWorker = Number(WORKER_SLOT) > 0;
-  if (!isParallelWorker && existing && provision.busAlive(existing)) {
-    logger.info('[e2e-env] worker 0 using the ambient session bus', { existing });
+  // EVERY worker — worker 0 included — gets its own private bus
+  // (owner-examined 2026-09-06). Ambient-first is the doctrine for
+  // fake PHYSICS behind the profile gate; a message bus is plumbing,
+  // and a private one manufactures nothing observable. Adopting the
+  // machine's real bus was the residual hazard: on a dev laptop the
+  // ambient MPRIS name can be the developer's OWN media player, on a
+  // Pi the production one — the suite would adopt and drive it. A
+  // private bus per worker also keeps one code path on every host and
+  // makes the parallel-worker isolation unconditional (the audit found
+  // the earlier ambient branch bypassed it silently).
+  const address = provision.ensureBus({ socketPath: WORKER_BUS_SOCKET });
+  if (address) {
+    process.env.DBUS_SESSION_BUS_ADDRESS = address;
     result.bus = true;
+    logger.info('[e2e-env] worker bus active', { worker: WORKER_SLOT, address });
   } else {
-    const address = provision.ensureBus({ socketPath: WORKER_BUS_SOCKET });
-    if (address) {
-      process.env.DBUS_SESSION_BUS_ADDRESS = address;
-      result.bus = true;
-      logger.info('[e2e-env] worker bus active', { worker: WORKER_SLOT, address });
-    } else {
-      logger.warn('[e2e-env] no session bus — video tests will skip loudly');
-    }
+    logger.warn('[e2e-env] no session bus — video tests will skip loudly');
   }
 
   const curDisplay = process.env.DISPLAY;
