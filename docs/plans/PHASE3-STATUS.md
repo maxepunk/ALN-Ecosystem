@@ -1020,6 +1020,71 @@ when walking. (5) GitGuardian failed on #23–#26; the review's
 security lens found no secret-like content entering in that range
 beyond the known `.env`.
 
+**Walk runbook (recorded 2026-09-11 — preflight audit complete; the
+authoritative procedure, superseding note 4's required-check item:
+branch protection is OFF on all five repos, so there is nothing to
+re-point).** Verified preconditions, checked 2026-09-06/11: every
+vehicle head green or a recorded exception above; no `main` drift in
+any repo (all five mains are ancestors of their train tips — re-run
+this check at walk start, it is THE load-bearing precondition);
+`blue-2026-07` tags anchor the frozen production tips in all five
+repos (the parent's `production-2026-07` pins are exactly each
+submodule's production tip, and both scanners' nested `data/` pins
+are ancestors of TokenData's — the blue rollback path reconstructs
+by `git clone --recursive` even if branches are lost); merge
+commits enabled, auto-delete-head-branches off (GitHub defaults,
+owner-confirmed on two repos).
+
+The governing insight: each parent branch is a strict superset of
+its predecessor and every PR targets `main`, so a merge-commit walk
+makes each intermediate `main` tree BYTE-IDENTICAL to a PR head
+that already passed CI. Intermediate push-CI runs on `main` verify
+nothing new (the concurrency group cancels them by design — only
+the tip run counts), verification per step is `git diff <PR-head>
+origin/main` == empty (sub-second), and the walk can safely pause
+at any vehicle: every stoppable state is a tested tree. Walk FAST —
+the risk is a foreign commit landing mid-walk, not speed.
+
+1. **Freeze** for the window (~90 min): no Notion token sync (it
+   pushes to TokenData `main`), no ALNPlayerScan "Sync & Deploy"
+   workflow (it pushes to that repo's `main`), no other agent
+   sessions writing, no manual pushes.
+2. **Un-draft 20 PRs** (draft PRs cannot merge): TokenData #6/#7,
+   ALNScanner #15/#16, parent #19–#34. ALNPlayerScan #6 and arduino
+   #7 are already ready.
+3. **Submodules first**: TokenData merge #6, then RETARGET #7's
+   base from `claude/phase3-theme-unit` to `main` (GitHub does NOT
+   retarget when a base branch merges — unretargeted, #7 would
+   merge into the theme-unit branch, not `main`), then merge #7.
+   ALNScanner: same dance — #15, retarget #16, merge #16; each
+   scanner merge fires the "Sync & Deploy GM Scanner" Pages deploy,
+   and the FINAL run must succeed (its `sync.py --local` step
+   cannot push — verified — but its failure leaves gh-pages stale).
+   Then ALNPlayerScan #6, arduino #7. Tree-identity check per repo.
+4. **Parent #19→#34 in numeric order**, merge commits ONLY (squash
+   rewrites SHAs and voids tree identity with the tested heads),
+   tree check after each, no CI waits between merges. `rung1.yml`
+   fires on `main` at #32 and #34 (paths trigger) — 10/10 green on
+   runners, expect green.
+5. **Tip verification** (the only wait, ~20 min): the surviving
+   `test.yml` + `rung1.yml` runs on `main` green; parent `main`
+   pins == submodule `main` tips; fresh `git clone --recursive`
+   resolves; final Pages deploy green. This is coherent-on-main.
+6. **Close-out**: subsumed PRs (TokenData #5–#2, ALNScanner
+   #14–#12) auto-mark merged when their ancestor commits reach
+   `main` — verify, close stragglers with comments that do NOT
+   mention @claude (the scanner repos run comment-triggered bots).
+   Delete ONLY the enumerated merged `claude/*` train branches —
+   `production-2026-07` is never on any deletion list. Update this
+   table (walked, date, tip SHAs) + CURRENT-STATE.
+7. **Failure posture**: non-empty tree diff or a real conflict →
+   STOP, report, never improvise mid-walk. Tip CI red → re-run
+   first (content is PR-proven; red means flake or runner drift).
+8. **Standing post-walk rules**: ALNPlayerScan "Sync & Deploy"
+   stays unused until final-cutover item 6 (it bumps the PWA's
+   nested data pin, which ships with the cutover); Notion sync is
+   fine again after the walk.
+
 Timing (superseded 2026-09-05, roadmap r4 supersession 9 — was
 "owner-driven, post-run"): the walk is the owner's call at the
 coherent-on-main readiness state. Before any vehicle merges, the
